@@ -116,6 +116,8 @@ body:has(.hub-panel.is-visible) .hub-icon {
   aspect-ratio: 1;
   margin: 0 auto clamp(6px, 2vw, 20px);
   transition: filter 260ms ease-out, transform 260ms ease-out;
+  -ms-touch-action: none;
+  touch-action: none; /* mobile: keep swipe gestures inside hub without browser scrolling */
 }
 
 .hub-orb {

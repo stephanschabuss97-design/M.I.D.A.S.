@@ -839,6 +839,10 @@
   const applyPanelPerformanceMode = (isMobile) => {
     if (!doc?.body) return;
     doc.body.dataset.panelPerf = isMobile ? 'mobile' : 'desktop';
+    if (aura3dApi?.configureAura3D) {
+      const opacityMultiplier = isMobile ? 1.6 : 1;
+      aura3dApi.configureAura3D({ opacityMultiplier });
+    }
   };
 
   const setupIconBar = (hub) => {

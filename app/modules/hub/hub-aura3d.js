@@ -17,6 +17,7 @@
     sweepDecay: 0.87,
     sweepLerp: 0.12,
     noiseIntensity: 1,
+    opacityMultiplier: 1,
     dampening: Object.freeze({
       spring: 6.2,
       velocity: 2.8,
@@ -34,6 +35,7 @@
     sweepDecay: DEFAULT_CONFIG.sweepDecay,
     sweepLerp: DEFAULT_CONFIG.sweepLerp,
     noiseIntensity: DEFAULT_CONFIG.noiseIntensity,
+    opacityMultiplier: DEFAULT_CONFIG.opacityMultiplier,
     dampening: { ...DEFAULT_CONFIG.dampening },
     boundaryElasticity: { ...DEFAULT_CONFIG.boundaryElasticity },
   };
@@ -63,6 +65,7 @@
     sweepDecay: CONFIG.sweepDecay,
     sweepLerp: CONFIG.sweepLerp,
     noiseIntensity: CONFIG.noiseIntensity,
+    opacityMultiplier: CONFIG.opacityMultiplier,
     dampening: { ...CONFIG.dampening },
     boundaryElasticity: { ...CONFIG.boundaryElasticity },
   });
@@ -125,6 +128,7 @@
     CONFIG.sweepDecay = DEFAULT_CONFIG.sweepDecay;
     CONFIG.sweepLerp = DEFAULT_CONFIG.sweepLerp;
     CONFIG.noiseIntensity = DEFAULT_CONFIG.noiseIntensity;
+    CONFIG.opacityMultiplier = DEFAULT_CONFIG.opacityMultiplier;
     CONFIG.dampening = { ...DEFAULT_CONFIG.dampening };
     CONFIG.boundaryElasticity = { ...DEFAULT_CONFIG.boundaryElasticity };
     return cloneConfig();
@@ -274,8 +278,12 @@
     const microDriftScaleBase = 0.005 * noiseStrength;
     const breathing = 0.7 + 0.3 * Math.sin(time * 0.0005);
     const pulseBoost = state.pulses.reduce((boost, pulse) => Math.max(boost, pulse.life / PULSE_DURATION), 0);
-    const targetOpacity =
-      PARTICLE_OPACITY_BASE + PARTICLE_OPACITY_RANGE * breathing + pulseBoost * 0.12;
+    const opacityMultiplier = Math.max(0, CONFIG.opacityMultiplier || 1);
+    const targetOpacity = Math.min(
+      1,
+      (PARTICLE_OPACITY_BASE + PARTICLE_OPACITY_RANGE * breathing + pulseBoost * 0.12) *
+        opacityMultiplier,
+    );
     const currentOpacity = state.particles.points.material.opacity || 0;
     state.particles.points.material.opacity = THREE.MathUtils
       ? THREE.MathUtils.lerp(currentOpacity, targetOpacity, 0.08)
