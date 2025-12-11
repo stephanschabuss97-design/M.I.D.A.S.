@@ -114,6 +114,12 @@
             >
             <!-- 3. Goldener Innenring -->
             <div class="midas-ring-gold" aria-hidden="true"></div>
+            <!-- 4. Living Aura Canvas (optional) -->
+            <canvas
+              id="hubAuraCanvas"
+              class="hub-aura-canvas"
+              aria-hidden="true"
+            ></canvas>
             <!-- 4. MIDAS-Logo im Vordergrund -->
             <img
               class="hub-orb-fg"
@@ -965,7 +971,10 @@
   <!-- Supabase (UMD, v2) -->
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
-    integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
+    crossorigin="anonymous"
+  ></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
     crossorigin="anonymous"
   ></script>
   <script src="app/core/boot-flow.js"></script>
@@ -975,6 +984,7 @@
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
   <script src="app/modules/hub/vad/vad.js"></script>
+  <script src="app/modules/hub/hub-aura3d.js"></script>
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
   <script type="module" src="app/modules/assistant/suggest-store.js"></script>

@@ -62,6 +62,7 @@ Panels bleiben im DOM; das Hub blendet sie nur ein/aus. Panels öffnen/ schließ
 ## 5. Styling Highlights (hub.css)
 
 - **Background**: freigestelltes PNG `assets/img/midas_background.PNG` in `.hub-orb-bg`; Aura + Gold-Ring laufen als eigenständige Layer.
+- **Living Aura Layer**: Ein Canvas (`#hubAuraCanvas`) sitzt zwischen Hintergrund und Foreground. `app/modules/hub/hub-aura3d.js` rendert die Partikel (Three.js) und exponiert `getAuraConfig()`, `configureAura3D(partialConfig)` sowie `resetAuraConfig()`. Damit können Sweep-Impulse, Noise oder Boundary-Dämpfung live feinjustiert oder komplett deaktiviert werden (`configureAura3D({ enabled: false })` stoppt Renderer, `{ enabled: true }` startet ihn erneut).
 - **Carousel Slot**: `.hub-carousel .hub-icon` sitzt absolut im Zentrum; Richtungswechsel nutzen Animationsklassen (`hub-icon-anim-enter/exit-left/right/fade`).
 - **Quickbar**: Blur-Bubble mit Ease-Out-Transition (Scale + Translate). Swipe-Up verschiebt den gesamten Hub (`--hub-y-offset`) und hält die MIDAS-Kernidentität sichtbar.
 - **Panel Look**: zentrierte Overlays mit Zoom-In/Out (`hub-panel-zoom-*`), Milchglas-Lock via `body:has(.hub-panel.is-visible)`.

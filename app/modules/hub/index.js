@@ -164,6 +164,21 @@
   let setSpriteStateFn = null;
   let doctorUnlockWaitCancel = null;
   let openDoctorPanelWithGuard = null;
+  const aura3dApi = global.AppModules?.hubAura3D || null;
+  let aura3dCleanup = null;
+  const auraState = {
+    canvas: null,
+  };
+
+  const triggerAuraTouchPulse = (event) => {
+    if (!auraState.canvas || !aura3dApi?.triggerTouchPulse || !event) return;
+    const rect = auraState.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const normX = (event.clientX - rect.left) / rect.width;
+    const normY = (event.clientY - rect.top) / rect.height;
+    if (normX < 0 || normX > 1 || normY < 0 || normY > 1) return;
+    aura3dApi.triggerTouchPulse(normX, normY);
+  };
   let voiceCtrl = null;
   let assistantChatCtrl = null;
   let assistantProfileSnapshot = appModules.profile?.getData?.() || null;
@@ -271,24 +286,31 @@
 
   const setCarouselActiveIndex = (index, { direction = 0 } = {}) => {
     const length = getCarouselLength();
-    if (!length) return;
+    if (!length) return false;
+    const prevIndex = carouselState.index;
+    const wasIdle = carouselState.idle;
     const normalized = ((index % length) + length) % length;
     carouselState.index = normalized;
     carouselState.idle = false;
     carouselState.transitionDir = direction;
     applyCarouselUi();
+    return wasIdle || normalized !== prevIndex;
   };
 
   const shiftCarousel = (delta = 1) => {
     const length = getCarouselLength();
     if (!length) return;
-    if (carouselState.idle) {
-      const startIndex = delta > 0 ? 0 : length - 1;
-      setCarouselActiveIndex(startIndex, { direction: delta > 0 ? 1 : -1 });
-      return;
-    }
     const dir = delta > 0 ? 1 : -1;
-    setCarouselActiveIndex(carouselState.index + delta, { direction: dir });
+    let changed = false;
+    if (carouselState.idle) {
+      const startIndex = dir > 0 ? 0 : length - 1;
+      changed = setCarouselActiveIndex(startIndex, { direction: dir });
+    } else {
+      changed = setCarouselActiveIndex(carouselState.index + delta, { direction: dir });
+    }
+    if (changed && aura3dApi?.triggerCarouselSweep) {
+      aura3dApi.triggerCarouselSweep(dir > 0 ? 'left' : 'right');
+    }
   };
 
   const setCarouselActiveById = (id, { direction = 0 } = {}) => {
@@ -373,6 +395,7 @@
       pointerId = event.pointerId;
       pointerStartX = event.clientX;
       pointerStartY = event.clientY;
+      triggerAuraTouchPulse(event);
     });
 
     orbit.addEventListener('pointerup', (event) => {
@@ -762,6 +785,10 @@
       global.console?.debug?.('[hub] document object missing');
       return;
     }
+    if (typeof aura3dCleanup === 'function') {
+      aura3dCleanup();
+    }
+    auraState.canvas = null;
     const hub = doc.getElementById('captureHub');
     if (!hub) {
       global.console?.debug?.('[hub] #captureHub element not found', { config });
@@ -778,6 +805,23 @@
     setupSpriteState(hub);
     setupCarouselController(hub);
     setupQuickbar(hub);
+    if (aura3dApi?.initAura3D) {
+      const auraCanvas = hub.querySelector('#hubAuraCanvas');
+      if (auraCanvas) {
+        const resizeHandler = () => aura3dApi.updateLayout?.();
+        const initialized = aura3dApi.initAura3D(auraCanvas);
+        if (initialized) {
+          auraState.canvas = auraCanvas;
+          global.addEventListener('resize', resizeHandler);
+          aura3dCleanup = () => {
+            global.removeEventListener('resize', resizeHandler);
+            aura3dApi.disposeAura3D?.();
+            aura3dCleanup = null;
+            auraState.canvas = null;
+          };
+        }
+      }
+    }
     doc.body.classList.add('hub-mode');
     applyPanelPerformanceMode(panelPerfQuery?.matches);
     if (panelPerfQuery) {

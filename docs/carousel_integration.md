@@ -198,7 +198,7 @@ Each phase lists scope, affected files, dependency (must be completed), and succ
    - Dependency: Phase 6.  
    - Success: Swipes/keys reliably toggle carousel/quickbar/dashboard; ESC/back closes overlays; focus is preserved.
 
-8) Phase 8 - UX Refinement & Performance  
+8) Phase 8 - UX Refinement & Performance  ✅
    - Scope: Tune easing/durations, ensure partial core visibility (30–50%) on vertical moves, optimize transforms for mobile.  
    - Files: `app/styles/hub.css`, minor JS tweaks.  
    - Dependency: Phase 7.  
@@ -216,11 +216,19 @@ Each phase lists scope, affected files, dependency (must be completed), and succ
       - Lifecycle: hub init → `initAura3D(canvasEl)`; window resize/layout change → `updateLayout()`; hub teardown → `disposeAura3D()`. The module must silently no-op if WebGL is unavailable.  
       - Safety: no visible meshes, no overdraw on icons, no interference with carousel/quickbar animation timings.  
    - Deterministic sub-steps (fallbacks after each):  
-     1. **Scaffold** – add `hub-aura3d.js` with no-op exports and inject `<canvas id="hubAuraCanvas">`; verify hub behaves identisch wie vorher (Feature Flag optional).  
-     2. **Idle Scene** – implement minimale Three.js Szene (Partikel + breathing glow) gated über Capability-Check; `disposeAura3D()` stoppt Renderloop.  
-     3. **Touch Pulse** – binde `triggerTouchPulse` an Hub-Pointerevents (lockierbar via Feature Flag), Carousel-Sweep bleibt aus.  
+     1. **Scaffold** ✅ – add `hub-aura3d.js` with no-op exports and inject `<canvas id="hubAuraCanvas">`; verify hub behaves identisch wie vorher (Feature Flag optional).  
+     2. **Idle Scene** ✅ – implement minimale Three.js Szene (Partikel + breathing glow) gated über Capability-Check; `disposeAura3D()` stoppt Renderloop.  
+     3. **Touch Pulse** ✅ – binde `triggerTouchPulse` an Hub-Pointerevents (lockierbar via Feature Flag), Carousel-Sweep bleibt aus.  
      4. **Carousel Sweep** – integriere `triggerCarouselSweep` in den bestehenden Swipe-Controller; fallback ist das Deaktivieren der Sweep-API.  
-     5. **Polish & Perf** – finalisiere Glow/Timing, messe <2 ms pro Frame, dokumentiere Turn-Off Schalter falls nötig.
+      - Fluid-Sweep Treatment (keine Riesenrad-Rotation, sondern „Ringelspiel“):  
+          1. **Anchored drift**  ✅ – jedes Partikel bekommt einen eigenen Heimvektor (Radius + Winkel); der Sweep addiert nur kurzfristige Impulse, damit die Gruppe wieder sanft in den Ruhezustand findet und nicht hart snappt.  
+          2. **Noise & phase offsets**✅ – Perlin/ simplex Noise (oder einfache sinusförmige Offsets) sorgt dafür, dass nicht alle Partikel gleichzeitig schwingen; so entsteht der „Wasser“-Look.  
+          3. **Boundary easing** ✅ – statt abruptem Snap werden Partikel Richtung Rand abgebremst (quadratische Dämpfung) und „prallen“ weich an einer virtuellen Kreisbarriere ab.  
+          4. **Impulse release hook** ✅ – der Swipe-Controller feuert den Drift erst beim tatsächlichen Richtungswechsel (nach dem Swipe), danach sorgt ein Ease-Out (300–500 ms) für das Zurückgleiten.  
+          5. **Config surface** ✅ – Parameter (`sweepImpulseStrength`, `boundaryElasticity`, `noiseIntensity`, `dampening`) kommen als Exporte aus `hub-aura3d.js`, damit wir im UI schnell nachjustieren oder das Feature temporär abschalten können.  
+     5. **Polish & Perf** – finalisiere Glow/Timing, messe <2 ms pro Frame, dokumentiere Turn-Off Schalter falls nötig.  
+        - Status: OK. Die aktuelle Szene bleibt unter der 2 ms-Grenze auf Desktop + Pixel 6, daher vorerst keine weiteren Messläufe.  
+        - Config Surface dokumentiert (`AppModules.hubAura3D.getAuraConfig|configureAura3D|resetAuraConfig`). Kill-Switch: `configureAura3D({ enabled: false })` stoppt Renderer + Renderloop verlustfrei, erneutes Aktivieren (`{enabled:true}`) initialisiert sofort neu.
 
 ## Risks & Open Questions
 - Gesture conflicts: swipe listeners vs. panel scroll areas; need clear hit zones and passive listeners.
