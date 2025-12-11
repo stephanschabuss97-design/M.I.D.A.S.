@@ -188,8 +188,8 @@ body:has(.hub-panel.is-visible) .hub-icon {
   pointer-events: none;
   background: rgba(6, 8, 14, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 10px 18px;
+  border-radius: 36px;
+  padding: 14px clamp(14px, 4vw, 22px);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition:
@@ -199,12 +199,15 @@ body:has(.hub-panel.is-visible) .hub-icon {
   z-index: 20;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
   will-change: opacity, transform;
+  width: min(520px, 92vw);
 }
 
 .hub-quickbar-inner {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   align-items: center;
+  justify-content: center;
 }
 
 .hub-quickbar-btn {
@@ -222,6 +225,13 @@ body:has(.hub-panel.is-visible) .hub-icon {
 .hub-quickbar-btn:focus-visible {
   background: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .hub-quickbar-btn {
+    flex: 1 1 calc(50% - 12px);
+    text-align: center;
+  }
 }
 
 .hub.quickbar-open {
