@@ -203,11 +203,11 @@ body:has(.hub-panel.is-visible) .hub-icon {
 }
 
 .hub-quickbar-inner {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px 12px;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-items: stretch;
 }
 
 .hub-quickbar-btn {
@@ -219,6 +219,8 @@ body:has(.hub-panel.is-visible) .hub-icon {
   font-size: 0.95rem;
   cursor: pointer;
   transition: background 200ms ease, transform 200ms ease;
+  width: 100%;
+  text-align: center;
 }
 
 .hub-quickbar-btn:hover,
@@ -227,12 +229,6 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: translateY(-1px);
 }
 
-@media (max-width: 640px) {
-  .hub-quickbar-btn {
-    flex: 1 1 calc(50% - 12px);
-    text-align: center;
-  }
-}
 
 .hub.quickbar-open {
   --hub-y-offset: -18%;
