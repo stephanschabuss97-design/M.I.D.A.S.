@@ -1,6 +1,6 @@
 # Hub Module – Functional Overview
 
-Dieses Dokument beschreibt das MIDAS-Hub-Modul, den zentralen Einstiegspunkt für das Orbit-Interface. Ziel ist eine klare Referenz zu Aufbau, Zuständigkeiten und Erweiterungen nach den jüngsten UI-Änderungen (Aura statt Energy-Orb, zentrierte Panels, Panel-Lock).
+Dieses Dokument beschreibt das MIDAS-Hub-Modul, den zentralen Einstiegspunkt für das Hero-Interface. Nach dem Umbau (Ringelspiel-Karussell, Quickbar-Swipe, Panel-Lock) dient es als Referenz für Aufbau, Zuständigkeiten und Erweiterungen.
 
 ---
 
@@ -8,9 +8,9 @@ Dieses Dokument beschreibt das MIDAS-Hub-Modul, den zentralen Einstiegspunkt fü
 
 | Typ            | Datei/Beschreibung |
 | -------------- | ------------------ |
-| Entry Script   | `app/modules/hub/index.js` – aktiviert Hub-Layout, bindet Buttons, steuert Panels |
-| Stylesheet     | `app/styles/hub.css` – Orbit-Größen, Aura/Ring-Overlays, Button-States, Panel-Look |
-| Markup-Anker   | `<section class="hub" id="captureHub">` in `index.html` mit Orbit-Buttons + Panels |
+| Entry Script   | `app/modules/hub/index.js` – aktiviert Hub-Layout, bindet Carousel/Quickbar, steuert Panels |
+| Stylesheet     | `app/styles/hub.css` – Aura/Ring-Layer, Carousel-Slot, Quickbar-Transitions, Panel-Look |
+| Markup-Anker   | `<section class="hub" id="captureHub">` in `index.html` mit Carousel-Slot + Panels |
 
 Das Hub ersetzt die klassische Tab-Navigation und dient als Launcher für Intake-, Vitals-, Doctor-Panel sowie künftige KI-Module.
 
@@ -18,15 +18,16 @@ Das Hub ersetzt die klassische Tab-Navigation und dient als Launcher für Intake
 
 ## 2. Verantwortlichkeiten
 
-1. **Orbit-Aktivierung**
-   - Setzt `hub-mode` auf `<body>` (versteckt alte Capture-Header).
-   - Verschiebt Intake-Status-Pills in den Hero (`moveIntakePillsToHub`).
-2. **Panel-Steuerung**
+1. **Hero-Aktivierung**
+   - Setzt `hub-mode` auf `<body>` (versteckt alte Capture-Header) und verschiebt Intake-Pills in den Hero (`moveIntakePillsToHub`).
+2. **Panel-/Carousel-Steuerung**
    - Buttons mit `data-hub-module` öffnen Panels (`hub-panel` Sektionen).
-   - `setupIconBar()` synchronisiert `aria-pressed`, handhabt Click/ESC, schließt auf Animation-Ende.
-3. **Orbit-Hotspots**
-   - `setupOrbitHotspots()` berechnet Button-Positionen radial per JS.
-   - Radius-Faktoren: Desktop 0.72, Mobile 0.76; via `ResizeObserver` + `matchMedia` (keine festen CSS-Offsets).
+   - `setupCarouselController()` verwaltet das Ringelspiel (ein Icon in der Mitte, Swipe/Key Navigation, Animationsklassen).
+   - `setupIconBar()` synchronisiert `aria-pressed`, handhabt Click/ESC, schließt Panels sauber.
+3. **Quickbar/Vertical Layer**
+   - `setupQuickbar()` koppelt Swipe-Up/Down und Buttons (`data-hub-module` + `data-quickbar-action`), animiert per CSS (`--hub-y-offset`, Blur/Scale).
+4. **Orbit-Hotspots (Legacy)**
+   - `setupOrbitHotspots()` existiert weiterhin, wird aber nur noch aktiv, wenn Buttons mit `data-orbit-pos` versehen sind (derzeit deaktiviert). Dient als Fallback, falls spätere Orbit-Flächen reaktiviert werden.
 4. **Datum & Status**
    - Date-Pill bleibt Single Source of Truth (`#date` Input); Vitals zeigt Inline-Datepicker.
    - Intake-Pills zeigen nur Werte (keine Ampelfarben), geliefert vom Capture-Modul.
@@ -36,32 +37,23 @@ Das Hub ersetzt die klassische Tab-Navigation und dient als Launcher für Intake
 
 ---
 
-## 3. Orbit-System im Detail
+## 3. Carousel & Legacy-Orbit
 
-```js
-const ORBIT_BUTTONS = {
-  north: { angle: -90 },
-  ne:    { angle: -45, radiusScale: 0.88 },
-  e:     { angle: 0 },
-  ...
-};
-```
-
-- **Angle** in Grad, 0° = Osten.  
-- **radiusScale** optional (z. B. diagonale Buttons etwas näher am Zentrum).  
-- JS schreibt Pixelwerte nach `style.left/top`; CSS hält Buttons initial bei `50%/50%`.  
-- Basisradius wird pro Viewport neu berechnet (ResizeObserver), daher identisches Verhalten auf Desktop/Mobile ohne Nachjustierung.
+- **Carousel:** Die sichtbaren Module liegen alle im zentralen Slot (`.hub-carousel .hub-icon`). `setupCarouselController` blendet jeweils genau ein Icon ein; Richtungswechsel steuern animierte Klassen (`hub-icon-anim-enter/exit-*`) und lösen das passende Panel aus.
+- **Legacy-Orbit:** Das Objekt `ORBIT_BUTTONS` und `setupOrbitHotspots` verbleiben als Fallback für verborgene Flächen. Da die Carousel-Buttons keine `data-orbit-pos` mehr besitzen, greift die alte Positionierung nicht mehr – ein versehentliches „Riesenrad“ ist damit ausgeschlossen. Die unsichtbaren Orbit-Schaltflächen bleiben im DOM, sind aber nicht verdrahtet; sie können später wieder aktiviert werden, indem `data-orbit-pos` gezielt gesetzt und `setupOrbitHotspots` reaktiviert wird.
 
 ---
 
 ## 4. Panel-Verhalten
 
-| Panel      | Markup                                             | Trigger                     | Besonderheit                        |
-| ---------- | -------------------------------------------------- | --------------------------- | ----------------------------------- |
-| Intake     | `<section id="hubIntakePanel" data-hub-panel="intake">` | `data-hub-module="intake"`  | Migration des alten Accordions      |
-| Vitals     | `data-hub-panel="vitals"`                          | `data-hub-module="vitals"`  | Datum + BP/Körper Formulare inline  |
-| Doctor     | `data-hub-panel="doctor"`                          | `data-hub-module="doctor"`  | Biometrie-Check (`ensureDoctorUnlocked`) |
-| Placeholders | `disabled` Buttons + Icons                       | `data-orbit-pos` (ne,se,w,sw etc.) | Reserviert für KI, Training, Termine |
+| Panel        | Markup                                             | Trigger                    | Besonderheit                                  |
+| ------------ | -------------------------------------------------- | -------------------------- | --------------------------------------------- |
+| Intake       | `<section id="hubIntakePanel" data-hub-panel="intake">` | `data-hub-module="intake"` | Migration des alten Accordions                |
+| Vitals       | `data-hub-panel="vitals"`                          | `data-hub-module="vitals"` | Datum + BP/Körper Formulare inline            |
+| Doctor       | `data-hub-panel="doctor"`                          | `data-hub-module="doctor"` | Biometrie-Check (`ensureDoctorUnlocked`)      |
+| Chart        | `#chart` Panel (SVG)                               | `data-hub-module="chart"`  | Öffnet Doctor-Panel im Chart-Modus            |
+| Quickbar     | `<div id="hubQuickbar">`                           | Swipe Up / Buttons         | Mini-Buttons (Ringelspiel-IDs); Touch-Log per Action |
+| Legacy Orbit | `disabled` Buttons mit `data-orbit-pos`            | (derzeit unverkabelt)      | Platzhalter für zukünftige kreisförmige Module |
 
 Panels bleiben im DOM; das Hub blendet sie nur ein/aus. Panels öffnen/ schließen mit Zoom-Animation, bleiben bis Animation-Ende sichtbar.
 
@@ -69,12 +61,11 @@ Panels bleiben im DOM; das Hub blendet sie nur ein/aus. Panels öffnen/ schließ
 
 ## 5. Styling Highlights (hub.css)
 
-- **Background**: freigestelltes PNG `assets/img/midas_background.PNG` in `.hub-orb-bg`; kein Energy-Orb/Box-Shadow mehr.
-- **Aura/Ring Overlays**: `.midas-aura-flow` (conic gradient, dreht langsam) und `.midas-ring-gold` (subtiler Ring-Glow). Beide nutzen CSS-Variablen.
-- **Orbit Icons**: sichtbarer Kreis entfernt; Buttons bleiben klickbar (haptisches Feedback über Aura/Boost), Placeholder-"??" ausgeblendet.
-- **Orbit Size**: `--hub-orb-size` skaliert den Hero (`clamp(320px, 92vw, 920px)`; Mobile override 94vw/520px).
-- **Panel Look**: zentrierte Overlays mit Zoom-In/Out (`hub-panel-zoom-in/out`), Milchglas-Lock via `body:has(.hub-panel.is-visible)`.
-- **Locking**: Aktiviertes Panel dimmt Orbit, blockt Buttons, verhindert Page-Scroll via `body:has(...)`.
+- **Background**: freigestelltes PNG `assets/img/midas_background.PNG` in `.hub-orb-bg`; Aura + Gold-Ring laufen als eigenständige Layer.
+- **Carousel Slot**: `.hub-carousel .hub-icon` sitzt absolut im Zentrum; Richtungswechsel nutzen Animationsklassen (`hub-icon-anim-enter/exit-left/right/fade`).
+- **Quickbar**: Blur-Bubble mit Ease-Out-Transition (Scale + Translate). Swipe-Up verschiebt den gesamten Hub (`--hub-y-offset`) und hält die MIDAS-Kernidentität sichtbar.
+- **Panel Look**: zentrierte Overlays mit Zoom-In/Out (`hub-panel-zoom-*`), Milchglas-Lock via `body:has(.hub-panel.is-visible)`.
+- **Locking & Voice Gate**: Aktiviertes Panel dimmt Orbit, blockt Buttons; Voice-Gate (CSS `body.voice-locked`) zeigt weiterhin den Sicherheitszustand der Sprachsteuerung.
 
 ### Voice Safety Gate (Phase 0.4)
 
@@ -105,9 +96,10 @@ Panels bleiben im DOM; das Hub blendet sie nur ein/aus. Panels öffnen/ schließ
 
 ## 8. Quickstart für Änderungen
 
-1. **Buttons hinzufügen** – in `index.html` neuen `<button>` mit `data-hub-module` + `data-orbit-pos` anlegen.  
-2. **Panel bauen** – neue `<section class="hub-panel" data-hub-panel="...">` anlegen.  
-3. **Script erweitern** – in `setupIconBar` Handler registrieren, optional `ORBIT_BUTTONS` ergänzen.  
-4. **Styles anpassen** – `hub.css` für neue Icons/States pflegen (Aura-Boost nur via CSS-Variablen).  
+1. **Carousel-Button hinzufügen** – in `index.html` neuen `<button class="hub-icon" data-hub-module="...">` innerhalb `.hub-carousel` platzieren (kein `data-orbit-pos` nötig).  
+2. **Panel bauen** – neue `<section class="hub-panel" data-hub-panel="...">` anlegen oder bestehendes Panel erweitern.  
+3. **Script erweitern** – `setupIconBar` / `CAROUSEL_MODULES` in `hub/index.js` ergänzen (Mapping `id → panel`).  
+4. **Quickbar ergänzen** – optional Button mit `data-hub-module` oder `data-quickbar-action` hinzufügen (nutzt dasselbe Handler-Mapping).  
+5. **Styles anpassen** – `hub.css` nur für neue Icons/States pflegen (Aura/Carousel/Quickbar nutzen CSS-Variablen statt Inline-Stile).  
 
 Damit ist das Hub-Modul dokumentiert; neue Entwickler finden damit schnell Einstieg und Kontext.

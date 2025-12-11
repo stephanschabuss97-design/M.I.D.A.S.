@@ -51,6 +51,49 @@
     error: 'Fehler',
   };
   const VOICE_FALLBACK_REPLY = 'Hallo Stephan, ich bin bereit.';
+  const CAROUSEL_MODULES = [
+    { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
+    { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
+    { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
+    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
+    { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
+    { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
+    { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
+    { id: 'profile', selector: '[data-carousel-id="profile"]', panel: 'profile' },
+  ];
+  const PANEL_TO_CAROUSEL_ID = {
+    intake: 'intake',
+    vitals: 'vitals',
+    'assistant-text': 'assistant-text',
+    appointments: 'appointments',
+    doctor: 'doctor',
+    profile: 'profile',
+  };
+  const ICON_ENTER_CLASSES = {
+    '-1': 'hub-icon-anim-enter-left',
+    0: 'hub-icon-anim-enter-fade',
+    1: 'hub-icon-anim-enter-right',
+  };
+  const ICON_EXIT_CLASSES = {
+    '-1': 'hub-icon-anim-exit-right',
+    0: 'hub-icon-anim-exit-fade',
+    1: 'hub-icon-anim-exit-left',
+  };
+  const carouselState = {
+    items: [],
+    index: -1,
+    idle: true,
+    orbitEl: null,
+    transitionDir: 0,
+    activeButton: null,
+  };
+  let carouselKeyListenerBound = false;
+  const quickbarState = {
+    el: null,
+    handle: null,
+    hubEl: null,
+    open: false,
+  };
   const MAX_ASSISTANT_PHOTO_BYTES = 6 * 1024 * 1024;
   const VAD_SILENCE_MS = 1000;
   const CONVERSATION_AUTO_RESUME_DELAY = 450;
@@ -146,6 +189,240 @@
     hubButtons.forEach((btn) => {
       btn.setAttribute('aria-pressed', String(btn === target));
     });
+  };
+
+  const getCarouselLength = () => carouselState.items.length;
+
+  const iconAnimationHandlers = new WeakMap();
+
+  const applyIconAnimation = (btn, className) => {
+    if (!btn || !className) return;
+    const current = iconAnimationHandlers.get(btn);
+    if (current) {
+      btn.removeEventListener('animationend', current.handler);
+      btn.classList.remove(current.className);
+      iconAnimationHandlers.delete(btn);
+    }
+    // Force reflow to allow re-adding the same class
+    void btn.offsetWidth; // eslint-disable-line no-unused-expressions
+    btn.classList.add(className);
+    const handler = () => {
+      btn.classList.remove(className);
+      btn.removeEventListener('animationend', handler);
+      if (className.startsWith('hub-icon-anim-exit')) {
+        btn.classList.remove('hub-icon-exit');
+      }
+      iconAnimationHandlers.delete(btn);
+    };
+    btn.addEventListener('animationend', handler);
+    iconAnimationHandlers.set(btn, { className, handler });
+  };
+
+  const applyCarouselUi = () => {
+    const dir = carouselState.transitionDir;
+    const enterClass = ICON_ENTER_CLASSES[dir] || ICON_ENTER_CLASSES[0];
+    const exitClass = ICON_EXIT_CLASSES[dir] || ICON_EXIT_CLASSES[0];
+    const prevActive = carouselState.activeButton;
+    let nextActive = null;
+    carouselState.items.forEach((item, index) => {
+      const btn = item.button;
+      if (!btn) return;
+      const isActive = !carouselState.idle && index === carouselState.index;
+      if (isActive) {
+        nextActive = btn;
+      }
+      if (!isActive && btn !== prevActive) {
+        btn.classList.remove('hub-icon-active', 'hub-icon-exit');
+        btn.setAttribute('aria-hidden', 'true');
+        btn.tabIndex = -1;
+      }
+    });
+    const changed = prevActive !== nextActive;
+    if (changed && prevActive) {
+      prevActive.classList.remove('hub-icon-active');
+      prevActive.classList.add('hub-icon-exit');
+      prevActive.setAttribute('aria-hidden', 'true');
+      prevActive.tabIndex = -1;
+      applyIconAnimation(prevActive, exitClass);
+    }
+    if (nextActive) {
+      nextActive.classList.add('hub-icon-active');
+      nextActive.classList.remove('hub-icon-exit');
+      nextActive.setAttribute('aria-hidden', 'false');
+      nextActive.tabIndex = 0;
+      if (changed) {
+        applyIconAnimation(nextActive, enterClass);
+      }
+    }
+    carouselState.activeButton = nextActive;
+    carouselState.transitionDir = 0;
+    if (carouselState.orbitEl) {
+      carouselState.orbitEl.dataset.carouselState = carouselState.idle ? 'idle' : 'active';
+    }
+  };
+
+  const setCarouselIdle = () => {
+    carouselState.idle = true;
+    carouselState.index = -1;
+    carouselState.activeButton = null;
+    carouselState.transitionDir = 0;
+    applyCarouselUi();
+  };
+
+  const setCarouselActiveIndex = (index, { direction = 0 } = {}) => {
+    const length = getCarouselLength();
+    if (!length) return;
+    const normalized = ((index % length) + length) % length;
+    carouselState.index = normalized;
+    carouselState.idle = false;
+    carouselState.transitionDir = direction;
+    applyCarouselUi();
+  };
+
+  const shiftCarousel = (delta = 1) => {
+    const length = getCarouselLength();
+    if (!length) return;
+    if (carouselState.idle) {
+      const startIndex = delta > 0 ? 0 : length - 1;
+      setCarouselActiveIndex(startIndex, { direction: delta > 0 ? 1 : -1 });
+      return;
+    }
+    const dir = delta > 0 ? 1 : -1;
+    setCarouselActiveIndex(carouselState.index + delta, { direction: dir });
+  };
+
+  const setCarouselActiveById = (id, { direction = 0 } = {}) => {
+    const idx = carouselState.items.findIndex((item) => item.id === id);
+    if (idx === -1) return;
+    setCarouselActiveIndex(idx, { direction });
+  };
+
+  const syncCarouselToPanel = (panelName) => {
+    const id = PANEL_TO_CAROUSEL_ID[panelName];
+    if (!id) return;
+    setCarouselActiveById(id);
+  };
+
+  const handleCarouselKeydown = (event) => {
+    if (!doc?.body?.classList?.contains('hub-mode')) return;
+    if (event.defaultPrevented) return;
+    const target = event.target;
+    const tagName = typeof target?.tagName === 'string' ? target.tagName.toLowerCase() : '';
+    if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) return;
+    if (event.key === 'ArrowRight') {
+      shiftCarousel(1);
+      event.preventDefault();
+    } else if (event.key === 'ArrowLeft') {
+      shiftCarousel(-1);
+      event.preventDefault();
+    }
+  };
+
+  const syncQuickbarUi = () => {
+    if (!quickbarState.el) return;
+    if (quickbarState.open) {
+      quickbarState.el.removeAttribute('hidden');
+      quickbarState.el.removeAttribute('inert');
+      quickbarState.el.setAttribute('aria-hidden', 'false');
+    } else {
+      quickbarState.el.setAttribute('hidden', 'true');
+      quickbarState.el.setAttribute('inert', '');
+      quickbarState.el.setAttribute('aria-hidden', 'true');
+    }
+    if (quickbarState.handle) {
+      quickbarState.handle.setAttribute('aria-expanded', quickbarState.open ? 'true' : 'false');
+    }
+    if (quickbarState.hubEl) {
+      quickbarState.hubEl.classList.toggle('quickbar-open', quickbarState.open);
+    }
+  };
+
+  const openQuickbar = () => {
+    if (!quickbarState.el || quickbarState.open) return;
+    quickbarState.open = true;
+    syncQuickbarUi();
+  };
+
+  const closeQuickbar = () => {
+    if (!quickbarState.el || !quickbarState.open) return;
+    quickbarState.open = false;
+    syncQuickbarUi();
+  };
+
+  const toggleQuickbar = () => {
+    if (!quickbarState.el) return;
+    if (quickbarState.open) closeQuickbar();
+    else openQuickbar();
+  };
+
+  const setupCarouselGestures = (orbit) => {
+    if (!orbit) return;
+    let pointerId = null;
+    let pointerStartX = null;
+    let pointerStartY = null;
+    const SWIPE_THRESHOLD = 48;
+
+    const resetSwipe = () => {
+      pointerId = null;
+      pointerStartX = null;
+      pointerStartY = null;
+    };
+
+    orbit.addEventListener('pointerdown', (event) => {
+      if (!event.isPrimary) return;
+      pointerId = event.pointerId;
+      pointerStartX = event.clientX;
+      pointerStartY = event.clientY;
+    });
+
+    orbit.addEventListener('pointerup', (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) {
+        resetSwipe();
+        return;
+      }
+      const deltaX = pointerStartX === null ? 0 : event.clientX - pointerStartX;
+      const deltaY = pointerStartY === null ? 0 : event.clientY - pointerStartY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (absY > absX && absY > SWIPE_THRESHOLD) {
+        if (deltaY < -SWIPE_THRESHOLD) {
+          openQuickbar();
+        } else if (deltaY > SWIPE_THRESHOLD) {
+          closeQuickbar();
+        }
+        resetSwipe();
+        return;
+      }
+      if (absX > SWIPE_THRESHOLD) {
+        shiftCarousel(deltaX < 0 ? 1 : -1);
+      }
+      resetSwipe();
+    });
+
+    orbit.addEventListener('pointercancel', resetSwipe);
+  };
+
+  const setupCarouselController = (hub) => {
+    if (!hub) return;
+    const orbit = hub.querySelector('.hub-orbit');
+    if (!orbit) return;
+    carouselState.orbitEl = orbit;
+    carouselState.items = CAROUSEL_MODULES.map((entry) => {
+      const button = hub.querySelector(entry.selector);
+      if (!button) return null;
+      if (!button.dataset.carouselId) {
+        button.dataset.carouselId = entry.id;
+      }
+      button.setAttribute('tabindex', '-1');
+      button.setAttribute('aria-hidden', 'true');
+      return { ...entry, button };
+    }).filter(Boolean);
+    setCarouselIdle();
+    setupCarouselGestures(orbit);
+    if (!carouselKeyListenerBound) {
+      carouselKeyListenerBound = true;
+      doc.addEventListener('keydown', handleCarouselKeydown);
+    }
   };
 
   const handlePanelEsc = (event) => {
@@ -282,6 +559,7 @@
     void panel.offsetWidth; // eslint-disable-line no-unused-expressions
     panel.classList.add('hub-panel-open');
     activePanel = panel;
+    syncCarouselToPanel(panelName);
     doc.addEventListener('keydown', handlePanelEsc);
     if (typeof panel.scrollIntoView === 'function') {
       requestAnimationFrame(() => {
@@ -289,6 +567,50 @@
       });
     }
     return panel;
+  };
+
+  const setupQuickbar = (hub) => {
+    const quickbar = hub.querySelector('.hub-quickbar');
+    if (!quickbar) return;
+    quickbarState.el = quickbar;
+    quickbarState.hubEl = hub;
+    syncQuickbarUi();
+    const handle = hub.querySelector('[data-quickbar-handle]');
+    quickbarState.handle = handle || null;
+    if (handle) {
+      handle.addEventListener('click', () => {
+        toggleQuickbar();
+      });
+    }
+    quickbar.querySelectorAll('[data-hub-module]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const moduleId = btn.dataset.hubModule;
+        if (moduleId) {
+          const target = hub.querySelector(`.hub-icon[data-carousel-id="${moduleId}"]`);
+          if (target) {
+            target.click();
+          }
+        }
+        closeQuickbar();
+      });
+    });
+    quickbar.querySelectorAll('[data-quickbar-action="diag"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const diagPanel =
+          appModules.diag ||
+          global.diag ||
+          global.AppModules?.diagnostics?.diag ||
+          null;
+        if (diagPanel) {
+          if (diagPanel.open && typeof diagPanel.hide === 'function') {
+            diagPanel.hide();
+          } else if (typeof diagPanel.show === 'function') {
+            diagPanel.show();
+          }
+        }
+        closeQuickbar();
+      });
+    });
   };
 
   const setupPanels = () => {
@@ -454,6 +776,8 @@
     moveIntakePillsToHub();
     setupChat(hub);
     setupSpriteState(hub);
+    setupCarouselController(hub);
+    setupQuickbar(hub);
     doc.body.classList.add('hub-mode');
     applyPanelPerformanceMode(panelPerfQuery?.matches);
     if (panelPerfQuery) {
@@ -546,73 +870,32 @@
     const bindAssistantButton = () => {
       const btn = hub.querySelector('[data-hub-module="assistant-text"]');
       if (!btn) return;
-      const LONG_PRESS_MS = 650;
-      let pressTimer = null;
-      let longPressTriggered = false;
-      let swallowNextClick = false;
-
-      const resetTimer = () => {
-        if (pressTimer) {
-          global.clearTimeout(pressTimer);
-          pressTimer = null;
-        }
-      };
-
-      const markClickSwallowed = () => {
-        swallowNextClick = true;
-        global.setTimeout(() => {
-          swallowNextClick = false;
-        }, 0);
-      };
-
-      const triggerVoice = () => {
-        if (longPressTriggered) return;
-        longPressTriggered = true;
-        markClickSwallowed();
-        handleVoiceTrigger();
-      };
-
-      const handlePointerDown = (event) => {
-        if (!isBootReady()) return;
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        const gate = notifyVoiceGateStatus();
-        if (!gate.allowed) {
-          diag.add?.(`[hub] voice trigger blocked (${gate.reason || 'gate'})`);
-          return;
-        }
-        longPressTriggered = false;
-        resetTimer();
-        pressTimer = global.setTimeout(triggerVoice, LONG_PRESS_MS);
-      };
-
-      const handlePointerUp = (event) => {
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        if (!pressTimer) return;
-        resetTimer();
-        if (longPressTriggered) return;
-        markClickSwallowed();
-        openAssistantPanel(btn);
-      };
-
-      const cancelPointerHold = () => {
-        resetTimer();
-      };
-
-      btn.addEventListener('pointerdown', handlePointerDown);
-      btn.addEventListener('pointerup', handlePointerUp);
-      btn.addEventListener('pointerleave', cancelPointerHold);
-      btn.addEventListener('pointercancel', cancelPointerHold);
       btn.addEventListener('click', (event) => {
-        if (swallowNextClick) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
+        event.preventDefault();
+        if (!isBootReady()) return;
         openAssistantPanel(btn);
       });
     };
 
+    const bindVoiceButton = () => {
+      const btn = hub.querySelector('[data-hub-module="assistant-voice"]');
+      if (!btn) return;
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!isBootReady()) return;
+        handleVoiceTrigger();
+      });
+    };
+
     bindAssistantButton();
+    bindVoiceButton();
+    bindButton(
+      '[data-hub-module="chart"]',
+      async (btn) => {
+        await openDoctorPanel({ triggerButton: btn, startMode: 'chart' });
+      },
+      { sync: false },
+    );
     const doctorPanelHandler = openPanelHandler('doctor');
     const openDoctorPanel = async ({ triggerButton = null, onOpened, startMode = 'list' } = {}) => {
       const openFlow = async () => {
@@ -644,7 +927,13 @@
       return false;
     };
     openDoctorPanelWithGuard = openDoctorPanel;
-    bindButton('#diagToggle', () => {}, { sync: false });
+    bindButton(
+      '[data-hub-module="doctor"]',
+      async (btn) => {
+        await openDoctorPanel({ triggerButton: btn });
+      },
+      { sync: false },
+    );
   };
   const setupChat = (hub) => {
     const form = hub.querySelector('#hubChatForm');
@@ -2576,5 +2865,9 @@
       }
       return () => voiceGateListeners.delete(callback);
     },
+    setCarouselModule: (id) => setCarouselActiveById(id),
+    shiftCarousel: (delta) => shiftCarousel(delta),
+    openQuickbar: () => openQuickbar(),
+    closeQuickbar: () => closeQuickbar(),
   });
 })(typeof window !== 'undefined' ? window : globalThis);

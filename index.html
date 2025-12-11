@@ -51,6 +51,25 @@
     </header>
     <pre id="diagLog" class="content u-m-0"></pre>
   </div>
+  <!-- Placeholder help panel to satisfy ui-core init (no visible toggle yet) -->
+  <div
+    id="help"
+    class="panel"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="helpTitle"
+    hidden
+    aria-hidden="true"
+  >
+    <header>
+      <h4 id="helpTitle">Hilfe</h4>
+      <button class="btn ghost" id="helpClose" type="button" aria-label="Hilfe schliessen">x</button>
+    </header>
+    <div class="content small u-m-0">
+      Hilfe-Inhalt folgt in einer spaeteren Version.
+    </div>
+  </div>
+  <button id="helpToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
   <!-- Diagramm-Panel (Daily) -->
   <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
     <header>
@@ -101,75 +120,204 @@
               src="assets/img/Idle_state.png"
               alt="MIDAS Orb Zustand"
             >
-</div>
+        </div>
           <div class="hub-orbit-icons" role="toolbar" aria-label="Module navigation">
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="vitals"
-              aria-pressed="false"
-              data-orbit-pos="north"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Vitals &amp; Arztbereich</span>
+            <div class="hub-carousel">
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="intake"
+                data-carousel-id="intake"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Intakes_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Intakes</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="assistant-text"
-              data-orbit-pos="ne"
-              aria-pressed="false"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Assistant Chat tippen, Voice halten</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="vitals"
+                data-carousel-id="vitals"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Vitals_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Vitals</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              id="diagToggle"
-              data-orbit-pos="e"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Log</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="appointments"
+                data-carousel-id="appointments"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Appointments_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Termine</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="appointments"
-              aria-pressed="false"
-              data-orbit-pos="se"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Termine &amp; Arztmodule</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="assistant-text"
+                data-carousel-id="assistant-text"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Text_chat_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Assistant Text Chat</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="intake"
-              aria-pressed="false"
-              data-orbit-pos="sw"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Intake</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="assistant-voice"
+                data-carousel-id="assistant-voice"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Voice_chat_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Voice Chat</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-orbit-pos="w"
-              disabled
-            >
-              <span aria-hidden="true">???</span>
-              <span class="sr-only">Dictate (bald)</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="doctor"
+                data-carousel-id="doctor"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Doctor_view_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Arzt-Ansicht</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="profile"
-              aria-pressed="false"
-              data-orbit-pos="nw"
-            >
-              <span aria-hidden="true">??</span>
+              <button
+                type="button"
+                class="hub-icon"
+                id="hubChartBtn"
+                data-hub-module="chart"
+                data-carousel-id="chart"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Chart_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Diagramm / Charts</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
+                data-carousel-id="profile"
+                data-hub-module="profile"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Personal_data_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
               <span class="sr-only">Profil &amp; Gesundheitsdaten</span>
+            </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="hub-quickbar"
+          id="hubQuickbar"
+          aria-label="Schnellaktionen"
+          aria-hidden="true"
+          inert
+          hidden
+        >
+          <div class="hub-quickbar-inner" role="toolbar">
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="intake"
+            >
+              &#x1F4A7; Intakes
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="vitals"
+            >
+              &#x1F493; Vitals
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="appointments"
+            >
+              &#x1F4C5; Neuer Termin
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="assistant-text"
+            >
+              &#x1F4AC; Text Chat
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="assistant-voice"
+            >
+              &#x1F399; Voice Chat
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="doctor"
+            >
+              &#x2695; Arzt-Ansicht
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="chart"
+            >
+              &#x1F4CA; Charts
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="profile"
+            >
+              &#x1F464; Profil
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-quickbar-action="diag"
+            >
+              &#x1F4DD; Touch-Log
             </button>
           </div>
         </div>
@@ -973,7 +1121,3 @@
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]
   total @extract-candidate markers: 18
 -->
-
-
-
-
