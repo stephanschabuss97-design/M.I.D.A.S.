@@ -14,10 +14,21 @@
 // SUBMODULE: namespace init @internal - Initialisiert globales Diagnostics-Modul
 (function (global) {
   const appModules = (global.AppModules = global.AppModules || {});
-  const isDiagnosticsEnabled =
+  const diagnosticsFlag =
     typeof appModules?.config?.DIAGNOSTICS_ENABLED === 'boolean'
       ? appModules.config.DIAGNOSTICS_ENABLED
       : true;
+  global.DIAGNOSTICS_ENABLED = diagnosticsFlag;
+  // Hinweis: Alle Fallback-Logs laufen über logDiagConsole, damit Tests/QA die Konsole komplett stummschalten können.
+  const isDiagnosticsEnabled = !!diagnosticsFlag;
+  const logDiagConsole = (level, ...args) => {
+    if (global.DIAGNOSTICS_ENABLED === false) return;
+    try {
+      global.console?.[level]?.(...args);
+    } catch (_) {
+      /* noop */
+    }
+  };
   if (!isDiagnosticsEnabled) {
     const stubDiag = {
       el: null,
@@ -33,10 +44,12 @@
       diag: stubDiag,
       recordPerfStat() {},
       uiError(msg) {
-        console.warn('[diagnostics disabled] uiError:', msg);
+        const text = String(msg || 'Fehler');
+        logDiagConsole('warn', '[diagnostics disabled] uiError:', text);
       },
       uiInfo(msg) {
-        console.info('[diagnostics disabled] uiInfo:', msg);
+        const text = String(msg || 'OK');
+        logDiagConsole('info', '[diagnostics disabled] uiInfo:', text);
       }
     };
     appModules.diagnostics = diagnosticsApi;
@@ -72,7 +85,7 @@
     try {
       logger?.add?.(message, context);
     } catch (err) {
-      console.warn('[diagnostics] logger forward failed', err);
+      logDiagConsole('warn', '[diagnostics] logger forward failed', err);
     }
   };
 
@@ -81,7 +94,7 @@
     try {
       perf?.record?.(key, startedAt);
     } catch (err) {
-      console.warn('[diagnostics] perf forward failed', err);
+      logDiagConsole('warn', '[diagnostics] perf forward failed', err);
     }
   };
 
@@ -90,14 +103,14 @@
     try {
       monitor()?.heartbeat?.(reason);
     } catch (err) {
-      console.warn('[diagnostics] monitor heartbeat failed', err);
+      logDiagConsole('warn', '[diagnostics] monitor heartbeat failed', err);
     }
   };
   const monitorToggle = (state) => {
     try {
       monitor()?.toggle?.(state);
     } catch (err) {
-      console.warn('[diagnostics] monitor toggle failed', err);
+      logDiagConsole('warn', '[diagnostics] monitor toggle failed', err);
     }
   };
   let diagnosticsListenerAdded = false;
@@ -117,16 +130,16 @@
             errBox.style.display = 'block';
             errBox.textContent = message;
           } else {
-            console.error('[diagnostics:unhandledrejection]', message);
+            logDiagConsole('error', '[diagnostics:unhandledrejection]', message);
           }
           e.preventDefault();
         } catch (err) {
-          console.error('[diagnostics] unhandledrejection handler failed', err);
+          logDiagConsole('error', '[diagnostics] unhandledrejection handler failed', err);
         }
       });
     }
   } catch (err) {
-    console.error('[diagnostics] failed to register unhandledrejection listener', err);
+    logDiagConsole('error', '[diagnostics] failed to register unhandledrejection listener', err);
   }
 
   // SUBMODULE: recordPerfStat @public
@@ -135,20 +148,102 @@
   }
 
   // SUBMODULE: diag logger @public
+  const TOUCHLOG_DUP_MS = 4000;
+  const MAX_LINES = 80;
+  const buildBaseLine = (message, severity) => {
+    const stamp = new Date().toLocaleTimeString();
+    const sevTag = severity && severity !== 'info' ? `[${severity.toUpperCase()}] ` : '';
+    return `[${stamp}] ${sevTag}${message}`;
+  };
+  const createLineEntry = (message, severity, timestamp, eventId) => {
+    const base = buildBaseLine(message, severity);
+    return {
+      base,
+      render: base,
+      count: 1,
+      lastTs: timestamp,
+      eventId,
+      severity
+    };
+  };
+  const formatRender = (entry) => (entry.count <= 1 ? entry.base : `${entry.base} (x${entry.count})`);
   const diag = {
     el: null,
     logEl: null,
     open: false,
     lines: [],
-    add(msg) {
-      logToDiagnosticsLayer(msg, { source: 'diag.add' });
+    eventIndex: new Map(),
+    summaryIndex: new Map(),
+    add(msg, opts = {}) {
+      const normalized = typeof msg === 'string' ? msg : String(msg ?? '');
+      logToDiagnosticsLayer(normalized, { source: 'diag.add' });
       monitorHeartbeat('diag-add');
-      const t = new Date().toLocaleTimeString();
-      this.lines.unshift(`[${t}] ${msg}`);
-      this.lines = this.lines.slice(0, 80);
-      if (this.logEl) {
-        this.logEl.textContent = this.lines.join('\n');
+      const now = performance?.now ? performance.now() : Date.now();
+      const severity = opts.severity || opts.tone || 'info';
+      const reasonKey = opts.reason ? `|${opts.reason}` : '';
+      const eventId = opts.eventId || `${severity}${reasonKey}|${normalized}`;
+      if (opts.summaryKey) {
+        this._addSummaryEntry(normalized, opts, severity, now);
+        return;
       }
+      const existing = this.eventIndex.get(eventId);
+      if (existing && now - existing.lastTs <= TOUCHLOG_DUP_MS) {
+        existing.count += 1;
+        existing.lastTs = now;
+        existing.render = formatRender(existing);
+        this._refreshDom();
+        return;
+      }
+      const entry = createLineEntry(normalized, severity, now, eventId);
+      this.lines.unshift(entry);
+      this.eventIndex.set(eventId, entry);
+      this._enforceLimit();
+      this._refreshDom();
+    },
+    _refreshDom() {
+      if (!this.logEl) return;
+      this.logEl.textContent = this.lines.map((entry) => entry.render).join('\n');
+    },
+    _enforceLimit() {
+      while (this.lines.length > MAX_LINES) {
+        const removed = this.lines.pop();
+        if (!removed) continue;
+        this.eventIndex.delete(removed.eventId);
+        if (removed.summaryKey) {
+          this.summaryIndex.delete(removed.summaryKey);
+        }
+      }
+    },
+    _addSummaryEntry(message, opts, severity, now) {
+      const summaryKey = `summary:${opts.summaryKey}`;
+      let entry = this.summaryIndex.get(summaryKey);
+      const stamp = new Date().toLocaleTimeString();
+      const detail = opts.summaryDetail || message;
+      const label = opts.summaryLabel || opts.summaryKey;
+      if (!entry) {
+        entry = {
+          base: '',
+          render: '',
+          count: 0,
+          lastTs: now,
+          eventId: summaryKey,
+          severity,
+          summaryKey,
+          details: []
+        };
+        this.summaryIndex.set(summaryKey, entry);
+        this.eventIndex.set(summaryKey, entry);
+        this.lines.unshift(entry);
+      }
+        entry.details.unshift(detail);
+        entry.details = entry.details.slice(0, opts.summaryMaxDetails || 3);
+        entry.count += 1;
+        entry.lastTs = now;
+        const sevTag = severity && severity !== 'info' ? `[${severity.toUpperCase()}] ` : '';
+        entry.base = `[${stamp}] ${sevTag}${label}: ${entry.details.join(' • ')}`;
+        entry.render = `${entry.base} (steps=${entry.count})`;
+      this._enforceLimit();
+      this._refreshDom();
     },
     init() {
       try {
@@ -169,7 +264,7 @@
         if (t2) t2.addEventListener('click', toggle);
         if (close) close.addEventListener('click', () => this.hide());
       } catch (err) {
-        console.error('[diagnostics:init] failed', err);
+        logDiagConsole('error', '[diagnostics:init] failed', err);
       }
     },
     show() {
@@ -205,7 +300,7 @@
         errBox.style.display = 'none';
       }, 5000);
     } else {
-      console.error('[uiError]', text);
+      logDiagConsole('error', '[uiError]', text);
     }
   }
 
@@ -222,7 +317,7 @@
         infoBox.style.display = 'none';
       }, 2000);
     } else {
-      console.log('[uiInfo]', text);
+      logDiagConsole('log', '[uiInfo]', text);
     }
   }
 
@@ -235,12 +330,13 @@
     : (obj, prop) => Object.prototype.hasOwnProperty.call(obj, prop);
 
   Object.entries(diagnosticsApi).forEach(([key, value]) => {
-    if (hasOwn(global, key)) {
-      console.warn(
-        `[diagnostics] global property conflict: '${key}' already defined as ${typeof global[key]}`
-      );
-      return;
-    }
+      if (hasOwn(global, key)) {
+        logDiagConsole(
+          'warn',
+          `[diagnostics] global property conflict: '${key}' already defined as ${typeof global[key]}`
+        );
+        return;
+      }
     Object.defineProperty(global, key, {
       value,
       writable: false,
@@ -255,14 +351,14 @@
       try {
         getDiagnosticsLayer().perf?.addDelta?.(key, delta);
       } catch (err) {
-        console.warn('[diagnostics] perfStatsProxy.add failed', err);
+        logDiagConsole('warn', '[diagnostics] perfStatsProxy.add failed', err);
       }
     },
     snap(key) {
       try {
         return getDiagnosticsLayer().perf?.snapshot?.(key) || { count: 0 };
       } catch (err) {
-        console.warn('[diagnostics] perfStatsProxy.snap failed', err);
+        logDiagConsole('warn', '[diagnostics] perfStatsProxy.snap failed', err);
         return { count: 0 };
       }
     }
@@ -276,6 +372,6 @@
       enumerable: false
     });
   } else {
-    console.warn('[diagnostics] global perfStats already defined, keeping existing reference');
+    logDiagConsole('warn', '[diagnostics] global perfStats already defined, keeping existing reference');
   }
 })(window);

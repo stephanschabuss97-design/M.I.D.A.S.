@@ -51,6 +51,49 @@
     error: 'Fehler',
   };
   const VOICE_FALLBACK_REPLY = 'Hallo Stephan, ich bin bereit.';
+  const CAROUSEL_MODULES = [
+    { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
+    { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
+    { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
+    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
+    { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
+    { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
+    { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
+    { id: 'profile', selector: '[data-carousel-id="profile"]', panel: 'profile' },
+  ];
+  const PANEL_TO_CAROUSEL_ID = {
+    intake: 'intake',
+    vitals: 'vitals',
+    'assistant-text': 'assistant-text',
+    appointments: 'appointments',
+    doctor: 'doctor',
+    profile: 'profile',
+  };
+  const ICON_ENTER_CLASSES = {
+    '-1': 'hub-icon-anim-enter-left',
+    0: 'hub-icon-anim-enter-fade',
+    1: 'hub-icon-anim-enter-right',
+  };
+  const ICON_EXIT_CLASSES = {
+    '-1': 'hub-icon-anim-exit-right',
+    0: 'hub-icon-anim-exit-fade',
+    1: 'hub-icon-anim-exit-left',
+  };
+  const carouselState = {
+    items: [],
+    index: -1,
+    idle: true,
+    orbitEl: null,
+    transitionDir: 0,
+    activeButton: null,
+  };
+  let carouselKeyListenerBound = false;
+  const quickbarState = {
+    el: null,
+    handle: null,
+    hubEl: null,
+    open: false,
+  };
   const MAX_ASSISTANT_PHOTO_BYTES = 6 * 1024 * 1024;
   const VAD_SILENCE_MS = 1000;
   const CONVERSATION_AUTO_RESUME_DELAY = 450;
@@ -114,21 +157,295 @@
     /alles erledigt danke/i
   ];
   const END_ACTIONS = ['endSession', 'closeConversation'];
+  const HUB_DEBUG_ENABLED = !!appModules.config?.LOG_HUB_DEBUG;
 
   let hubButtons = [];
   let activePanel = null;
   let setSpriteStateFn = null;
   let doctorUnlockWaitCancel = null;
+  let openDoctorPanelWithGuard = null;
+  const aura3dApi = global.AppModules?.hubAura3D || null;
+  let aura3dCleanup = null;
+  const auraState = {
+    canvas: null,
+  };
+
+  const triggerAuraTouchPulse = (event) => {
+    if (!auraState.canvas || !aura3dApi?.triggerTouchPulse || !event) return;
+    const rect = auraState.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const normX = (event.clientX - rect.left) / rect.width;
+    const normY = (event.clientY - rect.top) / rect.height;
+    if (normX < 0 || normX > 1 || normY < 0 || normY > 1) return;
+    aura3dApi.triggerTouchPulse(normX, normY);
+  };
   let voiceCtrl = null;
   let assistantChatCtrl = null;
+  let assistantProfileSnapshot = appModules.profile?.getData?.() || null;
   let supabaseFunctionHeadersPromise = null;
+  const voiceGateListeners = new Set();
+  let voiceGateObserver = null;
+  let lastVoiceGateStatus = { allowed: false, reason: 'booting' };
+  const panelPerfQuery = global.matchMedia?.('(max-width: 1024px)') || null;
 
   const getSupabaseApi = () => appModules.supabase || {};
+  const getSupabaseState = () => getSupabaseApi()?.supabaseState || null;
+  const getAssistantUiHelpers = () =>
+    appModules.assistantUi ||
+    appModules.assistant?.ui ||
+    global.AppModules?.assistantUi ||
+    null;
+  const getAssistantSuggestStore = () =>
+    appModules.assistantSuggestStore ||
+    global.AppModules?.assistantSuggestStore ||
+    null;
 
   const syncButtonState = (target) => {
     hubButtons.forEach((btn) => {
       btn.setAttribute('aria-pressed', String(btn === target));
     });
+  };
+
+  const getCarouselLength = () => carouselState.items.length;
+
+  const iconAnimationHandlers = new WeakMap();
+
+  const applyIconAnimation = (btn, className) => {
+    if (!btn || !className) return;
+    const current = iconAnimationHandlers.get(btn);
+    if (current) {
+      btn.removeEventListener('animationend', current.handler);
+      btn.classList.remove(current.className);
+      iconAnimationHandlers.delete(btn);
+    }
+    // Force reflow to allow re-adding the same class
+    void btn.offsetWidth; // eslint-disable-line no-unused-expressions
+    btn.classList.add(className);
+    const handler = () => {
+      btn.classList.remove(className);
+      btn.removeEventListener('animationend', handler);
+      if (className.startsWith('hub-icon-anim-exit')) {
+        btn.classList.remove('hub-icon-exit');
+      }
+      iconAnimationHandlers.delete(btn);
+    };
+    btn.addEventListener('animationend', handler);
+    iconAnimationHandlers.set(btn, { className, handler });
+  };
+
+  const applyCarouselUi = () => {
+    const dir = carouselState.transitionDir;
+    const enterClass = ICON_ENTER_CLASSES[dir] || ICON_ENTER_CLASSES[0];
+    const exitClass = ICON_EXIT_CLASSES[dir] || ICON_EXIT_CLASSES[0];
+    const prevActive = carouselState.activeButton;
+    let nextActive = null;
+    carouselState.items.forEach((item, index) => {
+      const btn = item.button;
+      if (!btn) return;
+      const isActive = !carouselState.idle && index === carouselState.index;
+      if (isActive) {
+        nextActive = btn;
+      }
+      if (!isActive && btn !== prevActive) {
+        btn.classList.remove('hub-icon-active', 'hub-icon-exit');
+        btn.setAttribute('aria-hidden', 'true');
+        btn.tabIndex = -1;
+      }
+    });
+    const changed = prevActive !== nextActive;
+    if (changed && prevActive) {
+      prevActive.classList.remove('hub-icon-active');
+      prevActive.classList.add('hub-icon-exit');
+      prevActive.setAttribute('aria-hidden', 'true');
+      prevActive.tabIndex = -1;
+      applyIconAnimation(prevActive, exitClass);
+    }
+    if (nextActive) {
+      nextActive.classList.add('hub-icon-active');
+      nextActive.classList.remove('hub-icon-exit');
+      nextActive.setAttribute('aria-hidden', 'false');
+      nextActive.tabIndex = 0;
+      if (changed) {
+        applyIconAnimation(nextActive, enterClass);
+      }
+    }
+    carouselState.activeButton = nextActive;
+    carouselState.transitionDir = 0;
+    if (carouselState.orbitEl) {
+      carouselState.orbitEl.dataset.carouselState = carouselState.idle ? 'idle' : 'active';
+    }
+  };
+
+  const setCarouselIdle = () => {
+    carouselState.idle = true;
+    carouselState.index = -1;
+    carouselState.activeButton = null;
+    carouselState.transitionDir = 0;
+    applyCarouselUi();
+  };
+
+  const setCarouselActiveIndex = (index, { direction = 0 } = {}) => {
+    const length = getCarouselLength();
+    if (!length) return false;
+    const prevIndex = carouselState.index;
+    const wasIdle = carouselState.idle;
+    const normalized = ((index % length) + length) % length;
+    carouselState.index = normalized;
+    carouselState.idle = false;
+    carouselState.transitionDir = direction;
+    applyCarouselUi();
+    return wasIdle || normalized !== prevIndex;
+  };
+
+  const shiftCarousel = (delta = 1) => {
+    const length = getCarouselLength();
+    if (!length) return;
+    const dir = delta > 0 ? 1 : -1;
+    let changed = false;
+    if (carouselState.idle) {
+      const startIndex = dir > 0 ? 0 : length - 1;
+      changed = setCarouselActiveIndex(startIndex, { direction: dir });
+    } else {
+      changed = setCarouselActiveIndex(carouselState.index + delta, { direction: dir });
+    }
+    if (changed && aura3dApi?.triggerCarouselSweep) {
+      aura3dApi.triggerCarouselSweep(dir > 0 ? 'left' : 'right');
+    }
+  };
+
+  const setCarouselActiveById = (id, { direction = 0 } = {}) => {
+    const idx = carouselState.items.findIndex((item) => item.id === id);
+    if (idx === -1) return;
+    setCarouselActiveIndex(idx, { direction });
+  };
+
+  const syncCarouselToPanel = (panelName) => {
+    const id = PANEL_TO_CAROUSEL_ID[panelName];
+    if (!id) return;
+    setCarouselActiveById(id);
+  };
+
+  const handleCarouselKeydown = (event) => {
+    if (!doc?.body?.classList?.contains('hub-mode')) return;
+    if (event.defaultPrevented) return;
+    const target = event.target;
+    const tagName = typeof target?.tagName === 'string' ? target.tagName.toLowerCase() : '';
+    if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) return;
+    if (event.key === 'ArrowRight') {
+      shiftCarousel(1);
+      event.preventDefault();
+    } else if (event.key === 'ArrowLeft') {
+      shiftCarousel(-1);
+      event.preventDefault();
+    }
+  };
+
+  const syncQuickbarUi = () => {
+    if (!quickbarState.el) return;
+    if (quickbarState.open) {
+      quickbarState.el.removeAttribute('hidden');
+      quickbarState.el.removeAttribute('inert');
+      quickbarState.el.setAttribute('aria-hidden', 'false');
+    } else {
+      quickbarState.el.setAttribute('hidden', 'true');
+      quickbarState.el.setAttribute('inert', '');
+      quickbarState.el.setAttribute('aria-hidden', 'true');
+    }
+    if (quickbarState.handle) {
+      quickbarState.handle.setAttribute('aria-expanded', quickbarState.open ? 'true' : 'false');
+    }
+    if (quickbarState.hubEl) {
+      quickbarState.hubEl.classList.toggle('quickbar-open', quickbarState.open);
+    }
+  };
+
+  const openQuickbar = () => {
+    if (!quickbarState.el || quickbarState.open) return;
+    quickbarState.open = true;
+    syncQuickbarUi();
+  };
+
+  const closeQuickbar = () => {
+    if (!quickbarState.el || !quickbarState.open) return;
+    quickbarState.open = false;
+    syncQuickbarUi();
+  };
+
+  const toggleQuickbar = () => {
+    if (!quickbarState.el) return;
+    if (quickbarState.open) closeQuickbar();
+    else openQuickbar();
+  };
+
+  const setupCarouselGestures = (orbit) => {
+    if (!orbit) return;
+    let pointerId = null;
+    let pointerStartX = null;
+    let pointerStartY = null;
+    const SWIPE_THRESHOLD = 48;
+
+    const resetSwipe = () => {
+      pointerId = null;
+      pointerStartX = null;
+      pointerStartY = null;
+    };
+
+    orbit.addEventListener('pointerdown', (event) => {
+      if (!event.isPrimary) return;
+      pointerId = event.pointerId;
+      pointerStartX = event.clientX;
+      pointerStartY = event.clientY;
+      triggerAuraTouchPulse(event);
+    });
+
+    orbit.addEventListener('pointerup', (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) {
+        resetSwipe();
+        return;
+      }
+      const deltaX = pointerStartX === null ? 0 : event.clientX - pointerStartX;
+      const deltaY = pointerStartY === null ? 0 : event.clientY - pointerStartY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (absY > absX && absY > SWIPE_THRESHOLD) {
+        if (deltaY < -SWIPE_THRESHOLD) {
+          openQuickbar();
+        } else if (deltaY > SWIPE_THRESHOLD) {
+          closeQuickbar();
+        }
+        resetSwipe();
+        return;
+      }
+      if (absX > SWIPE_THRESHOLD) {
+        shiftCarousel(deltaX < 0 ? 1 : -1);
+      }
+      resetSwipe();
+    });
+
+    orbit.addEventListener('pointercancel', resetSwipe);
+  };
+
+  const setupCarouselController = (hub) => {
+    if (!hub) return;
+    const orbit = hub.querySelector('.hub-orbit');
+    if (!orbit) return;
+    carouselState.orbitEl = orbit;
+    carouselState.items = CAROUSEL_MODULES.map((entry) => {
+      const button = hub.querySelector(entry.selector);
+      if (!button) return null;
+      if (!button.dataset.carouselId) {
+        button.dataset.carouselId = entry.id;
+      }
+      button.setAttribute('tabindex', '-1');
+      button.setAttribute('aria-hidden', 'true');
+      return { ...entry, button };
+    }).filter(Boolean);
+    setCarouselIdle();
+    setupCarouselGestures(orbit);
+    if (!carouselKeyListenerBound) {
+      carouselKeyListenerBound = true;
+      doc.addEventListener('keydown', handleCarouselKeydown);
+    }
   };
 
   const handlePanelEsc = (event) => {
@@ -137,9 +454,33 @@
     }
   };
 
-  const closeActivePanel = ({ skipButtonSync = false } = {}) => {
+  const getChartPanel = () => global.AppModules?.charts?.chartPanel;
+
+  const closeActivePanel = ({ skipButtonSync = false, instant = false } = {}) => {
     if (!activePanel) return;
     const panel = activePanel;
+    const panelName = panel.dataset?.hubPanel || 'unknown';
+    diag.add?.(`[hub] close panel ${panelName} instant=${instant}`);
+    if (panelName === 'doctor') {
+      if (typeof doctorUnlockWaitCancel === 'function') {
+        diag.add?.('[hub] doctor close -> cancel pending unlock wait');
+        try { doctorUnlockWaitCancel(false); } catch (_) {}
+      }
+      const chartPanel = getChartPanel();
+      if (chartPanel?.open) {
+        diag.add?.('[hub] doctor close -> chart still open, hiding chart first');
+        try {
+          chartPanel.hide();
+        } catch (err) {
+          console.warn('[hub] chartPanel.hide failed', err);
+        }
+      }
+    }
+
+    const activeEl = doc?.activeElement;
+    if (activeEl && typeof activeEl.blur === 'function' && panel.contains(activeEl)) {
+      try { activeEl.blur(); } catch (_) {}
+    }
 
     const finish = () => {
       panel.removeEventListener('animationend', handleAnimationEnd);
@@ -150,6 +491,7 @@
       panel.classList.remove('hub-panel-closing', 'hub-panel-open', 'is-visible');
       panel.hidden = true;
       panel.setAttribute('aria-hidden', 'true');
+      panel.setAttribute('inert', '');
       activePanel = null;
       doc.removeEventListener('keydown', handlePanelEsc);
       setSpriteStateFn?.('idle');
@@ -163,12 +505,24 @@
       finish();
     };
 
+    if (instant) {
+      finish();
+      return;
+    }
+
     panel.classList.remove('hub-panel-open');
     panel.classList.add('hub-panel-closing');
     panel.setAttribute('aria-hidden', 'true');
     panel.hidden = false;
     panel.addEventListener('animationend', handleAnimationEnd);
     panel._hubCloseTimer = global.setTimeout(finish, 1200);
+  };
+  const forceClosePanelByName = (panelName, { instant = true } = {}) => {
+    const target = doc?.querySelector(`[data-hub-panel="${panelName}"]`);
+    if (!target) return false;
+    activePanel = target;
+    closeActivePanel({ skipButtonSync: false, instant });
+    return true;
   };
 
   const setupOrbitHotspots = (hub) => {
@@ -210,6 +564,7 @@
     if (!doc) return null;
     const panel = doc.querySelector(`[data-hub-panel="${panelName}"]`);
     if (!panel) return null;
+    diag.add?.(`[hub] openPanel ${panelName}`);
     if (activePanel === panel) return panel;
     if (activePanel) {
       closeActivePanel({ skipButtonSync: true });
@@ -221,11 +576,13 @@
     }
     panel.hidden = false;
     panel.setAttribute('aria-hidden', 'false');
+    panel.removeAttribute('inert');
     panel.classList.add('is-visible');
     // force reflow before animation to ensure restart
     void panel.offsetWidth; // eslint-disable-line no-unused-expressions
     panel.classList.add('hub-panel-open');
     activePanel = panel;
+    syncCarouselToPanel(panelName);
     doc.addEventListener('keydown', handlePanelEsc);
     if (typeof panel.scrollIntoView === 'function') {
       requestAnimationFrame(() => {
@@ -235,14 +592,68 @@
     return panel;
   };
 
+  const setupQuickbar = (hub) => {
+    const quickbar = hub.querySelector('.hub-quickbar');
+    if (!quickbar) return;
+    quickbarState.el = quickbar;
+    quickbarState.hubEl = hub;
+    syncQuickbarUi();
+    const handle = hub.querySelector('[data-quickbar-handle]');
+    quickbarState.handle = handle || null;
+    if (handle) {
+      handle.addEventListener('click', () => {
+        toggleQuickbar();
+      });
+    }
+    quickbar.querySelectorAll('[data-hub-module]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const moduleId = btn.dataset.hubModule;
+        if (moduleId) {
+          const target = hub.querySelector(`.hub-icon[data-carousel-id="${moduleId}"]`);
+          if (target) {
+            target.click();
+          }
+        }
+        closeQuickbar();
+      });
+    });
+    quickbar.querySelectorAll('[data-quickbar-action="diag"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const diagPanel =
+          appModules.diag ||
+          global.diag ||
+          global.AppModules?.diagnostics?.diag ||
+          null;
+        if (diagPanel) {
+          if (diagPanel.open && typeof diagPanel.hide === 'function') {
+            diagPanel.hide();
+          } else if (typeof diagPanel.show === 'function') {
+            diagPanel.show();
+          }
+        }
+        closeQuickbar();
+      });
+    });
+  };
+
   const setupPanels = () => {
     const panels = doc?.querySelectorAll('[data-hub-panel]');
     if (!panels) return;
     panels.forEach((panel) => {
       panel.hidden = true;
       panel.setAttribute('aria-hidden', 'true');
+      panel.setAttribute('inert', '');
+      const closeMode = panel.dataset.closeMode || '';
       panel.querySelectorAll('[data-panel-close]').forEach((btn) => {
-        btn.addEventListener('click', () => closeActivePanel());
+        const mode = btn.dataset.closeMode || closeMode;
+        btn.addEventListener('click', (event) => {
+          event?.preventDefault();
+          event?.stopPropagation();
+          diag.add?.(
+            `[hub] close button ${panel.dataset.hubPanel || 'unknown'} mode=${mode}`
+          );
+          closeActivePanel({ instant: mode === 'instant' });
+        });
       });
     });
   };
@@ -250,12 +661,18 @@
   const ensureDoctorUnlocked = async () => {
     const supa = getSupabaseApi();
     const unlockFn = supa?.requireDoctorUnlock;
-    if (typeof unlockFn !== 'function') return true;
+    if (typeof unlockFn !== 'function') {
+      diag.add?.('[hub] doctor unlock bypassed (no guard fn)');
+      return true;
+    }
     try {
+      diag.add?.('[hub] doctor unlock start');
       const ok = await unlockFn();
+      diag.add?.(`[hub] doctor unlock result=${ok ? 'ok' : 'cancelled'}`);
       return !!ok;
     } catch (err) {
       console.warn('[hub] doctor unlock failed', err);
+      diag.add?.('[hub] doctor unlock failed: ' + (err?.message || err));
       return false;
     }
   };
@@ -263,39 +680,104 @@
   const waitForDoctorUnlock = ({ guardState, timeout = 60000 } = {}) =>
     new Promise((resolve) => {
       const state = guardState || getSupabaseApi()?.authGuardState;
+      diag.add?.(
+        `[hub] waitForDoctorUnlock start timeout=${timeout} state=${state ? 'yes' : 'no'}`
+      );
       if (!state) {
+        diag.add?.('[hub] waitForDoctorUnlock aborted (no guardState)');
         resolve(false);
         return;
       }
       if (state.doctorUnlocked) {
+        diag.add?.('[hub] waitForDoctorUnlock skip (already unlocked)');
         resolve(true);
         return;
       }
       const interval = 200;
       let elapsed = 0;
-      doctorUnlockWaitCancel?.(false);
+      if (doctorUnlockWaitCancel) {
+        diag.add?.('[hub] waitForDoctorUnlock cancelling previous wait');
+        doctorUnlockWaitCancel(false);
+      }
       let finished = false;
-      const cleanup = (result) => {
+      let timerId = null;
+      let cancelFn;
+      const cleanup = (result, reason = 'resolved') => {
         if (finished) return;
         finished = true;
-        global.clearInterval(timerId);
-        if (doctorUnlockWaitCancel === cleanup) {
+        diag.add?.(
+          `[hub] waitForDoctorUnlock finish reason=${reason} result=${result ? 'success' : 'fail'}`
+        );
+        if (timerId) {
+          global.clearInterval(timerId);
+          timerId = null;
+        }
+        if (doctorUnlockWaitCancel === cancelFn) {
           doctorUnlockWaitCancel = null;
         }
         resolve(result);
       };
-      const timerId = global.setInterval(() => {
+      cancelFn = (result = false) => cleanup(result, 'manual-cancel');
+      timerId = global.setInterval(() => {
         if (state.doctorUnlocked) {
-          cleanup(true);
+          cleanup(true, 'state-change');
           return;
         }
         elapsed += interval;
         if (elapsed >= timeout) {
-          cleanup(false);
+          cleanup(false, 'timeout');
         }
       }, interval);
-      doctorUnlockWaitCancel = cleanup;
+      doctorUnlockWaitCancel = cancelFn;
     });
+
+  const isBootReady = () => {
+    const stage = (doc?.body?.dataset?.bootStage || '').toLowerCase();
+    return stage === 'idle' || stage === 'init_ui';
+  };
+
+  const computeVoiceGateStatus = () => {
+    if (!isBootReady()) {
+      return { allowed: false, reason: 'booting' };
+    }
+    const authState = getSupabaseState()?.authState;
+    if (authState === 'unknown') {
+      return { allowed: false, reason: 'auth-check' };
+    }
+    return { allowed: true, reason: '' };
+  };
+
+  const applyVoiceGateUi = (status) => {
+    if (!doc?.body) return;
+    doc.body.classList.toggle('voice-locked', !status.allowed);
+    if (voiceCtrl?.button) {
+      voiceCtrl.button.classList.toggle('is-voice-locked', !status.allowed);
+      voiceCtrl.button.setAttribute('aria-disabled', status.allowed ? 'false' : 'true');
+    }
+  };
+
+  const notifyVoiceGateStatus = () => {
+    const status = computeVoiceGateStatus();
+    lastVoiceGateStatus = status;
+    applyVoiceGateUi(status);
+    voiceGateListeners.forEach((listener) => {
+      try {
+        listener({ ...status });
+      } catch (err) {
+        diag.add?.(`[voice] gate listener error: ${err?.message || err}`);
+      }
+    });
+    return status;
+  };
+
+  const ensureVoiceGateObserver = () => {
+    if (voiceGateObserver || !doc?.body || typeof MutationObserver === 'undefined') return;
+    voiceGateObserver = new MutationObserver(() => notifyVoiceGateStatus());
+    voiceGateObserver.observe(doc.body, {
+      attributes: true,
+      attributeFilter: ['class', 'data-boot-stage'],
+    });
+  };
 
   const activateHubLayout = () => {
     const config = appModules.config || {};
@@ -303,6 +785,10 @@
       global.console?.debug?.('[hub] document object missing');
       return;
     }
+    if (typeof aura3dCleanup === 'function') {
+      aura3dCleanup();
+    }
+    auraState.canvas = null;
     const hub = doc.getElementById('captureHub');
     if (!hub) {
       global.console?.debug?.('[hub] #captureHub element not found', { config });
@@ -317,7 +803,46 @@
     moveIntakePillsToHub();
     setupChat(hub);
     setupSpriteState(hub);
+    setupCarouselController(hub);
+    setupQuickbar(hub);
+    if (aura3dApi?.initAura3D) {
+      const auraCanvas = hub.querySelector('#hubAuraCanvas');
+      if (auraCanvas) {
+        const resizeHandler = () => aura3dApi.updateLayout?.();
+        const initialized = aura3dApi.initAura3D(auraCanvas);
+        if (initialized) {
+          auraState.canvas = auraCanvas;
+          global.addEventListener('resize', resizeHandler);
+          aura3dCleanup = () => {
+            global.removeEventListener('resize', resizeHandler);
+            aura3dApi.disposeAura3D?.();
+            aura3dCleanup = null;
+            auraState.canvas = null;
+          };
+        }
+      }
+    }
     doc.body.classList.add('hub-mode');
+    applyPanelPerformanceMode(panelPerfQuery?.matches);
+    if (panelPerfQuery) {
+      const perfListener = (event) => applyPanelPerformanceMode(event.matches);
+      if (typeof panelPerfQuery.addEventListener === 'function') {
+        panelPerfQuery.addEventListener('change', perfListener);
+      } else if (typeof panelPerfQuery.addListener === 'function') {
+        panelPerfQuery.addListener(perfListener);
+      }
+    }
+    ensureVoiceGateObserver();
+    notifyVoiceGateStatus();
+  };
+
+  const applyPanelPerformanceMode = (isMobile) => {
+    if (!doc?.body) return;
+    doc.body.dataset.panelPerf = isMobile ? 'mobile' : 'desktop';
+    if (aura3dApi?.configureAura3D) {
+      const opacityMultiplier = isMobile ? 1.6 : 1;
+      aura3dApi.configureAura3D({ opacityMultiplier });
+    }
   };
 
   const setupIconBar = (hub) => {
@@ -327,6 +852,7 @@
       const btn = hub.querySelector(selector);
       if (!btn) return;
       const invoke = async () => {
+        if (!isBootReady()) return;
         if (sync) syncButtonState(btn);
         try {
           await handler(btn);
@@ -336,6 +862,7 @@
         }
       };
       btn.addEventListener('click', () => {
+        if (!isBootReady()) return;
         invoke();
       });
     };
@@ -357,25 +884,104 @@
 
     bindButton('[data-hub-module="intake"]', openPanelHandler('intake'), { sync: false });
     bindButton('[data-hub-module="vitals"]', openPanelHandler('vitals'), { sync: false });
-    bindButton('[data-hub-module="assistant-text"]', openPanelHandler('assistant-text'), { sync: false });
+    bindButton(
+      '[data-hub-module="appointments"]',
+      async (btn) => {
+        await openPanelHandler('appointments')(btn);
+        try {
+          await appModules.appointments?.sync?.({ reason: 'panel-open' });
+        } catch (err) {
+          diag.add?.(`[hub] appointments sync failed: ${err?.message || err}`);
+        }
+      },
+      { sync: false },
+    );
+    bindButton(
+      '[data-hub-module="profile"]',
+      async (btn) => {
+        await openPanelHandler('profile')(btn);
+        try {
+          await appModules.profile?.sync?.({ reason: 'panel-open' });
+        } catch (err) {
+          diag.add?.(`[hub] profile sync failed: ${err?.message || err}`);
+        }
+      },
+      { sync: false },
+    );
+    const openAssistantPanel = async (btn) => {
+      if (!isBootReady()) return;
+      await openPanelHandler('assistant-text')(btn);
+      if (activePanel?.dataset?.hubPanel !== 'assistant-text') return;
+      refreshAssistantContext({ reason: 'assistant:panel-open' });
+    };
+
+    const bindAssistantButton = () => {
+      const btn = hub.querySelector('[data-hub-module="assistant-text"]');
+      if (!btn) return;
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!isBootReady()) return;
+        openAssistantPanel(btn);
+      });
+    };
+
+    const bindVoiceButton = () => {
+      const btn = hub.querySelector('[data-hub-module="assistant-voice"]');
+      if (!btn) return;
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!isBootReady()) return;
+        handleVoiceTrigger();
+      });
+    };
+
+    bindAssistantButton();
+    bindVoiceButton();
+    bindButton(
+      '[data-hub-module="chart"]',
+      async (btn) => {
+        await openDoctorPanel({ triggerButton: btn, startMode: 'chart' });
+      },
+      { sync: false },
+    );
     const doctorPanelHandler = openPanelHandler('doctor');
-    bindButton('[data-hub-module="doctor"]', async (btn) => {
+    const openDoctorPanel = async ({ triggerButton = null, onOpened, startMode = 'list' } = {}) => {
+      const openFlow = async () => {
+        diag.add?.('[hub] openDoctorPanel openFlow start', { startMode });
+        await doctorPanelHandler(triggerButton);
+        if (startMode === 'chart') {
+          const chartBtn = doc?.getElementById('doctorChartBtn');
+          if (chartBtn) {
+            chartBtn.click();
+          } else {
+            diag.add?.('[hub] doctor chart button missing for chart mode');
+          }
+        }
+        if (typeof onOpened === 'function') {
+          await onOpened();
+        }
+      };
       if (await ensureDoctorUnlocked()) {
-        await doctorPanelHandler(btn);
-        return;
+        await openFlow();
+        return true;
       }
       const supa = getSupabaseApi();
       const guardState = supa?.authGuardState;
       const unlockedAfter = await waitForDoctorUnlock({ guardState });
       if (unlockedAfter) {
-        await doctorPanelHandler(btn);
+        await openFlow();
+        return true;
       }
-    }, { sync: false });
-    bindButton('[data-hub-module="assistant-voice"]', () => {
-      handleVoiceTrigger();
-    }, { sync: false });
-    bindButton('#helpToggle', () => {}, { sync: false });
-    bindButton('#diagToggle', () => {}, { sync: false });
+      return false;
+    };
+    openDoctorPanelWithGuard = openDoctorPanel;
+    bindButton(
+      '[data-hub-module="doctor"]',
+      async (btn) => {
+        await openDoctorPanel({ triggerButton: btn });
+      },
+      { sync: false },
+    );
   };
   const setupChat = (hub) => {
     const form = hub.querySelector('#hubChatForm');
@@ -385,7 +991,9 @@
       const input = form.querySelector('#hubMessage');
       const value = input?.value?.trim();
       if (value) {
-        console.info('[hub-chat]', value, '(stub: Assistant folgt)');
+        if (HUB_DEBUG_ENABLED) {
+          diag.add?.(`[hub-chat] stub send: ${value}`);
+        }
         input.value = '';
       }
     });
@@ -431,44 +1039,264 @@
     hub.appendChild(pills);
   };
 
+  const getCaptureFormatFn = () => {
+    const fmt = appModules.capture?.fmtDE;
+    if (typeof fmt === 'function') return fmt;
+    return (value, digits = 1) => {
+      const num = Number(value) || 0;
+      return num.toFixed(digits).replace('.', ',');
+    };
+  };
+
+  const updateAssistantPill = (key, text, isActive) => {
+    const pill = assistantChatCtrl?.pills?.[key];
+    if (!pill) return;
+    pill.value.textContent = text;
+    if (isActive) pill.root.classList.remove('muted');
+    else pill.root.classList.add('muted');
+  };
+
+  const renderAssistantIntakeTotals = (snapshot) => {
+    const logged = !!snapshot?.logged;
+    const totals = snapshot?.totals || {};
+    const fmt = getCaptureFormatFn();
+    const waterText = logged ? `${Math.round(Number(totals.water_ml) || 0)} ml` : '-- ml';
+    const saltText = logged ? `${fmt(totals.salt_g, 1)} g` : '-- g';
+    const proteinText = logged ? `${fmt(totals.protein_g, 1)} g` : '-- g';
+    updateAssistantPill('water', waterText, logged);
+    updateAssistantPill('salt', saltText, logged);
+    updateAssistantPill('protein', proteinText, logged);
+  };
+
+  const renderAssistantAppointments = (items) => {
+    const refs = assistantChatCtrl?.appointments;
+    if (!refs?.container) return;
+    const hasItems = Array.isArray(items) && items.length > 0;
+    if (refs.list) {
+      if (hasItems) {
+        refs.list.hidden = false;
+        refs.list.innerHTML = items
+          .map(
+            (item) =>
+              `<li><span>${item.label || ''}</span><span>${item.detail || ''}</span></li>`,
+          )
+          .join('');
+      } else {
+        refs.list.hidden = true;
+        refs.list.innerHTML = '';
+      }
+    }
+    if (refs.empty) {
+      if (hasItems) refs.empty.setAttribute('hidden', 'true');
+      else {
+        refs.empty.removeAttribute('hidden');
+        refs.empty.textContent = 'Keine Termine geladen.';
+      }
+    }
+  };
+
+  const APPOINTMENT_DATE_FORMAT = new Intl.DateTimeFormat('de-AT', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit'
+  });
+  const APPOINTMENT_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const formatAppointmentDateTime = (value) => {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const dayLabel = APPOINTMENT_DATE_FORMAT.format(date).replace(/\.$/, '');
+    const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
+    return `${dayLabel} • ${timeLabel}`;
+  };
+
+  const normalizeAppointmentItems = (items, limit = 2) => {
+    if (!Array.isArray(items)) return [];
+    const normalized = [];
+    items.some((raw, index) => {
+      if (!raw) return false;
+      const id =
+        raw.id ||
+        raw.appointment_id ||
+        raw.remote_id ||
+        raw.slug ||
+        `appt-${index}`;
+      let label =
+        raw.label ||
+        raw.title ||
+        raw.name ||
+        raw.doctor ||
+        raw.summary ||
+        raw.type ||
+        '';
+      let detail =
+        raw.detail ||
+        raw.subtitle ||
+        raw.when ||
+        raw.dateLabel ||
+        '';
+      if (!detail && (raw.start || raw.date)) {
+        detail = formatAppointmentDateTime(raw.start || raw.date);
+      } else if (!detail && raw.day && raw.time) {
+        detail = `${raw.day} • ${raw.time}`;
+      }
+      if (!label && detail) label = 'Termin';
+      if (!label && !detail) return false;
+      normalized.push({ id, label, detail });
+      return normalized.length >= limit;
+    });
+    return normalized.slice(0, limit);
+  };
+
+  const fetchAssistantAppointments = async ({ limit = 2, reason } = {}) => {
+    const provider = appModules.appointments;
+    if (!provider) return [];
+    const getter =
+      typeof provider.getUpcoming === 'function'
+        ? provider.getUpcoming
+        : typeof provider.getUpcomingAppointments === 'function'
+          ? provider.getUpcomingAppointments
+          : null;
+    if (!getter) return [];
+    try {
+      const result = await getter.call(provider, limit, { reason });
+      return normalizeAppointmentItems(result, limit);
+    } catch (err) {
+      diag.add?.(`[assistant-context] appointments fetch failed: ${err?.message || err}`);
+      return [];
+    }
+  };
+
+  const loadAssistantIntakeSnapshot = async ({ reason, forceRefresh = false } = {}) => {
+    const captureApi = appModules.capture || {};
+    let snapshot = null;
+    if (typeof captureApi.fetchTodayIntakeTotals === 'function') {
+      try {
+        snapshot = await captureApi.fetchTodayIntakeTotals({
+          reason,
+          forceRefresh,
+        });
+      } catch (err) {
+        diag.add?.(
+          `[assistant-context] intake fetch failed: ${err?.message || err}`,
+        );
+      }
+    }
+    if (!snapshot && typeof captureApi.getCaptureIntakeSnapshot === 'function') {
+      snapshot = captureApi.getCaptureIntakeSnapshot();
+    }
+    if (!snapshot && global.AppModules?.captureGlobals?.captureIntakeState) {
+      const state = global.AppModules.captureGlobals.captureIntakeState;
+      snapshot = {
+        dayIso: state.dayIso,
+        logged: !!state.logged,
+        totals: {
+          water_ml: Number(state.totals?.water_ml) || 0,
+          salt_g: Number(state.totals?.salt_g) || 0,
+          protein_g: Number(state.totals?.protein_g) || 0,
+        },
+      };
+      }
+      return snapshot;
+    };
+
+    const getAssistantProfileSnapshot = () => {
+      if (assistantProfileSnapshot) return assistantProfileSnapshot;
+      const data = appModules.profile?.getData?.();
+      if (data) {
+        assistantProfileSnapshot = data;
+        return assistantProfileSnapshot;
+      }
+      return null;
+    };
+
+    const refreshAssistantContext = async ({ reason, forceRefresh = false } = {}) => {
+      if (!assistantChatCtrl?.panel) return;
+      const [snapshot, appointments] = await Promise.all([
+        loadAssistantIntakeSnapshot({ reason, forceRefresh }),
+        fetchAssistantAppointments({ limit: 2, reason }),
+      ]);
+      renderAssistantIntakeTotals(snapshot);
+      renderAssistantAppointments(appointments);
+      const contextPayload = {
+        intake: snapshot || null,
+        appointments: Array.isArray(appointments) ? appointments : [],
+        profile: getAssistantProfileSnapshot(),
+      };
+      if (assistantChatCtrl) {
+        assistantChatCtrl.context = contextPayload;
+      }
+      const suggestStore = getAssistantSuggestStore();
+      suggestStore?.setSnapshot?.(
+        {
+          ...contextPayload,
+          updatedAt: Date.now(),
+        },
+        { reason: reason || 'refresh' },
+      );
+    };
+
   let assistantChatSetupAttempts = 0;
   const ASSISTANT_CHAT_MAX_ATTEMPTS = 10;
   const ASSISTANT_CHAT_RETRY_DELAY = 250;
+  const debugLog = (msg, payload) => {
+    if (!HUB_DEBUG_ENABLED) return;
+    diag.add?.(`[hub:debug] ${msg}` + (payload ? ` ${JSON.stringify(payload)}` : ''));
+  };
 
   const setupAssistantChat = (hub) => {
-    console.info('[assistant-chat] setupAssistantChat called');
+    debugLog('assistant-chat setup');
     if (assistantChatCtrl) {
-      console.info('[assistant-chat] controller already initialised');
+      debugLog('assistant-chat controller already initialised');
       return;
     }
     const panel = doc?.getElementById('hubAssistantPanel');
     if (!panel) {
       assistantChatSetupAttempts += 1;
-      console.warn('[assistant-chat] panel missing', {
-        attempt: assistantChatSetupAttempts,
-      });
+      if (assistantChatSetupAttempts === 1) {
+        debugLog('assistant-chat panel missing, retrying …');
+      }
       if (assistantChatSetupAttempts < ASSISTANT_CHAT_MAX_ATTEMPTS) {
         global.setTimeout(() => setupAssistantChat(hub), ASSISTANT_CHAT_RETRY_DELAY);
       } else {
-        console.error('[assistant-chat] panel missing after retries');
+        diag.add?.('[assistant-chat] panel missing nach wiederholten Versuchen');
       }
       return;
     }
     assistantChatSetupAttempts = 0;
-    console.info('[assistant-chat] panel found');
+    debugLog('assistant-chat panel found');
     const chatEl = panel.querySelector('#assistantChat');
     const form = panel.querySelector('#assistantChatForm');
     const input = panel.querySelector('#assistantMessage');
     const sendBtn = panel.querySelector('#assistantSendBtn');
     const cameraBtn = panel.querySelector('#assistantCameraBtn');
     const clearBtn = panel.querySelector('#assistantClearChat');
+    const messageTemplate = panel.querySelector('#assistantMessageTemplate');
+    const photoTemplate = panel.querySelector('#assistantPhotoTemplate');
+    const pillsWrap = panel.querySelector('#assistantIntakePills');
+    const buildPillRef = (key) => {
+      const root = pillsWrap?.querySelector(`[data-pill="${key}"]`);
+      if (!root) return null;
+      const value = root.querySelector('[data-pill-value]');
+      if (!value) return null;
+      return { root, value };
+    };
+    const appointmentsContainer = panel.querySelector('#assistantAppointments');
+    const appointmentsList = panel.querySelector('#assistantAppointmentsList');
+    const appointmentsEmpty = appointmentsContainer?.querySelector('[data-appointments-empty]');
 
     const photoInput = doc.createElement('input');
     photoInput.type = 'file';
     photoInput.accept = 'image/*';
-    photoInput.capture = 'environment';
     photoInput.hidden = true;
     panel.appendChild(photoInput);
+
+    if (messageTemplate) messageTemplate.remove();
+    if (photoTemplate) photoTemplate.remove();
 
     assistantChatCtrl = {
       panel,
@@ -479,53 +1307,324 @@
       cameraBtn,
       clearBtn,
       photoInput,
-      messages: [],
-      sessionId: null,
-      sending: false,
-    };
+      pills: {
+        water: buildPillRef('water'),
+        salt: buildPillRef('salt'),
+        protein: buildPillRef('protein'),
+      },
+        appointments: {
+          container: appointmentsContainer,
+          list: appointmentsList,
+          empty: appointmentsEmpty,
+        },
+        templates: {
+          message: messageTemplate?.content?.firstElementChild || null,
+          photo: photoTemplate?.content?.firstElementChild || null,
+        },
+        messages: [],
+        sessionId: null,
+        sending: false,
+        context: {
+          intake: null,
+          appointments: [],
+          profile: getAssistantProfileSnapshot(),
+        },
+      };
 
-    console.info('[assistant-chat] ctrl ready', {
-      hasForm: !!form,
-      hasInput: !!input,
-      hasSendBtn: !!sendBtn,
-    });
+    debugLog('assistant-chat controller ready');
 
     form?.addEventListener(
       'submit',
       (event) => {
-        console.info('[assistant-chat] form submit event', {
-          defaultPrevented: event.defaultPrevented,
-          type: event.type,
-        });
+        debugLog('assistant-chat form submit');
       },
       true,
     );
     sendBtn?.addEventListener('click', () => {
-      console.info('[assistant-chat] send button click');
+      debugLog('assistant-chat send button click');
     });
 
+    chatEl?.addEventListener('click', handleAssistantChatClick);
     form?.addEventListener('submit', handleAssistantChatSubmit);
     clearBtn?.addEventListener('click', () => resetAssistantChat(true));
     photoInput.addEventListener('change', handleAssistantPhotoSelected, false);
-    cameraBtn?.addEventListener('click', handleAssistantCameraClick);
+    bindAssistantCameraButton(cameraBtn, photoInput);
     resetAssistantChat();
-    console.info('[assistant-chat] setup complete');
-  };
+    debugLog('assistant-chat setup complete');
+    refreshAssistantContext({ reason: 'assistant:init', forceRefresh: false });
 
-  const handleAssistantCameraClick = () => {
-    if (!assistantChatCtrl?.photoInput) {
-      appendAssistantMessage('system', 'Kamera nicht verfügbar.');
-      return;
-    }
-    assistantChatCtrl.photoInput.value = '';
-    assistantChatCtrl.photoInput.click();
+      doc?.addEventListener('appointments:changed', () => {
+        refreshAssistantContext({ reason: 'appointments:changed', forceRefresh: true });
+      });
+      const runAllowedAction = async (type, payload = {}, { source } = {}) => {
+        const allowedActions = global.AppModules?.assistantAllowedActions;
+        const executeAction = allowedActions?.executeAllowedAction;
+        if (typeof executeAction !== 'function') {
+          diag.add?.('[assistant-actions] allowed helper missing');
+          return false;
+        }
+        const ok = await executeAction(type, payload, {
+          getSupabaseApi: () => appModules.supabase,
+          notify: (msg, level) =>
+            diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
+          source: source || 'hub',
+        });
+        if (!ok) {
+          diag.add?.(
+            `[assistant-actions] action failed type=${type} source=${source || 'unknown'}`,
+          );
+        } else {
+          if (appModules.touchlog?.add) {
+            appModules.touchlog.add(
+              `[assistant-actions] success action=${type} source=${source || 'hub'}`,
+            );
+          }
+          global.dispatchEvent(
+            new CustomEvent('assistant:action-success', {
+              detail: { type, payload, source: source || 'hub' },
+            }),
+          );
+        }
+        return ok;
+      };
+
+      let suggestionConfirmInFlight = false;
+
+      const handleSuggestionConfirmRequest = async (suggestion) => {
+        if (!suggestion) return;
+        if (suggestionConfirmInFlight) {
+          diag.add?.('[assistant-suggest] confirm ignored (busy)');
+          return;
+        }
+        suggestionConfirmInFlight = true;
+        try {
+          const metrics = suggestion.metrics || {};
+          const payload = {
+            water_ml: Number.isFinite(metrics.water_ml)
+              ? Number(metrics.water_ml)
+              : undefined,
+            salt_g: Number.isFinite(metrics.salt_g)
+              ? Number(metrics.salt_g)
+              : undefined,
+            protein_g: Number.isFinite(metrics.protein_g)
+              ? Number(metrics.protein_g)
+              : undefined,
+            label: suggestion.title || 'Mahlzeit',
+            note: suggestion.recommendation || null,
+          };
+          diag.add?.('[assistant-suggest] confirm flow start');
+          const ok = await runAllowedAction('intake_save', payload, {
+            source: 'suggestion-card',
+          });
+          if (!ok) {
+            appendAssistantMessage(
+              'system',
+              'Es gab ein Problem beim Speichern des Vorschlags.',
+            );
+            global.dispatchEvent(
+              new CustomEvent('assistant:suggest-confirm-reset', {
+                detail: { suggestionId: suggestion.id },
+              }),
+            );
+            return;
+          }
+          const store = getAssistantSuggestStore();
+          store?.dismissCurrent?.({ reason: 'confirm-success' });
+          appendAssistantMessage(
+            'assistant',
+            buildSuggestionConfirmMessage(payload),
+          );
+          await refreshAssistantContext({
+            reason: 'suggest:confirmed',
+            forceRefresh: true,
+          });
+          renderSuggestionFollowupAdvice(suggestion);
+        } finally {
+          suggestionConfirmInFlight = false;
+        }
+      };
+
+      const buildSuggestionConfirmMessage = (payload) => {
+        const parts = [];
+        if (Number.isFinite(payload.water_ml) && payload.water_ml > 0) {
+          parts.push(`${payload.water_ml.toFixed(0)} ml Wasser`);
+        }
+        if (Number.isFinite(payload.salt_g)) {
+          parts.push(`${payload.salt_g.toFixed(1)} g Salz`);
+        }
+        if (Number.isFinite(payload.protein_g)) {
+          parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
+        }
+        const list = parts.length ? parts.join(', ') : 'deine Werte';
+        return `Alles klar – ich habe ${list} für heute vorgemerkt.`;
+      };
+
+      const renderSuggestionFollowupAdvice = (suggestion) => {
+        const store = getAssistantSuggestStore();
+        const snapshot =
+          store?.getState?.().snapshot || assistantChatCtrl?.context || null;
+        if (!snapshot) return;
+        const planner = global.AppModules?.assistantDayPlan;
+        const generator = planner?.generateDayPlan;
+        if (typeof generator !== 'function') return;
+        const { lines } = generator(
+          { ...snapshot, suggestion },
+          {
+            dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
+          },
+        );
+        if (lines?.length) {
+          appendAssistantMessage('assistant', lines.join(' '));
+        }
+      };
+      const runIntakeSaveFollowup = async ({ suggestion } = {}) => {
+        try {
+          await refreshAssistantContext({
+            reason: 'intake-saved',
+            forceRefresh: true,
+          });
+        } catch (err) {
+          diag.add?.(
+            `[assistant-followup] context refresh failed: ${err?.message || err}`,
+          );
+          return;
+        }
+        const store = getAssistantSuggestStore();
+        const snapshot =
+          store?.getState?.().snapshot || assistantChatCtrl?.context || null;
+        if (!snapshot) return;
+        const planner = global.AppModules?.assistantDayPlan;
+        const generator = planner?.generateDayPlan;
+        if (typeof generator !== 'function') return;
+        const { lines, hasWarnings } = generator(
+          { ...snapshot, suggestion },
+          {
+            dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
+          },
+        );
+        if (lines?.length) {
+          appendAssistantMessage('assistant', lines.join(' '));
+        }
+        if (hasWarnings && voiceCtrl?.conversationMode) {
+          global.dispatchEvent(
+            new CustomEvent('assistant:voice-request', {
+              detail: {
+                source: 'day-plan',
+                text: lines.join(' '),
+              },
+            }),
+          );
+        }
+      };
+
+      doc?.addEventListener('profile:changed', (event) => {
+        assistantProfileSnapshot =
+          event?.detail?.data || appModules.profile?.getData?.() || null;
+        if (assistantChatCtrl?.context) {
+          assistantChatCtrl.context.profile = assistantProfileSnapshot;
+        }
+        const store = getAssistantSuggestStore();
+        if (store && assistantChatCtrl?.context) {
+          store.setSnapshot(
+            { ...assistantChatCtrl.context, updatedAt: Date.now() },
+            { reason: 'profile:changed' },
+          );
+        }
+      });
+      global.addEventListener('assistant:suggest-confirm', (event) => {
+        const suggestion = event?.detail?.suggestion;
+        if (!suggestion) return;
+        diag.add?.(
+          `[assistant-suggest] confirm requested source=${suggestion.source || 'unknown'}`,
+        );
+        handleSuggestionConfirmRequest(suggestion);
+      });
+      global.addEventListener('assistant:suggest-answer', (event) => {
+        if (event?.detail?.accepted) return;
+        diag.add?.('[assistant-suggest] user dismissed suggestion');
+      });
+      global.addEventListener('assistant:action-request', (event) => {
+        const type = event?.detail?.type;
+        if (!type) return;
+        const payload = event.detail.payload || {};
+        const source = event.detail.source || 'event';
+        diag.add?.(`[assistant-actions] request type=${type} source=${source}`);
+        runAllowedAction(type, payload, { source });
+      });
+
+      global.addEventListener('assistant:action-success', (event) => {
+        if (event?.detail?.type !== 'intake_save') return;
+        const detailSource = event?.detail?.source || 'unknown';
+        if (detailSource === 'suggestion-card') return;
+        runIntakeSaveFollowup({});
+      });
+    };
+
+  const bindAssistantCameraButton = (btn, input) => {
+    if (!btn || !input) return;
+    const LONG_PRESS_MS = 650;
+    let pressTimer = null;
+    let longPressTriggered = false;
+
+    const resetTimer = () => {
+      if (pressTimer) {
+        global.clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    const openSelector = ({ capture }) => {
+      input.value = '';
+      if (capture) {
+        input.setAttribute('capture', capture);
+      } else {
+        input.removeAttribute('capture');
+      }
+      input.click();
+    };
+
+    const handlePointerDown = (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      longPressTriggered = false;
+      resetTimer();
+      pressTimer = global.setTimeout(() => {
+        longPressTriggered = true;
+        openSelector({ capture: null });
+      }, LONG_PRESS_MS);
+    };
+
+    const handlePointerUp = (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      if (!pressTimer) return;
+      resetTimer();
+      if (!longPressTriggered) {
+        openSelector({ capture: 'environment' });
+      }
+    };
+
+    const cancelPress = () => {
+      resetTimer();
+    };
+
+    btn.addEventListener('pointerdown', handlePointerDown);
+    btn.addEventListener('pointerup', handlePointerUp);
+    btn.addEventListener('pointerleave', cancelPress);
+    btn.addEventListener('pointercancel', cancelPress);
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
   };
 
   const handleAssistantPhotoSelected = async (event) => {
     const file = event?.target?.files?.[0];
     if (!file) return;
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
-      appendAssistantMessage('system', 'Das Foto ist zu groß (max. ca. 6 MB).');
+      const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
+      diag.add?.(
+        `[assistant-vision] foto zu groß: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+      );
+      appendAssistantMessage('system', `Das Foto ist zu groß (max. ca. ${maxMb} MB).`);
       return;
     }
     try {
@@ -533,6 +1632,7 @@
       await sendAssistantPhotoMessage(dataUrl, file);
     } catch (err) {
       console.error('[assistant-chat] foto konnte nicht gelesen werden', err);
+      diag.add?.(`[assistant-vision] foto konnte nicht gelesen werden: ${err?.message || err}`);
       appendAssistantMessage('system', 'Das Foto konnte nicht gelesen werden.');
     }
   };
@@ -552,7 +1652,7 @@
     if (!assistantChatCtrl) return;
     if (!assistantChatCtrl.sessionId) {
       assistantChatCtrl.sessionId = `text-${Date.now()}`;
-      console.info('[assistant-chat] new session', assistantChatCtrl.sessionId);
+      debugLog('assistant-chat new session');
     }
   };
 
@@ -561,13 +1661,13 @@
     if (!assistantChatCtrl) return;
     const value = assistantChatCtrl.input?.value?.trim();
     if (!value) return;
-    console.info('[assistant-chat] submit', { value });
+    debugLog('assistant-chat submit');
     sendAssistantChatMessage(value);
   };
 
   const sendAssistantChatMessage = async (text) => {
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
-    console.info('[assistant-chat] send start', { text });
+    debugLog('assistant-chat send start');
     ensureAssistantSession();
     appendAssistantMessage('user', text);
     if (assistantChatCtrl.input) {
@@ -593,22 +1693,98 @@
       }
     } finally {
       setAssistantSending(false);
-      console.info('[assistant-chat] send end');
+      debugLog('assistant-chat send end');
     }
   };
 
-  const appendAssistantMessage = (role, content, extras = {}) => {
-    if (!assistantChatCtrl) return null;
-    const message = {
-      role: role === 'assistant' ? 'assistant' : role === 'system' ? 'system' : 'user',
-      content: content?.trim?.() || '',
-      id: extras.id || `m-${Date.now()}-${assistantChatCtrl.messages.length}`,
-      imageData: extras.imageData || null,
-      meta: extras.meta || null,
+    const appendAssistantMessage = (role, content, extras = {}) => {
+      if (!assistantChatCtrl) return null;
+      const message = {
+        role: role === 'assistant' ? 'assistant' : role === 'system' ? 'system' : 'user',
+        content: content?.trim?.() || '',
+        id: extras.id || `m-${Date.now()}-${assistantChatCtrl.messages.length}`,
+        imageData: extras.imageData || null,
+        meta: extras.meta || null,
+        type: extras.type || 'text',
+        status: extras.status || null,
+        resultText: extras.resultText || '',
+        retryable: !!extras.retryable,
+        retryPayload: extras.retryPayload || null,
+      };
+      assistantChatCtrl.messages.push(message);
+      renderAssistantChat();
+      return message;
     };
-    assistantChatCtrl.messages.push(message);
-    renderAssistantChat();
-    return message;
+
+    const buildAssistantContextPayload = () => {
+      const ctx = assistantChatCtrl?.context;
+      if (!ctx) return null;
+      const payload = {};
+      if (ctx.intake?.totals) {
+        payload.intake = {
+          dayIso: ctx.intake.dayIso || null,
+          logged: !!ctx.intake.logged,
+          totals: {
+            water_ml: Number(ctx.intake.totals?.water_ml) || 0,
+            salt_g: Number(ctx.intake.totals?.salt_g) || 0,
+            protein_g: Number(ctx.intake.totals?.protein_g) || 0,
+          },
+        };
+      }
+      if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
+        payload.appointments = ctx.appointments.map((item) => ({
+          id: item.id || null,
+          label: item.label || '',
+          detail: item.detail || '',
+        }));
+      }
+      if (ctx.profile) {
+        const meds = Array.isArray(ctx.profile.medications)
+          ? ctx.profile.medications
+          : typeof ctx.profile.medications === 'string'
+            ? ctx.profile.medications
+                .split(/[\n;,]+/)
+                .map((entry) => entry.trim())
+                .filter(Boolean)
+            : [];
+        payload.profile = {
+          name: ctx.profile.full_name || null,
+          birth_date: ctx.profile.birth_date || null,
+          height_cm: ctx.profile.height_cm ?? null,
+          ckd_stage: ctx.profile.ckd_stage || null,
+          medications: meds,
+          salt_limit_g: ctx.profile.salt_limit_g ?? null,
+          protein_limit_g:
+            ctx.profile.protein_target_max ??
+            ctx.profile.protein_target_min ??
+            null,
+          lifestyle_note: ctx.profile.lifestyle_note || null,
+          smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
+        };
+      }
+      return Object.keys(payload).length ? payload : null;
+    };
+
+  const cloneAssistantTemplate = (key) => {
+    const tmpl = assistantChatCtrl?.templates?.[key];
+    if (!tmpl) return null;
+    return tmpl.cloneNode(true);
+  };
+
+  const notifyAssistantChatRendered = () => {
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:chat-rendered', {
+          detail: {
+            messageCount: assistantChatCtrl?.messages?.length || 0,
+          },
+        }),
+      );
+    } catch (err) {
+      diag.add?.(
+        `[assistant-chat] notify render failed: ${err?.message || err}`,
+      );
+    }
   };
 
   const renderAssistantChat = () => {
@@ -620,32 +1796,78 @@
       placeholder.className = 'assistant-chat-empty';
       placeholder.innerHTML = '<p class="muted">Starte eine Unterhaltung oder schicke ein Foto deines Essens.</p>';
       container.appendChild(placeholder);
+      notifyAssistantChatRendered();
       return;
     }
     const frag = doc.createDocumentFragment();
     assistantChatCtrl.messages.forEach((message) => {
-      const bubble = doc.createElement('div');
-      bubble.className = `assistant-bubble assistant-${message.role}`;
+      let bubble;
+      if (message.type === 'photo') {
+        bubble = cloneAssistantTemplate('photo');
+        if (!bubble) {
+          bubble = doc.createElement('div');
+        }
+        bubble.classList.add('assistant-photo-bubble');
+        const figure = bubble.querySelector('.assistant-photo');
+        const img = figure?.querySelector('img');
+        if (img) {
+          img.src = message.imageData || '';
+          img.alt = message.meta?.fileName ? `Foto ${message.meta.fileName}` : 'Hochgeladenes Foto';
+        }
+        const statusEl = bubble.querySelector('.assistant-photo-status');
+        if (statusEl) {
+          const statusText =
+            message.status === 'error'
+              ? 'Analyse fehlgeschlagen.'
+              : message.status === 'done'
+                ? 'Analyse abgeschlossen.'
+                : 'Analyse läuft …';
+          statusEl.textContent = statusText;
+        }
+        const resultEl = bubble.querySelector('.assistant-photo-result');
+        if (resultEl) {
+          resultEl.textContent =
+            message.resultText || (message.status === 'done' ? 'Keine Details verfügbar.' : 'Noch kein Ergebnis.');
+          if (message.status === 'error') {
+            resultEl.classList.remove('muted');
+          } else {
+            resultEl.classList.add('muted');
+          }
+        }
+        bubble.classList.toggle('is-processing', message.status !== 'done' && message.status !== 'error');
+        bubble.classList.toggle('is-error', message.status === 'error');
+        if (message.retryable) {
+          const retryWrap = doc.createElement('div');
+          retryWrap.className = 'assistant-photo-retry';
+          const retryLabel = doc.createElement('span');
+          retryLabel.textContent = 'Erneut versuchen?';
+          const retryBtn = doc.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.textContent = 'Nochmal analysieren';
+          retryBtn.setAttribute('data-assistant-retry-id', message.id);
+          retryWrap.appendChild(retryLabel);
+          retryWrap.appendChild(retryBtn);
+          bubble.appendChild(retryWrap);
+        }
+      } else {
+        bubble = cloneAssistantTemplate('message');
+        if (!bubble) {
+          bubble = doc.createElement('div');
+          bubble.className = 'assistant-bubble';
+        }
+        const textLine = bubble.querySelector('.assistant-text-line');
+        if (textLine) {
+          textLine.textContent = message.content;
+        } else if (message.content) {
+          const text = doc.createElement('p');
+          text.className = 'assistant-text-line';
+          text.textContent = message.content;
+          bubble.appendChild(text);
+        }
+      }
+      bubble.classList.add(`assistant-${message.role}`);
       bubble.setAttribute('data-role', message.role);
-      if (message.imageData) {
-        bubble.classList.add('assistant-has-image');
-        const figure = doc.createElement('div');
-        figure.className = 'assistant-photo';
-        const img = doc.createElement('img');
-        img.src = message.imageData;
-        img.alt =
-          message.meta?.fileName
-            ? `Foto ${message.meta.fileName}`
-            : 'Hochgeladenes Foto';
-        figure.appendChild(img);
-        bubble.appendChild(figure);
-      }
-      if (message.content) {
-        const text = doc.createElement('p');
-        text.className = 'assistant-text-line';
-        text.textContent = message.content;
-        bubble.appendChild(text);
-      }
+      bubble.setAttribute('data-assistant-message-id', message.id);
       frag.appendChild(bubble);
     });
     container.appendChild(frag);
@@ -653,6 +1875,7 @@
       top: container.scrollHeight,
       behavior: 'smooth',
     });
+    notifyAssistantChatRendered();
   };
 
   const setAssistantSending = (state) => {
@@ -683,9 +1906,12 @@
           content: msg.content,
         })),
     };
+    const contextPayload = buildAssistantContextPayload();
+    if (contextPayload) {
+      payload.context = contextPayload;
+    }
     let response;
     const headers = await buildFunctionJsonHeaders();
-    console.log('[assistant-chat] headers', headers, payload);
     try {
       response = await fetch(MIDAS_ENDPOINTS.assistant, {
         method: 'POST',
@@ -704,22 +1930,73 @@
     return reply;
   };
 
-  const sendAssistantPhotoMessage = async (dataUrl, file) => {
+  const sendAssistantPhotoMessage = async (dataUrl, file, existingMessage = null) => {
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
     ensureAssistantSession();
-    const previewMessage = appendAssistantMessage('user', 'Foto wird analysiert …', {
-      imageData: dataUrl,
-      meta: { fileName: file?.name || '' },
-    });
+    const resolvedDataUrl =
+      dataUrl ||
+      existingMessage?.retryPayload?.base64 ||
+      existingMessage?.imageData ||
+      '';
+    const assistantUi = getAssistantUiHelpers();
+    const basePayload =
+      assistantUi?.createPhotoMessageModel?.({
+        imageData: resolvedDataUrl,
+        fileName: file?.name || existingMessage?.meta?.fileName || ''
+      }) || {
+        type: 'photo',
+        status: 'processing',
+        resultText: 'Noch kein Ergebnis.',
+        imageData: resolvedDataUrl,
+        meta: { fileName: file?.name || existingMessage?.meta?.fileName || '' },
+        retryPayload: { base64: resolvedDataUrl, fileName: file?.name || existingMessage?.meta?.fileName || '' },
+        retryable: false
+      };
+    const targetMessage =
+      existingMessage || appendAssistantMessage('user', '', basePayload);
+    if (!targetMessage) return;
+    targetMessage.status = 'processing';
+    targetMessage.resultText = 'Analyse läuft …';
+    targetMessage.retryable = false;
+    targetMessage.retryPayload =
+      targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
+    renderAssistantChat();
     setAssistantSending(true);
+    diag.add?.('[assistant-vision] analyse start');
     try {
-      const reply = await fetchAssistantVisionReply(dataUrl, file);
-      if (previewMessage) {
-        previewMessage.content = 'Foto gesendet.';
+      const result = await fetchAssistantVisionReply(resolvedDataUrl, file);
+      targetMessage.status = 'done';
+      targetMessage.resultText = formatAssistantVisionResult(result);
+      targetMessage.content = '';
+      targetMessage.retryable = false;
+      diag.add?.('[assistant-vision] analyse success');
+      const suggestionStore = getAssistantSuggestStore();
+      const suggestionPayload = assistantUi?.buildVisionSuggestPayload?.(result, {
+        messageId: targetMessage.id,
+      });
+      if (suggestionStore && suggestionPayload) {
+        suggestionStore.queueSuggestion(
+          {
+            ...suggestionPayload,
+            source: 'vision',
+            messageId: suggestionPayload.messageId || targetMessage.id,
+            meta: {
+              ...(suggestionPayload.meta || {}),
+              fileName: file?.name || targetMessage.meta?.fileName || '',
+              messageId: suggestionPayload.messageId || targetMessage.id,
+            },
+          },
+          { reason: 'vision-result' },
+        );
       }
-      appendAssistantMessage('assistant', reply);
     } catch (err) {
       console.error('[assistant-chat] vision request failed', err);
+      diag.add?.(
+        `[assistant-vision] analyse failed: ${err?.message || err}`,
+      );
+      targetMessage.status = 'error';
+      targetMessage.resultText = 'Das Foto konnte nicht analysiert werden.';
+      targetMessage.retryable = true;
       if (err?.message === 'supabase-headers-missing') {
         appendAssistantMessage(
           'system',
@@ -735,24 +2012,28 @@
   };
 
   const fetchAssistantVisionReply = async (dataUrl, file) => {
-    ensureAssistantSession();
-    if (!assistantChatCtrl) {
-      throw new Error('vision-unavailable');
-    }
-    const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
-    if (!base64) {
-      throw new Error('vision-image-missing');
-    }
-    const payload = {
-      session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
-      mode: 'vision',
-      history: buildAssistantPhotoHistory(),
-      image_base64: base64,
-    };
-    if (!payload.history) {
-      delete payload.history;
-    }
-    if (file?.name) {
+      ensureAssistantSession();
+      if (!assistantChatCtrl) {
+        throw new Error('vision-unavailable');
+      }
+      const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
+      if (!base64) {
+        throw new Error('vision-image-missing');
+      }
+      const payload = {
+        session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
+        mode: 'vision',
+        history: buildAssistantPhotoHistory(),
+        image_base64: base64,
+      };
+      const contextPayload = buildAssistantContextPayload();
+      if (contextPayload) {
+        payload.context = contextPayload;
+      }
+      if (!payload.history) {
+        delete payload.history;
+      }
+      if (file?.name) {
       payload.meta = { fileName: file.name };
     }
     const headers = await buildFunctionJsonHeaders();
@@ -775,7 +2056,11 @@
     if (!reply) {
       throw new Error('vision-empty');
     }
-    return reply;
+    return {
+      reply,
+      analysis: data?.analysis || data?.meta?.analysis || null,
+      meta: data?.meta || null,
+    };
   };
 
   const buildAssistantPhotoHistory = () => {
@@ -792,13 +2077,90 @@
   const readFileAsDataUrl = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
+      const cleanup = () => {
+        reader.onload = null;
+        reader.onerror = null;
+      };
+      const fallbackToBuffer = () => {
+        cleanup();
+        file
+          .arrayBuffer()
+          .then((buffer) => {
+            resolve(arrayBufferToDataUrl(buffer, file.type));
+          })
+          .catch((bufferErr) => reject(bufferErr));
+      };
+      reader.onload = () => {
+        cleanup();
+        resolve(reader.result);
+      };
+      reader.onerror = (err) => {
+        diag.add?.(`[assistant-vision] FileReader fehler: ${err?.message || err}`);
+        fallbackToBuffer();
+      };
+      try {
+        reader.readAsDataURL(file);
+      } catch (err) {
+        diag.add?.(`[assistant-vision] FileReader exception: ${err?.message || err}`);
+        fallbackToBuffer();
+      }
     });
 
+  const arrayBufferToDataUrl = (buffer, mime = 'application/octet-stream') => {
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    const base64 = global.btoa(binary);
+    return `data:${mime || 'application/octet-stream'};base64,${base64}`;
+  };
+
+  function handleAssistantChatClick(event) {
+    const retryBtn = event.target.closest('button[data-assistant-retry-id]');
+    if (retryBtn) {
+      event.preventDefault();
+      const messageId = retryBtn.getAttribute('data-assistant-retry-id');
+      retryAssistantPhoto(messageId);
+    }
+  }
+
+  const retryAssistantPhoto = (messageId) => {
+    if (!messageId || !assistantChatCtrl) return;
+    const message = assistantChatCtrl.messages.find((msg) => msg.id === messageId);
+    if (!message || !message.retryPayload) return;
+    sendAssistantPhotoMessage(message.retryPayload.base64, { name: message.retryPayload.fileName || '' }, message);
+  };
+
+  const formatAssistantVisionResult = (result) => {
+    const assistantUi = getAssistantUiHelpers();
+    if (assistantUi?.formatVisionResultText) {
+      return assistantUi.formatVisionResultText(result);
+    }
+    if (!result) return 'Analyse abgeschlossen.';
+    const parts = [];
+    const analysis = result.analysis || {};
+    if (analysis.water_ml != null) {
+      parts.push(`Wasser: ${Math.round(Number(analysis.water_ml) || 0)} ml`);
+    }
+    if (analysis.salt_g != null) {
+      parts.push(`Salz: ${(Number(analysis.salt_g) || 0).toFixed(1)} g`);
+    }
+    if (analysis.protein_g != null) {
+      parts.push(`Protein: ${(Number(analysis.protein_g) || 0).toFixed(1)} g`);
+    }
+    if (result.reply) {
+      parts.push(result.reply);
+    }
+    return parts.join(' • ') || 'Analyse abgeschlossen.';
+  };
+
   const setupVoiceChat = (hub) => {
-    const button = hub.querySelector('[data-hub-module="assistant-voice"]');
+    const button =
+      hub.querySelector('[data-hub-module="assistant-voice"]') ||
+      hub.querySelector('[data-hub-module="assistant-text"]');
     if (!button || !navigator?.mediaDevices?.getUserMedia) {
       return;
     }
@@ -996,13 +2358,22 @@
       voiceCtrl.vadSilenceTimer = global.setTimeout(() => {
         voiceCtrl.vadSilenceTimer = null;
         if (!voiceCtrl || voiceCtrl.status !== 'listening') return;
-        console.info('[midas-voice] Auto-stop nach Stille');
+        if (appModules.config?.DEV_ALLOW_DEFAULTS) {
+          diag.add?.('[midas-voice] Auto-stop nach Stille');
+        }
         stopVoiceRecording();
       }, VAD_SILENCE_MS);
     }
   };
 
   const handleVoiceTrigger = () => {
+    const gateStatus = notifyVoiceGateStatus();
+    if (!gateStatus.allowed) {
+      diag.add?.(`[hub] voice trigger blocked (${gateStatus.reason || 'gate'})`);
+      setVoiceState('error', 'Voice deaktiviert – bitte warten');
+      setTimeout(() => setVoiceState('idle'), 1800);
+      return;
+    }
     if (!voiceCtrl) {
       console.warn('[hub] voice controller missing');
       return;
@@ -1026,7 +2397,7 @@
       return;
     }
     if (voiceCtrl.status === 'thinking') {
-      console.info('[hub] voice is busy processing');
+      diag.add?.('[hub] voice is busy processing');
       return;
     }
     if (voiceCtrl.status === 'idle') {
@@ -1039,6 +2410,12 @@
 
   const startVoiceRecording = async () => {
     try {
+      const gate = notifyVoiceGateStatus();
+      if (!gate.allowed) {
+        diag.add?.(`[hub] voice record blocked (${gate.reason || 'gate'})`);
+        setVoiceState('idle');
+        return;
+      }
       clearPendingResume();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const options = {};
@@ -1118,11 +2495,11 @@
         type: recorder?.mimeType || 'audio/webm',
       });
       voiceCtrl.chunks = [];
-      console.info(
-        '[midas-voice] Aufnahme abgeschlossen:',
-        blob.type,
-        `${(blob.size / 1024).toFixed(1)} KB`,
-      );
+      if (appModules.config?.DEV_ALLOW_DEFAULTS) {
+        diag.add?.(
+          `[midas-voice] Aufnahme abgeschlossen: ${blob.type}, ${(blob.size / 1024).toFixed(1)} KB`
+        );
+      }
       await processVoiceBlob(blob);
     } catch (err) {
       console.error('[hub] voice processing failed', err);
@@ -1139,7 +2516,7 @@
         setVoiceState('idle');
         return;
       }
-      console.info('[midas-voice] Transcript:', transcript);
+      diag.add?.(`[midas-voice] Transcript: ${transcript}`);
       if (
         voiceCtrl?.conversationMode &&
         shouldEndConversationFromTranscript(transcript)
@@ -1205,16 +2582,14 @@
     }
     const loader = (async () => {
       if (typeof global.getConf !== 'function') {
-        console.warn('[hub] getConf missing - cannot load Supabase key');
+        diag.add?.('[hub] getConf missing - cannot load Supabase key');
         return null;
       }
       try {
-        console.info('[assistant-chat] loading webhookKey via getConf');
         const stored = await global.getConf('webhookKey');
         const raw = String(stored || '').trim();
-        console.info('[assistant-chat] webhookKey present?', !!raw);
         if (!raw) {
-          console.warn('[hub] Supabase webhookKey missing - voice API locked');
+          diag.add?.('[hub] Supabase webhookKey missing - voice API locked');
           return null;
         }
         const bearer = raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
@@ -1242,7 +2617,7 @@
     }
     const authHeaders = await getSupabaseFunctionHeaders();
     if (!authHeaders) {
-      console.warn('[hub] Supabase headers missing for assistant call');
+      diag.add?.('[hub] Supabase headers missing for assistant call');
       setVoiceState('error', 'Konfiguration fehlt');
       setTimeout(() => setVoiceState('idle'), 2600);
       throw new Error('supabase-headers-missing');
@@ -1266,9 +2641,13 @@
           role: 'assistant',
           content: replyText,
         });
-        console.info('[midas-voice] Assistant reply:', replyText);
+        diag.add?.(`[midas-voice] Assistant reply: ${replyText}`);
         if (assistantResponse.actions?.length) {
-          console.info('[midas-voice] Assistant actions:', assistantResponse.actions);
+          if (appModules.config?.DEV_ALLOW_DEFAULTS) {
+            diag.add?.(
+              `[midas-voice] Assistant actions: ${assistantResponse.actions.join(', ')}`
+            );
+          }
           if (
             voiceCtrl.conversationMode &&
             assistantResponse.actions.some((action) => END_ACTIONS.includes(action))
@@ -1278,7 +2657,7 @@
         }
         await synthesizeAndPlay(replyText);
       } else {
-        console.info('[midas-voice] Assistant reply empty');
+        diag.add?.('[midas-voice] Assistant reply empty');
       }
       const allowResume = voiceCtrl.conversationMode && !voiceCtrl.conversationEndPending;
       setVoiceState('idle');
@@ -1338,7 +2717,7 @@
       if (rawText) {
         console.warn('[hub] assistant payload missing reply, snippet:', rawText.slice(0, 160));
       }
-      console.info('[midas-voice] Assistant reply empty, using fallback.');
+      diag.add?.('[midas-voice] Assistant reply empty, using fallback.');
       reply = VOICE_FALLBACK_REPLY;
     }
     const actions = Array.isArray(data?.actions) ? [...data.actions] : [];
@@ -1497,11 +2876,46 @@
     return new Blob([byteArray], { type: mimeType });
   };
 
-  if (doc?.readyState === 'loading') {
+  const bootFlow = global.AppModules?.bootFlow;
+  if (bootFlow?.whenStage) {
+    bootFlow.whenStage('INIT_UI', () => activateHubLayout());
+  } else if (doc?.readyState === 'loading') {
     doc.addEventListener('DOMContentLoaded', activateHubLayout, { once: true });
   } else {
     activateHubLayout();
   }
 
-  appModules.hub = Object.assign(appModules.hub || {}, { activateHubLayout });
+  appModules.hub = Object.assign(appModules.hub || {}, {
+    activateHubLayout,
+    openDoctorPanel: (options) => {
+      if (openDoctorPanelWithGuard) {
+        return openDoctorPanelWithGuard(options);
+      }
+      return Promise.resolve(false);
+    },
+    closePanel: (panelName) => {
+      if (panelName && activePanel?.dataset?.hubPanel !== panelName) {
+        return false;
+      }
+      closeActivePanel({ instant: true });
+      return true;
+    },
+    forceClosePanel: (panelName, opts) => forceClosePanelByName(panelName, opts),
+    getVoiceGateStatus: () => ({ ...lastVoiceGateStatus }),
+    isVoiceReady: () => !!lastVoiceGateStatus.allowed,
+    onVoiceGateChange: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      voiceGateListeners.add(callback);
+      try {
+        callback({ ...lastVoiceGateStatus });
+      } catch (err) {
+        diag.add?.(`[voice] gate listener error: ${err?.message || err}`);
+      }
+      return () => voiceGateListeners.delete(callback);
+    },
+    setCarouselModule: (id) => setCarouselActiveById(id),
+    shiftCarousel: (delta) => shiftCarousel(delta),
+    openQuickbar: () => openQuickbar(),
+    closeQuickbar: () => closeQuickbar(),
+  });
 })(typeof window !== 'undefined' ? window : globalThis);

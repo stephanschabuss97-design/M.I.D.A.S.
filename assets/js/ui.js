@@ -16,6 +16,31 @@
 (function (global) {
   const MODULE_NAME = 'uiCore';
   const appModules = (global.AppModules = global.AppModules || {});
+  const DEBUG_LOGS_ENABLED = (() => {
+    try {
+      return !!appModules?.config?.DEV_ALLOW_DEFAULTS;
+    } catch {
+      return false;
+    }
+  })();
+  const getDiagLogger = () =>
+    global.AppModules?.diagnostics?.diag || global.diag || null;
+  const logUiWarn = (msg) => {
+    const text = `[ui-core] ${msg}`;
+    getDiagLogger()?.add?.(text);
+    if (DEBUG_LOGS_ENABLED) {
+      global.console?.warn?.(text);
+    }
+  };
+
+  const waitForInitUi = (fn) => {
+    const bootFlow = global.AppModules?.bootFlow;
+    if (bootFlow?.whenStage) {
+      bootFlow.whenStage('INIT_UI', fn);
+    } else {
+      fn();
+    }
+  };
 
   // SUBMODULE: helpPanel @public - steuert das Inline-Hilfe-Overlay mit Open/Close-Logik
   const helpPanel = {
@@ -25,7 +50,7 @@
     init() {
       const el = global.document.getElementById('help');
       if (!el) {
-        console.warn('[uiCore:helpPanel] Missing element with id="help" — panel init skipped.');
+        logUiWarn('Missing element with id="help" - panel init skipped.');
         return;
       }
       this.el = el;
@@ -41,15 +66,18 @@
         else this.hide();
       };
 
-      if (t1 && typeof t1.addEventListener === 'function') {
-        t1.addEventListener('click', toggle);
-      }
-      if (t2 && typeof t2.addEventListener === 'function') {
-        t2.addEventListener('click', toggle);
-      }
-      if (close && typeof close.addEventListener === 'function') {
-        close.addEventListener('click', () => this.hide());
-      }
+      const bindHelpAfterBoot = () => {
+        if (t1 && typeof t1.addEventListener === 'function') {
+          t1.addEventListener('click', toggle);
+        }
+        if (t2 && typeof t2.addEventListener === 'function') {
+          t2.addEventListener('click', toggle);
+        }
+        if (close && typeof close.addEventListener === 'function') {
+          close.addEventListener('click', () => this.hide());
+        }
+      };
+      waitForInitUi(bindHelpAfterBoot);
     },
 
     show() {

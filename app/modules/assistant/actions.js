@@ -43,7 +43,7 @@ export async function dispatchAssistantActions(actions, options = {}) {
 
   const sb = getSupabaseApi();
   if (!sb) {
-    console.warn('[MIDAS Assistant] Supabase API not available, skipping actions.');
+    logWarn('Supabase API not available, skipping actions.');
     return;
   }
 
@@ -67,7 +67,7 @@ export async function dispatchAssistantActions(actions, options = {}) {
  */
 async function handleSingleAction(action, sb, notify) {
   if (!action || typeof action.type !== 'string') {
-    console.warn('[MIDAS Assistant] Invalid action:', action);
+    logWarn('Invalid action payload');
     return;
   }
 
@@ -113,6 +113,7 @@ async function handleSingleAction(action, sb, notify) {
       break;
 
     case 'transition_to_text_chat':
+      // Placeholder – UI wiring folgt in Phase 3.x
       await handleTransitionToTextChat(payload, sb, notify);
       break;
 
@@ -135,14 +136,17 @@ async function handleSingleAction(action, sb, notify) {
       break;
 
     case 'read_touchlog':
+      // Debug-only, nur bei DEV_ALLOW_DEFAULTS sinnvoll
       await handleReadTouchlog(payload, sb, notify);
       break;
 
     case 'read_diagnostics':
+      // Debug-only, nur bei DEV_ALLOW_DEFAULTS sinnvoll
       await handleReadDiagnostics(payload, sb, notify);
       break;
 
     case 'read_bootstrap_status':
+      // Debug-only, nur bei DEV_ALLOW_DEFAULTS sinnvoll
       await handleReadBootstrapStatus(payload, sb, notify);
       break;
 
@@ -154,95 +158,155 @@ async function handleSingleAction(action, sb, notify) {
       break;
 
     default:
-      console.warn('[MIDAS Assistant] Unknown action type:', type, action);
+      logWarn(`Unknown action type: ${type}`);
       break;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Action Handlers – CORE
-// ---------------------------------------------------------------------------
+const MODULE_ALIAS_ENTRIES = [
+  {
+    keys: ['assistant', 'assistant-text', 'chat', 'textchat', 'text-chat', 'butler'],
+    moduleKey: 'assistant-text',
+    label: 'den Assistenten',
+  },
+  {
+    keys: ['intake', 'capture', 'tageserfassung'],
+    moduleKey: 'intake',
+    label: 'die Tageserfassung',
+  },
+  {
+    keys: ['vitals', 'vitaldaten', 'vital'],
+    moduleKey: 'vitals',
+    label: 'deine Vitaldaten',
+  },
+  {
+    keys: ['appointments', 'termin', 'termine', 'calendar'],
+    moduleKey: 'appointments',
+    label: 'deine Termine',
+  },
+  {
+    keys: ['profile', 'profil', 'personaldaten', 'personal', 'gesundheitsprofil'],
+    moduleKey: 'profile',
+    label: 'dein Profil',
+  },
+  {
+    keys: ['doctor', 'arzt', 'arztansicht'],
+    moduleKey: 'doctor',
+    label: 'die Arzt-Ansicht',
+    startMode: 'list',
+  },
+  {
+    keys: ['doctor-chart', 'arzt-chart', 'diagramm', 'chart'],
+    moduleKey: 'doctor',
+    label: 'das Diagramm',
+    startMode: 'chart',
+  },
+  {
+    keys: ['voice', 'voicechat', 'voice-chat', 'sprachchat', 'mikrofon', 'sprechen'],
+    moduleKey: 'assistant-text',
+    label: 'den Sprachmodus',
+    voice: true,
+  },
+];
 
-async function handleIntakeSave(payload, sb, notify) {
-  const hasWater = payload.water_ml != null && payload.water_ml !== '';
-  const hasSalt = payload.salt_g != null && payload.salt_g !== '';
-  const hasProtein = payload.protein_g != null && payload.protein_g !== '';
-
-  const waterMl = hasWater ? safeNumber(payload.water_ml, NaN) : null;
-  const saltG = hasSalt ? safeNumber(payload.salt_g, NaN) : null;
-  const proteinG = hasProtein ? safeNumber(payload.protein_g, NaN) : null;
-
-  const label = (payload.label || '').trim() || null;
-  const note = (payload.note || '').trim() || null;
-
-  if (!hasWater && !hasSalt && !hasProtein) {
-    console.warn('[MIDAS Assistant] intake_save – no metrics provided:', payload);
-    return;
+function normalizeModuleTarget(payload = {}) {
+  const rawInput = `${payload.target ?? payload.module ?? payload.panel ?? ''}`
+    .trim()
+    .toLowerCase();
+  if (!rawInput) return null;
+  let match = MODULE_ALIAS_ENTRIES.find((entry) => entry.keys.includes(rawInput));
+  if (!match && rawInput.startsWith('doctor') && rawInput.includes('chart')) {
+    match = MODULE_ALIAS_ENTRIES.find((entry) => entry.moduleKey === 'doctor' && entry.startMode === 'chart');
   }
+  if (!match) return null;
 
-  if (hasWater && (!Number.isFinite(waterMl) || waterMl <= 0)) {
-    console.warn('[MIDAS Assistant] intake_save – invalid water_ml:', payload.water_ml);
+  const normalized = {
+    moduleKey: match.moduleKey,
+    label: match.label || `das Modul "${rawInput}"`,
+    debug: rawInput,
+    startMode: match.startMode || null,
+     voice: !!match.voice,
+    message: match.message || null,
+  };
+  const modeHint = `${payload.mode ?? payload.view ?? ''}`.trim().toLowerCase();
+  if (modeHint === 'chart') {
+    normalized.startMode = 'chart';
+  } else if (modeHint === 'list') {
+    normalized.startMode = 'list';
   }
-
-  if (hasSalt && !Number.isFinite(saltG)) {
-    console.warn('[MIDAS Assistant] intake_save – invalid salt_g:', payload.salt_g);
+  if (payload.voice === true) {
+    normalized.voice = true;
   }
-
-  if (hasProtein && !Number.isFinite(proteinG)) {
-    console.warn('[MIDAS Assistant] intake_save – invalid protein_g:', payload.protein_g);
-  }
-
-  console.log('[MIDAS Assistant] IntakeSave requested:', {
-    waterMl,
-    saltG,
-    proteinG,
-    label,
-    note
-  });
-
-  // TODO: Hier deine echte Intake-Speicherlogik verdrahten (Supabase / RPCs).
-  // z. B.: await sb.intake.saveAssistantIntake({ waterMl, saltG, proteinG, label, note });
-
-  const parts = [];
-  if (Number.isFinite(waterMl) && waterMl > 0) parts.push(`${waterMl} ml Wasser`);
-  if (Number.isFinite(saltG)) parts.push(`${saltG} g Salz`);
-  if (Number.isFinite(proteinG)) parts.push(`${proteinG} g Protein`);
-
-  const summary = parts.length ? parts.join(', ') : 'deinen Eintrag';
-
-  notify(`Ich habe ${summary} für heute vorgemerkt (Assist-Action).`, 'success');
+  return normalized;
 }
 
-// ---------------------------------------------------------------------------
-// Action Handlers – UI
-// ---------------------------------------------------------------------------
+async function triggerHubModule(moduleKey, options = {}) {
+  if (typeof window === 'undefined') return false;
+  const hubApi = window.AppModules?.hub;
+  if (moduleKey === 'doctor') {
+    const startMode = options.startMode === 'chart' ? 'chart' : 'list';
+    if (hubApi?.openDoctorPanel) {
+      try {
+        const result = await hubApi.openDoctorPanel({ startMode });
+        return !!result;
+      } catch (err) {
+        logError('open_module - doctor panel failed', err);
+        return false;
+      }
+    }
+  }
+
+  const doc = window.document;
+  if (!doc) return false;
+  const button = doc.querySelector(`[data-hub-module="${moduleKey}"]`);
+  if (!button) return false;
+  try {
+    button.click();
+    if (options.voice && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('assistant:voice-request', {
+          detail: { source: options.source || 'allowed-action' },
+        }),
+      );
+    }
+    return true;
+  } catch (err) {
+    logError(`open_module - button click failed (${moduleKey})`, err);
+    return false;
+  }
+}
 
 async function handleOpenModule(payload, _sb, notify) {
-  const target = (payload.target || payload.module || '').trim();
-
-  if (!target) {
-    console.warn('[MIDAS Assistant] open_module – missing target:', payload);
+  const normalized = normalizeModuleTarget(payload);
+  if (!normalized) {
+    logWarn('open_module - missing target');
     return;
   }
 
-  console.log('[MIDAS Assistant] OpenModule requested:', target);
+  logInfo(`OpenModule requested (${normalized.debug})`);
 
-  // TODO: Hier echtes UI-Routing verdrahten (z. B. AppModules.hub.openPanel(target)).
-  notify(`Ich öffne das Modul "${target}".`, 'info');
+  const opened = await triggerHubModule(normalized.moduleKey, normalized);
+  if (opened) {
+    const message =
+      normalized.message ||
+      (normalized.voice
+        ? 'Starte Sprachaufnahme.'
+        : `Ich öffne ${normalized.label}.`);
+    notify(message, 'info');
+  } else {
+    notify('Ich konnte das gewünschte Panel nicht öffnen.', 'warning');
+  }
 }
 
 async function handleShowStatus(payload, sb, notify) {
   const kind = (payload.kind || '').trim() || 'intake_today';
 
-  console.log('[MIDAS Assistant] ShowStatus requested:', kind);
+  logInfo('ShowStatus requested');
 
-  // TODO: Hier echte Status-Abfrage einbauen, z. B. via sb.api.intake.getTodayTotals().
-  // Vorerst nur konservatives Logging:
   try {
-    // Placeholder – später: echte DB-Abfrage + kurze Interpretation.
-    notify('Ich prüfe deinen aktuellen Status.', 'info');
+    notify('Ich pr?fe deinen aktuellen Status.', 'info');
   } catch (err) {
-    console.error('[MIDAS Assistant] show_status – error while reading status:', err);
+    logError('show_status failed', err);
     notify('Beim Lesen deines Status ist ein Fehler aufgetreten.', 'warning');
   }
 }
@@ -250,11 +314,11 @@ async function handleShowStatus(payload, sb, notify) {
 async function handleHighlight(payload, _sb, notify) {
   const target = (payload.target || '').trim();
   if (!target) {
-    console.warn('[MIDAS Assistant] highlight – missing target:', payload);
+    logWarn('highlight ? missing target');
     return;
   }
 
-  console.log('[MIDAS Assistant] Highlight requested:', target);
+  logInfo('Highlight requested');
 
   // TODO: Hier echtes UI-Highlighting verdrahten (CSS-Klasse, kurze Animation o.ä.).
   notify(`Ich markiere den Bereich "${target}".`, 'info');
@@ -267,24 +331,24 @@ async function handleHighlight(payload, _sb, notify) {
 async function handleAskConfirmation(payload, _sb, notify) {
   // Diese Action dient vor allem der Klarheit im Flow; die eigentliche
   // Frage stellt der Assistant bereits in seiner Text-/Voice-Antwort.
-  console.log('[MIDAS Assistant] AskConfirmation:', payload);
+  logInfo('AskConfirmation');
   // Kein direktes notify nötig – der sprachliche Teil kommt aus der KI.
 }
 
 async function handleCloseConversation(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] CloseConversation:', payload);
+  logInfo('CloseConversation');
   // TODO: Hier kannst du später den Voice-Loop explizit schließen (State reset etc.).
   notify('Das Gespräch ist beendet. Ich bin bereit, wenn du mich wieder brauchst.', 'info');
 }
 
 async function handleTransitionToPhotoMode(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] TransitionToPhotoMode:', payload);
+  logInfo('TransitionToPhotoMode');
   // TODO: Textchat-Panel + Kamera öffnen.
   notify('Wechsle in den Foto-Modus. Mach ein Bild deiner Mahlzeit.', 'info');
 }
 
 async function handleTransitionToTextChat(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] TransitionToTextChat:', payload);
+  logInfo('TransitionToTextChat');
   // TODO: Assistant-Textchat-Panel öffnen.
   notify('Wechsle in den Text-Chat.', 'info');
 }
@@ -301,13 +365,10 @@ async function handleSuggestIntake(payload, _sb, notify) {
   const label = (payload.label || '').trim() || 'Mahlzeit';
   const confidence = payload.confidence != null ? safeNumber(payload.confidence, NaN) : null;
 
-  console.log('[MIDAS Assistant] SuggestIntake received:', {
-    label,
-    waterMl,
-    saltG,
-    proteinG,
-    confidence
-  });
+  logInfo(
+    `SuggestIntake received for ${label} (water=${Number.isFinite(waterMl) ? waterMl : '-'} ml, ` +
+      `salt=${Number.isFinite(saltG) ? saltG : '-'} g, protein=${Number.isFinite(proteinG) ? proteinG : '-'} g)`
+  );
 
   // Die eigentliche Frage ("Soll ich das loggen?") stellt der Assistant,
   // hier geben wir nur optional ein kleines UI-Signal.
@@ -317,7 +378,7 @@ async function handleSuggestIntake(payload, _sb, notify) {
 async function handleConfirmIntake(payload, sb, notify) {
   // ConfirmIntake ist ein Wrapper um IntakeSave – entweder übernimmt er
   // direkt die Werte oder er greift auf den letzten Vorschlag zurück.
-  console.log('[MIDAS Assistant] ConfirmIntake:', payload);
+  logInfo('ConfirmIntake');
 
   // Standardfall: Payload enthält bereits intake_save-kompatible Felder.
   await handleIntakeSave(payload, sb, notify);
@@ -328,7 +389,7 @@ async function handleConfirmIntake(payload, sb, notify) {
 // ---------------------------------------------------------------------------
 
 async function handleSystemStatus(payload, sb, notify) {
-  console.log('[MIDAS Assistant] SystemStatus requested:', payload);
+  logInfo('SystemStatus requested');
 
   const online = typeof navigator !== 'undefined' ? navigator.onLine : null;
   const hasSupabase = !!sb;
@@ -359,7 +420,7 @@ async function handleSystemStatus(payload, sb, notify) {
 }
 
 async function handleReadTouchlog(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] ReadTouchlog requested:', payload);
+  logInfo('ReadTouchlog requested');
 
   const snapshot = readLatestTouchlogSnapshot();
   if (!snapshot) {
@@ -367,12 +428,12 @@ async function handleReadTouchlog(payload, _sb, notify) {
     return;
   }
 
-  console.log('[MIDAS Assistant] Touchlog snapshot:', snapshot);
+  logInfo('Touchlog snapshot read');
   notify('Ich habe den Touchlog geprüft.', 'info');
 }
 
 async function handleReadDiagnostics(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] ReadDiagnostics requested:', payload);
+  logInfo('ReadDiagnostics requested');
 
   const diag = readDiagnosticsSnapshot();
   if (!diag) {
@@ -380,12 +441,12 @@ async function handleReadDiagnostics(payload, _sb, notify) {
     return;
   }
 
-  console.log('[MIDAS Assistant] Diagnostics snapshot:', diag);
+  logInfo('Diagnostics snapshot read');
   notify('Ich habe die Diagnosedaten geprüft.', 'info');
 }
 
 async function handleReadBootstrapStatus(payload, _sb, notify) {
-  console.log('[MIDAS Assistant] ReadBootstrapStatus requested:', payload);
+  logInfo('ReadBootstrapStatus requested');
 
   const bootstrap = readBootstrapLogSnapshot();
   if (!bootstrap) {
@@ -393,7 +454,7 @@ async function handleReadBootstrapStatus(payload, _sb, notify) {
     return;
   }
 
-  console.log('[MIDAS Assistant] Bootstrap snapshot:', bootstrap);
+  logInfo('Bootstrap snapshot read');
   notify('Ich habe den Bootstrap-Status geprüft.', 'info');
 }
 
@@ -420,6 +481,94 @@ function safeNumber(val, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+async function handleIntakeSave(payload, sb, notify) {
+  logInfo('IntakeSave requested');
+  if (typeof sb?.saveIntakeTotalsRpc !== 'function') {
+    logWarn('saveIntakeTotalsRpc missing');
+    notify('Speichern nicht möglich – Supabase-API fehlt.', 'warning');
+    return;
+  }
+
+  const dayIso = normalizeDayIso(payload.dayIso || payload.day_iso);
+  const waterDelta = safeNumber(payload.water_ml, NaN);
+  const saltDelta = safeNumber(payload.salt_g, NaN);
+  const proteinDelta = safeNumber(payload.protein_g, NaN);
+
+  const baseTotals = await fetchCurrentIntakeTotals(sb, dayIso);
+  const totals = {
+    water_ml: normalizeTotal(baseTotals.water_ml, waterDelta),
+    salt_g: normalizeTotal(baseTotals.salt_g, saltDelta),
+    protein_g: normalizeTotal(baseTotals.protein_g, proteinDelta),
+  };
+
+  try {
+    await sb.saveIntakeTotalsRpc({ dayIso, totals });
+    notify('Ich habe die Mahlzeit gespeichert.', 'success');
+  } catch (err) {
+    logError('IntakeSave failed', err);
+    notify('Speichern fehlgeschlagen – bitte später erneut versuchen.', 'warning');
+    throw err;
+  }
+}
+
+function normalizeTotal(base, delta) {
+  const baseVal = Number.isFinite(base) ? base : 0;
+  const deltaVal = Number.isFinite(delta) ? delta : 0;
+  const sum = baseVal + deltaVal;
+  return sum < 0 ? 0 : sum;
+}
+
+function normalizeDayIso(value) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  return getTodayIso();
+}
+
+function getTodayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function fetchCurrentIntakeTotals(sb, dayIso) {
+  if (typeof sb?.loadIntakeToday !== 'function') {
+    return { water_ml: 0, salt_g: 0, protein_g: 0 };
+  }
+  const userId = await resolveUserId(sb);
+  if (!userId) {
+    return { water_ml: 0, salt_g: 0, protein_g: 0 };
+  }
+  try {
+    const result =
+      (await sb.loadIntakeToday({
+        user_id: userId,
+        dayIso,
+        reason: 'assistant',
+      })) || {};
+    return {
+      water_ml: Number(result.water_ml) || 0,
+      salt_g: Number(result.salt_g) || 0,
+      protein_g: Number(result.protein_g) || 0,
+    };
+  } catch (err) {
+    logWarn('loadIntakeToday failed, fallback to base totals');
+    return { water_ml: 0, salt_g: 0, protein_g: 0 };
+  }
+}
+
+async function resolveUserId(sb) {
+  if (!sb) return null;
+  if (typeof sb.getUserId === 'function') {
+    try {
+      const id = await sb.getUserId();
+      if (id) return id;
+    } catch (err) {
+      logWarn('getUserId via supabase failed');
+    }
+  }
+  const state = sb.state?.supabaseState;
+  return state?.user?.id || state?.lastUserId || null;
+}
+
 function defaultSupabaseAccessor() {
   if (typeof window === 'undefined') return null;
   return window.AppModules && window.AppModules.supabase
@@ -429,11 +578,11 @@ function defaultSupabaseAccessor() {
 
 function defaultNotify(msg, level = 'info') {
   // Später kannst du das mit deinem echten UI-Toast verbinden.
-  console.log(`[MIDAS Notify][${level}] ${msg}`);
+  logInfo(`[assistant-notify][${level}] ${msg}`);
 }
 
 function defaultOnError(err) {
-  console.error('[MIDAS Assistant] Action dispatch error:', err);
+  logError('Action dispatch error', err);
 }
 
 // ---------------------------------------------------------------------------
@@ -455,7 +604,7 @@ function readLatestTouchlogSnapshot() {
 
     return tryParseJson(raw);
   } catch (err) {
-    console.warn('[MIDAS Assistant] Failed to read touchlog from localStorage:', err);
+    logWarn('Failed to read touchlog from localStorage');
     return null;
   }
 }
@@ -475,7 +624,7 @@ function readBootstrapLogSnapshot() {
 
     return tryParseJson(raw);
   } catch (err) {
-    console.warn('[MIDAS Assistant] Failed to read bootstrap log from localStorage:', err);
+    logWarn('Failed to read bootstrap log from localStorage');
     return null;
   }
 }
@@ -498,7 +647,7 @@ function readDiagnosticsSnapshot() {
 
     return null;
   } catch (err) {
-    console.warn('[MIDAS Assistant] Failed to read diagnostics snapshot:', err);
+    logWarn('Failed to read diagnostics snapshot');
     return null;
   }
 }
@@ -510,4 +659,72 @@ function tryParseJson(raw) {
   } catch {
     return raw;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics logging helpers
+// ---------------------------------------------------------------------------
+
+const DEBUG_LOGS_ENABLED = (() => {
+  try {
+    if (typeof window === 'undefined') return false;
+    return !!window.AppModules?.config?.DEV_ALLOW_DEFAULTS;
+  } catch {
+    return false;
+  }
+})();
+
+function getDiagLogger() {
+  if (typeof window === 'undefined') return null;
+  const w = window;
+  return w.AppModules?.diagnostics?.diag || w.diag || null;
+}
+
+function formatError(err) {
+  if (!err) return '';
+  if (err instanceof Error) {
+    return `${err.message}${err.stack ? `\n${err.stack}` : ''}`;
+  }
+  if (typeof err === 'object') {
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
+function logWithLevel(level, message, err) {
+  const suffix = err ? ` ${formatError(err)}` : '';
+  const text = `[assistant-actions][${level}] ${message}${suffix}`;
+  const diagLogger = getDiagLogger();
+  diagLogger?.add?.(text);
+  if (!DEBUG_LOGS_ENABLED) return;
+  const consoleFn =
+    level === 'error'
+      ? console?.error?.bind(console)
+      : level === 'warn'
+        ? console?.warn?.bind(console)
+        : console?.info?.bind(console);
+  consoleFn?.(text, err);
+}
+
+function logInfo(message) {
+  logWithLevel('info', message);
+}
+
+function logWarn(message) {
+  logWithLevel('warn', message);
+}
+
+function logError(message, err) {
+  logWithLevel('error', message, err);
+}
+
+if (typeof window !== 'undefined') {
+  window.AppModules = window.AppModules || {};
+  const namespace = window.AppModules.assistantActions || {};
+  namespace.dispatchAssistantActions = dispatchAssistantActions;
+  window.AppModules.assistantActions = namespace;
 }

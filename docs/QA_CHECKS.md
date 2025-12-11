@@ -1,25 +1,201 @@
 
-## Phase 4 � MIDAS Orbit & Trendpilot (2025-11-23)
+## Phase 3.2 – Assistant Fotoanalyse (2025-12-05)
+
+**Scope:** Assistant-Panel Kamera/Galerie Workflow (short press Kamera, long press Galerie), Vision-Upload via `/midas-vision`, reine Darstellung (kein Speichern).
+
+**Smoke**
+- [ ] Kamera-Button **kurz tippen** → OS-Kamera öffnet; Foto aufnehmen, Senden. Erwartung: Foto-Bubble erscheint sofort mit Thumbnail + Text *„Analyse läuft …“*. Nach Serverantwort zeigt der Bubble Wasser/Salz/Protein und die MIDAS-Empfehlung.
+- [ ] **Langer Druck** (~650 ms) auf Kamera-Button → Galerie-/Datei-Dialog. Ausgewähltes Bild wird angezeigt wie oben.
+- [ ] Fehlerfall: Netzwerk deaktivieren oder `/midas-vision` blockieren → Bubble färbt sich rot, Text „Das Foto konnte nicht analysiert werden.“ + Button „Nochmal analysieren“.
+
+**Sanity**
+- [ ] Touch-Log meldet `[assistant-vision] analyse start/success/fail` maximal einmal pro Upload; keine zusätzlichen `[capture] refresh` Einträge.
+- [ ] Retry-Button verwendet denselben Snapshot erneut (kein erneuter Kamera-Dialog erforderlich).
+- [ ] Butler-Header (Intake-Pills & Terminliste) bleibt unverändert; kein zusätzlicher Snapshot-Request beim Foto-Upload.
+
+**Regression**
+- [ ] Textchat (Senden/Empfangen) funktioniert unverändert; Voice-Gate/Needle bleiben gesperrt solange `authState === 'unknown'`.
+- [ ] App-Performance auf Mobil: Foto-Bubble passt sich dem Viewport an (max 70 vw), keine horizontalen Scrollbars.
+- [ ] Kein Speichern: Nach Refresh sind keine zusätzlichen Intake-Werte vorhanden, nur Anzeige im Chat.
+
+---
+
+## Phase 4.1 ? Vitals & Doctor Panel (2025-12-06)
+
+**Scope:** Ein Orbit-Eintrag f?r Vitals + Buttons *Arzt-Ansicht* / *Diagramm* im Panel; Chart schlie?t zuerst zur?ck zur Liste.
+
+**Smoke**
+- [ ] Orbit zeigt nur noch einen Vitals-Button (Doctor-Orbit entf?llt). Tippen ?ffnet immer das Vitals-Panel.
+- [ ] Buttons *Arzt-Ansicht* und *Diagramm* unter Datum/Messzeitpunkt funktionieren: erster ? `requireDoctorUnlock()` + Liste, zweiter ? Guard + direktes Chart.
+- [ ] Chart schlie?en (X) blendet zuerst zur?ck zur Arzt-Liste; erst das zweite X kehrt zum Hub zur?ck.
+
+**Sanity**
+- [ ] `openDoctorPanel({ startMode })` akzeptiert `list`/`chart`; Touch-Log meldet `[hub] openDoctorPanel openFlow start ?` nur einmal je ?ffnung.
+- [ ] Abbruch des Guards (`unlock result=cancelled`) hinterl?sst kein offenes Panel.
+- [ ] Solange Doctor offen ist, blockiert das Hub-Lock weitere Orbit-Klicks (`body:has(.hub-panel.is-visible)` aktiv).
+- [ ] Fallback `forceClosePanel` sollte nicht auftauchen; falls doch ? Fail & Bug notieren.
+
+**Regression**
+- [ ] Capture-Saves (Blutdruck/K?rper) laufen unver?ndert; neue Buttons beeinflussen Formulare nicht.
+- [ ] Trendpilot-Block, Export JSON und Diagrammsteuerung funktionieren wie zuvor.
+- [ ] Andere Panels (Assistant, Appointments, Capture Intake) schlie?en normal; keine neuen ARIA-Warnungen in DevTools.
+
+---
+
+## Phase 4.2 - Termine & Butler (2025-12-06)
+
+**Scope:** Supabase-Termine (`appointments_v2`), Butler-Header Snapshot, Wiederholer + Sync-Events.
+
+**Smoke**
+- [ ] Orbit Süd-Ost öffnet das Termin-Panel; Speichern legt Eintrag in Supabase an und Karte erscheint unter „Kommende Termine“.
+- [ ] Butler-Header zeigt nach Panel-Save sofort denselben Termin (max. zwei Einträge). "Keine Termine geladen." nur bei leerer Tabelle.
+- [ ] Buttons *Erledigt*/*Zurücksetzen* sowie *Löschen* aktualisieren Kartenstatus ohne Fehl-Toast.
+
+**Sanity**
+- [ ] `appointments_v2` respektiert RLS: fremde Sessions lösen 403 aus, Touch-Log zeigt `[appointments] save failed …`.
+- [ ] Dropdown "Wiederholen" speichert `repeat_rule` (`none`/`monthly`/`annual`) und Karten zeigen den Modus im Metatext.
+- [ ] `appointments:changed` triggert `refreshAssistantContext()` (Insert/Delete/Statuswechsel), Butler aktualisiert ohne Panel.
+- [ ] Touch-Log enthält keinen Hinweis mehr auf Mock-Termine; Butler lädt maximal einmal pro Event.
+
+**Regression**
+- [ ] Panel-Lock/Scroll-Verhalten entspricht anderen Hub-Panels; Schließen (X) setzt Orbit zurück.
+- [ ] Assistant-Foto/Textchat bleiben unverändert (kein Zusatz-Refresh bei jeder Nachricht).
+- [ ] Mockdaten entfernt – nach Reload erscheinen ausschließlich echte Supabase-Einträge.
+
+---
+
+## Phase 4.3 - Health-Profil & Persona Layer (2025-12-07)
+
+**Scope:** Profil-Panel (Orbit Nord-West) ersetzt Hilfe, speichert Gesundheitsdaten in `user_profile`, Charts/Assistant lesen Kontext aus Supabase.
+
+**Smoke**
+- [ ] Orbit NW öffnet `#hubProfilePanel`. Formular speichert Name, Geburtsdatum, Größe, CKD-Stufe, Medikation, Salzlimit, Proteinlimit, Rauchstatus und Lifestyle-Note via Supabase. Nach dem Speichern erscheint der Datensatz im Abschnitt „Aktuelle Daten“.
+- [ ] Button **Aktualisieren** lädt das bestehende Profil erneut aus Supabase; Änderungen am Backend werden sofort angezeigt.
+- [ ] Charts reagieren auf Profiländerungen: Größe im Profil stark verändern (z. B. 220 cm) → BMI/WHtR springen sofort nach `profile:changed`.
+- [ ] Assistant-Butler (Intake-Pills + Termine + Profil) aktualisiert nach Speichern ohne Reload; DevTools loggt `[assistant-context] profile snapshot updated`.
+
+**Sanity**
+- [ ] Supabase RLS: andere Session versucht Profil zu speichern → 403, Touch-Log enthält `[profile] save failed 403`. Eigene Session kann Insert **und** Update per Upsert.
+- [ ] Dropdowns (CKD-Stufe, Rauchstatus) und Inputs behalten Theme (dunkle Schrift auf dunklem Hintergrund) sowie valide Default-Werte; invalides Proteinlimit (z. B. Text) wird mit Toast abgelehnt.
+- [ ] Event `profile:changed` feuert genau einmal pro erfolgreichem Save/Load. Charts hören darauf (`window.addEventListener('profile:changed', …)`) und loggen `[charts] profile change -> recompute`.
+- [ ] Assistant-Context nutzt ausschließlich echte Werte: Butler zeigt Profilhinweis nur, wenn Supabase-Daten vorhanden sind; keine Mock-Strings wie „Hausarzt – Kontrolle“ mehr, sobald Profil & Termine existieren.
+
+**Regression**
+- [ ] Termin-, Vitals- und Doctor-Panels verhalten sich unverändert; das entfernte Hilfe-Panel hinterlässt keine toten Orbit-Buttons.
+- [ ] Touch-Log bleibt sauber: `[profile] save start/done` maximal einmal, keine `[help]`-Einträge mehr.
+- [ ] Assistant Edge Functions (midas-assistant / midas-vision) akzeptieren weiterhin Requests auch wenn kein Profil gespeichert ist (Backend fällt auf Defaults zurück, kein 500er).
+
+---
+
+## Phase 4.4 - Hybrid Panel Animation / Hub Performance Mode (2025-12-08)
+
+**Scope:** Neue Panel-Keyframes für Mobile/Desktop, leichteres Orbit/Aura-Verhalten & Blur-Free Overlay auf Geräten <1025 px.
+
+**Smoke**
+- [ ] Desktop (>1024 px): Panel auf/zu zeigt die cineastische Animation (Squash/Grow ~500 ms); Backdrop bleibt mit Blur & Glow; Orbit dimmt weich mit Blur.
+- [ ] Mobile (<1025 px oder DevTools responsive): Panel öffnet/schließt in <250 ms (nur opacity/translate) ohne Blur & ohne stotternde Shadows; Orbit dimmt nur über opacity (kein Blur). Scrollen während Panel offen blockiert weiterhin Body.
+- [ ] Close-Button reagiert weich (Opacity/Scale) und Panel kehrt korrekt in Hub zurück – keine „hängenden“ Panels sichtbar.
+
+**Sanity**
+- [ ] `document.body.dataset.panelPerf` folgt Media Query (`mobile` bei ≤1024 px, `desktop` sonst). Manuelles Ändern der Fensterbreite löst Animation-Wechsel ohne Reload aus.
+- [ ] Touch-Log enthält weiterhin nur `[hub] openPanel…`/`[hub] close panel…` – keine zusätzlichen Debug-Einträge wegen Animationen.
+- [ ] Voice/Orbit-Aura: Bei offenem Panel auf Mobile keine Pulse-Animationen mehr (nur statischer Glow); Desktop behält Pulse.
+- [ ] Backdrop/Overlay verursachen keine ARIA/DevTools Warnungen (Cloudflare 500er aus Auth debug bleibt unabhängig).
+
+**Regression**
+- [ ] Andere Panels (Assistant, Termine, Profil, Vitals, Doctor) behalten ihre Layouts – nur Animationen wurden reduziert; Inhalte/Scroll bleiben gleich.
+- [ ] Panel-Lock (body overflow hidden) wirkt weiter auf beiden Breakpoints; keine doppelte Scrollbar.
+- [ ] CSS/JS Änderungen erzeugen keine unbenutzten Klassen oder Flash-of-unstyled Content beim Start.
+
+---
+
+## Phase 5.1/5.2 – Butler Suggest & Allowed Actions (2025-12-09)
+
+**Scope:** Suggest-Store + Confirm-Card, Follow-up Advice, Allowed-Actions-Helper mit Stage/Auth Guards.
+
+**Smoke**
+- [ ] Foto/Text-Analyse mit klarer Mahlzeit erzeugt eine Suggest-Card (Titel, Werte, Empfehlung, Buttons). **Ja** schreibt eine Chat-Nachricht „Alles klar – ich habe … vorgemerkt“, schließt die Card und zeigt direkt im Anschluss den Resttag-Hinweis (Salz/Protein/Termin). **Nein** blendet Card aus, Touchlog meldet `[assistant-allowed] blocked action=intake_save source=suggestion-card info=user-dismiss`.
+- [ ] Manueller Intake-Save (Capture Panel) oder Chat-Button `Trag 500 ml ein` ruft Allowed Action `intake_save` → nach Erfolg erscheint dieselbe Follow-up Message (auch ohne Suggestion). `assistant:action-success` ist genau einmal im DevTools Event Log sichtbar.
+- [ ] Voice Long-Press → „Speichere 0,5 Liter Wasser“ löst `assistant:action-request` (`open_module` alias voice) + Suggest-Flow aus. Bestätigung via Voice oder Button feuert denselben Save-Pfad; Needle bleibt gesperrt, solange Stage/Auth unbekannt sind.
+
+**Sanity**
+- [ ] Touchlog zeigt pro Allowed Action deterministische Einträge:
+  - `[assistant-allowed] start action=intake_save source=suggestion-card`
+  - `[assistant-allowed] success action=intake_save source=suggestion-card`
+  - `[assistant-allowed] blocked action=open_module source=voice info=auth-unknown`
+  - `[assistant-allowed] error action=intake_save info=dispatcher-missing`
+- [ ] `assistantSuggestStore` Snapshot aktualisiert bei `appointments:changed` und `profile:changed` – Butler-Header + Dayplan nutzen dieselben Werte (Diag: `[assistant-context] snapshot done reason=appointments:changed`).
+- [ ] `assistant:action-request` CustomEvents (z.B. Buttons im Chat) laufen durch `runAllowedAction`; `executeAllowedAction` validiert Stage/Auth und nutzt Supabase-API. Keine Aktion läuft außerhalb des Helpers.
+- [ ] `open_module` versteht Aliase („Termine“, „Personaldaten“, „Sprachchat“) → Orbit-Button klickt, Touchlog `[assistant-allowed] success action=open_module source=chat`.
+
+**Regression**
+- [ ] Suggest-Card verschwindet bei Panel-Wechsel oder Store-Dismiss; kein persistenter Overlay.
+- [ ] Keine zusätzlichen `[capture] refresh …` durch Suggest-Flow; `refreshAssistantContext` läuft genau einmal pro Save/Folgeevent.
+- [ ] Voice und Textchat teilen sich denselben Guard – Auth-Drop während Suggest-Confirm schließt Voice sofort und Card bleibt blockiert, bis Session wieder gültig ist.
+
+---
+
+## Phase 5.3 – Kontextuelle Empfehlungen (2025-12-09)
+
+**Scope:** Day-Plan Helper + Follow-up Advice nach jedem Intake-Save.
+
+**Smoke**
+- [ ] Suggest-Card „Ja“ → Chat zeigt nach Speichern einen Mini-Report (Salz/Protein-Budget, nächster Termin). Gleiche Nachricht erscheint, wenn Capture Intake speichert oder Voice (Long-Press) einen Save bestätigt.
+- [ ] Voice-Konversation aktiv: Nach Save wird derselbe Text per TTS vorgelesen, ohne dass zusätzliche Aktionen nötig sind.
+
+**Sanity**
+- [ ] `generateDayPlan()` nutzt Profil-Defaults (5 g Salz, 110 g Protein), wenn keine Limits gesetzt sind – Logs zeigen keine `NaN`.
+- [ ] Termin-Erinnerung nutzt den nächsten Termin in den kommenden 24 h; Format entspricht `formatAppointmentDateTime`.
+- [ ] Snapshot-Events (`appointments:changed`, `profile:changed`) aktualisieren den Day-Plan Output unmittelbar (kein alter Termin/Limit).
+
+**Regression**
+- [ ] Keine zusätzliche Suggest-Card entsteht; Chat erhält nur die Follow-up-Meldung, Card bleibt geschlossen.
+- [ ] `assistant:voice-request` feuert nur bei Warnungen während Voice-Modus; ohne Voice passiert nichts außer Text.
+- [ ] Touchlog bleibt unverändert (keine neuen `[assistant-dayplan]` Spam-Einträge).
+
+---
+
+## Phase 5.4 – Optionaler Voice-Handschlag (2025-12-09)
+
+**Scope:** Long-Press Trigger, Voice-Gate UI, kein Always-On.
+
+**Smoke**
+- [ ] Kurzer Tap auf den Assistant-Button öffnet den Textchat. Long-Press (~650 ms) startet den Voice-Recorder (Needle zeigt `listening`, Orbit pulsiert), Aufnahme endet automatisch nach Stille.
+- [ ] Auth „unknown“ oder Boot < INIT_UI: Voice-Button zeigt `is-voice-locked` (grau, Tooltip „Voice aktiviert sich nach dem Start“), Long-Press startet keine Aufnahme, Chat bleibt gesperrt bis Auth fertig. Nach Login verschwindet der Lock ohne Reload.
+
+**Sanity**
+- [ ] Touchlog/Diag: Voice-Blockade loggt `[hub] voice trigger blocked (auth-check)` o. ä., TTS/Recorder starten erst nachdem `assistantAllowedActions` Stage/Auth freigibt.
+- [ ] `AppModules.hub.getVoiceGateStatus()` liefert `{ allowed:boolean, reason }`, `onVoiceGateChange` feuert bei Stage/Auth-Änderungen (MutationObserver). VAD (`MidasVAD`) stoppt sofort, wenn Gate wieder gelockt wird.
+- [ ] Voice-Transcripts werden wie Textchat behandelt (`assistant:action-request` → Suggest-Card/Confirm). Es gibt keinen Pfad, der direkt `intake_save` ausführt, ohne Confirm-Layer.
+
+**Regression**
+- [ ] Voice-Button `aria-disabled` wechselt mit Gate und wirkt sich nicht auf andere Orbit-Buttons aus.
+- [ ] Keine zusätzlichen `[assistant-actions]` Einträge beim bloßen Long-Press ohne Aufnahme.
+- [ ] Recorder/TTS verhalten sich unverändert auf Desktop und Mobile; kein Always-On/VAD-Streaming aktiv (nur Long-Press).
+
+## Phase 4  MIDAS Orbit & Trendpilot (2025-11-23)
 
 **Scope:** Neuer MIDAS Orbit Hub (Aura/Lens/Stage), panel locking, biometrischer Doctor-Unlock, Trendpilot-Schweregrade (Capture + Arzt), Diagnostics-Layer-Flag und Supabase-APIs (fetchSystemCommentsRange, setSystemCommentDoctorStatus).
 
 **Smoke**
-- [x] Desktop & Android: #captureHub zeigt den Orbit mittig, Aura pulsiert bei Hover/Touch, Orbit-Buttons haben keine sichtbaren Kreise aber reagieren via Sr-Labels. Panels (Intake/Vitals/Doctor) zentrieren sich, hub-panel-zoom-in/out laufen beim �ffnen/Schlie�en mit identischer Dauer/Easing, Backdrop dimmt sanft.
-- [x] Capture-Header Trendpilot-Pill: WARN/CRIT Tage blenden Datum + Kurztext ein; Tage ohne Meldung verstecken die Pill vollst�ndig. Logging ([trendpilot] severity=...) erscheint einmal pro Tag.
-- [x] Doctor Trendpilot Block: Alle Meldungen in Von/Bis erscheinen (Datum, Text, Status). Buttons �Geplant�, �Erledigt�, �Zur�cksetzen� schreiben doctorStatus in Supabase und UI markiert den aktiven Button.
-- [x] Chart Overlays: Trendpilot-B�nder (gelb/rot) rendern nur an WARN/CRIT Tagen, Legende erg�nzt Swatches, Tooltips zeigen ESC-Farben f�r MAP/Pulsdruck, KPI-Pillen sind synchron.
-- [x] Guard Flow: Erster Klick auf Arzt-Ansicht ? equireDoctorUnlock() (PIN/Biometrie) ? Panel �ffnet sich automatisch. Weitere Klicks nutzen uthGuardState ohne erneute Abfrage; ESC/Escape schlie�t Panel.
-- [x] Diagnostics Flag: DIAGNOSTICS_ENABLED=false deaktiviert pp/diagnostics/* (nur Stub-Logs), 	rue leitet diag.add, ecordPerfStat, Panel-Toggles an Layer weiter.
+- [x] Desktop & Android: #captureHub zeigt den Orbit mittig, Aura pulsiert bei Hover/Touch, Orbit-Buttons haben keine sichtbaren Kreise aber reagieren via Sr-Labels. Panels (Intake/Vitals/Doctor) zentrieren sich, hub-panel-zoom-in/out laufen beim ffnen/Schlieen mit identischer Dauer/Easing, Backdrop dimmt sanft.
+- [x] Capture-Header Trendpilot-Pill: WARN/CRIT Tage blenden Datum + Kurztext ein; Tage ohne Meldung verstecken die Pill vollstndig. Logging ([trendpilot] severity=...) erscheint einmal pro Tag.
+- [x] Doctor Trendpilot Block: Alle Meldungen in Von/Bis erscheinen (Datum, Text, Status). Buttons Geplant, Erledigt, Zurcksetzen schreiben doctorStatus in Supabase und UI markiert den aktiven Button.
+- [x] Chart Overlays: Trendpilot-Bnder (gelb/rot) rendern nur an WARN/CRIT Tagen, Legende ergnzt Swatches, Tooltips zeigen ESC-Farben fr MAP/Pulsdruck, KPI-Pillen sind synchron.
+- [x] Guard Flow: Erster Klick auf Arzt-Ansicht ? 
+equireDoctorUnlock() (PIN/Biometrie) ? Panel ffnet sich automatisch. Weitere Klicks nutzen uthGuardState ohne erneute Abfrage; ESC/Escape schliet Panel.
+- [x] Diagnostics Flag: DIAGNOSTICS_ENABLED=false deaktiviert pp/diagnostics/* (nur Stub-Logs), 	rue leitet diag.add, 
+ecordPerfStat, Panel-Toggles an Layer weiter.
 
 **Sanity**
 - Panel-Lock verhindert Body-Scroll & Orbit-Klicks solange .hub-panel.is-visible; ody:has Regeln arbeiten in allen modernen Browsern, Mobilscroll springt nach Close nicht.
-- CSS-Variablen --midas-aura-boost treiben Aura-Brightening unabh�ngig von DOM-Position; Touch auf Mobil l�st denselben Boost aus wie Hover.
+- CSS-Variablen --midas-aura-boost treiben Aura-Brightening unabhngig von DOM-Position; Touch auf Mobil lst denselben Boost aus wie Hover.
 - Doctor-Modul ruft setSystemCommentDoctorStatus (Plan/Done/Reset) nur bei Statuswechseln auf; Fehler zeigen Toast + Log, UI revertiert Button-Highlight.
-- Trendpilot API Fallback: wenn fetchSystemCommentsRange fehlschl�gt ? Chart/B�nder zeigen Placeholder, Capture-Pill bleibt leer, diag-Log [trendpilot] bands failed.
+- Trendpilot API Fallback: wenn fetchSystemCommentsRange fehlschlgt ? Chart/Bnder zeigen Placeholder, Capture-Pill bleibt leer, diag-Log [trendpilot] bands failed.
 - Guard/Resume: Visibility/PageShow/Focus triggern SupabaseAPI.resumeFromBackground, Trendpilot-Pill + Orbit behalten Zustand nach Resume.
 
 **Regression**
-- Capture-Saves, Charts, Arzt-Daily/Befunde, CSV/JSON-Export laufen unver�ndert; Legacy QA-Checks (Phase 0�3, v0.x�v1.7.x) bleiben weiter unten als Archiv bestehen.
+- Capture-Saves, Charts, Arzt-Daily/Befunde, CSV/JSON-Export laufen unverndert; Legacy QA-Checks (Phase 03, v0.xv1.7.x) bleiben weiter unten als Archiv bestehen.
 ## Phase 2 – Assets→App Smoke (2025-11-16)
 
 **Scope:** pp/app.css, pp/core/{diag,utils,config,capture-globals}, pp/supabase/index.js (inkl. boot-auth Import-Pfad) – Ziel: sicherstellen, dass Capture/Doctor/Chart/Trendpilot mit neuen Pfaden laufen, bevor Legacy-Assets gelöscht werden.
@@ -27,12 +203,35 @@
 - [x] **Capture View:** Headless Edge (msedge --headless --dump-dom) zeigt vollständiges Capture-Markup (Accordion, Buttons, Diagnose-Panel). Keine Script-Errors; Buttons/Toggles vorhanden.
 - [x] **Doctor View + Trendpilot:** DOM-Dump enthält .doctor-view, Trendpilot-Bereich (Trendpilot-Panel, Chart-Button). Tabs aktiv laut Dump (ARIA).
 - [x] **Charts:** SVG-Panel + KPI-Leiste vorhanden, Chart-Skripte geladen; Trendpilot-Bänder (	rendpilot-band) sichtbar.
+### Auth Gate / Boot Overlay
+- [ ] **Pre-render lock:** Beim Reload zeigt das Bootoverlay `Supabase pr?ft Session ...`, solange `authState === 'unknown'`. `body.auth-unknown` dimmt App (#appMain/Tabs/Hub) und blockiert Klicks.
+- [ ] **Slow Supabase:** DevTools Network Slow 3G ? Reload. Erwartung: Keine Interaktion m?glich, Orbit/HUB Buttons reagieren erst nach Supabase-Entscheid (`auth`/`unauth`).
+- [ ] **Message switch:** Nach Entscheid meldet Bootoverlay `Session ok ? MIDAS entsperrt.` oder `Nicht angemeldet ? Login erforderlich.` und entfernt `body.auth-unknown`.
+- [ ] **Voice gate sichtbar:** Voice-Nadel bleibt gedimmt/gesperrt (`body.voice-locked`, Tooltip „Voice aktiviert sich nach dem Start“), solange bootFlow < IDLE oder `authState === 'unknown'`. Diag loggt `[voice] gate locked/unlocked`.
+- [ ] **Throttle check:** Network „Slow 3G“, Reload → Klick auf den Voice-Button erzeugt nur `[voice] blocked (auth)` und kein Mikrofon-Prompt.
+- [ ] **Auth drop mitten im Mic:** Voice-Session starten, anschliessend Supabase-Session in anderem Tab beenden. Erwartung: Aufnahme/VAD stoppen sofort, Needle relockt, Assistant meldet „Voice deaktiviert – bitte warten“, diag zeigt `[vad] stop due to voice gate lock`.
+
 - [x] **Supabase/Auth:** ssets/js/boot-auth.js importiert ../../app/supabase/index.js; window.SupabaseAPI per headless Dump sichtbar. Login-Overlay DOM vorhanden.
 - [x] **Static-Server-Probe:** python -m http.server 8765 + Invoke-WebRequest http://127.0.0.1:8765/app/app.css liefert HTTP 200 → GitHub-Pages-Parität.
 - [x] **Parity-Hashes:** Compare-Object über alte/neue CSS/JS-Paare → keine Diff; Ergebnis in QA_Notes dokumentiert.
 
----
+ ---
 
+## Phase 0.5 – Touchlog Determinism (2025-12-04)
+
+**Scope:** Sicherstellen, dass der Touch-Log ab Phase 0.5 deterministisch bleibt (ein Start-/Ende-Paar pro Reason, aggregierte `[auth] request …`-Zeilen, keine Debug-Spam-Blöcke).
+
+**Smoke**
+- [ ] **Cold Boot:** Diag-Panel öffnen, App neu laden. Erwartung: ein `Boot: …`-Summary sowie je Reason (`boot`, `auth:login`, `tab:capture`) genau ein `[capture] refresh start …` und `… done …`; Mehrfachtrigger dürfen höchstens als `(xN)` am Ende erscheinen.
+- [ ] **Manuelles Refresh:** Datum wechseln oder `window.requestUiRefresh({ reason: 'qa:manual', doctor: true, chart: true })` ausführen. Touch-Log darf nur ein `[ui] refresh start/end reason=qa:manual` plus je Modul ein Refresh-Paar loggen.
+- [ ] **Resume:** Tab in den Hintergrund schicken, ≥3 s warten, zurückkehren. Erwartung: `Resume: start/done` + genau ein `[capture] refresh reason=resume …`; `[auth] request …` erscheint nur aggregiert (`status=200 avg=… (xN)`).
+
+**Sanity**
+- [ ] `[conf] getConf` und `[auth] getUserId` loggen pro Boot/Resume-Zyklus nur das erste `start`; nach erfolgreichem `done` bleiben Folgeaufrufe stumm.
+- [ ] `[auth] request …` erzeugt pro Tag eine Startzeile und einen Endeintrag mit Durchschnittsdauer; Fehlerfälle (status ≠ 200) loggen einmalig den Status inkl. Dauer/Grund.
+- [ ] Voice-/Hub-Actions schreiben ausschließlich Benutzeraktionen in den Touch-Log. Debug-Spam ist hinter `LOG_HUB_DEBUG` bzw. `DEBUG_TOUCHLOG` deaktiviert.
+
+---
 
 ## v0.1.0 - Prototype
 
@@ -1058,4 +1257,4 @@ Regression
 
 **Checks**
 - Diagnostics-Flag: `DIAGNOSTICS_ENABLED=false` (Config oder `data-diagnostics-enabled`) zwingt `app/core/diag.js` in den Stub-Modus; die neuen `app/diagnostics/{logger,perf,monitor}.js` melden dann nur den Logger-Boot (keine Heartbeats).
-- Diagnostics-Layer Forwarding: Bei aktivem Flag landen `diag.add`-Events zus�tzlich in `appModules.diagnosticsLayer.logger.history`, `recordPerfStat` aktualisiert `diagnosticsLayer.perf.snapshot(...)` und das �ffnen/Schlie�en des Diagnose-Panels toggelt `diagnosticsLayer.monitor` inklusive Heartbeat.
+- Diagnostics-Layer Forwarding: Bei aktivem Flag landen `diag.add`-Events zustzlich in `appModules.diagnosticsLayer.logger.history`, `recordPerfStat` aktualisiert `diagnosticsLayer.perf.snapshot(...)` und das ffnen/Schlieen des Diagnose-Panels toggelt `diagnosticsLayer.monitor` inklusive Heartbeat.

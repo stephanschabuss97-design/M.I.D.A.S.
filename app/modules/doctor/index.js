@@ -15,9 +15,65 @@
 (function(global){
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const getSupabaseState = () => getSupabaseApi()?.supabaseState || {};
+  const isAuthReady = () => getSupabaseState()?.authState !== 'unknown';
+  const isStageReady = () => {
+    const bootFlow = global.AppModules?.bootFlow;
+    if (!bootFlow?.isStageAtLeast) return isAuthReady();
+    return bootFlow.isStageAtLeast('INIT_MODULES') && isAuthReady();
+  };
+  const DEBUG_DOCTOR_LOGS =
+    typeof appModules?.config?.DEV_ALLOW_DEFAULTS === 'boolean'
+      ? appModules.config.DEV_ALLOW_DEFAULTS
+      : false;
+  const logDoctorConsole = (level, ...args) => {
+    if (!DEBUG_DOCTOR_LOGS) return;
+    try {
+      global.console?.[level]?.(...args);
+    } catch (_) {
+      /* noop */
+    }
+  };
   let __doctorScrollSnapshot = { top: 0, ratio: 0 };
+  const doctorRefreshLogInflight = new Map();
+  const doctorRefreshKey = (reason, from, to) =>
+    `${reason || 'manual'}|${from || 'n/a'}|${to || 'n/a'}`;
+  const logDoctorRefreshStart = (reason, from, to) => {
+    const key = doctorRefreshKey(reason, from, to);
+    const entry = doctorRefreshLogInflight.get(key);
+    if (entry) {
+      entry.count += 1;
+      return key;
+    }
+    doctorRefreshLogInflight.set(key, { count: 1 });
+    diag.add?.(
+      `[doctor] refresh start reason=${reason} range=${from || 'n/a'}..${to || 'n/a'}`
+    );
+    return key;
+  };
+  const logDoctorRefreshEnd = (reason, from, to, status = 'done', detail, severity) => {
+    const key = doctorRefreshKey(reason, from, to);
+    const entry = doctorRefreshLogInflight.get(key);
+    doctorRefreshLogInflight.delete(key);
+    const count = entry?.count || 1;
+    const suffix = count > 1 ? ` (x${count})` : '';
+    const extra = detail ? ` – ${detail}` : '';
+    const opts = severity ? { severity } : undefined;
+    diag.add?.(
+      `[doctor] refresh ${status} reason=${reason} range=${from || 'n/a'}..${to || 'n/a'}${extra}${suffix}`,
+      opts
+    );
+  };
   const getSupabaseApi = () => global.AppModules?.supabase || {};
-  const toast = global.toast || appModules.ui?.toast || ((msg) => console.info('[doctor]', msg));
+  const toast =
+    global.toast ||
+    appModules.ui?.toast ||
+    ((msg) => {
+      try {
+        diag.add?.(`[doctor:toast] ${msg}`);
+      } catch (_) {}
+      logDoctorConsole('info', '[doctor]', msg);
+    });
   const escapeAttr = (value = '') =>
     String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] || ch));
   const TRENDPILOT_SEVERITY_META = {
@@ -36,8 +92,8 @@
 
   // SUBMODULE: access-control @internal - Unlock- und Authentifizierungslogik
   const fallbackRequireDoctorUnlock = async () => {
-    diag.add?.('[doctor] requireDoctorUnlock missing – blocking access');
-    console.warn('[doctor] requireDoctorUnlock not available; denying unlock');
+    diag.add?.('[doctor] requireDoctorUnlock missing - blocking access');
+    logDoctorConsole('warn', '[doctor] requireDoctorUnlock not available; denying unlock');
     return false;
   };
   const getAuthGuardState = () => {
@@ -62,9 +118,9 @@
     const detail = err?.message || err;
     diag.add?.(`[doctor] ${msg}: ${detail}`);
     if (err) {
-      console.error(`[doctor] ${msg}`, err);
+      logDoctorConsole('error', `[doctor] ${msg}`, err);
     } else {
-      console.error(`[doctor] ${msg}`);
+      logDoctorConsole('error', `[doctor] ${msg}`);
     }
   };
 
@@ -186,7 +242,8 @@
 const __t0 = performance.now();
 
 // SUBMODULE: renderDoctor @extract-candidate - orchestrates gated render flow, fetches days, manages scroll state
-async function renderDoctor(){
+async function renderDoctor(triggerReason = 'manual'){
+  if (!isStageReady()) return;
   const host = $("#doctorView");
   if (!host) return;
 
@@ -234,15 +291,23 @@ async function renderDoctor(){
     return d.toLocaleDateString("de-AT", { weekday:"short", day:"2-digit", month:"2-digit", year:"numeric" });
   };
 
-  // Zeitraum lesen
-  const from = $("#from").value;
-  const to   = $("#to").value;
+  const fromInput = $("#from");
+  const toInput = $("#to");
+  const from = fromInput?.value || '';
+  const to = toInput?.value || '';
   if (!from || !to){
     host.innerHTML = `<div class="small u-doctor-placeholder">Bitte Zeitraum waehlen.</div>`;
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
   }
+  logDoctorRefreshStart(triggerReason, from, to);
+  let doctorRefreshLogClosed = false;
+  const closeDoctorRefreshLog = (status = 'done', detail, severity) => {
+    if (doctorRefreshLogClosed) return;
+    doctorRefreshLogClosed = true;
+    logDoctorRefreshEnd(triggerReason, from, to, status, detail, severity);
+  };
 
   //  Server lesen  Tagesobjekte
   let daysArr = [];
@@ -253,6 +318,7 @@ async function renderDoctor(){
     host.innerHTML = `<div class="small u-doctor-placeholder" data-error="doctor-fetch-failed">Fehler beim Laden aus der Cloud.</div>`;
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
+    closeDoctorRefreshLog('error', err?.message || err, 'error');
     return;
   }
 
@@ -392,12 +458,14 @@ async function renderDoctor(){
       });
     });
   }
+  closeDoctorRefreshLog();
 }
 
 
 // --- Arzt-Export ---
 // SUBMODULE: exportDoctorJson @internal - triggers download (future: route via buildDoctorSummaryJson @extract-candidate @public)
 async function exportDoctorJson(){
+  if (!isStageReady()) return;
   try {
     const logged = await isLoggedInFast();
     if (!logged) {
@@ -405,7 +473,8 @@ async function exportDoctorJson(){
       // Diagnostics only: export still runs so auth wrapper can trigger re-login if needed.
     }
   } catch(err) {
-    console.error('isLoggedInFast check failed', err);
+    diag.add?.('[doctor] export auth check failed: ' + (err?.message || err));
+    logDoctorConsole('error', '[doctor] export auth check failed', err);
   }
   if (!isDoctorUnlockedSafe()) {
     setAuthPendingAfterUnlock('export');
@@ -421,8 +490,44 @@ async function exportDoctorJson(){
     renderDoctor,
     exportDoctorJson
   };
-  appModules.doctor = Object.assign({}, appModules.doctor, doctorApi);
-  global.AppModules = appModules;
-  global.renderDoctor = renderDoctor;
-  global.exportDoctorJson = exportDoctorJson;
+
+  function bindHubDoctorCloseButton() {
+    try {
+      const doc = global.document;
+      if (!doc) return;
+      const panel = doc.getElementById('hubDoctorPanel');
+      if (!panel) return;
+      const btn = panel.querySelector('[data-panel-close]');
+      if (!btn || btn.dataset.hubDoctorCloseBound === '1') return;
+      btn.dataset.hubDoctorCloseBound = '1';
+      btn.addEventListener('click', (event) => {
+        const hub = global.AppModules?.hub;
+        const closeFn = hub?.closePanel;
+        if (typeof closeFn !== 'function') {
+          diag.add?.('[doctor] hub.closePanel missing');
+          return;
+        }
+        let closed = closeFn('doctor');
+        if (!closed && typeof hub?.forceClosePanel === 'function') {
+          diag.add?.('[doctor] closePanel fallback -> forceClosePanel');
+          closed = hub.forceClosePanel('doctor', { instant: true });
+        }
+        if (closed) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, { capture: true });
+    } catch (_) {
+      /* noop */
+    }
+  }
+
+  if (global.document?.readyState === 'loading') {
+    global.document.addEventListener('DOMContentLoaded', bindHubDoctorCloseButton, { once: true });
+  } else {
+    bindHubDoctorCloseButton();
+  }
+
+  appModules.doctor = appModules.doctor || {};
+  Object.assign(appModules.doctor, doctorApi);
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -17,7 +17,13 @@
   const getSupabaseApi = () => global.AppModules?.supabase || {};
   const getSupabaseState = () => getSupabaseApi().supabaseState || null;
   const getAuthState = () => getSupabaseState()?.authState || 'unauth';
+  const isAuthReady = () => getAuthState() !== 'unknown';
   const wasRecentlyLoggedIn = () => Boolean(getSupabaseState()?.lastLoggedIn);
+  const isHandlerStageReady = () => {
+    const bootFlow = global.AppModules?.bootFlow;
+    if (!bootFlow?.isStageAtLeast) return isAuthReady();
+    return bootFlow.isStageAtLeast('INIT_MODULES') && isAuthReady();
+  };
 
   const MAX_WATER_ML = 6000;
   const MAX_SALT_G = 30;
@@ -41,6 +47,33 @@
   const getTrendpilotSeverityMeta = (severity) => {
     if (!severity) return null;
     return TREND_PILOT_SEVERITY_META[severity] || null;
+  };
+  const captureRefreshLogInflight = new Map();
+  const captureRefreshKey = (reason, dayIso) =>
+    `${reason || 'manual'}|${dayIso || 'unknown'}`;
+  const logCaptureRefreshStart = (reason, dayIso) => {
+    const key = captureRefreshKey(reason, dayIso);
+    const entry = captureRefreshLogInflight.get(key);
+    if (entry) {
+      entry.count += 1;
+      return key;
+    }
+    captureRefreshLogInflight.set(key, { count: 1 });
+    diag.add?.(`[capture] refresh start reason=${reason} day=${dayIso}`);
+    return key;
+  };
+  const logCaptureRefreshEnd = (reason, dayIso, status = 'done', detail, severity) => {
+    const key = captureRefreshKey(reason, dayIso);
+    const entry = captureRefreshLogInflight.get(key);
+    captureRefreshLogInflight.delete(key);
+    const count = entry?.count || 1;
+    const suffix = count > 1 ? ` (x${count})` : '';
+    const extra = detail ? ` – ${detail}` : '';
+    const opts = severity ? { severity } : undefined;
+    diag.add?.(
+      `[capture] refresh ${status} reason=${reason} day=${dayIso}${extra}${suffix}`,
+      opts
+    );
   };
 
   const formatTrendpilotDay = (dayIso) => {
@@ -188,7 +221,10 @@
     }
 
     try {
-      await refreshCaptureIntake();
+      const normalizedSource = typeof source === 'string' && source.trim() ? source.trim() : '';
+      await refreshCaptureIntake({
+        reason: normalizedSource || (force ? 'force' : 'auto')
+      });
     } catch(_) {}
 
     AppModules.captureGlobals.setLastKnownToday(todayIso);
@@ -326,13 +362,69 @@
     }
   }, 150);
 
+  const cloneIntakeTotals = (source) => ({
+    water_ml: Number(source?.water_ml) || 0,
+    salt_g: Number(source?.salt_g) || 0,
+    protein_g: Number(source?.protein_g) || 0
+  });
+
+  function getCaptureIntakeSnapshot(){
+    const dayIso = captureIntakeState.dayIso || todayStr();
+    return {
+      dayIso,
+      logged: !!captureIntakeState.logged,
+      totals: cloneIntakeTotals(captureIntakeState.totals || {})
+    };
+  }
+
+  async function fetchTodayIntakeTotals(options = {}){
+    const todayIso = todayStr();
+    const stateDay = captureIntakeState.dayIso || '';
+    const hasFreshData =
+      stateDay === todayIso &&
+      captureIntakeState.totals &&
+      typeof captureIntakeState.totals === 'object';
+
+    if (!options.forceRefresh && hasFreshData) {
+      return getCaptureIntakeSnapshot();
+    }
+
+    try {
+      await refreshCaptureIntake(options.reason || 'assistant:intake-header');
+    } catch (err) {
+      diag.add?.('[capture] fetchTodayIntakeTotals failed: ' + (err?.message || err));
+    }
+
+    return getCaptureIntakeSnapshot();
+  }
+
   // SUBMODULE: refreshCaptureIntake @extract-candidate - laedt Intake-Daten und synchronisiert Pills/UI
-  async function refreshCaptureIntake(){
+  const normalizeRefreshReason = (value, fallback = 'manual') => {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (value && typeof value === 'object' && typeof value.reason === 'string' && value.reason.trim()) {
+      return value.reason.trim();
+    }
+    return fallback;
+  };
+
+  async function refreshCaptureIntake(reasonOrOptions){
+    const refreshReason = normalizeRefreshReason(reasonOrOptions, 'manual');
     const wrap = document.getElementById('cap-intake-wrap');
-    if (!wrap) return;
     const dayIso = document.getElementById('date')?.value || todayStr();
-    captureIntakeState.dayIso = dayIso;
-    clearCaptureIntakeInputs();
+    logCaptureRefreshStart(refreshReason, dayIso);
+    let refreshLogClosed = false;
+    const closeRefreshLog = (status = 'done', detail, severity) => {
+      if (refreshLogClosed) return;
+      refreshLogClosed = true;
+      logCaptureRefreshEnd(refreshReason, dayIso, status, detail, severity);
+    };
+    if (!wrap) {
+      closeRefreshLog('skipped', 'capture wrapper missing');
+      return;
+    }
+    try {
+      captureIntakeState.dayIso = dayIso;
+      clearCaptureIntakeInputs();
 
   const logged = await isLoggedInFast();
   // Unknown-Phase: so tun, als ob weiter eingeloggt (keine Sperre!)
@@ -344,10 +436,14 @@
     setCaptureIntakeDisabled(true);
     updateCaptureIntakeStatus();
     try{ __lsTotals = { water_ml: 0, salt_g: 0, protein_g: 0 }; updateLifestyleBars(); }catch(_){ }
+    closeRefreshLog('skipped', 'auth required');
     return;
   }
 
   setCaptureIntakeDisabled(false);
+  let refreshStatus = 'done';
+  let refreshDetail = '';
+  let refreshSeverity;
   try{
     const uid = await getUserId();
     // Unknown-Phase: UID kann transient null sein -> NICHT sperren
@@ -356,7 +452,7 @@
       captureIntakeState.totals = { water_ml: 0, salt_g: 0, protein_g: 0 };
       setCaptureIntakeDisabled(true);
     } else {
-        const totals = await loadIntakeToday({ user_id: uid, dayIso });
+        const totals = await loadIntakeToday({ user_id: uid, dayIso, reason: refreshReason });
         captureIntakeState.totals = totals || { water_ml: 0, salt_g: 0, protein_g: 0 };
         captureIntakeState.logged = true;
         try{ __lsTotals = captureIntakeState.totals; updateLifestyleBars(); }catch(_){ }
@@ -364,17 +460,27 @@
     }catch(e){
       captureIntakeState.totals = { water_ml: 0, salt_g: 0, protein_g: 0 };
       try {
-        diag.add?.('Capture intake load error: ' + (e?.message || e));
+        const errMsg = e?.message || e;
+        refreshStatus = 'error';
+        refreshDetail = errMsg;
+        refreshSeverity = 'error';
+        diag.add?.('Capture intake load error: ' + errMsg);
         updateLifestyleBars();
       } catch(_) { }
     }
 
     __lastKnownToday = todayStr();
     updateCaptureIntakeStatus();
+    closeRefreshLog(refreshStatus, refreshDetail, refreshSeverity);
+  } catch (err) {
+      closeRefreshLog('error', err?.message || err, 'error');
+      throw err;
+    }
   }
 
   // SUBMODULE: handleCaptureIntake @internal - validiert Intake-Eingaben, triggert RPC-Speicherpfad und Refresh-Fallbacks
   async function handleCaptureIntake(kind){
+    if (!isHandlerStageReady()) return;
     const btn = document.getElementById(`cap-${kind}-add-btn`);
     const input = document.getElementById(`cap-${kind}-add`);
     if (!btn || !input) return;
@@ -468,6 +574,7 @@
 
   // SUBMODULE: bindIntakeCapture @extract-candidate - verbindet Intake-Inputs mit Save/Guard Flows
   function bindIntakeCapture(){
+    if (!isHandlerStageReady()) return;
     const wire = (id, kind) => {
       const oldBtn = document.getElementById(id);
       if (!oldBtn) return;
@@ -492,6 +599,32 @@
     wire('cap-water-add-btn',   'water');
     wire('cap-salt-add-btn',    'salt');
     wire('cap-protein-add-btn', 'protein');
+
+    const openDoctorPanel = (startMode) => {
+      const hubMod = global.AppModules?.hub;
+      if (typeof hubMod?.openDoctorPanel !== 'function') {
+        diag.add?.('[capture] hub.openDoctorPanel missing');
+        return;
+      }
+      try {
+        hubMod.openDoctorPanel({ startMode });
+      } catch (err) {
+        diag.add?.('[capture] openDoctorPanel error: ' + (err?.message || err));
+      }
+    };
+
+    const wireDoctorAccessButton = (id, startMode) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const replacement = btn.cloneNode(true);
+      btn.replaceWith(replacement);
+      replacement.disabled = false;
+      if (!replacement.type) replacement.type = 'button';
+      replacement.addEventListener('click', () => openDoctorPanel(startMode));
+    };
+
+    wireDoctorAccessButton('vitalsDoctorBtn', 'list');
+    wireDoctorAccessButton('vitalsChartBtn', 'chart');
   }
 
   function setProgState(el, state){
@@ -506,6 +639,7 @@
   }
 
   function updateLifestyleBars(){
+    if (!isHandlerStageReady()) return;
     const wBar = document.getElementById('ls-water-bar');
     const wProg = document.getElementById('ls-water-prog');
     const wLbl = document.getElementById('ls-water-label');
@@ -571,6 +705,7 @@
   }
 
   async function renderLifestyle(){
+    if (!isHandlerStageReady()) return;
     const logged = await isLoggedIn();
     if (!logged){
       // Nichts anzeigen, Tab ist ohnehin gesperrt
@@ -585,85 +720,6 @@
     }catch(_){ /* ignore */ }
   }
 
-  function bindLifestyle(){
-    const addWaterBtn = document.getElementById('ls-water-add-btn');
-    const addSaltBtn = document.getElementById('ls-salt-add-btn');
-    const addProtBtn = document.getElementById('ls-protein-add-btn');
-
-    const updateIntake = async ({
-      key,
-      elId,
-      parser,
-      max,
-      successMsg,
-      diagLabel
-    }) => {
-      const el = document.getElementById(elId);
-      const value = parser(el?.value);
-      if (!(value > 0)) {
-        uiError('Bitte gültige Menge eingeben.');
-        return;
-      }
-      const dayIso = todayStr();
-      const totals = {
-        water_ml: __lsTotals.water_ml || 0,
-        salt_g: __lsTotals.salt_g || 0,
-        protein_g: __lsTotals.protein_g || 0
-      };
-      const current = totals[key] || 0;
-      const rawTotal = Math.max(0, Math.min(max, current + value));
-      const nextTotal = roundValue(key, rawTotal);
-      totals[key] = nextTotal;
-      try {
-        await saveIntakeTotalsRpc({ dayIso, totals });
-        __lsTotals[key] = nextTotal;
-        updateLifestyleBars();
-        if (el) el.value = '';
-        uiInfo(successMsg);
-      } catch (e) {
-        uiError('Update fehlgeschlagen: ' + (e?.message || e));
-        try {
-          diag.add?.(`Lifestyle update error (${diagLabel}): ${e?.message || e}`);
-        } catch (logErr) {
-          console.error('diag.add failed', logErr);
-        }
-      }
-    };
-
-    const addWater = () =>
-      updateIntake({
-        key: 'water_ml',
-        elId: 'ls-water-add',
-        parser: (raw) => Number(raw || 0),
-        max: MAX_WATER_ML,
-        successMsg: 'Wasser aktualisiert.',
-        diagLabel: 'water'
-      });
-
-    const addSalt = () =>
-      updateIntake({
-        key: 'salt_g',
-        elId: 'ls-salt-add',
-        parser: (raw) => toNumDE(raw),
-        max: MAX_SALT_G,
-        successMsg: 'Salz aktualisiert.',
-        diagLabel: 'salt'
-      });
-
-    const addProtein = () =>
-      updateIntake({
-        key: 'protein_g',
-        elId: 'ls-protein-add',
-        parser: (raw) => toNumDE(raw),
-        max: MAX_PROTEIN_G,
-        successMsg: 'Protein aktualisiert.',
-        diagLabel: 'protein'
-      });
-
-    if (addWaterBtn) addWaterBtn.addEventListener('click', addWater);
-    if (addSaltBtn) addSaltBtn.addEventListener('click', addSalt);
-    if (addProtBtn) addProtBtn.addEventListener('click', addProtein);
-  }
 
 
   /** MODULE: CAPTURE (Intake)
@@ -677,6 +733,7 @@
   return null;
 };
   function resetCapturePanels(opts = {}) {
+    if (!isHandlerStageReady()) return;
     const { focus = true } = opts;
     invokeResetBpPanel('M', { focus: false });
     invokeResetBpPanel('A', { focus: false });
@@ -694,6 +751,7 @@
     }
   }
   function addCapturePanelKeys(){
+    if (!isHandlerStageReady()) return;
     const bind = (selectors, onEnter, onEsc) => {
       document.querySelectorAll(selectors).forEach(el => {
         el.addEventListener('keydown', e => {
@@ -713,6 +771,8 @@
   const captureApi = {
     clearCaptureIntakeInputs: clearCaptureIntakeInputs,
     refreshCaptureIntake: refreshCaptureIntake,
+    fetchTodayIntakeTotals: fetchTodayIntakeTotals,
+    getCaptureIntakeSnapshot: getCaptureIntakeSnapshot,
     handleCaptureIntake: handleCaptureIntake,
     setCaptureIntakeDisabled: setCaptureIntakeDisabled,
     prepareIntakeStatusHeader: prepareIntakeStatusHeader,
@@ -725,17 +785,23 @@
     maybeRefreshForTodayChange: maybeRefreshForTodayChange,
     bindIntakeCapture: bindIntakeCapture,
     renderLifestyle: renderLifestyle,
-    bindLifestyle: bindLifestyle,
     resetCapturePanels: resetCapturePanels,
     addCapturePanelKeys: addCapturePanelKeys,
     updateLifestyleBars: updateLifestyleBars,
     fmtDE: fmtDE
   };
-  appModules.capture = Object.assign(appModules.capture || {}, captureApi);
-  Object.entries(captureApi).forEach(([name, fn]) => {
-    if (typeof global[name] === 'undefined') {
-      global[name] = fn;
+  appModules.capture = appModules.capture || {};
+  Object.assign(appModules.capture, captureApi);
+
+  ['fmtDE', 'updateLifestyleBars'].forEach((key) => {
+    if (typeof captureApi[key] !== 'function') return;
+    if (typeof global[key] === 'undefined') {
+      Object.defineProperty(global, key, {
+        value: captureApi[key],
+        writable: false,
+        configurable: true,
+        enumerable: false
+      });
     }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
-

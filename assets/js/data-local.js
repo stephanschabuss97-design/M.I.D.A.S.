@@ -17,19 +17,102 @@
 /* ===== IndexedDB Setup ===== */
 
 // SUBMODULE: fail @internal - vereinheitlicht Fehlerlogging
+const globalWindow = typeof window !== 'undefined' ? window : undefined;
+const diagLogger =
+  globalWindow?.diag ||
+  globalWindow?.AppModules?.diag ||
+  globalWindow?.AppModules?.diagnostics ||
+  { add() {} };
+const LOG_DEBUG = !!globalWindow?.AppModules?.config?.DEV_ALLOW_DEFAULTS;
+const getBootFlowSafe = () => globalWindow?.AppModules?.bootFlow || null;
+const confLogSeenSuccess = new Set();
+const confLogSuppressed = new Set();
+const resetConfLogCache = () => {
+  confLogSeenSuccess.clear();
+  confLogSuppressed.clear();
+};
+if (globalWindow?.addEventListener) {
+  globalWindow.addEventListener('pageshow', resetConfLogCache);
+  globalWindow.addEventListener('midas:log-reset', resetConfLogCache);
+}
+if (globalWindow?.document?.addEventListener) {
+  globalWindow.document.addEventListener('visibilitychange', () => {
+    if (globalWindow.document.visibilityState === 'visible') {
+      resetConfLogCache();
+    }
+  });
+}
+const logWarn = (message, err, context) => {
+  const suffix = err ? ` ${err?.message || err}` : '';
+  const detail = context ? ` ${JSON.stringify(context)}` : '';
+  diagLogger.add?.(`[dataLocal] ${message}${suffix}${detail}`);
+  if (LOG_DEBUG) {
+    console.warn('[dataLocal]', message, err, context);
+  }
+};
+const logError = (message, err) => {
+  const suffix = err ? ` ${err?.message || err}` : '';
+  diagLogger.add?.(`[dataLocal] ${message}${suffix}`);
+  if (LOG_DEBUG) {
+    console.error('[dataLocal]', message, err);
+  }
+};
+const inflightConfLogs = new Map();
+const logConfStart = (key, message) => {
+  if (confLogSeenSuccess.has(key)) {
+    confLogSuppressed.add(key);
+    return;
+  }
+  confLogSuppressed.delete(key);
+  const entry = inflightConfLogs.get(key);
+  if (entry) {
+    entry.dupes += 1;
+    return;
+  }
+  inflightConfLogs.set(key, { dupes: 0 });
+  diagLogger.add?.(message);
+};
+const logConfDone = (key, message, { success = false } = {}) => {
+  if (confLogSuppressed.has(key)) {
+    confLogSuppressed.delete(key);
+    if (success) confLogSeenSuccess.add(key);
+    return;
+  }
+  const entry = inflightConfLogs.get(key);
+  if (!entry) {
+    diagLogger.add?.(message);
+    if (success) confLogSeenSuccess.add(key);
+    return;
+  }
+  inflightConfLogs.delete(key);
+  const suffix = entry.dupes ? ` (+${entry.dupes})` : '';
+  diagLogger.add?.(`${message}${suffix}`);
+  if (success) confLogSeenSuccess.add(key);
+};
 function fail(reject, e, msg) {
   const err = e?.target?.error || e || new Error('unknown');
-  console.error(`[dataLocal] ${msg}`, err);
+  logError(msg, err);
   reject(err);
 }
 
 // SUBMODULE: ensureDbReady @internal - prüft ob Datenbank initialisiert ist
 function ensureDbReady() {
-  if (!db) throw new Error('IndexedDB not initialized. Call initDB() first.');
+  if (!db) {
+    const message = 'IndexedDB not initialized. Call initDB() first.';
+    if (dbInitStarted) {
+      logError(message);
+      getBootFlowSafe()?.report?.('IndexedDB fehlt', 'error');
+      getBootFlowSafe()?.markFailed?.(message);
+    } else {
+      diagLogger.add?.('[dataLocal] IndexedDB accessed before init');
+    }
+    throw new Error(message);
+  }
 }
 
 /* --- Konstanten --- */
 let db;
+let dbInitStarted = false;
 const DB_NAME = 'healthlog_db';
 const STORE = 'entries';
 const CONF = 'config';
@@ -98,6 +181,7 @@ function wrapIDBRequest(tx, req, { onSuccess, actionName, resolveOn = 'request',
 
 // SUBMODULE: initDB @internal - initialisiert IndexedDB Stores und Indizes
 function initDB() {
+  dbInitStarted = true;
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -112,11 +196,11 @@ function initDB() {
         const idxNames = Array.from(s.indexNames);
         if (!idxNames.includes('byDateTime')) {
           try { s.createIndex('byDateTime', 'dateTime', { unique: false }); }
-          catch (err) { if (err.name !== 'ConstraintError') console.warn('[dataLocal] Failed to create index byDateTime:', err); }
+          catch (err) { if (err.name !== 'ConstraintError') logWarn('Failed to create index byDateTime', err); }
         }
         if (!idxNames.includes('byRemote')) {
           try { s.createIndex('byRemote', 'remote_id', { unique: false }); }
-          catch (err) { if (err.name !== 'ConstraintError') console.warn('[dataLocal] Failed to create index byRemote:', err); }
+          catch (err) { if (err.name !== 'ConstraintError') logWarn('Failed to create index byRemote', err); }
         }
       }
       if (!db.objectStoreNames.contains(CONF)) db.createObjectStore(CONF, { keyPath: 'key' });
@@ -151,18 +235,24 @@ function putConf(key, value) {
 // SUBMODULE: getConf @public - liest Konfigurationseintrag aus Store
 function getConf(key) {
   ensureDbReady();
-  diag.add?.(`[conf] getConf start ${key}`);
+  const logKey = `conf:${key}`;
+  logConfStart(logKey, `[conf] getConf start ${key}`);
   const tx = db.transaction(CONF, 'readonly');
   const req = tx.objectStore(CONF).get(key);
   return wrapIDBRequest(tx, req, {
     actionName: 'getConf',
-    onSuccess: (_, rq) => {
-      const val = rq.result?.value ?? null;
-      diag.add?.(`[conf] getConf done ${key}=${val ? '[set]' : 'null'}`);
-      return val;
-    },
+    onSuccess: (_, rq) => rq.result?.value ?? null,
     resolveOn: 'request'
-  });
+  })
+    .then((val) => {
+      const label = val ? '[set]' : 'null';
+      logConfDone(logKey, `[conf] getConf done ${key}=${label}`, { success: true });
+      return val;
+    })
+    .catch((err) => {
+      logConfDone(logKey, `[conf] getConf failed ${key}`);
+      throw err;
+    });
 }
 
 /* ===== Timezone Helpers ===== */
@@ -195,7 +285,7 @@ function getTimeZoneOffsetMs(timeZone, referenceDate) {
     const asUtc = Date.UTC(year, month - 1, day, hour, minute, second);
     return asUtc - referenceDate.getTime();
   } catch (err) {
-    console.warn('[dataLocal] getTimeZoneOffsetMs failed:', err, { timeZone, referenceDate });
+    logWarn('getTimeZoneOffsetMs failed', err, { timeZone, referenceDate });
     return null;
   }
 }
@@ -210,7 +300,7 @@ function dayIsoToMidnightIso(dayIso, timeZone = 'Europe/Vienna') {
     const ref = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
     const offset = getTimeZoneOffsetMs(timeZone, ref);
     if (offset == null) {
-      console.warn('[dataLocal] dayIsoToMidnightIso: timezone offset unavailable, returning null', { dayIso, timeZone });
+      logWarn('dayIsoToMidnightIso: timezone offset unavailable, returning null', null, { dayIso, timeZone });
       return null;
     }
     return new Date(ref.getTime() - offset).toISOString();

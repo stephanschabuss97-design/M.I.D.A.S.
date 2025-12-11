@@ -13,25 +13,36 @@
   <link rel="stylesheet" href="app/app.css">
   <!-- END MODULE -->
 </head>
-<body>
+<body data-boot-stage="boot" aria-busy="true">
+  <div
+    id="bootScreen"
+    class="boot-screen"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="boot-screen__inner">
+      <p class="boot-stage-label" data-boot-stage-label>Boot</p>
+      <p class="boot-stage-desc">MIDAS startet gleich ...</p>
+      <div
+        id="bootErrorPanel"
+        class="boot-error-panel"
+        role="alert"
+        aria-live="assertive"
+        hidden
+        aria-hidden="true"
+      >
+        <p class="boot-error-title">Boot fehlgeschlagen</p>
+        <p class="boot-error-text" id="bootErrorMessage">Ein Fehler blockiert den Start.</p>
+        <p class="boot-error-detail" id="bootErrorDetail">Details folgen, sobald Touch-Log verf&uuml;gbar ist.</p>
+        <button id="bootErrorDiagBtn" type="button" class="btn ghost">
+          Touch-Log &ouml;ffnen
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- ANKER: touch-log-fallback -->
   <pre id="touchLog" class="u-diag-log"></pre>
   <header></header>
-  <!-- Hilfe-Panel -->
-  <div id="help" class="panel" role="dialog" aria-modal="false" aria-labelledby="helpTitle">
-    <header>
-      <h4 id="helpTitle">Hilfe * Was soll ich ankreuzen?</h4>
-      <button class="btn ghost" id="helpClose" type="button">x</button>
-    </header>
-    <div class="content">
-      <strong>&#x1F489; NSAR genommen</strong> ankreuzen, wenn du ein Schmerz-/Entzuendungsmedikament der Klasse NSAR genommen hast.
-      <ul>
-        <li><em>Beispiele (AT, frei):</em> Ibuprofen, Diclofenac, Naproxen.</li>
-        <li><em>Kombo-Achtung:</em> Viele "Erkaeltungs-/Kopfweh"-Mittel enthalten NSAR.</li>
-        <li><em>Bei Nierenkrankheit:</em>NSAR moeglichst vermeiden, Alternativen mit Arzt besprechen.</li>
-      </ul>
-    </div>
-  </div>
   <!-- Diagnose-Panel -->
   <div id="diag" class="panel" role="dialog" aria-modal="false" aria-labelledby="diagTitle">
     <header>
@@ -40,6 +51,25 @@
     </header>
     <pre id="diagLog" class="content u-m-0"></pre>
   </div>
+  <!-- Placeholder help panel to satisfy ui-core init (no visible toggle yet) -->
+  <div
+    id="help"
+    class="panel"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="helpTitle"
+    hidden
+    aria-hidden="true"
+  >
+    <header>
+      <h4 id="helpTitle">Hilfe</h4>
+      <button class="btn ghost" id="helpClose" type="button" aria-label="Hilfe schliessen">x</button>
+    </header>
+    <div class="content small u-m-0">
+      Hilfe-Inhalt folgt in einer spaeteren Version.
+    </div>
+  </div>
+  <button id="helpToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
   <!-- Diagramm-Panel (Daily) -->
   <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
     <header>
@@ -84,98 +114,216 @@
             >
             <!-- 3. Goldener Innenring -->
             <div class="midas-ring-gold" aria-hidden="true"></div>
+            <!-- 4. Living Aura Canvas (optional) -->
+            <canvas
+              id="hubAuraCanvas"
+              class="hub-aura-canvas"
+              aria-hidden="true"
+            ></canvas>
             <!-- 4. MIDAS-Logo im Vordergrund -->
             <img
               class="hub-orb-fg"
               src="assets/img/Idle_state.png"
               alt="MIDAS Orb Zustand"
             >
-</div>
+        </div>
           <div class="hub-orbit-icons" role="toolbar" aria-label="Module navigation">
-            <button
-              type="button"
-              class="hub-icon hub-core-trigger"
-              data-hub-module="assistant-voice"
-              aria-pressed="false"
-              data-orbit-pos="core"
-            >
-              <span class="sr-only">MIDAS Voice Chat</span>
+            <div class="hub-carousel">
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="intake"
+                data-carousel-id="intake"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Intakes_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Intakes</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="doctor"
-              aria-pressed="false"
-              data-orbit-pos="north"
-            >
-              <span aria-hidden="true">??</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="vitals"
+                data-carousel-id="vitals"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Vitals_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Vitals</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="appointments"
+                data-carousel-id="appointments"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Appointments_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Termine</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="assistant-text"
+                data-carousel-id="assistant-text"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Text_chat_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Assistant Text Chat</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="assistant-voice"
+                data-carousel-id="assistant-voice"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Voice_chat_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Voice Chat</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
+                data-hub-module="doctor"
+                data-carousel-id="doctor"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Doctor_view_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
               <span class="sr-only">Arzt-Ansicht</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="assistant-text"
-              data-orbit-pos="ne"
-              aria-pressed="false"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Assistant Chat</span>
+              <button
+                type="button"
+                class="hub-icon"
+                id="hubChartBtn"
+                data-hub-module="chart"
+                data-carousel-id="chart"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Chart_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Diagramm / Charts</span>
             </button>
-            <button
-              type="button"
-              class="hub-icon"
-              id="diagToggle"
-              data-orbit-pos="e"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Log</span>
+              <button
+                type="button"
+                class="hub-icon"
+                data-carousel-id="profile"
+                data-hub-module="profile"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Personal_data_v1.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Profil &amp; Gesundheitsdaten</span>
             </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="hub-quickbar"
+          id="hubQuickbar"
+          aria-label="Schnellaktionen"
+          aria-hidden="true"
+          inert
+          hidden
+        >
+          <div class="hub-quickbar-inner" role="toolbar">
             <button
               type="button"
-              class="hub-icon"
-              data-orbit-pos="se"
-              disabled
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">GPT Voice (bald)</span>
-            </button>
-            <button
-              type="button"
-              class="hub-icon"
-              data-hub-module="vitals"
-              aria-pressed="false"
-              data-orbit-pos="s"
-            >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Vitalwerte</span>
-            </button>
-            <button
-              type="button"
-              class="hub-icon"
+              class="hub-quickbar-btn"
               data-hub-module="intake"
-              aria-pressed="false"
-              data-orbit-pos="sw"
             >
-              <span aria-hidden="true">??</span>
-              <span class="sr-only">Intake</span>
+              &#x1F4A7; Intakes
             </button>
             <button
               type="button"
-              class="hub-icon"
-              data-orbit-pos="w"
-              disabled
+              class="hub-quickbar-btn"
+              data-hub-module="vitals"
             >
-              <span aria-hidden="true">???</span>
-              <span class="sr-only">Dictate (bald)</span>
+              &#x1F493; Vitals
             </button>
             <button
               type="button"
-              class="hub-icon"
-              id="helpToggle"
-              data-orbit-pos="nw"
+              class="hub-quickbar-btn"
+              data-hub-module="appointments"
             >
-              <span aria-hidden="true">?</span>
-              <span class="sr-only">Hilfe</span>
+              &#x1F4C5; Neuer Termin
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="assistant-text"
+            >
+              &#x1F4AC; Text Chat
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="assistant-voice"
+            >
+              &#x1F399; Voice Chat
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="doctor"
+            >
+              &#x2695; Arzt-Ansicht
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="chart"
+            >
+              &#x1F4CA; Charts
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="profile"
+            >
+              &#x1F464; Profil
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-quickbar-action="diag"
+            >
+              &#x1F4DD; Touch-Log
             </button>
           </div>
         </div>
@@ -214,10 +362,45 @@
           </div>
         </header>
         <div class="hub-panel-body">
+          <section class="assistant-context" aria-live="polite">
+            <div class="assistant-pills" id="assistantIntakePills">
+              <div class="assistant-pill muted" data-pill="water">
+                <span class="label">Wasser</span>
+                <span class="value" data-pill-value>-- ml</span>
+              </div>
+              <div class="assistant-pill muted" data-pill="salt">
+                <span class="label">Salz</span>
+                <span class="value" data-pill-value>-- g</span>
+              </div>
+              <div class="assistant-pill muted" data-pill="protein">
+                <span class="label">Protein</span>
+                <span class="value" data-pill-value>-- g</span>
+              </div>
+            </div>
+            <div class="assistant-appointments" id="assistantAppointments">
+              <p class="muted small" data-appointments-empty>Keine Termine geladen.</p>
+              <ul class="assistant-appointments-list" id="assistantAppointmentsList" hidden></ul>
+            </div>
+          </section>
+
           <div class="assistant-chat" id="assistantChat" aria-live="polite">
             <div class="assistant-chat-empty">
               <p class="muted">Starte eine Unterhaltung oder schicke ein Foto deines Essens.</p>
             </div>
+            <template id="assistantMessageTemplate">
+              <div class="assistant-bubble" data-role="assistant">
+                <div class="assistant-text-line"></div>
+              </div>
+            </template>
+            <template id="assistantPhotoTemplate">
+              <div class="assistant-bubble assistant-photo-bubble" data-role="system">
+                <figure class="assistant-photo">
+                  <img src="" alt="Hochgeladenes Foto" loading="lazy">
+                  <figcaption class="assistant-photo-status" aria-live="polite">Analyse läuft …</figcaption>
+                </figure>
+                <div class="assistant-text-line assistant-photo-result muted">Noch kein Ergebnis.</div>
+              </div>
+            </template>
           </div>
           <form class="assistant-input-bar" id="assistantChatForm" autocomplete="off">
             <div class="assistant-input-tools">
@@ -225,11 +408,11 @@
                 type="button"
                 class="assistant-tool-btn"
                 id="assistantCameraBtn"
-                aria-label="Foto aufnehmen"
+                aria-label="Foto aufnehmen oder auswählen"
               >
                 📷
               </button>
-              
+
             </div>
             <input
               type="text"
@@ -243,8 +426,214 @@
         </div>
       </div>
     </section>
+    <!-- HUB-PANEL: Profil -->
+    <section
+      class="hub-panel"
+      id="hubProfilePanel"
+      data-hub-panel="profile"
+      role="region"
+      aria-labelledby="hubProfileTitle"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="hub-panel-scroll">
+        <header class="hub-panel-header">
+          <h2 id="hubProfileTitle">Profil</h2>
+          <button
+            type="button"
+            class="hub-panel-close"
+            data-panel-close
+            aria-label="Fenster schliessen"
+          >
+            &times;
+          </button>
+        </header>
+        <div class="hub-panel-body">
+          <form class="profile-form" id="profileForm" autocomplete="off">
+            <div class="form-grid">
+              <label class="field-group" for="profileFullName">
+                <span class="label">Name</span>
+                <input
+                  type="text"
+                  id="profileFullName"
+                  placeholder="z. B. Stephan Schabuss"
+                >
+              </label>
+              <label class="field-group" for="profileBirthDate">
+                <span class="label">Geburtsdatum</span>
+                <input type="date" id="profileBirthDate">
+              </label>
+              <label class="field-group" for="profileHeight">
+                <span class="label">Größe (cm)</span>
+                <input
+                  type="number"
+                  id="profileHeight"
+                  inputmode="numeric"
+                  min="120"
+                  max="230"
+                  placeholder="183"
+                >
+                <span class="field-hint muted small">
+                  Wird für BMI/Charts verwendet.
+                </span>
+              </label>
+              <label class="field-group" for="profileCkdStage">
+                <span class="label">CKD-Stufe</span>
+                <select id="profileCkdStage">
+                  <option value="">Bitte auswählen</option>
+                  <option value="G2">G2</option>
+                  <option value="G3aA1">G3a A1</option>
+                  <option value="G3aA2">G3a A2</option>
+                  <option value="G3bA1">G3b A1</option>
+                  <option value="G3bA2">G3b A2</option>
+                  <option value="G4">G4</option>
+                  <option value="G5">G5</option>
+                </select>
+              </label>
+              <label class="field-group" for="profileMedications">
+                <span class="label">Medikation</span>
+                <textarea
+                  id="profileMedications"
+                  rows="3"
+                  placeholder="z. B. Valsartan 160 mg; Forxiga 10 mg"
+                ></textarea>
+              </label>
+              <label class="field-group" for="profileSaltLimit">
+                <span class="label">Salzlimit (g/Tag)</span>
+                <input
+                  type="number"
+                  id="profileSaltLimit"
+                  step="0.1"
+                  min="0"
+                  placeholder="5"
+                >
+              </label>
+              <label class="field-group" for="profileProteinMax">
+                <span class="label">Proteinlimit (g/Tag)</span>
+                <input
+                  type="number"
+                  id="profileProteinMax"
+                  step="1"
+                  min="0"
+                  placeholder="110"
+                >
+                <span class="field-hint muted small">
+                  Butler warnt, sobald das Limit erreicht ist.
+                </span>
+              </label>
+              <label class="field-group" for="profileIsSmoker">
+                <span class="label">Raucherstatus</span>
+                <select id="profileIsSmoker">
+                  <option value="no" selected>Nichtraucher</option>
+                  <option value="yes">Raucher</option>
+                </select>
+              </label>
+              <label class="field-group" for="profileLifestyleNote">
+                <span class="label">Lifestyle-Notiz</span>
+                <textarea
+                  id="profileLifestyleNote"
+                  rows="3"
+                  placeholder="z. B. 1–3× Krafttraining/Woche."
+                ></textarea>
+              </label>
+            </div>
+            <div class="profile-actions">
+              <button type="button" class="btn primary" id="profileSaveBtn">
+                Profil speichern
+              </button>
+              <button type="button" class="btn ghost" id="profileRefreshBtn">
+                Aktualisieren
+              </button>
+            </div>
+          </form>
+          <section class="profile-overview card" aria-live="polite">
+            <header>
+              <h3>Aktuelle Daten</h3>
+            </header>
+            <div id="profileOverview" class="profile-overview-list">
+              <p class="muted small">Noch keine Daten gespeichert.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
     <!-- Milchglas-/Lock-Overlay fuer aktive Panels -->
     <div class="hub-backdrop" data-hub-backdrop aria-hidden="true"></div>
+    <!-- HUB-PANEL: Appointments -->
+    <section
+      class="hub-panel"
+      id="hubAppointmentsPanel"
+      data-hub-panel="appointments"
+      role="region"
+      aria-labelledby="hubAppointmentsTitle"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="hub-panel-scroll">
+        <header class="hub-panel-header">
+          <h2 id="hubAppointmentsTitle">Termine</h2>
+          <button
+            type="button"
+            class="hub-panel-close"
+            data-panel-close
+            aria-label="Fenster schliessen"
+          >
+            &times;
+          </button>
+        </header>
+        <div class="hub-panel-body">
+          <form class="appointments-form" id="appointmentsForm" autocomplete="off">
+            <div class="appointments-grid">
+              <label>
+                <span>Terminname</span>
+                <input type="text" id="apptTitle" placeholder="z. B. Kontrollbesuch" required>
+              </label>
+              <label class="appointments-date">
+                <span>Datum</span>
+                <input type="date" id="apptDate" required>
+              </label>
+              <label class="appointments-repeat">
+                <span>Wiederholen</span>
+                <select id="apptRepeatRule">
+                  <option value="none">Nie</option>
+                  <option value="monthly">Monatlich</option>
+                  <option value="annual">Jährlich</option>
+                </select>
+              </label>
+              <label>
+                <span>Uhrzeit</span>
+                <input type="time" id="apptTime">
+              </label>
+              <label>
+                <span>Ort / Adresse</span>
+                <input type="text" id="apptLocation" placeholder="z. B. Ordination Dr. XY">
+              </label>
+            </div>
+            <label class="appointments-notes">
+              <span>Notizen / Vorbereitung</span>
+              <textarea id="apptNotes" rows="2" placeholder="Mitbringen: Befunde, Liste der Medikamente ..."></textarea>
+            </label>
+            <div class="appointments-actions">
+              <button class="btn primary" type="submit">
+                &#x1F4BE; Termin speichern
+              </button>
+              <button class="btn ghost" type="button" id="appointmentsOverviewBtn">
+                Übersicht anzeigen
+              </button>
+            </div>
+          </form>
+          <section class="appointments-overview" id="appointmentsOverview" aria-live="polite">
+            <header class="appointments-overview-header">
+              <h3>Kommende Termine</h3>
+              <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
+            </header>
+            <div class="appointments-columns" id="appointmentsColumns">
+              <!-- dynamische Karten -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
     <!-- HUB-PANEL: Intake -->
     <section
       class="hub-panel"
@@ -262,6 +651,7 @@
             type="button"
             class="hub-panel-close"
             data-panel-close
+            data-close-mode="instant"
             aria-label="Fenster schliessen"
           >
             &times;
@@ -319,6 +709,7 @@
       class="hub-panel"
       id="hubDoctorPanel"
       data-hub-panel="doctor"
+      data-close-mode="instant"
       role="region"
       aria-labelledby="hubDoctorTitle"
       aria-hidden="true"
@@ -331,6 +722,7 @@
             type="button"
             class="hub-panel-close"
             data-panel-close
+            data-close-mode="instant"
             aria-label="Fenster schliessen"
           >
             &times;
@@ -409,6 +801,14 @@
                     <option value="M">Morgens</option>
                     <option value="A">Abends</option>
                   </select>
+                </div>
+                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen fuer Arztbereich">
+                  <button class="btn ghost" id="vitalsDoctorBtn" type="button">
+                    Arzt-Ansicht
+                  </button>
+                  <button class="btn ghost" id="vitalsChartBtn" type="button">
+                    Diagramm
+                  </button>
                 </div>
               </div>
               <div class="card-nested bp-pane active" data-context="M">
@@ -571,15 +971,27 @@
   <!-- Supabase (UMD, v2) -->
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
-    integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"
   ></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+    crossorigin="anonymous"
+  ></script>
+  <script src="app/core/boot-flow.js"></script>
   <script src="app/core/config.js"></script>
   <script src="app/core/diag.js"></script>
   <script src="app/diagnostics/logger.js"></script>
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
   <script src="app/modules/hub/vad/vad.js"></script>
+  <script src="app/modules/hub/hub-aura3d.js"></script>
+  <script src="app/modules/appointments/index.js"></script>
+  <script src="app/modules/profile/index.js"></script>
+  <script type="module" src="app/modules/assistant/suggest-store.js"></script>
+  <script type="module" src="app/modules/assistant/suggest-ui.js"></script>
+  <script type="module" src="app/modules/assistant/allowed-actions.js"></script>
+  <script type="module" src="app/modules/assistant/day-plan.js"></script>
+  <script type="module" src="app/modules/assistant/index.js"></script>
   <script src="app/modules/hub/index.js"></script>
   <!-- @refactor: moved to assets/js/ui.js -->
   <script src="assets/js/ui.js"></script>
@@ -719,6 +1131,3 @@
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]
   total @extract-candidate markers: 18
 -->
-
-
-

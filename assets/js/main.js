@@ -21,7 +21,7 @@ const getSupabaseApi = () => {
   const api = window.AppModules?.supabase;
   if (!api) {
     if (!supabaseMissingLogged) {
-      console.error('[BOOT] Supabase (AppModules.supabase) nicht geladen – prüfe app/supabase/index.js / Script-Reihenfolge.');
+      logBootDiag('Supabase (AppModules.supabase) nicht geladen – prüfe app/supabase/index.js / Script-Reihenfolge.');
       supabaseMissingLogged = true;
     }
     return null;
@@ -32,6 +32,151 @@ const getSupabaseApi = () => {
 const SUPABASE_READY_EVENT = 'supabase:ready';
 const hasSupabaseFn = (name) => typeof getSupabaseApi()?.[name] === 'function';
 const getSupabaseState = () => getSupabaseApi()?.supabaseState || null;
+const isAuthDecisionKnown = () => getSupabaseState()?.authState !== 'unknown';
+
+const getBootFlow = () => window.AppModules?.bootFlow || null;
+const setBootStage = (stage) => {
+  try {
+    getBootFlow()?.setStage(stage);
+  } catch (_) {
+    /* ignore */
+  }
+};
+const failBootStage = (message) => {
+  try {
+    getBootFlow()?.markFailed?.(message);
+  } catch (_) {
+    /* ignore */
+  }
+};
+const logBootDiag = (message, err) => {
+  const suffix = err ? ` (${err?.message || err})` : '';
+  try {
+    diag.add?.(`[boot] ${message}${suffix}`);
+  } catch (_) {
+    /* diag not ready */
+  }
+};
+const DEBUG_TOUCHLOG = !!window.DEBUG_TOUCHLOG;
+const touchLog = (message, opts) => {
+  try {
+    diag.add?.(message, opts);
+  } catch (_) {
+    /* diag not ready */
+  }
+};
+const verboseTouchLog = (message, opts) => {
+  if (!DEBUG_TOUCHLOG) return;
+  touchLog(message, opts);
+};
+const logBootPhaseSummary = (phase, status, detail, severity = 'info') => {
+  const suffix = detail ? ` – ${detail}` : '';
+  const summaryDetail = `${phase} ${status}${suffix}`;
+  touchLog(`[boot] ${summaryDetail}`, {
+    eventId: `boot:${phase}:${status}`,
+    summaryKey: 'boot',
+    summaryLabel: 'Boot',
+    summaryDetail,
+    severity
+  });
+};
+const logResumeSummary = (source, status, detail, severity = 'info') => {
+  const suffix = detail ? ` – ${detail}` : '';
+  const summaryDetail = `${source} ${status}${suffix}`;
+  touchLog(`[resume] ${summaryDetail}`, {
+    eventId: `resume:${source}:${status}`,
+    summaryKey: 'resume',
+    summaryLabel: 'Resume',
+    summaryDetail,
+    severity
+  });
+};
+const logUiRefreshSummary = (reasonLabel, status, detail, severity = 'info') => {
+  const reason = reasonLabel || 'unspecified';
+  const suffix = detail ? ` – ${detail}` : '';
+  const summaryDetail = `${reason} ${status}${suffix}`;
+  touchLog(`[ui] refresh ${status} reason=${reason}`, {
+    eventId: `ui:refresh:${reason}:${status}`,
+    summaryKey: 'ui-refresh',
+    summaryLabel: 'UI Refresh',
+    summaryDetail,
+    severity
+  });
+};
+
+const scheduleMicrotask =
+  typeof queueMicrotask === 'function'
+    ? queueMicrotask
+    : (cb) => Promise.resolve().then(cb);
+
+const logOncePerTick = (() => {
+  const seen = new Set();
+  return (key, fn) => {
+    if (!key || typeof fn !== 'function') {
+      try {
+        fn?.();
+      } catch (_) {
+        /* ignore */
+      }
+      return;
+    }
+    if (seen.has(key)) return;
+    seen.add(key);
+    try {
+      fn();
+    } catch (_) {
+      /* logging failure ignored */
+    } finally {
+      scheduleMicrotask(() => seen.delete(key));
+    }
+  };
+})();
+
+const logOnceWithin = (() => {
+  const history = new Map();
+  return (key, ttlMs, fn) => {
+    if (!key || typeof fn !== 'function') {
+      try {
+        fn?.();
+      } catch (_) {
+        /* ignore */
+      }
+      return;
+    }
+    const ttl = Math.max(0, Number(ttlMs) || 0);
+    const now = typeof performance?.now === 'function' ? performance.now() : Date.now();
+    const last = history.get(key) || 0;
+    if (ttl && now - last < ttl) return;
+    history.set(key, now);
+    try {
+      fn();
+    } catch (_) {
+      /* ignore */
+    }
+  };
+})();
+const showBootErrorBanner = (text) => {
+  if (document.readyState === 'loading') return false;
+  const errBox = document.getElementById('err');
+  if (errBox) {
+    errBox.textContent = text;
+    errBox.style.display = 'block';
+    return true;
+  }
+  if (document.body) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    div.style.background = '#ff6b6b';
+    div.style.color = '#121417';
+    div.style.padding = '12px';
+    div.style.margin = '16px';
+    div.style.borderRadius = '8px';
+    div.style.fontWeight = '600';
+    document.body.appendChild(div);
+    return true;
+  }
+  return false;
+};
 
 // SUBMODULE: createSupabaseFn @internal - erstellt sichere Wrapper für Supabase-Funktionsaufrufe
 const createSupabaseFn = (name, { optional = false } = {}) => (...args) => {
@@ -66,6 +211,7 @@ const bindAppLockButtons = createSupabaseFn('bindAppLockButtons');
 const resumeFromBackground = createSupabaseFn('resumeFromBackground');
 const pushPendingToRemote = createSupabaseFn('pushPendingToRemote', { optional: true });
 const reconcileFromRemote = createSupabaseFn('reconcileFromRemote', { optional: true });
+const waitForAuthDecisionFn = createSupabaseFn('waitForAuthDecision', { optional: true });
 
 const getLockUi = () => {
   const fn = getSupabaseApi()?.lockUi;
@@ -169,6 +315,174 @@ function getChartPanel(){
   return window.AppModules?.charts?.chartPanel;
 }
 
+const waitForDomReady = () => {
+  if (document.readyState !== 'loading') return Promise.resolve();
+  return new Promise((resolve) => {
+    document.addEventListener('DOMContentLoaded', resolve, { once: true });
+  });
+};
+
+const setInputValue = (selector, value) => {
+  const el = document.querySelector(selector);
+  if (!el) {
+    diag.add?.(`[boot] input ${selector} missing (possibly moved to overlay)`);
+    return null;
+  }
+  el.value = value;
+  return el;
+};
+
+async function runBootPhase() {
+  setBootStage('BOOT');
+  logBootPhaseSummary('BOOT', 'start');
+  try {
+    await waitForDomReady();
+    const modulesReady = await ensureModulesReady();
+    if (!modulesReady) {
+      throw new Error('required modules missing');
+    }
+    diag.init();
+    helpPanel?.init?.();
+    logBootPhaseSummary('BOOT', 'done');
+  } catch (err) {
+    logBootPhaseSummary('BOOT', 'failed', err?.message || err, 'error');
+    throw err;
+  }
+}
+
+async function runAuthCheckPhase(context) {
+  setBootStage('AUTH_CHECK');
+  logBootPhaseSummary('AUTH_CHECK', 'start');
+  try {
+    await waitForSupabaseApi();
+    await initDB();
+    await ensureSupabaseClient();
+    context.hasSession = await requireSession();
+    if (hasSupabaseFn('waitForAuthDecision')) {
+      try {
+        await waitForAuthDecisionFn();
+      } catch (err) {
+        diag.add?.('[boot] waitForAuthDecision failed: ' + (err?.message || err));
+      }
+    }
+    if (context.hasSession) {
+      await afterLoginBoot();
+      await setupRealtime();
+    }
+    logBootPhaseSummary('AUTH_CHECK', 'done', context.hasSession ? 'session active' : 'unauthenticated');
+  } catch (err) {
+    logBootPhaseSummary('AUTH_CHECK', 'failed', err?.message || err, 'error');
+    throw err;
+  }
+}
+
+async function initCorePhase() {
+  setBootStage('INIT_CORE');
+  logBootPhaseSummary('INIT_CORE', 'start');
+  window.AppModules?.uiLayout?.updateStickyOffsets?.();
+  bindHeaderShadow();
+  await ensureSupabaseClient();
+  getChartPanel()?.init?.();
+
+  const todayIso = todayStr();
+  setInputValue('#date', todayIso);
+  AppModules.captureGlobals.setLastKnownToday(todayIso);
+  AppModules.captureGlobals.setDateUserSelected(false);
+  AppModules.captureGlobals.setBpUserOverride(false);
+  prepareIntakeStatusHeader();
+  setInputValue('#from', new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10));
+  setInputValue('#to', todayIso);
+  setTab('capture', { skipCaptureRefresh: true });
+  try {
+    window.AppModules.capture?.resetCapturePanels?.();
+    window.AppModules.bp.updateBpCommentWarnings?.();
+  } catch (_) {}
+  try { addCapturePanelKeys?.(); } catch(_){ }
+  logBootPhaseSummary('INIT_CORE', 'done');
+}
+
+async function initModulesPhase() {
+  setBootStage('INIT_MODULES');
+  logBootPhaseSummary('INIT_MODULES', 'start');
+  bindTabs();
+  bindAuthButtons();
+  if (getSupabaseState()?.sbClient) watchAuthState();
+  await maybeRefreshForTodayChange({ force: true, source: 'boot' });
+  try {
+    await window.AppModules.capture?.refreshCaptureIntake?.('tab:capture');
+  } catch(_) {}
+  AppModules.captureGlobals.setLastKnownToday(todayStr());
+  scheduleMidnightRefresh();
+  scheduleNoonSwitch();
+  maybeAutoApplyBpContext({ source: 'boot-post-refresh' });
+  bindAppLockButtons();
+
+  const savedUrl = await getConf('webhookUrl');
+  const savedKey = await getConf('webhookKey');
+  diag.add?.('Config URL: ' + (savedUrl || '(none)'));
+  diag.add?.(
+    'Config Key: ' + (savedKey ? (isServiceRoleKey(savedKey) ? 'service_role(BLOCKED)' : 'anon/ok') : '(none)')
+  );
+  if (!savedUrl || !savedKey) {
+    setTab('capture');
+  }
+
+  ['#captureAmount', '#diaM', '#bpCommentM', '#sysA', '#diaA', '#bpCommentA'].forEach((sel) => {
+    const el = $(sel);
+    if (!el) return;
+    el.addEventListener('input', () => window.AppModules.bp.updateBpCommentWarnings?.());
+  });
+  window.AppModules.bp.updateBpCommentWarnings?.();
+
+  const bpContextSel = document.getElementById('bpContextSel');
+  AppModules.captureGlobals.setBpPanesCache(Array.from(document.querySelectorAll('.bp-pane')));
+  if (bpContextSel) {
+    applyBpContext(bpContextSel.value || 'M');
+    maybeAutoApplyBpContext({ force: true, source: 'boot' });
+    bpContextSel.addEventListener('change', (e) => {
+      AppModules.captureGlobals.setBpUserOverride(true);
+      applyBpContext(e.target.value);
+      window.AppModules.bp.updateBpCommentWarnings?.();
+    });
+  }
+
+  window.AppModules.capture?.bindIntakeCapture?.();
+  try {
+    if (hasSupabaseFn('cleanupOldIntake') && await isLoggedInFast()) {
+      await cleanupOldIntake();
+    }
+  } catch (_) {}
+  logBootPhaseSummary('INIT_MODULES', 'done');
+}
+
+async function initUiAndLiftLockPhase() {
+  setBootStage('INIT_UI');
+  logBootPhaseSummary('INIT_UI', 'start');
+  await requestUiRefresh({ reason: 'boot:initial' });
+  $$('#appMain input, #appMain select, #appMain textarea, #appMain button, nav.tabs button').forEach((el) => {
+    el.disabled = false;
+  });
+  document.body.classList.remove('auth-locked');
+  setBootStage('IDLE');
+  logBootPhaseSummary('INIT_UI', 'done');
+
+  window.addEventListener('online', async () => {
+    try {
+      if (!hasSupabaseFn('pushPendingToRemote')) return;
+      const resPush = await pushPendingToRemote();
+      if (resPush?.pushed || resPush?.failed) {
+        diag.add?.('Online-Push: OK=' + (resPush.pushed || 0) + ', FAIL=' + (resPush.failed || 0));
+        if (hasSupabaseFn('reconcileFromRemote')) {
+          await reconcileFromRemote();
+        }
+      }
+    } catch (err) {
+      diag.add?.('[online] push failed: ' + (err?.message || err));
+      console.error('[online] pushPendingToRemote failed', err);
+    }
+  }, { once: true });
+}
+
 // SUBMODULE: UI Refresh Core @public - steuert UI-Neuladen (Doctor/Chart/Capture)
 function requestUiRefresh(opts = {}) {
   if (typeof opts === "string") {
@@ -213,7 +527,9 @@ function requestUiRefresh(opts = {}) {
 async function runUiSubStep(label, enabled, fn) {
   if (!enabled) return;
   const start = uiNow();
-  diag.add?.(`[ui] step start ${label}`);
+  logOnceWithin(`ui:step:start:${label}`, 50, () => {
+    verboseTouchLog(`[ui] step start ${label}`);
+  });
   let timeoutId;
   let timedOut = false;
   const timeoutPromise = new Promise((_, reject) => {
@@ -229,19 +545,21 @@ async function runUiSubStep(label, enabled, fn) {
           await fn();
         } catch (err) {
           if (!timedOut) throw err;
-          diag.add?.(`[ui] step late error ${label}: ${err?.message || err}`);
+        touchLog(`[ui] step late error ${label}: ${err?.message || err}`, { severity: 'warn' });
         }
       })(),
       timeoutPromise
     ]);
     const duration = Math.round(uiNow() - start);
-    diag.add?.(`[ui] step end ${label} (${duration} ms)`);
+    logOnceWithin(`ui:step:end:${label}`, 50, () => {
+      verboseTouchLog(`[ui] step end ${label} (${duration} ms)`);
+    });
   } catch (err) {
     const duration = Math.round(uiNow() - start);
     if (err === uiRefreshTimeoutSymbol) {
-      diag.add?.(`[ui] step timeout ${label} (${duration} ms)`);
+      touchLog(`[ui] step timeout ${label} (${duration} ms)`, { severity: 'warn' });
     } else {
-      diag.add?.(`[ui] step error ${label}: ${err?.message || err} (${duration} ms)`);
+      touchLog(`[ui] step error ${label}: ${err?.message || err} (${duration} ms)`, { severity: 'error' });
     }
   } finally {
     clearTimeout(timeoutId);
@@ -261,7 +579,9 @@ async function runUiRefresh(){
   const reasons = state.reasons.size ? Array.from(state.reasons) : (state.lastReason ? [state.lastReason] : []);
   state.reasons.clear();
   const reasonLabel = reasons.length ? reasons.join(',') : 'unspecified';
-  diag.add?.(`[ui] refresh start reason=${reasonLabel}`);
+  logOnceWithin(`ui:refresh:start:${reasonLabel}`, 50, () => {
+    logUiRefreshSummary(reasonLabel, 'start');
+  });
   try {
     while (state.docNeeded || state.chartNeeded || state.lifestyleNeeded) {
       const doc = state.docNeeded;
@@ -274,15 +594,23 @@ async function runUiRefresh(){
       const doctorModule = getDoctorModule();
       const chartPanel = getChartPanel();
 
-      await runUiSubStep('doctor', doc, async () => { await doctorModule?.renderDoctor?.(); });
+      await runUiSubStep('doctor', doc, async () => {
+        await doctorModule?.renderDoctor?.(reasonLabel);
+      });
       // appointments substep entfernt
-      await runUiSubStep('lifestyle', lifestyle && typeof window.AppModules.capture?.renderLifestyle === 'function', async () => { await window.AppModules.capture.renderLifestyle(); });
+      await runUiSubStep(
+        'lifestyle',
+        lifestyle && typeof window.AppModules.capture?.renderLifestyle === 'function',
+        async () => { await window.AppModules.capture?.renderLifestyle?.(); }
+      );
       await runUiSubStep('chart', chart && !!chartPanel?.draw, async () => { await chartPanel?.draw?.(); });
     }
   } finally {
     state.running = false;
     const duration = Math.round(uiNow() - refreshStart);
-    diag.add?.(`[ui] refresh end reason=${reasonLabel} (${duration} ms)`);
+    logOnceWithin(`ui:refresh:end:${reasonLabel}`, 50, () => {
+      logUiRefreshSummary(reasonLabel, 'end', `${duration} ms`);
+    });
     const resolvers = state.resolvers;
     state.resolvers = [];
     resolvers.forEach(resolve => { try { resolve(); } catch(_){} });
@@ -647,7 +975,7 @@ async function ensureModulesReady() {
       await waitForSupabaseApi({ timeout: 8000 });
       supabaseReady = !!getSupabaseApi();
     } catch (err) {
-      console.warn('[BOOT] SupabaseAPI nicht rechtzeitig geladen', err);
+      logBootDiag('SupabaseAPI nicht rechtzeitig geladen', err);
     }
   }
 
@@ -657,30 +985,10 @@ async function ensureModulesReady() {
     : ['SupabaseAPI'];
   const missing = [...missingGlobals, ...missingSupa];
   if (!missing.length) return true;
-  const message = `Fehler: Module fehlen (${missing.join(', ')})`;
-  let displayed = false;
-  if (document.readyState !== 'loading') {
-    const errBox = document.getElementById('err');
-    if (errBox) {
-      errBox.textContent = message;
-      errBox.style.display = 'block';
-      displayed = true;
-    } else if (document.body) {
-      const div = document.createElement('div');
-      div.textContent = message;
-      div.style.background = '#ff6b6b';
-      div.style.color = '#121417';
-      div.style.padding = '12px';
-      div.style.margin = '16px';
-      div.style.borderRadius = '8px';
-      div.style.fontWeight = '600';
-      document.body.appendChild(div);
-      displayed = true;
-    }
-  }
-  if (!displayed) {
-    console.error(message);
-  }
+  const label = missing.join(', ');
+  const message = `Module fehlen: ${label}`;
+  showBootErrorBanner(message);
+  logBootDiag(`missing deps: ${label}`);
   return false;
 }
 
@@ -927,7 +1235,7 @@ async function maybeResetIntakeForToday(todayIso){
     if (guardSet) {
       AppModules.captureGlobals.setIntakeResetDoneFor(todayIso);
       try { window?.localStorage?.setItem(LS_INTAKE_RESET_DONE_KEY, todayIso); } catch(_) {}
-      try { window.AppModules.capture.refreshCaptureIntake(); } catch(_) {}
+      try { window.AppModules.capture?.refreshCaptureIntake?.('auto:intake-reset'); } catch(_) {}
     }
   }
 }
@@ -1040,8 +1348,10 @@ async function maybeRefreshForTodayChange({ force = false, source = '' } = {}){
     try { await maybeResetIntakeForToday(todayIso); } catch(_) {}
   }
 
+  const normalizedSource = typeof source === 'string' && source.trim() ? source.trim() : '';
+  const refreshReason = normalizedSource || (force ? 'force' : 'auto');
   try {
-    await window.AppModules.capture.refreshCaptureIntake();
+    await window.AppModules.capture?.refreshCaptureIntake?.(refreshReason);
   } catch(_) {}
 
   AppModules.captureGlobals.setLastKnownToday(todayIso);
@@ -1112,101 +1422,13 @@ function flashButtonOk(btn, successHtml){
 /* Doctor-Lock-Logik lebt in SupabaseAPI.guard (requireDoctorUnlock/bindAppLockButtons). */
 /* ===== Main ===== */
 async function main(){
-  if (document.readyState === 'loading') {
-    await new Promise((resolve) => {
-      document.addEventListener('DOMContentLoaded', resolve, { once: true });
-    });
-  }
-  if (!(await ensureModulesReady())) {
-    return;
-  }
-  diag.init();
-  helpPanel?.init?.();
-  await initDB();
-  window.AppModules?.uiLayout?.updateStickyOffsets?.();
-  bindHeaderShadow();
-  try {
-    await getConf("webhookUrl");
-    await getConf("webhookKey");
-  } catch (_) {}
-  // Dep: chart panel and refresh flows expect Supabase client to exist beforehand.
-  await ensureSupabaseClient();
-  getChartPanel()?.init?.();
-  bindTabs();
-const todayIso = todayStr();
-const setInputValue = (selector, value) => {
-  const el = document.querySelector(selector);
-  if (!el) {
-    diag.add?.(`[boot] input ${selector} missing (possibly moved to overlay)`);
-    return null;
-  }
-  el.value = value;
-  return el;
-};
-setInputValue('#date', todayIso);
-AppModules.captureGlobals.setLastKnownToday(todayIso);
-AppModules.captureGlobals.setDateUserSelected(false);
-AppModules.captureGlobals.setBpUserOverride(false);
-prepareIntakeStatusHeader();
-setInputValue('#from', new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10));
-setInputValue('#to', todayIso);
-setTab("capture");
-try{ window.AppModules.capture.resetCapturePanels?.(); window.AppModules.bp.updateBpCommentWarnings?.(); }catch(_){ }
-try { addCapturePanelKeys?.(); } catch(_){ }
-bindAuthButtons();
-if (getSupabaseState()?.sbClient) watchAuthState();
-
-// Wenn schon eingeloggt -> App starten, sonst Login-Leiste zeigen
-const hasSession = await requireSession();
-if (hasSession) {
-  await afterLoginBoot(); // wichtig fuer Reload mit persistierter Session
-      // Doctor-Unlock: nur bei Arzt-Ansicht (kein globaler App-Lock)  //  App-Lock direkt nach Boot pruefen/anzeigen
-  await setupRealtime();  //  NEU: Realtime direkt aktivieren
-  await requestUiRefresh();
+  const context = { hasSession: false };
+  await runBootPhase();
+  await runAuthCheckPhase(context);
+  await initCorePhase();
+  await initModulesPhase();
+  await initUiAndLiftLockPhase();
 }
-  try {
-    await window.AppModules.capture.refreshCaptureIntake();
-  } catch(_) {}
-await maybeRefreshForTodayChange({ force: true, source: 'boot' });
-  AppModules.captureGlobals.setLastKnownToday(todayStr());
-  scheduleMidnightRefresh();
-  scheduleNoonSwitch();
-  maybeAutoApplyBpContext({ source: 'boot-post-refresh' });
-// appointments refresh removed
-bindAppLockButtons();     //  Buttons der Lock-Card binden
-
-// Konfiguration laden
-const savedUrl = await getConf("webhookUrl");
-const savedKey = await getConf("webhookKey");
-// Diagnose: aktive REST-URL und Key-Typ
-diag.add?.('Config URL: ' + (savedUrl || '(none)'));
-diag.add?.('Config Key: ' + (savedKey ? (isServiceRoleKey(savedKey) ? 'service_role(BLOCKED)' : 'anon/ok') : '(none)'));
-if (!savedUrl || !savedKey) {
-  setTab("capture"); // In Erfassung bleiben
-}
-
-// Sanfte Warnung
-// === Live-Kommentar-Pflicht: sofort roter Rand bei Grenzwertueberschreitung ===
-['#captureAmount','#diaM','#bpCommentM','#sysA','#diaA','#bpCommentA'].forEach(sel=>{
-  const el = $(sel); if(!el) return;
-  el.addEventListener('input', () => window.AppModules.bp.updateBpCommentWarnings?.());
-});
-window.AppModules.bp.updateBpCommentWarnings?.();
-
-
-// Toggle-Handler
-const bpContextSel = document.getElementById('bpContextSel');
-AppModules.captureGlobals.setBpPanesCache(Array.from(document.querySelectorAll('.bp-pane')));
-if (bpContextSel){
-  applyBpContext(bpContextSel.value || 'M');
-  maybeAutoApplyBpContext({ force: true, source: 'boot' });
-  bpContextSel.addEventListener('change', (e)=>{
-    AppModules.captureGlobals.setBpUserOverride(true);
-    applyBpContext(e.target.value);
-    window.AppModules.bp.updateBpCommentWarnings?.();
-  });
-}
-
 function getCaptureDayIso() {
   const input = document.getElementById('date');
   const raw = typeof input?.value === 'string' ? input.value.trim() : '';
@@ -1319,8 +1541,8 @@ const dateEl = document.getElementById('date');
         const todayIso = todayStr();
   AppModules.captureGlobals.setDateUserSelected((dateEl.value || '') !== todayIso);
         // was du beim Datum aendern haben willst:
-        await window.AppModules.capture.refreshCaptureIntake();
-        window.AppModules.capture.resetCapturePanels();
+        await window.AppModules.capture?.refreshCaptureIntake?.('date-change:user');
+        window.AppModules.capture?.resetCapturePanels?.();
         window.AppModules.bp.updateBpCommentWarnings?.();
         await window.AppModules.body.prefillBodyInputs();
       } catch(_) {}
@@ -1338,6 +1560,7 @@ if (applyBtn) {
 const doctorChartBtn = document.getElementById('doctorChartBtn');
 if (doctorChartBtn) {
 doctorChartBtn.addEventListener("click", async ()=>{
+  diag.add?.('[doctor] chart open button clicked');
   try {
     const logged = await isLoggedInFast();
     if (!logged) {
@@ -1354,7 +1577,11 @@ doctorChartBtn.addEventListener("click", async ()=>{
     setAuthPendingAfterUnlock(null);
   }
   const chartPanel = getChartPanel();
+  if (!chartPanel) {
+    diag.add?.('[doctor] chart panel missing');
+  }
   chartPanel?.show?.();
+  diag.add?.('[doctor] chart show requested');
   await requestUiRefresh({ reason: 'doctor:chart-open', chart: true });
 });
 } else {
@@ -1367,6 +1594,7 @@ document.addEventListener('keydown', (e)=>{
   try {
     const chartPanel = getChartPanel();
     if (chartPanel?.open) {
+      diag.add?.('[doctor] chart hide via Escape');
       chartPanel.hide();
       e.preventDefault();
       return;
@@ -1406,32 +1634,67 @@ document.addEventListener('keydown', (e)=>{
   } catch(_){ }
 });
 
+const isVoiceGateReady = () => {
+  try {
+    const hub = window.AppModules?.hub;
+    if (hub?.isVoiceReady) {
+      return !!hub.isVoiceReady();
+    }
+    if (hub?.getVoiceGateStatus) {
+      return hub.getVoiceGateStatus()?.allowed !== false;
+    }
+  } catch (_err) {
+    /* ignore */
+  }
+  return true;
+};
+
+const shouldHandleResume = () => {
+  if (!isAuthDecisionKnown()) return false;
+  const bootFlow = getBootFlow();
+  if (bootFlow?.isStageAtLeast && !bootFlow.isStageAtLeast('INIT_CORE')) {
+    return false;
+  }
+  if (!isVoiceGateReady()) {
+    touchLog('[resume] skipped – voice gate locked');
+    return false;
+  }
+  return true;
+};
+
 const resumeEventHandler = (source) => {
+  if (!shouldHandleResume()) {
+    verboseTouchLog(`[resume] skipped ${source}`);
+    return;
+  }
   (async () => {
     try {
+      logResumeSummary(source, 'start');
       await resumeFromBackground(source);
+      logResumeSummary(source, 'done');
     } catch (err) {
-      diag.add?.(`[resume] handler error ${source}: ${err?.message || err}`);
+      logResumeSummary(source, 'failed', err?.message || err, 'error');
     }
   })();
 };
 document.addEventListener('visibilitychange', () => {
-  diag.add?.(`[event] visibilitychange -> ${document.visibilityState}`);
   if (document.visibilityState !== 'visible') return;
   resumeEventHandler('visibility');
 });
 
 window.addEventListener('pageshow', (event) => {
-  diag.add?.(`[event] pageshow (persisted=${event.persisted ? 1 : 0})`);
   if (event.persisted || document.visibilityState === 'visible') {
     resumeEventHandler('pageshow');
   }
 });
 
-window.addEventListener('focus', () => {
-  diag.add?.('[event] focus');
+const handleWindowFocus = () => {
+  if (!shouldHandleResume()) return;
   resumeEventHandler('focus');
-});
+  try { maybeRefreshForTodayChange({ source: 'focus' }); } catch(_){ }
+};
+
+window.addEventListener('focus', handleWindowFocus);
 
 /** END MODULE */
 
@@ -1445,57 +1708,37 @@ if (doctorExportBtn) {
   diag.add?.('[doctor] export button missing - overlay layout active?');
 }
 
-// --- Lifestyle binden und initial (falls bereits angemeldet) laden ---
-window.AppModules.capture.bindIntakeCapture();
-// appointments panel removed
-try {
-  if (hasSupabaseFn('cleanupOldIntake') && await isLoggedInFast()) {
-    await cleanupOldIntake();
-  }
-} catch(_) {}
-
-// Initial Render
-await requestUiRefresh({ reason: 'boot:initial' });
-
-// --- Failsafe: nach Reload alles sicher freigeben (falls etwas "disabled" haengen blieb)
-$$('#appMain input, #appMain select, #appMain textarea, #appMain button, nav.tabs button').forEach(el=>{
-el.disabled = false;
-});
-document.body.classList.remove('auth-locked');
-
-// Auto-Push Pending sobald online
-window.addEventListener('online', async ()=>{
-  try {
-    if (!hasSupabaseFn('pushPendingToRemote')) return;
-    const resPush = await pushPendingToRemote();
-    if(resPush?.pushed || resPush?.failed){
-      diag.add?.('Online-Push: OK=' + (resPush.pushed || 0) + ', FAIL=' + (resPush.failed || 0));
-      if (hasSupabaseFn('reconcileFromRemote')) {
-        await reconcileFromRemote();
-      }
-    }
-  } catch (err) {
-    diag.add?.('[online] push failed: ' + (err?.message || err));
-    console.error('[online] pushPendingToRemote failed', err);
-  }
-});
-}
-
-// appointments UI reset removed
-
 /* boot */
-if (!window.__bootDone) {
+const startBootProcess = () => {
+  if (window.__bootDone) return;
   window.__bootDone = true;
-  if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", main);
-
-    window.addEventListener('focus', () => {
-      try { maybeRefreshForTodayChange({ source: 'focus' }); } catch(_){ }
+  logBootPhaseSummary('BOOTSTRAP', 'start');
+  main()
+    .then(() => {
+      logBootPhaseSummary('BOOTSTRAP', 'done');
+    })
+    .catch((err) => {
+      const message = err?.message || 'Boot fehlgeschlagen.';
+      window.__bootFailed = true;
+      failBootStage(message);
+      showBootErrorBanner(message);
+      logBootDiag('fatal', err || message);
+      logBootPhaseSummary('BOOTSTRAP', 'failed', message, 'error');
     });
-  } else {
-    main();
-  }
+};
+
+const bootFlowInstance = getBootFlow();
+if (bootFlowInstance) {
+  bootFlowInstance.whenStage('BOOT', startBootProcess);
+} else if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', startBootProcess, { once: true });
+} else {
+  startBootProcess();
 }
+
+window.addEventListener('focus', () => {
+  try { maybeRefreshForTodayChange({ source: 'focus' }); } catch(_){ }
+});
 
 /** MODULE: FUTURE (placeholders)
  * intent: haelt geplante Assist/PWA/BLE-Refactors fuer die Zeit nach dem Annotations-Pass bereit
