@@ -32,6 +32,9 @@ declare
   keys text[];
   has_kg boolean;
   has_cm boolean;
+  g_stage text;
+  a_stage text;
+  derived_ckd text;
 begin
   if new.ts is null then
     raise exception 'ts darf nicht NULL sein' using errcode = '23514';
@@ -211,13 +214,36 @@ begin
         raise exception 'lab_event: potassium ausserhalb Range 2-7' using errcode = '22003';
       end if;
     end if;
-    if (new.payload ? 'ckd_stage') then
-      if length(new.payload->>'ckd_stage') > 20 then
+    -- CKD-Stufe serverseitig ableiten
+    g_stage := null;
+    a_stage := null;
+    derived_ckd := null;
+    if (new.payload ? 'egfr') then
+      g_stage := case
+        when (new.payload->>'egfr')::numeric >= 90 then 'G1'
+        when (new.payload->>'egfr')::numeric >= 60 then 'G2'
+        when (new.payload->>'egfr')::numeric >= 45 then 'G3a'
+        when (new.payload->>'egfr')::numeric >= 30 then 'G3b'
+        when (new.payload->>'egfr')::numeric >= 15 then 'G4'
+        else 'G5'
+      end;
+    end if;
+    if (new.payload ? 'albuminuria_stage') then
+      a_stage := new.payload->>'albuminuria_stage';
+    end if;
+    if g_stage is not null or a_stage is not null then
+      derived_ckd := trim(both ' ' from coalesce(g_stage, '') || case when a_stage is not null then ' ' || a_stage else '' end);
+    end if;
+    if derived_ckd is not null then
+      if length(derived_ckd) > 20 then
         raise exception 'lab_event: ckd_stage zu lang (max 20 Zeichen)' using errcode = '22023';
       end if;
-      if (new.payload->>'ckd_stage') !~* '^G(1|2|3a|3b|4|5)(?:\\s+A[123])?$' then
+      if derived_ckd !~ '^G(1|2|3a|3b|4|5)(?:\\s+A[123])?$' then
         raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
       end if;
+      new.payload := jsonb_set(new.payload, '{ckd_stage}', to_jsonb(derived_ckd), true);
+    else
+      new.payload := new.payload - 'ckd_stage';
     end if;
 
   elsif new.type = 'system_comment' then

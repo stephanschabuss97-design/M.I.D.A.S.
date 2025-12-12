@@ -110,7 +110,6 @@
           entry.potassium != null ||
           entry.hba1c != null ||
           entry.ldl != null ||
-          entry.ckd_stage ||
           (entry.lab_comment && entry.lab_comment.trim().length);
         if (hasLab) {
           const payload = {};
@@ -120,7 +119,6 @@
           const ldl = toNumberOrNull(entry.ldl);
           const potassium = toNumberOrNull(entry.potassium);
           const subtype = (entry.albuminuria_stage || '').trim();
-          const ckdStage = (entry.ckd_stage || '').trim();
           const comment = (entry.lab_comment || '').trim();
           if (egfr !== null) payload.egfr = egfr;
           if (creatinine !== null) payload.creatinine = creatinine;
@@ -128,7 +126,6 @@
           if (hba1c !== null) payload.hba1c = hba1c;
           if (ldl !== null) payload.ldl = ldl;
           if (potassium !== null) payload.potassium = potassium;
-          if (ckdStage) payload.ckd_stage = ckdStage;
           if (comment) payload.comment = comment;
           if (Object.keys(payload).length) {
             out.push({ ts: tsIso, type: 'lab_event', payload });

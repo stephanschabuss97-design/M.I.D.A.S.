@@ -91,23 +91,6 @@
     return { value, valid: true };
   }
 
-  const determineGfrStage = (value) => {
-    if (!Number.isFinite(value)) return null;
-    if (value >= 90) return 'G1';
-    if (value >= 60) return 'G2';
-    if (value >= 45) return 'G3a';
-    if (value >= 30) return 'G3b';
-    if (value >= 15) return 'G4';
-    return 'G5';
-  };
-
-  const deriveCkdStage = (egfr, albumCat) => {
-    const gStage = determineGfrStage(egfr);
-    const aStage = albumCat ? albumCat.trim().toUpperCase() : '';
-    if (!gStage && !aStage) return null;
-    return [gStage, aStage].filter(Boolean).join(' ').trim() || null;
-  };
-
   async function saveLabEntry() {
     const date = document.getElementById('date')?.value || todayStr();
     const entry = createBaseEntry(date, '12:00', 'Tag');
@@ -180,7 +163,6 @@
     entry.ldl = numberOrNull(ldlResult.value);
     entry.potassium = numberOrNull(potassiumResult.value);
     entry.lab_comment = comment;
-    entry.ckd_stage = deriveCkdStage(entry.egfr, entry.albuminuria_stage);
 
     try {
       const localId = await addEntry(entry);
