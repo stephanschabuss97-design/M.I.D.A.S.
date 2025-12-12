@@ -182,20 +182,6 @@
     entry.lab_comment = comment;
     entry.ckd_stage = deriveCkdStage(entry.egfr, entry.albuminuria_stage);
 
-    const hasPayload =
-      entry.egfr != null ||
-      entry.creatinine != null ||
-      entry.albuminuria_stage ||
-      entry.potassium != null ||
-      entry.hba1c != null ||
-      entry.ldl != null ||
-      (entry.lab_comment && entry.lab_comment.length);
-
-    if (!hasPayload) {
-      uiError?.('Keine Labordaten eingegeben.');
-      return false;
-    }
-
     try {
       const localId = await addEntry(entry);
       await syncWebhook(entry, localId);
