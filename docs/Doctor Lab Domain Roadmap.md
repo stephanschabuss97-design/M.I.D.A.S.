@@ -89,6 +89,7 @@ This document captures the restructuring prompt and translates it into a determi
    - Keep `albuminuria_stage` (A1–A3) as an optional dropdown sourced from the doctor’s report; allow `null` and reflect missing values neutrally in the narrative.
    - Ensure the lab snapshot includes only: `egfr (ml/min/1.73m²)`, `creatinine (mg/dl)`, `albuminuria_stage (A1–A3 | null)`, `potassium (mmol/l)`, `hba1c (%)`, `ldl (mg/dl)`, plus optional `comment`.
    - Update the Edge Function and SQL Script to reference these fields exclusively when building `payload.meta.latest_lab_values` and narrative text; if a value is missing, explicitly note “nicht bestimmt im Berichtszeitraum” instead of inferring.
+   - **Contract:** `ckd_stage` is always derived on the server (Trigger + `v_events_lab`) and is never accepted from client payloads. Any capture/sync layer must strip legacy `ckd_stage` keys before issuing `POST /rest/v1/health_events`.
 
    3.1 Schema first: update SQL + trigger + view to remove the old acr_value, rename the dropdown/key to albuminuria_stage, add the potassium field, and keep range checks tidy. Without this, the UI can’t save the new payload contract.
    3.2 Capture/UI second: once the schema is in place, adjust the Vitals Lab card to collect only the supported fields (new potassium input, renamed dropdown, hint text about optional doctor-sourced stage). That ensures every new lab entry conforms to the schema.

@@ -151,7 +151,7 @@ begin
     end if;
 
   elsif new.type = 'lab_event' then
-    keys := array['egfr','creatinine','albuminuria_stage','hba1c','ldl','comment','ckd_stage','potassium'];
+    keys := array['egfr','creatinine','albuminuria_stage','hba1c','ldl','comment','potassium'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'lab_event: payload enthaelt unbekannte Keys' using errcode = '22023';
     end if;
