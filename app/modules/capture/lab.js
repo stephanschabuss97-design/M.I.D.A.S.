@@ -38,7 +38,6 @@
       };
     });
 
-  const LAB_CATEGORIES = new Set(['A1', 'A2', 'A3']);
   const warnCollisions = Boolean(global?.BP_DEBUG_COLLISIONS);
 
   const getInput = (id) => document.getElementById(id);
@@ -49,7 +48,7 @@
     const ids = [
       'labEgfr',
       'labCreatinine',
-      'labAlbuminuria',
+      'labCkdStage',
       'labHba1c',
       'labLdl',
       'labPotassium',
@@ -113,21 +112,8 @@
     });
     if (!creatinineResult.valid) valid = false;
 
-    const albumEl = getInput('labAlbuminuria');
-    let albumCat = (albumEl?.value || '').trim().toUpperCase();
-    if (albumCat) {
-      if (!LAB_CATEGORIES.has(albumCat)) {
-        setFieldError?.(albumEl);
-        uiError?.('Albuminurie-Kategorie muss A1, A2 oder A3 sein.');
-        valid = false;
-        albumCat = null;
-      } else {
-        clearFieldError?.(albumEl);
-      }
-    } else {
-      albumCat = null;
-      clearFieldError?.(albumEl);
-    }
+    const ckdEl = getInput('labCkdStage');
+    const ckdStage = (ckdEl?.value || '').trim();
 
     const hba1cResult = parseLabNumber(getInput('labHba1c'), {
       label: 'HbA1c',
@@ -152,17 +138,15 @@
     if (!potassiumResult.valid) valid = false;
     const comment = (getInput('labComment')?.value || '').trim();
 
-    clearFieldError?.(albumEl);
-
     if (!valid) return false;
 
     entry.egfr = numberOrNull(egfrResult.value);
     entry.creatinine = numberOrNull(creatinineResult.value);
-    entry.albuminuria_stage = albumCat;
     entry.hba1c = numberOrNull(hba1cResult.value);
     entry.ldl = numberOrNull(ldlResult.value);
     entry.potassium = numberOrNull(potassiumResult.value);
     entry.lab_comment = comment;
+    entry.ckd_stage = ckdStage || null;
 
     try {
       const localId = await addEntry(entry);

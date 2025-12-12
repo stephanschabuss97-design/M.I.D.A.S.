@@ -765,7 +765,7 @@
     bind('#sysA, #diaA, #pulseA, #bpCommentA', () => document.getElementById('saveBpPanelBtn')?.click(), () => invokeResetBpPanel('A'));
       const resetBodyPanelFn = getResetBodyPanel();
       bind('#weightDay, #input-waist-cm, #fatPctDay, #musclePctDay', () => document.getElementById('saveBodyPanelBtn')?.click(), () => resetBodyPanelFn?.());
-      bind('#labEgfr, #labCreatinine, #labAlbuminuria, #labAcr, #labHba1c, #labLdl, #labComment', () => document.getElementById('saveLabPanelBtn')?.click(), () => window.AppModules?.lab?.resetLabPanel?.());
+      bind('#labEgfr, #labCreatinine, #labCkdStage, #labHba1c, #labLdl, #labPotassium, #labComment', () => document.getElementById('saveLabPanelBtn')?.click(), () => window.AppModules?.lab?.resetLabPanel?.());
   }
 
   initTrendpilotCaptureHook();

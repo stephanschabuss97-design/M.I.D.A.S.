@@ -32,9 +32,6 @@ declare
   keys text[];
   has_kg boolean;
   has_cm boolean;
-  g_stage text;
-  a_stage text;
-  derived_ckd text;
 begin
   if new.ts is null then
     raise exception 'ts darf nicht NULL sein' using errcode = '23514';
@@ -151,7 +148,7 @@ begin
     end if;
 
   elsif new.type = 'lab_event' then
-    keys := array['egfr','creatinine','albuminuria_stage','hba1c','ldl','comment','potassium'];
+    keys := array['egfr','creatinine','hba1c','ldl','comment','potassium','ckd_stage'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'lab_event: payload enthaelt unbekannte Keys' using errcode = '22023';
     end if;
@@ -175,12 +172,6 @@ begin
     end if;
     if (new.payload->>'creatinine')::numeric < 0.1 or (new.payload->>'creatinine')::numeric > 20 then
       raise exception 'lab_event: creatinine ausserhalb Range 0.1-20' using errcode = '22003';
-    end if;
-
-    if (new.payload ? 'albuminuria_stage') then
-      if (new.payload->>'albuminuria_stage') not in ('A1','A2','A3') then
-        raise exception 'lab_event: albuminuria_stage muss A1/A2/A3 sein' using errcode = '22023';
-      end if;
     end if;
 
     if (new.payload ? 'hba1c') then
@@ -214,36 +205,13 @@ begin
         raise exception 'lab_event: potassium ausserhalb Range 2-7' using errcode = '22003';
       end if;
     end if;
-    -- CKD-Stufe serverseitig ableiten
-    g_stage := null;
-    a_stage := null;
-    derived_ckd := null;
-    if (new.payload ? 'egfr') then
-      g_stage := case
-        when (new.payload->>'egfr')::numeric >= 90 then 'G1'
-        when (new.payload->>'egfr')::numeric >= 60 then 'G2'
-        when (new.payload->>'egfr')::numeric >= 45 then 'G3a'
-        when (new.payload->>'egfr')::numeric >= 30 then 'G3b'
-        when (new.payload->>'egfr')::numeric >= 15 then 'G4'
-        else 'G5'
-      end;
-    end if;
-    if (new.payload ? 'albuminuria_stage') then
-      a_stage := new.payload->>'albuminuria_stage';
-    end if;
-    if g_stage is not null or a_stage is not null then
-      derived_ckd := trim(both ' ' from coalesce(g_stage, '') || case when a_stage is not null then ' ' || a_stage else '' end);
-    end if;
-    if derived_ckd is not null then
-      if length(derived_ckd) > 20 then
+    if (new.payload ? 'ckd_stage') then
+      if length(new.payload->>'ckd_stage') > 20 then
         raise exception 'lab_event: ckd_stage zu lang (max 20 Zeichen)' using errcode = '22023';
       end if;
-      if derived_ckd !~ '^G(1|2|3a|3b|4|5)(?:\\s+A[123])?$' then
+      if (new.payload->>'ckd_stage') !~ '^G(1|2|3a|3b|4|5)(?:\\s+A[123])?$' then
         raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
       end if;
-      new.payload := jsonb_set(new.payload, '{ckd_stage}', to_jsonb(derived_ckd), true);
-    else
-      new.payload := new.payload - 'ckd_stage';
     end if;
 
   elsif new.type = 'system_comment' then
@@ -271,7 +239,6 @@ select
   e.day,
   (e.payload->>'egfr')::numeric            as egfr,
   (e.payload->>'creatinine')::numeric      as creatinine,
-  (e.payload->>'albuminuria_stage')        as albuminuria_stage,
   (e.payload->>'hba1c')::numeric           as hba1c,
   (e.payload->>'ldl')::numeric             as ldl,
   (e.payload->>'potassium')::numeric       as potassium,
@@ -281,6 +248,6 @@ from public.health_events e
 where e.type = 'lab_event';
 
 comment on view public.v_events_lab is
-  'Laborwerte (eGFR, Kreatinin, Albuminurie-Stufe, Kalium, HbA1c, LDL, CKD-Stufe, Kommentar) pro Tag.';
+  'Laborwerte (eGFR, Kreatinin, Kalium, HbA1c, LDL, CKD-Stufe, Kommentar) pro Tag.';
 
 commit;

@@ -97,21 +97,9 @@ export async function syncWebhook(entry, localId) {
       return;
     }
 
-    // CKD-Stufe ist server-owned: nie an den REST-Endpunkt senden.
-    const payload = events.map((ev) => {
-      const base = { ...ev };
-      if ('ckd_stage' in base) {
-        delete base.ckd_stage;
-      }
-      if (base.payload && typeof base.payload === 'object') {
-        const payloadClone = { ...base.payload };
-        if ('ckd_stage' in payloadClone) {
-          delete payloadClone.ckd_stage;
-        }
-        base.payload = payloadClone;
-      }
-      return uid ? { ...base, user_id: uid } : base;
-    });
+    const payload = events.map((ev) =>
+      uid ? { ...ev, user_id: uid } : { ...ev }
+    );
     const res = await fetchWithAuth(
       (headers) => fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) }),
       { tag: 'webhook:post', maxAttempts: 2 }

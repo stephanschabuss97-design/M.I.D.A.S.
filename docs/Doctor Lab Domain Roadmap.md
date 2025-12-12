@@ -5,7 +5,7 @@ This document captures the restructuring prompt and translates it into a determi
 ## 1. Initial Prompt (Idea & Vision)
 
 - Split the current Doctor View into **three medical domains** – Blood Pressure (BP), Body Composition, Laboratory/CKD – each backed by its own `health_events` type and rendered inside dedicated tabs.
-- Introduce a **new `lab_event`** whose payload stores `egfr`, `creatinine`, `albuminuria_category | acr_value`, optional metabolic markers (`hba1c`, `ldl`), plus a short doctor comment.
+- Introduce a **new `lab_event`** whose payload stores `egfr`, `creatinine`, an optional CKD stage dropdown, optional metabolic markers (`hba1c`, `ldl`), plus a short doctor comment.
 - Add **monthly reports** as `system_comment` entries (`subtype: "monthly_report"` with `{ month, text, summary, created_at }`) so the AI never fabricates “fake days” with zeros.
 - Update the **Vitals Input Panel** to become the unified entry point: BP input → `bp_event`, Body input → `body_event`, new Lab input → `lab_event`.
 - Provide a manual trigger inside Doctor View that calls a new **Edge Function (`midas-monthly-report`)** which fetches `bp_series[]`, `body_series[]`, and `lab_series[]` (empty arrays mean “no data”) and stores the report as a system comment. Later this will run automatically on PWA.
@@ -32,7 +32,7 @@ This document captures the restructuring prompt and translates it into a determi
 3. ✅ Wire the Vitals Panel to the new lab save handler; maintain consistent locking/error handling with the BP/Body buttons.
 
 ### Step 4 – Vitals Panel UI & Styles
-1. ✅ Add a lab card in the Hub Vitals panel (inputs for eGFR, creatinine, albuminuria category/ACR, HbA1c, LDL, comment) plus a “Save Lab” button and inline validation hints.
+1. ✅ Add a lab card in the Hub Vitals panel (inputs for eGFR, creatinine, CKD stage, HbA1c, LDL, comment) plus a “Save Lab” button and inline validation hints.
 2. ✅ Update the shared Hub CSS so the new card aligns with existing cards on desktop/mobile layouts.
 3. ✅ Add a “Generate monthly report” button in the doctor action group (disabled until the guard passes) to trigger the manual report flow (automation follows in the PWA/TWA phase).
 
@@ -44,15 +44,15 @@ This document captures the restructuring prompt and translates it into a determi
 2. Refactor `app/modules/doctor/index.js` into per-domain loaders/renderers. Each tab pulls only its domain events, keeps its own scroll snapshot, and renders domain-specific cards:
    2.1 ✅ BP tab reuses the current blood-pressure table + Trendpilot section + delete actions.
    2.2 ✅ Body tab lists body composition metrics (weight, waist, fat %, muscle %) without BP columns.
-   2.3 ✅ Lab tab renders lab entries (eGFR, creatinine, albuminuria category, ACR, optional markers, doctor comment).
+   2.3 ✅ Lab tab renders lab entries (eGFR, creatinine, CKD stage, optional markers, doctor comment).
    2.4 ✅ Profile UI/Schema cleanup
    - Remove the CKD stage dropdown from app/modules/profile/index.js and the overview section.
    - Drop the ckd_stage column (or leave nullable) from public.user_profile if it’s no longer used.
    - Update docs (Profile Module Overview, QA scripts) so nobody expects to edit CKD in that panel.
    - Lab capture becomes the single source
-   2.5 ✅ Keep the existing inputs in the Vitals/Lab card (albuminuria_category + ACR).
+   2.5 ✅ Keep the existing inputs in the Vitals/Lab card (CKD dropdown).
    - Ensure each lab save stores the A1–A3 class (already enforced in lab_event validation).
-   - Derive a combined “CKD stage” string (e.g., G3a A2) based on eGFR + albuminuria at save time and persist it in the `lab_event` payload (`ckd_stage`). Views/loaders expose the field for downstream consumers.
+   - Derive a combined “CKD stage” string (e.g., G3a A2) based on the doctor-provided CKD dropdown and persist it in the `lab_event` payload (`ckd_stage`). Views/loaders expose the field for downstream consumers.
    2.6 ✅ Assistant/Profile consumers read from lab data
    - Added `loadLatestLabSnapshot()` in the Supabase vitals API so hub/profile modules can fetch the most recent `lab_event` directly.
    - `app/modules/profile/index.js` now loads that snapshot on every sync, exposes the derived `ckd_stage` via `getData()`, and renders a read-only “CKD-Stufe (Lab)” badge in the profile panel.
@@ -84,17 +84,15 @@ This document captures the restructuring prompt and translates it into a determi
 2. ✅ Refresh the Doctor Inbox UI to focus on the narrative:
    - Render summary + text separately, format the narrative with paragraphs/bullets, show warning badges when `payload.meta.flags` indicates risks.
    - Add delete and optional regenerate buttons per monthly report card (calls the Supabase API to delete/recreate the `system_comment`) so test runs don’t clutter the archive, and expose a “Neuen Monatsbericht” CTA in the overlay header next to the count.
-3. Align CKD lab inputs with the minimal, doctor-sourced dataset used by the narrative engine:
-   - Remove ACR from the monthly aggregation logic and UI inputs; MIDAS does not calculate albuminuria.
-   - Keep `albuminuria_stage` (A1–A3) as an optional dropdown sourced from the doctor’s report; allow `null` and reflect missing values neutrally in the narrative.
-   - Ensure the lab snapshot includes only: `egfr (ml/min/1.73m²)`, `creatinine (mg/dl)`, `albuminuria_stage (A1–A3 | null)`, `potassium (mmol/l)`, `hba1c (%)`, `ldl (mg/dl)`, plus optional `comment`.
-   - Update the Edge Function and SQL Script to reference these fields exclusively when building `payload.meta.latest_lab_values` and narrative text; if a value is missing, explicitly note “nicht bestimmt im Berichtszeitraum” instead of inferring.
-   - **Contract:** `ckd_stage` is always derived on the server (Trigger + `v_events_lab`) and is never accepted from client payloads. Any capture/sync layer must strip legacy `ckd_stage` keys before issuing `POST /rest/v1/health_events`.
+3. Align CKD lab inputs with the doctor-sourced dataset (Albuminurie-Feld entfällt):
+   - Entferne ACR/Albuminurie vollständig aus UI, Payload und Narrativen – nur der CKD-Dropdown bleibt für die ärztliche Klassifikation.
+   - Lab Snapshots enthalten künftig `egfr`, `creatinine`, `hba1c`, `ldl`, `potassium`, `ckd_stage`, `comment`.
+   - Edge Function & Monatsbericht greifen nur noch auf diese Felder zu; fehlende Werte werden als „nicht bestimmt im Berichtszeitraum“ markiert.
 
-   3.1 Schema first: update SQL + trigger + view to remove the old acr_value, rename the dropdown/key to albuminuria_stage, add the potassium field, and keep range checks tidy. Without this, the UI can’t save the new payload contract.
-   3.2 Capture/UI second: once the schema is in place, adjust the Vitals Lab card to collect only the supported fields (new potassium input, renamed dropdown, hint text about optional doctor-sourced stage). That ensures every new lab entry conforms to the schema.
-   3.3 Loaders/snapshots third: update Supabase loaders/Hub profile logic so the lab snapshot surface contains exactly the new set, and cope gracefully with older rows (missing potassium/ACR legacy).
-   3.4 Edge function + narrative last: with the new data flowing end-to-end, switch the monthly report generator to reference only those fields and add the “nicht bestimmt im Berichtszeitraum” language for missing values.
+   3.1 Schema first: passe SQL/Trigger/View an, damit `albuminuria_stage` entfällt und nur der CKD-Wert validiert wird (Regex + Länge).
+   3.2 Capture/UI second: Lab-Karte zeigt ausschließlich den CKD-Dropdown; Reset-/Save-Logik speichert nur noch `ckd_stage`.
+   3.3 Loaders/snapshots third: Supabase-Loader (`v_events_lab`) und Hub/Profile müssen auf das verschlankte Schema reagieren.
+   3.4 Edge function + narrative last: Monatsbericht-Generator und Texte basieren auf `ckd_stage` statt Albuminurie.
 
 ### Step 8 – Testing & Documentation
 1. Smoke-test Schema: insert valid/invalid lab rows, confirm view outputs and RLS behavior.
