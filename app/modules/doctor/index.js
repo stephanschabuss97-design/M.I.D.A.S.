@@ -899,9 +899,33 @@ async function exportDoctorJson(){
     const rangeEl = doc?.getElementById('doctorInboxRange');
     const countEl = doc?.getElementById('doctorInboxCount');
     if (!list) return;
+    if (!list.dataset.reportActionsBound) {
+      list.addEventListener('click', handleReportCardAction);
+      list.dataset.reportActionsBound = '1';
+    }
+    const newReportBtn = doc?.getElementById('doctorInboxNewReportBtn');
+    if (newReportBtn && !newReportBtn.dataset.boundNewReport) {
+      newReportBtn.dataset.boundNewReport = '1';
+      newReportBtn.addEventListener('click', async () => {
+        const range = inboxPanelState.range || {};
+        const opts =
+          range.from && range.to
+            ? { from: range.from, to: range.to }
+            : {};
+        newReportBtn.disabled = true;
+        try {
+          await generateMonthlyReport(opts);
+        } catch (err) {
+          logDoctorError('new monthly report button failed', err);
+          uiError?.('Neuer Monatsbericht fehlgeschlagen.');
+        } finally {
+          newReportBtn.disabled = false;
+        }
+      });
+    }
     if (rangeEl) {
-      const fromLabel = from || '—';
-      const toLabel = to || '—';
+      const fromLabel = from || '-';
+      const toLabel = to || '-';
       rangeEl.textContent = `Zeitraum: ${fromLabel} bis ${toLabel}`;
     }
     list.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte werden geladen …</div>`;

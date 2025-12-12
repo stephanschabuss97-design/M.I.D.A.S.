@@ -81,7 +81,7 @@ This document captures the restructuring prompt and translates it into a determi
    - Aggregate BP/Body/Lab trends (min/max, averages, deltas) and weave in the latest CKD stage context so the report text highlights stability vs. issues; add a short “next steps” paragraph (hydration, meds, labs) using rule-based heuristics.
    - Keep `payload.summary` concise (month + counts + key warning flag), store structured stats in `payload.meta` (avg_sys/dia, weight delta, latest lab values, warning flags), and write a multi-sentence narrative in `payload.text` (Markdown-friendly).
    - If no lab data exists, note it explicitly (e.g., “Keine Laborwerte – Termin planen”).
-2. Refresh the Doctor Inbox UI to focus on the narrative:
+2. ✅ Refresh the Doctor Inbox UI to focus on the narrative:
    - Render summary + text separately, format the narrative with paragraphs/bullets, show warning badges when `payload.meta.flags` indicates risks.
    - Add delete and optional regenerate buttons per monthly report card (calls the Supabase API to delete/recreate the `system_comment`) so test runs don’t clutter the archive, and expose a “Neuen Monatsbericht” CTA in the overlay header next to the count.
 3. Align CKD lab inputs with the minimal, doctor-sourced dataset used by the narrative engine:
