@@ -443,6 +443,17 @@
   gap: 12px;
 }
 
+.doctor-inbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.doctor-inbox-actions .btn {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
 .doctor-report-card {
   border: 1px solid #242833;
   border-radius: 12px;
@@ -476,6 +487,18 @@
   margin-bottom: 8px;
 }
 
+.doctor-report-summary span.report-flag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-warning, #f4c15d);
+  color: #121417;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .doctor-report-body {
   font-size: 13px;
   line-height: 1.4;
@@ -487,4 +510,29 @@
   margin: 0;
   font-style: italic;
   opacity: 0.7;
+}
+
+.doctor-report-body p {
+  margin: 0 0 6px 0;
+}
+
+.doctor-report-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.doctor-report-body li {
+  margin-bottom: 4px;
+}
+
+.doctor-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.doctor-report-actions .btn {
+  font-size: 12px;
+  padding: 4px 10px;
 }

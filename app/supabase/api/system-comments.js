@@ -268,6 +268,25 @@ export async function setSystemCommentDoctorStatus({ id, doctorStatus }) {
   return { id, mode: 'doctorStatus' };
 }
 
+export async function deleteSystemComment({ id }) {
+  if (!id) throw new Error('system-comment delete: id required');
+  const endpoint = await resolveRestEndpoint();
+  const url = `${endpoint}?id=eq.${encodeURIComponent(id)}`;
+  const res = await fetchWithAuth(
+    (headers) =>
+      fetch(url, {
+        method: 'DELETE',
+        headers: { ...headers, Prefer: 'return=minimal' }
+      }),
+    { tag: 'systemComment:delete', maxAttempts: 1 }
+  );
+  if (!res.ok) {
+    const msg = await safeErrorMessage(res);
+    throw new Error(`system-comment delete failed ${res.status} ${msg}`);
+  }
+  return { id, mode: 'delete' };
+}
+
 const safeErrorMessage = async (res) => {
   try {
     const json = await res.clone().json();

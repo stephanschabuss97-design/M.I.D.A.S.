@@ -163,6 +163,13 @@
     return null;
   };
 
+  const resolveMonthlyReportDeleter = () => {
+    const api = getSupabaseApi();
+    return typeof api.deleteSystemComment === 'function'
+      ? api.deleteSystemComment
+      : null;
+  };
+
   const renderTrendpilotActionButton = (status, current) => {
     const isActive = status === (current || 'none');
     const label =
@@ -810,23 +817,61 @@ async function exportDoctorJson(){
     }
   };
 
-  const formatReportBody = (text) => {
+  const markdownToHtml = (text = '') => {
+    let html = escapeAttr(text);
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return html;
+  };
+
+  const formatReportNarrative = (text) => {
     const raw = (text || '').trim();
     if (!raw) return '<p class="report-empty">Kein Berichtstext vorhanden.</p>';
-    const escaped = escapeAttr(raw);
-    if (typeof nl2br === 'function') {
-      return nl2br(escaped);
-    }
-    return escaped.replace(/\r?\n/g, '<br>');
+    const lines = raw.split(/\r?\n/);
+    const blocks = [];
+    let bulletBuffer = [];
+
+    const flushBullets = () => {
+      if (!bulletBuffer.length) return;
+      const items = bulletBuffer.map((entry) => `<li>${markdownToHtml(entry)}</li>`).join('');
+      blocks.push(`<ul>${items}</ul>`);
+      bulletBuffer = [];
+    };
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        flushBullets();
+        return;
+      }
+      if (trimmed.startsWith('- ')) {
+        bulletBuffer.push(trimmed.slice(2));
+      } else {
+        flushBullets();
+        blocks.push(`<p>${markdownToHtml(trimmed)}</p>`);
+      }
+    });
+    flushBullets();
+    return blocks.join('');
+  };
+
+  const reportFlags = (report) => {
+    const flags = report?.payload?.meta?.flags;
+    if (!Array.isArray(flags)) return [];
+    return flags.filter((flag) => typeof flag === 'string' && flag.trim());
   };
 
   const renderMonthlyReportCard = (report, fmtDateDE) => {
     const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
     const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
     const summary = (report.summary || '').trim() || 'Kein Summary verfügbar.';
-    const textHtml = formatReportBody(report.text);
+    const flags = reportFlags(report);
+    const badgeHtml = flags
+      .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
+      .join('');
+    const textHtml = formatReportNarrative(report.text);
+    const monthTag = report.payload?.month || report.reportMonth || '';
     return `
-<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}">
+<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}">
   <div class="doctor-report-head">
     <div class="doctor-report-period">
       <strong>${escapeAttr(monthLabel || 'Unbekannter Monat')}</strong>
@@ -834,8 +879,12 @@ async function exportDoctorJson(){
     </div>
     <div class="doctor-report-meta">Erstellt ${escapeAttr(createdLabel)}</div>
   </div>
-  <div class="doctor-report-summary">${escapeAttr(summary)}</div>
+  <div class="doctor-report-summary">${escapeAttr(summary)}${badgeHtml}</div>
   <div class="doctor-report-body">${textHtml}</div>
+  <div class="doctor-report-actions">
+    <button class="btn ghost" type="button" data-report-action="regenerate">Neu erstellen</button>
+    <button class="btn ghost" type="button" data-report-action="delete">Löschen</button>
+  </div>
 </article>`;
   };
 
@@ -871,6 +920,46 @@ async function exportDoctorJson(){
     }
   }
 
+  async function handleReportCardAction(event) {
+    const btn = event.target.closest('[data-report-action]');
+    if (!btn) return;
+    const card = btn.closest('.doctor-report-card');
+    if (!card) return;
+    const reportId = card.getAttribute('data-report-id');
+    if (!reportId) return;
+    const action = btn.getAttribute('data-report-action');
+    if (action === 'delete') {
+      const deleter = resolveMonthlyReportDeleter();
+      if (typeof deleter !== 'function') {
+        toast('Löschen momentan nicht möglich.');
+        return;
+      }
+      if (!confirm('Diesen Monatsbericht endgültig löschen?')) return;
+      btn.disabled = true;
+      try {
+        await deleter({ id: reportId });
+        toast('Monatsbericht gelöscht.');
+        await refreshDoctorAfterMonthlyReport();
+      } catch (err) {
+        logDoctorError('delete monthly report failed', err);
+        uiError?.('Löschen fehlgeschlagen.');
+      } finally {
+        btn.disabled = false;
+      }
+    } else if (action === 'regenerate') {
+      const monthTag = card.getAttribute('data-report-month') || null;
+      btn.disabled = true;
+      try {
+        await generateMonthlyReport(monthTag ? { month: monthTag } : {});
+      } catch (err) {
+        logDoctorError('regenerate monthly report failed', err);
+        uiError?.('Neuer Monatsbericht fehlgeschlagen.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  }
+
   async function refreshDoctorAfterMonthlyReport(range = {}) {
     const defaultRange =
       inboxPanelState.range && (inboxPanelState.range.from || inboxPanelState.range.to)
@@ -896,11 +985,14 @@ async function exportDoctorJson(){
     }
   }
 
-  async function generateMonthlyReport() {
+  async function generateMonthlyReport(options = {}) {
     const doc = global.document;
-    const from = doc?.getElementById('from')?.value || '';
-    const to = doc?.getElementById('to')?.value || '';
-    if (!from || !to) {
+    const defaultFrom = doc?.getElementById('from')?.value || '';
+    const defaultTo = doc?.getElementById('to')?.value || '';
+    const month = options.month || null;
+    const from = month ? null : options.from || defaultFrom;
+    const to = month ? null : options.to || defaultTo;
+    if (!month && (!from || !to)) {
       const err = new Error('Bitte Zeitraum wählen.');
       logDoctorError('monthly report range missing', err);
       throw err;
@@ -913,13 +1005,13 @@ async function exportDoctorJson(){
     }
     let result;
     try {
-      result = await generator({ from, to });
+      result = await generator({ from, to, month });
     } catch (err) {
       logDoctorError('monthly report edge call failed', err);
       throw err;
     }
-    toast('Monatsbericht ausgelöst – Inbox aktualisiert.');
-    await refreshDoctorAfterMonthlyReport({ from, to });
+    toast('Monatsbericht ausgelöst - Inbox aktualisiert.');
+    await refreshDoctorAfterMonthlyReport({ from: from || '', to: to || '' });
     return result;
   }
 

@@ -11,7 +11,7 @@ alter table public.health_events
 
 alter table public.health_events
   add constraint health_events_type_check
-    check (type in ('bp','body','note','intake','lab_event'));
+    check (type in ('bp','body','note','intake','lab_event','system_comment'));
 
 -- (B) Ensure lab_event rows remain unique per user/day
 create unique index if not exists uq_events_lab_per_day
@@ -20,7 +20,7 @@ create unique index if not exists uq_events_lab_per_day
 
 -- (C) Update table comment to include lab events
 comment on table public.health_events is
-  'Event-Log (bp/body/note/intake/lab_event) mit RLS, Unique je Tag/Type(+ctx), Validierungs-Trigger und Europe/Vienna-Tageslogik.';
+  'Event-Log (bp/body/note/intake/lab_event/system_comment) mit RLS, Unique je Tag/Type(+ctx), Validierungs-Trigger und Europe/Vienna-Tageslogik.';
 
 -- (D) Update validation trigger (adds lab_event payload rules)
 create or replace function public.trg_events_validate()
@@ -223,6 +223,11 @@ begin
       if (new.payload->>'ckd_stage') !~* '^G(1|2|3a|3b|4|5)(?:\\s+A[123])?$' then
         raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
       end if;
+    end if;
+
+  elsif new.type = 'system_comment' then
+    if jsonb_typeof(new.payload) <> 'object' then
+      raise exception 'system_comment: payload muss Objekt sein' using errcode = '23502';
     end if;
 
   else

@@ -76,7 +76,21 @@ This document captures the restructuring prompt and translates it into a determi
    - Doctor View now awaits the generator response, runs `requestUiRefresh({ reason: 'doctor:monthly-report' })`, and if the Inbox overlay is open it re-fetches the list immediately so the new entry appears without reopening.
    - Monthly reports stay archive-only because `fetchSystemCommentsRange`/Trendpilot loaders still ignore every row with a `subtype`.
 
-### Step 7 – Testing & Documentation
+### Step 7 – Monthly Report Narrative
+1. ✅ Generate a meaningful narrative per month:
+   - Aggregate BP/Body/Lab trends (min/max, averages, deltas) and weave in the latest CKD stage context so the report text highlights stability vs. issues; add a short “next steps” paragraph (hydration, meds, labs) using rule-based heuristics.
+   - Keep `payload.summary` concise (month + counts + key warning flag), store structured stats in `payload.meta` (avg_sys/dia, weight delta, latest lab values, warning flags), and write a multi-sentence narrative in `payload.text` (Markdown-friendly).
+   - If no lab data exists, note it explicitly (e.g., “Keine Laborwerte – Termin planen”).
+2. Refresh the Doctor Inbox UI to focus on the narrative:
+   - Render summary + text separately, format the narrative with paragraphs/bullets, show warning badges when `payload.meta.flags` indicates risks.
+   - Add delete and optional regenerate buttons per monthly report card (calls the Supabase API to delete/recreate the `system_comment`) so test runs don’t clutter the archive, and expose a “Neuen Monatsbericht” CTA in the overlay header next to the count.
+3. Align CKD lab inputs with the minimal, doctor-sourced dataset used by the narrative engine:
+   - Remove ACR from the monthly aggregation logic and UI inputs; MIDAS does not calculate albuminuria.
+   - Keep `albuminuria_stage` (A1–A3) as an optional dropdown sourced from the doctor’s report; allow `null` and reflect missing values neutrally in the narrative.
+   - Ensure the lab snapshot includes only: `egfr (ml/min/1.73m²)`, `creatinine (mg/dl)`, `albuminuria_stage (A1–A3 | null)`, `potassium (mmol/l)`, `hba1c (%)`, `ldl (mg/dl)`, plus optional `comment`.
+   - Update the Edge Function and SQL Script to reference these fields exclusively when building `payload.meta.latest_lab_values` and narrative text; if a value is missing, explicitly note “nicht bestimmt im Berichtszeitraum” instead of inferring.
+
+### Step 8 – Testing & Documentation
 1. Smoke-test Schema: insert valid/invalid lab rows, confirm view outputs and RLS behavior.
 2. UI tests: save BP, Body, Lab entries; delete a day; generate a monthly report; reopen each Doctor tab and confirm isolation.
 3. Update docs (`modules/Doctor View`, `modules/Hub`, roadmap) with the new domain model and manual-report flow.
