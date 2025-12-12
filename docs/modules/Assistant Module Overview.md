@@ -47,8 +47,8 @@ Edge functions are deployed via `supabase functions deploy <name> --project-ref 
 ### 3.1 Butler Header Context (Phase 4.2 + 4.3)
 
 - `app/modules/appointments/index.js` liefert Upcoming-Termine aus Supabase `appointments_v2` (Repeat-Regeln, Status, Sync-Events).
-- `app/modules/profile/index.js` ersetzt das frühere Hilfe-Panel: Orbit Nord-West öffnet das Formular, speichert in `user_profile` (Name, Geburtsdatum, Größe, CKD-Stufe, Medikation, Salz-/Protein-Limits, Rauchstatus, Lifestyle) und feuert `profile:changed`.
-- `refreshAssistantContext()` wartet auf Intake-Snapshot **und** Termine **und** Profil; Butler-Header zeigt maximal zwei Termine sowie einen Profil-Hinweis („Salzlimit 5 g, CKD G3a A1“) oder fallback „Profil fehlt“.
+- `app/modules/profile/index.js` ersetzt das frühere Hilfe-Panel: Orbit Nord-West öffnet das Formular, speichert in `user_profile` (Name, Geburtsdatum, Größe, Medikation, Salz-/Protein-Limits, Rauchstatus, Lifestyle) und feuert `profile:changed`.
+- `refreshAssistantContext()` wartet auf Intake-Snapshot **und** Termine **und** Profil; Butler-Header zeigt maximal zwei Termine sowie einen Profil-Hinweis („Salzlimit 5 g, Proteinlimit 110 g“) oder fallback „Profil fehlt“. CKD-Hinweise folgen später aus Labordaten.
 - Orbit-Buttons „Termine“ und „Profil“ triggern beim Öffnen `sync({ reason: 'panel-open' })`, damit Panel + Butler denselben Stand haben.
 - QA: Assistant-Header reagiert sofort auf Insert/Delete/Done/Profile-Save; Touch-Log liefert höchstens einen Refresh pro Event.
 
@@ -86,7 +86,7 @@ Edge functions are deployed via `supabase functions deploy <name> --project-ref 
 ## 4. Backend Flow Highlights
 
 - **midas-transcribe**: CORS-friendly, erwartet `audio` multipart field, proxied auf Whisper (`gpt-4o-transcribe`).
-- **midas-assistant**: Shared für Voice/Text, baut Prompts via `buildChatMessages()` + Persona/Profil, ruft OpenAI Responses API und liefert `{ reply, actions, meta }`. Profilwerte (CKD, Medikation, Limits) werden seit Phase 4.3 automatisch in den Systemprompt injiziert.
+- **midas-assistant**: Shared für Voice/Text, baut Prompts via `buildChatMessages()` + Persona/Profil, ruft OpenAI Responses API und liefert `{ reply, actions, meta }`. Profilwerte (Medikation, Limits) werden seit Phase 4.3 automatisch in den Systemprompt injiziert, CKD/Albuminurie stammen künftig aus den Lab-Events.
 - **midas-vision**: Validiert `{ image_base64, history?, profile? }`, 6 MB Limit, ruft OpenAI Responses (Vision) und liefert `{ analysis, reply }`. Der Client stellt nur die Analyse dar.
 - **midas-tts**: Nimmt `{ text }`, liefert Base64 Audio (Stimme `verse`).
 - **Supabase Headers**: GitHub Pages benutzen Live-REST-Endpoints (Konfiguration aus `getConf`); lokale Dev-Server proxien `/api/midas-*`.

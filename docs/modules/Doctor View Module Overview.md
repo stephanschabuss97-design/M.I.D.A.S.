@@ -53,7 +53,7 @@ Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Akt
 
 ### 3.3 Aktionen
 
-- **Löschen:** Button `data-del-day` ruft `deleteRemoteDay(date)` (Supabase RPC) → anschl. `requestUiRefresh`.
+- **Löschen:** Domain-spezifische Buttons (`data-del-bp`, `data-del-body`, später `data-del-lab`) rufen `deleteRemoteByType(date, type)` → anschl. `requestUiRefresh`.
 - **JSON-Export:** `exportDoctorJson()` ruft `getAllEntries()` (lokal) und lädt `gesundheitslog.json` herunter.
 - **Chart-Button:** `#doctorChartBtn` öffnet Chart-Panel, nutzt dieselben Range-Felder.
 
@@ -104,4 +104,3 @@ Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Akt
 ---
 
 Aktualisiere dieses Dokument bei Änderungen (z. B. weitere Buttons, neue Felder oder Supabase-Integrationen), damit alle Beteiligten denselben Wissenstand haben.
-

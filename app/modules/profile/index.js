@@ -16,7 +16,7 @@
     fullName: '#profileFullName',
     birthDate: '#profileBirthDate',
     height: '#profileHeight',
-    ckdStage: '#profileCkdStage',
+    ckdBadge: '#profileCkdBadge',
     medications: '#profileMedications',
     saltLimit: '#profileSaltLimit',
     proteinMax: '#profileProteinMax',
@@ -32,6 +32,7 @@
     syncing: false,
     ready: false,
     syncPromise: null,
+    latestLab: null
   };
 
   let refs = null;
@@ -48,7 +49,7 @@
       fullName: panel.querySelector(selectors.fullName),
       birthDate: panel.querySelector(selectors.birthDate),
       height: panel.querySelector(selectors.height),
-      ckdStage: panel.querySelector(selectors.ckdStage),
+      ckdBadge: panel.querySelector(selectors.ckdBadge),
       medications: panel.querySelector(selectors.medications),
       saltLimit: panel.querySelector(selectors.saltLimit),
       proteinMax: panel.querySelector(selectors.proteinMax),
@@ -132,18 +133,26 @@
     return precision != null ? Number(num.toFixed(precision)) : num;
   };
 
+  const getDerivedCkdStage = () => state.latestLab?.ckd_stage || null;
+
+  const updateCkdBadge = () => {
+    if (!refs?.ckdBadge) return;
+    const stage = getDerivedCkdStage();
+    refs.ckdBadge.value = stage || '—';
+  };
+
   const fillForm = (profile) => {
     if (!refs) return;
     const data = profile || {};
     refs.fullName.value = sanitize(data.full_name);
     refs.birthDate.value = data.birth_date ? String(data.birth_date).slice(0, 10) : '';
     refs.height.value = data.height_cm != null ? String(data.height_cm) : '';
-    refs.ckdStage.value = data.ckd_stage || '';
     refs.medications.value = formatMedicationsOutput(data.medications);
     refs.saltLimit.value = data.salt_limit_g != null ? String(data.salt_limit_g) : '';
     refs.proteinMax.value = data.protein_target_max != null ? String(data.protein_target_max) : '';
     refs.smoker.value = data.is_smoker ? 'yes' : 'no';
     refs.lifestyle.value = sanitize(data.lifestyle_note);
+    updateCkdBadge();
   };
 
   const formatValue = (value) => {
@@ -164,7 +173,7 @@
       ['Name', state.data.full_name],
       ['Geburtsdatum', state.data.birth_date],
       ['Größe (cm)', state.data.height_cm],
-      ['CKD-Stufe', state.data.ckd_stage],
+      ['CKD-Stufe (Lab)', getDerivedCkdStage()],
       ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '—'],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],
       ['Proteinlimit (g/Tag)', state.data.protein_target_max],
@@ -190,7 +199,6 @@
       full_name: sanitize(refs.fullName?.value),
       birth_date: refs.birthDate?.value || null,
       height_cm: toNumberOrNull(refs.height?.value),
-      ckd_stage: refs.ckdStage?.value || null,
       medications: medications.length ? medications : [],
       salt_limit_g: toNumberOrNull(refs.saltLimit?.value, { precision: 1 }),
       protein_target_max: toNumberOrNull(refs.proteinMax?.value, { precision: 1 }),
@@ -214,16 +222,28 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, ckd_stage, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
+            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') throw error;
-      state.data = data || null;
-      fillForm(state.data);
-      renderOverview();
-      notifyChange('sync');
-      log?.(`sync ok reason=${reason}`);
+        let latestLab = null;
+        try {
+          const api = getSupabaseApi();
+          const loader = api?.loadLatestLabSnapshot;
+          latestLab = typeof loader === 'function' ? await loader() : null;
+        } catch (labErr) {
+          diag?.add?.(`[profile] loadLatestLabSnapshot failed: ${labErr?.message || labErr}`);
+        }
+        state.latestLab = latestLab;
+        state.data = data ? { ...data } : null;
+        if (state.data) {
+          state.data.ckd_stage = getDerivedCkdStage();
+        }
+        fillForm(state.data);
+        renderOverview();
+        notifyChange('sync');
+        log?.(`sync ok reason=${reason}`);
       } catch (err) {
         diag?.add?.(`[profile] sync failed (${reason}) ${err.message || err}`);
       } finally {
@@ -249,7 +269,7 @@
         .from('user_profile')
         .upsert(upsertPayload, { onConflict: 'user_id' })
         .select(
-          'user_id, full_name, birth_date, height_cm, ckd_stage, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
+          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
         )
         .single();
       if (error) throw error;

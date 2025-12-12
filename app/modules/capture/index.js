@@ -737,8 +737,9 @@
     const { focus = true } = opts;
     invokeResetBpPanel('M', { focus: false });
     invokeResetBpPanel('A', { focus: false });
-    const resetBodyPanelFn = getResetBodyPanel();
-    if (resetBodyPanelFn) resetBodyPanelFn({ focus: false });
+      const resetBodyPanelFn = getResetBodyPanel();
+      if (resetBodyPanelFn) resetBodyPanelFn({ focus: false });
+      window.AppModules?.lab?.resetLabPanel?.({ focus: false });
     const ctxSel = document.getElementById('bpContextSel');
     if (ctxSel) ctxSel.value = 'M';
     document.querySelectorAll('.bp-pane').forEach(pane => {
@@ -762,8 +763,9 @@
     };
     bind('#captureAmount, #diaM, #pulseM, #bpCommentM', () => document.getElementById('saveBpPanelBtn')?.click(), () => invokeResetBpPanel('M'));
     bind('#sysA, #diaA, #pulseA, #bpCommentA', () => document.getElementById('saveBpPanelBtn')?.click(), () => invokeResetBpPanel('A'));
-    const resetBodyPanelFn = getResetBodyPanel();
-    bind('#weightDay, #input-waist-cm, #fatPctDay, #musclePctDay', () => document.getElementById('saveBodyPanelBtn')?.click(), () => resetBodyPanelFn?.());
+      const resetBodyPanelFn = getResetBodyPanel();
+      bind('#weightDay, #input-waist-cm, #fatPctDay, #musclePctDay', () => document.getElementById('saveBodyPanelBtn')?.click(), () => resetBodyPanelFn?.());
+      bind('#labEgfr, #labCreatinine, #labAlbuminuria, #labAcr, #labHba1c, #labLdl, #labComment', () => document.getElementById('saveLabPanelBtn')?.click(), () => window.AppModules?.lab?.resetLabPanel?.());
   }
 
   initTrendpilotCaptureHook();

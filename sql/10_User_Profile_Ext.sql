@@ -9,7 +9,6 @@
 alter table public.user_profile
   add column if not exists full_name text,
   add column if not exists birth_date date,
-  add column if not exists ckd_stage text,
   add column if not exists medications jsonb default '[]'::jsonb,
   add column if not exists is_smoker boolean,
   add column if not exists lifestyle_note text,
@@ -17,6 +16,9 @@ alter table public.user_profile
   add column if not exists protein_target_min numeric,
   add column if not exists protein_target_max numeric,
   add column if not exists updated_at timestamptz default now();
+
+alter table public.user_profile
+  drop column if exists ckd_stage;
 
 -- height_cm existiert bereits, aber falls ältere Setups es entfernt haben,
 -- stellen wir sicher, dass das Feld wieder verfügbar ist.

@@ -96,6 +96,40 @@
       <div class="small u-opacity70-mt6">Zeitraum: nutzt die <em>Arzt-Ansicht</em> (von/bis).</div>
     </div>
   </div>
+  <!-- Doctor Inbox Overlay -->
+  <div
+    id="doctorInboxPanel"
+    class="panel doctor-inbox-panel"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="doctorInboxTitle"
+    hidden
+    aria-hidden="true"
+    inert
+  >
+    <header>
+      <h4 id="doctorInboxTitle">Monatsberichte (Inbox)</h4>
+      <button
+        class="btn ghost"
+        id="doctorInboxClose"
+        type="button"
+        aria-label="Fenster schliessen"
+      >
+        &times;
+      </button>
+    </header>
+    <div class="content">
+      <section class="card doctor-panel">
+        <header class="doctor-inbox-header small u-mb-4">
+          <div id="doctorInboxRange">Zeitraum: â€“</div>
+          <div class="muted" id="doctorInboxCount"></div>
+        </header>
+        <div class="doctor-inbox" id="doctorInboxList">
+          <div class="small u-doctor-placeholder">Monatsberichte werden geladen â€¦</div>
+        </div>
+      </section>
+    </div>
+  </div>
   <div id="err" role="status" aria-live="polite"></div>
   <div id="busy"><div class="box"> Bitte warten...</div></div>
   <main id="appMain">
@@ -473,28 +507,27 @@
                   max="230"
                   placeholder="183"
                 >
-                <span class="field-hint muted small">
-                  Wird für BMI/Charts verwendet.
-                </span>
-              </label>
-              <label class="field-group" for="profileCkdStage">
-                <span class="label">CKD-Stufe</span>
-                <select id="profileCkdStage">
-                  <option value="">Bitte auswählen</option>
-                  <option value="G2">G2</option>
-                  <option value="G3aA1">G3a A1</option>
-                  <option value="G3aA2">G3a A2</option>
-                  <option value="G3bA1">G3b A1</option>
-                  <option value="G3bA2">G3b A2</option>
-                  <option value="G4">G4</option>
-                  <option value="G5">G5</option>
-                </select>
-              </label>
-              <label class="field-group" for="profileMedications">
-                <span class="label">Medikation</span>
-                <textarea
-                  id="profileMedications"
-                  rows="3"
+              <span class="field-hint muted small">
+                Wird für BMI/Charts verwendet.
+              </span>
+            </label>
+            <label class="field-group" for="profileCkdBadge">
+              <span class="label">CKD-Stufe (Lab)</span>
+              <input
+                type="text"
+                id="profileCkdBadge"
+                placeholder="Noch keine Labordaten"
+                disabled
+              >
+              <span class="field-hint muted small">
+                Wird automatisch aus den letzten Labordaten ermittelt.
+              </span>
+            </label>
+            <label class="field-group" for="profileMedications">
+              <span class="label">Medikation</span>
+              <textarea
+                id="profileMedications"
+                rows="3"
                   placeholder="z. B. Valsartan 160 mg; Forxiga 10 mg"
                 ></textarea>
               </label>
@@ -747,11 +780,25 @@
                   Werte anzeigen
                 </button>
                 <button class="btn ghost" id="doctorExportJson" type="button">Export JSON</button>
+                <button class="btn ghost" id="doctorTabInboxBtn" data-doctor-tab="inbox" type="button" role="tab" aria-selected="false" aria-controls="doctorTabInbox">Inbox</button>
+                <button class="btn ghost" id="doctorMonthlyReportBtn" type="button" disabled>
+                  Monatsbericht
+                </button>
               </div>
             </div>
             <div class="doctor-trendpilot" id="doctorTrendpilot" aria-live="polite"></div>
             <div id="doctorDailyWrap">
-              <div class="doctor-view" id="doctorView"></div>
+              <nav class="doctor-tabs" role="tablist" aria-label="Domains">
+                <button class="btn ghost is-active" id="doctorTabBpBtn" data-doctor-tab="bp" role="tab" aria-selected="true" aria-controls="doctorTabBp" type="button">BP</button>
+                <button class="btn ghost" id="doctorTabBodyBtn" data-doctor-tab="body" role="tab" aria-selected="false" aria-controls="doctorTabBody" type="button">Body</button>
+                <button class="btn ghost" id="doctorTabLabBtn" data-doctor-tab="lab" role="tab" aria-selected="false" aria-controls="doctorTabLab" type="button">Lab</button>
+              </nav>
+              <div class="doctor-view" id="doctorView">
+                <div class="doctor-tab-panel is-active" id="doctorTabBp" data-doctor-panel="bp" role="tabpanel" aria-labelledby="doctorTabBpBtn"></div>
+                <div class="doctor-tab-panel" id="doctorTabBody" data-doctor-panel="body" role="tabpanel" aria-labelledby="doctorTabBodyBtn" hidden></div>
+                <div class="doctor-tab-panel" id="doctorTabLab" data-doctor-panel="lab" role="tabpanel" aria-labelledby="doctorTabLabBtn" hidden></div>
+                <div class="doctor-tab-panel" id="doctorTabInbox" data-doctor-panel="inbox" role="tabpanel" aria-labelledby="doctorTabInboxBtn" hidden></div>
+              </div>
             </div>
             <div class="small u-mt-6">
               Tipp: "Werte anzeigen" oeffnet die passende Grafik zum aktuellen Tab (Daily).
@@ -783,7 +830,7 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <div class="hub-vitals">
+            <div class="hub-vitals">
             <div class="hub-vitals-bp">
               <div class="card-nested hub-vitals-controls">
                 <div class="control-group">
@@ -944,6 +991,81 @@
                 </button>
               </div>
             </div>
+            <div class="hub-vitals-lab card-nested">
+              <div class="lab-grid">
+                <div>
+                  <label>eGFR (ml/min/1,73 m²)</label>
+                  <input
+                    id="labEgfr"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="z. B. 68"
+                  >
+                </div>
+                <div>
+                  <label>Kreatinin (mg/dl)</label>
+                  <input
+                    id="labCreatinine"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="z. B. 1,2"
+                  >
+                </div>
+                <div>
+                  <label>Albuminurie (A1–A3)</label>
+                  <select id="labAlbuminuria">
+                    <option value="">Auswählen</option>
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="A3">A3</option>
+                  </select>
+                </div>
+                <div>
+                  <label>ACR (mg/g)</label>
+                  <input
+                    id="labAcr"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="z. B. 150"
+                  >
+                </div>
+                <div>
+                  <label>HbA1c (%)</label>
+                  <input
+                    id="labHba1c"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="z. B. 6,5"
+                  >
+                </div>
+                <div>
+                  <label>LDL (mg/dl)</label>
+                  <input
+                    id="labLdl"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="z. B. 120"
+                  >
+                </div>
+                <div class="lab-comment">
+                  <label>Kommentar</label>
+                  <textarea
+                    id="labComment"
+                    placeholder="Kurznotiz (optional)"
+                  ></textarea>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <button class="btn primary" id="saveLabPanelBtn" type="button">
+                  &#x1F489; Labor speichern
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1011,10 +1133,12 @@
   <script src="app/modules/capture/index.js"></script>
   <!-- Shared capture helpers -->
   <script src="app/modules/capture/entry.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/capture/bp.js -->
-  <script src="app/modules/capture/bp.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/capture/body.js -->
-  <script src="app/modules/capture/body.js"></script>
+    <!-- @refactor: Phase 3 - app/modules/capture/bp.js -->
+    <script src="app/modules/capture/bp.js"></script>
+    <!-- @refactor: Phase 3 - app/modules/capture/body.js -->
+    <script src="app/modules/capture/body.js"></script>
+    <!-- @refactor: Phase 4 - app/modules/capture/lab.js -->
+    <script src="app/modules/capture/lab.js"></script>
   <!-- @refactor: moved to app/modules/trendpilot/data.js -->
   <script src="app/modules/trendpilot/data.js"></script>
   <!-- @refactor: Phase 2 - app/supabase/index.js -->

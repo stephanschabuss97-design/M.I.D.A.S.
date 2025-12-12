@@ -102,6 +102,10 @@ const normalizeSystemCommentRow = (row = {}, fallbackMetric = 'bp') => {
     metric: payload.metric || fallbackMetric,
     severity: payload.severity || 'info',
     text: payload.text || '',
+    summary: payload.summary || '',
+    reportMonth: payload.month || null,
+    reportCreatedAt: payload.created_at || null,
+    subtype: payload.subtype || null,
     context: ctx
   };
 };
@@ -141,7 +145,8 @@ export async function fetchSystemCommentsRange({
   if (!userId) return [];
   const filters = [
     ['user_id', `eq.${userId}`],
-    ['type', 'eq.system_comment']
+    ['type', 'eq.system_comment'],
+    ['payload->>subtype', 'is.null']
   ];
   if (from) filters.push(['day', `gte.${from}`]);
   if (to) filters.push(['day', `lte.${to}`]);
@@ -155,6 +160,34 @@ export async function fetchSystemCommentsRange({
   });
   if (!Array.isArray(rows)) return [];
   return rows.map((row) => normalizeSystemCommentRow(row, metric));
+}
+
+export async function fetchSystemCommentsBySubtype({
+  from,
+  to,
+  subtype,
+  limit,
+  order = 'day.asc'
+} = {}) {
+  if (!subtype) throw new Error('system-comment subtype fetch: subtype required');
+  const userId = await getUserId();
+  if (!userId) return [];
+  const filters = [
+    ['user_id', `eq.${userId}`],
+    ['type', 'eq.system_comment'],
+    ['payload->>subtype', `eq.${subtype}`]
+  ];
+  if (from) filters.push(['day', `gte.${from}`]);
+  if (to) filters.push(['day', `lte.${to}`]);
+  const rows = await sbSelect({
+    table: TABLE_NAME,
+    select: 'id,day,ts,payload',
+    filters,
+    order,
+    ...(limit ? { limit: Number(limit) } : {})
+  });
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => normalizeSystemCommentRow(row));
 }
 
 const postSystemComment = async ({ endpoint, userId, day, payload }) => {
@@ -243,4 +276,3 @@ const safeErrorMessage = async (res) => {
     return '';
   }
 };
-

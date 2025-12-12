@@ -10,6 +10,7 @@
  *  - appendNoteRemote (fügt Text an bestehende Notiz an)
  *  - deleteRemote (löscht einzelnen Remote-Eintrag)
  *  - deleteRemoteDay (löscht alle Einträge eines Tages)
+ *  - deleteRemoteByType (löscht alle Einträge eines Tages für einen bestimmten Typ)
  */
 
 // SUBMODULE: imports @internal - Supabase Core-, Auth- und UI-Abhängigkeiten
@@ -270,6 +271,32 @@ export async function deleteRemoteDay(dateIso) {
     const res = await fetchWithAuth(
       (headers) => fetch(query, { method: 'DELETE', headers }),
       { tag: 'remote:delete-day', maxAttempts: 2 }
+    );
+    return { ok: res.ok, status: res.status };
+  } catch (err) {
+    return { ok: false, status: err?.status ?? 0 };
+  }
+}
+
+// SUBMODULE: deleteRemoteByType @public - löscht alle Remote-Einträge eines Tages innerhalb eines Typs
+export async function deleteRemoteByType(dateIso, type) {
+  const url = await getConf('webhookUrl');
+  const normalizedType = typeof type === 'string' ? type.trim() : '';
+  if (!url || !dateIso || !normalizedType) return { ok: false, status: 0 };
+
+  const from = `${dateIso}T00:00:00Z`;
+  const toNext = new Date(from);
+  toNext.setUTCDate(toNext.getUTCDate() + 1);
+  const toIso = toNext.toISOString().slice(0, 10);
+
+  const query =
+    `${url}?ts=gte.${encodeURIComponent(dateIso)}T00:00:00Z` +
+    `&ts=lt.${encodeURIComponent(toIso)}T00:00:00Z` +
+    `&type=eq.${encodeURIComponent(normalizedType)}`;
+  try {
+    const res = await fetchWithAuth(
+      (headers) => fetch(query, { method: 'DELETE', headers }),
+      { tag: 'remote:delete-day-type', maxAttempts: 2 }
     );
     return { ok: res.ok, status: res.status };
   } catch (err) {

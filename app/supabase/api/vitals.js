@@ -8,6 +8,7 @@
  *  - calcMAPValue (Wrapper um globale MAP-Berechnung)
  *  - loadBpFromView (Blutdruckwerte)
  *  - loadBodyFromView (Körperwerte)
+ *  - loadLabEventsRange (Labordaten)
  *  - loadNotesLastPerDay (letzte Notizen pro Tag)
  *  - joinViewsToDaily (Kombination aller Views in Tagesobjekte)
  *  - fetchDailyOverview (Hauptschnittstelle für Übersicht)
@@ -65,6 +66,39 @@ export async function loadBodyFromView({ user_id, from, to }) {
     filters,
     order: 'day.asc'
   });
+}
+
+// SUBMODULE: loadLabEventsRange @public - liest Laborwerte aus v_events_lab
+export async function loadLabEventsRange({ user_id, from, to }) {
+  const filters = [['user_id', `eq.${user_id}`]];
+  if (from) filters.push(['day', `gte.${from}`]);
+  if (to) filters.push(['day', `lte.${to}`]);
+  return await sbSelect({
+    table: 'v_events_lab',
+    select:
+      'day,egfr,creatinine,albuminuria_category,acr_value,hba1c,ldl,ckd_stage,doctor_comment',
+    filters,
+    order: 'day.asc'
+  });
+}
+
+// SUBMODULE: loadLatestLabSnapshot @public - liefert letzte Labor-Messung (inkl. CKD-Stufe)
+export async function loadLatestLabSnapshot({ user_id } = {}) {
+  const uid = user_id || (await getUserId());
+  if (!uid) return null;
+  const filters = [['user_id', `eq.${uid}`]];
+  const rows = await sbSelect({
+    table: 'v_events_lab',
+    select:
+      'day,egfr,creatinine,albuminuria_category,acr_value,hba1c,ldl,ckd_stage,doctor_comment',
+    filters,
+    order: 'day.desc',
+    limit: 1
+  });
+  if (Array.isArray(rows) && rows.length) {
+    return rows[0];
+  }
+  return null;
 }
 
 // SUBMODULE: loadNotesLastPerDay @internal - extrahiert letzte Notizen pro Tag

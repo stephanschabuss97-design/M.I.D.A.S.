@@ -69,14 +69,15 @@
 **Scope:** Profil-Panel (Orbit Nord-West) ersetzt Hilfe, speichert Gesundheitsdaten in `user_profile`, Charts/Assistant lesen Kontext aus Supabase.
 
 **Smoke**
-- [ ] Orbit NW öffnet `#hubProfilePanel`. Formular speichert Name, Geburtsdatum, Größe, CKD-Stufe, Medikation, Salzlimit, Proteinlimit, Rauchstatus und Lifestyle-Note via Supabase. Nach dem Speichern erscheint der Datensatz im Abschnitt „Aktuelle Daten“.
+- [ ] Orbit NW öffnet `#hubProfilePanel`. Formular speichert Name, Geburtsdatum, Größe, Medikation, Salzlimit, Proteinlimit, Rauchstatus und Lifestyle-Note via Supabase. Nach dem Speichern erscheint der Datensatz im Abschnitt „Aktuelle Daten“.
+- [ ] Der read-only Hinweis „CKD-Stufe (Lab)“ zeigt nach dem ersten Lab-Eintrag automatisch den kombinierten Wert (z. B. „G3a A2“); ohne Labordaten bleibt der Platzhalter „Noch keine Labordaten“.
 - [ ] Button **Aktualisieren** lädt das bestehende Profil erneut aus Supabase; Änderungen am Backend werden sofort angezeigt.
 - [ ] Charts reagieren auf Profiländerungen: Größe im Profil stark verändern (z. B. 220 cm) → BMI/WHtR springen sofort nach `profile:changed`.
 - [ ] Assistant-Butler (Intake-Pills + Termine + Profil) aktualisiert nach Speichern ohne Reload; DevTools loggt `[assistant-context] profile snapshot updated`.
 
 **Sanity**
 - [ ] Supabase RLS: andere Session versucht Profil zu speichern → 403, Touch-Log enthält `[profile] save failed 403`. Eigene Session kann Insert **und** Update per Upsert.
-- [ ] Dropdowns (CKD-Stufe, Rauchstatus) und Inputs behalten Theme (dunkle Schrift auf dunklem Hintergrund) sowie valide Default-Werte; invalides Proteinlimit (z. B. Text) wird mit Toast abgelehnt.
+- [ ] Dropdowns (Rauchstatus) und Inputs behalten Theme (dunkle Schrift auf dunklem Hintergrund) sowie valide Default-Werte; invalides Proteinlimit (z. B. Text) wird mit Toast abgelehnt.
 - [ ] Event `profile:changed` feuert genau einmal pro erfolgreichem Save/Load. Charts hören darauf (`window.addEventListener('profile:changed', …)`) und loggen `[charts] profile change -> recompute`.
 - [ ] Assistant-Context nutzt ausschließlich echte Werte: Butler zeigt Profilhinweis nur, wenn Supabase-Daten vorhanden sind; keine Mock-Strings wie „Hausarzt – Kontrolle“ mehr, sobald Profil & Termine existieren.
 

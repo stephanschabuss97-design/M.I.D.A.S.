@@ -974,6 +974,27 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 8px;
 }
 
+.hub-vitals-lab {
+  margin-top: 12px;
+}
+
+.hub-vitals-lab .lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.hub-vitals-lab .lab-grid input,
+.hub-vitals-lab .lab-grid select,
+.hub-vitals-lab .lab-grid textarea {
+  width: 100%;
+}
+
+.hub-vitals-lab .lab-grid textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
 .hub-intake-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1073,7 +1094,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .hub-panel .hub-intake-form,
 .hub-panel .doctor-panel,
 .hub-panel .hub-vitals-bp .card-nested,
-.hub-panel .hub-vitals-body.card-nested {
+.hub-panel .hub-vitals-body.card-nested,
+.hub-panel .hub-vitals-lab.card-nested {
   width: 100%;
   max-width: 100%;
   margin: 0;

@@ -198,6 +198,7 @@ const saveIntakeTotalsRpc = createSupabaseFn('saveIntakeTotalsRpc');
 const cleanupOldIntake = createSupabaseFn('cleanupOldIntake', { optional: true });
 const fetchDailyOverview = createSupabaseFn('fetchDailyOverview');
 const deleteRemoteDay = createSupabaseFn('deleteRemoteDay');
+const deleteRemoteByType = createSupabaseFn('deleteRemoteByType');
 const setupRealtime = createSupabaseFn('setupRealtime');
 const setConfigStatus = createSupabaseFn('setConfigStatus');
 const showLoginOverlay = createSupabaseFn('showLoginOverlay');
@@ -732,6 +733,11 @@ function setDoctorAccess(enabled){
     chartBtn.disabled = !enabled;
     chartBtn.title = enabled ? 'Werte als Grafik' : 'Bitte zuerst anmelden';
   }
+  const monthlyBtn = document.getElementById('doctorMonthlyReportBtn');
+  if (monthlyBtn) {
+    monthlyBtn.disabled = !enabled;
+    monthlyBtn.title = enabled ? 'Manuellen Monatsbericht starten' : 'Bitte zuerst anmelden';
+  }
   // Lifestyle-Tab mitsteuern
   
 }
@@ -948,6 +954,7 @@ const REQUIRED_SUPABASE_EXPORTS = [
   'cleanupOldIntake',
   'fetchDailyOverview',
   'deleteRemoteDay',
+  'deleteRemoteByType',
   'setupRealtime',
   'setConfigStatus',
   'showLoginOverlay',
@@ -1533,6 +1540,43 @@ if (saveBodyPanelBtn){
   });
 }
 
+const saveLabPanelBtn = document.getElementById('saveLabPanelBtn');
+if (saveLabPanelBtn){
+  saveLabPanelBtn.addEventListener('click', async (e) => {
+    try {
+      const logged = await isLoggedInFast();
+      if (!logged) {
+        diag.add?.('[panel] lab save while auth unknown');
+      }
+    } catch (err) {
+      console.error('isLoggedInFast check failed', err);
+    }
+    const btn = e.currentTarget;
+    withBusy(btn, true);
+    let savedOk = false;
+    try {
+      const saved = await window.AppModules.lab?.saveLabEntry?.();
+      if (!saved) {
+        uiError('Keine Labordaten eingegeben.');
+      } else {
+        savedOk = true;
+        requestUiRefresh({ reason: 'panel:lab' }).catch((err) => {
+          diag.add?.('ui refresh err: ' + (err?.message || err));
+        });
+      }
+    } catch (err) {
+      diag.add?.('[lab] panel save failed: ' + (err?.message || err));
+      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+    } finally {
+      withBusy(btn, false);
+    }
+    if (savedOk) {
+      window.AppModules.lab?.resetLabPanel?.({ focus: false });
+      flashButtonOk(btn, '&#x2705; Labor gespeichert');
+    }
+  });
+}
+
 // Sync toggles when the date changes in capture view
 const dateEl = document.getElementById('date');
   if (dateEl) {
@@ -1584,8 +1628,47 @@ doctorChartBtn.addEventListener("click", async ()=>{
   diag.add?.('[doctor] chart show requested');
   await requestUiRefresh({ reason: 'doctor:chart-open', chart: true });
 });
+  } else {
+    diag.add?.('[doctor] chart button missing - hub overlay active?');
+  }
+
+const doctorMonthlyReportBtn = document.getElementById('doctorMonthlyReportBtn');
+if (doctorMonthlyReportBtn) {
+  doctorMonthlyReportBtn.addEventListener('click', async () => {
+    diag.add?.('[doctor] monthly report button clicked');
+    try {
+      const logged = await isLoggedInFast();
+      if (!logged) {
+        diag.add?.('[doctor] monthly report while auth unknown');
+      }
+    } catch (err) {
+      console.error('isLoggedInFast check failed', err);
+    }
+    if (!isDoctorUnlocked()) {
+      setAuthPendingAfterUnlock('monthly-report');
+      const ok = await requireDoctorUnlock();
+      if (!ok) return;
+      setAuthPendingAfterUnlock(null);
+    }
+    const doctorModule = getDoctorModule();
+    const handler = doctorModule?.generateMonthlyReport;
+    if (typeof handler !== 'function') {
+      diag.add?.('[doctor] monthly report handler missing');
+      uiError?.('Monatsbericht-Generator wird in Kürze aktiviert.');
+      return;
+    }
+    withBusy(doctorMonthlyReportBtn, true);
+    try {
+      await handler();
+    } catch (err) {
+      diag.add?.('[doctor] monthly report failed: ' + (err?.message || err));
+      uiError('Monatsbericht konnte nicht erstellt werden.');
+    } finally {
+      withBusy(doctorMonthlyReportBtn, false);
+    }
+  });
 } else {
-  diag.add?.('[doctor] chart button missing - hub overlay active?');
+  diag.add?.('[doctor] monthly report button missing - hub overlay active?');
 }
 
 document.addEventListener('keydown', (e)=>{
@@ -1756,10 +1839,6 @@ window.addEventListener('focus', () => {
 - Realtime-Events: INSERT/UPDATE ? upsert, DELETE ? lokal entfernen.
 - UI-Refresh: Arzt-Ansicht sofort; Charts nur, wenn Panel offen.
 === */
-
-
-
-
 
 
 

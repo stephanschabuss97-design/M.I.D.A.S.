@@ -164,6 +164,7 @@
   let setSpriteStateFn = null;
   let doctorUnlockWaitCancel = null;
   let openDoctorPanelWithGuard = null;
+  let openDoctorInboxPanelWithGuard = null;
   const aura3dApi = global.AppModules?.hubAura3D || null;
   let aura3dCleanup = null;
   const auraState = {
@@ -975,6 +976,34 @@
       return false;
     };
     openDoctorPanelWithGuard = openDoctorPanel;
+    const openDoctorInboxPanel = async ({ onOpened, from, to } = {}) => {
+      const openFlow = async () => {
+        diag.add?.('[hub] openDoctorInboxPanel openFlow start');
+        const doctorApi = appModules.doctor;
+        const renderer = doctorApi?.renderDoctorInboxOverlay;
+        if (typeof renderer !== 'function') {
+          diag.add?.('[hub] doctor inbox renderer missing');
+          return;
+        }
+        await renderer({ from, to });
+        if (typeof onOpened === 'function') {
+          await onOpened();
+        }
+      };
+      if (await ensureDoctorUnlocked()) {
+        await openFlow();
+        return true;
+      }
+      const supa = getSupabaseApi();
+      const guardState = supa?.authGuardState;
+      const unlockedAfter = await waitForDoctorUnlock({ guardState });
+      if (unlockedAfter) {
+        await openFlow();
+        return true;
+      }
+      return false;
+    };
+    openDoctorInboxPanelWithGuard = openDoctorInboxPanel;
     bindButton(
       '[data-hub-module="doctor"]',
       async (btn) => {
@@ -2890,6 +2919,12 @@
     openDoctorPanel: (options) => {
       if (openDoctorPanelWithGuard) {
         return openDoctorPanelWithGuard(options);
+      }
+      return Promise.resolve(false);
+    },
+    openDoctorInboxPanel: (options) => {
+      if (openDoctorInboxPanelWithGuard) {
+        return openDoctorInboxPanelWithGuard(options);
       }
       return Promise.resolve(false);
     },
