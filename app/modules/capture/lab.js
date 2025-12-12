@@ -50,9 +50,9 @@
       'labEgfr',
       'labCreatinine',
       'labAlbuminuria',
-      'labAcr',
       'labHba1c',
       'labLdl',
+      'labPotassium',
       'labComment'
     ];
     ids.forEach((id) => {
@@ -146,13 +146,6 @@
       clearFieldError?.(albumEl);
     }
 
-    const acrResult = parseLabNumber(getInput('labAcr'), {
-      label: 'ACR',
-      min: 0,
-      max: 5000,
-      required: false
-    });
-    if (!acrResult.valid) valid = false;
     const hba1cResult = parseLabNumber(getInput('labHba1c'), {
       label: 'HbA1c',
       min: 3,
@@ -167,35 +160,33 @@
       required: false
     });
     if (!ldlResult.valid) valid = false;
+    const potassiumResult = parseLabNumber(getInput('labPotassium'), {
+      label: 'Kalium',
+      min: 2,
+      max: 7,
+      required: false
+    });
+    if (!potassiumResult.valid) valid = false;
     const comment = (getInput('labComment')?.value || '').trim();
 
-    if (!albumCat && acrResult.value == null) {
-      uiError?.('Bitte Albuminurie-Kategorie oder ACR angeben.');
-      setFieldError?.(albumEl);
-      const acrEl = getInput('labAcr');
-      setFieldError?.(acrEl);
-      valid = false;
-    } else {
-      clearFieldError?.(albumEl);
-      clearFieldError?.(getInput('labAcr'));
-    }
+    clearFieldError?.(albumEl);
 
     if (!valid) return false;
 
     entry.egfr = numberOrNull(egfrResult.value);
     entry.creatinine = numberOrNull(creatinineResult.value);
-    entry.albuminuria_category = albumCat;
-    entry.acr_value = numberOrNull(acrResult.value);
+    entry.albuminuria_stage = albumCat;
     entry.hba1c = numberOrNull(hba1cResult.value);
     entry.ldl = numberOrNull(ldlResult.value);
+    entry.potassium = numberOrNull(potassiumResult.value);
     entry.lab_comment = comment;
-    entry.ckd_stage = deriveCkdStage(entry.egfr, entry.albuminuria_category);
+    entry.ckd_stage = deriveCkdStage(entry.egfr, entry.albuminuria_stage);
 
     const hasPayload =
       entry.egfr != null ||
       entry.creatinine != null ||
-      entry.albuminuria_category ||
-      entry.acr_value != null ||
+      entry.albuminuria_stage ||
+      entry.potassium != null ||
       entry.hba1c != null ||
       entry.ldl != null ||
       (entry.lab_comment && entry.lab_comment.length);

@@ -148,7 +148,7 @@ begin
     end if;
 
   elsif new.type = 'lab_event' then
-    keys := array['egfr','creatinine','albuminuria_category','acr_value','hba1c','ldl','comment','ckd_stage'];
+    keys := array['egfr','creatinine','albuminuria_stage','hba1c','ldl','comment','ckd_stage','potassium'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'lab_event: payload enthaelt unbekannte Keys' using errcode = '22023';
     end if;
@@ -174,23 +174,10 @@ begin
       raise exception 'lab_event: creatinine ausserhalb Range 0.1-20' using errcode = '22003';
     end if;
 
-    if (new.payload ? 'albuminuria_category') then
-      if (new.payload->>'albuminuria_category') not in ('A1','A2','A3') then
-        raise exception 'lab_event: albuminuria_category muss A1/A2/A3 sein' using errcode = '22023';
+    if (new.payload ? 'albuminuria_stage') then
+      if (new.payload->>'albuminuria_stage') not in ('A1','A2','A3') then
+        raise exception 'lab_event: albuminuria_stage muss A1/A2/A3 sein' using errcode = '22023';
       end if;
-    end if;
-
-    if (new.payload ? 'acr_value') then
-      if (new.payload->>'acr_value') !~ '^\d+(\.\d+)?$' then
-        raise exception 'lab_event: acr_value muss numerisch sein' using errcode = '22023';
-      end if;
-      if (new.payload->>'acr_value')::numeric < 0 or (new.payload->>'acr_value')::numeric > 5000 then
-        raise exception 'lab_event: acr_value ausserhalb Range 0-5000' using errcode = '22003';
-      end if;
-    end if;
-
-    if not ((new.payload ? 'albuminuria_category') or (new.payload ? 'acr_value')) then
-      raise exception 'lab_event: albuminuria_category oder acr_value ist Pflicht' using errcode = '23502';
     end if;
 
     if (new.payload ? 'hba1c') then
@@ -214,6 +201,14 @@ begin
     if (new.payload ? 'comment') then
       if length(new.payload->>'comment') < 1 or length(new.payload->>'comment') > 500 then
         raise exception 'lab_event: comment Laenge 1-500 Zeichen' using errcode = '22023';
+      end if;
+    end if;
+    if (new.payload ? 'potassium') then
+      if (new.payload->>'potassium') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: potassium muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'potassium')::numeric < 2 or (new.payload->>'potassium')::numeric > 7 then
+        raise exception 'lab_event: potassium ausserhalb Range 2-7' using errcode = '22003';
       end if;
     end if;
     if (new.payload ? 'ckd_stage') then
@@ -250,16 +245,16 @@ select
   e.day,
   (e.payload->>'egfr')::numeric            as egfr,
   (e.payload->>'creatinine')::numeric      as creatinine,
-  (e.payload->>'albuminuria_category')     as albuminuria_category,
-  (e.payload->>'acr_value')::numeric       as acr_value,
+  (e.payload->>'albuminuria_stage')        as albuminuria_stage,
   (e.payload->>'hba1c')::numeric           as hba1c,
   (e.payload->>'ldl')::numeric             as ldl,
+  (e.payload->>'potassium')::numeric       as potassium,
   e.payload->>'ckd_stage'                  as ckd_stage,
   e.payload->>'comment'                    as doctor_comment
 from public.health_events e
 where e.type = 'lab_event';
 
 comment on view public.v_events_lab is
-  'Laborwerte (eGFR, Kreatinin, Albuminurie/ACR, HbA1c, LDL, CKD-Stufe, Kommentar) pro Tag.';
+  'Laborwerte (eGFR, Kreatinin, Albuminurie-Stufe, Kalium, HbA1c, LDL, CKD-Stufe, Kommentar) pro Tag.';
 
 commit;

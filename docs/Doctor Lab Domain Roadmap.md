@@ -90,6 +90,11 @@ This document captures the restructuring prompt and translates it into a determi
    - Ensure the lab snapshot includes only: `egfr (ml/min/1.73m²)`, `creatinine (mg/dl)`, `albuminuria_stage (A1–A3 | null)`, `potassium (mmol/l)`, `hba1c (%)`, `ldl (mg/dl)`, plus optional `comment`.
    - Update the Edge Function and SQL Script to reference these fields exclusively when building `payload.meta.latest_lab_values` and narrative text; if a value is missing, explicitly note “nicht bestimmt im Berichtszeitraum” instead of inferring.
 
+   3.1 Schema first: update SQL + trigger + view to remove the old acr_value, rename the dropdown/key to albuminuria_stage, add the potassium field, and keep range checks tidy. Without this, the UI can’t save the new payload contract.
+   3.2 Capture/UI second: once the schema is in place, adjust the Vitals Lab card to collect only the supported fields (new potassium input, renamed dropdown, hint text about optional doctor-sourced stage). That ensures every new lab entry conforms to the schema.
+   3.3 Loaders/snapshots third: update Supabase loaders/Hub profile logic so the lab snapshot surface contains exactly the new set, and cope gracefully with older rows (missing potassium/ACR legacy).
+   3.4 Edge function + narrative last: with the new data flowing end-to-end, switch the monthly report generator to reference only those fields and add the “nicht bestimmt im Berichtszeitraum” language for missing values.
+
 ### Step 8 – Testing & Documentation
 1. Smoke-test Schema: insert valid/invalid lab rows, confirm view outputs and RLS behavior.
 2. UI tests: save BP, Body, Lab entries; delete a day; generate a monthly report; reopen each Doctor tab and confirm isolation.

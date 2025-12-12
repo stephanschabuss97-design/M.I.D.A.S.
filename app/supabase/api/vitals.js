@@ -76,7 +76,7 @@ export async function loadLabEventsRange({ user_id, from, to }) {
   return await sbSelect({
     table: 'v_events_lab',
     select:
-      'day,egfr,creatinine,albuminuria_category,acr_value,hba1c,ldl,ckd_stage,doctor_comment',
+      'day,egfr,creatinine,albuminuria_stage,hba1c,ldl,potassium,ckd_stage,doctor_comment',
     filters,
     order: 'day.asc'
   });
@@ -90,7 +90,7 @@ export async function loadLatestLabSnapshot({ user_id } = {}) {
   const rows = await sbSelect({
     table: 'v_events_lab',
     select:
-      'day,egfr,creatinine,albuminuria_category,acr_value,hba1c,ldl,ckd_stage,doctor_comment',
+      'day,egfr,creatinine,albuminuria_stage,hba1c,ldl,potassium,ckd_stage,doctor_comment',
     filters,
     order: 'day.desc',
     limit: 1
