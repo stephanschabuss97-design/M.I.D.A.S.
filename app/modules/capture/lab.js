@@ -149,7 +149,7 @@
     const hba1cResult = parseLabNumber(getInput('labHba1c'), {
       label: 'HbA1c',
       min: 3,
-      max: 25,
+      max: 99,
       required: false
     });
     if (!hba1cResult.valid) valid = false;

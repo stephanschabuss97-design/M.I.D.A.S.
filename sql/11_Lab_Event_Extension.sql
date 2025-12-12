@@ -184,8 +184,8 @@ begin
       if (new.payload->>'hba1c') !~ '^\d+(\.\d+)?$' then
         raise exception 'lab_event: hba1c muss numerisch sein' using errcode = '22023';
       end if;
-      if (new.payload->>'hba1c')::numeric < 3 or (new.payload->>'hba1c')::numeric > 25 then
-        raise exception 'lab_event: hba1c ausserhalb Range 3-25' using errcode = '22003';
+      if (new.payload->>'hba1c')::numeric < 3 or (new.payload->>'hba1c')::numeric > 99 then
+        raise exception 'lab_event: hba1c ausserhalb Range 3-99' using errcode = '22003';
       end if;
     end if;
 
