@@ -464,7 +464,7 @@
       let momentumSteps = 0;
       if (!carouselState.prefersReducedMotion) {
         const absVelocity = Math.abs(velocityX);
-        if (absVelocity >= 0.45) {
+        if (absVelocity >= 0.7 && absX > SWIPE_THRESHOLD * 1.5) {
           momentumSteps = 1;
         }
       }
