@@ -943,8 +943,62 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .hub-vitals {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 0;
   width: 100%;
+}
+
+.hub-vitals-tabs {
+  display: flex;
+  gap: 8px;
+  margin: -12px 0 -4px;
+  flex-wrap: wrap;
+  padding: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.hub-vitals-tabs .btn {
+  min-width: 70px;
+  position: relative;
+  padding-bottom: 2px;
+  transform: translateY(-6px);
+  background: #fff;
+  color: #0b0d16;
+  border-radius: 8px 8px 0 0;
+}
+
+.hub-vitals-tabs .btn::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: transparent;
+  bottom: -10px;
+  border-radius: 999px;
+}
+
+.hub-vitals-tabs .btn.is-active::after {
+  background: var(--accent, #4f9dff);
+}
+
+.hub-vitals-tabs .btn.is-active {
+  color: #0b0d16;
+  font-weight: 600;
+}
+
+.hub-vitals-panel {
+  display: none;
+  margin-top: 0;
+}
+
+.hub-vitals-panel.is-active {
+  display: block;
+}
+
+.hub-vitals-panel.is-active .card-nested:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .hub-vitals-actions {
@@ -976,6 +1030,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .hub-vitals-lab {
   margin-top: 12px;
+}
+
+.hub-vitals-panel[data-vitals-panel="body"] .hub-vitals-body,
+.hub-vitals-panel[data-vitals-panel="lab"] .hub-vitals-lab {
+  margin-top: 0;
 }
 
 .hub-vitals-lab .lab-grid {
@@ -1076,6 +1135,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 16px;
   align-items: flex-end;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .hub-vitals-controls .control-group {
