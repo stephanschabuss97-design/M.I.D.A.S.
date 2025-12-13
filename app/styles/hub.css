@@ -178,7 +178,6 @@ body:has(.hub-panel.is-visible) .hub-icon {
   opacity: 0;
   pointer-events: none;
 }
-
 .hub-quickbar {
   position: absolute;
   left: 50%;
@@ -521,8 +520,8 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: clamp(48px, 8vw, 96px);
-  height: clamp(48px, 8vw, 96px);
+  width: clamp(288px, 48vw, 576px);
+  height: clamp(288px, 48vw, 576px);
   display: none;
   pointer-events: none;
   opacity: 0;
@@ -689,7 +688,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 }
 
 .hub-icon-img {
-  width: clamp(48px, 8vw, 96px);
+  width: clamp(288px, 48vw, 576px);
   height: auto;
   display: block;
   pointer-events: none;
