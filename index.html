@@ -78,9 +78,9 @@
     </header>
     <div class="content">
       <div class="controls">
-        <select id="metricSel" class="half compact" aria-label="Messgroesse auswaehlen">
+        <select id="metricSel" class="half compact" aria-label="Messgrösse auswaehlen">
           <option value="bp">Blutdruck (Sys/Dia)</option>
-          <option value="weight">Koerper</option>
+          <option value="weight">Körper</option>
         </select>
         <!-- ANKER: chart-averages (Daily) -->
         <div id="chartAverages" class="kpis" aria-live="polite">
@@ -806,7 +806,7 @@
               </div>
             </div>
             <div class="small u-mt-6">
-              Tipp: "Werte anzeigen" oeffnet die passende Grafik zum aktuellen Tab (Daily).
+              Tipp: "Werte anzeigen" öffnet die passende Grafik zum aktuellen Tab (Daily).
             </div>
           </section>
         </div>
@@ -836,7 +836,6 @@
         </header>
         <div class="hub-panel-body">
             <div class="hub-vitals">
-            <div class="hub-vitals-bp">
               <div class="card-nested hub-vitals-controls">
                 <div class="control-group">
                   <label for="date">Datum</label>
@@ -863,6 +862,13 @@
                   </button>
                 </div>
               </div>
+              <div class="hub-vitals-tabs" role="tablist" aria-label="Vitals Bereiche">
+                <button class="btn ghost is-active" type="button" data-vitals-tab="bp" aria-selected="true">BP</button>
+                <button class="btn ghost" type="button" data-vitals-tab="body" aria-selected="false">Body</button>
+                <button class="btn ghost" type="button" data-vitals-tab="lab" aria-selected="false">Lab</button>
+              </div>
+              <div class="hub-vitals-panel is-active" data-vitals-panel="bp">
+                <div class="hub-vitals-bp">
               <div class="card-nested bp-pane active" data-context="M">
                 <h3 class="blockTitle">Morgens</h3>
                 <div class="grid">
@@ -900,6 +906,11 @@
                     class="small"
                     placeholder="Kommentar Morgens (optional)"
                   ></textarea>
+                </div>
+                <div class="panel-actions">
+                  <button class="btn primary save-bp-panel-btn" type="button">
+                    &#x1F4BE; Blutdruck speichern
+                  </button>
                 </div>
               </div>
               <div class="card-nested bp-pane" data-context="A">
@@ -940,13 +951,15 @@
                     placeholder="Kommentar Abends (optional)"
                   ></textarea>
                 </div>
+                <div class="panel-actions">
+                  <button class="btn primary save-bp-panel-btn" type="button">
+                    &#x1F4BE; Blutdruck speichern
+                  </button>
+                </div>
               </div>
-              <div class="panel-actions">
-                <button class="btn primary" id="saveBpPanelBtn" type="button">
-                  &#x1F4BE; Blutdruck speichern
-                </button>
               </div>
-            </div>
+              </div>
+              <div class="hub-vitals-panel" data-vitals-panel="body" aria-hidden="true" hidden>
             <div class="hub-vitals-body card-nested">
               <div class="body-grid">
                 <div>
@@ -990,12 +1003,14 @@
                   >
                 </div>
               </div>
-              <div class="panel-actions">
-                <button class="btn primary" id="saveBodyPanelBtn" type="button">
-                  &#x1F4BE; Koerper speichern
-                </button>
+                <div class="panel-actions">
+                  <button class="btn primary" id="saveBodyPanelBtn" type="button">
+                    &#x1F4BE; Körper speichern
+                  </button>
+                </div>
               </div>
-            </div>
+              </div>
+              <div class="hub-vitals-panel" data-vitals-panel="lab" aria-hidden="true" hidden>
             <div class="hub-vitals-lab card-nested">
               <div class="lab-grid">
                 <div>
@@ -1093,6 +1108,9 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
           </div>
         </div>
       </div>
@@ -1276,7 +1294,7 @@
     - BP (Blood Pressure) - Validierung -> #SUBMODULES: 0, #@extract: 5, Exports:[requiresBpComment, updateBpCommentWarnings, resetBpPanel] (moved to app/modules/capture/bp.js)
     - CAPTURE (Intake) - Panel Resets & Shortcuts -> #SUBMODULES: 0, #@extract: 2, Exports:[resetBodyPanel, resetCapturePanels, addCapturePanelKeys] (moved to app/modules/capture/index.js)
     - BP (Blood Pressure) - Persistenz -> #SUBMODULES: 0, #@extract: 6, Exports:[saveBlock, appendNote, allocateNoteTimestamp] (moved to app/modules/capture/bp.js)
-    - BODY (Koerperwerte) -> #SUBMODULES: 0, #@extract: 1, Exports:[resetBodyPanel, saveDaySummary, prefillBodyInputs] (moved to app/modules/capture/body.js)
+    - BODY (Körperwerte) -> #SUBMODULES: 0, #@extract: 1, Exports:[resetBodyPanel, saveDaySummary, prefillBodyInputs] (moved to app/modules/capture/body.js)
     - DATA ACCESS (Auth Helpers) -> #SUBMODULES: 3, #@extract: 2, Exports:[withRetry, fetchWithAuth, syncWebhook]
     - REALTIME -> #SUBMODULES: 17, #@extract: 8, Exports:[ensureSupabaseClient, setupRealtime, requireDoctorUnlock, resumeFromBackground]
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]

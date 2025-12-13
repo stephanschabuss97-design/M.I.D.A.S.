@@ -248,12 +248,10 @@
 
 .doctor-body-day .doctor-body-metrics .measure-head,
 .doctor-body-day .doctor-body-metrics .measure-grid{
-  grid-template-columns:minmax(70px, auto) repeat(4, minmax(110px, 1fr));
+  grid-template-columns:repeat(4, minmax(110px, 1fr));
 }
 .doctor-body-day .doctor-body-metrics .measure-head > div{
   white-space:nowrap;
-}
-.doctor-body-day .doctor-body-metrics .measure-head > div:not(:first-child){
   justify-content:center;
   text-align:center;
 }
@@ -382,6 +380,43 @@
     -webkit-line-clamp:4; /* bei Bedarf auf 5 erhoehen */
   }
 
+}
+
+.doctor-lab-day .doctor-lab-metrics .measure-head,
+.doctor-lab-day .doctor-lab-metrics .measure-grid{
+  grid-template-columns:repeat(3, minmax(90px, 1fr));
+}
+.doctor-lab-day .doctor-lab-metrics .measure-head > div{
+  justify-content:center;
+  text-align:center;
+}
+.doctor-lab-day .doctor-lab-grid .num{
+  justify-content:center;
+}
+.doctor-lab-group{
+  margin-bottom:8px;
+}
+.doctor-lab-group:last-child{
+  margin-bottom:0;
+}
+.doctor-lab-comment{
+  padding:8px 0;
+}
+.doctor-lab-comment-label{
+  font-size:12px;
+  opacity:.8;
+  font-weight:600;
+  letter-spacing:.2px;
+  margin-bottom:4px;
+}
+.doctor-lab-comment-text{
+  font-size:13px;
+  line-height:1.4;
+  word-break:break-word;
+}
+.doctor-lab-comment-empty{
+  opacity:.7;
+  font-style:italic;
 }
 
 /* SUBMODULE: Placeholders & Empty States @public - Anzeige bei fehlenden Daten oder Sperrzustand */

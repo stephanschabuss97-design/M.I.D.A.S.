@@ -962,9 +962,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   position: relative;
   padding-bottom: 2px;
   transform: translateY(-6px);
-  background: #fff;
-  color: #0b0d16;
-  border-radius: 8px 8px 0 0;
 }
 
 .hub-vitals-tabs .btn::after {
@@ -982,14 +979,10 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   background: var(--accent, #4f9dff);
 }
 
-.hub-vitals-tabs .btn.is-active {
-  color: #0b0d16;
-  font-weight: 600;
-}
-
 .hub-vitals-panel {
   display: none;
   margin-top: 0;
+  min-height: var(--hub-vitals-panel-min-height, 520px);
 }
 
 .hub-vitals-panel.is-active {
@@ -1207,6 +1200,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 /* HUB ÔÇö Form helpers */
 .hub-vitals-controls .control-group select {
   min-width: 160px;
+}
+
+.hub-vitals-controls #bpContextSel option {
+  color: #0b0d16;
+  background: #fff;
 }
 
 

@@ -6,13 +6,13 @@ Dieses Dokument beschreibt die Arzt-Ansicht (Doktor-Tab) im Gesundheits-Logger. 
 
 ## 1. Zielsetzung & Funktionen
 
-Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Aktionen für Ärzt:innen oder Patienten im „Doctor“-Modus. Kerneigenschaften:
+Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise, Labor-Events und Monatsberichte für Ärzt:innen oder Patienten im „Doctor“-Modus. Kerneigenschaften:
 
-- Zeitraumfilter (Von/Bis) mit Anbindung an Supabase `fetchDailyOverview`.
-- Darstellung aller Tage (Blutdruck Morgen/Abend, Puls, MAP, Körperwerte, Notizen).
+- Zeitraumfilter (Von/Bis) mit Anbindung an Supabase `fetchDailyOverview` sowie dedizierte Loader für BP/Body/Lab.
+- Tabbed Layout (`BP`, `Body`, `Lab`, `Inbox`) für klar getrennte Domänen; Inbox öffnet Monatsberichte als Overlay.
 - Trendpilot-Hinweisblock (Severity, Ack, Arztstatus samt Buttons).
-- JSON-Export und Remote-Löschen einzelner Tage.
-- Integration mit Chart-Panel (`Werte anzeigen`).
+- JSON-Export, Remote-Löschen einzelner Domains und Tab-übergreifender Scroll-Restore.
+- Chart-Integration (`Werte anzeigen`) und neues „Monatsbericht“-Feature (Edge Function `midas-monthly-report`).
 - Zugriffsschutz via Doctor-Unlock (Finger/PIN).
 
 ---
@@ -21,11 +21,11 @@ Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Akt
 
 | Datei | Zweck |
 |-------|-------|
-| `app/modules/doctor/index.js` | Hauptlogik: Rendern, Scroll-Restore, Trendpilot-Block, Delete/Export, Chart-Button. |
+| `app/modules/doctor/index.js` | Hauptlogik: Rendern, Scroll-Restore, Tab-Steuerung (BP/Body/Lab/Inbox), Trendpilot-Block, Delete/Export, Monatsberichte. |
 | `app/styles/doctor.css` | Layout/Stil (Toolbar, Badge, Trendpilot-Karten, Tagesgrid). |
 | `app/modules/hub/index.js` | Orbit-Buttons & Overlay-Steuerung (öffnet Doctor-Panel nach Unlock). |
 | `assets/js/main.js` | Legacy Tab-Wechsel (bleibt für Altansichten); Hub überlagert dies mit Orbit. |
-| `app/supabase/api/vitals.js` & `app/supabase/api/system-comments.js` | REST-Fetch für Tageswerte und Trendpilot-Kommentare. |
+| `app/supabase/api/vitals.js`, `app/supabase/api/system-comments.js`, `app/supabase/api/reports.js` | REST-Fetch für Tageswerte/Lab-Events, Trendpilot-Kommentare und Monatsberichte (Edge Function Wrapper). |
 | `app/modules/trendpilot/index.js` | Liefert `trendpilot:latest` Events, Ack-Patching etc. |
 | `assets/js/charts/index.js` | Chart-Button nutzt das gleiche Range, um Diagramm zu öffnen. |
 | `docs/QA_CHECKS.md` | Enthält Tests (Unlock, Trendpilot-Block, Delete, Chart). |
@@ -43,13 +43,13 @@ Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Akt
 ### 3.2 Render (`renderDoctor`)
 
 1. Liest `from/to` Felder, validiert sie (sonst Placeholder „Bitte Zeitraum wählen“).
-2. Ruft `fetchDailyOverview(from, to)` → Supabase `v_events_bp`, `v_events_body`, `notes`.
+2. Ruft `fetchDailyOverview(from, to)` für BP/Body/Notes sowie `loadLabEventsRange` für Lab-Einträge; Ergebnisse werden pro Domain getrennt gespeichert.
 3. Sortiert Tage absteigend, mappt in DOM-Blöcke:
-   - Datum + Cloud/Actions (Löschen).
-   - Messgrid (Sys/Dia/Puls/MAP morgens/abends, rot markiert bei Schwellen).
-   - Körperwerte (Gewicht/Bauchumfang) & Notizen.
-
-4. Scroll-Restore: Merkt Scroll-Position (`__doctorScrollSnapshot`), setzt sie nach Render zurück.
+   - **BP-Tab:** Datum + Cloud/Actions (Löschen) + Messgrid (Sys/Dia/Puls/MAP morgens/abends, rot markiert bei Schwellen).
+   - **Body-Tab:** Datum + Cloud/Actions + numerische Zeile (Gewicht, Bauchumfang, Fett/Muskel in separaten Spalten).
+   - **Lab-Tab:** Datum + Cloud/Actions + zwei Messgruppen (Nierenwerte, Stoffwechselwerte) plus Kommentarbereich. Jede Karte repräsentiert einen `lab_event`.
+   - **Inbox-Tab:** Placeholder im Hauptpanel, öffnet beim Klick ein Overlay mit Monatsberichten (siehe 3.5).
+4. Scroll-Restore: Merkt Scroll-Position (`__doctorScrollSnapshot`), setzt sie nach Render zurück (BP/Body/Lab teilen sich denselben Scroll-Container).
 
 ### 3.3 Aktionen
 
@@ -104,3 +104,17 @@ Die Arzt-Ansicht konsolidiert Tagesdaten, Trendpilot-Hinweise und Management-Akt
 ---
 
 Aktualisiere dieses Dokument bei Änderungen (z. B. weitere Buttons, neue Felder oder Supabase-Integrationen), damit alle Beteiligten denselben Wissenstand haben.
+- **Lab-Bereich:** neue Delete-Buttons (`data-del-lab`) nutzen `deleteRemoteByType(date, 'lab_event')` und triggern danach `requestUiRefresh`. Die UI spiegelt eGFR/Kreatinin/Risiko-Infos ohne BP/Body-Spalten wider.
+
+### 3.5 Monatsberichte
+
+1. Toolbar enthält nun den Button `Monatsbericht` (guarded). Ein Klick ruft über `app/supabase/api/reports.js` die Edge Function `midas-monthly-report` auf, übergibt `from/to` oder ein explizites `month`.
+2. Die Edge Function aggregiert BP/Body/Lab-Reihen (`v_events_*`), erstellt eine textuelle Zusammenfassung (Ø-Werte, Trends, CKD-Kontext) und speichert sie als `system_comment` mit `payload.subtype = 'monthly_report'`.
+3. Die Inbox im Doctor-Tab öffnet ein Overlay (`doctorInboxPanel`), listet alle Monatsberichte (Sortierung absteigend) mit:
+   - Header (Monat, Erstellzeit).
+   - Summary-Zeile (z. B. „September 2025: 46 BP · 17 Körper · 1 Lab“ + Warn-Flags).
+   - Narrative (Markdown → HTML) plus Aktionen `Neu erstellen` und `Löschen`.
+4. Löschen ruft `deleteSystemComment(id)` (Supabase) auf, Neu erstellen triggert die Edge Function erneut (optional mit `month`).
+5. Trendpilot/AI-Pipeline ignoriert Monatsberichte, da `fetchSystemCommentsRange` nur Events ohne `payload.subtype` lädt.
+
+### 3.6 Trendpilot-Hinweise

@@ -84,7 +84,7 @@ This document captures the restructuring prompt and translates it into a determi
 2. ✅ Refresh the Doctor Inbox UI to focus on the narrative:
    - Render summary + text separately, format the narrative with paragraphs/bullets, show warning badges when `payload.meta.flags` indicates risks.
    - Add delete and optional regenerate buttons per monthly report card (calls the Supabase API to delete/recreate the `system_comment`) so test runs don’t clutter the archive, and expose a “Neuen Monatsbericht” CTA in the overlay header next to the count.
-3. Align CKD lab inputs with the doctor-sourced dataset (Albuminurie-Feld entfällt):
+3. ✅ Align CKD lab inputs with the doctor-sourced dataset (Albuminurie-Feld entfällt):
    - Entferne ACR/Albuminurie vollständig aus UI, Payload und Narrativen – nur der CKD-Dropdown bleibt für die ärztliche Klassifikation.
    - Lab Snapshots enthalten künftig `egfr`, `creatinine`, `hba1c`, `ldl`, `potassium`, `ckd_stage`, `comment`.
    - Edge Function & Monatsbericht greifen nur noch auf diese Felder zu; fehlende Werte werden als „nicht bestimmt im Berichtszeitraum“ markiert.
@@ -95,8 +95,8 @@ This document captures the restructuring prompt and translates it into a determi
    3.4 Edge function + narrative last: Monatsbericht-Generator und Texte basieren auf `ckd_stage` statt Albuminurie.
 
 ### Step 8 – Testing & Documentation
-1. Smoke-test Schema: insert valid/invalid lab rows, confirm view outputs and RLS behavior.
-2. UI tests: save BP, Body, Lab entries; delete a day; generate a monthly report; reopen each Doctor tab and confirm isolation.
-3. Update docs (`modules/Doctor View`, `modules/Hub`, roadmap) with the new domain model and manual-report flow.
+1. ✅ Smoke-test Schema: insert valid/invalid lab rows, confirm view outputs and RLS behavior.
+2. ✅ UI tests: save BP, Body, Lab entries; delete a day; generate a monthly report; reopen each Doctor tab and confirm isolation.
+3. ✅ Update docs (`modules/Doctor View`, `modules/Hub`, roadmap) with the new domain model and manual-report flow.
 
 Following these ordered milestones keeps the implementation deterministic: database changes land first, then APIs, UI inputs, Doctor View rendering, backend report generation, and a final validation/documentation pass.

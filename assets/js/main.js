@@ -1459,47 +1459,60 @@ async function maybeRunTrendpilotAfterBpSave(which) {
   }
 }
 
-const saveBpPanelBtn = document.getElementById('saveBpPanelBtn');
-if (saveBpPanelBtn){
-  saveBpPanelBtn.addEventListener('click', async (e)=>{
-    try {
-      const logged = await isLoggedInFast();
-      if (!logged) {
-        diag.add?.('[panel] bp save while auth unknown');
-        // Diagnostics only: keep going so fetchWithAuth can recover auth state.
-      }
-    } catch(err) {
-      console.error('isLoggedInFast check failed', err);
+const saveBpButtons = document.querySelectorAll('.save-bp-panel-btn');
+const handleBpPanelSave = async (e) => {
+  try {
+    const logged = await isLoggedInFast();
+    if (!logged) {
+      diag.add?.('[panel] bp save while auth unknown');
+      // Diagnostics only: keep going so fetchWithAuth can recover auth state.
     }
-    const btn = e.currentTarget;
-    const ctxSel = document.getElementById('bpContextSel');
-    const which = (ctxSel?.value === 'A') ? 'A' : 'M';
-    withBusy(btn, true);
-    let savedOk = false;
-    try{
-      const saved = await window.AppModules.bp.saveBlock(which === 'M' ? 'Morgen' : 'Abend', which, false, false);
-      if (!saved){
-        uiError('Keine Daten fuer diesen Messzeitpunkt eingegeben.');
-      } else {
-        savedOk = true;
-        requestUiRefresh({ reason: 'panel:bp' }).catch(err => {
-          diag.add?.('ui refresh err: ' + (err?.message || err));
-        });
-      }
-    }catch(err){
-      diag.add?.('Panel BP Fehler: ' + (err?.message || err));
-      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
-    }finally{
-      withBusy(btn, false);
+  } catch (err) {
+    console.error('isLoggedInFast check failed', err);
+  }
+  const btn = e.currentTarget;
+  const ctxSel = document.getElementById('bpContextSel');
+  const pane = btn.closest('.bp-pane');
+  const paneCtx = pane?.getAttribute('data-context');
+  const which =
+    paneCtx === 'A'
+      ? 'A'
+      : paneCtx === 'M'
+        ? 'M'
+        : ctxSel?.value === 'A'
+          ? 'A'
+          : 'M';
+  withBusy(btn, true);
+  let savedOk = false;
+  try {
+    const saved = await window.AppModules.bp.saveBlock(
+      which === 'M' ? 'Morgen' : 'Abend',
+      which,
+      false,
+      false
+    );
+    if (!saved) {
+      uiError('Keine Daten fuer diesen Messzeitpunkt eingegeben.');
+    } else {
+      savedOk = true;
+      requestUiRefresh({ reason: 'panel:bp' }).catch((err) => {
+        diag.add?.('ui refresh err: ' + (err?.message || err));
+      });
     }
-    if (savedOk){
-      window.AppModules.bp.updateBpCommentWarnings?.();
-      window.AppModules.bp.resetBpPanel(which);
-      flashButtonOk(btn, '&#x2705; Blutdruck gespeichert');
-      await maybeRunTrendpilotAfterBpSave(which);
-    }
-  });
-}
+  } catch (err) {
+    diag.add?.('Panel BP Fehler: ' + (err?.message || err));
+    uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+  } finally {
+    withBusy(btn, false);
+  }
+  if (savedOk) {
+    window.AppModules.bp.updateBpCommentWarnings?.();
+    window.AppModules.bp.resetBpPanel(which);
+    flashButtonOk(btn, '&#x2705; Blutdruck gespeichert');
+    await maybeRunTrendpilotAfterBpSave(which);
+  }
+};
+saveBpButtons.forEach((btn) => btn.addEventListener('click', handleBpPanelSave));
 
 const saveBodyPanelBtn = document.getElementById('saveBodyPanelBtn');
 if (saveBodyPanelBtn){
@@ -1839,7 +1852,6 @@ window.addEventListener('focus', () => {
 - Realtime-Events: INSERT/UPDATE ? upsert, DELETE ? lokal entfernen.
 - UI-Refresh: Arzt-Ansicht sofort; Charts nur, wenn Panel offen.
 === */
-
 
 
 

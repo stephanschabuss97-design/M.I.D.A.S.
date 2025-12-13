@@ -170,6 +170,26 @@
       : null;
   };
 
+  const resolveLabRangeLoader = () => {
+    const api = getSupabaseApi();
+    return typeof api.loadLabEventsRange === 'function' ? api.loadLabEventsRange : null;
+  };
+
+  const resolveUserIdFetcher = () => {
+    const api = getSupabaseApi();
+    return typeof api.getUserId === 'function' ? api.getUserId : null;
+  };
+
+  const loadLabEventsSafe = async (from, to) => {
+    const loader = resolveLabRangeLoader();
+    const uidFetcher = resolveUserIdFetcher();
+    if (typeof loader !== 'function' || typeof uidFetcher !== 'function') return [];
+    const uid = await uidFetcher();
+    if (!uid) return [];
+    const rows = await loader({ user_id: uid, from, to });
+    return Array.isArray(rows) ? rows : [];
+  };
+
   const renderTrendpilotActionButton = (status, current) => {
     const isActive = status === (current || 'none');
     const label =
@@ -486,6 +506,8 @@ async function renderDoctor(triggerReason = 'manual'){
 
   //  Server lesen  Tagesobjekte
   let daysArr = [];
+  let labRows = [];
+  let labLoadError = null;
   try{
     daysArr = await fetchDailyOverview(from, to);
   }catch(err){
@@ -498,6 +520,17 @@ async function renderDoctor(triggerReason = 'manual'){
   }
 
   daysArr.sort((a,b)=> b.date.localeCompare(a.date));
+  try {
+    labRows = await loadLabEventsSafe(from, to);
+    if (Array.isArray(labRows)) {
+      labRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+    } else {
+      labRows = [];
+    }
+  } catch (err) {
+    labLoadError = err;
+    logDoctorError('lab events fetch failed', err);
+  }
 
   const trendpilotWrap = document.getElementById('doctorTrendpilot');
   if (trendpilotWrap) {
@@ -607,7 +640,6 @@ async function renderDoctor(triggerReason = 'manual'){
   </div>
   <div class="col-measure doctor-body-metrics">
     <div class="measure-head">
-      <div></div>
       <div>Gewicht (kg)</div>
       <div>Bauchumfang (cm)</div>
       <div>Fett (%)</div>
@@ -615,7 +647,6 @@ async function renderDoctor(triggerReason = 'manual'){
     </div>
     <div class="measure-grid">
       <div class="measure-row">
-        <div class="label">Werte</div>
         <div class="num">${dash(fmtNum(day.weight))}</div>
         <div class="num">${dash(fmtNum(day.waist_cm))}</div>
         <div class="num">${dash(fmtNum(day.fat_pct))}</div>
@@ -626,22 +657,113 @@ async function renderDoctor(triggerReason = 'manual'){
 </section>`;
   };
 
-  // Rendern / Leerzustand
+  const renderDoctorLabDay = (entry) => {
+    const formatLabValue = (value, decimals = 1) => {
+      if (value === null || value === undefined || value === '') return '-';
+      const num = Number(value);
+      if (!Number.isFinite(num)) return dash(value);
+      return fmtNum(num, decimals);
+    };
+    const createLabGroup = (columns) => {
+      const head = columns.map((col) => `<div>${escapeAttr(col.label)}</div>`).join('');
+      const values = columns
+        .map((col) => `<div class="num">${col.value}</div>`)
+        .join('');
+      return `
+    <div class="doctor-lab-group">
+      <div class="measure-head doctor-lab-head">
+        ${head}
+      </div>
+      <div class="measure-grid doctor-lab-grid">
+        <div class="measure-row">
+          ${values}
+        </div>
+      </div>
+    </div>`;
+    };
+    const commentRaw = formatNotesHtml(entry.doctor_comment);
+    const commentHtml =
+      commentRaw === '-'
+        ? '<span class="doctor-lab-comment-empty">Kein Kommentar</span>'
+        : commentRaw;
+    const stageValue = entry.ckd_stage ? escapeAttr(entry.ckd_stage) : '-';
+    return `
+<section class="doctor-day doctor-lab-day" data-date="${escapeAttr(entry.day || '')}">
+  <div class="col-date">
+    <div class="date-top">
+      <span class="date-label">${fmtDateDE(entry.day)}</span>
+      <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
+    </div>
+    <div class="date-actions">
+      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Loeschen</button>
+    </div>
+  </div>
+  <div class="col-measure doctor-lab-metrics">
+    ${createLabGroup([
+      { label: 'eGFR (ml/min)', value: formatLabValue(entry.egfr, 0) },
+      { label: 'Kreatinin (mg/dl)', value: formatLabValue(entry.creatinine, 2) },
+      { label: 'Kalium (mmol/l)', value: formatLabValue(entry.potassium, 2) }
+    ])}
+    ${createLabGroup([
+      { label: 'HbA1c (%)', value: formatLabValue(entry.hba1c, 1) },
+      { label: 'LDL (mg/dl)', value: formatLabValue(entry.ldl, 0) },
+      { label: 'CKD-Stufe', value: stageValue }
+    ])}
+  </div>
+  <div class="col-special doctor-lab-special">
+    <div class="doctor-lab-comment">
+      <div class="doctor-lab-comment-label">Kommentar</div>
+      <div class="doctor-lab-comment-text">${commentHtml}</div>
+    </div>
+  </div>
+</section>`;
+  };
+
+  const bindDomainDeleteButtons = (panel, attrName, type, label) => {
+    if (!panel) return;
+    panel.querySelectorAll(`[${attrName}]`).forEach((btn) => {
+      if (btn.dataset.boundDelete === '1') return;
+      btn.dataset.boundDelete = '1';
+      btn.addEventListener('click', async () => {
+        const date = btn.getAttribute(attrName);
+        if (!date) return;
+        if (!confirm(`Alle ${label}-Eintraege fuer ${date} loeschen?`)) return;
+
+        btn.disabled = true;
+        const old = btn.textContent;
+        btn.textContent = 'Loesche...';
+        try {
+          const result = await deleteRemoteByType(date, type);
+          if (!result?.ok) {
+            alert(`Server-Loeschung fehlgeschlagen (${result?.status || "?"}).`);
+            return;
+          }
+          await requestUiRefresh({ reason: `doctor:delete:${type}` });
+        } catch (err) {
+          logDoctorError(`deleteRemoteByType failed (${type})`, err);
+          alert('Server-Loeschung fehlgeschlagen (Fehler siehe Konsole).');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = old;
+        }
+      });
+    });
+  };
+
+    // Rendern / Leerzustand
   if (!daysArr.length){
-    if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Einträge im Zeitraum.');
-    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Körperdaten im Zeitraum.');
-    if (panels.lab) panels.lab.innerHTML = placeholderHtml('Lab-Tab wird demnächst befüllt.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+    if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
+    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Koerperdaten im Zeitraum.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
     if (panels.bp) panels.bp.innerHTML = daysArr.map(renderDoctorDay).join("");
     if (panels.body) {
       const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
-      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Körperdaten im Zeitraum.');
+      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Koerperdaten im Zeitraum.');
     }
-    if (panels.lab) panels.lab.innerHTML = placeholderHtml('Lab-Tab wird demnächst befüllt.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -661,39 +783,22 @@ async function renderDoctor(triggerReason = 'manual'){
       setTimeout(restoreScroll, 0);
     }
 
-    //  Loeschen: alle Server-Events des Tages entfernen
-    const bindDomainDeleteButtons = (panel, attrName, type, label) => {
-      if (!panel) return;
-      panel.querySelectorAll(`[${attrName}]`).forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const date = btn.getAttribute(attrName);
-          if (!date) return;
-          if (!confirm(`Alle ${label}-Eintraege fuer ${date} loeschen?`)) return;
-
-          btn.disabled = true;
-          const old = btn.textContent;
-          btn.textContent = 'Loesche...';
-          try {
-            const result = await deleteRemoteByType(date, type);
-            if (!result?.ok) {
-              alert(`Server-Loeschung fehlgeschlagen (${result?.status || "?"}).`);
-              return;
-            }
-            await requestUiRefresh({ reason: `doctor:delete:${type}` });
-          } catch (err) {
-            logDoctorError(`deleteRemoteByType failed (${type})`, err);
-            alert('Server-Loeschung fehlgeschlagen (Fehler siehe Konsole).');
-          } finally {
-            btn.disabled = false;
-            btn.textContent = old;
-          }
-        });
-      });
-    };
-
     bindDomainDeleteButtons(panels.bp, 'data-del-bp', 'bp', 'Blutdruck');
     bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Koerper');
   }
+
+  if (panels.lab) {
+    if (labLoadError) {
+      panels.lab.innerHTML = placeholderHtml('Labordaten konnten nicht geladen werden.');
+    } else if (labRows.length) {
+      panels.lab.innerHTML = labRows.map(renderDoctorLabDay).join('');
+      bindDomainDeleteButtons(panels.lab, 'data-del-lab', 'lab_event', 'Labor');
+    } else {
+      panels.lab.innerHTML = placeholderHtml('Keine Laborwerte im Zeitraum.');
+    }
+  }
+
+
   closeDoctorRefreshLog();
 }
 
