@@ -34,6 +34,8 @@
       /* noop */
     }
   };
+  const DOCTOR_TABS = ['bp', 'body', 'lab', 'inbox'];
+  let __doctorActiveTab = DOCTOR_TABS[0];
   let __doctorScrollSnapshot = { top: 0, ratio: 0 };
   const doctorRefreshLogInflight = new Map();
   const doctorRefreshKey = (reason, from, to) =>
@@ -65,6 +67,7 @@
     );
   };
   const getSupabaseApi = () => global.AppModules?.supabase || {};
+  const getFocusTrap = () => global.AppModules?.uiCore?.focusTrap || global.focusTrap || null;
   const toast =
     global.toast ||
     appModules.ui?.toast ||
@@ -76,6 +79,16 @@
     });
   const escapeAttr = (value = '') =>
     String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] || ch));
+  const fmtDateDE = (iso) => {
+    if (!iso) return '-';
+    try {
+      const d = new Date(`${iso}T00:00:00Z`);
+      if (Number.isNaN(d.getTime())) throw new Error('invalid');
+      return d.toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (_) {
+      return '-';
+    }
+  };
   const TRENDPILOT_SEVERITY_META = {
     warning: { label: 'Warnung', className: 'is-warning' },
     critical: { label: 'Kritisch', className: 'is-critical' }
@@ -134,6 +147,47 @@
     return typeof api.setSystemCommentDoctorStatus === 'function'
       ? api.setSystemCommentDoctorStatus
       : null;
+  };
+  const resolveMonthlyReportFetcher = () => {
+    const api = getSupabaseApi();
+    return typeof api.fetchSystemCommentsBySubtype === 'function'
+      ? api.fetchSystemCommentsBySubtype
+      : null;
+  };
+
+  const resolveMonthlyReportGenerator = () => {
+    const api = getSupabaseApi();
+    if (typeof api.generateMonthlyReportRemote === 'function') {
+      return api.generateMonthlyReportRemote;
+    }
+    return null;
+  };
+
+  const resolveMonthlyReportDeleter = () => {
+    const api = getSupabaseApi();
+    return typeof api.deleteSystemComment === 'function'
+      ? api.deleteSystemComment
+      : null;
+  };
+
+  const resolveLabRangeLoader = () => {
+    const api = getSupabaseApi();
+    return typeof api.loadLabEventsRange === 'function' ? api.loadLabEventsRange : null;
+  };
+
+  const resolveUserIdFetcher = () => {
+    const api = getSupabaseApi();
+    return typeof api.getUserId === 'function' ? api.getUserId : null;
+  };
+
+  const loadLabEventsSafe = async (from, to) => {
+    const loader = resolveLabRangeLoader();
+    const uidFetcher = resolveUserIdFetcher();
+    if (typeof loader !== 'function' || typeof uidFetcher !== 'function') return [];
+    const uid = await uidFetcher();
+    if (!uid) return [];
+    const rows = await loader({ user_id: uid, from, to });
+    return Array.isArray(rows) ? rows : [];
   };
 
   const renderTrendpilotActionButton = (status, current) => {
@@ -198,10 +252,149 @@
     if (labelEl) labelEl.textContent = getDoctorStatusLabel(status);
   };
 
+  const getDoctorTabPanels = () => {
+    const doc = global.document;
+    if (!doc) return {};
+    return {
+      bp: doc.getElementById('doctorTabBp'),
+      body: doc.getElementById('doctorTabBody'),
+      lab: doc.getElementById('doctorTabLab'),
+      inbox: doc.getElementById('doctorTabInbox')
+    };
+  };
+
+  const inboxPanelState = {
+    el: null,
+    closeBound: false,
+    range: { from: '', to: '' }
+  };
+
+  function hideDoctorInboxPanel() {
+    const panel = inboxPanelState.el || global.document?.getElementById('doctorInboxPanel');
+    if (!panel) return;
+    panel.hidden = true;
+    panel.setAttribute('aria-hidden', 'true');
+    panel.setAttribute('inert', '');
+    panel.classList.remove('is-open');
+    panel.style.display = 'none';
+    inboxPanelState.el = panel;
+    getFocusTrap()?.deactivate?.();
+  }
+
+  const ensureDoctorInboxPanel = () => {
+    if (inboxPanelState.el) return inboxPanelState.el;
+    const doc = global.document;
+    if (!doc) return null;
+    const panel = doc.getElementById('doctorInboxPanel');
+    if (!panel) return null;
+    inboxPanelState.el = panel;
+    if (!inboxPanelState.closeBound) {
+      const closeBtn = doc.getElementById('doctorInboxClose');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => hideDoctorInboxPanel());
+        inboxPanelState.closeBound = true;
+      }
+    }
+    return panel;
+  };
+
+  const isDoctorInboxPanelOpen = () => {
+    const panel = inboxPanelState.el || global.document?.getElementById('doctorInboxPanel');
+    if (!panel) return false;
+    const hiddenAttr = panel.getAttribute('aria-hidden');
+    return panel.classList.contains('is-open') && hiddenAttr === 'false' && panel.hidden !== true;
+  };
+
+  const showDoctorInboxPanel = () => {
+    const panel = ensureDoctorInboxPanel();
+    if (!panel) return false;
+    panel.hidden = false;
+    panel.removeAttribute('inert');
+    panel.style.display = 'block';
+    panel.setAttribute('aria-hidden', 'false');
+    panel.classList.add('is-open');
+    getFocusTrap()?.activate?.(panel);
+    return true;
+  };
+
+  const openInboxOverlay = () => {
+    try {
+      const hub = global.AppModules?.hub;
+      if (typeof hub?.openDoctorInboxPanel !== 'function') {
+        toast('Inbox ist derzeit nicht verfügbar.');
+        return;
+      }
+      const doc = global.document;
+      const from = doc?.getElementById('from')?.value || '';
+      const to = doc?.getElementById('to')?.value || '';
+      hub.openDoctorInboxPanel({ from, to });
+    } catch (err) {
+      logDoctorError('open inbox overlay failed', err);
+    }
+  };
+
+  const setDoctorActiveTab = (tab) => {
+    const doc = global.document;
+    if (!doc) return;
+    const target = DOCTOR_TABS.includes(tab) ? tab : DOCTOR_TABS[0];
+    __doctorActiveTab = target;
+    doc.querySelectorAll('[data-doctor-tab]').forEach((btn) => {
+      const btnTab = btn.getAttribute('data-doctor-tab');
+      const isActive = btnTab === target;
+      btn.classList.toggle('is-active', isActive);
+      if (btn.hasAttribute('aria-selected')) {
+        btn.setAttribute('aria-selected', String(isActive));
+      }
+    });
+    doc.querySelectorAll('[data-doctor-panel]').forEach((panel) => {
+      const panelTab = panel.getAttribute('data-doctor-panel');
+      const isActive = panelTab === target;
+      panel.classList.toggle('is-active', isActive);
+      panel.hidden = !isActive;
+    });
+  };
+
+  const bindDoctorTabs = () => {
+    const doc = global.document;
+    if (!doc || doc.__doctorTabsBound) return;
+    doc.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-doctor-tab]');
+      if (!btn || !btn.closest('#doctor')) return;
+      const tab = btn.getAttribute('data-doctor-tab');
+      if (!tab) return;
+      if (tab === 'inbox') {
+        event.preventDefault();
+        openInboxOverlay();
+        return;
+      }
+      setDoctorActiveTab(tab);
+    });
+    setDoctorActiveTab(__doctorActiveTab);
+    doc.__doctorTabsBound = true;
+  };
+
+  if (global.document?.readyState === 'loading') {
+    global.document.addEventListener('DOMContentLoaded', bindDoctorTabs, { once: true });
+  } else {
+    bindDoctorTabs();
+  }
+
   async function loadTrendpilotEntries(from, to) {
     const fetcher = resolveTrendpilotFetcher();
     if (typeof fetcher !== 'function') return [];
     const result = await fetcher({ from, to, metric: 'bp', order: 'day.desc' });
+    return Array.isArray(result) ? result : [];
+  }
+
+  async function loadMonthlyReports(from, to) {
+    const fetcher = resolveMonthlyReportFetcher();
+    if (typeof fetcher !== 'function') return [];
+    const result = await fetcher({
+      from,
+      to,
+      subtype: 'monthly_report',
+      order: 'day.desc'
+    });
     return Array.isArray(result) ? result : [];
   }
 
@@ -246,6 +439,13 @@ async function renderDoctor(triggerReason = 'manual'){
   if (!isStageReady()) return;
   const host = $("#doctorView");
   if (!host) return;
+  const panels = getDoctorTabPanels();
+  const placeholderHtml = (text) => `<div class="small u-doctor-placeholder">${text}</div>`;
+  const fillAllPanels = (html) => {
+    Object.values(panels).forEach((panel) => {
+      if (panel) panel.innerHTML = html;
+    });
+  };
 
   const scroller = document.getElementById('doctorDailyWrap') || host.parentElement || host;
   if (!scroller.dataset.scrollWatcher) {
@@ -258,7 +458,7 @@ async function renderDoctor(triggerReason = 'manual'){
   }
 
   if (!(await isLoggedIn())){
-    host.innerHTML = `<div class="small u-doctor-placeholder">Bitte anmelden, um die Arzt-Ansicht zu sehen.</div>`;
+    fillAllPanels(placeholderHtml('Bitte anmelden, um die Arzt-Ansicht zu sehen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
@@ -268,7 +468,7 @@ async function renderDoctor(triggerReason = 'manual'){
   const isActive = !!doctorSection && doctorSection.classList.contains('active');
   if (!isDoctorUnlockedSafe()){
     if (isActive){
-      host.innerHTML = `<div class="small u-doctor-placeholder">Bitte Arzt-Ansicht kurz entsperren.</div>`;
+      fillAllPanels(placeholderHtml('Bitte Arzt-Ansicht kurz entsperren.'));
       try {
         await requestDoctorUnlock();
       } catch(err) {
@@ -282,21 +482,16 @@ async function renderDoctor(triggerReason = 'manual'){
 
   const prevScrollTop = (__doctorScrollSnapshot?.top ?? scroller.scrollTop ?? 0) || 0;
   const prevScrollRatio = (__doctorScrollSnapshot?.ratio ?? 0) || 0;
-  host.innerHTML = "";
+  fillAllPanels('');
 
   // Anzeige-Helper
   const dash = v => (v === null || v === undefined || v === "" ? "-" : String(v));
-  const fmtDateDE = (iso) => {
-    const d = new Date(iso + "T00:00:00Z");
-    return d.toLocaleDateString("de-AT", { weekday:"short", day:"2-digit", month:"2-digit", year:"numeric" });
-  };
-
   const fromInput = $("#from");
   const toInput = $("#to");
   const from = fromInput?.value || '';
   const to = toInput?.value || '';
   if (!from || !to){
-    host.innerHTML = `<div class="small u-doctor-placeholder">Bitte Zeitraum waehlen.</div>`;
+    fillAllPanels(placeholderHtml('Bitte Zeitraum wählen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
@@ -311,11 +506,13 @@ async function renderDoctor(triggerReason = 'manual'){
 
   //  Server lesen  Tagesobjekte
   let daysArr = [];
+  let labRows = [];
+  let labLoadError = null;
   try{
     daysArr = await fetchDailyOverview(from, to);
   }catch(err){
     logDoctorError('fetchDailyOverview failed', err);
-    host.innerHTML = `<div class="small u-doctor-placeholder" data-error="doctor-fetch-failed">Fehler beim Laden aus der Cloud.</div>`;
+    fillAllPanels(placeholderHtml('Fehler beim Laden aus der Cloud.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     closeDoctorRefreshLog('error', err?.message || err, 'error');
@@ -323,6 +520,17 @@ async function renderDoctor(triggerReason = 'manual'){
   }
 
   daysArr.sort((a,b)=> b.date.localeCompare(a.date));
+  try {
+    labRows = await loadLabEventsSafe(from, to);
+    if (Array.isArray(labRows)) {
+      labRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+    } else {
+      labRows = [];
+    }
+  } catch (err) {
+    labLoadError = err;
+    logDoctorError('lab events fetch failed', err);
+  }
 
   const trendpilotWrap = document.getElementById('doctorTrendpilot');
   if (trendpilotWrap) {
@@ -341,6 +549,10 @@ async function renderDoctor(triggerReason = 'manual'){
     }
   }
 
+  if (panels.inbox) {
+    panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+  }
+
   const formatNotesHtml = (notes) => {
     const raw = (notes || '').trim();
     if (!raw) return '-';
@@ -352,8 +564,18 @@ async function renderDoctor(triggerReason = 'manual'){
   };
 
   // SUBMODULE: renderDoctorDay @internal - templates per-day HTML card for doctor view
+  const calcPulsePressure = (sys, dia) => {
+    if (sys == null || dia == null) return null;
+    const s = Number(sys);
+    const d = Number(dia);
+    if (!Number.isFinite(s) || !Number.isFinite(d)) return null;
+    return s - d;
+  };
+
   const renderDoctorDay = (day) => {
     const safeNotes = formatNotesHtml(day.notes);
+    const morningPp = calcPulsePressure(day.morning.sys, day.morning.dia);
+    const eveningPp = calcPulsePressure(day.evening.sys, day.evening.dia);
     return `
 <section class="doctor-day" data-date="${day.date}">
   <div class="col-date">
@@ -362,14 +584,14 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-day="${day.date}">Loeschen</button>
+      <button class="btn ghost" data-del-bp="${day.date}">Loeschen</button>
     </div>
   </div>
 
   <div class="col-measure">
     <div class="measure-head">
       <div></div>
-      <div>Sys</div><div>Dia</div><div>Puls</div><div>MAP</div>
+      <div>Sys</div><div>Dia</div><div>Puls</div><div>MAP</div><div>PP</div>
     </div>
     <div class="measure-grid">
       <div class="measure-row">
@@ -378,6 +600,7 @@ async function renderDoctor(triggerReason = 'manual'){
         <div class="num ${ (day.morning.dia!=null && day.morning.dia>90)  ? 'alert' : '' }">${dash(day.morning.dia)}</div>
         <div class="num">${dash(day.morning.pulse)}</div>
         <div class="num ${ (day.morning.map!=null && day.morning.map>100) ? 'alert' : '' }">${dash(fmtNum(day.morning.map))}</div>
+        <div class="num">${dash(fmtNum(morningPp))}</div>
       </div>
       <div class="measure-row">
         <div class="label">abends</div>
@@ -385,34 +608,162 @@ async function renderDoctor(triggerReason = 'manual'){
         <div class="num ${ (day.evening.dia!=null && day.evening.dia>90)  ? 'alert' : '' }">${dash(day.evening.dia)}</div>
         <div class="num">${dash(day.evening.pulse)}</div>
         <div class="num ${ (day.evening.map!=null && day.evening.map>100) ? 'alert' : '' }">${dash(fmtNum(day.evening.map))}</div>
+        <div class="num">${dash(fmtNum(eveningPp))}</div>
       </div>
     </div>
   </div>
 
   <div class="col-special">
-    <div class="weight-line">
-      <div>Gewicht</div>
-      <div class="num">${dash(fmtNum(day.weight))}</div>
-    </div>
-
-    <div class="waist-line">
-      <div>Bauchumfang (cm)</div>
-      <div class="num">${dash(fmtNum(day.waist_cm))}</div>
-    </div>
-
     <div class="notes">${safeNotes}</div>
   </div>
 </section>
 `;
   };
 
-  // Rendern / Leerzustand
+  const renderDoctorBodyDay = (day) => {
+    const hasBody =
+      day.weight != null ||
+      day.waist_cm != null ||
+      day.fat_pct != null ||
+      day.muscle_pct != null;
+    if (!hasBody) return '';
+    return `
+<section class="doctor-day doctor-body-day" data-date="${day.date}">
+  <div class="col-date">
+    <div class="date-top">
+      <span class="date-label">${fmtDateDE(day.date)}</span>
+      <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
+    </div>
+    <div class="date-actions">
+      <button class="btn ghost" data-del-body="${day.date}">Loeschen</button>
+    </div>
+  </div>
+  <div class="col-measure doctor-body-metrics">
+    <div class="measure-head">
+      <div>Gewicht (kg)</div>
+      <div>Bauchumfang (cm)</div>
+      <div>Fett (%)</div>
+      <div>Muskel (%)</div>
+    </div>
+    <div class="measure-grid">
+      <div class="measure-row">
+        <div class="num">${dash(fmtNum(day.weight))}</div>
+        <div class="num">${dash(fmtNum(day.waist_cm))}</div>
+        <div class="num">${dash(fmtNum(day.fat_pct))}</div>
+        <div class="num">${dash(fmtNum(day.muscle_pct))}</div>
+      </div>
+    </div>
+  </div>
+</section>`;
+  };
+
+  const renderDoctorLabDay = (entry) => {
+    const formatLabValue = (value, decimals = 1) => {
+      if (value === null || value === undefined || value === '') return '-';
+      const num = Number(value);
+      if (!Number.isFinite(num)) return dash(value);
+      return fmtNum(num, decimals);
+    };
+    const createLabGroup = (columns) => {
+      const head = columns.map((col) => `<div>${escapeAttr(col.label)}</div>`).join('');
+      const values = columns
+        .map((col) => `<div class="num">${col.value}</div>`)
+        .join('');
+      return `
+    <div class="doctor-lab-group">
+      <div class="measure-head doctor-lab-head">
+        ${head}
+      </div>
+      <div class="measure-grid doctor-lab-grid">
+        <div class="measure-row">
+          ${values}
+        </div>
+      </div>
+    </div>`;
+    };
+    const commentRaw = formatNotesHtml(entry.doctor_comment);
+    const commentHtml =
+      commentRaw === '-'
+        ? '<span class="doctor-lab-comment-empty">Kein Kommentar</span>'
+        : commentRaw;
+    const stageValue = entry.ckd_stage ? escapeAttr(entry.ckd_stage) : '-';
+    return `
+<section class="doctor-day doctor-lab-day" data-date="${escapeAttr(entry.day || '')}">
+  <div class="col-date">
+    <div class="date-top">
+      <span class="date-label">${fmtDateDE(entry.day)}</span>
+      <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
+    </div>
+    <div class="date-actions">
+      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Loeschen</button>
+    </div>
+  </div>
+  <div class="col-measure doctor-lab-metrics">
+    ${createLabGroup([
+      { label: 'eGFR (ml/min)', value: formatLabValue(entry.egfr, 0) },
+      { label: 'Kreatinin (mg/dl)', value: formatLabValue(entry.creatinine, 2) },
+      { label: 'Kalium (mmol/l)', value: formatLabValue(entry.potassium, 2) }
+    ])}
+    ${createLabGroup([
+      { label: 'HbA1c (%)', value: formatLabValue(entry.hba1c, 1) },
+      { label: 'LDL (mg/dl)', value: formatLabValue(entry.ldl, 0) },
+      { label: 'CKD-Stufe', value: stageValue }
+    ])}
+  </div>
+  <div class="col-special doctor-lab-special">
+    <div class="doctor-lab-comment">
+      <div class="doctor-lab-comment-label">Kommentar</div>
+      <div class="doctor-lab-comment-text">${commentHtml}</div>
+    </div>
+  </div>
+</section>`;
+  };
+
+  const bindDomainDeleteButtons = (panel, attrName, type, label) => {
+    if (!panel) return;
+    panel.querySelectorAll(`[${attrName}]`).forEach((btn) => {
+      if (btn.dataset.boundDelete === '1') return;
+      btn.dataset.boundDelete = '1';
+      btn.addEventListener('click', async () => {
+        const date = btn.getAttribute(attrName);
+        if (!date) return;
+        if (!confirm(`Alle ${label}-Eintraege fuer ${date} loeschen?`)) return;
+
+        btn.disabled = true;
+        const old = btn.textContent;
+        btn.textContent = 'Loesche...';
+        try {
+          const result = await deleteRemoteByType(date, type);
+          if (!result?.ok) {
+            alert(`Server-Loeschung fehlgeschlagen (${result?.status || "?"}).`);
+            return;
+          }
+          await requestUiRefresh({ reason: `doctor:delete:${type}` });
+        } catch (err) {
+          logDoctorError(`deleteRemoteByType failed (${type})`, err);
+          alert('Server-Loeschung fehlgeschlagen (Fehler siehe Konsole).');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = old;
+        }
+      });
+    });
+  };
+
+    // Rendern / Leerzustand
   if (!daysArr.length){
-    host.innerHTML = `<div class="small u-doctor-placeholder">Keine Eintraege im Zeitraum</div>`;
+    if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
+    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Koerperdaten im Zeitraum.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
-    host.innerHTML = daysArr.map(renderDoctorDay).join("");
+    if (panels.bp) panels.bp.innerHTML = daysArr.map(renderDoctorDay).join("");
+    if (panels.body) {
+      const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
+      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Koerperdaten im Zeitraum.');
+    }
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -432,32 +783,22 @@ async function renderDoctor(triggerReason = 'manual'){
       setTimeout(restoreScroll, 0);
     }
 
-    //  Loeschen: alle Server-Events des Tages entfernen
-    host.querySelectorAll('[data-del-day]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const date = btn.getAttribute('data-del-day');
-        if (!date) return;
-        if (!confirm(`Alle Eintraege in der Cloud fuer ${date} loeschen?`)) return;
-
-        btn.disabled = true;
-        const old = btn.textContent;
-        btn.textContent = 'Loesche...';
-        try{
-          const r = await deleteRemoteDay(date);
-          if (!r.ok){
-            alert(`Server-Loeschung fehlgeschlagen (${r.status||"?"}).`);
-            return;
-          }
-          await requestUiRefresh({ reason: 'doctor:delete' });
-        } catch(err) {
-          logDoctorError('deleteRemoteDay failed', err);
-          alert('Server-Loeschung fehlgeschlagen (Fehler siehe Konsole).');
-        } finally {
-          btn.disabled = false; btn.textContent = old;
-        }
-      });
-    });
+    bindDomainDeleteButtons(panels.bp, 'data-del-bp', 'bp', 'Blutdruck');
+    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Koerper');
   }
+
+  if (panels.lab) {
+    if (labLoadError) {
+      panels.lab.innerHTML = placeholderHtml('Labordaten konnten nicht geladen werden.');
+    } else if (labRows.length) {
+      panels.lab.innerHTML = labRows.map(renderDoctorLabDay).join('');
+      bindDomainDeleteButtons(panels.lab, 'data-del-lab', 'lab_event', 'Labor');
+    } else {
+      panels.lab.innerHTML = placeholderHtml('Keine Laborwerte im Zeitraum.');
+    }
+  }
+
+
   closeDoctorRefreshLog();
 }
 
@@ -488,7 +829,11 @@ async function exportDoctorJson(){
 // SUBMODULE: doctorApi @internal - registriert öffentliche API-Funktionen im globalen Namespace
   const doctorApi = {
     renderDoctor,
-    exportDoctorJson
+    exportDoctorJson,
+    renderDoctorInboxOverlay,
+    showDoctorInboxPanel,
+    hideDoctorInboxPanel,
+    generateMonthlyReport
   };
 
   function bindHubDoctorCloseButton() {
@@ -526,6 +871,277 @@ async function exportDoctorJson(){
     global.document.addEventListener('DOMContentLoaded', bindHubDoctorCloseButton, { once: true });
   } else {
     bindHubDoctorCloseButton();
+  }
+
+  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, { error } = {}) => {
+    if (!panel) return;
+    if (error) {
+      panel.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte konnten nicht geladen werden.</div>`;
+      return;
+    }
+    if (!reports?.length) {
+      panel.innerHTML = `<div class="small u-doctor-placeholder">Noch keine Monatsberichte vorhanden.</div>`;
+      return;
+    }
+    const cards = reports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
+    panel.innerHTML = `<div class="doctor-inbox">${cards}</div>`;
+  };
+
+  const formatMonthLabel = (value) => {
+    if (!value) return 'Monat unbekannt';
+    const parseDate = (iso) => {
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    let candidate = parseDate(value);
+    if (!candidate && value.length <= 7) {
+      candidate = parseDate(`${value}-01T00:00:00Z`);
+    }
+    if (!candidate) return value;
+    try {
+      return candidate.toLocaleDateString('de-AT', { month: 'long', year: 'numeric' });
+    } catch (_) {
+      return value;
+    }
+  };
+
+  const formatReportDateTime = (iso) => {
+    if (!iso) return '-';
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '-';
+      return d.toLocaleString('de-AT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (_) {
+      return '-';
+    }
+  };
+
+  const markdownToHtml = (text = '') => {
+    let html = escapeAttr(text);
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return html;
+  };
+
+  const formatReportNarrative = (text) => {
+    const raw = (text || '').trim();
+    if (!raw) return '<p class="report-empty">Kein Berichtstext vorhanden.</p>';
+    const lines = raw.split(/\r?\n/);
+    const blocks = [];
+    let bulletBuffer = [];
+
+    const flushBullets = () => {
+      if (!bulletBuffer.length) return;
+      const items = bulletBuffer.map((entry) => `<li>${markdownToHtml(entry)}</li>`).join('');
+      blocks.push(`<ul>${items}</ul>`);
+      bulletBuffer = [];
+    };
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        flushBullets();
+        return;
+      }
+      if (trimmed.startsWith('- ')) {
+        bulletBuffer.push(trimmed.slice(2));
+      } else {
+        flushBullets();
+        blocks.push(`<p>${markdownToHtml(trimmed)}</p>`);
+      }
+    });
+    flushBullets();
+    return blocks.join('');
+  };
+
+  const reportFlags = (report) => {
+    const flags = report?.payload?.meta?.flags;
+    if (!Array.isArray(flags)) return [];
+    return flags.filter((flag) => typeof flag === 'string' && flag.trim());
+  };
+
+  const renderMonthlyReportCard = (report, fmtDateDE) => {
+    const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
+    const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
+    const summary = (report.summary || '').trim() || 'Kein Summary verfügbar.';
+    const flags = reportFlags(report);
+    const badgeHtml = flags
+      .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
+      .join('');
+    const textHtml = formatReportNarrative(report.text);
+    const monthTag = report.payload?.month || report.reportMonth || '';
+    return `
+<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}">
+  <div class="doctor-report-head">
+    <div class="doctor-report-period">
+      <strong>${escapeAttr(monthLabel || 'Unbekannter Monat')}</strong>
+      <span>${report.day ? fmtDateDE(report.day) : '-'}</span>
+    </div>
+    <div class="doctor-report-meta">Erstellt ${escapeAttr(createdLabel)}</div>
+  </div>
+  <div class="doctor-report-summary">${escapeAttr(summary)}${badgeHtml}</div>
+  <div class="doctor-report-body">${textHtml}</div>
+  <div class="doctor-report-actions">
+    <button class="btn ghost" type="button" data-report-action="regenerate">Neu erstellen</button>
+    <button class="btn ghost" type="button" data-report-action="delete">Löschen</button>
+  </div>
+</article>`;
+  };
+
+  async function renderDoctorInboxOverlay({ from, to } = {}) {
+    if (!showDoctorInboxPanel()) {
+      toast('Inbox ist derzeit nicht verfügbar.');
+      return;
+    }
+    inboxPanelState.range = { from: from || '', to: to || '' };
+    const doc = global.document;
+    const list = doc?.getElementById('doctorInboxList');
+    const rangeEl = doc?.getElementById('doctorInboxRange');
+    const countEl = doc?.getElementById('doctorInboxCount');
+    if (!list) return;
+    if (!list.dataset.reportActionsBound) {
+      list.addEventListener('click', handleReportCardAction);
+      list.dataset.reportActionsBound = '1';
+    }
+    const newReportBtn = doc?.getElementById('doctorInboxNewReportBtn');
+    if (newReportBtn && !newReportBtn.dataset.boundNewReport) {
+      newReportBtn.dataset.boundNewReport = '1';
+      newReportBtn.addEventListener('click', async () => {
+        const range = inboxPanelState.range || {};
+        const opts =
+          range.from && range.to
+            ? { from: range.from, to: range.to }
+            : {};
+        newReportBtn.disabled = true;
+        try {
+          await generateMonthlyReport(opts);
+        } catch (err) {
+          logDoctorError('new monthly report button failed', err);
+          uiError?.('Neuer Monatsbericht fehlgeschlagen.');
+        } finally {
+          newReportBtn.disabled = false;
+        }
+      });
+    }
+    if (rangeEl) {
+      const fromLabel = from || '-';
+      const toLabel = to || '-';
+      rangeEl.textContent = `Zeitraum: ${fromLabel} bis ${toLabel}`;
+    }
+    list.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte werden geladen …</div>`;
+    if (countEl) countEl.textContent = '';
+    try {
+      const reports = await loadMonthlyReports(from, to);
+      renderMonthlyReportsSection(list, reports, fmtDateDE, {});
+      if (countEl) {
+        const countText = `${reports.length} Bericht${reports.length === 1 ? '' : 'e'}`;
+        countEl.textContent = countText;
+      }
+    } catch (err) {
+      logDoctorError('monthly reports fetch failed', err);
+      renderMonthlyReportsSection(list, [], fmtDateDE, { error: err });
+      if (countEl) countEl.textContent = 'Fehler beim Laden';
+    }
+  }
+
+  async function handleReportCardAction(event) {
+    const btn = event.target.closest('[data-report-action]');
+    if (!btn) return;
+    const card = btn.closest('.doctor-report-card');
+    if (!card) return;
+    const reportId = card.getAttribute('data-report-id');
+    if (!reportId) return;
+    const action = btn.getAttribute('data-report-action');
+    if (action === 'delete') {
+      const deleter = resolveMonthlyReportDeleter();
+      if (typeof deleter !== 'function') {
+        toast('Löschen momentan nicht möglich.');
+        return;
+      }
+      if (!confirm('Diesen Monatsbericht endgültig löschen?')) return;
+      btn.disabled = true;
+      try {
+        await deleter({ id: reportId });
+        toast('Monatsbericht gelöscht.');
+        await refreshDoctorAfterMonthlyReport();
+      } catch (err) {
+        logDoctorError('delete monthly report failed', err);
+        uiError?.('Löschen fehlgeschlagen.');
+      } finally {
+        btn.disabled = false;
+      }
+    } else if (action === 'regenerate') {
+      const monthTag = card.getAttribute('data-report-month') || null;
+      btn.disabled = true;
+      try {
+        await generateMonthlyReport(monthTag ? { month: monthTag } : {});
+      } catch (err) {
+        logDoctorError('regenerate monthly report failed', err);
+        uiError?.('Neuer Monatsbericht fehlgeschlagen.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  }
+
+  async function refreshDoctorAfterMonthlyReport(range = {}) {
+    const defaultRange =
+      inboxPanelState.range && (inboxPanelState.range.from || inboxPanelState.range.to)
+        ? inboxPanelState.range
+        : null;
+    if (typeof global.requestUiRefresh === 'function') {
+      try {
+        await global.requestUiRefresh({ reason: 'doctor:monthly-report', doctor: true });
+      } catch (err) {
+        logDoctorError('ui refresh after monthly report failed', err);
+      }
+    }
+    if (isDoctorInboxPanelOpen()) {
+      try {
+        const effectiveRange = defaultRange || range || {};
+        await renderDoctorInboxOverlay({
+          from: effectiveRange.from || '',
+          to: effectiveRange.to || ''
+        });
+      } catch (err) {
+        logDoctorError('monthly report inbox refresh failed', err);
+      }
+    }
+  }
+
+  async function generateMonthlyReport(options = {}) {
+    const doc = global.document;
+    const defaultFrom = doc?.getElementById('from')?.value || '';
+    const defaultTo = doc?.getElementById('to')?.value || '';
+    const month = options.month || null;
+    const from = month ? null : options.from || defaultFrom;
+    const to = month ? null : options.to || defaultTo;
+    if (!month && (!from || !to)) {
+      const err = new Error('Bitte Zeitraum wählen.');
+      logDoctorError('monthly report range missing', err);
+      throw err;
+    }
+    const generator = resolveMonthlyReportGenerator();
+    if (typeof generator !== 'function') {
+      const err = new Error('monthly report generator missing');
+      logDoctorError('monthly report generator unavailable', err);
+      throw err;
+    }
+    let result;
+    try {
+      result = await generator({ from, to, month });
+    } catch (err) {
+      logDoctorError('monthly report edge call failed', err);
+      throw err;
+    }
+    toast('Monatsbericht ausgelöst - Inbox aktualisiert.');
+    await refreshDoctorAfterMonthlyReport({ from: from || '', to: to || '' });
+    return result;
   }
 
   appModules.doctor = appModules.doctor || {};

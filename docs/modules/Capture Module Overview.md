@@ -9,7 +9,7 @@ Dieses Dokument beschreibt das Capture-Modul des Gesundheits-Loggers. Es umfasst
 Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 - Wasser/Salz/Protein (siehe Intake).
 - Blutdruck morgens/abends inkl. Kommentare, Pflichtlogik.
-- Körperwerte (Gewicht, Bauchumfang, Fett/Muskelprozent/-kg).
+- Körperwerte (Gewicht, Bauchumfang, Fett-/Muskelanteile) sowie Laborwerte (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD-Stufe, Kommentar) im gemeinsamen Vitals-Panel.
 - Datumsauswahl, automatische Resets/Prefills, Verknüpfung mit Trendpilot/Charts.
 
 
@@ -19,13 +19,15 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 
 | Datei | Zweck |
 |-------|-------|
-| `app/modules/capture/index.js` | Kernlogik: Handlers für Intake/Blutdruck/Body, Timer, Status-Pills, UI-Reset. |
+| `app/modules/capture/index.js` | Kernlogik: Handlers für Intake/Blutdruck/Body, Timer, Status-Pills, UI-Reset inkl. Vitals-Tab-Steuerung. |
 | `app/core/capture-globals.js` | Shared State (`captureIntakeState`, Timer, Flags), Utility `setBusy`, `softWarnRange`. |
 | `app/modules/capture/bp.js` | Blutdruck-spezifische Funktionen (`saveBlock`, Kommentar-Pflicht, Panel-Reset). Nutzt `capture/entry.js` für gemeinsame Basisdatensätze. |
 | `app/modules/capture/body.js` | Körperpanel (Gewicht, Bauchumfang) speichern/prefillen; greift auf denselben Entry-Helper zurück. |
+| `app/modules/capture/lab.js` | Laborpanel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD-Stufe, Kommentar) validiert Eingaben, erzeugt `lab_event` Payloads und triggert Sync. |
 | `app/modules/capture/entry.js` | Shared Helper `createBaseEntry` – stellt das Skelett für alle Capture-Einträge bereit. |
-| `assets/js/main.js` | Bindet Buttons, Datum, Unlock-Logik, orchestriert `requestUiRefresh`. |
-| `app/styles/capture.css` | (Legacy) Styles für Accordion-Ansicht; zentrale Hub-Styles liegen in `app/styles/hub.css`. |
+| `assets/js/main.js` | Bindet Buttons, Datum, Unlock-Logik, orchestriert `requestUiRefresh` und Verdrahtet die Vitals-Karten (inkl. BP-Kontext-Dropdown). |
+| `app/styles/capture.css` | (Legacy) Styles für Accordion-Ansicht; zentrale Hub-Styles liegen in `app/styles/hub.css` (enthält auch Layout/Optik des BP-Kontext-Dropdowns). |
+| `sql/11_Lab_Event_Extension.sql` | DB-Erweiterung für `lab_event` + zentrale Validierungs-Trigger (`trg_events_validate_biu`), die u. a. `ctx` aus den BP-Payloads in die Spalte spiegeln. |
 | `app/core/config.js` | Flags (z.B. `TREND_PILOT_ENABLED` indirekt, `DEV_ALLOW_DEFAULTS`). |
 
 ---
@@ -36,7 +38,7 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 
 - Die klassischen Accordions wurden durch Hub-Panels ersetzt:
   1. **Intake-Panel (`data-hub-panel="intake"`)** – Overlay mit Wasser/Salz/Protein Inputs.
-  2. **Vitals-Panel (`data-hub-panel="vitals"`)** – kombiniert Blutdruck (Morgens/Abends) und Körperdaten.
+  2. **Vitals-Panel (`data-hub-panel="vitals"`)** – kombiniert Blutdruck (Morgens/Abends), Körperdaten und die neue Labor-Karte (Tabs innerhalb des Panels).
   3. **Doctor-Panel** – zeigt Werte/Trendpilot (zugriffsgeschützt).
   4. Weitere Panels (Help/Diag) sind placeholders, aber außerhalb dieses Moduls.
 - Orbit-Buttons (`data-hub-module="…"`) in `hub/index.js` steuern die sichtbaren Panels (inkl. Biometrics-Flow für Doctor).
@@ -50,26 +52,35 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 
 ### 3.3 Blutdruck Flow (`bp.js`) – unverändert, aber über Hub-Panel ausgelöst
 
-1. Speichern-Button (`saveBpPanelBtn` in `main.js`) ruft `window.AppModules.bp.saveBlock`.
+1. Speichern-Buttons (`.save-bp-panel-btn` in `main.js`, je Pane Morgens/Abends) rufen `window.AppModules.bp.saveBlock`.
    - Validiert Eingaben (Sys & Dia erforderlich, Puls optional nur mit BP).
    - Speichert Event via `addEntry` (lokal) + `syncWebhook` (Supabase).
    - Kommentare via `appendNote`, separate Einträge.
 2. Nach Save: Panel reset, `updateBpCommentWarnings` neu berechnet (Pflicht bei >130/>90). Das Vitals-Panel bleibt im Hub geöffnet; ein erneutes Öffnen läuft über den Orbit-Button.
 3. Falls Abendmessung: `maybeRunTrendpilotAfterBpSave`.
+4. UI: Der Messzeitpunkt wird über ein Dropdown direkt in der Karte (oberhalb der ersten Eingabegruppe) gewählt. Der `#bpContextSel` steuert beide `bp-pane`s; Umschaltungen markieren die aktive Karte visuell.
 
 ### 3.4 Körper Flow (`body.js`)
 
 1. `saveBodyPanelBtn` speichert Tagessummary (`saveDaySummary`), ruft `syncWebhook`.
 2. `prefillBodyInputs` nutzt letzte Werte (z.B. Copy vom letzten Tag).
 3. Buttons disabled, wenn nicht eingeloggt oder das Panel gerade gespeichert wird (`setBusy`).
+4. Persistiert optional Fett- und Muskelanteile (`fat_pct`, `muscle_pct`). Diese Felder sind seit der Anpassung in `sql/01_Health Schema.sql` + `sql/11_Lab_Event_Extension.sql` im Supabase-Trigger whitelisted (Range 0–100 %).
 
 > **Shared Entry Helper:** Sowohl `saveBlock` als auch `saveDaySummary` nutzen `app/modules/capture/entry.js` (`createBaseEntry`) um ein konsistentes Datensatz-Skelett (Date, Context, Notes) zu erzeugen. Damit bleibt die Struktur across BP/Körper identisch, egal welches Panel speichert.
 
-### 3.5 Intake Flow
+### 3.5 Labor Flow (`lab.js`)
+
+1. Die Labor-Karte befindet sich im Vitals-Panel unterhalb der Body-Sektion und enthält Eingabefelder für eGFR, Kreatinin, HbA1c, LDL, Kalium sowie eine CKD-Stufe (Dropdown) und einen optionalen Kommentar.
+2. Der Button `saveLabPanelBtn` ruft `window.AppModules.lab.saveLabEntry` auf, validiert alle Pflichtfelder (eGFR, Kreatinin) und erstellt daraus ein `lab_event` (neuer `health_events` Typ).
+3. Beim Speichern werden keine Platzhalterwerte erzeugt; fehlende Felder bleiben `null`. Nach erfolgreichem Sync werden die Eingabefelder via `resetLabPanel` geleert, Fehlerhinweise entfernt und die Buttons wieder freigegeben (`captureGlobals.setBusy` analog zu BP/Body).
+4. Die CKD-Stufe wird direkt im Event gespeichert (`payload.ckd_stage`) und dient später als Single Source of Truth für Doctor View/Profile.
+
+### 3.6 Intake Flow
 
 Siehe `docs/modules/Intake Module Overview.md`. Capture-Modul stellt Buttons, Timer und Pill-Status bereit.
 
-### 3.6 Verbindung zu anderen Modulen
+### 3.7 Verbindung zu anderen Modulen
 
 - **Charts:** KPIs/Charts zielen auf denselben Datumskontext; `requestUiRefresh({ chart: ... })`.
 - **Trendpilot:** Hook im BP-Save; Pill (Trendpilot) im Header.

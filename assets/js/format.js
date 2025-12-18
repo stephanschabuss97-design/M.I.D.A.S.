@@ -87,7 +87,7 @@
         }
       }
 
-      // Körperwerte & Notizen
+      // Körperwerte, Labor & Notizen
       if (entry.context === 'Tag') {
         const hasBody = entry.weight != null || entry.waist_cm != null;
         if (hasBody) {
@@ -101,6 +101,35 @@
           if (fat !== null) payload.fat_pct = fat;
           if (muscle !== null) payload.muscle_pct = muscle;
           out.push({ ts: tsIso, type: 'body', payload });
+        }
+
+        const hasLab =
+          entry.egfr != null ||
+          entry.creatinine != null ||
+          entry.ckd_stage ||
+          entry.potassium != null ||
+          entry.hba1c != null ||
+          entry.ldl != null ||
+          (entry.lab_comment && entry.lab_comment.trim().length);
+        if (hasLab) {
+          const payload = {};
+          const egfr = toNumberOrNull(entry.egfr);
+          const creatinine = toNumberOrNull(entry.creatinine);
+          const hba1c = toNumberOrNull(entry.hba1c);
+          const ldl = toNumberOrNull(entry.ldl);
+          const potassium = toNumberOrNull(entry.potassium);
+          const ckdStage = (entry.ckd_stage || '').trim();
+          const comment = (entry.lab_comment || '').trim();
+          if (egfr !== null) payload.egfr = egfr;
+          if (creatinine !== null) payload.creatinine = creatinine;
+          if (ckdStage) payload.ckd_stage = ckdStage;
+          if (hba1c !== null) payload.hba1c = hba1c;
+          if (ldl !== null) payload.ldl = ldl;
+          if (potassium !== null) payload.potassium = potassium;
+          if (comment) payload.comment = comment;
+          if (Object.keys(payload).length) {
+            out.push({ ts: tsIso, type: 'lab_event', payload });
+          }
         }
 
         const note = (entry.notes || '').trim();

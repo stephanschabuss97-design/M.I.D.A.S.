@@ -119,7 +119,7 @@ Throughout all interactions, the MIDAS Core remains partially visible to maintai
 ## Module & Action Mapping (initial proposal)
 - Carousel modules (primary nav): assistant (text/voice), appointments, intake, vitals, doctor (open doctor panel with guard), profile, chart/trend (future). Diagnostics/touchlog move to quickbar/header, not the carousel.
 - Quickbar candidates: `+250ml` water, `Log salt/protein quick add`, `Vitals AM/PM` quick open, `New appointment`, `Open chat`, `Voice trigger`, `Show doctor chart`, `Open Trendpilot summary`.
-- Dashboard cards: Intake today (totals + goal bars), Vitals completion (AM/PM done? from BP panes), Upcoming appointments (next 2), Trendpilot alert badge, Profile reminders (e.g., missing CKD stage), Assistant recent actions (optional).
+- Dashboard cards: Intake today (totals + goal bars), Vitals completion (AM/PM done? from BP panes), Upcoming appointments (next 2), Trendpilot alert badge, Profile reminders (z.B. fehlende Lab/Profil-Angaben), Assistant recent actions (optional).
 
 ## Deterministic Phase Guardrails
 - Linear dependency chain: each phase depends only on outputs of all preceding phases (no parallel branches).

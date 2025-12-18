@@ -60,7 +60,7 @@ Das Barrel importiert folgende Bereiche:
 - **Auth:** `requireSession`, `watchAuthState`, `afterLoginBoot`, `bindAuthButtons`, `authGuardState`, `setAuthPendingAfterUnlock`.
 - **Realtime:** `setupRealtime`, `teardownRealtime`, `resumeFromBackground` (für Intake/Hub-Resume).
 - **Intake APIs:** `loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`.
-- **Vitals APIs:** `fetchDailyOverview`, `loadBpFromView`, `loadBodyFromView`.
+- **Vitals APIs:** `fetchDailyOverview`, `loadBpFromView`, `loadBodyFromView`, `loadLabEventsRange`, `loadLatestLabSnapshot` (liefert die letzte Labor-Messung inkl. abgeleiteter CKD-Stufe, damit Profil/Assistant nicht mehr auf ein manuelles `ckd_stage`-Feld angewiesen sind).
 - **Notes:** `appendNoteRemote`, `deleteRemoteDay`.
 - **System Comments:** `upsertSystemCommentRemote`, `setSystemCommentAck`, `setSystemCommentDoctorStatus`, `fetchSystemCommentsRange`.
 - **Doctor/Trendpilot:** `loadDoctorDailyRange`, `loadTrendpilotBands`, `setTrendpilotAck`.
@@ -94,7 +94,7 @@ Andere Module greifen über `createSupabaseFn(name)` (`assets/js/main.js`) darauf
 
 1. Neue API-Bereiche (z.?B. KI-Proxy) dem `MODULE_SOURCES`-Array hinzufügen.
 2. Legacy-Dateien (`../supabase.js`) nur noch solange beibehalten, bis Proxy/Hub komplett migriert ist.
-3. Bei Breaking Changes (Supabase SDK, Auth Flow) muss nur das Barrel aktualisiert werden; alle Caller bleiben konstant.
+3. Bei Breaking Changes (Supabase SDK, Auth Flow) muss nur das Barrel aktualisiert werden; alle Caller bleiben konstant. Hinweis: Stammdaten wie CKD-Stufe kommen inzwischen ausschlie?lich aus `lab_event`/`v_events_lab`; `user_profile` speichert keine eigene CKD-Spalte mehr.
 4. Dokumentation in QA/Docs aktualisieren (z.?B. Trendpilot/Charts, sobald neue Supabase-Exports benötigt werden).
 
 ---

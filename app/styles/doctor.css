@@ -235,7 +235,7 @@
 .doctor-view .measure-head,
 .doctor-view .measure-grid{
   display:grid;
-  grid-template-columns:minmax(70px, auto) repeat(4, 1fr);
+  grid-template-columns:minmax(70px, auto) repeat(5, 1fr);
   gap:4px;
 }
 .doctor-view .measure-head{ font-size:12px; opacity:.8; }
@@ -245,6 +245,20 @@
 .doctor-view .measure-head > div:not(:first-child){ justify-content:flex-end; }
 .doctor-view .measure-row{ display:contents; }
 .doctor-view .label{ display:flex; align-items:center; font-size:13px; opacity:.9; }
+
+.doctor-body-day .doctor-body-metrics .measure-head,
+.doctor-body-day .doctor-body-metrics .measure-grid{
+  grid-template-columns:repeat(4, minmax(110px, 1fr));
+}
+.doctor-body-day .doctor-body-metrics .measure-head > div{
+  white-space:nowrap;
+  justify-content:center;
+  text-align:center;
+}
+.doctor-body-day .doctor-body-metrics .measure-row .num{
+  justify-content:center;
+  text-align:center;
+}
 
 /* Zahlenbild */
 .doctor-view .num{
@@ -304,6 +318,10 @@
   align-items:start;
 }
 
+.doctor-day:not(.doctor-body-day) .col-special{
+  display:block;
+}
+
 .doctor-view .col-special > .weight-line,
 .doctor-view .col-special > .waist-line { grid-column:1; }
 .doctor-view .col-special > .notes       { grid-column:2; }
@@ -337,7 +355,7 @@
 @media (max-width:599px){
   .doctor-view .measure-head,
   .doctor-view .measure-grid{
-    grid-template-columns:minmax(72px, 1fr) repeat(4, minmax(56px, 1fr));
+    grid-template-columns:minmax(72px, 1fr) repeat(5, minmax(56px, 1fr));
   }
   .doctor-view .measure-head{ font-size:11px; }
 
@@ -364,5 +382,192 @@
 
 }
 
+.doctor-lab-day .doctor-lab-metrics .measure-head,
+.doctor-lab-day .doctor-lab-metrics .measure-grid{
+  grid-template-columns:repeat(3, minmax(90px, 1fr));
+}
+.doctor-lab-day .doctor-lab-metrics .measure-head > div{
+  justify-content:center;
+  text-align:center;
+}
+.doctor-lab-day .doctor-lab-grid .num{
+  justify-content:center;
+}
+.doctor-lab-group{
+  margin-bottom:8px;
+}
+.doctor-lab-group:last-child{
+  margin-bottom:0;
+}
+.doctor-lab-comment{
+  padding:8px 0;
+}
+.doctor-lab-comment-label{
+  font-size:12px;
+  opacity:.8;
+  font-weight:600;
+  letter-spacing:.2px;
+  margin-bottom:4px;
+}
+.doctor-lab-comment-text{
+  font-size:13px;
+  line-height:1.4;
+  word-break:break-word;
+}
+.doctor-lab-comment-empty{
+  opacity:.7;
+  font-style:italic;
+}
+
 /* SUBMODULE: Placeholders & Empty States @public - Anzeige bei fehlenden Daten oder Sperrzustand */
 .u-doctor-placeholder{ text-align:center; opacity:.7; padding:12px; }
+.doctor-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.doctor-tabs .btn {
+  min-width: 70px;
+}
+
+.doctor-tabs .btn.is-active {
+  border-bottom: 2px solid var(--accent, #4f9dff);
+}
+
+.doctor-view {
+  position: relative;
+}
+
+.doctor-tab-panel {
+  display: none;
+}
+
+.doctor-tab-panel.is-active {
+  display: block;
+}
+
+.doctor-inbox-panel {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(640px, calc(100% - 32px));
+  max-height: 85vh;
+  background: var(--color-surface-card, #0f1116);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.doctor-inbox-panel .content {
+  padding: 16px;
+}
+
+.doctor-inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.doctor-inbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.doctor-inbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.doctor-inbox-actions .btn {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.doctor-report-card {
+  border: 1px solid #242833;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--color-surface-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.doctor-report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.doctor-report-period strong {
+  display: block;
+  font-size: 16px;
+}
+
+.doctor-report-meta {
+  font-size: 12px;
+  opacity: 0.75;
+  text-align: right;
+}
+
+.doctor-report-summary {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.doctor-report-summary span.report-flag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-warning, #f4c15d);
+  color: #121417;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.doctor-report-body {
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0.95;
+  word-break: break-word;
+}
+
+.doctor-report-body .report-empty {
+  margin: 0;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.doctor-report-body p {
+  margin: 0 0 6px 0;
+}
+
+.doctor-report-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.doctor-report-body li {
+  margin-bottom: 4px;
+}
+
+.doctor-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.doctor-report-actions .btn {
+  font-size: 12px;
+  padding: 4px 10px;
+}

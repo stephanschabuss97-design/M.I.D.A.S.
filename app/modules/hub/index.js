@@ -86,6 +86,8 @@
     orbitEl: null,
     transitionDir: 0,
     activeButton: null,
+    momentumTimers: [],
+    prefersReducedMotion: global.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false,
   };
   let carouselKeyListenerBound = false;
   const quickbarState = {
@@ -164,6 +166,7 @@
   let setSpriteStateFn = null;
   let doctorUnlockWaitCancel = null;
   let openDoctorPanelWithGuard = null;
+  let openDoctorInboxPanelWithGuard = null;
   const aura3dApi = global.AppModules?.hubAura3D || null;
   let aura3dCleanup = null;
   const auraState = {
@@ -313,6 +316,28 @@
     }
   };
 
+  const clearMomentumTimers = () => {
+    if (!carouselState.momentumTimers) return;
+    carouselState.momentumTimers.forEach((timerId) => {
+      try { global.clearTimeout(timerId); } catch (_) {}
+    });
+    carouselState.momentumTimers = [];
+  };
+
+  const queueMomentumSwings = (direction, steps) => {
+    clearMomentumTimers();
+    const clampedSteps = Math.min(2, Math.max(0, steps));
+    if (!clampedSteps) return;
+    const baseDelay = 140;
+    for (let i = 1; i <= clampedSteps; i += 1) {
+      const timerId = global.setTimeout(() => {
+        shiftCarousel(direction);
+        carouselState.momentumTimers = carouselState.momentumTimers.filter((id) => id !== timerId);
+      }, baseDelay * i);
+      carouselState.momentumTimers.push(timerId);
+    }
+  };
+
   const setCarouselActiveById = (id, { direction = 0 } = {}) => {
     const idx = carouselState.items.findIndex((item) => item.id === id);
     if (idx === -1) return;
@@ -332,9 +357,11 @@
     const tagName = typeof target?.tagName === 'string' ? target.tagName.toLowerCase() : '';
     if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) return;
     if (event.key === 'ArrowRight') {
+      clearMomentumTimers();
       shiftCarousel(1);
       event.preventDefault();
     } else if (event.key === 'ArrowLeft') {
+      clearMomentumTimers();
       shiftCarousel(-1);
       event.preventDefault();
     }
@@ -383,11 +410,17 @@
     let pointerStartX = null;
     let pointerStartY = null;
     const SWIPE_THRESHOLD = 48;
+    let pointerStartTime = null;
+    let lastMoveX = null;
+    let lastMoveTime = null;
 
     const resetSwipe = () => {
       pointerId = null;
       pointerStartX = null;
       pointerStartY = null;
+      pointerStartTime = null;
+      lastMoveX = null;
+      lastMoveTime = null;
     };
 
     orbit.addEventListener('pointerdown', (event) => {
@@ -395,7 +428,16 @@
       pointerId = event.pointerId;
       pointerStartX = event.clientX;
       pointerStartY = event.clientY;
+      pointerStartTime = performance.now();
+      lastMoveX = event.clientX;
+      lastMoveTime = pointerStartTime;
       triggerAuraTouchPulse(event);
+    });
+
+    orbit.addEventListener('pointermove', (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      lastMoveX = event.clientX;
+      lastMoveTime = performance.now();
     });
 
     orbit.addEventListener('pointerup', (event) => {
@@ -404,6 +446,9 @@
         return;
       }
       const deltaX = pointerStartX === null ? 0 : event.clientX - pointerStartX;
+      const elapsed = pointerStartTime ? performance.now() - pointerStartTime : 0;
+      const velocityX =
+        elapsed > 0 && pointerStartX !== null ? (lastMoveX - pointerStartX) / elapsed : 0;
       const deltaY = pointerStartY === null ? 0 : event.clientY - pointerStartY;
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
@@ -416,8 +461,19 @@
         resetSwipe();
         return;
       }
+      let momentumSteps = 0;
+      if (!carouselState.prefersReducedMotion) {
+        const absVelocity = Math.abs(velocityX);
+        if (absVelocity >= 0.7 && absX > SWIPE_THRESHOLD * 1.5) {
+          momentumSteps = 1;
+        }
+      }
+      const direction = deltaX < 0 ? 1 : -1;
       if (absX > SWIPE_THRESHOLD) {
-        shiftCarousel(deltaX < 0 ? 1 : -1);
+        shiftCarousel(direction);
+        if (momentumSteps > 0) {
+          queueMomentumSwings(direction, momentumSteps);
+        }
       }
       resetSwipe();
     });
@@ -975,6 +1031,34 @@
       return false;
     };
     openDoctorPanelWithGuard = openDoctorPanel;
+    const openDoctorInboxPanel = async ({ onOpened, from, to } = {}) => {
+      const openFlow = async () => {
+        diag.add?.('[hub] openDoctorInboxPanel openFlow start');
+        const doctorApi = appModules.doctor;
+        const renderer = doctorApi?.renderDoctorInboxOverlay;
+        if (typeof renderer !== 'function') {
+          diag.add?.('[hub] doctor inbox renderer missing');
+          return;
+        }
+        await renderer({ from, to });
+        if (typeof onOpened === 'function') {
+          await onOpened();
+        }
+      };
+      if (await ensureDoctorUnlocked()) {
+        await openFlow();
+        return true;
+      }
+      const supa = getSupabaseApi();
+      const guardState = supa?.authGuardState;
+      const unlockedAfter = await waitForDoctorUnlock({ guardState });
+      if (unlockedAfter) {
+        await openFlow();
+        return true;
+      }
+      return false;
+    };
+    openDoctorInboxPanelWithGuard = openDoctorInboxPanel;
     bindButton(
       '[data-hub-module="doctor"]',
       async (btn) => {
@@ -2890,6 +2974,12 @@
     openDoctorPanel: (options) => {
       if (openDoctorPanelWithGuard) {
         return openDoctorPanelWithGuard(options);
+      }
+      return Promise.resolve(false);
+    },
+    openDoctorInboxPanel: (options) => {
+      if (openDoctorInboxPanelWithGuard) {
+        return openDoctorInboxPanelWithGuard(options);
       }
       return Promise.resolve(false);
     },
