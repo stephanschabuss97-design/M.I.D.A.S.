@@ -696,8 +696,14 @@
           </button>
         </header>
         <div class="hub-panel-body" id="hubOverlayContent">
-          <div class="hub-intake-form" id="cap-intake-wrap">
-            <div class="hub-intake-grid">
+          <div class="hub-intake-tabs" role="tablist" aria-label="Intake Bereiche">
+            <button class="btn ghost is-active" id="intakeTabInBtn" type="button" data-intake-tab="in" aria-controls="hubIntakePanelIn" aria-selected="true">IN</button>
+            <button class="btn ghost" id="intakeTabTabBtn" type="button" data-intake-tab="tab" aria-controls="hubIntakePanelTab" aria-selected="false">TAB</button>
+          </div>
+          <div class="hub-intake-tab-panels">
+            <div class="hub-intake-panel is-active" id="hubIntakePanelIn" data-intake-panel="in" role="tabpanel" aria-labelledby="intakeTabInBtn">
+              <div class="hub-intake-form" id="cap-intake-wrap">
+                <div class="hub-intake-grid">
               <label class="hub-input-card">
                 <span>Wasser (ml)</span>
                 <input
@@ -737,6 +743,71 @@
             </div>
             <div class="hub-intake-pills" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
+            </div>
+            <section class="hub-intake-medications card-nested" aria-live="polite">
+              <header class="hub-intake-medications-header">
+                <div>
+                  <h3>Tablettenmanager</h3>
+                  <p class="muted small">Bestätige deine Medikamente für den gewählten Tag.</p>
+                </div>
+                <button type="button" class="btn ghost small" id="medDailyRefreshBtn">Aktualisieren</button>
+              </header>
+              <div id="medDailyList" class="medication-daily-list" aria-live="polite"></div>
+              <div id="medLowStockBox" class="medication-low-stock" hidden></div>
+              <div id="medSafetyHint" class="medication-safety" hidden></div>
+            </section>
+              </div>
+            </div>
+            <div class="hub-intake-panel" id="hubIntakePanelTab" data-intake-panel="tab" role="tabpanel" aria-labelledby="intakeTabTabBtn" aria-hidden="true" hidden>
+              <div class="medication-manager" id="medicationManager">
+                <form id="medicationForm" class="medication-form card-nested" autocomplete="off">
+                  <input type="hidden" id="medFormId">
+                  <div class="medication-form-grid">
+                    <label class="field-group" for="medFormName">
+                      <span class="label">Name *</span>
+                      <input type="text" id="medFormName" placeholder="z. B. Valsartan" required>
+                    </label>
+                    <label class="field-group" for="medFormIngredient">
+                      <span class="label">Wirkstoff</span>
+                      <input type="text" id="medFormIngredient" placeholder="z. B. Valsartan">
+                    </label>
+                    <label class="field-group" for="medFormStrength">
+                      <span class="label">Stärke</span>
+                      <input type="text" id="medFormStrength" placeholder="z. B. 160 mg">
+                    </label>
+                    <label class="field-group" for="medFormDose">
+                      <span class="label">Dosen / Tag</span>
+                      <input type="number" id="medFormDose" min="1" max="96" step="1" value="1">
+                    </label>
+                    <label class="field-group" for="medFormStock">
+                      <span class="label">Bestand (Stk.)</span>
+                      <input type="number" id="medFormStock" min="-999" step="1" value="0">
+                    </label>
+                    <label class="field-group" for="medFormLowStock">
+                      <span class="label">Low-Stock (Tage)</span>
+                      <input type="number" id="medFormLowStock" min="0" step="1" value="7">
+                    </label>
+                    <label class="field-group checkbox" for="medFormActive">
+                      <input type="checkbox" id="medFormActive" checked>
+                      <span class="label">Aktiv</span>
+                    </label>
+                  </div>
+                  <div class="medication-form-actions">
+                    <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
+                    <button class="btn ghost" type="button" id="medFormResetBtn">Reset</button>
+                    <span class="medication-form-status small muted" id="medFormStatus" aria-live="polite"></span>
+                  </div>
+                </form>
+                <section class="medication-cards card-nested" id="medicationCards" aria-live="polite">
+                  <header class="medication-cards-header">
+                    <h3>Medikamente</h3>
+                    <p class="muted small" id="medicationCardsMeta">Noch keine Daten geladen.</p>
+                  </header>
+                  <div class="medication-card-list" id="medicationCardList">
+                    <p class="muted small" data-medication-empty>Keine Medikamente vorhanden. Bitte lege oben ein neues an.</p>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </div>
@@ -1154,6 +1225,7 @@
   <script src="app/modules/hub/hub-aura3d.js"></script>
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
+  <script src="app/modules/medication/index.js"></script>
   <script type="module" src="app/modules/assistant/suggest-store.js"></script>
   <script type="module" src="app/modules/assistant/suggest-ui.js"></script>
   <script type="module" src="app/modules/assistant/allowed-actions.js"></script>

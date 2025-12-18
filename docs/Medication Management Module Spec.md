@@ -338,27 +338,27 @@ Code kopieren
 
 Jede Phase baut auf der vorherigen auf, erzeugt eigenständige, testbare Artefakte und lässt sich bei Bedarf isoliert zurückrollen (Rollback = Entfernen der neu angelegten Dateien / SQL / Feature-Flags der Phase).
 
-### Phase A – Datenlayer Fundament
+### Phase A – Datenlayer Fundament ✅
 1. SQL-Skripte für `health_medications`, `health_medication_doses`, optionale `health_medication_stock_log` mit RLS und Owner-Policies deployen.
 2. Supabase-RPCs (`med_list`, `med_upsert`, `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`, `med_ack_low_stock`) anlegen und unit-testen.
 3. Minimaler Smoke-Test via Supabase-SQL-Konsole (Insert/Select) inkl. Rollback-Plan = `DROP FUNCTION/TABLE`.
 
-### Phase B – Client-Modul Scaffold
+### Phase B – Client-Modul Scaffold ✅
 1. `app/modules/medication/index.js` mit Loader (`loadMedicationForDay`) und Event-Bus (`medication:changed`) implementieren.
 2. RPC-Stubs verdrahten, aber UI noch nicht mounten; Integrationstests via Mock-Day.
 3. Rollback = Modul-Ordner entfernen, Hub lädt weiter ohne Tablets.
 
-### Phase C – IN-Tab Integration
+### Phase C – IN-Tab Integration ✅
 1. Sub-Tab-Switch im Intake-Panel (`IN/TAB`) implementieren, bestehende Wasser/Salz/Protein-Flows nicht verändern.
 2. Toggle-Komponenten für Daily Intake pro Medikament rendern, Confirm/Undo gegen RPC verdrahten, Safety-Hinweis ergänzen.
 3. Low-Stock-MessageBox (read-only Arzt-Mail) sichtbar machen, Ack-Flow ohne TAB-Abhängigkeit testen.
 
-### Phase D – TAB-Tab & Verwaltung
+### Phase D – TAB-Tab & Verwaltung ✅
 1. CRUD-Formular (Create/Edit) mit Validation und persistenter RPC-Anbindung aufbauen.
 2. Kartenliste mit Restock-/SetStock-/Archive-/Delete-Aktionen verdrahten; Bestand- und Days-Left-Rechner clientseitig testen.
 3. Rollback = TAB-Subtab ausblenden, IN-Tab bleibt funktionsfähig.
 
-### Phase E – Alerts, QA & Docs
+### Phase E – Alerts, QA & Docs ✅
 1. Low-Stock-, Safety- und Diagnostics-Checks finalisieren, Logging in `diag` ergänzen.
 2. QA-Checkliste abarbeiten, Regressionstests für Intake/H2O-Flow durchführen, ggf. Playwright/Manual Protokoll erstellen.
 3. Dokumente aktualisieren (`docs/modules/Medication Module Overview.md`, QA-Notes) und Hand-off-Pack schnüren.

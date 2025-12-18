@@ -939,6 +939,283 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   width: 100%;
 }
 
+.hub-intake-tabs {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 12px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+
+.hub-intake-tabs .btn {
+  min-width: 70px;
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.hub-intake-tabs .btn::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: transparent;
+  bottom: -10px;
+  border-radius: 999px;
+}
+
+.hub-intake-tabs .btn.is-active::after {
+  background: var(--accent, #4f9dff);
+}
+
+.hub-intake-tab-panels {
+  position: relative;
+}
+
+.hub-intake-panel {
+  display: none;
+}
+
+.hub-intake-panel.is-active {
+  display: block;
+}
+
+.hub-intake-placeholder {
+  padding: 24px;
+  background: rgba(15, 17, 30, 0.85);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.medication-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.medication-form .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.medication-form .field-group.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.medication-form .field-group .label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.medication-form .field-group input[type="text"],
+.medication-form .field-group input[type="number"] {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(10, 12, 22, 0.65);
+  color: #fff;
+  padding: 10px 12px;
+}
+
+.medication-form .field-group input:focus-visible {
+  outline: none;
+  border-color: rgba(79, 157, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+}
+
+.medication-form.is-disabled {
+  opacity: 0.6;
+}
+
+.medication-form.is-disabled input,
+.medication-form.is-disabled button,
+.medication-form.is-disabled select {
+  pointer-events: none;
+}
+
+.medication-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.medication-form-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.medication-form-status {
+  min-height: 1.2em;
+}
+
+.medication-cards-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.medication-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.medication-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(12, 14, 24, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medication-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.medication-card h4 {
+  margin: 0;
+  letter-spacing: 0.08em;
+}
+
+.medication-card-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.medication-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hub-intake-medications {
+  margin-top: 8px;
+  padding: 18px;
+  background: rgba(10, 12, 22, 0.85);
+}
+
+.hub-intake-medications-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.medication-daily-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medication-daily-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: rgba(14, 16, 28, 0.8);
+}
+
+.medication-daily-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.medication-daily-meta strong {
+  letter-spacing: 0.08em;
+}
+
+.medication-daily-meta span {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.med-toggle-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  min-width: 180px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.med-toggle-btn.is-on {
+  background: linear-gradient(135deg, rgba(50, 205, 120, 0.9), rgba(30, 160, 90, 0.9));
+  border-color: rgba(120, 255, 170, 0.6);
+}
+
+.med-toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.medication-low-stock,
+.medication-safety {
+  margin-top: 16px;
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(255, 200, 60, 0.08);
+  border: 1px solid rgba(255, 200, 60, 0.4);
+  color: #ffd670;
+}
+
+.medication-low-stock strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.medication-low-stock-actions,
+.medication-safety-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.medication-low-stock .low-stock-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.medication-low-stock .low-stock-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.medication-low-stock-contact {
+  margin: 6px 0 10px;
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .hub-vitals {
   display: flex;
   flex-direction: column;
