@@ -1,33 +1,189 @@
-# Future Refactors
+# MIDAS – Weitere Ideen aus dem Chat (Zusammenfassung)
 
-Sammlung größerer Umbauideen, die nach Phase 5 in Angriff genommen werden können.
+Dieses Dokument fasst **alle zusätzlichen Feature-Ideen** zusammen, die im Verlauf dieses Chats **neben dem Medication Management Modul** entstanden sind.  
+Es handelt sich ausschließlich um **inhaltliche Ideen**, ohne Bewertung, Priorisierung oder Meta-Kommentare.
 
 ---
 
-## 1. Supabase Proxy abschaffen
+## 1. Aktivität / Training bei den Vitals
 
-- `app/supabase.js` ersetzt aktuell alle legacy `window.SupabaseAPI.*`-Aufrufe durch die neuen `app/supabase/*`-Module.
-- ToDo: die verbleibenden Legacy-Skripte (`assets/js/main.js`, `assets/js/ui*.js`, `assets/js/data-local.js`) nach `app/` migrieren und auf modulare Imports (`app/supabase/index.js`) umstellen.
-- Wenn keine Globals mehr benötigt werden: `app/supabase.js` löschen, `index.html` lädt nur noch das ESM-Barrel.
+**Ziel:**  
+Erfassung von Bewegung als medizinischer Kontext (nicht als Fitness-Tracking).
 
-## 2. Legacy UI/Main Skripte modularisieren
+**Umsetzung:**
+- Neuer Button im **Vitals-Bereich**
+- Speicherung als **Event**, analog zu BP / Body
 
-- `assets/js/main.js`, `ui.js`, `ui-layout.js`, `ui-tabs.js`, `data-local.js` usw. sind die letzten großen Dateien außerhalb von `app/`.
-- Plan: in kleinere Module aufteilen (`app/modules/ui/*`, `app/core/local-data.js`), MODULE-/SUBMODULE-Header setzen, Tests/Docs nachziehen.
+**Erfassungsfelder:**
+- Aktivität (Dropdown):
+  - Fitnessstudio
+  - Fußball
+  - Laufen
+  - Radfahren
+  - Spazieren
+  - Sonstiges
+- Dauer (Minuten)
+- Optional: Kommentar
 
-## 3. Diagnostics Monitor erweitern
+**Arzt-Ansicht:**
+- Neuer **4. Tab „Activity“**
+- Anzeige:
+  - Anzahl Sporteinheiten im Zeitraum
+  - Ø Dauer
 
-- Aktuell nur Heartbeats/Logger. Denkbare Erweiterungen:
-  - UI-Overlay mit Live-Status (`diagnosticsLayer.monitor.isActive()`).
-  - Remote-Upload für Logger/Perf-Snapshots (Supabase Function).
-  - Konfigurierbare Perf-Buckets via Config (`DIAGNOSTICS_PERF_KEYS`).
+**Monatsbericht:**
+- Eine kompakte Zeile:
+  > „Patient hatte X Sporteinheiten im letzten Monat.“
 
-## 4. Assistant Implementierung
+---
 
-- Readiness steht (`app/modules/assistant/` + Doc).
-- Nächster Schritt: echtes KI-Modul planen (Supabase Functions, Prompt Handling, UI-Panel).
+## 2. Erweiterter Monatsbericht / Patienten-Summary
 
-## 5. PWA/TWA Umsetzung
+**Ziel:**  
+Strukturierte Übersicht für Arzttermine, optional vorab versendbar.
 
-- Ordner/Placeholders vorhanden (`public/sw`, `public/twa/Android`, Manifest).
-- Als nächster Brocken: Service Worker + Caching-Strategie implementieren, Manifest finalisieren, TWA-Projekt (Bubblewrap) vorbereiten, QA & Release-Docs ergänzen.
+**Format:**
+- PDF
+- Max. 3–4 Seiten
+
+**Inhalt:**
+- Blutdruck-Zusammenfassung
+- Körperdaten
+- relevante CKD-Laborwerte
+- Medikamentenstatus
+- Aktivitäts-/Trainingsübersicht
+
+**Nutzung:**
+- Optional vorab per E-Mail
+- Alternativ ausgedruckt zum Termin mitnehmen
+
+---
+
+## 3. Mail-Shortcut (bewusste Aktion)
+
+**Ziel:**  
+Vereinfachte Kommunikation mit Arzt oder Apotheke ohne Automatisierung.
+
+**Umsetzung:**
+- `mailto:`-Link mit vorgefülltem Text
+- Manuelles Abschicken durch den Nutzer
+
+**Einsatzbereiche:**
+- Medikamenten-Nachbestellung
+- Versand von Monatsberichten
+
+---
+
+## 4. DIY-Uhr (Zukunftsidee)
+
+**Status:**  
+Konzeptionell erwähnt, nicht Bestandteil aktueller Umsetzung.
+
+**Idee:**
+- Stark reduzierter MIDAS-Umfang auf einer DIY-Uhr
+- Fokus auf Kerninformationen
+
+**Mögliche Inhalte:**
+- Medikamentenstatus (genommen / offen)
+- Basis-Vitals
+- Notfall-/Info-Anzeige
+
+---
+
+## 5. Arzt-Register (Nice-to-Have)
+
+**Ziel:**  
+Zentrale Verwaltung relevanter Ärzt:innen.
+
+**Inhalt:**
+- Name
+- Fachrichtung
+- E-Mail
+- Telefonnummer
+- Adresse (optional)
+
+**Verwendung:**
+- Referenz bei Medikamenten
+- Zieladresse für Mail-Shortcuts
+
+**Wichtig:**
+- Kein Live-Zugriff für Ärzt:innen
+- Reines Referenz- und Komfort-Feature
+
+---
+
+## 6. Designprinzip: Leiser Kontext
+
+**Kein Feature, sondern Leitlinie**
+
+- Features sollen:
+  - passiv funktionieren
+  - nicht stören, wenn sie nicht genutzt werden
+- Fokus auf:
+  - medizinischen Mehrwert
+  - Arzt-Tauglichkeit
+  - langfristige Nutzbarkeit
+
+---
+
+## 7. KI-Agent zur Interpretation der Inbox-Inhalte
+
+**Ziel:**  
+Unterstützung beim Verständnis medizinischer Systemmeldungen ohne Alarmismus oder Diagnose.
+
+**Idee:**
+- Ein dedizierter **KI-Agent** analysiert Inhalte der **Arzt-Inbox**.
+- Fokus liegt auf:
+  - Monatsberichten
+  - Trendpilot-Kommentaren
+  - systemischen Hinweisen
+
+**Kontext-Berücksichtigung:**
+- Bekannte CKD-Situation
+- Historische Monatsberichte
+- Langfristige Trends statt Einzelwerte
+
+**Ausgabe:**
+- Kurze, verständliche Interpretation in natürlicher Sprache
+- Einordnung statt Bewertung
+- Keine Handlungsanweisung, keine Diagnose
+
+**Wichtig:**
+- Der Agent arbeitet **passiv**
+- Keine automatischen Pushes
+- Nur auf bewusste Anfrage oder beim Öffnen eines Inbox-Eintrags
+
+---
+
+## 8. Räumlicher Panel-Wechsel (Karussell / Gesten-basierte Navigation)
+
+**Ziel:**  
+Weiterentwicklung der aktuellen Tab-Navigation (z. B. zwischen Blutdruck, Körper, Labor) hin zu einem **räumlich erlebbaren Wechsel**, der MIDAS stärker als „bewohnbaren Raum“ wahrnehmbar macht – ohne Effizienz oder Klarheit zu verlieren.
+
+**Motivation:**  
+Die bestehenden Tabs sind funktional, schnell und sauber, erinnern jedoch noch an das frühere Akkordeon-Paradigma. Langfristig soll MIDAS nicht nur bedient, sondern **erlebt** werden. Subtile Bewegung beim Kontextwechsel erhöht Orientierung, Wertigkeit und emotionale Bindung.
+
+**Grundidee:**  
+- Tabs bleiben konzeptionell bestehen (kein Bruch der Informationsarchitektur).  
+- Der Wechsel zwischen Tabs kann optional über eine **räumliche Animation** erfolgen (z. B. Karussell-ähnlich, seitliche Rotation, geführtes Sliding).  
+- Der Wechsel dauert bewusst minimal länger (~300–400 ms) als ein reiner Klick, um den Kontextwechsel mental zu rahmen.
+
+**Interaktionsprinzip (konzeptionell):**
+- Direkte Nutzerinteraktion (Tap / Swipe) triggert die Bewegung.  
+- Aktives Panel wird visuell „gegriffen“ (leichte Skalierung / Rahmen).  
+- Nach Abschluss rastet das neue Panel klar ein, Animation endet vollständig.  
+- Keine Daueranimation, kein Auto-Play.
+
+**Abgrenzung / Guardrails:**
+- Nicht für die Arzt-Ansicht (diese bleibt strikt instrumentell).  
+- Nur für Nutzer-Panels (Vitals, Intakes, persönliche Module).  
+- Animation ist unterstützend, nicht dekorativ.  
+- Optional / deaktivierbar denkbar (Zukunft).
+
+**Status:**  
+Future / Nice-to-Have  
+→ Bewusst nicht Teil der aktuellen Roadmap, sondern Reife-Feature für ein späteres MIDAS-Stadium.
+
+---
+
+**Ende der Zusammenfassung**

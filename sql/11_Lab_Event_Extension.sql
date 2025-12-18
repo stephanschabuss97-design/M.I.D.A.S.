@@ -66,7 +66,7 @@ begin
     end if;
 
     if (new.payload->>'ctx') not in ('Morgen','Abend') then
-      raise exception 'bp.ctx muss "Morgen" oder "Abend" sein' using errcode = '22023';
+      raise exception 'bp.ctx muss "Morgen" or "Abend" sein' using errcode = '22023';
     end if;
     new.ctx := new.payload->>'ctx';
 
@@ -79,7 +79,7 @@ begin
     has_kg := new.payload ? 'kg';
     has_cm := new.payload ? 'cm';
     if not (has_kg or has_cm) then
-      raise exception 'body: mind. einer von kg oder cm ist Pflicht' using errcode = '23502';
+      raise exception 'body: mind. einer von kg or cm ist Pflicht' using errcode = '23502';
     end if;
 
     if has_kg then
@@ -226,6 +226,12 @@ begin
   return new;
 end;
 $$;
+
+-- ensure trigger exists with latest validation logic
+drop trigger if exists trg_events_validate_biu on public.health_events;
+create trigger trg_events_validate_biu
+  before insert or update on public.health_events
+  for each row execute function public.trg_events_validate();
 
 -- (E) Create lab view mirroring existing security_invoker views
 drop view if exists public.v_events_lab;

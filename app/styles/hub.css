@@ -1153,6 +1153,30 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin: 0;
 }
 
+.bp-pane .bp-context-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.bp-pane .bp-context-header label {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.bp-pane .bp-context-header select {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(16, 20, 36, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  min-width: 180px;
+}
+
 .hub-panel .panel-actions {
   display: flex;
   justify-content: flex-end;
@@ -1197,11 +1221,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 /* HUB ÔÇö Form helpers */
-.hub-vitals-controls .control-group select {
+.hub-vitals-controls .control-group select,
+.bp-context-header select {
   min-width: 160px;
 }
 
-.hub-vitals-controls #bpContextSel option {
+#bpContextSel option {
   color: #0b0d16;
   background: #fff;
 }

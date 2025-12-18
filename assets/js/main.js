@@ -1459,8 +1459,28 @@ async function maybeRunTrendpilotAfterBpSave(which) {
   }
 }
 
+const normalizeBpContextValue = (value) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'A' || normalized === 'ABEND') return 'A';
+  if (normalized === 'M' || normalized === 'MORGEN') return 'M';
+  return null;
+};
+const pickBpContext = (...candidates) => {
+  for (const candidate of candidates) {
+    const normalized = normalizeBpContextValue(candidate);
+    if (normalized) return normalized;
+  }
+  return null;
+};
 const saveBpButtons = document.querySelectorAll('.save-bp-panel-btn');
 const handleBpPanelSave = async (e) => {
+  const btn = e.currentTarget || e.target;
+  if (!btn) {
+    diag.add?.('[panel] bp save aborted: missing event target');
+    uiError('Interner Fehler beim Speichern.');
+    return;
+  }
   try {
     const logged = await isLoggedInFast();
     if (!logged) {
@@ -1470,18 +1490,28 @@ const handleBpPanelSave = async (e) => {
   } catch (err) {
     console.error('isLoggedInFast check failed', err);
   }
-  const btn = e.currentTarget;
   const ctxSel = document.getElementById('bpContextSel');
   const pane = btn.closest('.bp-pane');
-  const paneCtx = pane?.getAttribute('data-context');
-  const which =
-    paneCtx === 'A'
-      ? 'A'
-      : paneCtx === 'M'
-        ? 'M'
-        : ctxSel?.value === 'A'
-          ? 'A'
-          : 'M';
+  const which = pickBpContext(
+    btn?.getAttribute('data-context'),
+    pane?.getAttribute('data-context'),
+    ctxSel?.value
+  );
+  if (!which) {
+    withBusy(btn, false);
+    diag.add?.('[panel] bp save aborted: unable to resolve context');
+    uiError('Messzeitpunkt konnte nicht ermittelt werden.');
+    return;
+  }
+  if (ctxSel && ctxSel.value !== which) {
+    ctxSel.value = which;
+    try {
+      applyBpContext(which);
+    } catch (_) {
+      /* noop */
+    }
+  }
+  window.AppModules?.captureGlobals?.setBpUserOverride?.(true);
   withBusy(btn, true);
   let savedOk = false;
   try {

@@ -846,13 +846,6 @@
                     aria-label="Datum waehlen"
                   >
                 </div>
-                <div class="control-group">
-                  <label for="bpContextSel">Messzeitpunkt</label>
-                  <select id="bpContextSel">
-                    <option value="M">Morgens</option>
-                    <option value="A">Abends</option>
-                  </select>
-                </div>
                 <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen fuer Arztbereich">
                   <button class="btn ghost" id="vitalsDoctorBtn" type="button">
                     Arzt-Ansicht
@@ -870,7 +863,13 @@
               <div class="hub-vitals-panel is-active" data-vitals-panel="bp">
                 <div class="hub-vitals-bp">
               <div class="card-nested bp-pane active" data-context="M">
-                <h3 class="blockTitle">Morgens</h3>
+                <div class="bp-context-header">
+                  <label for="bpContextSel">Messzeitpunkt</label>
+                  <select id="bpContextSel">
+                    <option value="M">Morgens</option>
+                    <option value="A">Abends</option>
+                  </select>
+                </div>
                 <div class="grid">
                   <div>
                     <label>Systolisch (mmHg)</label>
@@ -908,13 +907,12 @@
                   ></textarea>
                 </div>
                 <div class="panel-actions">
-                  <button class="btn primary save-bp-panel-btn" type="button">
+                  <button class="btn primary save-bp-panel-btn" data-context="M" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
                 </div>
               </div>
               <div class="card-nested bp-pane" data-context="A">
-                <h3 class="blockTitle">Abends</h3>
                 <div class="grid">
                   <div>
                     <label>Systolisch (mmHg)</label>
@@ -952,7 +950,7 @@
                   ></textarea>
                 </div>
                 <div class="panel-actions">
-                  <button class="btn primary save-bp-panel-btn" type="button">
+                  <button class="btn primary save-bp-panel-btn" data-context="A" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
                 </div>

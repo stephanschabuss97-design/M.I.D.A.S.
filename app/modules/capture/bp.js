@@ -19,6 +19,7 @@
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
   const BP_CONTEXTS = Object.freeze(['M','A']);
+  const CONTEXT_LABELS = Object.freeze({ M: 'Morgen', A: 'Abend' });
   const BP_SYS_THRESHOLD = 130;
   const BP_DIA_THRESHOLD = 90;
   const BP_WARN_ON_COLLISION = Boolean(global?.BP_DEBUG_COLLISIONS);
@@ -145,7 +146,14 @@ const getCommentElementUnsafe = (normalizedCtx) => {
   }
 
   // SUBMODULE: saveBlock @internal - persists BP measurements and optional comments
-  async function saveBlock(contextLabel, which, includeWeight=false, force=false){
+  const resolveContextLabel = (ctx, providedLabel) => {
+    if (typeof providedLabel === 'string' && providedLabel.trim()) {
+      return providedLabel.trim();
+    }
+    return CONTEXT_LABELS[ctx] || null;
+  };
+
+  async function saveBlock(contextLabelInput, which, includeWeight=false, force=false){
   let ctx;
   try {
     ctx = normalizeContext(which);
@@ -158,6 +166,12 @@ const getCommentElementUnsafe = (normalizedCtx) => {
   }
   const date = $("#date").value || todayStr();
   const time = ctx === 'M' ? '07:00' : '22:00';
+  const contextLabel = resolveContextLabel(ctx, contextLabelInput);
+  if (!contextLabel) {
+    diag.add?.(`[bp] saveBlock missing context label for "${ctx}"`);
+    uiError?.('Messzeitpunkt konnte nicht ermittelt werden.');
+    return false;
+  }
 
   const sys   = $(bpSelector('sys', ctx)).value   ? toNumDE($(bpSelector('sys', ctx)).value)   : null;
   const dia   = $(`#dia${ctx}`).value   ? toNumDE($(`#dia${ctx}`).value)   : null;

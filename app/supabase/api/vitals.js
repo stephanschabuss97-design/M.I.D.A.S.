@@ -26,7 +26,7 @@ const diag =
     globalWindow?.AppModules?.diagnostics ||
     { add() {} });
 
-    // SUBMODULE: calcMAPValue @internal - Wrapper um globale calcMAP mit Fehlerabsicherung
+// SUBMODULE: calcMAPValue @internal - Wrapper um globale calcMAP mit Fehlerabsicherung
 const calcMAPValue = (sys, dia) => {
   const fn = globalWindow?.calcMAP;
   if (typeof fn !== 'function') {
@@ -40,6 +40,18 @@ const calcMAPValue = (sys, dia) => {
     console.warn('Supabase vitals calcMAP error', { sys, dia, error: err });
     return null;
   }
+};
+
+// SUBMODULE: normalizeBpCtx @internal - toleriert alte/neue ctx-Werte aus Views
+const normalizeBpCtx = (ctx) => {
+  const raw = (ctx ?? '').toString().trim();
+  if (!raw) return null;
+
+  // Accept: M/A (current), Morgen/Abend (legacy), morning/evening (optional)
+  if (raw === 'M' || raw === 'Morgen' || raw.toLowerCase() === 'morning') return 'M';
+  if (raw === 'A' || raw === 'Abend' || raw.toLowerCase() === 'evening') return 'A';
+
+  return null;
 };
 
 // SUBMODULE: loadBpFromView @public - liest Blutdruckwerte aus v_events_bp
@@ -167,7 +179,9 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
   // Body metrics
   for (const row of bp) {
     const entry = ensure(row.day);
-    const block = row.ctx === 'Morgen' ? entry.morning : row.ctx === 'Abend' ? entry.evening : null;
+    const nctx = normalizeBpCtx(row.ctx);
+    const block = nctx === 'M' ? entry.morning : nctx === 'A' ? entry.evening : null;
+
     if (block) {
       if (row.sys != null) block.sys = Number(row.sys);
       if (row.dia != null) block.dia = Number(row.dia);
@@ -192,7 +206,7 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
     }
   }
 
-    // Notes
+  // Notes
   for (const note of notes) {
     const entry = ensure(note.day);
     entry.notes = note.text || '';
