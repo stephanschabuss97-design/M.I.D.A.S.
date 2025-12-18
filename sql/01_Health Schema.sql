@@ -156,7 +156,7 @@ begin
     new.ctx := new.payload->>'ctx';
 
   elsif new.type = 'body' then
-    keys := array['kg','cm'];
+    keys := array['kg','cm','fat_pct','muscle_pct'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'body: payload enth?lt unbekannte Keys' using errcode = '22023';
     end if;
@@ -176,6 +176,18 @@ begin
     if has_cm then
       if (new.payload->>'cm') !~ '^\d+(\.\d+)?$' or (new.payload->>'cm')::numeric < 50 or (new.payload->>'cm')::numeric > 200 then
         raise exception 'body.cm au?erhalb Range 50?200' using errcode = '22003';
+      end if;
+    end if;
+
+    if (new.payload ? 'fat_pct') then
+      if (new.payload->>'fat_pct') !~ '^\d+(\.\d+)?$' or (new.payload->>'fat_pct')::numeric < 0 or (new.payload->>'fat_pct')::numeric > 100 then
+        raise exception 'body.fat_pct ausserhalb Range 0-100' using errcode = '22003';
+      end if;
+    end if;
+
+    if (new.payload ? 'muscle_pct') then
+      if (new.payload->>'muscle_pct') !~ '^\d+(\.\d+)?$' or (new.payload->>'muscle_pct')::numeric < 0 or (new.payload->>'muscle_pct')::numeric > 100 then
+        raise exception 'body.muscle_pct ausserhalb Range 0-100' using errcode = '22003';
       end if;
     end if;
 

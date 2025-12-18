@@ -65,6 +65,7 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 1. `saveBodyPanelBtn` speichert Tagessummary (`saveDaySummary`), ruft `syncWebhook`.
 2. `prefillBodyInputs` nutzt letzte Werte (z.B. Copy vom letzten Tag).
 3. Buttons disabled, wenn nicht eingeloggt oder das Panel gerade gespeichert wird (`setBusy`).
+4. Persistiert optional Fett- und Muskelanteile (`fat_pct`, `muscle_pct`). Diese Felder sind seit der Anpassung in `sql/01_Health Schema.sql` + `sql/11_Lab_Event_Extension.sql` im Supabase-Trigger whitelisted (Range 0–100 %).
 
 > **Shared Entry Helper:** Sowohl `saveBlock` als auch `saveDaySummary` nutzen `app/modules/capture/entry.js` (`createBaseEntry`) um ein konsistentes Datensatz-Skelett (Date, Context, Notes) zu erzeugen. Damit bleibt die Struktur across BP/Körper identisch, egal welches Panel speichert.
 
