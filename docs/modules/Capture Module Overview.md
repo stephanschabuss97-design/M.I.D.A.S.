@@ -19,14 +19,15 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
 
 | Datei | Zweck |
 |-------|-------|
-| `app/modules/capture/index.js` | Kernlogik: Handlers für Intake/Blutdruck/Body, Timer, Status-Pills, UI-Reset. |
+| `app/modules/capture/index.js` | Kernlogik: Handlers für Intake/Blutdruck/Body, Timer, Status-Pills, UI-Reset inkl. Vitals-Tab-Steuerung. |
 | `app/core/capture-globals.js` | Shared State (`captureIntakeState`, Timer, Flags), Utility `setBusy`, `softWarnRange`. |
 | `app/modules/capture/bp.js` | Blutdruck-spezifische Funktionen (`saveBlock`, Kommentar-Pflicht, Panel-Reset). Nutzt `capture/entry.js` für gemeinsame Basisdatensätze. |
 | `app/modules/capture/body.js` | Körperpanel (Gewicht, Bauchumfang) speichern/prefillen; greift auf denselben Entry-Helper zurück. |
 | `app/modules/capture/lab.js` | Laborpanel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD-Stufe, Kommentar) validiert Eingaben, erzeugt `lab_event` Payloads und triggert Sync. |
 | `app/modules/capture/entry.js` | Shared Helper `createBaseEntry` – stellt das Skelett für alle Capture-Einträge bereit. |
-| `assets/js/main.js` | Bindet Buttons, Datum, Unlock-Logik, orchestriert `requestUiRefresh`. |
-| `app/styles/capture.css` | (Legacy) Styles für Accordion-Ansicht; zentrale Hub-Styles liegen in `app/styles/hub.css`. |
+| `assets/js/main.js` | Bindet Buttons, Datum, Unlock-Logik, orchestriert `requestUiRefresh` und Verdrahtet die Vitals-Karten (inkl. BP-Kontext-Dropdown). |
+| `app/styles/capture.css` | (Legacy) Styles für Accordion-Ansicht; zentrale Hub-Styles liegen in `app/styles/hub.css` (enthält auch Layout/Optik des BP-Kontext-Dropdowns). |
+| `sql/11_Lab_Event_Extension.sql` | DB-Erweiterung für `lab_event` + zentrale Validierungs-Trigger (`trg_events_validate_biu`), die u. a. `ctx` aus den BP-Payloads in die Spalte spiegeln. |
 | `app/core/config.js` | Flags (z.B. `TREND_PILOT_ENABLED` indirekt, `DEV_ALLOW_DEFAULTS`). |
 
 ---
@@ -57,6 +58,7 @@ Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
    - Kommentare via `appendNote`, separate Einträge.
 2. Nach Save: Panel reset, `updateBpCommentWarnings` neu berechnet (Pflicht bei >130/>90). Das Vitals-Panel bleibt im Hub geöffnet; ein erneutes Öffnen läuft über den Orbit-Button.
 3. Falls Abendmessung: `maybeRunTrendpilotAfterBpSave`.
+4. UI: Der Messzeitpunkt wird über ein Dropdown direkt in der Karte (oberhalb der ersten Eingabegruppe) gewählt. Der `#bpContextSel` steuert beide `bp-pane`s; Umschaltungen markieren die aktive Karte visuell.
 
 ### 3.4 Körper Flow (`body.js`)
 
