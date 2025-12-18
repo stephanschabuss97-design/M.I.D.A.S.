@@ -65,6 +65,7 @@ Kurze Einordnung:
 ## 5. UI-Integration
 
 - IN-Panel (Capture) unter „Tablettenmanager“.
+- Tägliche Medikationskarten teilen sich das Intake-Card-Layout: dreizeilige Kacheln (Name, Button, Resttage) in einer responsiven `.intake-card-grid` (1 Spalte mobile, 2 Spalten Desktop), damit Wasser/Salz/Protein und Medikamente wie ein gemeinsamer Satz wirken.
 - TAB-Panel (Intake Subtab „TAB“) mit Formular + Kartenliste.
 - Low-Stock-Box + Safety-Hinweis nur sichtbar, wenn Daten vorhanden.
 
@@ -73,7 +74,7 @@ Kurze Einordnung:
 ## 6. Arzt-Ansicht / Read-Only Views
 
 - Aktuell keine dedizierte Arztansicht; Doctor Panel könnte später `med_list` konsumieren.
-- Low-Stock-Box zeigt Arzt-Mail zur Kontaktaufnahme (aus Profil).
+- Low-Stock-Box zeigt Arztkontakt aus dem Profil (Name + E-Mail) einmalig im Header und bietet einen gemeinsamen Mail-Shortcut, der alle betroffenen Medikamente auflistet.
 
 ---
 

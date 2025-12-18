@@ -18,6 +18,8 @@
     height: '#profileHeight',
     ckdBadge: '#profileCkdBadge',
     medications: '#profileMedications',
+    doctorName: '#profileDoctorName',
+    doctorEmail: '#profileDoctorEmail',
     saltLimit: '#profileSaltLimit',
     proteinMax: '#profileProteinMax',
     smoker: '#profileIsSmoker',
@@ -32,12 +34,20 @@
     syncing: false,
     ready: false,
     syncPromise: null,
-    latestLab: null
+    latestLab: null,
+    medicationSummary: null
   };
 
   let refs = null;
 
   const sanitize = (val) => (val == null ? '' : String(val).trim());
+  const todayIso = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const ensureRefs = () => {
     if (refs) return refs;
@@ -51,6 +61,8 @@
       height: panel.querySelector(selectors.height),
       ckdBadge: panel.querySelector(selectors.ckdBadge),
       medications: panel.querySelector(selectors.medications),
+      doctorName: panel.querySelector(selectors.doctorName),
+      doctorEmail: panel.querySelector(selectors.doctorEmail),
       saltLimit: panel.querySelector(selectors.saltLimit),
       proteinMax: panel.querySelector(selectors.proteinMax),
       smoker: panel.querySelector(selectors.smoker),
@@ -80,6 +92,7 @@
   };
 
   const getSupabaseApi = () => appModules.supabase || {};
+  const getMedicationModule = () => appModules.medication || null;
 
   const requireSupabaseClient = async () => {
     const api = getSupabaseApi();
@@ -127,6 +140,36 @@
     return '';
   };
 
+  const summarizeMedicationRows = (payload) => {
+    const meds = Array.isArray(payload?.medications)
+      ? payload.medications.filter((med) => med && med.active !== false)
+      : [];
+    if (!meds.length) return { rows: [], dayIso: payload?.dayIso || todayIso() };
+    const rows = meds.map((med) => {
+      const parts = [med.name || 'Medikation'];
+      const detail = [];
+      if (med.strength) detail.push(med.strength);
+      if (Number.isFinite(med.dose_per_day)) detail.push(`${med.dose_per_day}×/Tag`);
+      if (detail.length) parts.push(`(${detail.join(', ')})`);
+      return `- ${parts.join(' ')}`.trim();
+    });
+    return { rows, dayIso: payload?.dayIso || todayIso() };
+  };
+
+  const fetchMedicationSummary = async () => {
+    try {
+      const medModule = getMedicationModule();
+      if (!medModule?.loadMedicationForDay) return null;
+      const snapshot = await medModule.loadMedicationForDay(todayIso(), { reason: 'profile:snapshot' });
+      return summarizeMedicationRows(snapshot);
+    } catch (err) {
+      if (err?.code !== 'medication_not_authenticated') {
+        diag?.add?.(`[profile] medication summary failed ${err?.message || err}`);
+      }
+      return null;
+    }
+  };
+
   const toNumberOrNull = (value, { precision = null } = {}) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return null;
@@ -141,13 +184,22 @@
     refs.ckdBadge.value = stage || '—';
   };
 
+  const setMedicationsField = (text, { derived = false } = {}) => {
+    if (!refs?.medications) return;
+    refs.medications.value = text || '';
+    refs.medications.readOnly = !!derived;
+    refs.medications.classList.toggle('is-derived', !!derived);
+  };
+
   const fillForm = (profile) => {
     if (!refs) return;
     const data = profile || {};
     refs.fullName.value = sanitize(data.full_name);
     refs.birthDate.value = data.birth_date ? String(data.birth_date).slice(0, 10) : '';
     refs.height.value = data.height_cm != null ? String(data.height_cm) : '';
-    refs.medications.value = formatMedicationsOutput(data.medications);
+    setMedicationsField(formatMedicationsOutput(data.medications), { derived: false });
+    refs.doctorName.value = sanitize(data.primary_doctor_name);
+    refs.doctorEmail.value = sanitize(data.primary_doctor_email);
     refs.saltLimit.value = data.salt_limit_g != null ? String(data.salt_limit_g) : '';
     refs.proteinMax.value = data.protein_target_max != null ? String(data.protein_target_max) : '';
     refs.smoker.value = data.is_smoker ? 'yes' : 'no';
@@ -207,6 +259,8 @@
       protein_target_min: null,
       is_smoker: (refs.smoker?.value || 'no') === 'yes',
       lifestyle_note: sanitize(refs.lifestyle?.value),
+      primary_doctor_name: sanitize(refs.doctorName?.value) || null,
+      primary_doctor_email: sanitize(refs.doctorEmail?.value) || null,
     };
     return payload;
   };
@@ -242,7 +296,18 @@
         if (state.data) {
           state.data.ckd_stage = getDerivedCkdStage();
         }
+        const medSummary = await fetchMedicationSummary();
+        if (medSummary?.rows?.length) {
+          state.medicationSummary = medSummary;
+          if (!state.data) state.data = {};
+          state.data.medications = [...medSummary.rows];
+        } else {
+          state.medicationSummary = null;
+        }
         fillForm(state.data);
+        if (state.medicationSummary?.rows?.length) {
+          setMedicationsField(state.medicationSummary.rows.join('\n'), { derived: true });
+        }
         renderOverview();
         notifyChange('sync');
         log?.(`sync ok reason=${reason}`);
@@ -262,6 +327,9 @@
     event?.preventDefault();
     const payload = extractFormPayload();
     if (!payload) return;
+    if (refs?.form && !refs.form.reportValidity()) {
+      return;
+    }
     try {
       setFormDisabled(true);
       const client = await requireSupabaseClient();
@@ -271,7 +339,7 @@
         .from('user_profile')
         .upsert(upsertPayload, { onConflict: 'user_id' })
         .select(
-          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
+          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
         )
         .single();
       if (error) throw error;

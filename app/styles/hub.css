@@ -807,7 +807,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
    ========================================================================== */
 
 .hub-intake-pills {
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -1107,71 +1107,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   flex-wrap: wrap;
 }
 
-.hub-intake-medications {
-  margin-top: 8px;
-  padding: 18px;
-  background: rgba(10, 12, 22, 0.85);
-}
-
-.hub-intake-medications-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.medication-daily-list {
+.hub-intake-alerts {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.medication-daily-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 12px 16px;
-  background: rgba(14, 16, 28, 0.8);
-}
-
-.medication-daily-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.medication-daily-meta strong {
-  letter-spacing: 0.08em;
-}
-
-.medication-daily-meta span {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.med-toggle-btn {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 999px;
-  min-width: 180px;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.med-toggle-btn.is-on {
-  background: linear-gradient(135deg, rgba(50, 205, 120, 0.9), rgba(30, 160, 90, 0.9));
-  border-color: rgba(120, 255, 170, 0.6);
-}
-
-.med-toggle-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  margin-top: 0;
 }
 
 .medication-low-stock,
@@ -1184,9 +1124,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   color: #ffd670;
 }
 
-.medication-low-stock strong {
-  display: block;
-  margin-bottom: 4px;
+.medication-low-stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .medication-low-stock-actions,
@@ -1211,9 +1154,13 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .medication-low-stock-contact {
-  margin: 6px 0 10px;
-  display: block;
-  color: rgba(255, 255, 255, 0.8);
+  margin: 4px 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .hub-vitals {
@@ -1323,32 +1270,48 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   resize: vertical;
 }
 
-.hub-intake-grid {
+.intake-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .intake-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.medication-card-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
   width: 100%;
 }
 
-.hub-input-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 20px;
-  background: rgba(15, 17, 30, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fefefe;
+@media (min-width: 900px) {
+  .medication-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.hub-input-card span {
+.capture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.capture-card-label {
   font-size: 0.9rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.8;
 }
 
-.hub-input-card input {
+.capture-card input {
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
@@ -1357,10 +1320,83 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 4px 0;
 }
 
-.hub-input-card .btn {
-  align-self: flex-start;
-  margin-top: 8px;
-  padding: 6px 12px;
+.intake-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(15, 17, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fefefe;
+  min-height: 80px;
+}
+
+.intake-card-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+.medication-card.is-low {
+  border-color: rgba(255, 200, 60, 0.5);
+  box-shadow: 0 0 12px rgba(255, 200, 60, 0.15);
+}
+
+.capture-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.capture-card-actions .btn {
+  margin-top: 0;
+}
+
+.medication-card-grid .medication-card {
+  gap: 14px;
+}
+
+.medication-card-grid .medication-card-title {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.medication-card-grid .medication-card-status {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.medication-card-grid .medication-card .btn {
+  align-self: stretch;
+  width: 100%;
+  justify-content: center;
+}
+
+.intake-pill-slot {
+  min-width: 120px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.intake-pill-slot:empty {
+  min-height: 0;
+}
+
+.intake-pill-slot .pill {
+  margin: 0;
+}
+
+.capture-card-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
 }
 
 .hub-intake-note {

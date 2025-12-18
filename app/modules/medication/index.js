@@ -406,6 +406,7 @@
       form,
       statusEl,
       resetBtn,
+      refreshBtn: form.querySelector('#medFormRefreshBtn'),
       cardsMeta,
       cardList,
       saveBtn,
@@ -442,7 +443,8 @@
         ui.lowStock,
         ui.active,
         ui.resetBtn,
-        ui.saveBtn
+        ui.saveBtn,
+        ui.refreshBtn
       ].filter(Boolean);
       controls.forEach((el) => {
         el.disabled = !!disabled;
@@ -536,6 +538,10 @@
 
     resetBtn?.addEventListener('click', () => {
       clearForm();
+    });
+
+    medicationState.ui.elements.refreshBtn?.addEventListener('click', () => {
+      refreshMedications('manual-refresh');
     });
 
     cardList.addEventListener('click', (event) => {

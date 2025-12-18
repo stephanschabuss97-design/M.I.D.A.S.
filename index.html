@@ -533,8 +533,31 @@
               <textarea
                 id="profileMedications"
                 rows="3"
-                  placeholder="z. B. Valsartan 160 mg; Forxiga 10 mg"
-                ></textarea>
+                placeholder="Wird automatisch geladen"
+                readonly
+              ></textarea>
+              <span class="field-hint muted small">
+                Anzeige der aktiven Medikamente (Tablettenmanager). Änderungen im TAB-Panel vornehmen.
+              </span>
+            </label>
+              <label class="field-group" for="profileDoctorName">
+                <span class="label">Hausarzt</span>
+                <input
+                  type="text"
+                  id="profileDoctorName"
+                  placeholder="z. B. Dr. Maier"
+                >
+              </label>
+              <label class="field-group" for="profileDoctorEmail">
+                <span class="label">Hausarzt E-Mail</span>
+                <input
+                  type="email"
+                  id="profileDoctorEmail"
+                  placeholder="arzt@example.com"
+                >
+                <span class="field-hint muted small">
+                  Wird für Mail-Shortcuts (Low-Stock Hinweis) verwendet.
+                </span>
               </label>
               <label class="field-group" for="profileSaltLimit">
                 <span class="label">Salzlimit (g/Tag)</span>
@@ -703,56 +726,51 @@
           <div class="hub-intake-tab-panels">
             <div class="hub-intake-panel is-active" id="hubIntakePanelIn" data-intake-panel="in" role="tabpanel" aria-labelledby="intakeTabInBtn">
               <div class="hub-intake-form" id="cap-intake-wrap">
-                <div class="hub-intake-grid">
-              <label class="hub-input-card">
-                <span>Wasser (ml)</span>
-                <input
-                  type="number"
-                  id="cap-water-add"
+              <div class="intake-card-grid" id="hubIntakeGrid">
+                <label class="intake-card capture-card">
+                  <span class="capture-card-label">Wasser (ml)</span>
+                  <input
+                    type="number"
+                    id="cap-water-add"
                   min="0"
                   step="50"
                   placeholder="z. B. 250"
                 >
-                <button class="btn primary" id="cap-water-add-btn" type="button">+ Menge</button>
+                <div class="capture-card-actions">
+                  <button class="btn primary" id="cap-water-add-btn" type="button">+ Menge</button>
+                  <div class="intake-pill-slot" data-pill-kind="water" aria-live="polite"></div>
+                </div>
               </label>
-              <label class="hub-input-card">
-                <span>Salz (g)</span>
-                <input
-                  type="text"
-                  id="cap-salt-add"
-                  inputmode="decimal"
+              <label class="intake-card capture-card">
+                <span class="capture-card-label">Salz &amp; Protein</span>
+                <div class="capture-card-fields">
+                  <input
+                    type="text"
+                    id="cap-salt-add"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="Salz (z. B. 0,5)"
+                  >
+                  <input
+                    type="text"
+                    id="cap-protein-add"
+                    inputmode="decimal"
                   autocomplete="off"
-                  placeholder="z. B. 0,5"
+                  placeholder="Protein (z. B. 20,0)"
                 >
-                <button class="btn primary" id="cap-salt-add-btn" type="button">+ Menge</button>
+                </div>
+                <div class="capture-card-actions">
+                  <button class="btn primary" id="cap-salt-protein-btn" type="button">+ Menge</button>
+                  <div class="intake-pill-slot" data-pill-kind="salt" aria-live="polite"></div>
+                  <div class="intake-pill-slot" data-pill-kind="protein" aria-live="polite"></div>
+                </div>
               </label>
-              <label class="hub-input-card">
-                <span>Protein (g)</span>
-                <input
-                  type="text"
-                  id="cap-protein-add"
-                  inputmode="decimal"
-                  autocomplete="off"
-                  placeholder="z. B. 20,0"
-                >
-                <button class="btn primary" id="cap-protein-add-btn" type="button">+ Menge</button>
-              </label>
+              <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
             </div>
-            <div class="hub-intake-note small u-mt10-opacity75">
-              Werte werden fuer das gewaehlte Datum gespeichert und synchronisiert.
-            </div>
-            <div class="hub-intake-pills" data-role="hub-intake-pills">
+            <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
             </div>
-            <section class="hub-intake-medications card-nested" aria-live="polite">
-              <header class="hub-intake-medications-header">
-                <div>
-                  <h3>Tablettenmanager</h3>
-                  <p class="muted small">Bestätige deine Medikamente für den gewählten Tag.</p>
-                </div>
-                <button type="button" class="btn ghost small" id="medDailyRefreshBtn">Aktualisieren</button>
-              </header>
-              <div id="medDailyList" class="medication-daily-list" aria-live="polite"></div>
+            <section class="hub-intake-alerts" aria-live="polite">
               <div id="medLowStockBox" class="medication-low-stock" hidden></div>
               <div id="medSafetyHint" class="medication-safety" hidden></div>
             </section>
@@ -795,6 +813,7 @@
                   <div class="medication-form-actions">
                     <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
                     <button class="btn ghost" type="button" id="medFormResetBtn">Reset</button>
+                    <button class="btn ghost" type="button" id="medFormRefreshBtn">Aktualisieren</button>
                     <span class="medication-form-status small muted" id="medFormStatus" aria-live="polite"></span>
                   </div>
                 </form>

@@ -15,6 +15,8 @@ alter table public.user_profile
   add column if not exists salt_limit_g numeric,
   add column if not exists protein_target_min numeric,
   add column if not exists protein_target_max numeric,
+  add column if not exists primary_doctor_name text,
+  add column if not exists primary_doctor_email text,
   add column if not exists updated_at timestamptz default now();
 
 alter table public.user_profile
