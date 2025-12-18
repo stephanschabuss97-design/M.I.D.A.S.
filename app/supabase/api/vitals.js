@@ -8,6 +8,7 @@
  *  - calcMAPValue (Wrapper um globale MAP-Berechnung)
  *  - loadBpFromView (Blutdruckwerte)
  *  - loadBodyFromView (Körperwerte)
+ *  - loadLabEventsRange (Labordaten)
  *  - loadNotesLastPerDay (letzte Notizen pro Tag)
  *  - joinViewsToDaily (Kombination aller Views in Tagesobjekte)
  *  - fetchDailyOverview (Hauptschnittstelle für Übersicht)
@@ -25,7 +26,7 @@ const diag =
     globalWindow?.AppModules?.diagnostics ||
     { add() {} });
 
-    // SUBMODULE: calcMAPValue @internal - Wrapper um globale calcMAP mit Fehlerabsicherung
+// SUBMODULE: calcMAPValue @internal - Wrapper um globale calcMAP mit Fehlerabsicherung
 const calcMAPValue = (sys, dia) => {
   const fn = globalWindow?.calcMAP;
   if (typeof fn !== 'function') {
@@ -39,6 +40,18 @@ const calcMAPValue = (sys, dia) => {
     console.warn('Supabase vitals calcMAP error', { sys, dia, error: err });
     return null;
   }
+};
+
+// SUBMODULE: normalizeBpCtx @internal - toleriert alte/neue ctx-Werte aus Views
+const normalizeBpCtx = (ctx) => {
+  const raw = (ctx ?? '').toString().trim();
+  if (!raw) return null;
+
+  // Accept: M/A (current), Morgen/Abend (legacy), morning/evening (optional)
+  if (raw === 'M' || raw === 'Morgen' || raw.toLowerCase() === 'morning') return 'M';
+  if (raw === 'A' || raw === 'Abend' || raw.toLowerCase() === 'evening') return 'A';
+
+  return null;
 };
 
 // SUBMODULE: loadBpFromView @public - liest Blutdruckwerte aus v_events_bp
@@ -65,6 +78,37 @@ export async function loadBodyFromView({ user_id, from, to }) {
     filters,
     order: 'day.asc'
   });
+}
+
+// SUBMODULE: loadLabEventsRange @public - liest Laborwerte aus v_events_lab
+export async function loadLabEventsRange({ user_id, from, to }) {
+  const filters = [['user_id', `eq.${user_id}`]];
+  if (from) filters.push(['day', `gte.${from}`]);
+  if (to) filters.push(['day', `lte.${to}`]);
+  return await sbSelect({
+    table: 'v_events_lab',
+    select: 'day,egfr,creatinine,hba1c,ldl,potassium,ckd_stage,doctor_comment',
+    filters,
+    order: 'day.asc'
+  });
+}
+
+// SUBMODULE: loadLatestLabSnapshot @public - liefert letzte Labor-Messung (inkl. CKD-Stufe)
+export async function loadLatestLabSnapshot({ user_id } = {}) {
+  const uid = user_id || (await getUserId());
+  if (!uid) return null;
+  const filters = [['user_id', `eq.${uid}`]];
+  const rows = await sbSelect({
+    table: 'v_events_lab',
+    select: 'day,egfr,creatinine,hba1c,ldl,potassium,ckd_stage,doctor_comment',
+    filters,
+    order: 'day.desc',
+    limit: 1
+  });
+  if (Array.isArray(rows) && rows.length) {
+    return rows[0];
+  }
+  return null;
 }
 
 // SUBMODULE: loadNotesLastPerDay @internal - extrahiert letzte Notizen pro Tag
@@ -135,7 +179,9 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
   // Body metrics
   for (const row of bp) {
     const entry = ensure(row.day);
-    const block = row.ctx === 'Morgen' ? entry.morning : row.ctx === 'Abend' ? entry.evening : null;
+    const nctx = normalizeBpCtx(row.ctx);
+    const block = nctx === 'M' ? entry.morning : nctx === 'A' ? entry.evening : null;
+
     if (block) {
       if (row.sys != null) block.sys = Number(row.sys);
       if (row.dia != null) block.dia = Number(row.dia);
@@ -160,7 +206,7 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
     }
   }
 
-    // Notes
+  // Notes
   for (const note of notes) {
     const entry = ensure(note.day);
     entry.notes = note.text || '';

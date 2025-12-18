@@ -26,6 +26,7 @@ import * as notes from './api/notes.js';
 import * as select from './api/select.js';
 import * as push from './api/push.js';
 import * as systemComments from './api/system-comments.js';
+import * as reports from './api/reports.js';
 
 // SUBMODULE: aggregation @internal - kombiniert alle Module, erkennt doppelte Exporte
 const MODULE_SOURCES = [
@@ -39,7 +40,8 @@ const MODULE_SOURCES = [
   ['notes', notes],
   ['select', select],
   ['push', push],
-  ['systemComments', systemComments]
+  ['systemComments', systemComments],
+  ['reports', reports]
 ];
 
 const owners = Object.create(null);

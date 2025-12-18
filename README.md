@@ -112,13 +112,13 @@ Komplette Historie siehe `CHANGELOG.md`.
 ## Beitrag & Feedback
 
 Pull Requests, Issues und Ideen sind willkommen. Bitte ASCII (ae/oe/ue) verwenden und Patches knapp kommentieren. Viel Erfolg mit dem Gesundheits-Logger!
-
 ```
 M.I.D.A.S
 ├─ .nojekyll
 ├─ app
 │  ├─ app.css
 │  ├─ core
+│  │  ├─ boot-flow.js
 │  │  ├─ capture-globals.js
 │  │  ├─ config.js
 │  │  ├─ diag.js
@@ -128,25 +128,35 @@ M.I.D.A.S
 │  │  ├─ monitor.js
 │  │  └─ perf.js
 │  ├─ modules
+│  │  ├─ appointments
+│  │  │  └─ index.js
 │  │  ├─ assistant
 │  │  │  ├─ actions.js
+│  │  │  ├─ allowed-actions.js
+│  │  │  ├─ day-plan.js
 │  │  │  ├─ index.js
-│  │  │  └─ session-agent.js
+│  │  │  ├─ session-agent.js
+│  │  │  ├─ suggest-store.js
+│  │  │  └─ suggest-ui.js
 │  │  ├─ capture
 │  │  │  ├─ body.js
 │  │  │  ├─ bp.js
 │  │  │  ├─ entry.js
-│  │  │  └─ index.js
+│  │  │  ├─ index.js
+│  │  │  └─ lab.js
 │  │  ├─ charts
 │  │  │  ├─ chart.css
 │  │  │  └─ index.js
 │  │  ├─ doctor
 │  │  │  └─ index.js
 │  │  ├─ hub
+│  │  │  ├─ hub-aura3d.js
 │  │  │  ├─ index.js
 │  │  │  └─ vad
 │  │  │     ├─ vad-worklet.js
 │  │  │     └─ vad.js
+│  │  ├─ profile
+│  │  │  └─ index.js
 │  │  └─ trendpilot
 │  │     ├─ data.js
 │  │     └─ index.js
@@ -164,6 +174,7 @@ M.I.D.A.S
 │     │  ├─ intake.js
 │     │  ├─ notes.js
 │     │  ├─ push.js
+│     │  ├─ reports.js
 │     │  ├─ select.js
 │     │  ├─ system-comments.js
 │     │  └─ vitals.js
@@ -181,9 +192,13 @@ M.I.D.A.S
 │        └─ index.js
 ├─ assets
 │  ├─ img
+│  │  ├─ Appointments_v1.png
+│  │  ├─ Chart_v1.png
 │  │  ├─ doctor_view_state.png
+│  │  ├─ Doctor_view_v1.png
 │  │  ├─ Idle_state.png
 │  │  ├─ Intakes_state.png
+│  │  ├─ Intakes_v1.png
 │  │  ├─ midas_background_v1.PNG
 │  │  ├─ midas_Logo_complete.avif
 │  │  ├─ midas_Logo_complete.png
@@ -191,7 +206,13 @@ M.I.D.A.S
 │  │  ├─ midas_symbol.webp
 │  │  ├─ midas_wordmark.png
 │  │  ├─ midas_wordmark.webp
-│  │  └─ Vitals_state.png
+│  │  ├─ Personal_data_v1.png
+│  │  ├─ Personal_data_v2.png
+│  │  ├─ Text_chat_v1.png
+│  │  ├─ Vitals_state.png
+│  │  ├─ Vitals_v1.png
+│  │  ├─ Voice_chat_v1.png
+│  │  └─ Voice_chat_v2.png
 │  └─ js
 │     ├─ boot-auth.js
 │     ├─ data-local.js
@@ -206,7 +227,9 @@ M.I.D.A.S
 │  ├─ assistant
 │  │  ├─ Assistant_Actions_Spec.md
 │  │  └─ Assistant_Endpoint_Spec.md
+│  ├─ carousel_integration.md
 │  ├─ Codex Programmandi.docx
+│  ├─ Doctor Lab Domain Roadmap.md
 │  ├─ Future Refactors.md
 │  ├─ Git Survival Guide für Stephan.md
 │  ├─ Import Inventory.md
@@ -215,6 +238,7 @@ M.I.D.A.S
 │  ├─ MIDAS Orb Vision.md
 │  ├─ Module Update Plan.md
 │  ├─ modules
+│  │  ├─ Assistant Appointments Proto Overview.md
 │  │  ├─ Assistant Module Overview.md
 │  │  ├─ Auth Module Overview.md
 │  │  ├─ Capture Module Overview.md
@@ -224,6 +248,7 @@ M.I.D.A.S
 │  │  ├─ Hub Module Overview.md
 │  │  ├─ Intake Module Overview.md
 │  │  ├─ Main Router Flow Overview.md
+│  │  ├─ Profile Module Overview.md
 │  │  ├─ State Layer Overview.md
 │  │  ├─ Supabase Core Overview.md
 │  │  ├─ Trendpilot Module Overview.md
@@ -246,15 +271,20 @@ M.I.D.A.S
 │     └─ Android
 │        └─ README.md
 ├─ README.md
-└─ sql
-   ├─ 00_Tabua Rasa.sql
-   ├─ 01_Health Schema.sql
-   ├─ 02_Admin Checks.sql
-   ├─ 03_Appointments.sql
-   ├─ 04_Body_Comp.sql
-   ├─ 05_Intake_Rpc.sql
-   ├─ 06_Security.sql
-   ├─ 07_Remove_Day_Flags.sql
-   └─ 08_Remove_Appointments.sql
+├─ sql
+│  ├─ 00_Tabua Rasa.sql
+│  ├─ 01_Health Schema.sql
+│  ├─ 02_Admin Checks.sql
+│  ├─ 03_Appointments.sql
+│  ├─ 04_Body_Comp.sql
+│  ├─ 05_Intake_Rpc.sql
+│  ├─ 06_Security.sql
+│  ├─ 07_Remove_Day_Flags.sql
+│  ├─ 08_Remove_Appointments.sql
+│  ├─ 09_Appointments_v2.sql
+│  ├─ 10_User_Profile_Ext.sql
+│  └─ 11_Lab_Event_Extension.sql
+├─ temp.txt
+└─ tmp.txt
 
 ```

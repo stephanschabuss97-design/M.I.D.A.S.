@@ -8,7 +8,7 @@ Das Profil-Modul ersetzt das frühere Hilfe-Panel (Orbit Nord-West) und hält pe
 
 ## 1. Purpose
 
-- Einmalige Pflege der Stammdaten (Name, Geburtsdatum, Größe, CKD-Stufe, Medikation).
+- Einmalige Pflege der Stammdaten (Name, Geburtsdatum, Größe, Medikation) plus ein read-only CKD-Indikator, der automatisch aus den letzten Labordaten ermittelt wird.
 - Konfigurierbare Limits für Salz (g/Tag) und Protein (g/Tag) – Butler kann bei Foto/Text-Analysen davor warnen.
 - Hinweis auf Lifestyle/Notizen (z. B. Training, Ärztliche Vorgaben).
 - Trigger für andere Module (`profile:changed`), damit Charts BMI/WHtR korrekt berechnen und der Assistant aktuellen Kontext erhält.
@@ -21,7 +21,7 @@ Das Profil-Modul ersetzt das frühere Hilfe-Panel (Orbit Nord-West) und hält pe
 - Aufbau analog Terminpanel: scrollbarer Body, Formular oben, Abschnitt „Aktuelle Daten“ unten.
 - Formularfelder / DOM-IDs:
   - `profileFullName`, `profileBirthDate`, `profileHeightCm`.
-  - `profileCkdStage` (Dropdown: G2 bis G5, inkl. G3a/b A1/A2).
+  - `profileCkdBadge` (readonly Input – zeigt CKD-Stufe aus letzter Labor-Messung).
   - `profileMedications` (Textarea, freies Format).
   - `profileSaltLimit`, `profileProteinMax`.
   - `profileSmokeStatus` (Dropdown Nichtraucher/Raucher).
@@ -33,10 +33,10 @@ Das Profil-Modul ersetzt das frühere Hilfe-Panel (Orbit Nord-West) und hält pe
 
 ## 3. Data Flow & Supabase
 
-- Tabelle `user_profile`: Spalten `user_id` (PK/ FK auth.users), `full_name`, `birth_date`, `height_cm`, `ckd_stage`, `medications` (jsonb/String), `is_smoker`, `lifestyle_note`, `salt_limit_g`, `protein_target_max`, `updated_at`.
+- Tabelle `user_profile`: Spalten `user_id` (PK/ FK auth.users), `full_name`, `birth_date`, `height_cm`, `medications` (jsonb/String), `is_smoker`, `lifestyle_note`, `salt_limit_g`, `protein_target_max`, `updated_at`.
 - RLS: Zugriff ausschließlich auf `auth.uid() = user_id`.
 - Modul verwendet `ensureSupabaseClient()` + `getUserId()` und ruft `supabase.from('user_profile').upsert({ user_id, … }, { onConflict: 'user_id' })`.
-- Nach Erfolg fire `profile:changed` (CustomEvent), sodass andere Module reagieren können (`window.addEventListener('profile:changed', handler)`).
+- Parallel lädt das Modul das aktuellste `lab_event` über `loadLatestLabSnapshot()` und berechnet daraus die CKD-Stufe für Badge/Consumers. Nach Erfolg fire `profile:changed` (CustomEvent), sodass andere Module reagieren können (`window.addEventListener('profile:changed', handler)`).
 
 ---
 
@@ -63,7 +63,7 @@ Das Profil-Modul ersetzt das frühere Hilfe-Panel (Orbit Nord-West) und hält pe
   - Liest Größe ausschließlich aus Profil (Fallback 183 cm entfernt).
   - Reagiert auf `profile:changed`, triggert BMI/WHtR Recompute.
 - **Assistant** (`app/modules/hub/index.js`):
-  - `refreshAssistantContext()` wartet auf `profile.getSnapshot()` und injiziert Limits/CKD/Medikation in den Butler-Header.
+  - `refreshAssistantContext()` wartet auf `profile.getSnapshot()` und injiziert Limits/Medikation in den Butler-Header; CKD-Status kommt automatisch über das Profil-Snapshot, das die letzte Laborstufe einblendet.
   - Edge Functions (`midas-assistant`, `midas-vision`) erhalten Profilwerte im Payload, sodass Foto-/Text-Analysen salz-/proteinbewusst antworten.
 - **Roadmap/QA**: Phase 4.3 Einträge in `docs/QA_CHECKS.md` stellen CRUD + Event-Verhalten sicher.
 

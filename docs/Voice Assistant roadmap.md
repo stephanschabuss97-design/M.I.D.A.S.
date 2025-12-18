@@ -494,14 +494,13 @@ Eigenständiges Terminmodul mit Eingabemaske und Übersicht, angelehnt an Doctor
 ### 4.3 Health-Profil & Persona Layer (Supabase) ✅
 
 **Ziel**
-Pers�nliche CKD-Daten und Limits zentral pflegen, damit Butler/Fotokontext immer aktuelle Werte haben und Updates wie �G3aA1 ? G3aA2� nur einen DB-Eintrag ben�tigen.
+Pers?nliche Limits, Medikation und Stammdaten zentral pflegen; CKD/Albuminurie wird k?nftig automatisch ?ber Laboreintr?ge gespiegelt.
 
 **1. Tabelle erweitern (user_profile)** ✅
 - bestehende Tabelle via sql/10_User_Profile_Ext.sql um folgende Spalten erweitern:
   - ull_name text
   - irth_date date
   - height_cm integer
-  - ckd_stage text
   - medications jsonb
   - is_smoker boolean
   - lifestyle_note text
@@ -512,7 +511,7 @@ Pers�nliche CKD-Daten und Limits zentral pflegen, damit Butler/Fotokontext imm
 
 **2. Profil-Panel (ersetzt Hilfe)** ✅
 - Orbit NW �ffnet neues Panel analog zum Terminmodul (Form + �bersicht):
-  - Felder: Name, Geburtsdatum, Gr��e, CKD-Stufe (Dropdown), Medikation, Salz-/Protein-Limits, Nichtraucher-Flag, Lifestyle-Note.
+  - Felder: Name, Geburtsdatum, Gr??e, Medikation, Salz-/Protein-Limits, Nichtraucher-Flag, Lifestyle-Note.
   - Liste unten zeigt die gespeicherten Werte.
   - Speichern f�hrt Insert/Update auf user_profile aus und feuert profile:changed.
 
@@ -525,7 +524,6 @@ Formular‐Felder:
 Name (profileFullName)
 Geburtsdatum (profileBirthDate)
 Größe (optional readonly, wenn leer Hinweis)
-CKD-Stufe Dropdown (profileCkdStage)
 Medikation (Textarea oder Tag-Input profileMedications)
 Salzlimit (profileSaltLimit)
 Protein-Ziel min/max (profileProteinMin, profileProteinMax)
@@ -559,7 +557,7 @@ Damit haben wir einen klaren Umbauplan und Wissen, welche Dateien angefasst werd
 
 **3. Verbraucher** ✅
 - pp/modules/charts/index.js holt Gr��e ausschlie�lich aus user_profile (Fallback 183?cm entf�llt).
-- midas-assistant (Edge Function) l�dt Profil via JWT + Service-Key oder erh�lt es als Kontext und injiziert JSON (CKD, Limits, Medikation) vor den Chat-Messages.
+- midas-assistant (Edge Function) l�dt Profil via JWT + Service-Key oder erh�lt es als Kontext und injiziert JSON (Limits, Medikation) vor den Chat-Messages.
 - Fotoanalyse nutzt Salz-/Protein-Grenzen f�r Hinweise (�du bist heute bei 4,6?g von 5?g�). Wasserziel bleibt optional/manuell.
 
 **4. Schritte** ✅

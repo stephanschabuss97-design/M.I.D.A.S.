@@ -198,6 +198,7 @@ const saveIntakeTotalsRpc = createSupabaseFn('saveIntakeTotalsRpc');
 const cleanupOldIntake = createSupabaseFn('cleanupOldIntake', { optional: true });
 const fetchDailyOverview = createSupabaseFn('fetchDailyOverview');
 const deleteRemoteDay = createSupabaseFn('deleteRemoteDay');
+const deleteRemoteByType = createSupabaseFn('deleteRemoteByType');
 const setupRealtime = createSupabaseFn('setupRealtime');
 const setConfigStatus = createSupabaseFn('setConfigStatus');
 const showLoginOverlay = createSupabaseFn('showLoginOverlay');
@@ -732,6 +733,11 @@ function setDoctorAccess(enabled){
     chartBtn.disabled = !enabled;
     chartBtn.title = enabled ? 'Werte als Grafik' : 'Bitte zuerst anmelden';
   }
+  const monthlyBtn = document.getElementById('doctorMonthlyReportBtn');
+  if (monthlyBtn) {
+    monthlyBtn.disabled = !enabled;
+    monthlyBtn.title = enabled ? 'Manuellen Monatsbericht starten' : 'Bitte zuerst anmelden';
+  }
   // Lifestyle-Tab mitsteuern
   
 }
@@ -948,6 +954,7 @@ const REQUIRED_SUPABASE_EXPORTS = [
   'cleanupOldIntake',
   'fetchDailyOverview',
   'deleteRemoteDay',
+  'deleteRemoteByType',
   'setupRealtime',
   'setConfigStatus',
   'showLoginOverlay',
@@ -1452,47 +1459,90 @@ async function maybeRunTrendpilotAfterBpSave(which) {
   }
 }
 
-const saveBpPanelBtn = document.getElementById('saveBpPanelBtn');
-if (saveBpPanelBtn){
-  saveBpPanelBtn.addEventListener('click', async (e)=>{
+const normalizeBpContextValue = (value) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'A' || normalized === 'ABEND') return 'A';
+  if (normalized === 'M' || normalized === 'MORGEN') return 'M';
+  return null;
+};
+const pickBpContext = (...candidates) => {
+  for (const candidate of candidates) {
+    const normalized = normalizeBpContextValue(candidate);
+    if (normalized) return normalized;
+  }
+  return null;
+};
+const saveBpButtons = document.querySelectorAll('.save-bp-panel-btn');
+const handleBpPanelSave = async (e) => {
+  const btn = e.currentTarget || e.target;
+  if (!btn) {
+    diag.add?.('[panel] bp save aborted: missing event target');
+    uiError('Interner Fehler beim Speichern.');
+    return;
+  }
+  try {
+    const logged = await isLoggedInFast();
+    if (!logged) {
+      diag.add?.('[panel] bp save while auth unknown');
+      // Diagnostics only: keep going so fetchWithAuth can recover auth state.
+    }
+  } catch (err) {
+    console.error('isLoggedInFast check failed', err);
+  }
+  const ctxSel = document.getElementById('bpContextSel');
+  const pane = btn.closest('.bp-pane');
+  const which = pickBpContext(
+    btn?.getAttribute('data-context'),
+    pane?.getAttribute('data-context'),
+    ctxSel?.value
+  );
+  if (!which) {
+    withBusy(btn, false);
+    diag.add?.('[panel] bp save aborted: unable to resolve context');
+    uiError('Messzeitpunkt konnte nicht ermittelt werden.');
+    return;
+  }
+  if (ctxSel && ctxSel.value !== which) {
+    ctxSel.value = which;
     try {
-      const logged = await isLoggedInFast();
-      if (!logged) {
-        diag.add?.('[panel] bp save while auth unknown');
-        // Diagnostics only: keep going so fetchWithAuth can recover auth state.
-      }
-    } catch(err) {
-      console.error('isLoggedInFast check failed', err);
+      applyBpContext(which);
+    } catch (_) {
+      /* noop */
     }
-    const btn = e.currentTarget;
-    const ctxSel = document.getElementById('bpContextSel');
-    const which = (ctxSel?.value === 'A') ? 'A' : 'M';
-    withBusy(btn, true);
-    let savedOk = false;
-    try{
-      const saved = await window.AppModules.bp.saveBlock(which === 'M' ? 'Morgen' : 'Abend', which, false, false);
-      if (!saved){
-        uiError('Keine Daten fuer diesen Messzeitpunkt eingegeben.');
-      } else {
-        savedOk = true;
-        requestUiRefresh({ reason: 'panel:bp' }).catch(err => {
-          diag.add?.('ui refresh err: ' + (err?.message || err));
-        });
-      }
-    }catch(err){
-      diag.add?.('Panel BP Fehler: ' + (err?.message || err));
-      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
-    }finally{
-      withBusy(btn, false);
+  }
+  window.AppModules?.captureGlobals?.setBpUserOverride?.(true);
+  withBusy(btn, true);
+  let savedOk = false;
+  try {
+    const saved = await window.AppModules.bp.saveBlock(
+      which === 'M' ? 'Morgen' : 'Abend',
+      which,
+      false,
+      false
+    );
+    if (!saved) {
+      uiError('Keine Daten fuer diesen Messzeitpunkt eingegeben.');
+    } else {
+      savedOk = true;
+      requestUiRefresh({ reason: 'panel:bp' }).catch((err) => {
+        diag.add?.('ui refresh err: ' + (err?.message || err));
+      });
     }
-    if (savedOk){
-      window.AppModules.bp.updateBpCommentWarnings?.();
-      window.AppModules.bp.resetBpPanel(which);
-      flashButtonOk(btn, '&#x2705; Blutdruck gespeichert');
-      await maybeRunTrendpilotAfterBpSave(which);
-    }
-  });
-}
+  } catch (err) {
+    diag.add?.('Panel BP Fehler: ' + (err?.message || err));
+    uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+  } finally {
+    withBusy(btn, false);
+  }
+  if (savedOk) {
+    window.AppModules.bp.updateBpCommentWarnings?.();
+    window.AppModules.bp.resetBpPanel(which);
+    flashButtonOk(btn, '&#x2705; Blutdruck gespeichert');
+    await maybeRunTrendpilotAfterBpSave(which);
+  }
+};
+saveBpButtons.forEach((btn) => btn.addEventListener('click', handleBpPanelSave));
 
 const saveBodyPanelBtn = document.getElementById('saveBodyPanelBtn');
 if (saveBodyPanelBtn){
@@ -1529,6 +1579,43 @@ if (saveBodyPanelBtn){
       window.AppModules.body.resetBodyPanel();
       diag.add?.('[body] cleared');
       flashButtonOk(btn, '&#x2705; Koerper gespeichert');
+    }
+  });
+}
+
+const saveLabPanelBtn = document.getElementById('saveLabPanelBtn');
+if (saveLabPanelBtn){
+  saveLabPanelBtn.addEventListener('click', async (e) => {
+    try {
+      const logged = await isLoggedInFast();
+      if (!logged) {
+        diag.add?.('[panel] lab save while auth unknown');
+      }
+    } catch (err) {
+      console.error('isLoggedInFast check failed', err);
+    }
+    const btn = e.currentTarget;
+    withBusy(btn, true);
+    let savedOk = false;
+    try {
+      const saved = await window.AppModules.lab?.saveLabEntry?.();
+      if (!saved) {
+        uiError('Keine Labordaten eingegeben.');
+      } else {
+        savedOk = true;
+        requestUiRefresh({ reason: 'panel:lab' }).catch((err) => {
+          diag.add?.('ui refresh err: ' + (err?.message || err));
+        });
+      }
+    } catch (err) {
+      diag.add?.('[lab] panel save failed: ' + (err?.message || err));
+      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+    } finally {
+      withBusy(btn, false);
+    }
+    if (savedOk) {
+      window.AppModules.lab?.resetLabPanel?.({ focus: false });
+      flashButtonOk(btn, '&#x2705; Labor gespeichert');
     }
   });
 }
@@ -1584,8 +1671,47 @@ doctorChartBtn.addEventListener("click", async ()=>{
   diag.add?.('[doctor] chart show requested');
   await requestUiRefresh({ reason: 'doctor:chart-open', chart: true });
 });
+  } else {
+    diag.add?.('[doctor] chart button missing - hub overlay active?');
+  }
+
+const doctorMonthlyReportBtn = document.getElementById('doctorMonthlyReportBtn');
+if (doctorMonthlyReportBtn) {
+  doctorMonthlyReportBtn.addEventListener('click', async () => {
+    diag.add?.('[doctor] monthly report button clicked');
+    try {
+      const logged = await isLoggedInFast();
+      if (!logged) {
+        diag.add?.('[doctor] monthly report while auth unknown');
+      }
+    } catch (err) {
+      console.error('isLoggedInFast check failed', err);
+    }
+    if (!isDoctorUnlocked()) {
+      setAuthPendingAfterUnlock('monthly-report');
+      const ok = await requireDoctorUnlock();
+      if (!ok) return;
+      setAuthPendingAfterUnlock(null);
+    }
+    const doctorModule = getDoctorModule();
+    const handler = doctorModule?.generateMonthlyReport;
+    if (typeof handler !== 'function') {
+      diag.add?.('[doctor] monthly report handler missing');
+      uiError?.('Monatsbericht-Generator wird in Kürze aktiviert.');
+      return;
+    }
+    withBusy(doctorMonthlyReportBtn, true);
+    try {
+      await handler();
+    } catch (err) {
+      diag.add?.('[doctor] monthly report failed: ' + (err?.message || err));
+      uiError('Monatsbericht konnte nicht erstellt werden.');
+    } finally {
+      withBusy(doctorMonthlyReportBtn, false);
+    }
+  });
 } else {
-  diag.add?.('[doctor] chart button missing - hub overlay active?');
+  diag.add?.('[doctor] monthly report button missing - hub overlay active?');
 }
 
 document.addEventListener('keydown', (e)=>{
@@ -1756,11 +1882,6 @@ window.addEventListener('focus', () => {
 - Realtime-Events: INSERT/UPDATE ? upsert, DELETE ? lokal entfernen.
 - UI-Refresh: Arzt-Ansicht sofort; Charts nur, wenn Panel offen.
 === */
-
-
-
-
-
 
 
 

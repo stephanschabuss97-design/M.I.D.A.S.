@@ -59,7 +59,7 @@ Der alte Tab-Router bleibt vorhanden, wird jedoch nur noch für Fallbacks/Legacy 
 
 ## 5. Event-Bindings (Auswahl)
 
-- **Blutdruck speichern** (`#saveBpPanelBtn`):
+- **Blutdruck speichern** (`.save-bp-panel-btn`):
   - Prüft Login, nutzt `withBusy`, ruft `bp.saveBlock` ? `requestUiRefresh({ reason: 'panel:bp', doctor: true })` ? Trendpilot-Check.
 - **Körper speichern** (`#saveBodyPanelBtn`): analog; Refresh-Reason `panel:body`.
 - **Datum (`#date`)**: `change` ? `maybeRefreshForTodayChange` ? Refresh.

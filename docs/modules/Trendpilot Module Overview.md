@@ -47,6 +47,7 @@ Der Trendpilot überwacht mittel- bis langfristige Veränderungen im Blutdruckverl
 ### 3.3 Supabase / System Comments
 
 - Tabelle `health_events`, `type='system_comment'`.
+- Subtypes: `warning` / `critical` (Trendpilot) plus `monthly_report` (read-only archive entries; never used as AI input).
 - Ack/Doctor-Status liegen in `payload.context` (`{ ack: boolean, doctorStatus: 'none'|'planned'|'done' }`).
 - API-Funktionen: `fetchSystemCommentsRange`, `upsertSystemCommentRemote`, `setSystemCommentAck`, `setSystemCommentDoctorStatus`.
 
