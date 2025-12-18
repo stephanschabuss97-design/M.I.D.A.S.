@@ -179,6 +179,8 @@
       ['Proteinlimit (g/Tag)', state.data.protein_target_max],
       ['Raucherstatus', state.data.is_smoker ? 'Raucher' : 'Nichtraucher'],
       ['Lifestyle', state.data.lifestyle_note],
+      ['Arzt (Name)', state.data.primary_doctor_name],
+      ['Arzt (E-Mail)', state.data.primary_doctor_email],
       ['Aktualisiert', state.data.updated_at ? new Date(state.data.updated_at).toLocaleString('de-AT') : '—'],
     ];
     const dl = doc.createElement('dl');
@@ -222,7 +224,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, updated_at'
+            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();

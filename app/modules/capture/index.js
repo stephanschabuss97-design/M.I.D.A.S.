@@ -42,12 +42,26 @@
     warning: { cls: 'warn', shortLabel: 'Warnung', longLabel: 'Trendpilot (Warnung)' },
     critical: { cls: 'bad', shortLabel: 'Kritisch', longLabel: 'Trendpilot (kritisch)' }
   };
+  const medicationDailyState = {
+    initialized: false,
+    listEl: null,
+    lowStockEl: null,
+    safetyEl: null,
+    refreshBtn: null,
+    dayIso: null,
+    data: null,
+    authRetryTimer: null,
+    doctorWarnedMissing: false,
+    lastLowStockCount: null,
+    lastSafetyPending: null
+  };
   let latestTrendpilotEntry = null;
   let trendpilotHookBound = false;
   const getTrendpilotSeverityMeta = (severity) => {
     if (!severity) return null;
     return TREND_PILOT_SEVERITY_META[severity] || null;
   };
+  const escapeHtml = (value = '') => escapeAttr(value || '');
   const captureRefreshLogInflight = new Map();
   const captureRefreshKey = (reason, dayIso) =>
     `${reason || 'manual'}|${dayIso || 'unknown'}`;
@@ -90,6 +104,431 @@
     }
     latestTrendpilotEntry = entry && entry.severity ? entry : null;
   };
+
+  const getMedicationModule = () => global.AppModules?.medication || null;
+  const getProfileModule = () => global.AppModules?.profile || null;
+
+  const getPrimaryDoctorInfo = () => {
+    try {
+      const profileMod = getProfileModule();
+      if (!profileMod || typeof profileMod.getData !== 'function') return null;
+      const data = profileMod.getData();
+      if (!data) return null;
+      const email = data.primary_doctor_email || data.primaryDoctorEmail || '';
+      const name = data.primary_doctor_name || data.primaryDoctorName || '';
+      if (!email && !name) return null;
+      return {
+        email: email || '',
+        name: name || ''
+      };
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const buildLowStockMailHref = (doctorInfo, med) => {
+    if (!doctorInfo?.email || !med) return null;
+    const medName = med.name || 'Medikation';
+    const dayIso = medicationDailyState.dayIso || todayStr();
+    const subject = `Low-Stock Hinweis: ${medName}`;
+    const bodyLines = [
+      'Hallo,',
+      '',
+      `mein Medikament ${medName} ist fast aufgebraucht.`,
+      `Bestand: ${med.stock_count ?? '?'} Stück (${med.days_left ?? '?'} Tage).`,
+      `Dosis pro Tag: ${med.dose_per_day ?? '?'} Stück`,
+      `Tag: ${dayIso}`,
+      '',
+      'Bitte um neues Rezept bzw. Rückmeldung.',
+      '',
+      'Vielen Dank.'
+    ];
+    const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    return `mailto:${encodeURIComponent(doctorInfo.email)}?${query}`;
+  };
+
+  const formatMedTakenTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const shiftDayIso = (dayIso, delta) => {
+    if (!dayIso) return null;
+    const base = new Date(`${dayIso}T00:00:00Z`);
+    if (Number.isNaN(base.getTime())) return null;
+    base.setUTCDate(base.getUTCDate() + delta);
+    return base.toISOString().slice(0, 10);
+  };
+
+  function initMedicationDailyUi() {
+    if (medicationDailyState.initialized) return;
+    const doc = global.document;
+    if (!doc) return;
+    const listEl = doc.getElementById('medDailyList');
+    if (!listEl) return;
+    medicationDailyState.listEl = listEl;
+    medicationDailyState.lowStockEl = doc.getElementById('medLowStockBox');
+    medicationDailyState.safetyEl = doc.getElementById('medSafetyHint');
+    medicationDailyState.refreshBtn = doc.getElementById('medDailyRefreshBtn');
+    medicationDailyState.initialized = true;
+
+    listEl.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-med-toggle]');
+      if (!btn) return;
+      event.preventDefault();
+      handleMedicationToggle(btn);
+    });
+
+    medicationDailyState.lowStockEl?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-med-ack]');
+      if (!btn) return;
+      event.preventDefault();
+      handleLowStockAck(btn);
+    });
+
+    medicationDailyState.safetyEl?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-med-safety-goto]');
+      if (!btn) return;
+      event.preventDefault();
+      const targetDay = btn.getAttribute('data-med-safety-goto');
+      if (!targetDay) return;
+      const dateInput = doc.getElementById('date');
+      if (dateInput) {
+        dateInput.value = targetDay;
+        AppModules.captureGlobals.setDateUserSelected(true);
+        maybeRefreshForTodayChange({ force: true, source: 'med-safety' });
+      }
+    });
+
+    medicationDailyState.refreshBtn?.addEventListener('click', () => {
+      if (medicationDailyState.dayIso) {
+        refreshMedicationDaily({ dayIso: medicationDailyState.dayIso, reason: 'manual', force: true });
+      }
+    });
+
+    doc.addEventListener('medication:changed', (event) => {
+      const detail = event?.detail || {};
+      const payload = detail.data;
+      const dayIso = payload?.dayIso || detail.dayIso;
+      if (!dayIso || dayIso !== medicationDailyState.dayIso) return;
+      if (payload) {
+        medicationDailyState.data = payload;
+        renderMedicationDaily(payload);
+      } else {
+        refreshMedicationDaily({ dayIso, reason: 'event', force: true }).catch(() => {});
+      }
+    });
+
+    doc.addEventListener('profile:changed', () => {
+      if (medicationDailyState.data) {
+        renderMedicationLowStock(medicationDailyState.data);
+      }
+    });
+  }
+
+  function renderMedicationDailyPlaceholder(message) {
+    initMedicationDailyUi();
+    const listEl = medicationDailyState.listEl;
+    const effectiveMessage = message || 'Keine Daten vorhanden.';
+    if (listEl) {
+      listEl.innerHTML = `<p class="muted small">${escapeHtml(effectiveMessage)}</p>`;
+    }
+    diag.add?.(
+      `[capture:med] placeholder day=${medicationDailyState.dayIso || 'n/a'} msg="${effectiveMessage}"`
+    );
+    if (medicationDailyState.lowStockEl) {
+      medicationDailyState.lowStockEl.hidden = true;
+      medicationDailyState.lowStockEl.innerHTML = '';
+      medicationDailyState.lastLowStockCount = null;
+    }
+    if (medicationDailyState.safetyEl) {
+      medicationDailyState.safetyEl.hidden = true;
+      medicationDailyState.safetyEl.innerHTML = '';
+      medicationDailyState.lastSafetyPending = null;
+    }
+  }
+
+  function renderMedicationLowStock(data) {
+    const box = medicationDailyState.lowStockEl;
+    if (!box) return;
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med.low_stock) : [];
+    if (!meds.length) {
+      if (medicationDailyState.lastLowStockCount) {
+        diag.add?.(`[capture:med] low-stock cleared day=${medicationDailyState.dayIso || 'n/a'}`);
+      }
+      medicationDailyState.lastLowStockCount = 0;
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    if (medicationDailyState.lastLowStockCount !== meds.length) {
+      diag.add?.(
+        `[capture:med] low-stock count=${meds.length} day=${medicationDailyState.dayIso || 'n/a'}`
+      );
+      medicationDailyState.lastLowStockCount = meds.length;
+    }
+    const doctorInfo = getPrimaryDoctorInfo();
+    if (!doctorInfo?.email && !medicationDailyState.doctorWarnedMissing) {
+      diag.add?.('[capture:med] doctor email missing for low-stock contact');
+      medicationDailyState.doctorWarnedMissing = true;
+    } else if (doctorInfo?.email && medicationDailyState.doctorWarnedMissing) {
+      diag.add?.('[capture:med] doctor email restored for low-stock contact');
+      medicationDailyState.doctorWarnedMissing = false;
+    }
+    const doctorLine = doctorInfo?.email
+      ? `<p class="medication-low-stock-contact small">Arzt: ${escapeHtml(
+          doctorInfo.name ? `${doctorInfo.name} (${doctorInfo.email})` : doctorInfo.email
+        )}</p>`
+      : '<p class="medication-low-stock-contact small muted">Keine Arzt-Mail im Profil hinterlegt.</p>';
+    const listHtml = meds
+      .map((med) => {
+        const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, med) : null;
+        const mailAction = mailHref
+          ? `<a class="btn ghost small" href="${escapeAttr(mailHref)}" target="_blank" rel="noopener" data-med-mail="${escapeAttr(
+              med.id || ''
+            )}">Arzt-Mail</a>`
+          : '<small class="muted small">Mailkontakt fehlt</small>';
+        const ackBtn = `<button type="button" class="btn ghost small" data-med-ack="${escapeAttr(
+          med.id || ''
+        )}" data-med-stock="${escapeAttr(String(med.stock_count ?? 0))}">Erledigt</button>`;
+        return `
+        <div class="low-stock-item">
+          <div>
+            <div>${escapeHtml(med.name || 'Medikation')}</div>
+            <small>Noch ${med.stock_count ?? 0} Stk. (${med.days_left ?? '?'} Tage)</small>
+          </div>
+          <div class="medication-low-stock-actions">
+            ${mailAction}
+            ${ackBtn}
+          </div>
+        </div>`;
+      })
+      .join('');
+    box.hidden = false;
+    box.innerHTML = `
+      <strong>Niedriger Bestand</strong>
+      ${doctorLine}
+      ${listHtml}
+    `;
+  }
+
+  function renderMedicationDaily(data) {
+    initMedicationDailyUi();
+    const listEl = medicationDailyState.listEl;
+    if (!listEl) return;
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med.active !== false) : [];
+    if (!meds.length) {
+      listEl.innerHTML = '<p class="muted small">Keine aktiven Medikamente für diesen Tag.</p>';
+      renderMedicationLowStock(data);
+      return;
+    }
+    const items = meds
+      .map((med) => {
+        const info = [];
+        if (Number.isFinite(med.stock_count)) info.push(`${med.stock_count} Stk.`);
+        if (Number.isFinite(med.days_left)) info.push(`${med.days_left} Tage übrig`);
+        const infoText = info.join(' • ') || '';
+        const takenTime = med.taken_at ? `Bestätigt ${formatMedTakenTime(med.taken_at)}` : 'Noch offen';
+        const state = med.taken ? 'on' : 'off';
+        const btnLabel = med.taken ? takenTime : 'Einnahme bestätigen';
+        return `
+          <article class="medication-daily-item ${med.low_stock ? 'is-low' : ''}">
+            <div class="medication-daily-meta">
+              <strong>${escapeHtml(med.name || 'Medikation')}</strong>
+              <span>${escapeHtml([med.ingredient, med.strength].filter(Boolean).join(' • ') || 'Keine Details')}</span>
+              ${infoText ? `<span>${escapeHtml(infoText)}</span>` : ''}
+            </div>
+            <button type="button"
+              class="med-toggle-btn ${state === 'on' ? 'is-on' : ''}"
+              data-med-toggle="${escapeAttr(med.id || '')}"
+              data-med-state="${state}"
+              data-med-name="${escapeAttr(med.name || '')}"
+              data-med-time="${escapeAttr(med.taken_at || '')}">
+              ${escapeHtml(btnLabel)}
+            </button>
+          </article>
+        `;
+      })
+      .join('');
+    listEl.innerHTML = items;
+    renderMedicationLowStock(data);
+  }
+
+  async function handleMedicationToggle(btn) {
+    if (!btn || btn.disabled) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      uiError('Medikationsmodul nicht verfügbar.');
+      return;
+    }
+    if (!captureIntakeState.logged) {
+      uiError('Bitte anmelden, um Medikamente zu bestätigen.');
+      return;
+    }
+    const medId = btn.getAttribute('data-med-toggle');
+    if (!medId) return;
+    const state = btn.getAttribute('data-med-state') === 'on' ? 'on' : 'off';
+    const takenTime = btn.getAttribute('data-med-time');
+    const medName = btn.getAttribute('data-med-name') || 'Medikation';
+    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    if (state === 'on') {
+      const timeLabel = formatMedTakenTime(takenTime);
+      const confirmUndo = global.confirm
+        ? global.confirm(`${medName} wurde heute bereits bestätigt${timeLabel ? ` um ${timeLabel}` : ''}. Rückgängig machen?`)
+        : true;
+      if (!confirmUndo) return;
+    }
+    withBusy(btn, true);
+    try {
+      if (state === 'on') {
+        await medModule.undoMedication(medId, { dayIso, reason: 'capture-toggle' });
+        uiInfo('Einnahme zurückgenommen.');
+        diag.add?.(`[capture:med] undo med=${medId} day=${dayIso}`);
+      } else {
+        await medModule.confirmMedication(medId, { dayIso, reason: 'capture-toggle' });
+        uiInfo('Einnahme bestätigt.');
+        diag.add?.(`[capture:med] confirm med=${medId} day=${dayIso}`);
+      }
+      if (typeof medModule.invalidateMedicationCache === 'function') {
+        medModule.invalidateMedicationCache(dayIso);
+      }
+      await refreshMedicationDaily({ dayIso, reason: 'toggle', force: true });
+    } catch (err) {
+      uiError(err?.message || 'Aktion fehlgeschlagen.');
+      diag.add?.(`[capture:med] toggle error med=${medId} ${err?.message || err}`);
+    } finally {
+      withBusy(btn, false);
+    }
+  }
+
+  async function handleLowStockAck(btn) {
+    if (!btn || btn.disabled) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      uiError('Medikationsmodul nicht verfügbar.');
+      return;
+    }
+    if (!captureIntakeState.logged) {
+      uiError('Bitte anmelden, um Hinweise zu bestaetigen.');
+      return;
+    }
+    const medId = btn.getAttribute('data-med-ack');
+    if (!medId) return;
+    const stock = Number(btn.getAttribute('data-med-stock')) || 0;
+    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    withBusy(btn, true);
+    try {
+      await medModule.ackLowStock(medId, { dayIso, stockSnapshot: stock, reason: 'capture-low-stock' });
+      uiInfo('Hinweis ausgeblendet.');
+      diag.add?.(`[capture:med] low-stock ack med=${medId} stock=${stock} day=${dayIso}`);
+      await refreshMedicationDaily({ dayIso, reason: 'ack', force: true });
+    } catch (err) {
+      uiError(err?.message || 'Ack fehlgeschlagen.');
+      diag.add?.(`[capture:med] low-stock ack error med=${medId} ${err?.message || err}`);
+    } finally {
+      withBusy(btn, false);
+    }
+  }
+
+  async function updateMedSafetyHint(dayIso) {
+    const hintEl = medicationDailyState.safetyEl;
+    if (!hintEl) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      hintEl.hidden = true;
+      hintEl.innerHTML = '';
+      medicationDailyState.lastSafetyPending = null;
+      return;
+    }
+    const prevDay = shiftDayIso(dayIso, -1);
+    if (!prevDay) {
+      hintEl.hidden = true;
+      hintEl.innerHTML = '';
+      medicationDailyState.lastSafetyPending = null;
+      return;
+    }
+    try {
+      const data = await medModule.loadMedicationForDay(prevDay, { reason: 'capture:safety' });
+      const pending = Array.isArray(data?.medications)
+        ? data.medications.some((med) => med.active !== false && !med.taken)
+        : false;
+      if (!pending) {
+        hintEl.hidden = true;
+        hintEl.innerHTML = '';
+        if (medicationDailyState.lastSafetyPending !== false) {
+          diag.add?.(
+            `[capture:med] safety cleared prev=${prevDay}`
+          );
+          medicationDailyState.lastSafetyPending = false;
+        }
+        return;
+      }
+      if (medicationDailyState.lastSafetyPending !== true) {
+        diag.add?.(`[capture:med] safety pending prev=${prevDay}`);
+        medicationDailyState.lastSafetyPending = true;
+      }
+      hintEl.hidden = false;
+      hintEl.innerHTML = `
+        <strong>Sicherheitshinweis</strong>
+        <p>Für ${prevDay} wurde mindestens eine Einnahme nicht bestätigt.</p>
+        <div class="medication-safety-actions">
+          <button type="button" class="btn ghost small" data-med-safety-goto="${escapeAttr(prevDay)}">Zu gestern wechseln</button>
+        </div>
+      `;
+    } catch (err) {
+      hintEl.hidden = true;
+      hintEl.innerHTML = '';
+      if (medicationDailyState.lastSafetyPending !== null) {
+        diag.add?.('[capture:med] safety hint error');
+        medicationDailyState.lastSafetyPending = null;
+      }
+      diag.add?.(`[capture:med] safety fetch error ${err?.message || err}`);
+    }
+  }
+
+  async function refreshMedicationDaily({ dayIso, reason = 'auto', force = false } = {}) {
+    if (!isHandlerStageReady()) return;
+    initMedicationDailyUi();
+    const listEl = medicationDailyState.listEl;
+    if (!listEl) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      renderMedicationDailyPlaceholder('Medikationsmodul noch nicht aktiv.');
+      return;
+    }
+    medicationDailyState.dayIso = dayIso || todayStr();
+    if (!captureIntakeState.logged) {
+      renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
+      return;
+    }
+    diag.add?.(
+      `[capture:med] refresh start day=${medicationDailyState.dayIso} reason=${reason} force=${force}`
+    );
+    if (!force && medicationDailyState.data && medicationDailyState.data.dayIso === medicationDailyState.dayIso) {
+      renderMedicationDaily(medicationDailyState.data);
+      updateMedSafetyHint(medicationDailyState.dayIso);
+      return;
+    }
+    listEl.innerHTML = '<p class="muted small">Medikamente werden geladen …</p>';
+    try {
+      const data = await medModule.loadMedicationForDay(medicationDailyState.dayIso, { reason: `capture:${reason}` });
+      medicationDailyState.data = data;
+      renderMedicationDaily(data);
+      updateMedSafetyHint(medicationDailyState.dayIso);
+      const count = Array.isArray(data?.medications) ? data.medications.length : 0;
+      diag.add?.(`[capture:med] refresh ok day=${medicationDailyState.dayIso} count=${count}`);
+    } catch (err) {
+      if (err?.code === 'medication_not_authenticated') {
+        renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
+        diag.add?.('[capture:med] refresh blocked not authenticated');
+        return;
+      }
+      listEl.innerHTML = `<p class="muted small">${escapeHtml(err?.message || 'Laden fehlgeschlagen.')}</p>`;
+      diag.add?.(`[capture:med] refresh error ${err?.message || err}`);
+    }
+  }
 
   function initTrendpilotCaptureHook() {
     if (trendpilotHookBound) return;
@@ -436,6 +875,7 @@
     setCaptureIntakeDisabled(true);
     updateCaptureIntakeStatus();
     try{ __lsTotals = { water_ml: 0, salt_g: 0, protein_g: 0 }; updateLifestyleBars(); }catch(_){ }
+    renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
     closeRefreshLog('skipped', 'auth required');
     return;
   }
@@ -471,6 +911,11 @@
 
     __lastKnownToday = todayStr();
     updateCaptureIntakeStatus();
+    if (captureIntakeState.logged) {
+      refreshMedicationDaily({ dayIso, reason: refreshReason }).catch(() => {});
+    } else {
+      renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
+    }
     closeRefreshLog(refreshStatus, refreshDetail, refreshSeverity);
   } catch (err) {
       closeRefreshLog('error', err?.message || err, 'error');
@@ -801,6 +1246,40 @@ const bind = (selectors, onEnter, onEsc) => {
         setActiveVitalsTab(next);
       });
       setActiveVitalsTab(activeVitalsTab);
+    }
+
+    const intakeTabsHost = document.querySelector('.hub-intake-tabs');
+    const intakeTabButtons = document.querySelectorAll('[data-intake-tab]');
+    const intakePanels = document.querySelectorAll('[data-intake-panel]');
+    let activeIntakeTab = 'in';
+    const setActiveIntakeTab = (tab) => {
+      activeIntakeTab = tab;
+      intakeTabButtons.forEach((btn) => {
+        const isActive = btn.getAttribute('data-intake-tab') === tab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+      });
+      intakePanels.forEach((panel) => {
+        const isActive = panel.getAttribute('data-intake-panel') === tab;
+        panel.classList.toggle('is-active', isActive);
+        if (isActive) {
+          panel.hidden = false;
+          panel.removeAttribute('aria-hidden');
+        } else {
+          panel.hidden = true;
+          panel.setAttribute('aria-hidden', 'true');
+        }
+      });
+    };
+    if (intakeTabsHost && intakeTabButtons.length && intakePanels.length) {
+      intakeTabsHost.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-intake-tab]');
+        if (!btn) return;
+        const next = btn.getAttribute('data-intake-tab');
+        if (!next || next === activeIntakeTab) return;
+        setActiveIntakeTab(next);
+      });
+      setActiveIntakeTab(activeIntakeTab);
     }
 
   initTrendpilotCaptureHook();

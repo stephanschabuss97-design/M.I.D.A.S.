@@ -1259,3 +1259,29 @@ Regression
 **Checks**
 - Diagnostics-Flag: `DIAGNOSTICS_ENABLED=false` (Config oder `data-diagnostics-enabled`) zwingt `app/core/diag.js` in den Stub-Modus; die neuen `app/diagnostics/{logger,perf,monitor}.js` melden dann nur den Logger-Boot (keine Heartbeats).
 - Diagnostics-Layer Forwarding: Bei aktivem Flag landen `diag.add`-Events zustzlich in `appModules.diagnosticsLayer.logger.history`, `recordPerfStat` aktualisiert `diagnosticsLayer.perf.snapshot(...)` und das ffnen/Schlieen des Diagnose-Panels toggelt `diagnosticsLayer.monitor` inklusive Heartbeat.
+
+---
+
+## Phase E – Medication Module QA (2025-12-18)
+
+**Scope:** Tablettenmanager (IN/TAB) inklusive Supabase-RPCs, Low-Stock-Box, Safety-Hinweis, CRUD-Formular und Kartenaktionen (Restock/Set/Archive/Delete).
+
+**Smoke**
+- [ ] IN-Tab: Toggle für ein aktives Medikament bestätigt die Einnahme (Toast + `medication:changed`), zweiter Klick zeigt Undo-Dialog und stellt den Bestand wieder her.
+- [ ] Low-Stock-Box erscheint, sobald `days_left <= low_stock_days`; `Erledigt` setzt `med_ack_low_stock` und blendet die Box aus.
+- [ ] Safety-Hinweis springt auf, wenn der Vortag offene Einnahmen hat; Button setzt Datum auf gestern und triggert `maybeRefreshForTodayChange`.
+- [ ] TAB: Neues Medikament anlegen, bestehendes bearbeiten, Speichern deaktiviert/aktiviert den Button korrekt und aktualisiert die Kartenliste ohne Reload.
+- [ ] Kartenaktionen: `Bestand +/-`, `Bestand setzen`, `Archivieren/Reaktivieren` und `Loeschen` führen jeweils zur erwarteten RPC-Aktion und reloaden die Liste.
+
+**Sanity**
+- [ ] Touch-/Diag-Log enthält `[capture:med] refresh …`, `confirm`, `undo`, `low-stock ack` und `safety pending/cleared` Einträge; fehlende Arzt-Mail erzeugt genau einen Warnhinweis.
+- [ ] Manuelles Aktualisieren nutzt den Cache (kein doppelter RPC, solange DayIso unverändert bleibt); `medication:changed` mit passendem `dayIso` aktualisiert die Liste sofort.
+- [ ] Auth-Guard blockiert alle RPCs im IN/TAB-Panel, wenn der Nutzer abgemeldet ist (Placeholder-Texte + Login-Overlay erst bei Aktionen).
+- [ ] TAB-Formular übernimmt `low_stock_days`, `dose_per_day` und `active` korrekt; invalides Delta/Stock wird abgefangen (Status-Text, kein RPC).
+
+**Regression**
+- [ ] Capture-Wasser/Salz/Protein-Flows laufen unverändert (keine zusätzlichen `[capture] refresh` beim Speichern).
+- [ ] Profile-Änderungen aktualisieren weiter nur die benötigten Module (`medication` reagiert ausschließlich auf `profile:changed` für die Arzt-Mail).
+- [ ] Supabase-Fehler (z. B. Netzwerk aus) lassen die App bestehen: IN zeigt Placeholder mit Fehlermeldung, TAB-Formular bleibt editierbar.
+
+---
