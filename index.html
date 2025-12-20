@@ -127,8 +127,19 @@
             <button class="btn ghost" type="button" id="doctorInboxNewReportBtn">
               Neuen Monatsbericht
             </button>
+            <button class="btn ghost" type="button" id="doctorInboxNewRangeReportBtn">
+              Neuen Arzt-Bericht
+            </button>
+            <button class="btn ghost" type="button" id="doctorInboxClearBtn">
+              Inbox löschen
+            </button>
           </div>
         </header>
+        <div class="doctor-inbox-filters" role="tablist" aria-label="Report Filter">
+          <button class="btn ghost is-active" type="button" data-report-filter="all" aria-selected="true">Alle</button>
+          <button class="btn ghost" type="button" data-report-filter="monthly_report" aria-selected="false">Monatsberichte</button>
+          <button class="btn ghost" type="button" data-report-filter="range_report" aria-selected="false">Arzt-Berichte</button>
+        </div>
         <div class="doctor-inbox" id="doctorInboxList">
           <div class="small u-doctor-placeholder">Monatsberichte werden geladen â€¦</div>
         </div>
@@ -887,11 +898,13 @@
                 <button class="btn ghost is-active" id="doctorTabBpBtn" data-doctor-tab="bp" role="tab" aria-selected="true" aria-controls="doctorTabBp" type="button">BP</button>
                 <button class="btn ghost" id="doctorTabBodyBtn" data-doctor-tab="body" role="tab" aria-selected="false" aria-controls="doctorTabBody" type="button">Body</button>
                 <button class="btn ghost" id="doctorTabLabBtn" data-doctor-tab="lab" role="tab" aria-selected="false" aria-controls="doctorTabLab" type="button">Lab</button>
+                <button class="btn ghost" id="doctorTabActivityBtn" data-doctor-tab="activity" role="tab" aria-selected="false" aria-controls="doctorTabActivity" type="button">Training</button>
               </nav>
               <div class="doctor-view" id="doctorView">
                 <div class="doctor-tab-panel is-active" id="doctorTabBp" data-doctor-panel="bp" role="tabpanel" aria-labelledby="doctorTabBpBtn"></div>
                 <div class="doctor-tab-panel" id="doctorTabBody" data-doctor-panel="body" role="tabpanel" aria-labelledby="doctorTabBodyBtn" hidden></div>
                 <div class="doctor-tab-panel" id="doctorTabLab" data-doctor-panel="lab" role="tabpanel" aria-labelledby="doctorTabLabBtn" hidden></div>
+                <div class="doctor-tab-panel" id="doctorTabActivity" data-doctor-panel="activity" role="tabpanel" aria-labelledby="doctorTabActivityBtn" hidden></div>
                 <div class="doctor-tab-panel" id="doctorTabInbox" data-doctor-panel="inbox" role="tabpanel" aria-labelledby="doctorTabInboxBtn" hidden></div>
               </div>
             </div>
@@ -949,6 +962,7 @@
                 <button class="btn ghost is-active" type="button" data-vitals-tab="bp" aria-selected="true">BP</button>
                 <button class="btn ghost" type="button" data-vitals-tab="body" aria-selected="false">Body</button>
                 <button class="btn ghost" type="button" data-vitals-tab="lab" aria-selected="false">Lab</button>
+                <button class="btn ghost" type="button" data-vitals-tab="activity" aria-selected="false">Training</button>
               </div>
               <div class="hub-vitals-panel is-active" data-vitals-panel="bp">
                 <div class="hub-vitals-bp">
@@ -1199,6 +1213,47 @@
               </div>
             </div>
           </div>
+              <div class="hub-vitals-panel" data-vitals-panel="activity" aria-hidden="true" hidden>
+            <div class="hub-vitals-activity card-nested">
+              <form id="activityForm" class="activity-form" autocomplete="off">
+                <div class="activity-form-grid">
+                  <label class="field-group" for="activityName">
+                    <span class="label">Aktivität</span>
+                    <input
+                      type="text"
+                      id="activityName"
+                      placeholder="z. B. Gym"
+                      required
+                    >
+                  </label>
+                  <label class="field-group" for="activityDuration">
+                    <span class="label">Dauer (Minuten)</span>
+                    <input
+                      type="number"
+                      id="activityDuration"
+                      min="1"
+                      inputmode="numeric"
+                      placeholder="z. B. 45"
+                      required
+                    >
+                  </label>
+                </div>
+                <label class="field-group" for="activityNote">
+                  <span class="label">Notiz (optional)</span>
+                  <textarea
+                    id="activityNote"
+                    rows="2"
+                    placeholder="Kurznotiz"
+                  ></textarea>
+                </label>
+                <div class="activity-form-actions">
+                  <button class="btn primary" id="activitySaveBtn" type="submit">Speichern</button>
+                  <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
+                  <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
           </div>
@@ -1245,6 +1300,7 @@
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
   <script src="app/modules/medication/index.js"></script>
+  <script src="app/modules/activity/index.js"></script>
   <script type="module" src="app/modules/assistant/suggest-store.js"></script>
   <script type="module" src="app/modules/assistant/suggest-ui.js"></script>
   <script type="module" src="app/modules/assistant/allowed-actions.js"></script>

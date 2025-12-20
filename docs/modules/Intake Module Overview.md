@@ -1,4 +1,4 @@
-# Intake Module ? Functional Overview
+﻿# Intake Module ? Functional Overview
 
 Kurze Einordnung:
 - Zweck: t?gliche Erfassung von Wasser/Salz/Protein samt Medikamentenstatus im Hub.
@@ -92,6 +92,10 @@ Kurze Einordnung:
 
 ## 8. Events & Integration Points
 
+- Public API / Entry Points: Intake-Panel Buttons, `refreshCaptureIntake`, Medication Toggles.
+- Source of Truth: `captureIntakeState` + Supabase intake RPC.
+- Side Effects: `requestUiRefresh`, Intake/Medication UI refresh.
+- Constraints: Auth erforderlich fuer Save, Tages-Reset per Timer.
 - H?rt auf `medication:changed`, `profile:changed`, `supabase:ready`.
 - Dispatcht Trendpilot/Warnungen via `diag` + `requestUiRefresh` (f?r Lifestyle & andere Module).
 - `document.dispatchEvent(new CustomEvent('medication:changed', ...))` stammt aus dem Medication Modul; Intake invalidiert Cache wenn n?tig.
@@ -114,7 +118,17 @@ Kurze Einordnung:
 
 ---
 
-## 11. QA-Checkliste
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv.
+- Dependencies (hard): Intake RPCs (`health_intake_today`, `saveIntakeTotalsRpc`), `captureIntakeState`, Medication-Modul.
+- Dependencies (soft): Profil-Hausarztkontakt (Mailto), Trendpilot.
+- Known issues / risks: Timer-Resets; Offline/RPC-Fehler; Medication-Snapshot Drift.
+- Backend / SQL / Edge: Intake RPCs/Views, Medication RPCs (`sql/12_Medication.sql`).
+
+---
+
+## 12. QA-Checkliste
 
 - Save/Load Wasser/Salz/Protein (inkl. Kombobutton) f?r heute/gestern.
 - Midnight/Noon Timer testen (State Reset, Pills aktualisieren).
@@ -124,9 +138,10 @@ Kurze Einordnung:
 
 ---
 
-## 12. Definition of Done
+## 13. Definition of Done
 
 - Panel ?ffnet/ schlie?t ohne Fehler, Grid reagiert responsiv.
 - Intake Saves persistieren serverseitig, Pills spiegeln Status.
 - Low-Stock/Sicherheits-Hinweise verhalten sich konsistent mit Medication Profilen.
 - Dokumentation & QA aktualisiert, keine offenen `diag` Errors.
+

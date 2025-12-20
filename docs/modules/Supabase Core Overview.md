@@ -1,102 +1,129 @@
-# Supabase Core – Functional Overview
+ï»¿# Supabase Core - Functional Overview
 
-Dieses Dokument beschreibt das Supabase-Kernsystem des Gesundheits-Loggers. Es dient als Referenz dafür, wie das Supabase-Barrel (`app/supabase/index.js`) aufgebaut ist, welche Untermodule existieren und wie externe Module (`main.js`, Hub, Trendpilot, Capture etc.) mit den APIs interagieren.
-
----
-
-## Access Policy (Phase 1)
-
-- **Supabase-Zugriff erfolgt ausschlie?lich ?ber das Barrel** (`AppModules.supabase`) oder ?ber die Wrapper aus `createSupabaseFn(...)` (`assets/js/main.js`). Direkte Aufrufe auf `window.SupabaseAPI` oder einzelne `window.<fn>`-Globals gelten als deprecated.
-- **Keine neuen Window-Bindings:** State-Werte wie `sbClient`, `authState`, `lastLoggedIn` werden ?ber `SupabaseAPI.supabaseState` bereitgestellt. Legacy-Bindings aus `app/supabase.js` verschwinden, sobald der Proxy gel?scht wird.
-- **Refactor-Tracking:** Fortschritt und Migrations-Status stehen im [Supabase Proxy Refactor Plan](../Supabase%20Proxy%20Refactor%20Plan.md). Jedes Modul, das Supabase nutzt, sollte dort verlinkt bzw. erfasst sein.
+Kurze Einordnung:
+- Zweck: zentrale Aggregation aller Supabase-Subsysteme (Auth, API, Realtime, Core).
+- Rolle innerhalb von MIDAS: stellt ein einheitliches API-Bundle fuer alle Module bereit.
+- Abgrenzung: keine UI, keine Business-Logik, nur Infrastruktur.
 
 ---
 
 ## 1. Zielsetzung
 
-Das Supabase-Core-System bündelt alle Supabase-Funktionen (Auth, REST, RPC, Realtime) in einem gemeinsamen Namespace (`SupabaseAPI` / `AppModules.supabase`). Es soll:
-
-- Einheitliche Wrapper (`fetchWithAuth`, `ensureSupabaseClient`) bereitstellen.
-- Verschiedene API-Bereiche (Intake, Vitals, Notes, Doctor, System-Comments) aggregieren.
-- Realtime/Resume-Mechaniken (Websocket, App-Lock) koordinieren.
-- Ein globales Ready-Event (`supabase:ready`) auslösen, damit andere Module erst nach Initialisierung starten.
+- Problem: ein einziger, stabiler Zugriffspunkt fuer Supabase-Funktionen.
+- Nutzer: System/Module (Capture, Doctor, Hub, Assistant).
+- Nicht Ziel: direkte UI- oder Domain-Logik.
 
 ---
 
-## 2. Modulaufbau (`app/supabase/index.js`)
+## 2. Kernkomponenten & Dateien
 
-### 2.1 Imports / Submodule
-
-Das Barrel importiert folgende Bereiche:
-- `../supabase.js` (Legacy Proxy – wird nach und nach entfernt).
-- Core (`./core/state.js`, `./core/client.js`, `./core/http.js`).
-- Auth (`./auth/index.js`).
-- Realtime (`./realtime/index.js`).
-- Domains: `api/intake.js`, `api/vitals.js`, `api/notes.js`, `api/select.js`, `api/push.js`, `api/system-comments.js`, `api/doctor.js`.
-
-### 2.2 Aggregation
-
-1. `MODULE_SOURCES` enthält Paare `(label, moduleExports)`.
-2. Schleife über alle Exporte ? in `aggregated` schreiben. Bei Namenskonflikt ersetzt neuere Quelle Legacy-Eintrag (Warnung im Log).
-3. Ergebnis = `SupabaseAPI` (Plain Object).
-
-### 2.3 Global Bindings
-
-- `globalWindow.AppModules.supabase = SupabaseAPI`.
-- `window.SupabaseAPI` wird definiert (falls nicht vorhanden).
-- `notifySupabaseReady()` dispatcht Event `supabase:ready`.
-- `SupabaseAPI.isReady = true`, `scheduleSupabaseReady()` sorgt für DOMContentLoaded-Fallback.
-
-### 2.4 Diagnose
-
-- Bei Konflikten: `console.warn('[supabase/index] Duplicate export keys ...')`.
-- Submodule loggen eigene Fehler (z.?B. `system-comments`).
+| Datei | Zweck |
+|------|------|
+| `app/supabase/index.js` | Aggregiert alle Exporte in `SupabaseAPI` |
+| `app/supabase/core/state.js` | Runtime State (Auth, Header Cache, Client) |
+| `app/supabase/core/client.js` | Supabase Client Initialisierung |
+| `app/supabase/core/http.js` | `fetchWithAuth` inkl. Header-Cache/Refresh |
+| `app/supabase/auth/index.js` | Auth-Exports (Core, UI, Guard) |
+| `app/supabase/realtime/index.js` | Realtime-Setup/Teardown |
+| `app/supabase/api/*` | Domain-APIs (Intake, Vitals, Notes, Reports, etc.) |
+| `assets/js/main.js` | Wrapper `createSupabaseFn(...)` fuer Zugriff |
 
 ---
 
-## 3. Wichtige Exports
+## 3. Datenmodell / Storage
 
-- **Core/HTTP:** `fetchWithAuth`, `getHeaders`, `cacheHeaders`, `baseUrlFromRest`.
-- **Auth:** `requireSession`, `watchAuthState`, `afterLoginBoot`, `bindAuthButtons`, `authGuardState`, `setAuthPendingAfterUnlock`.
-- **Realtime:** `setupRealtime`, `teardownRealtime`, `resumeFromBackground` (für Intake/Hub-Resume).
-- **Intake APIs:** `loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`.
-- **Vitals APIs:** `fetchDailyOverview`, `loadBpFromView`, `loadBodyFromView`, `loadLabEventsRange`, `loadLatestLabSnapshot` (liefert die letzte Labor-Messung inkl. abgeleiteter CKD-Stufe, damit Profil/Assistant nicht mehr auf ein manuelles `ckd_stage`-Feld angewiesen sind).
-- **Notes:** `appendNoteRemote`, `deleteRemoteDay`.
-- **System Comments:** `upsertSystemCommentRemote`, `setSystemCommentAck`, `setSystemCommentDoctorStatus`, `fetchSystemCommentsRange`.
-- **Doctor/Trendpilot:** `loadDoctorDailyRange`, `loadTrendpilotBands`, `setTrendpilotAck`.
-
-Andere Module greifen über `createSupabaseFn(name)` (`assets/js/main.js`) darauf zu, sodass Aufrufe bei fehlender API sauber fehlschlagen.
+- `supabaseState` (Runtime): `authState`, `sbClient`, Header-Cache, `lastUserId`.
+- Keine persistente Speicherung im Frontend.
 
 ---
 
-## 4. Initialisierungsfluss
+## 4. Ablauf / Logikfluss
 
-1. `app/supabase/index.js` wird nach Body/Doctor/Capture-Skripten geladen (aber vor Trendpilot/Hellfire).
-2. Sobald das Module ausgeführt ist, ruft es `scheduleSupabaseReady()` ? `supabase:ready`.
-3. Abhängige Module:
-   - Hub (`app/modules/hub/index.js`) ruft `waitForSupabaseApi` bevor Orbit/Guards starten.
-   - `trendpilot/index.js`: wartet auf `supabase:ready`.
-   - `main.js`: nutzt `waitForSupabaseApi()` (Promise + Event).
-   - Charts/Doctor/Capture verwenden `createSupabaseFn(...)`; wenn Supabase noch nicht ready ist, erscheint ein freundlicher Fehler.
+### 4.1 Initialisierung
+- `app/supabase/index.js` baut `SupabaseAPI` aus `MODULE_SOURCES`.
+- `AppModules.supabase = SupabaseAPI` und Legacy-Proxies werden registriert.
+- `supabase:ready` Event signalisiert Verfuegbarkeit.
 
----
+### 4.2 User-Trigger
+- Keine direkten User-Trigger; genutzt durch andere Module.
 
-## 5. Sicherheit & Fehler
+### 4.3 Verarbeitung
+- `fetchWithAuth` fuehrt REST calls mit Auth-Headern aus.
+- `createSupabaseFn` (main.js) kapselt Zugriff und Fehler bei fehlenden Exports.
 
-- Supabase-Keys/URLs werden via App-Config (`getConf('webhookUrl'/'webhookKey')`) gelesen.
-- `fetchWithAuth` erneuert Token bei 401 und loggt Fehler anonymisiert (`maskUid`).
-- HTTP-Aufrufe markieren ihre Tags (z.?B. `systemComment:post`) für Logging/Retry.
-- Guard/Unlock-Flows (`requireDoctorUnlock`, `lockUi`) leben ebenfalls unter Supabase-Core, damit Doctor-Overlay/KI später denselben Pfad nutzen.
+### 4.4 Persistenz
+- Nur in Supabase; Frontend speichert nur Runtime-State.
 
 ---
 
-## 6. Erweiterung / Wartung
+## 5. UI-Integration
 
-1. Neue API-Bereiche (z.?B. KI-Proxy) dem `MODULE_SOURCES`-Array hinzufügen.
-2. Legacy-Dateien (`../supabase.js`) nur noch solange beibehalten, bis Proxy/Hub komplett migriert ist.
-3. Bei Breaking Changes (Supabase SDK, Auth Flow) muss nur das Barrel aktualisiert werden; alle Caller bleiben konstant. Hinweis: Stammdaten wie CKD-Stufe kommen inzwischen ausschlie?lich aus `lab_event`/`v_events_lab`; `user_profile` speichert keine eigene CKD-Spalte mehr.
-4. Dokumentation in QA/Docs aktualisieren (z.?B. Trendpilot/Charts, sobald neue Supabase-Exports benötigt werden).
+- Keine direkte UI.
+- Login-Overlay/Guard lives in Auth-Modul.
 
 ---
 
-Halte dieses Overview aktuell, wenn weitere Submodule hinzugefügt, Legacy-Teile entfernt oder Initialisierungsflüsse geändert werden.
+## 6. Arzt-Ansicht / Read-Only Views
+
+- Supabase liefert Daten, UI liegt in Doctor-Modul.
+
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- Konflikte in `MODULE_SOURCES` werden gewarnt.
+- `fetchWithAuth` loggt und retried bei 401/Timeout.
+- `supabase:ready` feuert nur einmal.
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: `SupabaseAPI` (global), `createSupabaseFn` wrappers.
+- Source of Truth: `supabaseState` + aggregated module exports.
+- Side Effects: dispatches `supabase:ready`, legacy proxies.
+- Constraints: Supabase config required for client init.
+- `supabase:ready` (CustomEvent) fuer Boot-Flow.
+- `createSupabaseFn` in `assets/js/main.js` als Standard-Entry.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- Weitere API-Module an `MODULE_SOURCES` haengen.
+- Legacy-Proxies entfernen nach Migration.
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- Supabase Config via `getConf` in Auth/UI.
+- Keine Supabase-Core Flags (nur Umgebung).
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv.
+- Dependencies (hard): Supabase Config, Core Client/Auth/HTTP, `MODULE_SOURCES`.
+- Dependencies (soft): Realtime (optional).
+- Known issues / risks: fehlende Config; Header-Cache stale; `supabase:ready` Timing.
+- Backend / SQL / Edge: Supabase Projekt.
+
+---
+
+## 12. QA-Checkliste
+
+- `SupabaseAPI` wird global gesetzt.
+- `supabase:ready` Event feuert.
+- `fetchWithAuth` laeuft fuer REST-Aufrufe.
+- `createSupabaseFn` wirft bei fehlenden Exports.
+
+---
+
+## 13. Definition of Done
+
+- Supabase-Core sauber aggregiert.
+- Module greifen nur ueber `SupabaseAPI` zu.
+- Doku aktuell.
+

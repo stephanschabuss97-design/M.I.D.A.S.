@@ -38,12 +38,13 @@ const resolveFunctionsEndpoint = async (functionName) => {
   return `${base}/functions/v1/${safeName}`;
 };
 
-export async function generateMonthlyReportRemote({ from, to, month } = {}) {
+export async function generateMonthlyReportRemote({ from, to, month, report_type } = {}) {
   const endpoint = await resolveFunctionsEndpoint('midas-monthly-report');
   const body = {
     from: from || null,
     to: to || null,
-    month: month || null
+    month: month || null,
+    report_type: report_type || null
   };
   const res = await fetchWithAuth(
     (headers) =>

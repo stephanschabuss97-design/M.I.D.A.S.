@@ -1,100 +1,133 @@
-# Trendpilot Module – Functional Overview
+ï»¿# Trendpilot Module - Functional Overview
 
-Dieses Dokument fasst die komplette Funktionsweise des Trendpilot-Subsystems zusammen. Es dient als „Single Source of Truth“, damit alle Mitwirkenden verstehen, wie das Feature aufgebaut ist, welche Dateien beteiligt sind und welche Abläufe/Abhängigkeiten bestehen – inklusive Integration in den MIDAS Hub.
+Kurze Einordnung:
+- Zweck: Trendanalyse fuer Blutdruck ueber Wochenfenster (Warnungen/Kritisch).
+- Rolle innerhalb von MIDAS: erzeugt System-Kommentare + UI-Hinweise (Capture/Doctor/Charts).
+- Abgrenzung: keine Echtzeit-Spike-Alerts; keine Datenspeicherung ausser System-Comments.
 
 ---
 
 ## 1. Zielsetzung
 
-Der Trendpilot überwacht mittel- bis langfristige Veränderungen im Blutdruckverlauf (Morgen/Abend). Statt einzelne Messspitzen zu melden, beobachtet er Wochenfenster, berechnet Deltas gegenüber einer Baseline und erzeugt System-Kommentare in Supabase. Diese Kommentare erscheinen in der Arzt-Ansicht (Hub-Overlay), im Capture-Header (Pill) und als Hintergrundstreifen im BP-Chart. Kritische Hinweise erzwingen einen Bestätigungsdialog.
+- Problem: mittel- bis langfristige BP-Trends erkennen und sichtbar machen.
+- Nutzer: Patient (Pill/Feedback) und Arzt (Trendpilot-Block).
+- Nicht Ziel: Diagnosen oder Therapieentscheidungen.
 
 ---
 
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|-------|-------|
-| `app/modules/trendpilot/data.js` | Mathematischer Unterbau: Tagesdaten transformieren (`computeDailyBpStats`), Wochen gruppieren, Baselines/Deltas berechnen (`calcMovingBaseline`, `buildTrendWindow`). Enthält Defaults (`TREND_PILOT_DEFAULTS`). |
-| `app/modules/trendpilot/index.js` | Orchestriert Trendanalyse: Hook nach Abend-Save, Supabase-Integration, Dialoganzeige, Pill/Legend Events. Registriert API (`AppModules.trendpilot`). |
-| `app/supabase/api/system-comments.js` | REST-Client für `health_events`: erstellt/patcht `system_comment`-Einträge, verwaltet Ack/Doctor-Status im JSON-Payload (`context.ack`, `context.doctorStatus`). |
-| `app/supabase/api/doctor.js` | Liefert Trendpilot-Bänder und Daily-Range für Chart/Doctor (REST Views). |
-| `assets/js/main.js` | Bindet den Capture-Hook (`maybeRunTrendpilotAfterBpSave`) und loggt Fehler. |
-| `app/modules/capture/index.js` | Zeigt im Hub-Header eine Trendpilot-Pill (Severity, Datum, Kurztext); reagiert auf `trendpilot:latest`. |
-| `app/modules/doctor/index.js` | Rendert den Trendpilot-Hinweisblock im Hub-Overlay, lädt Range, bietet Status-Buttons. |
-| `app/modules/charts/index.js` + Styles | Zeichnen Trendpilot-Hintergrundbänder und Legende im BP-Chart. |
-| `docs/Trendpilot Roadmap (Manual).md` | Roadmap & QA-Checkliste. |
+|------|------|
+| `app/modules/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
+| `app/modules/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
+| `app/supabase/api/system-comments.js` | Persistenz fuer `system_comment` (Ack/Status) |
+| `app/modules/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |
+| `app/modules/capture/index.js` | Capture-Pill + `trendpilot:latest` Hook |
+| `app/modules/charts/index.js` | Trendpilot-Bands im BP-Chart |
+| `app/styles/doctor.css` | Trendpilot-Block Styling |
+| `app/styles/ui.css` | Trendpilot-Dialog/Overlay Styling |
 
 ---
 
-## 3. Ablauf / Speicherfluss
+## 3. Datenmodell / Storage
 
-### 3.1 Feature-Flag
-
-`TREND_PILOT_ENABLED` (Config oder `localStorage`) steuert, ob `app/modules/trendpilot/index.js` initialisiert. Ist das Flag aus, bleibt nur die Stub-API aktiv (keine Hinweise, keine Fehler).
-
-### 3.2 Capture ? Hook
-
-1. Nutzer erfasst Abendmessung und klickt „Blutdruck speichern“.
-2. Nach erfolgreichem Save ruft `maybeRunTrendpilotAfterBpSave('A')` ? `runTrendpilotAnalysis(dayIso)`.
-3. Analyse-Pipeline:
-   - Normalisiert Datum (`normalizeDayIso`).
-   - Holt Tages-/Wochenfenster via `loadDailyStats` ? `fetchDailyOverview` ? `buildTrendWindow`.
-   - Berechnet Baseline vs. aktuelle Woche, prüft Mindestanzahl Wochen.
-   - Severity-Einstufung über `classifyTrendDelta` (`info | warning | critical`).
-   - `warning/critical`: `persistSystemComment` ? `upsertSystemCommentRemote` (Ack=false, DoctorStatus=none), danach Dialog ? `setSystemCommentAck`.
-   - `info`: Toast „Trend stabil“ (kein System-Kommentar).
-
-### 3.3 Supabase / System Comments
-
-- Tabelle `health_events`, `type='system_comment'`.
-- Subtypes: `warning` / `critical` (Trendpilot) plus `monthly_report` (read-only archive entries; never used as AI input).
-- Ack/Doctor-Status liegen in `payload.context` (`{ ack: boolean, doctorStatus: 'none'|'planned'|'done' }`).
-- API-Funktionen: `fetchSystemCommentsRange`, `upsertSystemCommentRemote`, `setSystemCommentAck`, `setSystemCommentDoctorStatus`.
-
-### 3.4 Anzeige
-
-1. **Capture-Pill (Hub-Header)**
-   - `capture/index.js` hört auf `trendpilot:latest` Events (dispatch bei Init/Refresh).
-   - Zeigt severitybasierte Pill (`warn`/`bad`), Datum, Kurztext; versteckt sich bei fehlendem Eintrag.
-
-2. **Arzt-Ansicht (Hub-Overlay)**
-   - `doctor/index.js` lädt `fetchSystemCommentsRange` für den ausgewählten Zeitraum.
-   - Trendpilot-Sektion zeigt Einträge (Datum, Severity-Badge, Ack-/Doctor-Status). Buttons patchen Supabase.
-
-3. **Chart**
-   - `charts/index.js` ruft `loadTrendpilotBands` (API `doctor.js`), zeichnet transluzente Tag-Streifen + Legende.
-
-4. **Dialog & Toasts**
-   - Kritische Meldungen ? Modal mit Text, Deltas, „Zur Kenntnis genommen“ (Ack-Pflicht).
-   - Stabil/not enough data ? Toast + `diag.add`.
+- Tabelle: `health_events`
+- Typ: `system_comment`
+- Payload-Context: `ack`, `doctorStatus`.
+- Subtypes: `warning`, `critical` (Trendpilot).
 
 ---
 
-## 4. Fehler-/Diagnoseverhalten
+## 4. Ablauf / Logikfluss
 
-- Dependency Logging: Fehlen Supabase-Exports, schreibt `trendpilot/index.js` eine Warnung (`diag.add`).
-- „Not enough data“: diag + Toast, kein Systemkommentar; läuft automatisch weiter, sobald genug Wochen vorhanden sind.
-- REST/Netzwerkfehler: `[doctor] trendpilot fetch failed ...` oder `[trendpilot] persist failed ...` im Touch-Log.
-- Hook-Fehler: `maybeRunTrendpilotAfterBpSave` fängt Exceptions, schreibt `[trendpilot] hook failed`.
+### 4.1 Initialisierung
+- Trendpilot initialisiert via `app/modules/trendpilot/index.js`.
+- Stub-API, wenn Abhaengigkeiten fehlen.
 
----
+### 4.2 User-Trigger
+- BP-Abendsave triggert `maybeRunTrendpilotAfterBpSave` (main.js).
 
-## 5. Erweiterungspunkte / Zukunft
+### 4.3 Verarbeitung
+- `runTrendpilotAnalysis(dayIso)` berechnet Wochenfenster + Deltas.
+- Severity: `info | warning | critical`.
+- `warning/critical` -> `system_comment` schreiben + Ack-Dialog.
 
-- KI-generierte Texte (Phase 2) – Supabase-`payload` könnte `text_llm` enthalten, orchestriert durch Zeus/LLM.
-- Weitere Metriken (Gewicht, Waist) lassen sich analog einbinden (Trendpilot-API arbeitet pro Metric).
-- Zusätzliche UI-Hinweise (z.?B. Einzelspitzen) über Toasts oder Chart-Layer.
-
----
-
-## 6. Checkliste
-
-1. **Flag aktiv?** (`TREND_PILOT_ENABLED = true`).
-2. **Genug Wochen (>4)?** Sonst nur Toast und kein Kommentar.
-3. **Supabase-Exports vorhanden?** `fetchSystemCommentsRange`, `upsertSystemCommentRemote`, `setSystemCommentAck`, `setSystemCommentDoctorStatus`.
-4. **Netzwerk korrekt?** `webhookUrl`/`Key` vorhanden; 400er deuten meist auf Filter- oder JSON-Fehler hin.
-5. **UI sync?** Nach neuem Kommentar `trendpilot:latest` dispatchen, damit Capture-Pill, Hub-Overlay und Chart aktualisiert werden.
+### 4.4 Persistenz
+- `upsertSystemCommentRemote` speichert `system_comment`.
+- `setSystemCommentAck` setzt Ack-Flag nach Dialog.
 
 ---
 
-Dieses Dokument bitte aktualisieren, sobald neue Metriken, KI-Texte oder Hub-spezifische Features hinzukommen.
+## 5. UI-Integration
+
+- Capture-Pill zeigt letzte Trendpilot-Meldung.
+- Doctor-Ansicht listet Trendpilot-Hinweise.
+- BP-Chart zeigt Trendpilot-Bands + Legende.
+
+---
+
+## 6. Arzt-Ansicht / Read-Only Views
+
+- Trendpilot-Block mit Severity, Datum, Status-Buttons.
+- Ack/Status via `setSystemCommentDoctorStatus`.
+
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- `diag.add` bei fehlenden Dependencies oder Netzwerkfehlern.
+- Not enough data -> Toast, kein Kommentar.
+- Hook-Fehler -> `[trendpilot] hook failed`.
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: `AppModules.trendpilot.runTrendpilotAnalysis`, `refreshLatestSystemComment`.
+- Source of Truth: `system_comment` entries (trendpilot subtype).
+- Side Effects: emits `trendpilot:latest`, opens ack dialog.
+- Constraints: braucht genug Wochen Daten, depende on Supabase exports.
+- `trendpilot:latest` Event fuer Capture-Pill.
+- `fetchSystemCommentsRange` fuer Doctor-Block.
+- `loadTrendpilotBands` fuer Charts.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- Weitere Metriken (Body/Weight).
+- KI-Textgenerierung im Payload.
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- `TREND_PILOT_ENABLED` (Config/LocalStorage).
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv (BP-only).
+- Dependencies (hard): BP-Daten, `system_comment` Storage, Capture/Doctor/Charts Integration.
+- Dependencies (soft): n/a.
+- Known issues / risks: braucht genug Daten; false positives; Flag `TREND_PILOT_ENABLED` deaktivierbar.
+- Backend / SQL / Edge: `system_comment` in `health_events`, API `app/supabase/api/system-comments.js`.
+
+---
+
+## 12. QA-Checkliste
+
+- Genug Wochen -> Systemkommentar erstellt.
+- Warning/Critical zeigen Dialog.
+- Capture-Pill/Doctor/Chart synchron.
+
+---
+
+## 13. Definition of Done
+
+- Trendpilot erzeugt konsistente System-Kommentare.
+- UI an allen Stellen synchron.
+- Doku aktuell.
+

@@ -106,6 +106,8 @@ const normalizeSystemCommentRow = (row = {}, fallbackMetric = 'bp') => {
     reportMonth: payload.month || null,
     reportCreatedAt: payload.created_at || null,
     subtype: payload.subtype || null,
+    period: payload.period || null,
+    reportType: payload.report_type || payload.subtype || null,
     context: ctx
   };
 };
@@ -285,6 +287,31 @@ export async function deleteSystemComment({ id }) {
     throw new Error(`system-comment delete failed ${res.status} ${msg}`);
   }
   return { id, mode: 'delete' };
+}
+
+export async function deleteSystemCommentsBySubtypes({ subtypes } = {}) {
+  const list = Array.isArray(subtypes)
+    ? subtypes.map((value) => String(value).trim()).filter(Boolean)
+    : [];
+  if (!list.length) throw new Error('system-comment bulk delete: subtypes required');
+  const userId = await getUserId();
+  if (!userId) throw new Error('system-comment bulk delete: user not available');
+  const endpoint = await resolveRestEndpoint();
+  const subtypeFilter = `payload->>subtype=in.(${list.join(',')})`;
+  const url = `${endpoint}?user_id=eq.${encodeURIComponent(userId)}&type=eq.system_comment&${subtypeFilter}`;
+  const res = await fetchWithAuth(
+    (headers) =>
+      fetch(url, {
+        method: 'DELETE',
+        headers: { ...headers, Prefer: 'return=minimal' }
+      }),
+    { tag: 'systemComment:bulk-delete', maxAttempts: 1 }
+  );
+  if (!res.ok) {
+    const msg = await safeErrorMessage(res);
+    throw new Error(`system-comment bulk delete failed ${res.status} ${msg}`);
+  }
+  return { mode: 'bulk-delete', subtypes: list };
 }
 
 const safeErrorMessage = async (res) => {

@@ -1,6 +1,6 @@
-Future Module Overview Template
+﻿Future Module Overview Template
 
-# <Module Name> – Functional Overview
+# <Module Name> â€“ Functional Overview
 
 Kurze Einordnung:
 - Zweck des Moduls
@@ -11,8 +11,8 @@ Kurze Einordnung:
 
 ## 1. Zielsetzung
 
-- Welches Problem löst das Modul?
-- Für wen (User / Arzt / System)?
+- Welches Problem lÃ¶st das Modul?
+- FÃ¼r wen (User / Arzt / System)?
 - Was ist explizit **nicht** Ziel dieses Moduls?
 
 ---
@@ -26,15 +26,15 @@ Kurze Einordnung:
 | `app/supabase/api/...` | Supabase API / RPC Wrapper |
 | `assets/js/...` | Hooks / Event-Integration |
 | `app/styles/...` | Modul-spezifische Styles |
-| `sql/..` | Zugehörige SQL / Views / RPCs |
-| `docs/...` | Weiterführende Doku / Roadmaps |
+| `sql/..` | ZugehÃ¶rige SQL / Views / RPCs |
+| `docs/...` | WeiterfÃ¼hrende Doku / Roadmaps |
 
 ---
 
 ## 3. Datenmodell / Storage
 
 - Verwendete Tabellen
-- Zentrale Felder (Kurzüberblick)
+- Zentrale Felder (KurzÃ¼berblick)
 - Beziehungen zu anderen Tabellen
 - Besonderheiten (Constraints, JSON Payloads, Flags)
 
@@ -45,7 +45,7 @@ Kurze Einordnung:
 ### 4.1 Initialisierung
 - Wann wird das Modul geladen?
 - Feature-Flag oder immer aktiv?
-- Abhängigkeiten zu Auth / State
+- AbhÃ¤ngigkeiten zu Auth / State
 
 ### 4.2 User-Trigger
 - Welche User-Aktionen starten Logik?
@@ -54,7 +54,7 @@ Kurze Einordnung:
 ### 4.3 Verarbeitung
 - Zentrale Berechnungen
 - Validierungen
-- Zustandsänderungen
+- ZustandsÃ¤nderungen
 
 ### 4.4 Persistenz
 - Welche Daten werden gespeichert?
@@ -74,9 +74,9 @@ Kurze Einordnung:
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Welche Informationen sind für Ärzt:innen relevant?
+- Welche Informationen sind fÃ¼r Ã„rzt:innen relevant?
 - Darstellung (Listen, Pills, Charts, Summary)
-- Filter / Zeiträume
+- Filter / ZeitrÃ¤ume
 
 ---
 
@@ -91,8 +91,12 @@ Kurze Einordnung:
 
 ## 8. Events & Integration Points
 
+- Public API / Entry Points:
+- Source of Truth:
+- Side Effects:
+- Constraints:
 - Custom Events (`module:changed`)
-- Abhängigkeiten zu anderen Modulen
+- AbhÃ¤ngigkeiten zu anderen Modulen
 - Reaktion auf externe Events (z. B. Date-Change)
 
 ---
@@ -113,18 +117,29 @@ Kurze Einordnung:
 
 ---
 
-## 11. QA-Checkliste
+## 11. Status / Dependencies / Risks
+
+- Status:
+- Dependencies (hard):
+- Dependencies (soft):
+- Known issues / risks:
+- Backend / SQL / Edge:
+
+---
+
+## 12. QA-Checkliste
 
 - Kernfunktion getestet?
-- Edge-Cases geprüft?
+- Edge-Cases geprÃ¼ft?
 - UI synchron?
 - Daten konsistent?
 
 ---
 
-## 12. Definition of Done
+## 13. Definition of Done
 
-- Modul lädt fehlerfrei
+- Modul lÃ¤dt fehlerfrei
 - Keine offenen Logs / Errors
 - Dokumentation aktuell
 - Integration getestet
+

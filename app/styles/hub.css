@@ -1253,6 +1253,60 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 0;
 }
 
+.hub-vitals-activity {
+  position: relative;
+  margin-top: 12px;
+}
+
+.hub-vitals-activity .activity-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-vitals-activity .activity-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.hub-vitals-activity .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hub-vitals-activity .field-group .label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hub-vitals-activity input,
+.hub-vitals-activity textarea {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(10, 12, 22, 0.65);
+  color: #fff;
+  padding: 10px 12px;
+}
+
+.hub-vitals-activity input:focus-visible,
+.hub-vitals-activity textarea:focus-visible {
+  outline: none;
+  border-color: rgba(79, 157, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+}
+
+.hub-vitals-activity .activity-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
 .hub-vitals-lab .lab-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

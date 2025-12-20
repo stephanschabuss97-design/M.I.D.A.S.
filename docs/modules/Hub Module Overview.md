@@ -1,108 +1,134 @@
-# Hub Module – Functional Overview
+﻿# Hub Module - Functional Overview
 
-Dieses Dokument beschreibt das MIDAS-Hub-Modul, den zentralen Einstiegspunkt für das Hero-Interface. Nach dem Umbau (Ringelspiel-Karussell, Quickbar-Swipe, Panel-Lock) dient es als Referenz für Aufbau, Zuständigkeiten und Erweiterungen.
-
----
-
-## 1. Scope & Entry Points
-
-| Typ            | Datei/Beschreibung |
-| -------------- | ------------------ |
-| Entry Script   | `app/modules/hub/index.js` – aktiviert Hub-Layout, bindet Carousel/Quickbar, steuert Panels |
-| Stylesheet     | `app/styles/hub.css` – Aura/Ring-Layer, Carousel-Slot, Quickbar-Transitions, Panel-Look |
-| Markup-Anker   | `<section class="hub" id="captureHub">` in `index.html` mit Carousel-Slot + Panels |
-
-Das Hub ersetzt die klassische Tab-Navigation und dient als Launcher für Intake-, Vitals-, Doctor-Panel sowie künftige KI-Module.
+Kurze Einordnung:
+- Zweck: Zentrales Hub-Interface (Orbit, Panels, Quickbar) als Hauptnavigation.
+- Rolle innerhalb von MIDAS: oeffnet Panels, orchestriert UI-Flow, Voice-Gate, Assistant-Flow.
+- Abgrenzung: keine eigenen Datenmodelle, keine Persistenz.
 
 ---
 
-## 2. Verantwortlichkeiten
+## 1. Zielsetzung
 
-1. **Hero-Aktivierung**
-   - Setzt `hub-mode` auf `<body>` (versteckt alte Capture-Header) und verschiebt Intake-Pills in den Hero (`moveIntakePillsToHub`).
-2. **Panel-/Carousel-Steuerung**
-   - Buttons mit `data-hub-module` öffnen Panels (`hub-panel` Sektionen).
-   - `setupCarouselController()` verwaltet das Ringelspiel (ein Icon in der Mitte, Swipe/Key Navigation, Animationsklassen).
-   - `setupCarouselGestures()` misst Swipe-Geschwindigkeit und gibt dem Karussell Momentum (max. 1 zusätzlicher Schritt, respektiert `prefers-reduced-motion`).
-   - `setupIconBar()` synchronisiert `aria-pressed`, handhabt Click/ESC, schließt Panels sauber.
-3. **Quickbar/Vertical Layer**
-   - `setupQuickbar()` koppelt Swipe-Up/Down und Buttons (`data-hub-module` + `data-quickbar-action`), animiert per CSS (`--hub-y-offset`, Blur/Scale).
-4. **Orbit-Hotspots (Legacy)**
-   - `setupOrbitHotspots()` existiert weiterhin, wird aber nur noch aktiv, wenn Buttons mit `data-orbit-pos` versehen sind (derzeit deaktiviert). Dient als Fallback, falls spätere Orbit-Flächen reaktiviert werden.
-4. **Datum & Status**
-   - Date-Pill bleibt Single Source of Truth (`#date` Input); Vitals zeigt Inline-Datepicker.
-   - Intake-Pills zeigen nur Werte (keine Ampelfarben), geliefert vom Capture-Modul.
-5. **Modal/Accessibility**
-   - Panels behalten Fokus, ESC schließt.
-   - Buttons sind echte `<button>`-Elemente mit ARIA-Labels; sichtbare "??" wurden entfernt.
+- Problem: konsistente Panel-Navigation und zentrale UI fuer Capture/Doctor/Assistant.
+- Nutzer: Patient (Navigation) und System (UI-Flow).
+- Nicht Ziel: Datenverarbeitung oder Supabase-Logik.
 
 ---
 
-## 3. Carousel & Legacy-Orbit
+## 2. Kernkomponenten & Dateien
 
-- **Carousel:** Die sichtbaren Module liegen alle im zentralen Slot (`.hub-carousel .hub-icon`). `setupCarouselController` blendet jeweils genau ein Icon ein; Richtungswechsel steuern animierte Klassen (`hub-icon-anim-enter/exit-*`) und lösen das passende Panel aus. Seit V1.7.6 sind die Orbit-Icons deutlich größer (`clamp(288px, 48vw, 576px)`), sodass kein separates „Showtime“-Sprite mehr nötig ist; das Idle-Sprite (`.hub-orb-fg`) blendet aus, sobald das Karussell aktiv ist.
-- **Momentum:** Swipe-Gesten über den Orbit messen Distanz/Zeit; schnelle Swipes lösen ein kurzes Nachschwingen (ein zusätzlicher `shiftCarousel`-Schritt) aus. Neue Eingaben oder `prefers-reduced-motion` deaktivieren das Momentum sofort.
-- **Legacy-Orbit:** Das Objekt `ORBIT_BUTTONS` und `setupOrbitHotspots` verbleiben als Fallback für verborgene Flächen. Da die Carousel-Buttons keine `data-orbit-pos` mehr besitzen, greift die alte Positionierung nicht mehr – ein versehentliches „Riesenrad“ ist damit ausgeschlossen. Die unsichtbaren Orbit-Schaltflächen bleiben im DOM, sind aber nicht verdrahtet; sie können später wieder aktiviert werden, indem `data-orbit-pos` gezielt gesetzt und `setupOrbitHotspots` reaktiviert wird.
-
----
-
-## 4. Panel-Verhalten
-
-| Panel        | Markup                                             | Trigger                    | Besonderheit                                  |
-| ------------ | -------------------------------------------------- | -------------------------- | --------------------------------------------- |
-| Intake       | `<section id="hubIntakePanel" data-hub-panel="intake">` | `data-hub-module="intake"` | Migration des alten Accordions                |
-| Vitals       | `data-hub-panel="vitals"`                          | `data-hub-module="vitals"` | Datum + BP/Körper Formulare inline            |
-| Doctor       | `data-hub-panel="doctor"`                          | `data-hub-module="doctor"` | Biometrie-Check (`ensureDoctorUnlocked`)      |
-| Chart        | `#chart` Panel (SVG)                               | `data-hub-module="chart"`  | Öffnet Doctor-Panel im Chart-Modus            |
-| Quickbar     | `<div id="hubQuickbar">`                           | Swipe Up / Buttons         | Mini-Buttons (Ringelspiel-IDs); Touch-Log per Action |
-| Legacy Orbit | `disabled` Buttons mit `data-orbit-pos`            | (derzeit unverkabelt)      | Platzhalter für zukünftige kreisförmige Module |
-
-Panels bleiben im DOM; das Hub blendet sie nur ein/aus. Panels öffnen/ schließen mit Zoom-Animation, bleiben bis Animation-Ende sichtbar.
+| Datei | Zweck |
+|------|------|
+| `app/modules/hub/index.js` | Hub-Controller (Panels, Carousel, Quickbar, Voice) |
+| `app/modules/hub/hub-aura3d.js` | Aura-Canvas (3D/Noise) |
+| `app/modules/hub/vad/vad.js` | Voice Activity Detection (Auto-Stop) |
+| `app/modules/hub/vad/vad-worklet.js` | AudioWorklet fuer VAD |
+| `app/styles/hub.css` | Hub-Layout, Panels, Voice-States |
+| `index.html` | Hub-Markup (Orbit, Panels, Quickbar) |
 
 ---
 
-## 5. Styling Highlights (hub.css)
+## 3. Datenmodell / Storage
 
-- **Background**: freigestelltes PNG `assets/img/midas_background.PNG` in `.hub-orb-bg`; Aura + Gold-Ring laufen als eigenständige Layer.
-- **Living Aura Layer**: Ein Canvas (`#hubAuraCanvas`) sitzt zwischen Hintergrund und Foreground. `app/modules/hub/hub-aura3d.js` rendert die Partikel (Three.js) und exponiert `getAuraConfig()`, `configureAura3D(partialConfig)` sowie `resetAuraConfig()`. Damit können Sweep-Impulse, Noise oder Boundary-Dämpfung live feinjustiert oder komplett deaktiviert werden (`configureAura3D({ enabled: false })` stoppt Renderer, `{ enabled: true }` startet ihn erneut).
-- **Carousel Slot**: `.hub-carousel .hub-icon` sitzt absolut im Zentrum; Richtungswechsel nutzen Animationsklassen (`hub-icon-anim-enter/exit-left/right/fade`). Die Icons sind groß skaliert (`clamp(288px, 48vw, 576px)`), damit sie das Orb alleine füllen.
-- **Quickbar**: Blur-Bubble mit Ease-Out-Transition (Scale + Translate). Swipe-Up verschiebt den gesamten Hub (`--hub-y-offset`) und hält die MIDAS-Kernidentität sichtbar; Buttons liegen auf einer responsiven Grid-Fläche (Mindestens 2 Spalten auf Mobile, mehr Zeilen bei Bedarf) statt eines horizontalen Scrollers.
-- **Panel Look**: zentrierte Overlays mit Zoom-In/Out (`hub-panel-zoom-*`), Milchglas-Lock via `body:has(.hub-panel.is-visible)`.
-- **Locking & Voice Gate**: Aktiviertes Panel dimmt Orbit, blockt Buttons; Voice-Gate (CSS `body.voice-locked`) zeigt weiterhin den Sicherheitszustand der Sprachsteuerung.
-
-### Voice Safety Gate (Phase 0.4)
-
-- JS (`app/modules/hub/index.js`) stellt `AppModules.hub.getVoiceGateStatus/isVoiceReady/onVoiceGateChange` bereit. Gate ist offen, sobald `bootFlow.isStageAtLeast('IDLE') && supabaseState.authState !== 'unknown'`.
-- CSS nutzt `body.voice-locked` + `.hub-core-trigger.is-voice-locked`, um die Nadel zu dimmen, Pointer-Events zu blockieren und den Hinweis „Voice aktiviert sich nach dem Start“ einzublenden.
-- Falls Auth während einer Session zurück auf `unknown` fällt, der Gate Listener stoppt Recorder, VAD, Streams und schreibt `[voice] gate locked` in `diag`.
+- Kein Storage.
+- Hub nutzt bestehende Module (Capture, Doctor, Assistant) fuer Daten.
 
 ---
 
-## 6. Datenabhängigkeiten
+## 4. Ablauf / Logikfluss
 
-- **Intake State** – Pills & Tageswerte kommen aus dem Capture-Modul (keine extra API).
-- **Vitals/Doctor** – Reuse der Module; Hub koordiniert nur UI.
-- **Datum** – einziges Input `#date`; Orbit-Pill entfernt, Vitals zeigt Inline-Datepicker.
-- **Keine direkten Supabase-Calls** – Hub leitet nur zu bestehenden Modulen weiter.
+### 4.1 Initialisierung
+- Hub initialisiert Carousel, Quickbar, Panels, Voice-Flow.
+- Panels bleiben im DOM und werden nur ein-/ausgeblendet.
+
+### 4.2 User-Trigger
+- Orbit-Buttons (`data-hub-module`) oeffnen Panels.
+- Quickbar-Buttons oeffnen Panels oder Aktionen.
+- Voice-Trigger ueber `assistant-voice` Button.
+
+### 4.3 Verarbeitung
+- `setupIconBar` bindet Panel-Buttons und schliesst Panels.
+- `setupCarouselController` verwaltet aktives Hub-Icon.
+- `setupQuickbar` steuert verticale UI-Shift.
+- Voice-Flow: Recording -> Transcribe -> Assistant -> TTS.
+
+### 4.4 Persistenz
+- Keine Persistenz.
 
 ---
 
-## 7. Erweiterungen & TODOs
+## 5. UI-Integration
 
-1. **Speichen komplettieren** – KI Voice, Training, Termine sollen echte Panels bekommen.  
-2. **Spriting/States** – spätere Idle/Thinking/Voice-Sprites können über `.hub-orb-fg` ergänzt werden.  
-3. **Konfigurierbare Orbit-Buttons** – z. B. JSON-Config, um Reihenfolge auszutauschen.  
-4. **A11y** – Fokus-Ring + ARIA-States für Panels (z. B. `aria-expanded`).  
-5. **SVG-Option** – Mit echtem SVG des Logos könnte der Radial-Algorithmus Pfad-Koordinaten nutzen.
+- Hub ist zentrales Overlay mit Aura/Orbit und Panels.
+- Panels: Intake, Vitals, Doctor, Profile, Appointments, Assistant.
+- Voice-States steuern Visuals (`data-voice-state`).
 
 ---
 
-## 8. Quickstart für Änderungen
+## 6. Arzt-Ansicht / Read-Only Views
 
-1. **Carousel-Button hinzufügen** – in `index.html` neuen `<button class="hub-icon" data-hub-module="...">` innerhalb `.hub-carousel` platzieren (kein `data-orbit-pos` nötig).  
-2. **Panel bauen** – neue `<section class="hub-panel" data-hub-panel="...">` anlegen oder bestehendes Panel erweitern.  
-3. **Script erweitern** – `setupIconBar` / `CAROUSEL_MODULES` in `hub/index.js` ergänzen (Mapping `id → panel`).  
-4. **Quickbar ergänzen** – optional Button mit `data-hub-module` oder `data-quickbar-action` hinzufügen (nutzt dasselbe Handler-Mapping).  
-5. **Styles anpassen** – `hub.css` nur für neue Icons/States pflegen (Aura/Carousel/Quickbar nutzen CSS-Variablen statt Inline-Stile).  
+- Hub oeffnet die Arzt-Ansicht und steuert den Unlock-Flow.
+- Chart-Button oeffnet Chart-Panel im Doctor-Kontext.
 
-Damit ist das Hub-Modul dokumentiert; neue Entwickler finden damit schnell Einstieg und Kontext.
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- Fehler werden in `diag.add` und Konsole geloggt.
+- Voice-Gate blockt bei Auth/Boot-Status.
+- Panel-Open/Close schreibt Diagnoselog bei Fehlern.
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: `AppModules.hub.openPanel`, `openDoctorPanel`, hub buttons (`data-hub-module`).
+- Source of Truth: Hub DOM state (active panel), voice gate status.
+- Side Effects: toggles body classes, voice state updates, panel open/close logs.
+- Constraints: Doctor unlock required for doctor panel, voice gate blocks voice.
+- `requestUiRefresh({ doctor: true })` nach Panel-Aktionen.
+- `assistant:action-*` Events werden im Hub verarbeitet.
+- Voice-Gate API: `getVoiceGateStatus` / `onVoiceGateChange`.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- Reaktivierung von Orbit-Hotspots.
+- Mehr Panel-Module oder Quickbar-Aktionen.
+- Feinere Voice-States/Animationen.
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- `DEV_ALLOW_DEFAULTS` (Debug/Defaults).
+- Panel-Performance via `body[data-panel-perf]`.
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv.
+- Dependencies (hard): Hub DOM/Styles, Hub-Controller, Auth-Guard fuer Doctor, Assistant fuer Voice.
+- Dependencies (soft): zusaetzliche Panels (Future).
+- Known issues / risks: fehlende DOM Hooks; Voice-Gate; UI-State Drift.
+- Backend / SQL / Edge: n/a.
+
+---
+
+## 12. QA-Checkliste
+
+- Orbit-Buttons oeffnen/close Panels korrekt.
+- Quickbar oeffnet/schliesst per Swipe.
+- Voice-Gate blockt Voice-Trigger bei `authState=unknown`.
+- Doctor-Panel oeffnet nur nach Unlock.
+
+---
+
+## 13. Definition of Done
+
+- Hub-Navigation stabil ohne Errors.
+- Voice-Flow funktioniert inklusive Auto-Stop.
+- Dokumentation aktuell.
+

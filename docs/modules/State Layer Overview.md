@@ -1,95 +1,141 @@
-# State Layer ñ Functional Overview
+Ôªø# State Layer - Functional Overview
 
-Dieses Dokument listet die zentralen globalen States, Timer und Cache-Objekte des Gesundheits-Loggers auf. Ziel ist eine klare ‹bersicht, wo welche Daten auﬂerhalb der Komponenten gespeichert werden ñ insbesondere jetzt, da der MIDAS Hub Panels und Locks steuert, aber weiterhin auf die gleichen State-Layer zugreift.
-
----
-
-## 1. Capture / Intake State (`app/core/capture-globals.js`)
-
-| Variable / Helper | Beschreibung |
-|-------------------|--------------|
-| `captureIntakeState` | `{ logged, dayIso, totals: { water_ml, salt_g, protein_g } }` ñ Tagesstatus, den Hub-Panels und Pills lesen. |
-| `__lsTotals` | Kopie der Intake-Totals f¸r Lifestyle-/Trendpilot-Funktionen. |
-| `__dateUserSelected` | Bool, ob der Nutzer ein anderes Datum gew‰hlt hat (verhindert Auto-Reset). |
-| `__lastKnownToday` | Zuletzt bekannter ISO-Tag Ñheuteì (f¸r Day-Change Detection). |
-| `__bpUserOverride` | Bool, ob BP-Kontext manuell gesetzt wurde (stoppt Noon-Switch). |
-| `__midnightTimer`, `__noonTimer`, `__dayHeartbeat` | Timer-IDs f¸r Midnight-Reset, Noon-Switch, optionalen Heartbeat. |
-| `__intakeResetDoneFor` | ISO-Day, f¸r den bereits ein Reset ausgef¸hrt wurde. |
-| `__bpPanesCache` | Cache der BP-Panels (DOM-Referenzen) zur Performance. |
-| `__lastUserId` | Letzter bekannter Supabase-User ñ wichtig f¸r Logout-Reset. |
-
-Getter/Setter wie `setMidnightTimer`, `getDateUserSelected` usw. sorgen daf¸r, dass alle Module stets dieselbe Referenz verwenden (auch der Hub).
+Kurze Einordnung:
+- Zweck: zentrale In-Memory-States, Timer und Caches, die moduluebergreifend genutzt werden.
+- Rolle innerhalb von MIDAS: stellt gemeinsame Flags/Status bereit (Capture, Doctor, Trendpilot, Charts, Supabase).
+- Abgrenzung: keine Persistenz, keine Business-Logik, kein UI-Rendering.
 
 ---
 
-## 2. UI Refresh State (`assets/js/main.js`)
+## 1. Zielsetzung
 
-| State | Beschreibung |
-|-------|--------------|
-| `uiRefreshState` | `{ running, timer, docNeeded, chartNeeded, lifestyleNeeded, appointmentsNeeded, resolvers, lastReason }`. |
-| `uiRefreshTimeoutSymbol` | Symbol f¸r Timeout-Diagnose im Touch-Log. |
-| `uiRefreshState.reasons` | Set aller Refresh-Gr¸nde (z.?B. `boot:initial`, `panel:bp`). |
-
-Dieser State b¸ndelt Refresh-Requests (auch aus dem Hub) und f¸hrt die Steps sequentiell aus.
+- Problem: konsistente globale Zustandswerte fuer mehrere Module bereitstellen.
+- Nutzer: System/Module (keine direkte Nutzerinteraktion).
+- Nicht Ziel: Datenbank-Speicherung oder historisierte Logs.
 
 ---
 
-## 3. Arzt-Ansicht (Doctor Overlay)
+## 2. Kernkomponenten & Dateien
 
-| Variable | Beschreibung |
-|----------|--------------|
-| `__doctorScrollSnapshot` (`app/modules/doctor/index.js`) | `{ top, ratio }`, damit das Overlay nach einem Refresh wieder zur gleichen Position scrollt. |
-| `trendpilotWrap.dataset.tpBound` | Flag, ob Trendpilot-Events schon gebunden wurden. |
-
----
-
-## 4. Trendpilot & Charts
-
-| State | Beschreibung |
-|-------|--------------|
-| `lastStatus` (`trendpilot/index.js`) | Letzter Trendpilot-Run `{ severity, delta, day }`. |
-| `latestSystemComment` | Zuletzt geladener Supabase-Systemkommentar (f¸r Capture-Pill & Charts). |
-| `trendpilotInitialized` / `dependencyWarned` | Flags f¸r Init-/Warnzustand. |
-| `chartPanel.currentMeta`, `currentBpPairs` | Map aus BP-Daten + Tooltip-Meta. |
-| `chartPanel.currentBodyMeta` | Map mit Kˆrpernotizen. |
-| `chartPanel.currentTrendpilotBands` | Array mit Trendpilot-B‰ndern f¸r den Chart. |
+| Datei | Zweck |
+|------|------|
+| `app/core/capture-globals.js` | Capture/Lifestyle Defaults, Timer, Helper, Intake-State |
+| `assets/js/main.js` | UI-Refresh-State (Batching), Datums- und Reset-Flow |
+| `app/modules/doctor/index.js` | Scroll-Snapshot fuer Doctor-Ansicht |
+| `app/modules/trendpilot/index.js` | Trendpilot-Flags + latestSystemComment Cache |
+| `app/modules/charts/index.js` | Chart-Panel State (Meta, Tooltip, Trendpilot-Bands) |
+| `app/supabase/core/state.js` | Supabase Runtime-State (Auth, Client, Header Cache) |
+| `app/supabase/auth/guard.js` | authGuardState (Unlock/Doctor Gate) |
 
 ---
 
-## 5. Auth / Unlock
+## 3. Datenmodell / Storage
 
-| State | Beschreibung |
-|-------|--------------|
-| `authGuardState` (`app/supabase/auth/guard.js`) | Enth?lt `doctorUnlocked`, `pendingAfterUnlock` etc.; Hub nutzt das, um Doctor-Panels direkt nach Biometrics zu ?ffnen. |
-| `supabaseMissingLogged` (`assets/js/main.js`) | Verhindert mehrfaches Loggen "SupabaseAPI nicht geladen". |
-| `SupabaseAPI.supabaseState.authState` | Offizieller Auth-Zustand (`unauth`/`unknown`/`auth`). Ersetzt das ehemalige Window-Binding `__authState`. Zugriff nur ?ber `AppModules.supabase.supabaseState`. |
-| `SupabaseAPI.supabaseState.lastLoggedIn` | Bool, ob der Nutzer vor kurzem eingeloggt war (Unknown-Phase). Ersetzt `__lastLoggedIn`. |
-
-> **Policy:** Keine neuen Module d?rfen `window.__authState`, `window.__lastLoggedIn` oder `window.sbClient` verwenden. Nutzt stattdessen `SupabaseAPI.supabaseState`. Fortschritt siehe [Supabase Proxy Refactor Plan](../Supabase%20Proxy%20Refactor%20Plan.md).
+- Kein persistenter Speicher, nur Runtime-Objekte.
+- Zentrale Objekte:
+  - `window.AppModules.captureGlobals` (Capture/Intake)
+  - `supabaseState` (Auth/Client/Headers)
+  - `uiRefreshState` (Refresh-Batching)
+  - Modulinterne Caches (z. B. `chartPanel.currentMeta`, `latestSystemComment`).
 
 ---
 
-## 6. Misc Timers / Flags
+## 4. Ablauf / Logikfluss
 
-| State | Beschreibung |
-|-------|--------------|
-| `AppModules.captureGlobals.setBusy` | Steuert das Busy-Overlay global. |
-| `AppModules.captureGlobals.setDateUserSelected` | Setter f¸r Datum-Override (siehe Abschnitt 1). |
-| `window.AppModules.bp.updateBpCommentWarnings` | Markiert Kommentarfelder rot, wenn Pflicht erf¸llt werden muss. |
-| `touchLog` (`#touchLog`) | DOM-Element, das Diag-Logs auff‰ngt. |
-| `AppModules.chartPanel.tipSticky` | Bool, ob Chart-Tooltip fixiert ist. |
-| `AppModules.chartPanel.SHOW_CHART_ANIMATIONS` | Flag, ob Chart-Animationen laufen d¸rfen. |
-| `AppModules.trendpilot.refreshLatestSystemComment` | Funktion, die `latestSystemComment` aktualisiert (Event `trendpilot:latest`). |
+### 4.1 Initialisierung
+- `capture-globals` initialisiert Default-Werte und Timer-Refs.
+- `supabase/core/state.js` initialisiert Auth/Client Status.
+- Module laden ihre internen Caches lazy (z. B. Charts, Trendpilot).
+
+### 4.2 User-Trigger
+- Datumswechsel im Capture-Panel setzt `__lastKnownToday`, `__dateUserSelected`.
+- Doctor-Overlay speichert Scroll-Position fuer Restore.
+- `requestUiRefresh` in `assets/js/main.js` setzt Flags in `uiRefreshState`.
+
+### 4.3 Verarbeitung
+- Getter/Setter in `captureGlobals` sichern konsistente Werte.
+- `uiRefreshState` b√ºndelt Refresh-Gr√ºnde und resolvers.
+- Trendpilot aktualisiert `latestSystemComment` und emittiert Events.
+
+### 4.4 Persistenz
+- Keine Persistenz (nur Memory).
+- Persistenz findet in separaten Modulen (Supabase/RPC) statt.
 
 ---
 
-## 7. Hinweise zur Pflege
+## 5. UI-Integration
 
-- **Nicht direkt mutieren:** Immer Getter/Setter aus `capture/globals` verwenden, damit Hub, Capture und Doctor denselben State sehen.
-- **Timer aufr‰umen:** Bei `scheduleMidnightRefresh` / `scheduleNoonSwitch` alte Timer unbedingt clearen.
-- **Reset bei Logout:** `main.js` setzt u.?a. `setLastKnownToday(todayStr())`, `setBpUserOverride(false)` ñ diese Reihenfolge muss beibehalten werden.
-- **Trendpilot-B‰nder:** Nach Save oder ACK `refreshLatestSystemComment` und `requestUiRefresh({ chart: true })`, damit alle Oberfl‰chen synchron sind.
+- Busy-Overlay via `captureGlobals.setBusy`.
+- Pills/Status-Anzeigen lesen aus `captureIntakeState`.
+- Chart-Panel liest aus `chartPanel.currentMeta` und related caches.
 
 ---
 
-Dieses Dokument sollte angepasst werden, sobald neue globale States oder Timer hinzukommen (z.?B. KI-/PWA-Features oder zus‰tzliche Hub-Panels), damit Debugging-Teams schnell erkennen, wo sie eingreifen m¸ssen.
+## 6. Arzt-Ansicht / Read-Only Views
+
+- `__doctorScrollSnapshot` sichert die Position im Doctor-Panel.
+- Report-Inbox nutzt lokalen Zustand (Filter/Range) in `doctor/index.js`.
+
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- Fehler werden in `diag.add` protokolliert.
+- Policy: keine direkten Mutationen ohne Getter/Setter (Capture Globals).
+- Guard: Auth/Unlock State kontrolliert Zugriff auf Doctor-Ansicht.
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: `AppModules.captureGlobals`, `supabaseState`, `diag`/`perfStats`.
+- Source of Truth: in-memory globals + module caches.
+- Side Effects: steuert Refresh, Busy-States, Doctor scroll restore.
+- Constraints: keine Persistenz, Zugriff nur ueber Helper/Getter.
+- `requestUiRefresh` orchestriert Refresh von Doctor/Charts/Hub.
+- `trendpilot:latest` Event signalisiert neue System-Kommentare.
+- Supabase Auth State wird von mehreren Modulen gelesen.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- Zentraler State-Store (typisiert) fuer weniger globale Variablen.
+- Konsolidierte Timer-Verwaltung (ein Scheduler).
+- State-Snapshots fuer Debugging.
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- `DEV_ALLOW_DEFAULTS` (Debug/Defaults).
+- `chartPanel.SHOW_CHART_ANIMATIONS`, `chartPanel.SHOW_BODY_COMP_BARS`.
+- Intake-Defaults: `LS_WATER_GOAL`, `LS_SALT_MAX`, `LS_PROTEIN_GOAL`.
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv.
+- Dependencies (hard): `captureGlobals`, `supabaseState`, `uiRefreshState`, Modul-Caches.
+- Dependencies (soft): n/a.
+- Known issues / risks: globale Mutable-States; stale Caches zwischen Modulen.
+- Backend / SQL / Edge: n/a.
+
+---
+
+## 12. QA-Checkliste
+
+- Datumswechsel -> Capture State aktualisiert.
+- `requestUiRefresh` b√ºndelt korrekt (keine Double-Calls).
+- Doctor-Scroll-Position bleibt nach Refresh.
+- Auth-Status in `supabaseState` wechselt korrekt (Login/Logout).
+
+---
+
+## 13. Definition of Done
+
+- Zentrale States eindeutig dokumentiert.
+- Keine direkten Mutationen ausserhalb definierter Helpers.
+- Keine offenen Logs/Errors durch State-Handling.
+

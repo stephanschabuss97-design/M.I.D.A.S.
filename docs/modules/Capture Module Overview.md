@@ -1,124 +1,146 @@
-# Capture Module – Functional Overview
+﻿# Capture Module - Functional Overview
 
-Dieses Dokument beschreibt das Capture-Modul des Gesundheits-Loggers. Es umfasst die komplette Tageserfassung (Intake, Blutdruck, Körper) inklusive Bedienlogik, Datenflüsse zu Supabase und die wichtigsten Diagnose-/Reset-Mechanismen.
+Kurze Einordnung:
+- Zweck: zentrale Eingabeoberflaeche fuer Tagesdaten (Intake, BP, Body, Lab, Training).
+- Rolle innerhalb von MIDAS: Primaries Capture Panel, Quelle fuer Arzt-Ansicht und Reports.
+- Abgrenzung: keine Analyse/Reports, kein Export, keine Charts.
 
 ---
 
 ## 1. Zielsetzung
 
-Das Capture-Modul ist die primäre Oberfläche für tägliche Eingaben:
-- Wasser/Salz/Protein (siehe Intake).
-- Blutdruck morgens/abends inkl. Kommentare, Pflichtlogik.
-- Körperwerte (Gewicht, Bauchumfang, Fett-/Muskelanteile) sowie Laborwerte (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD-Stufe, Kommentar) im gemeinsamen Vitals-Panel.
-- Datumsauswahl, automatische Resets/Prefills, Verknüpfung mit Trendpilot/Charts.
-
+- Problem: schnelle und konsistente Erfassung der taeglichen Werte.
+- Nutzer: Patient (Eingabe) und System (persistente Datenbasis).
+- Nicht Ziel: Visualisierung (Charts) oder Arzt-Ansicht (Read-Only).
 
 ---
 
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|-------|-------|
-| `app/modules/capture/index.js` | Kernlogik: Handlers für Intake/Blutdruck/Body, Timer, Status-Pills, UI-Reset inkl. Vitals-Tab-Steuerung. |
-| `app/core/capture-globals.js` | Shared State (`captureIntakeState`, Timer, Flags), Utility `setBusy`, `softWarnRange`. |
-| `app/modules/capture/bp.js` | Blutdruck-spezifische Funktionen (`saveBlock`, Kommentar-Pflicht, Panel-Reset). Nutzt `capture/entry.js` für gemeinsame Basisdatensätze. |
-| `app/modules/capture/body.js` | Körperpanel (Gewicht, Bauchumfang) speichern/prefillen; greift auf denselben Entry-Helper zurück. |
-| `app/modules/capture/lab.js` | Laborpanel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD-Stufe, Kommentar) validiert Eingaben, erzeugt `lab_event` Payloads und triggert Sync. |
-| `app/modules/capture/entry.js` | Shared Helper `createBaseEntry` – stellt das Skelett für alle Capture-Einträge bereit. |
-| `assets/js/main.js` | Bindet Buttons, Datum, Unlock-Logik, orchestriert `requestUiRefresh` und Verdrahtet die Vitals-Karten (inkl. BP-Kontext-Dropdown). |
-| `app/styles/capture.css` | (Legacy) Styles für Accordion-Ansicht; zentrale Hub-Styles liegen in `app/styles/hub.css` (enthält auch Layout/Optik des BP-Kontext-Dropdowns). |
-| `sql/11_Lab_Event_Extension.sql` | DB-Erweiterung für `lab_event` + zentrale Validierungs-Trigger (`trg_events_validate_biu`), die u. a. `ctx` aus den BP-Payloads in die Spalte spiegeln. |
-| `app/core/config.js` | Flags (z.B. `TREND_PILOT_ENABLED` indirekt, `DEV_ALLOW_DEFAULTS`). |
+|------|------|
+| `app/modules/capture/index.js` | Orchestrierung, Reset/Prefill, Panel-Logik |
+| `app/modules/capture/bp.js` | BP-Validierung, Save-Flow, Kommentarpflicht |
+| `app/modules/capture/body.js` | Body-Panel (Gewicht, Bauchumfang, Fett/Muskel) |
+| `app/modules/capture/lab.js` | Lab-Panel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD, Kommentar) |
+| `app/modules/capture/entry.js` | Shared Entry-Helper (Base Entry) |
+| `assets/js/main.js` | UI-Handler, Datum, Panel-Buttons, requestUiRefresh |
+| `index.html` | Hub Vitals-Panel + Tabs (BP/Body/Lab/Training) |
+| `app/styles/hub.css` | Hub/Capture Layout inkl. BP-Kontext Dropdown |
+| `sql/11_Lab_Event_Extension.sql` | Lab-Event-Validierung + Trigger |
+| `docs/modules/Intake Module Overview.md` | Intake-spezifische Details |
 
 ---
 
-## 3. Ablauf / Datenfluss
+## 3. Datenmodell / Storage
 
-### 3.1 Panel-Struktur (Hub v2)
-
-- Die klassischen Accordions wurden durch Hub-Panels ersetzt:
-  1. **Intake-Panel (`data-hub-panel="intake"`)** – Overlay mit Wasser/Salz/Protein Inputs.
-  2. **Vitals-Panel (`data-hub-panel="vitals"`)** – kombiniert Blutdruck (Morgens/Abends), Körperdaten und die neue Labor-Karte (Tabs innerhalb des Panels).
-  3. **Doctor-Panel** – zeigt Werte/Trendpilot (zugriffsgeschützt).
-  4. Weitere Panels (Help/Diag) sind placeholders, aber außerhalb dieses Moduls.
-- Orbit-Buttons (`data-hub-module="…"`) in `hub/index.js` steuern die sichtbaren Panels (inkl. Biometrics-Flow für Doctor).
-
-### 3.2 Datum & Auto-Reset
-
-- Datum (`#date`) default = heute (`todayStr()`).
-- `maybeRefreshForTodayChange` überwacht Wechsel, aktualisiert Panels + Flags (`__lastKnownToday`).
-- `scheduleMidnightRefresh` & `scheduleNoonSwitch` (globals) sorgen für Tagesreset und BP-Kontext-Umschaltung.
-- `capture/globals` speichern Timer-IDs, Busy-Status, `__bpUserOverride`.
-
-### 3.3 Blutdruck Flow (`bp.js`) – unverändert, aber über Hub-Panel ausgelöst
-
-1. Speichern-Buttons (`.save-bp-panel-btn` in `main.js`, je Pane Morgens/Abends) rufen `window.AppModules.bp.saveBlock`.
-   - Validiert Eingaben (Sys & Dia erforderlich, Puls optional nur mit BP).
-   - Speichert Event via `addEntry` (lokal) + `syncWebhook` (Supabase).
-   - Kommentare via `appendNote`, separate Einträge.
-2. Nach Save: Panel reset, `updateBpCommentWarnings` neu berechnet (Pflicht bei >130/>90). Das Vitals-Panel bleibt im Hub geöffnet; ein erneutes Öffnen läuft über den Orbit-Button.
-3. Falls Abendmessung: `maybeRunTrendpilotAfterBpSave`.
-4. UI: Der Messzeitpunkt wird über ein Dropdown direkt in der Karte (oberhalb der ersten Eingabegruppe) gewählt. Der `#bpContextSel` steuert beide `bp-pane`s; Umschaltungen markieren die aktive Karte visuell.
-
-### 3.4 Körper Flow (`body.js`)
-
-1. `saveBodyPanelBtn` speichert Tagessummary (`saveDaySummary`), ruft `syncWebhook`.
-2. `prefillBodyInputs` nutzt letzte Werte (z.B. Copy vom letzten Tag).
-3. Buttons disabled, wenn nicht eingeloggt oder das Panel gerade gespeichert wird (`setBusy`).
-4. Persistiert optional Fett- und Muskelanteile (`fat_pct`, `muscle_pct`). Diese Felder sind seit der Anpassung in `sql/01_Health Schema.sql` + `sql/11_Lab_Event_Extension.sql` im Supabase-Trigger whitelisted (Range 0–100 %).
-
-> **Shared Entry Helper:** Sowohl `saveBlock` als auch `saveDaySummary` nutzen `app/modules/capture/entry.js` (`createBaseEntry`) um ein konsistentes Datensatz-Skelett (Date, Context, Notes) zu erzeugen. Damit bleibt die Struktur across BP/Körper identisch, egal welches Panel speichert.
-
-### 3.5 Labor Flow (`lab.js`)
-
-1. Die Labor-Karte befindet sich im Vitals-Panel unterhalb der Body-Sektion und enthält Eingabefelder für eGFR, Kreatinin, HbA1c, LDL, Kalium sowie eine CKD-Stufe (Dropdown) und einen optionalen Kommentar.
-2. Der Button `saveLabPanelBtn` ruft `window.AppModules.lab.saveLabEntry` auf, validiert alle Pflichtfelder (eGFR, Kreatinin) und erstellt daraus ein `lab_event` (neuer `health_events` Typ).
-3. Beim Speichern werden keine Platzhalterwerte erzeugt; fehlende Felder bleiben `null`. Nach erfolgreichem Sync werden die Eingabefelder via `resetLabPanel` geleert, Fehlerhinweise entfernt und die Buttons wieder freigegeben (`captureGlobals.setBusy` analog zu BP/Body).
-4. Die CKD-Stufe wird direkt im Event gespeichert (`payload.ckd_stage`) und dient später als Single Source of Truth für Doctor View/Profile.
-
-### 3.6 Intake Flow
-
-Siehe `docs/modules/Intake Module Overview.md`. Capture-Modul stellt Buttons, Timer und Pill-Status bereit.
-
-### 3.7 Verbindung zu anderen Modulen
-
-- **Charts:** KPIs/Charts zielen auf denselben Datumskontext; `requestUiRefresh({ chart: ... })`.
-- **Trendpilot:** Hook im BP-Save; Pill (Trendpilot) im Header.
-- **Doctor:** Datum/Range synchronisiert, `refreshCaptureIntake` nach Range-Wechsel.
+- Tabelle: `health_events`
+- Genutzte Types:
+  - `bp_event` (BP + Kontext)
+  - `body_event` (Gewicht, Bauchumfang, Fett/Muskel)
+  - `lab_event` (Laborwerte + Kommentar)
+  - `activity_event` (Trainingseintrag)
+- Intake-Daten: siehe Intake-Modul.
+- Zentrale Felder: `user_id`, `day`, `payload`.
 
 ---
 
-## 4. Diagnose / Logging
+## 4. Ablauf / Logikfluss
 
-- Touch-Log-Einträge:
-  - `[capture] loadIntakeToday ...`
-  - `[capture] reset intake ...`
-  - `[panel] bp save while auth unknown`
-  - `[body] cleared`, `[bp:auto ...]`
-- Touchlog Phase 0.5: `[capture] refresh start/done reason=?` erscheint pro Reason/Tag genau einmal; Mehrfachtrigger landen als `(xN)` am Done-Eintrag. Boot, manuelle Refreshs und Resume sind damit deterministisch pr?fbar.
-- `diag.add` in allen Fehlerpfaden (RPC-Fails, Save-Fails, Auto-Refresh).
-- `uiError` zeigt User-Feedback (Speichern fehlgeschlagen, keine Daten).
+### 4.1 Initialisierung
+- Capture wird ueber Hub-Overlay geladen.
+- Aktiv, sobald Boot-Flow `INIT_MODULES` erreicht.
+- Auth-Guard blockt Saves ohne Login.
 
----
+### 4.2 User-Trigger
+- Auswahl des Datums im Vitals-Panel.
+- Saves pro Tab (BP/Body/Lab/Training).
+- Reset-Buttons leeren Panels.
 
-## 5. Sicherheits-/Edge Cases
+### 4.3 Verarbeitung
+- Validierungen pro Domain (BP Pflichtfelder, Lab Pflichtfelder, Activity Dauer > 0).
+- Kontext-Handling fuer BP (Morgen/Abend).
+- Prefill fuer Body-Letzwerte.
 
-- Eingabevalidierung bei allen Feldern (Zahl oder `toNumDE`).
-- Mortg. vs. Abend: Kontext wählbar (`#bpContextSel`), Auto-Switch zur Mittagszeit.
-- Kommentar-Pflicht: `requiresBpComment`/`updateBpCommentWarnings`.
-- Locking: Buttons disabled bei `setBusy(true)`, `AppModules.captureGlobals.setBusy`.
-- Undo/Reset: `resetCapturePanels` (Intake/Body/BP) – z.B. nach Tab-Wechsel oder Unlock.
-- Boot-Flow Guard: Handler greifen erst zu, wenn `AppModules.bootFlow` mindestens `INIT_MODULES` erreicht; davor ignorieren sie Klicks und Timer-Callbacks, sodass der Hub während des Boot-Overlays nicht reagiert.
-
----
-
-## 6. Erweiterungsvorschläge
-
-- Quick Actions (z.B. +250 ml Voreinstellung).
-- Mehr Metriken (z.B. Supplements).
-- Inline-Notiz pro Intake (wie BP-Kommentar).
-- Visualisierung (Mini-Chart) direkt im Capture.
+### 4.4 Persistenz
+- BP/Body/Lab via Supabase API (REST/RPC, je Modul).
+- Training via RPC `activity_add`.
+- Nach Save: Reset, UI-Refresh, Diagnose-Logs.
 
 ---
 
-Bei Änderungen an Capture (neue Felder, Timer, RPCs) sollte dieses Dokument aktualisiert werden, damit der Modulüberblick aktuell bleibt.
+## 5. UI-Integration
+
+- Hub Vitals-Panel mit Tabs: BP, Body, Lab, Training.
+- Datumsfeld oben als Single Source of Truth fuer Tagesdaten.
+- Buttons und Pills im Capture-Panel (inkl. Trendpilot/Statusindikatoren).
+
+---
+
+## 6. Arzt-Ansicht / Read-Only Views
+
+- Capture liefert nur Daten; Darstellung erfolgt in der Arzt-Ansicht.
+- Range aus Arzt-Ansicht bestimmt, welche Capture-Daten gelesen werden.
+
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- Fehlerpfade loggen via `diag.add` + `uiError`.
+- `setBusy` verhindert Doppelsaves.
+- Auto-Refresh/Reset beim Datumswechsel (Mitternacht/Noon-Switch fuer BP-Kontext).
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: Hub-Vitals-Panel Buttons, `AppModules.capture` save helpers.
+- Source of Truth: Datum `#date` + `captureGlobals` (dayIso, totals).
+- Side Effects: `requestUiRefresh`, Trendpilot Hook, `activity:changed` Events.
+- Constraints: Pflichtfelder pro Panel (BP/Lab/Activity), Auth-Guard fuer Saves.
+- `requestUiRefresh` fuer Charts/Doctor/Hub-UI.
+- `activity:changed` fuer Training.
+- Trendpilot-Integration aus BP-Save.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- Quick-Actions (z. B. +250 ml Intake).
+- Weitere Lab-Werte oder Symptome.
+- Zus. Vitals-Tabs (z. B. Medikamente).
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- `DEV_ALLOW_DEFAULTS` (Dev/Preview-Verhalten).
+- Weitere Flags ueber `app/core/config.js`.
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: aktiv (taegliche Erfassung).
+- Dependencies (hard): BP/Body/Lab/Activity Module, `health_events`, Supabase APIs/RPCs, Lab-Validation SQL.
+- Dependencies (soft): Trendpilot, Charts, Reports.
+- Known issues / risks: falsches Datum; Teil-Saves pro Tab; Zeitzonen-Shift moeglich.
+- Backend / SQL / Edge: `health_events`, `sql/11_Lab_Event_Extension.sql`, `sql/13_Activity_Event.sql`.
+
+---
+
+## 12. QA-Checkliste
+
+- Datum wechseln -> Panels aktualisieren.
+- BP/Body/Lab/Training speichern -> Daten erscheinen in Arzt-Ansicht.
+- Pflichtfelder greifen (BP/Lab/Activity).
+- Reset-Buttons leeren Felder.
+
+---
+
+## 13. Definition of Done
+
+- Alle Capture-Tabs speichern ohne Errors.
+- UI reagiert konsistent auf Datumsaenderung.
+- Doku aktuell.
+
