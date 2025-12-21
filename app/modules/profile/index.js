@@ -21,7 +21,11 @@
     doctorName: '#profileDoctorName',
     doctorEmail: '#profileDoctorEmail',
     saltLimit: '#profileSaltLimit',
+    proteinMin: '#profileProteinMin',
     proteinMax: '#profileProteinMax',
+    proteinDoctorLock: '#profileProteinDoctorLock',
+    proteinDoctorMin: '#profileProteinDoctorMin',
+    proteinDoctorMax: '#profileProteinDoctorMax',
     smoker: '#profileIsSmoker',
     lifestyle: '#profileLifestyleNote',
     saveBtn: '#profileSaveBtn',
@@ -64,7 +68,11 @@
       doctorName: panel.querySelector(selectors.doctorName),
       doctorEmail: panel.querySelector(selectors.doctorEmail),
       saltLimit: panel.querySelector(selectors.saltLimit),
+      proteinMin: panel.querySelector(selectors.proteinMin),
       proteinMax: panel.querySelector(selectors.proteinMax),
+      proteinDoctorLock: panel.querySelector(selectors.proteinDoctorLock),
+      proteinDoctorMin: panel.querySelector(selectors.proteinDoctorMin),
+      proteinDoctorMax: panel.querySelector(selectors.proteinDoctorMax),
       smoker: panel.querySelector(selectors.smoker),
       lifestyle: panel.querySelector(selectors.lifestyle),
       saveBtn: panel.querySelector(selectors.saveBtn),
@@ -201,6 +209,18 @@
     refs.doctorName.value = sanitize(data.primary_doctor_name);
     refs.doctorEmail.value = sanitize(data.primary_doctor_email);
     refs.saltLimit.value = data.salt_limit_g != null ? String(data.salt_limit_g) : '';
+    if (refs.proteinDoctorLock) {
+      refs.proteinDoctorLock.checked = !!data.protein_doctor_lock;
+    }
+    if (refs.proteinDoctorMin) {
+      refs.proteinDoctorMin.value = data.protein_doctor_min != null ? String(data.protein_doctor_min) : '';
+    }
+    if (refs.proteinDoctorMax) {
+      refs.proteinDoctorMax.value = data.protein_doctor_max != null ? String(data.protein_doctor_max) : '';
+    }
+    if (refs.proteinMin) {
+      refs.proteinMin.value = data.protein_target_min != null ? String(data.protein_target_min) : '';
+    }
     refs.proteinMax.value = data.protein_target_max != null ? String(data.protein_target_max) : '';
     refs.smoker.value = data.is_smoker ? 'yes' : 'no';
     refs.lifestyle.value = sanitize(data.lifestyle_note);
@@ -228,7 +248,11 @@
       ['CKD-Stufe (Lab)', getDerivedCkdStage()],
       ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '—'],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],
-      ['Proteinlimit (g/Tag)', state.data.protein_target_max],
+      ['Protein Min (g/Tag)', state.data.protein_target_min],
+      ['Protein Max (g/Tag)', state.data.protein_target_max],
+      ['Doctor-Lock (Protein)', state.data.protein_doctor_lock ? 'aktiv' : 'aus'],
+      ['Doctor Min (g/Tag)', state.data.protein_doctor_min],
+      ['Doctor Max (g/Tag)', state.data.protein_doctor_max],
       ['Raucherstatus', state.data.is_smoker ? 'Raucher' : 'Nichtraucher'],
       ['Lifestyle', state.data.lifestyle_note],
       ['Arzt (Name)', state.data.primary_doctor_name],
@@ -249,14 +273,24 @@
   const extractFormPayload = () => {
     if (!refs) return null;
     const medications = parseMedicationsInput(refs.medications?.value);
+    const doctorLock = !!refs.proteinDoctorLock?.checked;
+    const doctorMin = toNumberOrNull(refs.proteinDoctorMin?.value, { precision: 1 });
+    const doctorMax = toNumberOrNull(refs.proteinDoctorMax?.value, { precision: 1 });
+    const prevMin = state.data?.protein_target_min ?? null;
+    const prevMax = state.data?.protein_target_max ?? null;
+    const targetMin = doctorLock ? (doctorMin ?? prevMin) : prevMin;
+    const targetMax = doctorLock ? (doctorMax ?? prevMax) : prevMax;
     const payload = {
       full_name: sanitize(refs.fullName?.value),
       birth_date: refs.birthDate?.value || null,
       height_cm: toNumberOrNull(refs.height?.value),
       medications: medications.length ? medications : [],
       salt_limit_g: toNumberOrNull(refs.saltLimit?.value, { precision: 1 }),
-      protein_target_max: toNumberOrNull(refs.proteinMax?.value, { precision: 1 }),
-      protein_target_min: null,
+      protein_doctor_lock: doctorLock,
+      protein_doctor_min: doctorMin,
+      protein_doctor_max: doctorMax,
+      protein_target_min: targetMin,
+      protein_target_max: targetMax,
       is_smoker: (refs.smoker?.value || 'no') === 'yes',
       lifestyle_note: sanitize(refs.lifestyle?.value),
       primary_doctor_name: sanitize(refs.doctorName?.value) || null,
@@ -278,7 +312,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
@@ -339,7 +373,7 @@
         .from('user_profile')
         .upsert(upsertPayload, { onConflict: 'user_id' })
         .select(
-          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
         )
         .single();
       if (error) throw error;

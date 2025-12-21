@@ -580,17 +580,53 @@
                   placeholder="5"
                 >
               </label>
+              <label class="field-group checkbox" for="profileProteinDoctorLock">
+                <input type="checkbox" id="profileProteinDoctorLock">
+                <span class="label">Doctor-Lock (Protein fix)</span>
+              </label>
+              <label class="field-group" for="profileProteinDoctorMin">
+                <span class="label">Doctor Min (g/Tag)</span>
+                <input
+                  type="number"
+                  id="profileProteinDoctorMin"
+                  step="1"
+                  min="0"
+                  placeholder="90"
+                >
+              </label>
+              <label class="field-group" for="profileProteinDoctorMax">
+                <span class="label">Doctor Max (g/Tag)</span>
+                <input
+                  type="number"
+                  id="profileProteinDoctorMax"
+                  step="1"
+                  min="0"
+                  placeholder="110"
+                >
+              </label>
+              <label class="field-group" for="profileProteinMin">
+                <span class="label">Protein Min (Auto, g/Tag)</span>
+                <input
+                  type="number"
+                  id="profileProteinMin"
+                  step="1"
+                  min="0"
+                  placeholder="95"
+                  disabled
+                >
+              </label>
               <label class="field-group" for="profileProteinMax">
-                <span class="label">Proteinlimit (g/Tag)</span>
+                <span class="label">Protein Max (Auto, g/Tag)</span>
                 <input
                   type="number"
                   id="profileProteinMax"
                   step="1"
                   min="0"
                   placeholder="110"
+                  disabled
                 >
                 <span class="field-hint muted small">
-                  Butler warnt, sobald das Limit erreicht ist.
+                  Wird automatisch berechnet.
                 </span>
               </label>
               <label class="field-group" for="profileIsSmoker">

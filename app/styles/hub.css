@@ -2018,6 +2018,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 6px;
 }
 
+.profile-form .field-group.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
 .profile-form .label {
   text-transform: uppercase;
   letter-spacing: 0.08em;

@@ -1838,6 +1838,8 @@
           ckd_stage: ctx.profile.ckd_stage || null,
           medications: meds,
           salt_limit_g: ctx.profile.salt_limit_g ?? null,
+          protein_target_min: ctx.profile.protein_target_min ?? null,
+          protein_target_max: ctx.profile.protein_target_max ?? null,
           protein_limit_g:
             ctx.profile.protein_target_max ??
             ctx.profile.protein_target_min ??

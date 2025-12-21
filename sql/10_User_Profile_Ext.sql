@@ -15,6 +15,19 @@ alter table public.user_profile
   add column if not exists salt_limit_g numeric,
   add column if not exists protein_target_min numeric,
   add column if not exists protein_target_max numeric,
+  add column if not exists protein_doctor_lock boolean default false,
+  add column if not exists protein_doctor_min numeric,
+  add column if not exists protein_doctor_max numeric,
+  add column if not exists protein_calc_version text,
+  add column if not exists protein_window_days int,
+  add column if not exists protein_last_calc_at timestamptz,
+  add column if not exists protein_age_base numeric,
+  add column if not exists protein_activity_level text,
+  add column if not exists protein_activity_score_28d numeric,
+  add column if not exists protein_factor_pre_ckd numeric,
+  add column if not exists protein_ckd_stage_g text,
+  add column if not exists protein_ckd_factor numeric,
+  add column if not exists protein_factor_current numeric,
   add column if not exists primary_doctor_name text,
   add column if not exists primary_doctor_email text,
   add column if not exists updated_at timestamptz default now();
@@ -27,6 +40,11 @@ alter table public.user_profile
 alter table public.user_profile
   add column if not exists height_cm integer
     check (height_cm is null or height_cm between 120 and 230);
+
+-- Defaults fuer bestehende Datensaetze (idempotent)
+update public.user_profile
+   set protein_doctor_lock = false
+ where protein_doctor_lock is null;
 
 -- Optionaler Trigger, um updated_at bei Änderungen zu setzen.
 create or replace function public.set_user_profile_updated_at()
