@@ -30,12 +30,15 @@ alter table public.user_profile
 
 -- Optionaler Trigger, um updated_at bei Änderungen zu setzen.
 create or replace function public.set_user_profile_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = public, pg_catalog
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 do $$
 begin

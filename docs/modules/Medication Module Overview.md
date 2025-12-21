@@ -30,10 +30,8 @@ Kurze Einordnung:
 
 ## 3. Datenmodell / Storage
 
-- `health_medications`: Stammdaten + BestÃ¤nde, Low-Stock-Felder, `active` Flag.
-- `health_medication_doses`: tÃ¤gliche Einnahmen je Nutzer/Medikation (unique per day).
-- `health_medication_stock_log`: optionaler Verlauf fÃ¼r Bestandskorrekturen.
-- Beziehungen: Doses & Log referenzieren `health_medications`.
+- `health_medications`: Stammdaten + Bestaende, Low-Stock-Felder, `active` Flag.
+- Tagesstatus ohne Verlauf: `last_taken_day` + `last_taken_qty` direkt in `health_medications`.
 - Besonderheiten: Low-Stock-Acknowledgements (`low_stock_ack_day/_stock`) verhindern Doppeleinblendung.
 
 ---
@@ -56,9 +54,9 @@ Kurze Einordnung:
 - Safety-Berechnung: Vortag laden, `med_taken` prÃ¼fen.
 
 ### 4.4 Persistenz
-- RPCs schreiben in `health_medications` & `health_medication_doses`.
-- `med_upsert` Upsert; `med_confirm_dose/undo` passen Dosen & BestÃ¤nde an.
-- `med_adjust_stock` und `med_set_stock` loggen in `health_medication_stock_log`.
+- RPCs schreiben nur in `health_medications`.
+- `med_upsert` Upsert; `med_confirm_dose/undo` setzen Tagesstatus + passen Bestaende an.
+- `med_adjust_stock` und `med_set_stock` passen nur Bestaende an (keine Historie).
 
 ---
 
@@ -90,11 +88,11 @@ Kurze Einordnung:
 ## 8. Events & Integration Points
 
 - Public API / Entry Points: `AppModules.medication` RPC helpers, IN/TAB Buttons.
-- Source of Truth: `health_medications` + `health_medication_doses`.
+- Source of Truth: `health_medications` (inkl. Tagesstatus).
 - Side Effects: feuert `medication:changed`, Intake/Low-Stock UI refresh.
-- Constraints: RPCs erfordern Auth, unique dose pro Tag.
+- Constraints: RPCs erfordern Auth, Tagesstatus ist nur fuer den aktuellen Tag.
 - Custom Event `medication:changed { reason, dayIso, data? }`.
-- Capture reagiert (IN), Profil-Ã„nderungen triggen Low-Stock-Kontakt Update.
+- Capture reagiert (IN), Profil-Ã"nderungen triggen Low-Stock-Kontakt Update.
 - `AppModules.medication` exportiert API fÃ¼r andere Module (z. B. Trendpilot).
 
 ---
@@ -117,9 +115,9 @@ Kurze Einordnung:
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv.
-- Dependencies (hard): `health_medications` + RPCs, `health_medication_doses`, Capture/Intake Panel.
+- Dependencies (hard): `health_medications` + RPCs, Capture/Intake Panel.
 - Dependencies (soft): Profil-Hausarztkontakt; moegliche Doctor-Ansicht.
-- Known issues / risks: Stock-Fehleingaben; Low-Stock Ack kann Warnung verstecken; Delete entfernt Historie.
+- Known issues / risks: Stock-Fehleingaben; Low-Stock Ack kann Warnung verstecken; keine Verlaufshistorie.
 - Backend / SQL / Edge: `sql/12_Medication.sql`.
 
 ---

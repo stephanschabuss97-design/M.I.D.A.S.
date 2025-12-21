@@ -74,104 +74,14 @@ create policy medications_delete_own
   using ((select auth.uid()) = user_id);
 
 -- ---------------------------------------------------------------------------
--- health_medication_doses: Einnahmenachweise je Tag (max 1 pro Med/Tag)
+-- Slim down: drop per-day and stock log tables (no history needed)
 -- ---------------------------------------------------------------------------
-create table if not exists public.health_medication_doses (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null default auth.uid(),
-  med_id     uuid not null references public.health_medications(id) on delete cascade,
-  day        date not null,
-  qty        int  not null default 1 check (qty > 0 and qty <= 24),
-  taken_at   timestamptz not null default now(),
-  created_at timestamptz not null default now()
-);
+drop table if exists public.health_medication_doses cascade;
+drop table if exists public.health_medication_stock_log cascade;
 
-comment on table public.health_medication_doses is
-  'Protokolliert bestaetigte Einnahmen je Medikament/Tag (unique per user/med/day).';
-
-create unique index if not exists uq_medication_dose_per_day
-  on public.health_medication_doses (user_id, med_id, day);
-
-create index if not exists idx_medication_doses_med_day
-  on public.health_medication_doses (med_id, day);
-
-alter table public.health_medication_doses enable row level security;
-
-drop policy if exists medication_doses_select_own on public.health_medication_doses;
-create policy medication_doses_select_own
-  on public.health_medication_doses for select
-  using ((select auth.uid()) = user_id);
-
-drop policy if exists medication_doses_insert_own on public.health_medication_doses;
-create policy medication_doses_insert_own
-  on public.health_medication_doses for insert
-  with check ((select auth.uid()) = user_id);
-
-drop policy if exists medication_doses_update_own on public.health_medication_doses;
-create policy medication_doses_update_own
-  on public.health_medication_doses for update
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-
-drop policy if exists medication_doses_delete_own on public.health_medication_doses;
-create policy medication_doses_delete_own
-  on public.health_medication_doses for delete
-  using ((select auth.uid()) = user_id);
-
--- ---------------------------------------------------------------------------
--- health_medication_stock_log (optional, fuer Korrekturen & Audits)
--- ---------------------------------------------------------------------------
-create table if not exists public.health_medication_stock_log (
-  id         uuid primary key default gen_random_uuid(),
-  med_id     uuid not null references public.health_medications(id) on delete cascade,
-  delta      int not null check (delta <> 0),
-  reason     text,
-  created_at timestamptz not null default now()
-);
-
-comment on table public.health_medication_stock_log is
-  'Historisiert jede Lagerbestaenderaenderung (Restock/Korrektur) fuer Diagnostik.';
-
-create index if not exists idx_medication_stock_log_med
-  on public.health_medication_stock_log (med_id, created_at);
-
-alter table public.health_medication_stock_log enable row level security;
-
-drop policy if exists medication_stock_log_select_own on public.health_medication_stock_log;
-create policy medication_stock_log_select_own
-  on public.health_medication_stock_log for select
-  using (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
-
-drop policy if exists medication_stock_log_insert_own on public.health_medication_stock_log;
-create policy medication_stock_log_insert_own
-  on public.health_medication_stock_log for insert
-  with check (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
-
-drop policy if exists medication_stock_log_delete_own on public.health_medication_stock_log;
-create policy medication_stock_log_delete_own
-  on public.health_medication_stock_log for delete
-  using (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
+alter table public.health_medications
+  add column if not exists last_taken_day date,
+  add column if not exists last_taken_qty int check (last_taken_qty > 0 and last_taken_qty <= 24);
 
 -- ---------------------------------------------------------------------------
 -- Helper: berechneter Tageswert (Europe/Vienna)
@@ -179,6 +89,7 @@ create policy medication_stock_log_delete_own
 create or replace function public._med_today()
 returns date
 language sql
+set search_path = public, pg_catalog
 stable
 as $$
   select (now() at time zone 'Europe/Vienna')::date;
@@ -233,23 +144,25 @@ begin
       m.active,
       floor(m.stock_count::numeric / m.dose_per_day)::int as days_left,
       case
-        when d.id is not null then v_day + (floor(m.stock_count::numeric / m.dose_per_day)::int - 1)
+        when m.last_taken_day = v_day then v_day + (floor(m.stock_count::numeric / m.dose_per_day)::int - 1)
         else v_day + floor(m.stock_count::numeric / m.dose_per_day)::int
       end as runout_day,
       (
         floor(m.stock_count::numeric / m.dose_per_day)::int <= m.low_stock_days
         and not coalesce(m.low_stock_ack_day = v_day and m.low_stock_ack_stock = m.stock_count, false)
       ) as low_stock,
-      (d.id is not null) as taken,
-      d.taken_at,
-      d.qty,
+      (m.last_taken_day = v_day) as taken,
+      case
+        when m.last_taken_day = v_day then (m.last_taken_day::timestamp at time zone 'Europe/Vienna')
+        else null
+      end as taken_at,
+      case
+        when m.last_taken_day = v_day then coalesce(m.last_taken_qty, m.dose_per_day)
+        else null
+      end as qty,
       m.low_stock_ack_day,
       m.low_stock_ack_stock
     from public.health_medications m
-      left join public.health_medication_doses d
-        on d.med_id = m.id
-       and d.user_id = v_user
-       and d.day = v_day
     where m.user_id = v_user;
 end;
 $$;
@@ -335,7 +248,6 @@ declare
   v_user uuid := auth.uid();
   v_day  date := coalesce(p_day, public._med_today());
   v_med  public.health_medications;
-  v_prev_stock int;
   v_qty  int;
 begin
   if v_user is null then
@@ -355,32 +267,26 @@ begin
   if not found then
     raise exception 'medication not found' using errcode = 'P0002';
   end if;
-  v_prev_stock := v_med.stock_count;
   v_qty := greatest(v_med.dose_per_day, 1);
 
-  begin
-    insert into public.health_medication_doses (user_id, med_id, day, qty, taken_at)
-    values (v_user, v_med.id, v_day, v_qty, now());
-  exception
-    when unique_violation then
-      raise exception 'dose already confirmed for this day' using errcode = '23505';
-  end;
+  if v_med.last_taken_day = v_day then
+    raise exception 'dose already confirmed for this day' using errcode = '23505';
+  end if;
 
   update public.health_medications
-     set stock_count = greatest(v_prev_stock - v_qty, 0),
+     set stock_count = greatest(v_med.stock_count - v_qty, 0),
+         last_taken_day = v_day,
+         last_taken_qty = v_qty,
          low_stock_ack_day = case
-                               when low_stock_ack_stock = v_prev_stock then null
+                               when low_stock_ack_stock = v_med.stock_count then null
                                else low_stock_ack_day
                              end,
          low_stock_ack_stock = case
-                                 when low_stock_ack_stock = v_prev_stock then null
+                                 when low_stock_ack_stock = v_med.stock_count then null
                                  else low_stock_ack_stock
                                end
    where id = v_med.id
    returning * into v_med;
-
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (v_med.id, -v_qty, 'confirm_dose');
 
   return v_med;
 end;
@@ -404,34 +310,23 @@ declare
   v_user uuid := auth.uid();
   v_day  date := coalesce(p_day, public._med_today());
   v_med  public.health_medications;
-  v_qty  int;
 begin
   if v_user is null then
     raise exception 'not authenticated' using errcode = '42501';
   end if;
 
-  delete from public.health_medication_doses
-   where user_id = v_user
-     and med_id = p_med_id
-     and day = v_day
-   returning qty into v_qty;
-
-  if not found then
-    raise exception 'no dose to undo for this day' using errcode = 'P0002';
-  end if;
-
   update public.health_medications
-     set stock_count = stock_count + v_qty
+     set stock_count = stock_count + coalesce(last_taken_qty, dose_per_day),
+         last_taken_day = null,
+         last_taken_qty = null
    where id = p_med_id
      and user_id = v_user
+     and last_taken_day = v_day
    returning * into v_med;
 
   if v_med.id is null then
-    raise exception 'medication not found' using errcode = 'P0002';
+    raise exception 'no dose to undo for this day' using errcode = 'P0002';
   end if;
-
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (p_med_id, v_qty, 'undo_dose');
 
   return v_med;
 end;
@@ -472,9 +367,6 @@ begin
   if v_row.id is null then
     raise exception 'medication not found' using errcode = 'P0002';
   end if;
-
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (p_med_id, p_delta, coalesce(p_reason, 'manual_adjust'));
   return v_row;
 end;
 $$;
@@ -496,7 +388,6 @@ set search_path = public, pg_catalog
 as $$
 declare
   v_user uuid := auth.uid();
-  v_prev int;
   v_row  public.health_medications;
 begin
   if v_user is null then
@@ -506,25 +397,15 @@ begin
     raise exception 'stock must be >= 0' using errcode = '22023';
   end if;
 
-  select stock_count
-    into v_prev
-    from public.health_medications
-   where id = p_med_id
-     and user_id = v_user
-   for update;
-
-  if not found then
-    raise exception 'medication not found' using errcode = 'P0002';
-  end if;
-
   update public.health_medications
      set stock_count = p_stock
    where id = p_med_id
      and user_id = v_user
    returning * into v_row;
 
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (p_med_id, p_stock - v_prev, coalesce(p_reason, 'set_stock'));
+  if v_row.id is null then
+    raise exception 'medication not found' using errcode = 'P0002';
+  end if;
 
   return v_row;
 end;
