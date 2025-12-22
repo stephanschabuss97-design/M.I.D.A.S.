@@ -10,7 +10,7 @@
     minSilenceFrames: 8,
     reportInterval: 4,
   };
-  const WORKLET_URL = 'app/modules/hub/vad/vad-worklet.js';
+  const WORKLET_URL = 'app/modules/assistant-stack/vad/vad-worklet.js';
 
   function createController(userOptions = {}) {
     if (!AudioCtx) {

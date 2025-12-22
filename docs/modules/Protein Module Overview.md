@@ -23,7 +23,7 @@ Kurze Einordnung:
 | `app/modules/capture/body.js` | Trigger nach Body-Save. |
 | `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben. |
 | `app/modules/hub/index.js` | Profil-Payload fuer Assistant/Context. |
-| `app/modules/assistant/day-plan.js` | Protein-Limit im Tagesplan (max/min + Fallback). |
+| `app/modules/assistant-stack/assistant/day-plan.js` | Protein-Limit im Tagesplan (max/min + Fallback). |
 | `sql/10_User_Profile_Ext.sql` | Profile-Spalten (Targets, Doctor-Lock, Derived Fields). |
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
 | `sql/11_Lab_Event_Extension.sql` | CKD-Stufe aus `lab_event`. |

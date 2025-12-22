@@ -15,6 +15,7 @@ MIDAS wird ein modularer Gesundheits-Helper, der:
 Diese Roadmap beschreibt *Phasen*, keine einzelnen Prompts.  
 Jede Phase wird separat umgesetzt (eigener Branch / eigener Prompt).  
 Innerhalb einer Phase nur an den explizit genannten Dateien/Modulen arbeiten und keine neuen Features aus anderen Phasen vorziehen.
+**Status-Hinweis:** Voice ist derzeit geparkt; das Modul liegt in `app/modules/assistant-stack/voice/index.js`, VAD in `app/modules/assistant-stack/vad/`.
 
 ---
 
@@ -145,7 +146,7 @@ Once these changes are in place, Phase 0.3’s requirements—pre-render auth 
 Phase 0.4 Abschluss:
 
 - app/modules/hub/index.js : Voice-Gate-API (getVoiceGateStatus, isVoiceReady, onVoiceGateChange) blockt Needle/VAD/Resume solange Boot/Auth offen sind und loggt [voice] gate .... Bei Auth-Drop werden Recorder, Streams und Conversations beendet.
-- app/modules/hub/vad/vad.js  + Worklet checken den Gate vor start() und stoppen sofort mit [vad] stop due to voice gate lock, wenn Auth zur?ck auf unknown f?llt.
+- app/modules/assistant-stack/vad/vad.js  + Worklet checken den Gate vor start() und stoppen sofort mit [vad] stop due to voice gate lock, wenn Auth zur?ck auf unknown f?llt.
 - app/modules/assistant/session-agent.js  beendet Voice-Sessions automatisch, sobald der Gate schlie?t, und schreibt die Systemmeldung ?Voice deaktiviert ? bitte warten?, damit keine neuen Prompts starten.
 - app/styles/hub.css liefert body.voice-locked + .hub-core-trigger.is-voice-locked (gedimmte Orbit/Rings, Tooltip ?Voice aktiviert sich nach dem Start?, pointer-events:none).
 - assets/js/main.js pr?ft Voice-Gate pro Visibility/PageShow/Focus-Resume und ?berspringt 
@@ -228,7 +229,7 @@ Code-Schwerpunkt: `app/modules/hub/index.js` + zugehörige Styles/Skripte.
 | 1.4 TTS Playback           | ✅      | `/midas-tts`, `<audio>`-Pipeline inkl. Interrupt/Retry.        |
 | 1.5 Glow-Ring Animation    | ✅      | Idle/Listening/Thinking/Speaking/Error → Ring/Aura.            |
 | 1.6 Needle Trigger Feedba. | ✅      | Button steuert Session, inkl. Press-Animation.                 |
-| 1.7 Auto-stop via VAD      | ✅      | 1 s Stille stoppt Aufnahme (Worklet in `app/modules/hub/vad`). |
+| 1.7 Auto-stop via VAD      | ✅      | 1 s Stille stoppt Aufnahme (Worklet in `app/modules/assistant-stack/vad`). |
 | 1.8 Conversation Loop End  | ✅      | Phrasen wie „nein danke“ beenden die Session sauber.           |
 
 ---
@@ -276,7 +277,7 @@ Anpassungen:
 Beim Öffnen des Panels (openPanelHandler('assistant-text')) still Intake- und Termin-Snapshot laden (z. B. via AppModules.capture + späteres Termin-Modul) und im Header speichern.
 Neues renderAssistantHeader() das die Werte in DOM schreibt.
 Sicherstellen, dass MIDAS_ENDPOINTS.assistant weiterhin genutzt wird, aber Voice-spezifische Teile nur noch beim Long-Press greifen.
-Short/Long-Press-Mapping auf den Center-Button umsetzen (derzeit zwei Buttons [data-hub-module="assistant-text"]/assistant-voice).
+Short/Long-Press-Mapping auf den Center-Button umsetzen (derzeit zwei Buttons [data-hub-module="assistant-text"]/assistant-voice) – nur relevant, falls Voice reaktiviert wird.
 Logging/diag-Hooks aktualisieren (Phase 0.5 Vorgaben beachten).
 
 app/styles/hub.css / evtl. neue assistant-spezifische CSS ✅

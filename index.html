@@ -239,6 +239,8 @@
               >
               <span class="sr-only">Assistant Text Chat</span>
             </button>
+            <!-- Voice parked (legacy): assistant-voice button -->
+            <!--
               <button
                 type="button"
                 class="hub-icon"
@@ -254,6 +256,7 @@
               >
               <span class="sr-only">Voice Chat</span>
             </button>
+            -->
               <button
                 type="button"
                 class="hub-icon"
@@ -340,6 +343,8 @@
             >
               &#x1F4AC; Text Chat
             </button>
+            <!-- Voice parked (legacy): assistant-voice quickbar button -->
+            <!--
             <button
               type="button"
               class="hub-quickbar-btn"
@@ -347,6 +352,7 @@
             >
               &#x1F399; Voice Chat
             </button>
+            -->
             <button
               type="button"
               class="hub-quickbar-btn"
@@ -1333,17 +1339,19 @@
   <script src="app/diagnostics/logger.js"></script>
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
-  <script src="app/modules/hub/vad/vad.js"></script>
+  <!-- Voice parked (legacy): VAD + voice module disabled -->
+  <!-- <script src="app/modules/assistant-stack/vad/vad.js"></script> -->
+  <!-- <script src="app/modules/assistant-stack/voice/index.js"></script> -->
   <script src="app/modules/hub/hub-aura3d.js"></script>
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
   <script src="app/modules/medication/index.js"></script>
   <script src="app/modules/activity/index.js"></script>
-  <script type="module" src="app/modules/assistant/suggest-store.js"></script>
-  <script type="module" src="app/modules/assistant/suggest-ui.js"></script>
-  <script type="module" src="app/modules/assistant/allowed-actions.js"></script>
-  <script type="module" src="app/modules/assistant/day-plan.js"></script>
-  <script type="module" src="app/modules/assistant/index.js"></script>
+  <script type="module" src="app/modules/assistant-stack/assistant/suggest-store.js"></script>
+  <script type="module" src="app/modules/assistant-stack/assistant/suggest-ui.js"></script>
+  <script type="module" src="app/modules/assistant-stack/assistant/allowed-actions.js"></script>
+  <script type="module" src="app/modules/assistant-stack/assistant/day-plan.js"></script>
+  <script type="module" src="app/modules/assistant-stack/assistant/index.js"></script>
   <script src="app/modules/hub/index.js"></script>
   <!-- @refactor: moved to assets/js/ui.js -->
   <script src="assets/js/ui.js"></script>

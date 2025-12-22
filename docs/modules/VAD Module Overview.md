@@ -1,7 +1,7 @@
 ﻿# VAD Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Voice Activity Detection fuer Sprachaufnahme im Hub.
+- Zweck: Voice Activity Detection fuer Sprachaufnahme im Voice-Modul (geparkt).
 - Rolle innerhalb von MIDAS: erkennt Speech/Silence und stoppt Recording bei Stille.
 - Abgrenzung: kein Speech-to-Text, kein Audio-Upload, keine Transkription.
 
@@ -19,9 +19,9 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/hub/vad/vad.js` | VAD-Controller (Start/Stop, Gate-Check, Fallback) |
-| `app/modules/hub/vad/vad-worklet.js` | AudioWorklet Processor fuer Speech-Detection |
-| `app/modules/hub/index.js` | Voice-Flow, VAD-Anbindung, Silence-Timer |
+| `app/modules/assistant-stack/vad/vad.js` | VAD-Controller (Start/Stop, Gate-Check, Fallback) |
+| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet Processor fuer Speech-Detection |
+| `app/modules/assistant-stack/voice/index.js` | Voice-Flow, VAD-Anbindung, Silence-Timer (geparkt) |
 
 ---
 
@@ -35,7 +35,7 @@ Kurze Einordnung:
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
-- `MidasVAD.createController()` wird aus `hub/index.js` erstellt.
+- `MidasVAD.createController()` wird aus `assistant-stack/voice/index.js` erstellt (geparkt).
 - AudioContext wird lazy erstellt.
 - Voice-Gate wird geprueft (Auth/Boot-Status).
 
@@ -55,7 +55,7 @@ Kurze Einordnung:
 
 ## 5. UI-Integration
 
-- Unsichtbar fuer Nutzer; Teil des Voice-Flows im Hub.
+- Unsichtbar fuer Nutzer; Teil des Voice-Flows im Voice-Modul.
 - Beeinflusst Statuswechsel (Listening -> Idle) durch Auto-Stop.
 
 ---
@@ -102,7 +102,7 @@ Kurze Einordnung:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv.
+- Status: geparkt (Voice ist deaktiviert).
 - Dependencies (hard): WebAudio + AudioWorklet, Hub Voice-Gate.
 - Dependencies (soft): n/a.
 - Known issues / risks: Browser-Support; Mic-Permission; Worklet-Fail (Fallback).

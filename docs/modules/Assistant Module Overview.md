@@ -1,8 +1,8 @@
 ﻿# Assistant Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Text- und Voice-Assistant fuer Capture-Hilfe, Aktionen und Kontext-Feedback.
-- Rolle innerhalb von MIDAS: orchestriert Assistant-UI, Voice-Flow und Aktionen in Hub.
+- Zweck: Text-Assistant fuer Capture-Hilfe, Aktionen und Kontext-Feedback (Voice ist geparkt).
+- Rolle innerhalb von MIDAS: orchestriert Assistant-UI und Aktionen im Hub; Voice-Logik liegt separat als Legacy-Modul.
 - Abgrenzung: keine eigenen medizinischen Diagnosen, kein Persistieren von Daten (nur Actions triggern Speichern in anderen Modulen).
 
 ---
@@ -19,7 +19,7 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/hub/index.js` | Voice-Flow, Assistant-Panel, Endpunkte, Kontext-Sync |
+| `app/modules/hub/index.js` | Assistant-Panel, Endpunkte, Kontext-Sync, Voice-Adapter (geparkt) |
 | `app/modules/assistant/index.js` | Assistant UI-Helpers + Session-Factory |
 | `app/modules/assistant/session-agent.js` | Session-Logik (Messages, API-Call, Actions) |
 | `app/modules/assistant/actions.js` | Action-Dispatcher (open_module, intake_save, etc.) |
@@ -29,8 +29,9 @@ Kurze Einordnung:
 | `app/modules/assistant/day-plan.js` | Follow-up Text (Resttag, Termine) |
 | `app/modules/appointments/index.js` | Termine fuer Butler-Header/Context |
 | `app/modules/profile/index.js` | Profil-Context fuer Butler/Assistant |
-| `app/modules/hub/vad/vad.js` | Voice Activity Detection (Auto-Stop) |
-| `app/modules/hub/vad/vad-worklet.js` | AudioWorklet fuer VAD |
+| `app/modules/assistant-stack/voice/index.js` | Voice-Flow (record/transcribe/tts) - geparkt |
+| `app/modules/assistant-stack/vad/vad.js` | Voice Activity Detection (Auto-Stop) |
+| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet fuer VAD |
 | `index.html` | Assistant-Panel Markup (`data-hub-panel="assistant-text"`) |
 | `app/styles/hub.css` | Assistant-Panel Styling (Chat, Pills, Suggest) |
 
@@ -52,12 +53,12 @@ Kurze Einordnung:
 
 ### 4.2 User-Trigger
 - Assistant-Panel oeffnen (Orbit-Button `assistant-text`).
-- Voice-Trigger (Orbit-Button `assistant-voice`) startet Recording.
+- Voice-Trigger (Orbit-Button `assistant-voice`) ist geparkt und standardmaessig deaktiviert.
 - Photo-Button im Panel fuer Vision-Flow.
 
 ### 4.3 Verarbeitung
 - Text: `session-agent` sendet Messages an `/api/midas-assistant`.
-- Voice: Transcribe (`/api/midas-transcribe`) -> Assistant -> TTS (`/api/midas-tts`).
+- Voice (geparkt): Transcribe (`/api/midas-transcribe`) -> Assistant -> TTS (`/api/midas-tts`).
 - Vision: Upload -> `/api/midas-vision` -> Ergebnis im Chat.
 - Actions laufen ueber `allowed-actions` und `assistant/actions`.
 
@@ -85,7 +86,7 @@ Kurze Einordnung:
 ## 7. Fehler- & Diagnoseverhalten
 
 - Fehlerpfade loggen via `diag.add` und `console.warn` (Hub/Assistant).
-- Voice-Gate blockt bei Auth/Boot-Status.
+- Voice-Gate blockt bei Auth/Boot-Status (nur falls Voice reaktiviert wird).
 - Netzwerkfehler bei Assistant/Transcribe/TTs/Vision -> UI-Feedback.
 
 ---
@@ -119,7 +120,7 @@ Kurze Einordnung:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (Text/Voice).
+- Status: aktiv (Text), Voice geparkt.
 - Dependencies (hard): Hub-Panel, `assistant/*` Session/Actions, VAD, Backend-APIs `/api/midas-*`.
 - Dependencies (soft): Vision-Flow/Photo, Appointments/Profile Kontext.
 - Known issues / risks: Netz/Latenz, Actions nur whitelisted, Voice-Gate blockt bei Auth/Boot.
@@ -130,7 +131,7 @@ Kurze Einordnung:
 ## 12. QA-Checkliste
 
 - Assistant-Panel oeffnet und sendet Nachrichten.
-- Voice-Trigger startet/stoppt sauber (VAD Auto-Stop).
+- Voice-Trigger startet/stoppt sauber (VAD Auto-Stop) - nur wenn Voice reaktiviert ist.
 - Suggest-Confirm führt Actions korrekt aus.
 - Kontext (Pills/Termine/Profil) aktualisiert sich nach Änderungen.
 
@@ -138,7 +139,7 @@ Kurze Einordnung:
 
 ## 13. Definition of Done
 
-- Text- und Voice-Flow funktionieren ohne Errors.
+- Text-Flow funktioniert ohne Errors; Voice ist geparkt.
 - Actions laufen nur ueber erlaubte Guards.
 - Dokumentation aktuell.
 
