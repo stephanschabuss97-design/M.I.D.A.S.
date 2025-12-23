@@ -1,4 +1,4 @@
-# Module Consolidation Roadmap (Vitals + Intake + Assistant Stacks)
+﻿# Module Consolidation Roadmap (Vitals + Intake + Assistant Stacks)
 
 Goal:
 - Consolidate related modules into clear stacks without breaking behavior.
@@ -29,7 +29,7 @@ Current layout (from repo scan):
 - Activity: `app/modules/activity/index.js`
 - Medication: `app/modules/medication/index.js`
 - VAD: `app/modules/assistant-stack/vad/*`
-- Assistant: `app/modules/assistant/*`
+- Assistant: `app/modules/assistant-stack/assistant/*`
 - Trendpilot: `app/modules/trendpilot/`
 - Hub: `app/modules/hub/index.js`
 - Intake UI lives in `index.html` under the Intake panel (IN/TAB).
@@ -196,3 +196,4 @@ Definition of Done:
 
 Next:
 - Continue with `docs/assistant-stack-refactor-roadmap.md`.
+

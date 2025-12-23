@@ -20,13 +20,13 @@ Kurze Einordnung:
 | Datei | Zweck |
 |------|------|
 | `app/modules/hub/index.js` | Assistant-Panel, Endpunkte, Kontext-Sync, Voice-Adapter (geparkt) |
-| `app/modules/assistant/index.js` | Assistant UI-Helpers + Session-Factory |
-| `app/modules/assistant/session-agent.js` | Session-Logik (Messages, API-Call, Actions) |
-| `app/modules/assistant/actions.js` | Action-Dispatcher (open_module, intake_save, etc.) |
-| `app/modules/assistant/allowed-actions.js` | Guard/Whitelist fuer Actions (Stage/Auth) |
-| `app/modules/assistant/suggest-store.js` | Suggest/Confirm Store (Snapshot + State) |
-| `app/modules/assistant/suggest-ui.js` | Suggest-UI Rendering + Events |
-| `app/modules/assistant/day-plan.js` | Follow-up Text (Resttag, Termine) |
+| `app/modules/assistant-stack/assistant/index.js` | Assistant UI-Helpers + Session-Factory |
+| `app/modules/assistant-stack/assistant/session-agent.js` | Session-Logik (Messages, API-Call, Actions) |
+| `app/modules/assistant-stack/assistant/actions.js` | Action-Dispatcher (open_module, intake_save, etc.) |
+| `app/modules/assistant-stack/assistant/allowed-actions.js` | Guard/Whitelist fuer Actions (Stage/Auth) |
+| `app/modules/assistant-stack/assistant/suggest-store.js` | Suggest/Confirm Store (Snapshot + State) |
+| `app/modules/assistant-stack/assistant/suggest-ui.js` | Suggest-UI Rendering + Events |
+| `app/modules/assistant-stack/assistant/day-plan.js` | Follow-up Text (Resttag, Termine) |
 | `app/modules/appointments/index.js` | Termine fuer Butler-Header/Context |
 | `app/modules/profile/index.js` | Profil-Context fuer Butler/Assistant |
 | `app/modules/assistant-stack/voice/index.js` | Voice-Flow (record/transcribe/tts) - geparkt |
@@ -142,4 +142,5 @@ Kurze Einordnung:
 - Text-Flow funktioniert ohne Errors; Voice ist geparkt.
 - Actions laufen nur ueber erlaubte Guards.
 - Dokumentation aktuell.
+
 

@@ -1,4 +1,4 @@
-# Assistant Multimodal + Text Chat Polish Roadmap
+﻿# Assistant Multimodal + Text Chat Polish Roadmap
 
 Goal:
 - Make the text assistant feel like a clean chat product with MIDAS context.
@@ -11,11 +11,17 @@ Scope:
 - Photo flow is part of text chat (vision).
 - Voice is parked as legacy and not wired; voice module lives in `app/modules/assistant-stack/voice/index.js`.
 
+Status (as of 2025-12-22):
+- Voice archive roadmap completed (voice parked, no UI wiring).
+- Assistant stack refactor completed (assistant files moved to `app/modules/assistant-stack/assistant/`, VAD in `app/modules/assistant-stack/vad/`).
+- Script tags updated to assistant-stack paths; voice stays disabled.
+- This roadmap phases remain not started (analysis + UX work still pending).
+
 References (source of truth):
 - `docs/modules/Assistant Module Overview.md`
 - `docs/modules/VAD Module Overview.md`
 - `docs/modules/Intent Engine Module Overview.md`
-- Frontend: `app/modules/hub/index.js`, `app/modules/assistant/*`
+- Frontend: `app/modules/hub/index.js`, `app/modules/assistant-stack/assistant/*`
 - Backend (separate repo): `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-assistant`
 - Backend (separate repo): `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-vision`
 - Optional voice endpoints: `midas-transcribe`, `midas-tts`
@@ -23,10 +29,10 @@ References (source of truth):
 Current state (verified in code):
 - Photo auto-runs: `handleAssistantPhotoSelected()` -> `sendAssistantPhotoMessage()` -> `fetchAssistantVisionReply()` triggers vision immediately on file change.
 - Text chat uses `sendAssistantChatMessage()` -> `fetchAssistantTextReply()`; no compose with image yet.
-- Confirm UI is inline, created in `app/modules/assistant/suggest-ui.js` and uses events:
+- Confirm UI is inline, created in `app/modules/assistant-stack/assistant/suggest-ui.js` and uses events:
   - `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:suggest-confirm-reset`.
 - Confirm save runs via `runAllowedAction('intake_save', ...)` in `app/modules/hub/index.js` with guard `suggestionConfirmInFlight`.
-- Suggest store is in `app/modules/assistant/suggest-store.js`.
+- Suggest store is in `app/modules/assistant-stack/assistant/suggest-store.js`.
 
 Expected behavior:
 1) Compose turn: user can attach photo and/or text, then send once.
@@ -48,8 +54,11 @@ Phase 0 - Capture baseline (deterministic)
 
 0.3 Check confirm event wiring
 - File: `app/modules/hub/index.js` (listener binding inside `setupAssistantChat`)
-- File: `app/modules/assistant/suggest-ui.js` (inline confirm)
+- File: `app/modules/assistant-stack/assistant/suggest-ui.js` (inline confirm)
 - Verify listeners only bind once and do not double-bind on re-render.
+ 
+0.4 UI polish: "Analyse lÃ¤uft" placeholder
+- Ensure the status text renders cleanly (no garbled symbols) in photo analysis bubbles.
 
 Deliverable:
 - Short bug list with repro steps and expected vs actual.
@@ -223,3 +232,4 @@ Guardrails:
 
 Next:
 - If intent logic grows beyond assistant-stack scope, use `docs/modules/Intent Engine Module Overview.md` as the next reference.
+
