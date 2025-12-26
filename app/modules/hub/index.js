@@ -1949,6 +1949,48 @@
     return 'evening';
   };
 
+  const APPOINTMENT_TYPE_KEYWORDS = {
+    nephrology: ['nephro', 'niere', 'nieren', 'dialyse', 'kidney', 'ckd'],
+    cardiology: ['cardio', 'herz', 'kardiologie', 'blutdruck', 'hypertension'],
+    internist: ['internist', 'innere', 'innere medizin'],
+    urology: ['urologe', 'urologie'],
+    gastro: ['gastro', 'gastrologe', 'gastrologie', 'gastroenterologe', 'gastroenterologie'],
+  };
+
+  const normalizeAppointmentText = (item = {}) =>
+    `${item.title || item.label || ''} ${item.note || ''} ${item.detail || ''}`
+      .toLowerCase();
+
+  const inferAppointmentType = (item) => {
+    const text = normalizeAppointmentText(item);
+    if (!text.trim()) return 'general';
+    const entries = Object.entries(APPOINTMENT_TYPE_KEYWORDS);
+    for (let i = 0; i < entries.length; i += 1) {
+      const [bucket, keywords] = entries[i];
+      for (let j = 0; j < keywords.length; j += 1) {
+        if (text.includes(keywords[j])) return bucket;
+      }
+    }
+    return 'general';
+  };
+
+  const pickNextAppointmentType = (appointments = []) => {
+    if (!Array.isArray(appointments) || !appointments.length) return null;
+    const parsed = appointments.map((item) => ({
+      item,
+      ts: Number.isFinite(Date.parse(item.start_at || item.startAt || ''))
+        ? Date.parse(item.start_at || item.startAt || '')
+        : null,
+    }));
+    if (!parsed.length) return inferAppointmentType(appointments[0]);
+    parsed.sort((a, b) => {
+      const aTs = a.ts == null ? Number.POSITIVE_INFINITY : a.ts;
+      const bTs = b.ts == null ? Number.POSITIVE_INFINITY : b.ts;
+      return aTs - bTs;
+    });
+    return inferAppointmentType(parsed[0].item);
+  };
+
   const buildAssistantContextPayload = ({ includeTimeSlot = false } = {}) => {
     const ctx = assistantChatCtrl?.context;
     if (!ctx) return null;
@@ -1972,7 +2014,12 @@
         note: item.note || null,
         label: item.label || '',
         detail: item.detail || '',
+        type: inferAppointmentType(item),
       }));
+      const appointmentType = pickNextAppointmentType(payload.appointments);
+      if (appointmentType) {
+        payload.appointment_type = appointmentType;
+      }
     }
     if (ctx.profile) {
       const meds = Array.isArray(ctx.profile.medications)
