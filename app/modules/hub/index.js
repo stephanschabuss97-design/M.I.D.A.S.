@@ -1979,8 +1979,7 @@
         ? ctx.profile.medications
         : typeof ctx.profile.medications === 'string'
           ? ctx.profile.medications
-              .split(/[
-;,]+/)
+              .split(/[\n;,]+/)
               .map((entry) => entry.trim())
               .filter(Boolean)
           : [];
