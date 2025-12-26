@@ -1135,7 +1135,7 @@
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     const dayLabel = APPOINTMENT_DATE_FORMAT.format(date).replace(/\.$/, '');
     const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
-    return `${dayLabel} ÔÇó ${timeLabel}`;
+    return `${dayLabel} • ${timeLabel}`;
   };
 
   const normalizeAppointmentItems = (items, limit = 2) => {
@@ -1166,7 +1166,7 @@
       if (!detail && (raw.start || raw.date)) {
         detail = formatAppointmentDateTime(raw.start || raw.date);
       } else if (!detail && raw.day && raw.time) {
-        detail = `${raw.day} ÔÇó ${raw.time}`;
+        detail = `${raw.day} • ${raw.time}`;
       }
       if (!label && detail) label = 'Termin';
       if (!label && !detail) return false;
@@ -1282,7 +1282,7 @@
     if (!panel) {
       assistantChatSetupAttempts += 1;
       if (assistantChatSetupAttempts === 1) {
-        debugLog('assistant-chat panel missing, retrying ÔÇª');
+        debugLog('assistant-chat panel missing, retrying …');
       }
       if (assistantChatSetupAttempts < ASSISTANT_CHAT_MAX_ATTEMPTS) {
         global.setTimeout(() => setupAssistantChat(hub), ASSISTANT_CHAT_RETRY_DELAY);
@@ -1480,7 +1480,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar ÔÇô ich habe ${list} f├╝r heute vorgemerkt.`;
+        return `Alles klar – ich habe ${list} für heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -1646,9 +1646,9 @@
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
       const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
       diag.add?.(
-        `[assistant-vision] foto zu gro├ƒ: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        `[assistant-vision] foto zu groß: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
-      appendAssistantMessage('system', `Das Foto ist zu gro├ƒ (max. ca. ${maxMb} MB).`);
+      appendAssistantMessage('system', `Das Foto ist zu groß (max. ca. ${maxMb} MB).`);
       return;
     }
     try {
@@ -1847,13 +1847,13 @@
               ? 'Analyse fehlgeschlagen.'
               : message.status === 'done'
                 ? 'Analyse abgeschlossen.'
-                : 'Analyse l├ñuft ÔÇª';
+                : 'Analyse läuft …';
           statusEl.textContent = statusText;
         }
         const resultEl = bubble.querySelector('.assistant-photo-result');
         if (resultEl) {
           resultEl.textContent =
-            message.resultText || (message.status === 'done' ? 'Keine Details verf├╝gbar.' : 'Noch kein Ergebnis.');
+            message.resultText || (message.status === 'done' ? 'Keine Details verfügbar.' : 'Noch kein Ergebnis.');
           if (message.status === 'error') {
             resultEl.classList.remove('muted');
           } else {
@@ -1982,7 +1982,7 @@
       existingMessage || appendAssistantMessage('user', '', basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
-    targetMessage.resultText = 'Analyse l├ñuft ÔÇª';
+    targetMessage.resultText = 'Analyse läuft …';
     targetMessage.retryable = false;
     targetMessage.retryPayload =
       targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
@@ -2180,7 +2180,7 @@
     if (result.reply) {
       parts.push(result.reply);
     }
-    return parts.join(' ÔÇó ') || 'Analyse abgeschlossen.';
+    return parts.join(' • ') || 'Analyse abgeschlossen.';
   };
 
   const bootFlow = global.AppModules?.bootFlow;

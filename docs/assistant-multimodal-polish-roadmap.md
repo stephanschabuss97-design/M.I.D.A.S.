@@ -1,10 +1,11 @@
-﻿# Assistant Multimodal + Text Chat Polish Roadmap
+# Assistant Multimodal + Text Chat Polish Roadmap
 
 Goal:
 - Make the text assistant feel like a clean chat product with MIDAS context.
 - One user turn = one request (text and/or photo) with deterministic behavior.
 - Fix confirm/suggest so it always saves exactly once.
 - Optional follow-up after save with CKD-aware meal idea.
+- Target scope: focused photo analysis + context feedback + short meal recommendation (no open-ended health chat).
 
 Scope:
 - Primary focus: text chat in `app/modules/hub/index.js`.
@@ -51,14 +52,23 @@ Phase 0 - Capture baseline (deterministic)
 - Steps: open assistant -> attach photo -> wait for analysis -> click "Ja, speichern".
 - Observe: does the dialog close? does save happen once or multiple times?
 - Record exact steps and visible result.
+  - Result (reported): after first "Ja, speichern" the confirm dialog stays open, but the save runs once.
+  - Second click: no additional save runs, and the dialog closes.
+  - Visual glitch: garbled characters appear after "Alles klar ..." in the assistant reply.
 
 0.3 Check confirm event wiring
 - File: `app/modules/hub/index.js` (listener binding inside `setupAssistantChat`)
 - File: `app/modules/assistant-stack/assistant/suggest-ui.js` (inline confirm)
 - Verify listeners only bind once and do not double-bind on re-render.
+  - Found: `suggest-ui.js` attaches confirm UI on `assistant:suggest-updated` and `assistant:chat-rendered`, with `removeBlock()` before reattach.
+  - Found: confirm click dispatches `assistant:suggest-confirm`; cancel dispatches `assistant:suggest-answer`.
+  - Found: confirm reset only on `assistant:suggest-confirm-reset` (set busy false, allow re-dispatch).
+  - Found: hub listens for `assistant:suggest-confirm` + `assistant:suggest-answer` inside `setupAssistantChat`, guarded by `assistantChatCtrl` so it should bind once.
+  - Note: successful confirm relies on `store.dismissCurrent()` to remove the block (no `suggest-confirm-reset` on success).
  
-0.4 UI polish: "Analyse lÃ¤uft" placeholder
+0.4 UI polish: "Analyse läuft" placeholder
 - Ensure the status text renders cleanly (no garbled symbols) in photo analysis bubbles.
+  - Observed: garbled characters appear after "Alles klar ..." in assistant reply text.
 
 Deliverable:
 - Short bug list with repro steps and expected vs actual.
@@ -84,6 +94,8 @@ Phase 1 - Compose turn (text + photo in one send)
   - Option A: extend `midas-assistant` to handle optional image.
   - Option B: keep `midas-vision` and call it only when user clicks Send.
 - Only one network request per user turn.
+- Document the routing choice and why it was chosen.
+- Lock a request contract (list of payload keys + one example payload).
 
 1.4 Chat bubble consolidation
 - User bubble represents text + image together.
@@ -107,6 +119,8 @@ Phase 2 - Confirm flow (single confirm, single save)
 2.3 Event pipeline audit
 - Events: `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:action-success`.
 - Ensure each click is processed once and cleans up UI.
+- Define the single source of truth for confirm state (store vs hub).
+- Define explicit cleanup rules (when to clear confirm UI/state).
 
 Acceptance:
 - First click always closes confirm.
@@ -127,6 +141,7 @@ Phase 3 - Follow-up after save (optional CKD-friendly idea)
 3.3 Prompt format
 - Offer 1-3 suggestions with short rationale.
 - Ask if the user wants to save the suggestion.
+- Guard against duplicate follow-up (once per save event).
 
 Acceptance:
 - After saving intake, assistant asks once for CKD-friendly suggestion.
@@ -183,25 +198,25 @@ Notes for new chats
 - Frontend is in this repo; backend edge functions are in `midas-backend`.
 
 -------------------------------------------------------------------------------
-Phase 5 - Butler UI density rules (desktop/tablet/mobile)
+Phase 6 - Butler UI density rules (desktop/tablet/mobile)
 
-5.1 Define data tiers (always vs optional vs expandable)
+6.1 Define data tiers (always vs optional vs expandable)
 - Always visible (all devices): water/salt/protein chips.
 - Context extras (desktop/tablet): protein target (min/max), CKD stage.
 - Optional (desktop): last meal summary, last med confirmation, next appointment.
 - Expandable: remaining budget + warning + 1 short recommendation.
 
-5.2 Desktop layout (high density)
+6.2 Desktop layout (high density)
 - Show: water/salt/protein + protein target + CKD stage.
 - Show: last meal + last med confirm + next appointment.
 - Expand: remaining budget + warning + recommendation.
 
-5.3 Tablet layout (medium density)
+6.3 Tablet layout (medium density)
 - Show: water/salt/protein + protein target.
 - Show: one extra line (either next appointment or last med confirmation).
 - Expand: remaining budget + warning.
 
-5.4 Mobile layout (low density)
+6.4 Mobile layout (low density)
 - Show: water/salt/protein only.
 - Provide: one compact "More" toggle for everything else.
 - Expand: one item per category only (no lists).
@@ -232,4 +247,5 @@ Guardrails:
 
 Next:
 - If intent logic grows beyond assistant-stack scope, use `docs/modules/Intent Engine Module Overview.md` as the next reference.
+
 
