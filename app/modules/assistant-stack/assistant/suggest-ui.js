@@ -49,6 +49,12 @@ import { assistantSuggestStore } from './suggest-store.js';
     if (currentBlock?.parentElement) {
       currentBlock.parentElement.removeChild(currentBlock);
     }
+    const leftovers = chatContainer.querySelectorAll('.assistant-confirm-block');
+    leftovers.forEach((block) => {
+      if (block?.parentElement) {
+        block.parentElement.removeChild(block);
+      }
+    });
     currentBlock = null;
     currentSuggestionId = null;
     currentButtons = { yes: null, no: null };

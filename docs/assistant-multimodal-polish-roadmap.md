@@ -74,7 +74,7 @@ Deliverable:
 - Short bug list with repro steps and expected vs actual.
 
 -------------------------------------------------------------------------------
-Phase 1 - Compose turn (text + photo in one send)
+Phase 1 - Compose turn (text + photo in one send) ✅ (done)
 
 1.1 UI state for photo draft ✅ (done)
 - Keep photo in draft state after selection.
@@ -90,7 +90,7 @@ Phase 1 - Compose turn (text + photo in one send)
   - `history` (optional)
   - Implemented in `app/modules/hub/index.js` as `buildAssistantTurnPayload()` (text/image/context/history/session_id).
 
-1.3 Single backend call per turn
+1.3 Single backend call per turn ✅ (done)
 - Decide routing:
   - Option A: extend `midas-assistant` to handle optional image.
   - Option B: keep `midas-vision` and call it only when user clicks Send.
@@ -140,7 +140,7 @@ Phase 1 - Compose turn (text + photo in one send)
         "meta": { "fileName": "photo.jpg" }
       }
 
-1.4 Chat bubble consolidation
+1.4 Chat bubble consolidation ✅ (done)
 - User bubble represents text + image together.
 - Assistant response is a single bubble.
   - Implemented: photo message stores optional user text and renders it inside the photo bubble.
@@ -156,6 +156,7 @@ Phase 2 - Confirm flow (single confirm, single save)
 2.1 Single confirm instance
 - Ensure only one active confirm UI at a time.
 - Dismiss old confirm UI before showing a new one.
+  - Implemented in `app/modules/assistant-stack/assistant/suggest-ui.js`: remove any existing `.assistant-confirm-block` before attaching a new one.
 
 2.2 Explicit confirm state machine
 - States: `idle` -> `analysis_done` -> `confirm_open` -> `saving` -> `saved|error`.
