@@ -1639,6 +1639,7 @@
             source: source || 'intake-save',
             followupKey: followupKey || null,
             savedAt: savedAt || null,
+            followupVersion: 1,
           },
         });
         mealFollowupMessageId = message?.id || null;
@@ -2522,6 +2523,7 @@
               followup_key: meta.followupKey || null,
               saved_at: meta.savedAt || null,
               context,
+              meta: { followup_version: 1 },
             },
           }),
         );
