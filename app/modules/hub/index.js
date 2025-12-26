@@ -2161,6 +2161,7 @@
         messageId: targetMessage.id,
       });
       if (suggestionStore && suggestionPayload) {
+        suggestionStore.clear?.({ reason: 'vision-replace' });
         suggestionStore.queueSuggestion(
           {
             ...suggestionPayload,

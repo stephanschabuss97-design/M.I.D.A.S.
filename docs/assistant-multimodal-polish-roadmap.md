@@ -157,6 +157,7 @@ Phase 2 - Confirm flow (single confirm, single save)
 - Ensure only one active confirm UI at a time.
 - Dismiss old confirm UI before showing a new one.
   - Implemented in `app/modules/assistant-stack/assistant/suggest-ui.js`: remove any existing `.assistant-confirm-block` before attaching a new one.
+  - Enforced at source: vision results now clear the suggestion queue before enqueue (`app/modules/hub/index.js`).
 
 2.2 Explicit confirm state machine
 - States: `idle` -> `analysis_done` -> `confirm_open` -> `saving` -> `saved|error`.
