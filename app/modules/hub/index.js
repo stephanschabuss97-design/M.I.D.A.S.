@@ -1157,7 +1157,7 @@
         raw.summary ||
         raw.type ||
         '';
-      let detail =
+            let detail =
         raw.detail ||
         raw.subtitle ||
         raw.when ||
@@ -1168,9 +1168,24 @@
       } else if (!detail && raw.day && raw.time) {
         detail = `${raw.day} • ${raw.time}`;
       }
+      const startAt =
+        raw.start ||
+        raw.date ||
+        raw.start_at ||
+        raw.starts_at ||
+        raw.startTime ||
+        null;
+      const note =
+        raw.note ||
+        raw.notes ||
+        raw.description ||
+        raw.detail ||
+        raw.subtitle ||
+        '';
       if (!label && detail) label = 'Termin';
-      if (!label && !detail) return false;
-      normalized.push({ id, label, detail });
+      if (!label && !detail && !note && !startAt) return false;
+      normalized.push({ id, label, detail, startAt, note });
+
       return normalized.length >= limit;
     });
     return normalized.slice(0, limit);
@@ -1508,6 +1523,10 @@
             forceRefresh: true,
           });
           renderSuggestionFollowupAdvice(suggestion);
+          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+          const savedAt = Date.now();
+          const followupKey = buildMealFollowupKey({ payload, sessionId: assistantChatCtrl?.sessionId, savedAt });
+          createMealFollowupPrompt({ source: 'suggestion-card', snapshot, followupKey, savedAt });
         } finally {
           suggestionConfirmInFlight = false;
         }
@@ -1525,7 +1544,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar – ich habe ${list} für heute vorgemerkt.`;
+        return `Alles klar - ich habe ${list} fuer heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -1549,6 +1568,25 @@
       let mealFollowupPromptActive = false;
       let mealFollowupLastTriggeredAt = 0;
       let mealFollowupMessageId = null;
+      let mealFollowupSnapshot = null;
+      let mealFollowupMeta = null;
+      const mealFollowupSeenKeys = new Set();
+
+      const setMealFollowupSnapshot = (snapshot) => {
+        mealFollowupSnapshot = snapshot || null;
+      };
+
+      const setMealFollowupMeta = (meta) => {
+        mealFollowupMeta = meta || null;
+      };
+
+      const buildMealFollowupKey = ({ payload, sessionId, savedAt } = {}) => {
+        const saveId = payload?.save_id || payload?.saveId || payload?.id || null;
+        if (saveId) return `save:${saveId}`;
+        const sessionKey = payload?.session_id || payload?.sessionId || sessionId || 'unknown';
+        const stamp = payload?.saved_at || payload?.savedAt || savedAt || Date.now();
+        return `session:${sessionKey}:${stamp}`;
+      };
 
       const removeAssistantMessage = (messageId) => {
         if (!assistantChatCtrl || !messageId) return;
@@ -1560,7 +1598,7 @@
         renderAssistantChat();
       };
 
-      const createMealFollowupPrompt = ({ source } = {}) => {
+      const createMealFollowupPrompt = ({ source, snapshot, followupKey, savedAt } = {}) => {
         if (!assistantChatCtrl) return;
         if (mealFollowupPromptActive) return;
         const now = Date.now();
@@ -1569,8 +1607,20 @@
           (msg) => msg.type === 'followup',
         );
         if (hasFollowup) return;
+        const resolvedKey = followupKey || null;
+        if (resolvedKey && mealFollowupSeenKeys.has(resolvedKey)) return;
         mealFollowupPromptActive = true;
         mealFollowupLastTriggeredAt = now;
+        setMealFollowupSnapshot(snapshot || buildAssistantContextPayload({ includeTimeSlot: true }));
+        const metaSavedAt = savedAt || Date.now();
+        if (resolvedKey) {
+          mealFollowupSeenKeys.add(resolvedKey);
+        }
+        setMealFollowupMeta({
+          followupKey: resolvedKey,
+          savedAt: metaSavedAt,
+          source: source || 'intake-save',
+        });
         const promptText =
           'Soll ich dir basierend auf deinen heutigen Werten und dem naechsten Termin einen Essensvorschlag machen?';
         const message = appendAssistantMessage('assistant', promptText, {
@@ -1578,6 +1628,8 @@
           meta: {
             followupType: 'meal-idea',
             source: source || 'intake-save',
+            followupKey: followupKey || null,
+            savedAt: savedAt || null,
           },
         });
         mealFollowupMessageId = message?.id || null;
@@ -1589,9 +1641,13 @@
         }
         mealFollowupMessageId = null;
         mealFollowupPromptActive = false;
+        setMealFollowupSnapshot(null);
+        setMealFollowupMeta(null);
       };
       assistantChatCtrl.followup = {
         clearPrompt: clearMealFollowupPrompt,
+        getSnapshot: () => mealFollowupSnapshot,
+        getMeta: () => mealFollowupMeta,
       };
 
       doc?.addEventListener('profile:changed', (event) => {
@@ -1632,8 +1688,13 @@
       global.addEventListener('assistant:action-success', (event) => {
         if (event?.detail?.type !== 'intake_save') return;
         const detailSource = event?.detail?.source || 'unknown';
+        if (detailSource === 'suggestion-card') return;
         global.setTimeout(() => {
-          createMealFollowupPrompt({ source: detailSource });
+          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+          const payload = event?.detail?.payload || {};
+          const savedAt = payload.saved_at || payload.savedAt || Date.now();
+          const followupKey = buildMealFollowupKey({ payload, sessionId: assistantChatCtrl?.sessionId, savedAt });
+          createMealFollowupPrompt({ source: detailSource, snapshot, followupKey, savedAt });
         }, 0);
       });
     };
@@ -1863,7 +1924,14 @@
       return message;
     };
 
-  const buildAssistantContextPayload = () => {
+  const getAssistantTimeSlot = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'morning';
+    if (hour < 17) return 'noon';
+    return 'evening';
+  };
+
+  const buildAssistantContextPayload = ({ includeTimeSlot = false } = {}) => {
     const ctx = assistantChatCtrl?.context;
     if (!ctx) return null;
     const payload = {};
@@ -1883,6 +1951,8 @@
         id: item.id || null,
         label: item.label || '',
         detail: item.detail || '',
+        start_at: item.startAt || item.start_at || null,
+        note: item.note || null,
       }));
     }
     if (ctx.profile) {
@@ -1910,6 +1980,10 @@
         lifestyle_note: ctx.profile.lifestyle_note || null,
         smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
       };
+    }
+    const hasData = Object.keys(payload).length > 0;
+    if (includeTimeSlot || hasData) {
+      payload.time_slot = getAssistantTimeSlot();
     }
     return Object.keys(payload).length ? payload : null;
   };
@@ -2358,12 +2432,18 @@
       const messageId = followupBtn.getAttribute('data-assistant-followup-id');
       assistantChatCtrl?.followup?.clearPrompt?.();
       if (action === 'yes') {
-        const context = buildAssistantContextPayload();
+        const context = assistantChatCtrl?.followup?.getSnapshot?.() || null;
+        const meta = assistantChatCtrl?.followup?.getMeta?.() || {};
+        if (!context) {
+          diag.add?.('[assistant-followup] missing snapshot context');
+        }
         global.dispatchEvent(
           new CustomEvent('assistant:meal-followup-request', {
             detail: {
               source: 'intake-save',
               messageId: messageId || null,
+              followup_key: meta.followupKey || null,
+              saved_at: meta.savedAt || null,
               context,
             },
           }),
@@ -2454,3 +2534,4 @@
     closeQuickbar: () => closeQuickbar(),
   });
 })(typeof window !== 'undefined' ? window : globalThis);
+

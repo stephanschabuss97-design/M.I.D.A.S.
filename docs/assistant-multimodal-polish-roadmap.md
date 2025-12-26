@@ -197,11 +197,18 @@ Goal:
 - If user says yes, generate a short, contextual suggestion using available data (intake totals, next appointment, profile).
 - Not CKD-only: CKD is optional context; appointment type should influence the suggestion when present.
 
-3.1 Hook + guard
+3.1 Hook + guard ? ✅ (done)
 - Trigger on `assistant:action-success` with `type: "intake_save"` after confirm save succeeds.
 - Show a short follow-up question with two options: "Ja, bitte" / "Nein".
 - Dedupe: fire only once per save event (use a transient in-memory flag or last-save timestamp).
 - If user chooses "Nein": dismiss and do nothing else (no retry).
+
+Current situation (Phase 3):
+- Implemented: follow-up prompt appears once after `intake_save`.
+- UI: prompt renders with "Ja, bitte" / "Nein" buttons.
+- Dedupe: in-memory guard prevents duplicates.
+- On "Ja, bitte": emits `assistant:meal-followup-request` with current context payload (no generation yet).
+- On "Nein": prompt dismisses and no retry.
 
 3.2 Context bundle (data inputs)
 - Intake totals: salt + protein (and water if available).
@@ -209,6 +216,46 @@ Goal:
 - Profile: CKD stage (optional) + protein/salt targets (optional).
 - Time slot: infer morning/noon/evening based on local time to frame the suggestion.
 - If an appointment exists, attempt to infer its type (e.g., nephrology, cardiology, sports) and adapt the meal suggestion.
+- Snapshot rule: freeze context at save time (same data that produced the `intake_save`), do not re-fetch before follow-up.
+- Dedupe key: include `save_id` or `session_id + saved_at` and pass it through the follow-up payload to block duplicates.
+- Payload metadata: include `meta.followup_version = 1` for future prompt/output changes.
+Substeps:
+- 3.2.1 Snapshot + timing
+  - Capture the context at the same moment `intake_save` succeeds.
+  - Use that snapshot for follow-up (no live re-fetch).
+- 3.2.2 Data fields (minimum set)
+  - Intake totals: water/salt/protein.
+  - Appointment: title, start time, note (optional).
+  - Profile: ckd_stage, protein_target, salt_target (all optional).
+  - Time slot: morning/noon/evening inferred from local time.
+- 3.2.3 Appointment type heuristic
+  - Map appointment title keywords to a type bucket (nephrology, cardiology, sports, general).
+  - Use the type bucket to slightly bias the meal suggestion.
+  - Keyword mapping (case-insensitive, match on title + note):
+    - nephrology: nephro, niere, nieren, dialyse, kidney, ckd.
+    - cardiology: cardio, herz, kardiologie, blutdruck, hypertension.
+    - sports: sport, training, physio, rehab, bewegung.
+    - diabetes: diabetes, zucker, insulin, endokrin.
+    - general: fallback if no keyword match.
+- 3.2.4 Dedupe + guard
+  - Create a `followup_key` (prefer `save_id`, fallback to `session_id + saved_at`).
+  - Block re-fire if the same `followup_key` is seen again.
+- 3.2.5 Payload shape
+  - Include `followup_key`, `saved_at`, `context` (snapshot), and `meta.followup_version = 1`.
+  - Example payload (meal follow-up request):
+    {
+      "followup_key": "save:12345",
+      "saved_at": "2025-01-15T12:34:56.000Z",
+      "context": {
+        "intake": { "totals": { "water_ml": 500, "salt_g": 2.0, "protein_g": 35.0 } },
+        "appointments": [
+          { "label": "Nephrologie", "start_at": "2025-01-16T09:00:00.000Z", "note": "Kontrolle" }
+        ],
+        "profile": { "ckd_stage": "3a", "protein_target_max": 60, "salt_limit_g": 5 },
+        "time_slot": "noon"
+      },
+      "meta": { "followup_version": 1 }
+    }
 
 3.3 Prompt + output format
 - Prompt should instruct the model to:
