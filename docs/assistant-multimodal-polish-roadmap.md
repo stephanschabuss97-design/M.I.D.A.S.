@@ -161,12 +161,27 @@ Phase 2 - Confirm flow (single confirm, single save)
 2.2 Explicit confirm state machine
 - States: `idle` -> `analysis_done` -> `confirm_open` -> `saving` -> `saved|error`.
 - Buttons disabled in `saving`.
+  - Implemented in `app/modules/assistant-stack/assistant/suggest-ui.js` with explicit state transitions and a `data-confirm-state` marker.
 
 2.3 Event pipeline audit
 - Events: `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:action-success`.
 - Ensure each click is processed once and cleans up UI.
 - Define the single source of truth for confirm state (store vs hub).
 - Define explicit cleanup rules (when to clear confirm UI/state).
+  - Source of truth: `assistantSuggestStore` (activeSuggestion queue); UI reflects store state.
+  - Pipeline (current):
+    - `suggest-ui` dispatches `assistant:suggest-confirm` / `assistant:suggest-answer`.
+    - `hub` handles confirm, runs `intake_save`, and on success calls `store.dismissCurrent()`; on failure dispatches `assistant:suggest-confirm-reset`.
+    - `suggest-ui` removes confirm on `assistant:suggest-dismissed`; resets busy state on `assistant:suggest-confirm-reset`.
+  - Click-once guards: `dispatchedSuggestionId` (UI) + `suggestionConfirmInFlight` (hub).
+  - Cleanup rules: confirm block removed on `assistant:suggest-dismissed`; buttons re-enabled on `assistant:suggest-confirm-reset`.
+
+Phase 2 test strategy (short)
+- Confirm appears once per suggestion (no duplicate blocks).
+- Click "Ja, speichern" once: saves exactly once, confirm closes, success message appears.
+- Double-click "Ja, speichern": only one save; confirm closes once.
+- Click "Nein": confirm closes, no save.
+- Force error (simulate failure): confirm stays, buttons re-enable, retry works.
 
 Acceptance:
 - First click always closes confirm.
