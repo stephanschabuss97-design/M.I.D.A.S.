@@ -126,25 +126,17 @@
     }
   };
 
-  const buildLowStockMailHref = (doctorInfo, meds) => {
-    const list = Array.isArray(meds) ? meds.filter(Boolean) : meds ? [meds] : [];
-    if (!doctorInfo?.email || !list.length) return null;
+  const buildLowStockMailHref = (doctorInfo, med) => {
+    if (!doctorInfo?.email || !med) return null;
+    const medName = med.name || 'Medikation';
     const dayIso = medicationDailyState.dayIso || todayStr();
-    const subjectMed = list.length === 1 ? (list[0].name || 'Medikation') : `${list.length} Medikamente`;
-    const subject = `Low-Stock Hinweis: ${subjectMed}`;
-    const introLine =
-      list.length === 1
-        ? `mein Medikament ${list[0].name || 'Medikation'} ist fast aufgebraucht.`
-        : 'folgende Medikamente sind fast aufgebraucht:';
-    const medLines = list.map(
-      (med) =>
-        `- ${med.name || 'Medikation'}: Bestand ${med.stock_count ?? '?'} Stück (${med.days_left ?? '?'} Tage), Dosis/Tag ${med.dose_per_day ?? '?'}`
-    );
+    const subject = `Low-Stock Hinweis: ${medName}`;
     const bodyLines = [
       'Hallo,',
       '',
-      introLine,
-      ...medLines,
+      `mein Medikament ${medName} ist fast aufgebraucht.`,
+      `Bestand: ${med.stock_count ?? '?'} Stück (${med.days_left ?? '?'} Tage).`,
+      `Dosis pro Tag: ${med.dose_per_day ?? '?'} Stück`,
       `Tag: ${dayIso}`,
       '',
       'Bitte um neues Rezept bzw. Rückmeldung.',
@@ -179,7 +171,7 @@
     medicationDailyState.listEl = listEl;
     medicationDailyState.lowStockEl = doc.getElementById('medLowStockBox');
     medicationDailyState.safetyEl = doc.getElementById('medSafetyHint');
-    medicationDailyState.refreshBtn = doc.getElementById('medFormRefreshBtn');
+    medicationDailyState.refreshBtn = doc.getElementById('medDailyRefreshBtn');
     medicationDailyState.initialized = true;
 
     listEl.addEventListener('click', (event) => {
@@ -241,11 +233,7 @@
     const listEl = medicationDailyState.listEl;
     const effectiveMessage = message || 'Keine Daten vorhanden.';
     if (listEl) {
-      listEl.innerHTML = `
-        <article class="intake-card intake-card-empty">
-          <p class="muted small">${escapeHtml(effectiveMessage)}</p>
-        </article>
-      `;
+      listEl.innerHTML = `<p class="muted small">${escapeHtml(effectiveMessage)}</p>`;
     }
     diag.add?.(
       `[capture:med] placeholder day=${medicationDailyState.dayIso || 'n/a'} msg="${effectiveMessage}"`
@@ -289,15 +277,19 @@
       diag.add?.('[capture:med] doctor email restored for low-stock contact');
       medicationDailyState.doctorWarnedMissing = false;
     }
-    const doctorLabel = doctorInfo?.email
-      ? `Arzt: ${escapeHtml(doctorInfo.name ? `${doctorInfo.name} (${doctorInfo.email})` : doctorInfo.email)}`
-      : 'Keine Arzt-Mail im Profil hinterlegt.';
-    const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, meds) : null;
-    const mailButton = mailHref
-      ? `<a class="btn ghost small" href="${escapeAttr(mailHref)}" target="_blank" rel="noopener">Mail vorbereiten</a>`
-      : '';
+    const doctorLine = doctorInfo?.email
+      ? `<p class="medication-low-stock-contact small">Arzt: ${escapeHtml(
+          doctorInfo.name ? `${doctorInfo.name} (${doctorInfo.email})` : doctorInfo.email
+        )}</p>`
+      : '<p class="medication-low-stock-contact small muted">Keine Arzt-Mail im Profil hinterlegt.</p>';
     const listHtml = meds
       .map((med) => {
+        const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, med) : null;
+        const mailAction = mailHref
+          ? `<a class="btn ghost small" href="${escapeAttr(mailHref)}" target="_blank" rel="noopener" data-med-mail="${escapeAttr(
+              med.id || ''
+            )}">Arzt-Mail</a>`
+          : '<small class="muted small">Mailkontakt fehlt</small>';
         const ackBtn = `<button type="button" class="btn ghost small" data-med-ack="${escapeAttr(
           med.id || ''
         )}" data-med-stock="${escapeAttr(String(med.stock_count ?? 0))}">Erledigt</button>`;
@@ -308,6 +300,7 @@
             <small>Noch ${med.stock_count ?? 0} Stk. (${med.days_left ?? '?'} Tage)</small>
           </div>
           <div class="medication-low-stock-actions">
+            ${mailAction}
             ${ackBtn}
           </div>
         </div>`;
@@ -315,14 +308,8 @@
       .join('');
     box.hidden = false;
     box.innerHTML = `
-      <div class="medication-low-stock-header">
-        <strong>Niedriger Bestand</strong>
-        <span class="small muted">${meds.length} Medikamente</span>
-      </div>
-      <div class="medication-low-stock-contact small ${doctorInfo?.email ? '' : 'muted'}">
-        <span>${doctorLabel}</span>
-        ${mailButton}
-      </div>
+      <strong>Niedriger Bestand</strong>
+      ${doctorLine}
       ${listHtml}
     `;
   }
@@ -331,38 +318,36 @@
     initMedicationDailyUi();
     const listEl = medicationDailyState.listEl;
     if (!listEl) return;
-    const meds = Array.isArray(data?.medications)
-      ? data.medications.filter((med) => med.active !== false)
-      : [];
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med.active !== false) : [];
     if (!meds.length) {
-      listEl.innerHTML = `
-        <article class="intake-card intake-card-empty">
-          <p class="muted small">Keine aktiven Medikamente für diesen Tag.</p>
-        </article>
-      `;
+      listEl.innerHTML = '<p class="muted small">Keine aktiven Medikamente für diesen Tag.</p>';
       renderMedicationLowStock(data);
       return;
     }
     const items = meds
       .map((med) => {
-        const daysLabel = Number.isFinite(med.days_left)
-          ? `${med.days_left} Tage übrig`
-          : 'Keine Tagesinfo';
+        const info = [];
+        if (Number.isFinite(med.stock_count)) info.push(`${med.stock_count} Stk.`);
+        if (Number.isFinite(med.days_left)) info.push(`${med.days_left} Tage übrig`);
+        const infoText = info.join(' • ') || '';
         const takenTime = med.taken_at ? `Bestätigt ${formatMedTakenTime(med.taken_at)}` : 'Noch offen';
         const state = med.taken ? 'on' : 'off';
         const btnLabel = med.taken ? takenTime : 'Einnahme bestätigen';
         return `
-          <article class="intake-card medication-card ${med.low_stock ? 'is-low' : ''}">
-            <strong class="medication-card-title">${escapeHtml(med.name || 'Medikation')}</strong>
+          <article class="medication-daily-item ${med.low_stock ? 'is-low' : ''}">
+            <div class="medication-daily-meta">
+              <strong>${escapeHtml(med.name || 'Medikation')}</strong>
+              <span>${escapeHtml([med.ingredient, med.strength].filter(Boolean).join(' • ') || 'Keine Details')}</span>
+              ${infoText ? `<span>${escapeHtml(infoText)}</span>` : ''}
+            </div>
             <button type="button"
-              class="btn primary small ${state === 'on' ? 'is-on' : ''}"
+              class="med-toggle-btn ${state === 'on' ? 'is-on' : ''}"
               data-med-toggle="${escapeAttr(med.id || '')}"
               data-med-state="${state}"
               data-med-name="${escapeAttr(med.name || '')}"
               data-med-time="${escapeAttr(med.taken_at || '')}">
               ${escapeHtml(btnLabel)}
             </button>
-            <span class="medication-card-status">${escapeHtml(daysLabel)}</span>
           </article>
         `;
       })

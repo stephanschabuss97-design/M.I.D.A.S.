@@ -779,12 +779,12 @@
           <div class="hub-intake-tab-panels">
             <div class="hub-intake-panel is-active" id="hubIntakePanelIn" data-intake-panel="in" role="tabpanel" aria-labelledby="intakeTabInBtn">
               <div class="hub-intake-form" id="cap-intake-wrap">
-              <div class="intake-card-grid" id="hubIntakeGrid">
-                <label class="intake-card capture-card">
-                  <span class="capture-card-label">Wasser (ml)</span>
-                  <input
-                    type="number"
-                    id="cap-water-add"
+                <div class="hub-intake-grid">
+              <label class="hub-input-card">
+                <span>Wasser (ml)</span>
+                <input
+                  type="number"
+                  id="cap-water-add"
                   min="0"
                   step="50"
                   placeholder="z. B. 250"
@@ -823,7 +823,15 @@
             <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
             </div>
-            <section class="hub-intake-alerts" aria-live="polite">
+            <section class="hub-intake-medications card-nested" aria-live="polite">
+              <header class="hub-intake-medications-header">
+                <div>
+                  <h3>Tablettenmanager</h3>
+                  <p class="muted small">Bestätige deine Medikamente für den gewählten Tag.</p>
+                </div>
+                <button type="button" class="btn ghost small" id="medDailyRefreshBtn">Aktualisieren</button>
+              </header>
+              <div id="medDailyList" class="medication-daily-list" aria-live="polite"></div>
               <div id="medLowStockBox" class="medication-low-stock" hidden></div>
               <div id="medSafetyHint" class="medication-safety" hidden></div>
             </section>
@@ -866,7 +874,6 @@
                   <div class="medication-form-actions">
                     <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
                     <button class="btn ghost" type="button" id="medFormResetBtn">Reset</button>
-                    <button class="btn ghost" type="button" id="medFormRefreshBtn">Aktualisieren</button>
                     <span class="medication-form-status small muted" id="medFormStatus" aria-live="polite"></span>
                   </div>
                 </form>
@@ -1346,12 +1353,11 @@
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
   <script src="app/modules/medication/index.js"></script>
-  <script src="app/modules/activity/index.js"></script>
-  <script type="module" src="app/modules/assistant-stack/assistant/suggest-store.js"></script>
-  <script type="module" src="app/modules/assistant-stack/assistant/suggest-ui.js"></script>
-  <script type="module" src="app/modules/assistant-stack/assistant/allowed-actions.js"></script>
-  <script type="module" src="app/modules/assistant-stack/assistant/day-plan.js"></script>
-  <script type="module" src="app/modules/assistant-stack/assistant/index.js"></script>
+  <script type="module" src="app/modules/assistant/suggest-store.js"></script>
+  <script type="module" src="app/modules/assistant/suggest-ui.js"></script>
+  <script type="module" src="app/modules/assistant/allowed-actions.js"></script>
+  <script type="module" src="app/modules/assistant/day-plan.js"></script>
+  <script type="module" src="app/modules/assistant/index.js"></script>
   <script src="app/modules/hub/index.js"></script>
   <!-- @refactor: moved to assets/js/ui.js -->
   <script src="assets/js/ui.js"></script>

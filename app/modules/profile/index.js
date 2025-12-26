@@ -312,7 +312,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
