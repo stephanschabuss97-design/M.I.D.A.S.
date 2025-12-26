@@ -2184,11 +2184,15 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 2px;
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
+  min-width: 0;
 }
 
 .assistant-photo-draft-title {
   font-weight: 600;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .assistant-photo-draft-actions {
@@ -2211,6 +2215,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-input {
   flex: 1;
+  min-width: 0;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(0, 0, 0, 0.4);
@@ -2227,6 +2232,25 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-input-tools {
   display: flex;
   gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .assistant-input-bar {
+    gap: 8px;
+  }
+
+  .assistant-input-tools {
+    flex: 0 0 auto;
+  }
+
+  .assistant-input {
+    flex: 1 1 auto;
+  }
+
+  #assistantSendBtn {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+  }
 }
 
 .assistant-tool-btn {
