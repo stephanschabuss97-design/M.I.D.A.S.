@@ -97,6 +97,14 @@ Phase 1 - Compose turn (text + photo in one send)
 - Only one network request per user turn.
 - Document the routing choice and why it was chosen.
 - Lock a request contract (list of payload keys + one example payload).
+  - Chosen: Option B (keep `midas-vision` separate, call only on Send).
+  - Rationale: keep `midas-assistant` text-only for stability; isolate vision failures; preserve existing backend contracts.
+  - Substeps:
+  - 1.3.1 Frontend send routing: if draft photo exists, call vision endpoint; otherwise call assistant endpoint.
+    - Implemented in `app/modules/hub/index.js`: submit routes to vision when `photoDraft` exists, otherwise text endpoint.
+    - 1.3.2 Payload contract: align both calls to the unified turn payload keys (`text`, `image_base64`, `context`, `session_id`, `history`) where applicable.
+    - 1.3.3 Response normalization: ensure vision reply produces a single assistant bubble and suggestion confirm.
+    - 1.3.4 Example payloads: add one text-only and one photo+text example.
 
 1.4 Chat bubble consolidation
 - User bubble represents text + image together.

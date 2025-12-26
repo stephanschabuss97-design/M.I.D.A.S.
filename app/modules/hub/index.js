@@ -1783,9 +1783,23 @@
   const handleAssistantChatSubmit = (event) => {
     event.preventDefault();
     if (!assistantChatCtrl) return;
-    const value = assistantChatCtrl.input?.value?.trim();
-    if (!value) return;
+    const value = assistantChatCtrl.input?.value?.trim() || '';
+    const hasDraft = !!assistantChatCtrl.photoDraft?.dataUrl;
+    if (!value && !hasDraft) return;
     debugLog('assistant-chat submit');
+    if (hasDraft) {
+      sendAssistantPhotoMessage(
+        assistantChatCtrl.photoDraft.dataUrl,
+        assistantChatCtrl.photoDraft.file,
+        null,
+        { text: value },
+      );
+      if (assistantChatCtrl.input) {
+        assistantChatCtrl.input.value = '';
+      }
+      clearAssistantPhotoDraft();
+      return;
+    }
     sendAssistantChatMessage(value);
   };
 
@@ -2081,9 +2095,18 @@
     return reply;
   };
 
-  const sendAssistantPhotoMessage = async (dataUrl, file, existingMessage = null) => {
+  const sendAssistantPhotoMessage = async (
+    dataUrl,
+    file,
+    existingMessage = null,
+    { text = '' } = {},
+  ) => {
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
     ensureAssistantSession();
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
+    if (trimmedText) {
+      appendAssistantMessage('user', trimmedText);
+    }
     const resolvedDataUrl =
       dataUrl ||
       existingMessage?.retryPayload?.base64 ||
@@ -2115,7 +2138,7 @@
     setAssistantSending(true);
     diag.add?.('[assistant-vision] analyse start');
     try {
-      const result = await fetchAssistantVisionReply(resolvedDataUrl, file);
+      const result = await fetchAssistantVisionReply(resolvedDataUrl, file, trimmedText);
       targetMessage.status = 'done';
       targetMessage.resultText = formatAssistantVisionResult(result);
       targetMessage.content = '';
@@ -2162,7 +2185,7 @@
     }
   };
 
-  const fetchAssistantVisionReply = async (dataUrl, file) => {
+  const fetchAssistantVisionReply = async (dataUrl, file, text = '') => {
     ensureAssistantSession();
     if (!assistantChatCtrl) {
       throw new Error('vision-unavailable');
@@ -2173,6 +2196,7 @@
     }
     const payload = {
       ...buildAssistantTurnPayload({
+        text,
         imageBase64: base64,
         history: buildAssistantPhotoHistory(),
       }),
