@@ -178,11 +178,19 @@ import { assistantSuggestStore } from './suggest-store.js';
 
   global.addEventListener('assistant:suggest-updated', renderSuggestion);
   global.addEventListener('assistant:chat-rendered', renderSuggestion);
-    global.addEventListener('assistant:suggest-confirm-reset', () => {
-      dispatchedSuggestionId = null;
-      setConfirmState('error');
-      setBusyState(false);
-    });
+  global.addEventListener('assistant:suggest-confirm-reset', () => {
+    dispatchedSuggestionId = null;
+    setConfirmState('error');
+    setBusyState(false);
+  });
+  global.addEventListener('assistant:action-success', (event) => {
+    const detail = event?.detail || {};
+    if (detail.type !== 'intake_save') return;
+    if (detail.source && detail.source !== 'suggestion-card') return;
+    const state = resolvedStore.getState();
+    if (!state.activeSuggestion) return;
+    resolvedStore.dismissCurrent({ reason: 'confirm-success' });
+  });
   global.addEventListener('assistant:suggest-dismissed', () => {
     removeBlock('saved');
   });
