@@ -76,18 +76,19 @@ Deliverable:
 -------------------------------------------------------------------------------
 Phase 1 - Compose turn (text + photo in one send)
 
-1.1 UI state for photo draft
+1.1 UI state for photo draft ✅ (done)
 - Keep photo in draft state after selection.
 - Do not call vision on file change.
 - Display thumbnail and a "ready to send" status in the chat input area.
 
-1.2 Single payload shape
+1.2 Single payload shape ✅ (done)
 - Define one request object:
   - `text` (optional)
   - `image_base64` (optional)
   - `context` (intake + appointments + profile)
   - `session_id` (required)
   - `history` (optional)
+  - Implemented in `app/modules/hub/index.js` as `buildAssistantTurnPayload()` (text/image/context/history/session_id).
 
 1.3 Single backend call per turn
 - Decide routing:

@@ -1799,7 +1799,7 @@
     }
     setAssistantSending(true);
     try {
-      const reply = await fetchAssistantTextReply();
+      const reply = await fetchAssistantTextReply(text);
       if (reply) {
         appendAssistantMessage('assistant', reply);
       } else {
@@ -1840,56 +1840,83 @@
       return message;
     };
 
-    const buildAssistantContextPayload = () => {
-      const ctx = assistantChatCtrl?.context;
-      if (!ctx) return null;
-      const payload = {};
-      if (ctx.intake?.totals) {
-        payload.intake = {
-          dayIso: ctx.intake.dayIso || null,
-          logged: !!ctx.intake.logged,
-          totals: {
-            water_ml: Number(ctx.intake.totals?.water_ml) || 0,
-            salt_g: Number(ctx.intake.totals?.salt_g) || 0,
-            protein_g: Number(ctx.intake.totals?.protein_g) || 0,
-          },
-        };
-      }
-      if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
-        payload.appointments = ctx.appointments.map((item) => ({
-          id: item.id || null,
-          label: item.label || '',
-          detail: item.detail || '',
-        }));
-      }
-      if (ctx.profile) {
-        const meds = Array.isArray(ctx.profile.medications)
+  const buildAssistantContextPayload = () => {
+    const ctx = assistantChatCtrl?.context;
+    if (!ctx) return null;
+    const payload = {};
+    if (ctx.intake?.totals) {
+      payload.intake = {
+        dayIso: ctx.intake.dayIso || null,
+        logged: !!ctx.intake.logged,
+        totals: {
+          water_ml: Number(ctx.intake.totals?.water_ml) || 0,
+          salt_g: Number(ctx.intake.totals?.salt_g) || 0,
+          protein_g: Number(ctx.intake.totals?.protein_g) || 0,
+        },
+      };
+    }
+    if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
+      payload.appointments = ctx.appointments.map((item) => ({
+        id: item.id || null,
+        label: item.label || '',
+        detail: item.detail || '',
+      }));
+    }
+    if (ctx.profile) {
+      const meds = Array.isArray(ctx.profile.medications)
+        ? ctx.profile.medications
+        : typeof ctx.profile.medications === 'string'
           ? ctx.profile.medications
-          : typeof ctx.profile.medications === 'string'
-            ? ctx.profile.medications
-                .split(/[\n;,]+/)
-                .map((entry) => entry.trim())
-                .filter(Boolean)
-            : [];
-        payload.profile = {
-          name: ctx.profile.full_name || null,
-          birth_date: ctx.profile.birth_date || null,
-          height_cm: ctx.profile.height_cm ?? null,
-          ckd_stage: ctx.profile.ckd_stage || null,
-          medications: meds,
-          salt_limit_g: ctx.profile.salt_limit_g ?? null,
-          protein_target_min: ctx.profile.protein_target_min ?? null,
-          protein_target_max: ctx.profile.protein_target_max ?? null,
-          protein_limit_g:
-            ctx.profile.protein_target_max ??
-            ctx.profile.protein_target_min ??
-            null,
-          lifestyle_note: ctx.profile.lifestyle_note || null,
-          smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
-        };
-      }
-      return Object.keys(payload).length ? payload : null;
+              .split(/[\n;,]+/)
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          : [];
+      payload.profile = {
+        name: ctx.profile.full_name || null,
+        birth_date: ctx.profile.birth_date || null,
+        height_cm: ctx.profile.height_cm ?? null,
+        ckd_stage: ctx.profile.ckd_stage || null,
+        medications: meds,
+        salt_limit_g: ctx.profile.salt_limit_g ?? null,
+        protein_target_min: ctx.profile.protein_target_min ?? null,
+        protein_target_max: ctx.profile.protein_target_max ?? null,
+        protein_limit_g:
+          ctx.profile.protein_target_max ??
+          ctx.profile.protein_target_min ??
+          null,
+        lifestyle_note: ctx.profile.lifestyle_note || null,
+        smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
+      };
+    }
+    return Object.keys(payload).length ? payload : null;
+  };
+
+  const buildAssistantTurnPayload = ({
+    text = '',
+    imageBase64 = '',
+    history = '',
+    sessionId,
+  } = {}) => {
+    if (!assistantChatCtrl) return {};
+    const payload = {
+      session_id: sessionId ?? assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
     };
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
+    if (trimmedText) {
+      payload.text = trimmedText;
+    }
+    if (typeof imageBase64 === 'string' && imageBase64.trim()) {
+      payload.image_base64 = imageBase64.trim();
+    }
+    if (typeof history === 'string' && history.trim()) {
+      payload.history = history.trim();
+    }
+    const contextPayload = buildAssistantContextPayload();
+    if (contextPayload) {
+      payload.context = contextPayload;
+    }
+    return payload;
+  };
 
   const cloneAssistantTemplate = (key) => {
     const tmpl = assistantChatCtrl?.templates?.[key];
@@ -2021,11 +2048,11 @@
     }
   };
 
-  const fetchAssistantTextReply = async () => {
+  const fetchAssistantTextReply = async (lastUserText = '') => {
     ensureAssistantSession();
     if (!assistantChatCtrl) return '';
     const payload = {
-      session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
+      ...buildAssistantTurnPayload({ text: lastUserText }),
       mode: 'text',
       messages: assistantChatCtrl.messages
         .filter((msg) => msg.role === 'assistant' || msg.role === 'user')
@@ -2034,10 +2061,6 @@
           content: msg.content,
         })),
     };
-    const contextPayload = buildAssistantContextPayload();
-    if (contextPayload) {
-      payload.context = contextPayload;
-    }
     let response;
     const headers = await buildFunctionJsonHeaders();
     try {
@@ -2140,28 +2163,22 @@
   };
 
   const fetchAssistantVisionReply = async (dataUrl, file) => {
-      ensureAssistantSession();
-      if (!assistantChatCtrl) {
-        throw new Error('vision-unavailable');
-      }
-      const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
-      if (!base64) {
-        throw new Error('vision-image-missing');
-      }
-      const payload = {
-        session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
-        mode: 'vision',
+    ensureAssistantSession();
+    if (!assistantChatCtrl) {
+      throw new Error('vision-unavailable');
+    }
+    const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
+    if (!base64) {
+      throw new Error('vision-image-missing');
+    }
+    const payload = {
+      ...buildAssistantTurnPayload({
+        imageBase64: base64,
         history: buildAssistantPhotoHistory(),
-        image_base64: base64,
-      };
-      const contextPayload = buildAssistantContextPayload();
-      if (contextPayload) {
-        payload.context = contextPayload;
-      }
-      if (!payload.history) {
-        delete payload.history;
-      }
-      if (file?.name) {
+      }),
+      mode: 'vision',
+    };
+    if (file?.name) {
       payload.meta = { fileName: file.name };
     }
     const headers = await buildFunctionJsonHeaders();
