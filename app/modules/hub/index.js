@@ -2508,10 +2508,10 @@
       event.preventDefault();
       const action = followupBtn.getAttribute('data-assistant-followup-action');
       const messageId = followupBtn.getAttribute('data-assistant-followup-id');
+      const context = assistantChatCtrl?.followup?.getSnapshot?.() || null;
+      const meta = assistantChatCtrl?.followup?.getMeta?.() || {};
       assistantChatCtrl?.followup?.clearPrompt?.();
       if (action === 'yes') {
-        const context = assistantChatCtrl?.followup?.getSnapshot?.() || null;
-        const meta = assistantChatCtrl?.followup?.getMeta?.() || {};
         if (!context) {
           diag.add?.('[assistant-followup] missing snapshot context');
         }
