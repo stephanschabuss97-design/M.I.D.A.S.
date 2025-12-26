@@ -2395,6 +2395,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   pointer-events: none;
 }
 
+.assistant-followup-actions {
+  display: inline-flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.assistant-followup-actions .btn {
+  min-width: 120px;
+}
+
 @media (max-width: 768px) {
   .assistant-pills {
     flex-direction: column;

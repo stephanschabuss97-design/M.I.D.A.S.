@@ -1,4 +1,4 @@
-Ôªø'use strict';
+'use strict';
 /**
  * MODULE: hub/index.js
  * Description: Aktiviert das neue MIDAS Hub Layout, sobald `CAPTURE_HUB_V2` gesetzt ist.
@@ -1135,7 +1135,7 @@
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     const dayLabel = APPOINTMENT_DATE_FORMAT.format(date).replace(/\.$/, '');
     const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
-    return `${dayLabel} ‚Ä¢ ${timeLabel}`;
+    return `${dayLabel} ï ${timeLabel}`;
   };
 
   const normalizeAppointmentItems = (items, limit = 2) => {
@@ -1166,7 +1166,7 @@
       if (!detail && (raw.start || raw.date)) {
         detail = formatAppointmentDateTime(raw.start || raw.date);
       } else if (!detail && raw.day && raw.time) {
-        detail = `${raw.day} ‚Ä¢ ${raw.time}`;
+        detail = `${raw.day} ï ${raw.time}`;
       }
       if (!label && detail) label = 'Termin';
       if (!label && !detail) return false;
@@ -1282,7 +1282,7 @@
     if (!panel) {
       assistantChatSetupAttempts += 1;
       if (assistantChatSetupAttempts === 1) {
-        debugLog('assistant-chat panel missing, retrying ‚Ä¶');
+        debugLog('assistant-chat panel missing, retrying Ö');
       }
       if (assistantChatSetupAttempts < ASSISTANT_CHAT_MAX_ATTEMPTS) {
         global.setTimeout(() => setupAssistantChat(hub), ASSISTANT_CHAT_RETRY_DELAY);
@@ -1329,7 +1329,7 @@
       wrap.hidden = true;
 
       const thumb = doc.createElement('img');
-      thumb.alt = 'Ausgew√§hltes Foto';
+      thumb.alt = 'Ausgew‰hltes Foto';
       thumb.loading = 'lazy';
 
       const meta = doc.createElement('div');
@@ -1525,7 +1525,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar ‚Äì ich habe ${list} f√ºr heute vorgemerkt.`;
+        return `Alles klar ñ ich habe ${list} f¸r heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -1546,44 +1546,52 @@
           appendAssistantMessage('assistant', lines.join(' '));
         }
       };
-      const runIntakeSaveFollowup = async ({ suggestion } = {}) => {
-        try {
-          await refreshAssistantContext({
-            reason: 'intake-saved',
-            forceRefresh: true,
-          });
-        } catch (err) {
-          diag.add?.(
-            `[assistant-followup] context refresh failed: ${err?.message || err}`,
-          );
-          return;
-        }
-        const store = getAssistantSuggestStore();
-        const snapshot =
-          store?.getState?.().snapshot || assistantChatCtrl?.context || null;
-        if (!snapshot) return;
-        const planner = global.AppModules?.assistantDayPlan;
-        const generator = planner?.generateDayPlan;
-        if (typeof generator !== 'function') return;
-        const { lines, hasWarnings } = generator(
-          { ...snapshot, suggestion },
-          {
-            dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
-          },
+      let mealFollowupPromptActive = false;
+      let mealFollowupLastTriggeredAt = 0;
+      let mealFollowupMessageId = null;
+
+      const removeAssistantMessage = (messageId) => {
+        if (!assistantChatCtrl || !messageId) return;
+        const nextMessages = assistantChatCtrl.messages.filter(
+          (msg) => msg.id !== messageId,
         );
-        if (lines?.length) {
-          appendAssistantMessage('assistant', lines.join(' '));
+        if (nextMessages.length === assistantChatCtrl.messages.length) return;
+        assistantChatCtrl.messages = nextMessages;
+        renderAssistantChat();
+      };
+
+      const createMealFollowupPrompt = ({ source } = {}) => {
+        if (!assistantChatCtrl) return;
+        if (mealFollowupPromptActive) return;
+        const now = Date.now();
+        if (now - mealFollowupLastTriggeredAt < 500) return;
+        const hasFollowup = assistantChatCtrl.messages.some(
+          (msg) => msg.type === 'followup',
+        );
+        if (hasFollowup) return;
+        mealFollowupPromptActive = true;
+        mealFollowupLastTriggeredAt = now;
+        const promptText =
+          'Soll ich dir basierend auf deinen heutigen Werten und dem naechsten Termin einen Essensvorschlag machen?';
+        const message = appendAssistantMessage('assistant', promptText, {
+          type: 'followup',
+          meta: {
+            followupType: 'meal-idea',
+            source: source || 'intake-save',
+          },
+        });
+        mealFollowupMessageId = message?.id || null;
+      };
+
+      const clearMealFollowupPrompt = () => {
+        if (mealFollowupMessageId) {
+          removeAssistantMessage(mealFollowupMessageId);
         }
-        if (hasWarnings && isVoiceConversationMode()) {
-          global.dispatchEvent(
-            new CustomEvent('assistant:voice-request', {
-              detail: {
-                source: 'day-plan',
-                text: lines.join(' '),
-              },
-            }),
-          );
-        }
+        mealFollowupMessageId = null;
+        mealFollowupPromptActive = false;
+      };
+      assistantChatCtrl.followup = {
+        clearPrompt: clearMealFollowupPrompt,
       };
 
       doc?.addEventListener('profile:changed', (event) => {
@@ -1624,8 +1632,9 @@
       global.addEventListener('assistant:action-success', (event) => {
         if (event?.detail?.type !== 'intake_save') return;
         const detailSource = event?.detail?.source || 'unknown';
-        if (detailSource === 'suggestion-card') return;
-        runIntakeSaveFollowup({});
+        global.setTimeout(() => {
+          createMealFollowupPrompt({ source: detailSource });
+        }, 0);
       });
     };
 
@@ -1742,9 +1751,9 @@
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
       const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
       diag.add?.(
-        `[assistant-vision] foto zu gro√ü: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        `[assistant-vision] foto zu groﬂ: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
-      appendAssistantMessage('system', `Das Foto ist zu gro√ü (max. ca. ${maxMb} MB).`);
+      appendAssistantMessage('system', `Das Foto ist zu groﬂ (max. ca. ${maxMb} MB).`);
       if (event?.target) event.target.value = '';
       return;
     }
@@ -1988,13 +1997,13 @@
               ? 'Analyse fehlgeschlagen.'
               : message.status === 'done'
                 ? 'Analyse abgeschlossen.'
-                : 'Analyse l√§uft ‚Ä¶';
+                : 'Analyse l‰uft Ö';
           statusEl.textContent = statusText;
         }
         const resultEl = bubble.querySelector('.assistant-photo-result');
         if (resultEl) {
           resultEl.textContent =
-            message.resultText || (message.status === 'done' ? 'Keine Details verf√ºgbar.' : 'Noch kein Ergebnis.');
+            message.resultText || (message.status === 'done' ? 'Keine Details verf¸gbar.' : 'Noch kein Ergebnis.');
           if (message.status === 'error') {
             resultEl.classList.remove('muted');
           } else {
@@ -2032,6 +2041,38 @@
           retryWrap.appendChild(retryBtn);
           bubble.appendChild(retryWrap);
         }
+      } else if (message.type === 'followup') {
+        bubble = cloneAssistantTemplate('message');
+        if (!bubble) {
+          bubble = doc.createElement('div');
+          bubble.className = 'assistant-bubble';
+        }
+        const textLine = bubble.querySelector('.assistant-text-line');
+        if (textLine) {
+          textLine.textContent = message.content;
+        } else if (message.content) {
+          const text = doc.createElement('p');
+          text.className = 'assistant-text-line';
+          text.textContent = message.content;
+          bubble.appendChild(text);
+        }
+        const actions = doc.createElement('div');
+        actions.className = 'assistant-followup-actions';
+        const yesBtn = doc.createElement('button');
+        yesBtn.type = 'button';
+        yesBtn.className = 'btn primary';
+        yesBtn.textContent = 'Ja, bitte';
+        yesBtn.setAttribute('data-assistant-followup-action', 'yes');
+        yesBtn.setAttribute('data-assistant-followup-id', message.id);
+        const noBtn = doc.createElement('button');
+        noBtn.type = 'button';
+        noBtn.className = 'btn ghost';
+        noBtn.textContent = 'Nein';
+        noBtn.setAttribute('data-assistant-followup-action', 'no');
+        noBtn.setAttribute('data-assistant-followup-id', message.id);
+        actions.appendChild(yesBtn);
+        actions.appendChild(noBtn);
+        bubble.appendChild(actions);
       } else {
         bubble = cloneAssistantTemplate('message');
         if (!bubble) {
@@ -2143,7 +2184,7 @@
       existingMessage || appendAssistantMessage('user', trimmedText, basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
-    targetMessage.resultText = 'Analyse l√§uft ‚Ä¶';
+    targetMessage.resultText = 'Analyse l‰uft Ö';
     targetMessage.retryable = false;
     targetMessage.retryPayload =
       targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
@@ -2306,6 +2347,31 @@
       event.preventDefault();
       const messageId = retryBtn.getAttribute('data-assistant-retry-id');
       retryAssistantPhoto(messageId);
+      return;
+    }
+    const followupBtn = event.target.closest(
+      'button[data-assistant-followup-action]',
+    );
+    if (followupBtn) {
+      event.preventDefault();
+      const action = followupBtn.getAttribute('data-assistant-followup-action');
+      const messageId = followupBtn.getAttribute('data-assistant-followup-id');
+      assistantChatCtrl?.followup?.clearPrompt?.();
+      if (action === 'yes') {
+        const context = buildAssistantContextPayload();
+        global.dispatchEvent(
+          new CustomEvent('assistant:meal-followup-request', {
+            detail: {
+              source: 'intake-save',
+              messageId: messageId || null,
+              context,
+            },
+          }),
+        );
+        diag.add?.('[assistant-followup] meal idea requested');
+      } else {
+        diag.add?.('[assistant-followup] meal idea dismissed');
+      }
     }
   }
 
@@ -2337,7 +2403,7 @@
     if (reply) {
       parts.push(reply);
     }
-    return parts.join(' ‚Ä¢ ') || 'Analyse abgeschlossen.';
+    return parts.join(' ï ') || 'Analyse abgeschlossen.';
   };
 
   const bootFlow = global.AppModules?.bootFlow;

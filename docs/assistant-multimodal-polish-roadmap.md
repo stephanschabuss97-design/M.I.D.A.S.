@@ -151,20 +151,20 @@ Acceptance:
 - Send triggers exactly one request and one response.
 
 -------------------------------------------------------------------------------
-Phase 2 - Confirm flow (single confirm, single save)
+Phase 2 - Confirm flow (single confirm, single save) ? ✅ (done)
 
-2.1 Single confirm instance
+2.1 Single confirm instance ? ✅ (done)
 - Ensure only one active confirm UI at a time.
 - Dismiss old confirm UI before showing a new one.
   - Implemented in `app/modules/assistant-stack/assistant/suggest-ui.js`: remove any existing `.assistant-confirm-block` before attaching a new one.
   - Enforced at source: vision results now clear the suggestion queue before enqueue (`app/modules/hub/index.js`).
 
-2.2 Explicit confirm state machine
+2.2 Explicit confirm state machine ? ✅ (done)
 - States: `idle` -> `analysis_done` -> `confirm_open` -> `saving` -> `saved|error`.
 - Buttons disabled in `saving`.
   - Implemented in `app/modules/assistant-stack/assistant/suggest-ui.js` with explicit state transitions and a `data-confirm-state` marker.
 
-2.3 Event pipeline audit
+2.3 Event pipeline audit ? ✅ (done)
 - Events: `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:action-success`.
 - Ensure each click is processed once and cleans up UI.
 - Define the single source of truth for confirm state (store vs hub).
@@ -176,6 +176,7 @@ Phase 2 - Confirm flow (single confirm, single save)
     - `suggest-ui` removes confirm on `assistant:suggest-dismissed`; resets busy state on `assistant:suggest-confirm-reset`.
   - Click-once guards: `dispatchedSuggestionId` (UI) + `suggestionConfirmInFlight` (hub).
   - Cleanup rules: confirm block removed on `assistant:suggest-dismissed`; buttons re-enabled on `assistant:suggest-confirm-reset`.
+  - Fix: also dismiss store on `assistant:action-success` (`intake_save`) to guarantee confirm UI closes.
 
 Phase 2 test strategy (short)
 - Confirm appears once per suggestion (no duplicate blocks).
@@ -189,25 +190,45 @@ Acceptance:
 - Save happens exactly once (no duplicate writes).
 
 -------------------------------------------------------------------------------
-Phase 3 - Follow-up after save (optional CKD-friendly idea)
+Phase 3 - Follow-up after save (data-driven meal idea)
 
-3.1 Hook after save
-- Trigger after successful intake save (not from suggestion confirm loop).
-- Use `assistant:action-success` or `runIntakeSaveFollowup`.
+Goal:
+- After a successful intake save, the assistant asks once if it should propose a meal idea.
+- If user says yes, generate a short, contextual suggestion using available data (intake totals, next appointment, profile).
+- Not CKD-only: CKD is optional context; appointment type should influence the suggestion when present.
 
-3.2 Context bundle for follow-up
-- Time slot (morning, noon, evening).
-- Profile CKD stage and protein/salt targets.
-- Intake totals so far.
+3.1 Hook + guard
+- Trigger on `assistant:action-success` with `type: "intake_save"` after confirm save succeeds.
+- Show a short follow-up question with two options: "Ja, bitte" / "Nein".
+- Dedupe: fire only once per save event (use a transient in-memory flag or last-save timestamp).
+- If user chooses "Nein": dismiss and do nothing else (no retry).
 
-3.3 Prompt format
-- Offer 1-3 suggestions with short rationale.
-- Ask if the user wants to save the suggestion.
-- Guard against duplicate follow-up (once per save event).
+3.2 Context bundle (data inputs)
+- Intake totals: salt + protein (and water if available).
+- Next appointment: title + date/time + note (if any).
+- Profile: CKD stage (optional) + protein/salt targets (optional).
+- Time slot: infer morning/noon/evening based on local time to frame the suggestion.
+- If an appointment exists, attempt to infer its type (e.g., nephrology, cardiology, sports) and adapt the meal suggestion.
+
+3.3 Prompt + output format
+- Prompt should instruct the model to:
+  - Use current intake totals (salt/protein) to balance the idea.
+  - Consider upcoming appointment context when present.
+  - Keep it practical: 1-2 short suggestions, 2-4 sentences total.
+  - Avoid medical claims; keep tone helpful and concise.
+- Output format (suggested):
+  - "Vorschlag: <meal idea>" + short rationale in one sentence.
+  - Optional alternative if appointment context suggests a different focus.
+
+3.4 UI response flow
+- Show the suggestion as a normal assistant message (not a confirm card).
+- No additional save/confirm loop for the suggestion itself.
+- If the suggestion fails (network/LLM error), silently skip and do not retry.
 
 Acceptance:
-- After saving intake, assistant asks once for CKD-friendly suggestion.
-- On yes, returns a short, contextual suggestion.
+- After saving intake, assistant asks once for a meal suggestion.
+- "Nein" closes the prompt and ends the flow.
+- "Ja, bitte" returns a short, contextual meal idea.
 
 -------------------------------------------------------------------------------
 Phase 4 - QA and docs
