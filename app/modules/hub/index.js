@@ -1967,10 +1967,11 @@
     if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
       payload.appointments = ctx.appointments.map((item) => ({
         id: item.id || null,
-        label: item.label || '',
-        detail: item.detail || '',
+        title: item.title || item.label || '',
         start_at: item.startAt || item.start_at || null,
         note: item.note || null,
+        label: item.label || '',
+        detail: item.detail || '',
       }));
     }
     if (ctx.profile) {
@@ -1978,10 +1979,20 @@
         ? ctx.profile.medications
         : typeof ctx.profile.medications === 'string'
           ? ctx.profile.medications
-              .split(/[\n;,]+/)
+              .split(/[
+;,]+/)
               .map((entry) => entry.trim())
               .filter(Boolean)
           : [];
+      const proteinTarget =
+        ctx.profile.protein_target_max ??
+        ctx.profile.protein_target_min ??
+        null;
+      const saltTarget =
+        ctx.profile.salt_limit_g ??
+        ctx.profile.salt_target_g ??
+        ctx.profile.salt_target ??
+        null;
       payload.profile = {
         name: ctx.profile.full_name || null,
         birth_date: ctx.profile.birth_date || null,
@@ -1991,6 +2002,8 @@
         salt_limit_g: ctx.profile.salt_limit_g ?? null,
         protein_target_min: ctx.profile.protein_target_min ?? null,
         protein_target_max: ctx.profile.protein_target_max ?? null,
+        protein_target: proteinTarget,
+        salt_target: saltTarget,
         protein_limit_g:
           ctx.profile.protein_target_max ??
           ctx.profile.protein_target_min ??
