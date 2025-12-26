@@ -1322,6 +1322,45 @@
     if (messageTemplate) messageTemplate.remove();
     if (photoTemplate) photoTemplate.remove();
 
+    const createAssistantPhotoDraftUi = () => {
+      if (!form) return null;
+      const wrap = doc.createElement('div');
+      wrap.className = 'assistant-photo-draft';
+      wrap.hidden = true;
+
+      const thumb = doc.createElement('img');
+      thumb.alt = 'Ausgewähltes Foto';
+      thumb.loading = 'lazy';
+
+      const meta = doc.createElement('div');
+      meta.className = 'assistant-photo-draft-meta';
+      const title = doc.createElement('span');
+      title.className = 'assistant-photo-draft-title';
+      title.textContent = 'Foto bereit';
+      const status = doc.createElement('span');
+      status.className = 'assistant-photo-draft-status';
+      status.textContent = 'Bereit zum Senden';
+      meta.appendChild(title);
+      meta.appendChild(status);
+
+      const actions = doc.createElement('div');
+      actions.className = 'assistant-photo-draft-actions';
+      const clearBtn = doc.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'assistant-photo-draft-clear';
+      clearBtn.textContent = 'Entfernen';
+      actions.appendChild(clearBtn);
+
+      wrap.appendChild(thumb);
+      wrap.appendChild(meta);
+      wrap.appendChild(actions);
+      form.prepend(wrap);
+
+      return { wrap, thumb, status, clearBtn };
+    };
+
+    const photoDraftUi = createAssistantPhotoDraftUi();
+
     assistantChatCtrl = {
       panel,
       chatEl,
@@ -1331,6 +1370,8 @@
       cameraBtn,
       clearBtn,
       photoInput,
+      photoDraft: null,
+      photoDraftUi,
       pills: {
         water: buildPillRef('water'),
         salt: buildPillRef('salt'),
@@ -1354,6 +1395,10 @@
           profile: getAssistantProfileSnapshot(),
         },
       };
+
+    if (photoDraftUi?.clearBtn) {
+      photoDraftUi.clearBtn.addEventListener('click', () => clearAssistantPhotoDraft());
+    }
 
     debugLog('assistant-chat controller ready');
 
@@ -1640,6 +1685,57 @@
     });
   };
 
+  const updateAssistantPhotoDraftUi = () => {
+    if (!assistantChatCtrl?.photoDraftUi?.wrap) return;
+    const draft = assistantChatCtrl.photoDraft;
+    if (!draft) {
+      assistantChatCtrl.photoDraftUi.wrap.hidden = true;
+      return;
+    }
+    assistantChatCtrl.photoDraftUi.wrap.hidden = false;
+    if (assistantChatCtrl.photoDraftUi.thumb) {
+      assistantChatCtrl.photoDraftUi.thumb.src = draft.dataUrl || '';
+    }
+    if (assistantChatCtrl.photoDraftUi.status) {
+      assistantChatCtrl.photoDraftUi.status.textContent =
+        draft.status || 'Bereit zum Senden';
+    }
+    if (assistantChatCtrl.photoDraftUi.wrap) {
+      assistantChatCtrl.photoDraftUi.wrap.setAttribute(
+        'data-file-name',
+        draft.fileName || '',
+      );
+    }
+    const titleEl = assistantChatCtrl.photoDraftUi.wrap.querySelector(
+      '.assistant-photo-draft-title',
+    );
+    if (titleEl) {
+      titleEl.textContent = draft.fileName
+        ? `Foto: ${draft.fileName}`
+        : 'Foto bereit';
+    }
+  };
+
+  const setAssistantPhotoDraft = (dataUrl, file) => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.photoDraft = {
+      dataUrl,
+      fileName: file?.name || '',
+      file: file || null,
+      status: 'Bereit zum Senden',
+    };
+    updateAssistantPhotoDraftUi();
+  };
+
+  const clearAssistantPhotoDraft = () => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.photoDraft = null;
+    if (assistantChatCtrl.photoInput) {
+      assistantChatCtrl.photoInput.value = '';
+    }
+    updateAssistantPhotoDraftUi();
+  };
+
   const handleAssistantPhotoSelected = async (event) => {
     const file = event?.target?.files?.[0];
     if (!file) return;
@@ -1649,15 +1745,18 @@
         `[assistant-vision] foto zu groß: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
       appendAssistantMessage('system', `Das Foto ist zu groß (max. ca. ${maxMb} MB).`);
+      if (event?.target) event.target.value = '';
       return;
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      await sendAssistantPhotoMessage(dataUrl, file);
+      setAssistantPhotoDraft(dataUrl, file);
     } catch (err) {
       console.error('[assistant-chat] foto konnte nicht gelesen werden', err);
       diag.add?.(`[assistant-vision] foto konnte nicht gelesen werden: ${err?.message || err}`);
       appendAssistantMessage('system', 'Das Foto konnte nicht gelesen werden.');
+    } finally {
+      if (event?.target) event.target.value = '';
     }
   };
 
@@ -1665,6 +1764,7 @@
     if (!assistantChatCtrl) return;
     assistantChatCtrl.messages = [];
     assistantChatCtrl.sessionId = null;
+    clearAssistantPhotoDraft();
     renderAssistantChat();
     setAssistantSending(false);
     if (focusInput) {
@@ -1911,10 +2011,12 @@
       assistantChatCtrl.sendBtn?.setAttribute('disabled', 'disabled');
       assistantChatCtrl.input?.setAttribute('disabled', 'disabled');
       assistantChatCtrl.cameraBtn?.setAttribute('disabled', 'disabled');
+      assistantChatCtrl.photoDraftUi?.clearBtn?.setAttribute('disabled', 'disabled');
     } else {
       assistantChatCtrl.sendBtn?.removeAttribute('disabled');
       assistantChatCtrl.input?.removeAttribute('disabled');
       assistantChatCtrl.cameraBtn?.removeAttribute('disabled');
+      assistantChatCtrl.photoDraftUi?.clearBtn?.removeAttribute('disabled');
       assistantChatCtrl.input?.focus();
     }
   };
