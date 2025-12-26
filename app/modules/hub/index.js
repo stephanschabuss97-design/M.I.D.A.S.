@@ -1518,15 +1518,24 @@
             'assistant',
             buildSuggestionConfirmMessage(payload),
           );
+          const savedAt = Date.now();
+          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+          const followupKey = buildMealFollowupKey({
+            payload,
+            sessionId: assistantChatCtrl?.sessionId,
+            savedAt,
+          });
           await refreshAssistantContext({
             reason: 'suggest:confirmed',
             forceRefresh: true,
           });
           renderSuggestionFollowupAdvice(suggestion);
-          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
-          const savedAt = Date.now();
-          const followupKey = buildMealFollowupKey({ payload, sessionId: assistantChatCtrl?.sessionId, savedAt });
-          createMealFollowupPrompt({ source: 'suggestion-card', snapshot, followupKey, savedAt });
+          createMealFollowupPrompt({
+            source: 'suggestion-card',
+            snapshot,
+            followupKey,
+            savedAt,
+          });
         } finally {
           suggestionConfirmInFlight = false;
         }
@@ -1689,12 +1698,21 @@
         if (event?.detail?.type !== 'intake_save') return;
         const detailSource = event?.detail?.source || 'unknown';
         if (detailSource === 'suggestion-card') return;
+        const payload = event?.detail?.payload || {};
+        const savedAt = payload.saved_at || payload.savedAt || Date.now();
+        const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+        const followupKey = buildMealFollowupKey({
+          payload,
+          sessionId: assistantChatCtrl?.sessionId,
+          savedAt,
+        });
         global.setTimeout(() => {
-          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
-          const payload = event?.detail?.payload || {};
-          const savedAt = payload.saved_at || payload.savedAt || Date.now();
-          const followupKey = buildMealFollowupKey({ payload, sessionId: assistantChatCtrl?.sessionId, savedAt });
-          createMealFollowupPrompt({ source: detailSource, snapshot, followupKey, savedAt });
+          createMealFollowupPrompt({
+            source: detailSource,
+            snapshot,
+            followupKey,
+            savedAt,
+          });
         }, 0);
       });
     };

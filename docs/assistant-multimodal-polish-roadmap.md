@@ -197,6 +197,9 @@ Goal:
 - If user says yes, generate a short, contextual suggestion using available data (intake totals, next appointment, profile).
 - Not CKD-only: CKD is optional context; appointment type should influence the suggestion when present.
 
+Current focus:
+- You are here: start 3.2.1 (Snapshot + timing). 3.1 is the last confirmed working checkpoint.
+
 3.1 Hook + guard ? ✅ (done)
 - Trigger on `assistant:action-success` with `type: "intake_save"` after confirm save succeeds.
 - Show a short follow-up question with two options: "Ja, bitte" / "Nein".
