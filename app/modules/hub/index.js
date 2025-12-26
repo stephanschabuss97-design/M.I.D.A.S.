@@ -2001,6 +2001,22 @@
             resultEl.classList.add('muted');
           }
         }
+        const captionText = message.content?.trim?.() || '';
+        let captionEl = bubble.querySelector('.assistant-photo-caption');
+        if (captionText) {
+          if (!captionEl) {
+            captionEl = doc.createElement('p');
+            captionEl.className = 'assistant-photo-caption';
+            if (resultEl) {
+              bubble.insertBefore(captionEl, resultEl);
+            } else {
+              bubble.appendChild(captionEl);
+            }
+          }
+          captionEl.textContent = captionText;
+        } else if (captionEl) {
+          captionEl.remove();
+        }
         bubble.classList.toggle('is-processing', message.status !== 'done' && message.status !== 'error');
         bubble.classList.toggle('is-error', message.status === 'error');
         if (message.retryable) {
@@ -2104,9 +2120,6 @@
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
     ensureAssistantSession();
     const trimmedText = typeof text === 'string' ? text.trim() : '';
-    if (trimmedText) {
-      appendAssistantMessage('user', trimmedText);
-    }
     const resolvedDataUrl =
       dataUrl ||
       existingMessage?.retryPayload?.base64 ||
@@ -2127,7 +2140,7 @@
         retryable: false
       };
     const targetMessage =
-      existingMessage || appendAssistantMessage('user', '', basePayload);
+      existingMessage || appendAssistantMessage('user', trimmedText, basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
     targetMessage.resultText = 'Analyse läuft …';
@@ -2141,7 +2154,6 @@
       const result = await fetchAssistantVisionReply(resolvedDataUrl, file, trimmedText);
       targetMessage.status = 'done';
       targetMessage.resultText = formatAssistantVisionResult(result);
-      targetMessage.content = '';
       targetMessage.retryable = false;
       diag.add?.('[assistant-vision] analyse success');
       const suggestionStore = getAssistantSuggestStore();
@@ -2320,8 +2332,9 @@
     if (analysis.protein_g != null) {
       parts.push(`Protein: ${(Number(analysis.protein_g) || 0).toFixed(1)} g`);
     }
-    if (result.reply) {
-      parts.push(result.reply);
+    const reply = typeof result.reply === 'string' ? result.reply.trim() : '';
+    if (reply) {
+      parts.push(reply);
     }
     return parts.join(' • ') || 'Analyse abgeschlossen.';
   };

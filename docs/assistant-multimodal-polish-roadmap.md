@@ -100,15 +100,51 @@ Phase 1 - Compose turn (text + photo in one send)
   - Chosen: Option B (keep `midas-vision` separate, call only on Send).
   - Rationale: keep `midas-assistant` text-only for stability; isolate vision failures; preserve existing backend contracts.
   - Substeps:
-  - 1.3.1 Frontend send routing: if draft photo exists, call vision endpoint; otherwise call assistant endpoint.
-    - Implemented in `app/modules/hub/index.js`: submit routes to vision when `photoDraft` exists, otherwise text endpoint.
+    - 1.3.1 Frontend send routing: if draft photo exists, call vision endpoint; otherwise call assistant endpoint.
+      - Implemented in `app/modules/hub/index.js`: submit routes to vision when `photoDraft` exists, otherwise text endpoint.
     - 1.3.2 Payload contract: align both calls to the unified turn payload keys (`text`, `image_base64`, `context`, `session_id`, `history`) where applicable.
     - 1.3.3 Response normalization: ensure vision reply produces a single assistant bubble and suggestion confirm.
     - 1.3.4 Example payloads: add one text-only and one photo+text example.
+      - Done (examples added under 1.3 Payload contract).
+    - 1.3.3 Response normalization:
+      - Vision result stays in the photo bubble (single response string via `formatAssistantVisionResult`).
+      - Suggestion confirm still comes from `assistantSuggestStore` / `suggest-ui` (no extra assistant message).
+  - Payload contract (shared keys):
+    - `session_id` (required)
+    - `text` (optional, user input)
+    - `image_base64` (optional, vision only)
+    - `context` (optional)
+    - `history` (optional, vision only)
+    - `meta` (optional, e.g. fileName for vision)
+  - Assistant (text) request uses `messages` + `mode: "text"` and may include `text` for the unified shape.
+  - Vision request uses `mode: "vision"` and includes `image_base64`, optional `text`, `history`, `context`, `meta`.
+  - Example payloads:
+    - Text-only:
+      {
+        "session_id": "text-1730000000000",
+        "mode": "text",
+        "text": "Heute gab es Frikadellen mit Gemüse.",
+        "messages": [
+          { "role": "user", "content": "Heute gab es Frikadellen mit Gemüse." }
+        ],
+        "context": { "intake": { "totals": { "water_ml": 500, "salt_g": 2.0, "protein_g": 40.0 } } }
+      }
+    - Photo + text:
+      {
+        "session_id": "text-1730000000000",
+        "mode": "vision",
+        "text": "Das ist mein Mittagessen.",
+        "image_base64": "<base64>",
+        "history": "MIDAS: ...\\nStephan: ...",
+        "context": { "profile": { "ckd_stage": "3a" } },
+        "meta": { "fileName": "photo.jpg" }
+      }
 
 1.4 Chat bubble consolidation
 - User bubble represents text + image together.
 - Assistant response is a single bubble.
+  - Implemented: photo message stores optional user text and renders it inside the photo bubble.
+  - No extra assistant message is added on vision success (analysis stays in photo bubble).
 
 Acceptance:
 - Photo selection does not trigger analysis.

@@ -2012,6 +2012,13 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.assistant-photo-caption {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .assistant-photo-bubble.is-processing .assistant-photo-result {
   opacity: 0.7;
 }
