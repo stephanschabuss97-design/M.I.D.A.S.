@@ -45,12 +45,13 @@ export function generateDayPlan(snapshot = {}, options = {}) {
     }
   }
 
-  const proteinDiff = calculateDiff(
-    totals.protein_g,
+  const proteinLimit =
     Number.isFinite(profile.protein_target_max)
       ? profile.protein_target_max
-      : DEFAULTS.proteinMax,
-  );
+      : Number.isFinite(profile.protein_target_min)
+      ? profile.protein_target_min
+      : DEFAULTS.proteinMax;
+  const proteinDiff = calculateDiff(totals.protein_g, proteinLimit);
   if (proteinDiff !== null) {
     if (proteinDiff > 0) {
       lines.push(`Protein: ${formatDiff(proteinDiff, 'g')} wären noch möglich.`);

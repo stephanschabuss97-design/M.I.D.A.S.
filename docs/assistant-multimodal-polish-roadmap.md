@@ -1,134 +1,251 @@
-# Assistant – Multimodal & Polish Roadmap
+# Assistant Multimodal + Text Chat Polish Roadmap
 
-## Zielbild (chat-übergreifend)
+Goal:
+- Make the text assistant feel like a clean chat product with MIDAS context.
+- One user turn = one request (text and/or photo) with deterministic behavior.
+- Fix confirm/suggest so it always saves exactly once.
+- Optional follow-up after save with CKD-aware meal idea.
+- Target scope: focused photo analysis + context feedback + short meal recommendation (no open-ended health chat).
 
-Diese Roadmap ist absichtlich so geschrieben, dass wir sie über mehrere Chat-Sessions hinweg verwenden können: Sie erklärt kurz den Ist-Zustand, das gewünschte Zielverhalten und führt dann deterministisch durch die nötigen Schritte.
+Scope:
+- Primary focus: text chat in `app/modules/hub/index.js`.
+- Photo flow is part of text chat (vision).
+- Voice is parked as legacy and not wired; voice module lives in `app/modules/assistant-stack/voice/index.js`.
 
-Wichtige Referenz-Doku (Einordnung, Ist-Flow, Event-Pipeline, Dateien):
+Status (as of 2025-12-22):
+- Voice archive roadmap completed (voice parked, no UI wiring).
+- Assistant stack refactor completed (assistant files moved to `app/modules/assistant-stack/assistant/`, VAD in `app/modules/assistant-stack/vad/`).
+- Script tags updated to assistant-stack paths; voice stays disabled.
+- This roadmap phases remain not started (analysis + UX work still pending).
+
+References (source of truth):
 - `docs/modules/Assistant Module Overview.md`
+- `docs/modules/VAD Module Overview.md`
+- `docs/modules/Intent Engine Module Overview.md`
+- Frontend: `app/modules/hub/index.js`, `app/modules/assistant-stack/assistant/*`
+- Backend (separate repo): `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-assistant`
+- Backend (separate repo): `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-vision`
+- Optional voice endpoints: `midas-transcribe`, `midas-tts`
 
-Ziel ist ein Assistant-Flow, der sich für Nutzer wie ein „ChatGPT-Chat“ anfühlt, aber mit MIDAS-spezifischer Logik:
+Current state (verified in code):
+- Photo auto-runs: `handleAssistantPhotoSelected()` -> `sendAssistantPhotoMessage()` -> `fetchAssistantVisionReply()` triggers vision immediately on file change.
+- Text chat uses `sendAssistantChatMessage()` -> `fetchAssistantTextReply()`; no compose with image yet.
+- Confirm UI is inline, created in `app/modules/assistant-stack/assistant/suggest-ui.js` and uses events:
+  - `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:suggest-confirm-reset`.
+- Confirm save runs via `runAllowedAction('intake_save', ...)` in `app/modules/hub/index.js` with guard `suggestionConfirmInFlight`.
+- Suggest store is in `app/modules/assistant-stack/assistant/suggest-store.js`.
 
-1. **Ein Prompt = ein Turn (Compose statt Auto-Run)**  
-   Nutzer kann **Text + Foto + Kontext** in *einem* Sendevorgang abschicken. Ein Foto-Upload erzeugt zunächst nur ein Draft/Attachment und löst keine sofortige Analyse aus.
-2. **Robuster Save-Flow (Single Confirm)**  
-   Nach der Vision-Analyse erscheint **genau eine** Bestätigungsabfrage („Soll ich speichern?“), die beim ersten Klick zuverlässig schließt und exakt einmal speichert.
-3. **Smart Follow-up nach Speicherung**  
-   Nach erfolgreichem Speichern fragt der Assistant optional, ob er eine **CKD‑freundliche Essensidee** vorschlagen soll – mit Kontext (Uhrzeit, CKD‑Stufe, Tageswerte Salz/Protein, zuletzt gespeicherte Makros).
+Expected behavior:
+1) Compose turn: user can attach photo and/or text, then send once.
+2) Exactly one confirm dialog for a vision suggestion, first click saves once.
+3) After save, optional follow-up: "Want a CKD-friendly meal idea?"
 
----
+-------------------------------------------------------------------------------
+Phase 0 - Capture baseline (deterministic)
 
-## Phase 0 – Ist-Zustand erfassen (1–2h)
+0.1 Confirm the current photo auto-run path
+- File: `app/modules/hub/index.js`
+- Note function chain and payload fields for vision request.
+- Record: payload fields used now (`image_base64`, `history`, `context`, `session_id`, `meta`).
 
-1. **Trigger-Analyse Foto**
-   - Identifiziere die Stelle, die beim Foto-Upload aktuell sofort `/midas-vision` auslöst (laut Doku: `handleAssistantPhotoSelected` in `app/modules/hub/index.js`).
-   - Notiere: Welche Daten werden gesendet (nur `image_base64`? auch `history`/`context`?).
+0.2 Reproduce confirm bug and document it
+- Steps: open assistant -> attach photo -> wait for analysis -> click "Ja, speichern".
+- Observe: does the dialog close? does save happen once or multiple times?
+- Record exact steps and visible result.
+  - Result (reported): after first "Ja, speichern" the confirm dialog stays open, but the save runs once.
+  - Second click: no additional save runs, and the dialog closes.
+  - Visual glitch: garbled characters appear after "Alles klar ..." in the assistant reply.
 
-2. **Confirm-Dialog Bug reproduzieren**
-   - Steps exakt dokumentieren: Foto wählen → Analyse → Dialog → Klick „Ja“ → Verhalten.
-   - Prüfen, ob Event-Handler doppelt gebunden werden (z. B. bei jedem Render).
+0.3 Check confirm event wiring
+- File: `app/modules/hub/index.js` (listener binding inside `setupAssistantChat`)
+- File: `app/modules/assistant-stack/assistant/suggest-ui.js` (inline confirm)
+- Verify listeners only bind once and do not double-bind on re-render.
+  - Found: `suggest-ui.js` attaches confirm UI on `assistant:suggest-updated` and `assistant:chat-rendered`, with `removeBlock()` before reattach.
+  - Found: confirm click dispatches `assistant:suggest-confirm`; cancel dispatches `assistant:suggest-answer`.
+  - Found: confirm reset only on `assistant:suggest-confirm-reset` (set busy false, allow re-dispatch).
+  - Found: hub listens for `assistant:suggest-confirm` + `assistant:suggest-answer` inside `setupAssistantChat`, guarded by `assistantChatCtrl` so it should bind once.
+  - Note: successful confirm relies on `store.dismissCurrent()` to remove the block (no `suggest-confirm-reset` on success).
+ 
+0.4 UI polish: "Analyse läuft" placeholder
+- Ensure the status text renders cleanly (no garbled symbols) in photo analysis bubbles.
+  - Observed: garbled characters appear after "Alles klar ..." in assistant reply text.
 
-3. **Follow-up Ist-Flow**
-   - Prüfen, ob nach `intake_save` bereits `runIntakeSaveFollowup()` läuft (siehe `docs/modules/Assistant Module Overview.md`).
-   - Notieren, ob und wo man ein zusätzliches Follow-up einklinken kann.
+Deliverable:
+- Short bug list with repro steps and expected vs actual.
 
-Deliverable: kurze Bugliste + Repro Steps + erwartetes Verhalten.
+-------------------------------------------------------------------------------
+Phase 1 - Compose turn (text + photo in one send)
 
----
+1.1 UI state for photo draft
+- Keep photo in draft state after selection.
+- Do not call vision on file change.
+- Display thumbnail and a "ready to send" status in the chat input area.
 
-## Phase 1 – Compose-Turn (Text + Foto in einem Prompt)
+1.2 Single payload shape
+- Define one request object:
+  - `text` (optional)
+  - `image_base64` (optional)
+  - `context` (intake + appointments + profile)
+  - `session_id` (required)
+  - `history` (optional)
 
-1. **UI/State: Draft statt Auto-Run**
-   - Foto-Upload soll nur ein **Draft Attachment** erzeugen (Thumbnail + „bereit zum Senden“).
-   - Text bleibt editierbar, „Senden“ triggert die Analyse gemeinsam.
+1.3 Single backend call per turn
+- Decide routing:
+  - Option A: extend `midas-assistant` to handle optional image.
+  - Option B: keep `midas-vision` and call it only when user clicks Send.
+- Only one network request per user turn.
+- Document the routing choice and why it was chosen.
+- Lock a request contract (list of payload keys + one example payload).
 
-2. **Payload-Standard**
-   - Definiere ein einziges Request-Objekt:
-     - `text` (optional)
-     - `image_base64` (optional)
-     - `context` (Butler Snapshot: Intake Totals, Termine, Profil)
-     - `session_id`/`history`
-
-3. **Backend Routing klären**
-   - Entscheidung: Wird multimodal über `midas-vision` gelöst (Vision + Kontext) oder über `midas-assistant` erweitert?
-   - Ziel: Nur **ein** Netzwerk-Call pro Turn.
-
-4. **Chat History konsolidieren**
-   - Stelle sicher, dass genau eine Chat-Bubble pro User-Turn erzeugt wird (Text + Thumbnail).
-   - Assistant Response soll als eine Bubble zurückkommen.
-
-Acceptance:
-- Foto hochladen triggert *keine* Analyse.
-- „Senden“ triggert *genau eine* Analyse/Antwort.
-
----
-
-## Phase 2 – Save-Dialog fixen (Single Confirm, einmalige Aktion)
-
-1. **Single Source of Truth für Suggestion/Confirm UI**
-   - Nur eine Dialog-Instanz/Komponente darf aktiv sein.
-   - Beim Render: alte Listener entfernen oder „bind once“-Pattern nutzen.
-
-2. **State Machine definieren**
-   - Zustände: `idle` → `analysis_done` → `confirm_open` → `saving` → `saved|error`.
-   - Buttons im Zustand `saving` deaktivieren, UI zeigt „speichert…“.
-
-3. **Event-Pipeline audit**
-   - Prüfe Events aus Doku:
-     - `assistant:suggest-confirm`
-     - `assistant:suggest-answer`
-     - `assistant:action-success`
-   - Sicherstellen: jeder Klick löst nur einen Pfad aus und räumt UI auf.
-
-Acceptance:
-- Beim ersten Klick (Ja/Nein) schließt der Dialog zuverlässig.
-- Speichern passiert genau einmal; kein „zweiter Klick macht nichts“.
-
----
-
-## Phase 3 – Follow-up „CKD‑friendly meal suggestion“
-
-1. **Follow-up Hook**
-   - Nach erfolgreichem Save (`assistant:action-success` / `runIntakeSaveFollowup`) zusätzliches Follow-up anbieten.
-
-2. **Kontext zusammenstellen**
-   - Uhrzeit-Slot: Frühstück/Mittag/Abend.
-   - Profil: CKD‑Stufe, Salz-/Protein-Limits (aus Profil; Lab später).
-   - Intake Totals: Salz/Protein bisher + zuletzt gespeicherte Werte.
-
-3. **Prompt/Antwortformat**
-   - Kurzer Vorschlag (1–3 Optionen) + Why (salz/protein) + nächster Schritt.
-   - Optional: „In Intake speichern?“ nur wenn sinnvoll.
+1.4 Chat bubble consolidation
+- User bubble represents text + image together.
+- Assistant response is a single bubble.
 
 Acceptance:
-- Nach Speichern erscheint eine klare „Soll ich…?“ Frage.
-- Bei „Ja“ kommt ein Vorschlag mit Kontext (Uhrzeit + Tagesbudget + CKD).
+- Photo selection does not trigger analysis.
+- Send triggers exactly one request and one response.
 
----
+-------------------------------------------------------------------------------
+Phase 2 - Confirm flow (single confirm, single save)
 
-## Phase 4 – QA & Regression
+2.1 Single confirm instance
+- Ensure only one active confirm UI at a time.
+- Dismiss old confirm UI before showing a new one.
 
-1. **Happy Path**
-   - Text-only
-   - Foto-only
-   - Text+Foto in einem Turn
+2.2 Explicit confirm state machine
+- States: `idle` -> `analysis_done` -> `confirm_open` -> `saving` -> `saved|error`.
+- Buttons disabled in `saving`.
 
-2. **Edge Cases**
-   - Mehrfach auf „Senden“ klicken
-   - Upload abbrechen
-   - Netzwerkfehler / 500er
-   - `prefers-reduced-motion` (UI sollte trotzdem stabil sein)
+2.3 Event pipeline audit
+- Events: `assistant:suggest-confirm`, `assistant:suggest-answer`, `assistant:action-success`.
+- Ensure each click is processed once and cleans up UI.
+- Define the single source of truth for confirm state (store vs hub).
+- Define explicit cleanup rules (when to clear confirm UI/state).
 
-3. **Docs aktualisieren**
-   - `docs/modules/Assistant Module Overview.md`: Foto-Flow nicht mehr „auto-run“, sondern „draft + send“.
+Acceptance:
+- First click always closes confirm.
+- Save happens exactly once (no duplicate writes).
 
----
+-------------------------------------------------------------------------------
+Phase 3 - Follow-up after save (optional CKD-friendly idea)
 
-## Dateien (Orientierung)
+3.1 Hook after save
+- Trigger after successful intake save (not from suggestion confirm loop).
+- Use `assistant:action-success` or `runIntakeSaveFollowup`.
 
-- Frontend Hub: `app/modules/hub/index.js` (Orchestrierung, Foto-Upload, Events)
-- Assistant UI: `app/modules/assistant/index.js`
-- Suggest/Confirm UI: `app/modules/assistant/suggest-ui.js`
-- Actions/Guards: `app/modules/assistant/actions.js`, `app/modules/assistant/allowed-actions.js`
-- Follow-up Helper: `app/modules/assistant/day-plan.js`
-- Backend: `supabase/functions/midas-assistant/index.ts`, `supabase/functions/midas-vision/index.ts`
+3.2 Context bundle for follow-up
+- Time slot (morning, noon, evening).
+- Profile CKD stage and protein/salt targets.
+- Intake totals so far.
+
+3.3 Prompt format
+- Offer 1-3 suggestions with short rationale.
+- Ask if the user wants to save the suggestion.
+- Guard against duplicate follow-up (once per save event).
+
+Acceptance:
+- After saving intake, assistant asks once for CKD-friendly suggestion.
+- On yes, returns a short, contextual suggestion.
+
+-------------------------------------------------------------------------------
+Phase 4 - QA and docs
+
+4.1 Happy paths
+- Text only
+- Photo only
+- Text + photo
+
+4.2 Edge cases
+- Double click Send
+- Abort upload
+- Network errors
+- prefers-reduced-motion
+
+4.3 Docs update
+- `docs/modules/Assistant Module Overview.md` updated to "draft + send" photo flow.
+
+-------------------------------------------------------------------------------
+Phase 5 - Voice chat alignment (deferred while voice is parked)
+
+5.1 Unify text + voice action layer
+- Voice flow should reuse the same action handlers as text.
+- Avoid duplicated save logic between text and voice.
+
+5.2 Voice intent engine (fast-path)
+- Parse common commands locally (no LLM):
+  - water/salt/protein quick adds
+  - simple vitals (BP/Body)
+  - confirmations (yes/no)
+- If intent is uncertain, fall back to LLM.
+
+5.3 Voice UX fixes
+- Ensure voice responses map to the same confirm/save flows.
+- Keep a single "confirm once" rule for voice prompts too.
+
+5.4 Optional: Intent Engine module
+- If intent logic grows, create `app/modules/intent-engine/`.
+- Add overview doc in `docs/modules/Intent Engine Module Overview.md`.
+
+Acceptance:
+- Voice can trigger the same actions as text reliably.
+- Simple commands do not hit LLM.
+- Confirm/save remains single-click/single-action.
+
+-------------------------------------------------------------------------------
+Notes for new chats
+- Primary change: move photo analysis from upload-change to send.
+- Voice chat and intent engine are in scope for this roadmap.
+- Frontend is in this repo; backend edge functions are in `midas-backend`.
+
+-------------------------------------------------------------------------------
+Phase 6 - Butler UI density rules (desktop/tablet/mobile)
+
+6.1 Define data tiers (always vs optional vs expandable)
+- Always visible (all devices): water/salt/protein chips.
+- Context extras (desktop/tablet): protein target (min/max), CKD stage.
+- Optional (desktop): last meal summary, last med confirmation, next appointment.
+- Expandable: remaining budget + warning + 1 short recommendation.
+
+6.2 Desktop layout (high density)
+- Show: water/salt/protein + protein target + CKD stage.
+- Show: last meal + last med confirm + next appointment.
+- Expand: remaining budget + warning + recommendation.
+
+6.3 Tablet layout (medium density)
+- Show: water/salt/protein + protein target.
+- Show: one extra line (either next appointment or last med confirmation).
+- Expand: remaining budget + warning.
+
+6.4 Mobile layout (low density)
+- Show: water/salt/protein only.
+- Provide: one compact "More" toggle for everything else.
+- Expand: one item per category only (no lists).
+
+Acceptance:
+- Desktop feels rich, not cramped.
+- Tablet feels balanced.
+- Mobile remains quick with minimal scanning.
+
+-------------------------------------------------------------------------------
+Action Backlog (assistant/actions.js expansion ideas)
+
+Purpose:
+- Make the assistant useful beyond intake by adding safe, validated actions.
+- Actions should map to existing modules/RPCs and avoid destructive operations.
+
+Candidates (by module):
+- Vitals (BP/Body/Lab/Training): `log_bp`, `log_body`, `log_lab`, `log_training`
+- Medication: `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`
+- Appointments: `appointment_create`, `appointment_cancel`, `appointment_reschedule`
+- Activity/Event: `activity_add`
+- Profile: `update_profile_field` (salt/protein targets, ckd stage, smoker)
+- Assistant UX: `clear_assistant_history`, `toggle_voice_mode`
+
+Guardrails:
+- Validate payloads, confirm before writes where appropriate.
+- Prefer additive changes and avoid deletes unless explicit.
+
+Next:
+- If intent logic grows beyond assistant-stack scope, use `docs/modules/Intent Engine Module Overview.md` as the next reference.
+
+

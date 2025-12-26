@@ -807,7 +807,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
    ========================================================================== */
 
 .hub-intake-pills {
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -1306,6 +1306,60 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 0;
 }
 
+.hub-vitals-activity {
+  position: relative;
+  margin-top: 12px;
+}
+
+.hub-vitals-activity .activity-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-vitals-activity .activity-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.hub-vitals-activity .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hub-vitals-activity .field-group .label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hub-vitals-activity input,
+.hub-vitals-activity textarea {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(10, 12, 22, 0.65);
+  color: #fff;
+  padding: 10px 12px;
+}
+
+.hub-vitals-activity input:focus-visible,
+.hub-vitals-activity textarea:focus-visible {
+  outline: none;
+  border-color: rgba(79, 157, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+}
+
+.hub-vitals-activity .activity-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
 .hub-vitals-lab .lab-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1323,32 +1377,48 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   resize: vertical;
 }
 
-.hub-intake-grid {
+.intake-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .intake-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.medication-card-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
   width: 100%;
 }
 
-.hub-input-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 20px;
-  background: rgba(15, 17, 30, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fefefe;
+@media (min-width: 900px) {
+  .medication-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.hub-input-card span {
+.capture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.capture-card-label {
   font-size: 0.9rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.8;
 }
 
-.hub-input-card input {
+.capture-card input {
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
@@ -1357,10 +1427,83 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 4px 0;
 }
 
-.hub-input-card .btn {
-  align-self: flex-start;
-  margin-top: 8px;
-  padding: 6px 12px;
+.intake-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(15, 17, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fefefe;
+  min-height: 80px;
+}
+
+.intake-card-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+.medication-card.is-low {
+  border-color: rgba(255, 200, 60, 0.5);
+  box-shadow: 0 0 12px rgba(255, 200, 60, 0.15);
+}
+
+.capture-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.capture-card-actions .btn {
+  margin-top: 0;
+}
+
+.medication-card-grid .medication-card {
+  gap: 14px;
+}
+
+.medication-card-grid .medication-card-title {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.medication-card-grid .medication-card-status {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.medication-card-grid .medication-card .btn {
+  align-self: stretch;
+  width: 100%;
+  justify-content: center;
+}
+
+.intake-pill-slot {
+  min-width: 120px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.intake-pill-slot:empty {
+  min-height: 0;
+}
+
+.intake-pill-slot .pill {
+  margin: 0;
+}
+
+.capture-card-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
 }
 
 .hub-intake-note {
@@ -1432,6 +1575,16 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .bp-context-card {
   margin-bottom: 18px;
+}
+
+.hub-vitals-bp .bp-combined-card .bp-context-card {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 0;
+}
+
+.hub-vitals-bp .bp-combined-card .bp-pane {
+  margin-top: 0;
 }
 
 .bp-context-header {
@@ -1748,22 +1901,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 6px;
 }
 
-.appointments-grid input,
-.appointments-grid select,
-.appointments-notes textarea {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--color-text);
-  padding: 12px;
-}
-
-.appointments-grid input:focus,
-.appointments-grid select:focus,
-.appointments-notes textarea:focus {
-  outline: 2px solid rgba(66, 133, 244, 0.6);
-}
-
 .appointments-repeat select {
   min-width: 160px;
 }
@@ -1934,22 +2071,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 6px;
 }
 
+.profile-form .field-group.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
 .profile-form .label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
-}
-
-.profile-form input,
-.profile-form textarea,
-.profile-form select {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.25);
-  color: #f5f7ff;
-  padding: 12px;
-  font-size: 1rem;
 }
 
 .profile-form textarea {

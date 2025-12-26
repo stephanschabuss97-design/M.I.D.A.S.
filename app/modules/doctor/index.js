@@ -34,7 +34,7 @@
       /* noop */
     }
   };
-  const DOCTOR_TABS = ['bp', 'body', 'lab', 'inbox'];
+  const DOCTOR_TABS = ['bp', 'body', 'lab', 'activity', 'inbox'];
   let __doctorActiveTab = DOCTOR_TABS[0];
   let __doctorScrollSnapshot = { top: 0, ratio: 0 };
   const doctorRefreshLogInflight = new Map();
@@ -169,10 +169,21 @@
       ? api.deleteSystemComment
       : null;
   };
+  const resolveReportInboxClearer = () => {
+    const api = getSupabaseApi();
+    return typeof api.deleteSystemCommentsBySubtypes === 'function'
+      ? api.deleteSystemCommentsBySubtypes
+      : null;
+  };
 
   const resolveLabRangeLoader = () => {
     const api = getSupabaseApi();
     return typeof api.loadLabEventsRange === 'function' ? api.loadLabEventsRange : null;
+  };
+
+  const resolveActivityRangeLoader = () => {
+    const loader = appModules?.activity?.loadActivities;
+    return typeof loader === 'function' ? loader : null;
   };
 
   const resolveUserIdFetcher = () => {
@@ -187,6 +198,13 @@
     const uid = await uidFetcher();
     if (!uid) return [];
     const rows = await loader({ user_id: uid, from, to });
+    return Array.isArray(rows) ? rows : [];
+  };
+
+  const loadActivityEventsSafe = async (from, to) => {
+    const loader = resolveActivityRangeLoader();
+    if (typeof loader !== 'function') return [];
+    const rows = await loader(from, to, { reason: 'doctor:activity' });
     return Array.isArray(rows) ? rows : [];
   };
 
@@ -259,6 +277,7 @@
       bp: doc.getElementById('doctorTabBp'),
       body: doc.getElementById('doctorTabBody'),
       lab: doc.getElementById('doctorTabLab'),
+      activity: doc.getElementById('doctorTabActivity'),
       inbox: doc.getElementById('doctorTabInbox')
     };
   };
@@ -266,7 +285,9 @@
   const inboxPanelState = {
     el: null,
     closeBound: false,
-    range: { from: '', to: '' }
+    range: { from: '', to: '' },
+    filter: 'all',
+    reports: []
   };
 
   function hideDoctorInboxPanel() {
@@ -389,13 +410,30 @@
   async function loadMonthlyReports(from, to) {
     const fetcher = resolveMonthlyReportFetcher();
     if (typeof fetcher !== 'function') return [];
-    const result = await fetcher({
-      from,
-      to,
-      subtype: 'monthly_report',
-      order: 'day.desc'
+    const [monthly, rangeReports] = await Promise.all([
+      fetcher({
+        from,
+        to,
+        subtype: 'monthly_report',
+        order: 'day.desc'
+      }),
+      fetcher({
+        from,
+        to,
+        subtype: 'range_report',
+        order: 'day.desc'
+      })
+    ]);
+    const merged = [
+      ...(Array.isArray(monthly) ? monthly : []),
+      ...(Array.isArray(rangeReports) ? rangeReports : [])
+    ];
+    merged.sort((a, b) => {
+      const dayCmp = (b.day || '').localeCompare(a.day || '');
+      if (dayCmp !== 0) return dayCmp;
+      return (b.ts || '').localeCompare(a.ts || '');
     });
-    return Array.isArray(result) ? result : [];
+    return merged;
   }
 
   async function onTrendpilotAction(event) {
@@ -508,6 +546,8 @@ async function renderDoctor(triggerReason = 'manual'){
   let daysArr = [];
   let labRows = [];
   let labLoadError = null;
+  let activityRows = [];
+  let activityLoadError = null;
   try{
     daysArr = await fetchDailyOverview(from, to);
   }catch(err){
@@ -530,6 +570,18 @@ async function renderDoctor(triggerReason = 'manual'){
   } catch (err) {
     labLoadError = err;
     logDoctorError('lab events fetch failed', err);
+  }
+
+  try {
+    activityRows = await loadActivityEventsSafe(from, to);
+    if (Array.isArray(activityRows)) {
+      activityRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+    } else {
+      activityRows = [];
+    }
+  } catch (err) {
+    activityLoadError = err;
+    logDoctorError('activity events fetch failed', err);
   }
 
   const trendpilotWrap = document.getElementById('doctorTrendpilot');
@@ -555,6 +607,15 @@ async function renderDoctor(triggerReason = 'manual'){
 
   const formatNotesHtml = (notes) => {
     const raw = (notes || '').trim();
+    if (!raw) return '-';
+    const escaped = escapeAttr(raw);
+    if (typeof nl2br === 'function') {
+      return nl2br(escaped);
+    }
+    return escaped.replace(/\r?\n/g, '<br>');
+  };
+  const formatInlineNote = (note) => {
+    const raw = (note || '').trim();
     if (!raw) return '-';
     const escaped = escapeAttr(raw);
     if (typeof nl2br === 'function') {
@@ -719,6 +780,42 @@ async function renderDoctor(triggerReason = 'manual'){
 </section>`;
   };
 
+  const renderDoctorActivityDay = (entry) => {
+    const safeActivity = entry?.activity ? escapeAttr(entry.activity) : '-';
+    const durationValue =
+      entry?.duration_min === null || entry?.duration_min === undefined
+        ? '-'
+        : dash(fmtNum(entry.duration_min, 0));
+    const noteHtml = formatInlineNote(entry?.note);
+    const dayValue = entry?.day || '';
+    return `
+<section class="doctor-day doctor-activity-day" data-date="${escapeAttr(dayValue)}">
+  <div class="col-date">
+    <div class="date-top">
+      <span class="date-label">${fmtDateDE(dayValue)}</span>
+      <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
+    </div>
+    <div class="date-actions">
+      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Loeschen</button>
+    </div>
+  </div>
+  <div class="col-measure doctor-activity-metrics">
+    <div class="measure-head">
+      <div class="activity-col">Aktivitaet</div>
+      <div class="duration-col">Dauer (Min)</div>
+      <div class="note-col">Notiz</div>
+    </div>
+    <div class="measure-grid">
+      <div class="measure-row">
+        <div class="activity-col">${safeActivity}</div>
+        <div class="num duration-col">${durationValue}</div>
+        <div class="note-col">${noteHtml}</div>
+      </div>
+    </div>
+  </div>
+</section>`;
+  };
+
   const bindDomainDeleteButtons = (panel, attrName, type, label) => {
     if (!panel) return;
     panel.querySelectorAll(`[${attrName}]`).forEach((btn) => {
@@ -798,6 +895,17 @@ async function renderDoctor(triggerReason = 'manual'){
     }
   }
 
+  if (panels.activity) {
+    if (activityLoadError) {
+      panels.activity.innerHTML = placeholderHtml('Training konnte nicht geladen werden.');
+    } else if (activityRows.length) {
+      panels.activity.innerHTML = activityRows.map(renderDoctorActivityDay).join('');
+      bindDomainDeleteButtons(panels.activity, 'data-del-activity', 'activity_event', 'Training');
+    } else {
+      panels.activity.innerHTML = placeholderHtml('Keine Trainingseintraege im Zeitraum.');
+    }
+  }
+
 
   closeDoctorRefreshLog();
 }
@@ -873,18 +981,30 @@ async function exportDoctorJson(){
     bindHubDoctorCloseButton();
   }
 
-  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, { error } = {}) => {
+  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, { error, emptyLabel } = {}) => {
     if (!panel) return;
     if (error) {
       panel.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte konnten nicht geladen werden.</div>`;
       return;
     }
     if (!reports?.length) {
-      panel.innerHTML = `<div class="small u-doctor-placeholder">Noch keine Monatsberichte vorhanden.</div>`;
+      panel.innerHTML = `<div class="small u-doctor-placeholder">${emptyLabel || 'Noch keine Berichte vorhanden.'}</div>`;
       return;
     }
     const cards = reports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
     panel.innerHTML = `<div class="doctor-inbox">${cards}</div>`;
+  };
+
+  const filterReportsByType = (reports, filter) => {
+    if (!Array.isArray(reports)) return [];
+    if (!filter || filter === 'all') return reports;
+    return reports.filter((report) => (report.subtype || report.payload?.subtype) === filter);
+  };
+
+  const getFilterEmptyLabel = (filter) => {
+    if (filter === 'monthly_report') return 'Keine Monatsberichte vorhanden.';
+    if (filter === 'range_report') return 'Keine Arzt-Berichte vorhanden.';
+    return 'Noch keine Berichte vorhanden.';
   };
 
   const formatMonthLabel = (value) => {
@@ -966,6 +1086,10 @@ async function exportDoctorJson(){
   };
 
   const renderMonthlyReportCard = (report, fmtDateDE) => {
+    const subtype = report.subtype || report.reportType || 'monthly_report';
+    const isRangeReport = subtype === 'range_report';
+    const periodFrom = report.period?.from || report.day || '';
+    const periodTo = report.period?.to || report.day || '';
     const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
     const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
     const summary = (report.summary || '').trim() || 'Kein Summary verfügbar.';
@@ -974,16 +1098,22 @@ async function exportDoctorJson(){
       .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
       .join('');
     const textHtml = formatReportNarrative(report.text);
-    const monthTag = report.payload?.month || report.reportMonth || '';
+    const monthTag = isRangeReport ? '' : report.reportMonth || '';
+    const title = isRangeReport
+      ? 'Arzt-Bericht - Zeitraum'
+      : `Monatsbericht - ${monthLabel || 'Unbekannter Monat'}`;
+    const subtitle = `Zeitraum: ${periodFrom || '-'} bis ${periodTo || '-'}`;
+    const tag = isRangeReport ? 'Arzt-Bericht' : 'Monatsbericht';
     return `
-<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}">
+<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}" data-report-type="${escapeAttr(subtype)}" data-report-from="${escapeAttr(periodFrom)}" data-report-to="${escapeAttr(periodTo)}">
   <div class="doctor-report-head">
     <div class="doctor-report-period">
-      <strong>${escapeAttr(monthLabel || 'Unbekannter Monat')}</strong>
-      <span>${report.day ? fmtDateDE(report.day) : '-'}</span>
+      <strong>${escapeAttr(title)}</strong>
+      <span>${escapeAttr(subtitle)}</span>
     </div>
     <div class="doctor-report-meta">Erstellt ${escapeAttr(createdLabel)}</div>
   </div>
+  <div class="doctor-report-tag">${escapeAttr(tag)}</div>
   <div class="doctor-report-summary">${escapeAttr(summary)}${badgeHtml}</div>
   <div class="doctor-report-body">${textHtml}</div>
   <div class="doctor-report-actions">
@@ -1012,14 +1142,9 @@ async function exportDoctorJson(){
     if (newReportBtn && !newReportBtn.dataset.boundNewReport) {
       newReportBtn.dataset.boundNewReport = '1';
       newReportBtn.addEventListener('click', async () => {
-        const range = inboxPanelState.range || {};
-        const opts =
-          range.from && range.to
-            ? { from: range.from, to: range.to }
-            : {};
         newReportBtn.disabled = true;
         try {
-          await generateMonthlyReport(opts);
+          await generateMonthlyReport({ report_type: 'monthly_report' });
         } catch (err) {
           logDoctorError('new monthly report button failed', err);
           uiError?.('Neuer Monatsbericht fehlgeschlagen.');
@@ -1028,23 +1153,95 @@ async function exportDoctorJson(){
         }
       });
     }
+
+    const newRangeReportBtn = doc?.getElementById('doctorInboxNewRangeReportBtn');
+    if (newRangeReportBtn && !newRangeReportBtn.dataset.boundRangeReport) {
+      newRangeReportBtn.dataset.boundRangeReport = '1';
+      newRangeReportBtn.addEventListener('click', async () => {
+        const range = inboxPanelState.range || {};
+        const opts =
+          range.from && range.to
+            ? { from: range.from, to: range.to }
+            : {};
+        newRangeReportBtn.disabled = true;
+        try {
+          await generateMonthlyReport({ ...opts, report_type: 'range_report' });
+        } catch (err) {
+          logDoctorError('new range report button failed', err);
+          uiError?.('Neuer Arzt-Bericht fehlgeschlagen.');
+        } finally {
+          newRangeReportBtn.disabled = false;
+        }
+      });
+    }
+    const clearInboxBtn = doc?.getElementById('doctorInboxClearBtn');
+    if (clearInboxBtn && !clearInboxBtn.dataset.boundClearInbox) {
+      clearInboxBtn.dataset.boundClearInbox = '1';
+      clearInboxBtn.addEventListener('click', async () => {
+        const clearer = resolveReportInboxClearer();
+        if (typeof clearer !== 'function') {
+          toast('Inbox kann derzeit nicht gelöscht werden.');
+          return;
+        }
+        if (!confirm('Inbox wirklich komplett löschen?')) return;
+        clearInboxBtn.disabled = true;
+        try {
+          await clearer({ subtypes: ['monthly_report', 'range_report'] });
+          toast('Inbox geleert.');
+          await refreshDoctorAfterMonthlyReport();
+        } catch (err) {
+          logDoctorError('inbox clear failed', err);
+          uiError?.('Inbox konnte nicht gelöscht werden.');
+        } finally {
+          clearInboxBtn.disabled = false;
+        }
+      });
+    }
     if (rangeEl) {
       const fromLabel = from || '-';
       const toLabel = to || '-';
       rangeEl.textContent = `Zeitraum: ${fromLabel} bis ${toLabel}`;
     }
-    list.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte werden geladen …</div>`;
+    const filterButtons = Array.from(
+      doc?.querySelectorAll('[data-report-filter]') || []
+    );
+    const applyFilterState = (filter, reports, { error } = {}) => {
+      inboxPanelState.filter = filter || 'all';
+      filterButtons.forEach((btn) => {
+        const key = btn.getAttribute('data-report-filter');
+        const isActive = key === inboxPanelState.filter;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+      });
+      const filtered = filterReportsByType(reports, inboxPanelState.filter);
+      renderMonthlyReportsSection(list, filtered, fmtDateDE, {
+        error,
+        emptyLabel: getFilterEmptyLabel(inboxPanelState.filter)
+      });
+      if (countEl) {
+        const countText = `${filtered.length} Bericht${filtered.length === 1 ? '' : 'e'}`;
+        countEl.textContent = countText;
+      }
+    };
+    if (!list.dataset.reportFilterBound) {
+      list.dataset.reportFilterBound = '1';
+      filterButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-report-filter') || 'all';
+          applyFilterState(key, inboxPanelState.reports || []);
+        });
+      });
+    }
+
+    list.innerHTML = `<div class="small u-doctor-placeholder">Berichte werden geladen ...</div>`;
     if (countEl) countEl.textContent = '';
     try {
       const reports = await loadMonthlyReports(from, to);
-      renderMonthlyReportsSection(list, reports, fmtDateDE, {});
-      if (countEl) {
-        const countText = `${reports.length} Bericht${reports.length === 1 ? '' : 'e'}`;
-        countEl.textContent = countText;
-      }
+      inboxPanelState.reports = reports;
+      applyFilterState(inboxPanelState.filter || 'all', reports, {});
     } catch (err) {
       logDoctorError('monthly reports fetch failed', err);
-      renderMonthlyReportsSection(list, [], fmtDateDE, { error: err });
+      applyFilterState(inboxPanelState.filter || 'all', [], { error: err });
       if (countEl) countEl.textContent = 'Fehler beim Laden';
     }
   }
@@ -1057,17 +1254,19 @@ async function exportDoctorJson(){
     const reportId = card.getAttribute('data-report-id');
     if (!reportId) return;
     const action = btn.getAttribute('data-report-action');
+    const reportType = card.getAttribute('data-report-type') || 'monthly_report';
+    const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
     if (action === 'delete') {
       const deleter = resolveMonthlyReportDeleter();
       if (typeof deleter !== 'function') {
         toast('Löschen momentan nicht möglich.');
         return;
       }
-      if (!confirm('Diesen Monatsbericht endgültig löschen?')) return;
+      if (!confirm(`Diesen ${reportLabel} endgültig löschen?`)) return;
       btn.disabled = true;
       try {
         await deleter({ id: reportId });
-        toast('Monatsbericht gelöscht.');
+        toast(`${reportLabel} gelöscht.`);
         await refreshDoctorAfterMonthlyReport();
       } catch (err) {
         logDoctorError('delete monthly report failed', err);
@@ -1077,12 +1276,24 @@ async function exportDoctorJson(){
       }
     } else if (action === 'regenerate') {
       const monthTag = card.getAttribute('data-report-month') || null;
+      const periodFrom = card.getAttribute('data-report-from') || '';
+      const periodTo = card.getAttribute('data-report-to') || '';
       btn.disabled = true;
       try {
-        await generateMonthlyReport(monthTag ? { month: monthTag } : {});
+        if (reportType === 'range_report') {
+          await generateMonthlyReport({
+            report_type: 'range_report',
+            from: periodFrom,
+            to: periodTo
+          });
+        } else {
+          await generateMonthlyReport(monthTag ? { month: monthTag } : {});
+        }
       } catch (err) {
         logDoctorError('regenerate monthly report failed', err);
-        uiError?.('Neuer Monatsbericht fehlgeschlagen.');
+        uiError?.(reportType === 'range_report'
+          ? 'Neuer Arzt-Bericht fehlgeschlagen.'
+          : 'Neuer Monatsbericht fehlgeschlagen.');
       } finally {
         btn.disabled = false;
       }
@@ -1119,11 +1330,12 @@ async function exportDoctorJson(){
     const defaultFrom = doc?.getElementById('from')?.value || '';
     const defaultTo = doc?.getElementById('to')?.value || '';
     const month = options.month || null;
-    const from = month ? null : options.from || defaultFrom;
-    const to = month ? null : options.to || defaultTo;
-    if (!month && (!from || !to)) {
+    const reportType = options.report_type || 'monthly_report';
+    const from = reportType === 'range_report' ? (options.from || defaultFrom) : null;
+    const to = reportType === 'range_report' ? (options.to || defaultTo) : null;
+    if (reportType === 'range_report' && (!from || !to)) {
       const err = new Error('Bitte Zeitraum wählen.');
-      logDoctorError('monthly report range missing', err);
+      logDoctorError('range report missing range', err);
       throw err;
     }
     const generator = resolveMonthlyReportGenerator();
@@ -1134,12 +1346,13 @@ async function exportDoctorJson(){
     }
     let result;
     try {
-      result = await generator({ from, to, month });
+      result = await generator({ from, to, month, report_type: reportType });
     } catch (err) {
       logDoctorError('monthly report edge call failed', err);
       throw err;
     }
-    toast('Monatsbericht ausgelöst - Inbox aktualisiert.');
+    const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
+    toast(`${reportLabel} ausgelöst - Inbox aktualisiert.`);
     await refreshDoctorAfterMonthlyReport({ from: from || '', to: to || '' });
     return result;
   }

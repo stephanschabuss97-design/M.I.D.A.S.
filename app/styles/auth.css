@@ -136,9 +136,6 @@
 }
 #appLock .pin-wrap input {
   flex: 1;
-  background: #f8fafc;
-  color: #111;
-  border: 1px solid #e5e7eb;
 }
 
 body.app-locked {

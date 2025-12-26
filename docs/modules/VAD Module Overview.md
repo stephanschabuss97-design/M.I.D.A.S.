@@ -1,96 +1,127 @@
-# VAD Module – Functional Overview
+﻿# VAD Module - Functional Overview
 
-Dieses Dokument beschreibt das geplante Voice Activity Detection (VAD) Modul für MIDAS. Es basiert auf einem WebRTC-VAD (WASM-Port) und dient ausschließlich dazu, Sprach- vs. Stille-Phasen im Browser zu erkennen, um nach ca. 1 Sekunde Stille die Aufnahme automatisch zu stoppen.
-
----
-
-## Zielsetzung
-
-- Parallel zum MediaRecorder einen Low-Latency-VAD betreiben.
-- 1 s Stille → `stopVoiceRecording()` triggern (Auto-Cancel).
-- Browser-PWA-freundlich (Chrome/Edge Desktop & Android) ohne externe Services.
+Kurze Einordnung:
+- Zweck: Voice Activity Detection fuer Sprachaufnahme im Voice-Modul (geparkt).
+- Rolle innerhalb von MIDAS: erkennt Speech/Silence und stoppt Recording bei Stille.
+- Abgrenzung: kein Speech-to-Text, kein Audio-Upload, keine Transkription.
 
 ---
 
-## Modulstruktur
+## 1. Zielsetzung
 
-```
-app/modules/hub/
-  index.js            # Voice Controller (bestehend)
-  vad/
-    vad.js            # Loader + API für WebRTC-VAD
-    vad-worklet.js    # AudioWorkletProcessor (fallback ScriptProcessor)
-    webrtc-vad.wasm   # WASM-Binary (per bundler eingebunden)
-```
-
-- `vad.js` exportiert Funktionen wie `initVAD()`, `startVAD(audioCtx, mediaStream, onState)`, `stopVAD()`.
-- `vad-worklet.js` verarbeitet PCM-Frames (10/20 ms) und ruft den WASM-VAD. Alternativ kann ein ScriptProcessor-Fallback implementiert werden.
-- Das WASM wird einmalig geladen und gecacht.
+- Problem: Aufnahme automatisch stoppen, wenn Nutzer aufhoert zu sprechen.
+- Nutzer: Patient (spricht), System (steuert Recording).
+- Nicht Ziel: Sprachverarbeitung, ASR, Audioanalyse ausserhalb VAD.
 
 ---
 
-## Integration in `hub/index.js`
+## 2. Kernkomponenten & Dateien
 
-- **Start Recording** (`startVoiceRecording`):
-  - Initialisiert `AudioContext`, `MediaStreamAudioSourceNode`, `VAD.start`.
-  - Registriert Callback `handleVADStateChange(state)`.
-- **Stop Recording**:
-  - Stoppt `VAD.stop`, Worklet, AudioContext (falls nötig).
-- **Neue States:**
-  - `voiceCtrl.vad` – Referenz auf Controller.
-  - `voiceCtrl.vadSilenceTimer` – Timeout-ID, um 1 s Stille zu messen.
-  - `voiceCtrl.lastSpeechTs` – Timestamp letzter Speech-Frame.
-- **Neue Helpers:**
-  - `handleVADStateChange(state)` – resets/starts Silence Timer.
-  - `forceStopRecording(reason)` – ruft `stopVoiceRecording` + Logging.
-- **Voice Gate (Phase 0.4):**
-  - `AppModules.hub.isVoiceReady()` wird vor `vad.start()` geprüft. Wenn Boot/Auth noch nicht fertig sind, wirft der Controller `voice-not-ready`.
-  - `onVoiceGateChange` Listener stoppen Worklet/Fallback sofort und loggen `[vad] stop due to voice gate lock`, sobald Auth wieder `unknown` meldet (z. B. Session Timeout nach Tabwechsel).
+| Datei | Zweck |
+|------|------|
+| `app/modules/assistant-stack/vad/vad.js` | VAD-Controller (Start/Stop, Gate-Check, Fallback) |
+| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet Processor fuer Speech-Detection |
+| `app/modules/assistant-stack/voice/index.js` | Voice-Flow, VAD-Anbindung, Silence-Timer (geparkt) |
 
 ---
 
-## Audio-Pipeline
+## 3. Datenmodell / Storage
 
-1. `navigator.mediaDevices.getUserMedia` → `MediaStream`.
-2. **MediaRecorder** (bestehend) sammelt Audiodaten für Supabase.
-3. **AudioContext**:
-   - `MediaStreamAudioSourceNode` → `AudioWorkletNode (vad-worklet)` → Worker ruft WebRTC-VAD.
-   - Worklet sendet Speech/Silence Events zurück (via `port.postMessage`).
-4. `vad.js` koordiniert Worklet + WASM.
+- Kein Storage.
+- Keine Tabellen, keine Supabase-Events.
 
 ---
 
-## Datenstrukturen & Parameter
+## 4. Ablauf / Logikfluss
 
-- PCM-Frames (Float32Arrays, 10 ms @ 16 kHz).
-- `VAD_THRESHOLD` (z. B. 0/1-Entscheidung).
-- `SILENCE_TIMEOUT_MS` (1000 ms).
-- `speechFrames`, `silenceFrames` Counter zur Glättung.
-- `voiceCtrl.vadState` (`'speech' | 'silence'`).
-- Logging via `[midas-voice] vad state: ...`.
+### 4.1 Initialisierung
+- `MidasVAD.createController()` wird aus `assistant-stack/voice/index.js` erstellt (geparkt).
+- AudioContext wird lazy erstellt.
+- Voice-Gate wird geprueft (Auth/Boot-Status).
 
----
+### 4.2 User-Trigger
+- Start der Sprachaufnahme triggert `vadCtrl.start(stream, onState)`.
+- Stop der Aufnahme triggert `vadCtrl.stop()`.
 
-## Browser-Beschränkungen
+### 4.3 Verarbeitung
+- AudioWorklet verarbeitet Frames und sendet `vad-data` Events.
+- Fallback: ScriptProcessor misst RMS und entscheidet Speech/Silence.
+- `handleVadStateChange` im Hub setzt/loescht Silence-Timer.
 
-- AudioWorklet benötigt HTTPS + COOP/COEP; falls nicht verfügbar → ScriptProcessor fallback.
-- Android Chrome: AudioContext muss nach User-Geste gestartet werden (bei dir gegeben).
-- PWA: WASM und Worklet müssen im Cache liegen (Deployment beachten).
-
----
-
-## Ablauf Auto-Stop
-
-1. Speech erkannt → Timer reset, UI bleibt `listening`.
-2. Silence erkannt → Timer startet (1000 ms).
-3. Falls Timer abläuft → `stopVoiceRecording()` + UI-Update (`thinking → idle`), Log `[vad] auto-stop`.
-4. Sobald Speech wieder kommt, Timer wird abgebrochen.
+### 4.4 Persistenz
+- Keine Persistenz.
 
 ---
 
-## ToDo vor Implementierung
+## 5. UI-Integration
 
-- WASM-Port auswählen (z. B. `webrtcvad-wasm`).
-- Build/Bundle prüfen (WASM/Worklet).
-- Edge Cases definieren (z. B. sehr kurze Antworten, Overflow).
+- Unsichtbar fuer Nutzer; Teil des Voice-Flows im Voice-Modul.
+- Beeinflusst Statuswechsel (Listening -> Idle) durch Auto-Stop.
+
+---
+
+## 6. Arzt-Ansicht / Read-Only Views
+
+- Keine.
+
+---
+
+## 7. Fehler- & Diagnoseverhalten
+
+- Logs ueber `diag.add` und `console.warn`.
+- Voice-Gate blockt Start (Error: `voice-not-ready`).
+- Worklet-Fail -> Fallback ScriptProcessor.
+
+---
+
+## 8. Events & Integration Points
+
+- Public API / Entry Points: `MidasVAD.createController`, `start/stop`.
+- Source of Truth: AudioStream + VAD state in controller.
+- Side Effects: triggers voice auto-stop via silence timer.
+- Constraints: AudioContext required, voice gate must be allowed.
+- Voice-Gate Hooks aus `AppModules.hub` (`getVoiceGateStatus`, `onVoiceGateChange`).
+- VAD-Status ruft Callback `onStateChange('speech' | 'silence')`.
+
+---
+
+## 9. Erweiterungspunkte / Zukunft
+
+- WASM-basierter VAD (webrtcvad) als optionaler Upgrade.
+- Konfigurierbare Silence-Timeouts pro UI-Modus.
+- Noise-Gate/Threshold dynamisch anpassen.
+
+---
+
+## 10. Feature-Flags / Konfiguration
+
+- Keine dedizierten Flags.
+- Tuning ueber Optionen in `createController` (threshold, minSpeechFrames, minSilenceFrames).
+
+---
+
+## 11. Status / Dependencies / Risks
+
+- Status: geparkt (Voice ist deaktiviert).
+- Dependencies (hard): WebAudio + AudioWorklet, Hub Voice-Gate.
+- Dependencies (soft): n/a.
+- Known issues / risks: Browser-Support; Mic-Permission; Worklet-Fail (Fallback).
+- Backend / SQL / Edge: n/a.
+
+---
+
+## 12. QA-Checkliste
+
+- Voice-Start -> VAD laeuft, kein Fehler.
+- Stille > Timeout -> Recording stoppt.
+- Worklet-Fail -> Fallback aktiv.
+- Voice-Gate sperrt Start korrekt.
+
+---
+
+## 13. Definition of Done
+
+- VAD stoppt Aufnahme deterministisch bei Stille.
+- Kein Error-Spam in diag/console.
+- Dokumentation aktuell.
 

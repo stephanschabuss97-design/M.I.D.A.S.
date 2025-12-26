@@ -1620,6 +1620,61 @@ if (saveLabPanelBtn){
   });
 }
 
+const activityForm = document.getElementById('activityForm');
+const activityNameInput = document.getElementById('activityName');
+const activityDurationInput = document.getElementById('activityDuration');
+const activityNoteInput = document.getElementById('activityNote');
+const activitySaveBtn = document.getElementById('activitySaveBtn');
+const activityCancelBtn = document.getElementById('activityCancelBtn');
+const activityFormStatus = document.getElementById('activityFormStatus');
+
+const clearActivityForm = () => {
+  if (activityNameInput) activityNameInput.value = '';
+  if (activityDurationInput) activityDurationInput.value = '';
+  if (activityNoteInput) activityNoteInput.value = '';
+  if (activityFormStatus) activityFormStatus.textContent = '';
+};
+
+activityCancelBtn?.addEventListener('click', () => {
+  clearActivityForm();
+});
+
+activityForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!activityNameInput || !activityDurationInput) return;
+
+  const activityText = activityNameInput.value.trim();
+  const durationValue = Number(activityDurationInput.value);
+
+  if (!activityText) {
+    activityFormStatus.textContent = 'Aktivität ist Pflicht.';
+    activityNameInput.focus();
+    return;
+  }
+  if (!Number.isFinite(durationValue) || durationValue < 1) {
+    activityFormStatus.textContent = 'Dauer muss mindestens 1 Minute sein.';
+    activityDurationInput.focus();
+    return;
+  }
+  withBusy(activitySaveBtn, true);
+  activityFormStatus.textContent = '';
+  try {
+    await window.AppModules?.activity?.addActivity?.({
+      activity: activityText,
+      duration_min: Math.trunc(durationValue),
+      day: getCaptureDayIso(),
+      note: activityNoteInput?.value || ''
+    }, { reason: 'panel:activity' });
+    clearActivityForm();
+    flashButtonOk(activitySaveBtn, '&#x2705; Training gespeichert');
+  } catch (err) {
+    activityFormStatus.textContent = err?.message || 'Speichern fehlgeschlagen.';
+    uiError?.('Training konnte nicht gespeichert werden.');
+  } finally {
+    withBusy(activitySaveBtn, false);
+  }
+});
+
 // Sync toggles when the date changes in capture view
 const dateEl = document.getElementById('date');
   if (dateEl) {

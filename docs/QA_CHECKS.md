@@ -159,6 +159,7 @@
 ## Phase 5.4 – Optionaler Voice-Handschlag (2025-12-09)
 
 **Scope:** Long-Press Trigger, Voice-Gate UI, kein Always-On.
+**Note:** Voice ist geparkt; diese Checks nur nach Reaktivierung ausführen.
 
 **Smoke**
 - [ ] Kurzer Tap auf den Assistant-Button öffnet den Textchat. Long-Press (~650 ms) startet den Voice-Recorder (Needle zeigt `listening`, Orbit pulsiert), Aufnahme endet automatisch nach Stille.

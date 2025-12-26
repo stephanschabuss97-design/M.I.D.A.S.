@@ -58,7 +58,7 @@ Throughout all interactions, the MIDAS Core remains partially visible to maintai
 ### Hub JavaScript (app/modules/hub/index.js)
 - Orbit placement: `ORBIT_BUTTONS` angles; `setupOrbitHotspots` computes `left/top` by radius and angle on resize.
 - Panel control: `openPanel/closeActivePanel` toggle classes (`hub-panel-open`, `hub-panel-closing`, `is-visible`, `aria-hidden`, `inert`), syncs `aria-pressed` on buttons, ESC closes panels.
-- Voice/assistant: long-press on assistant button triggers voice; gate checks boot/auth state (`computeVoiceGateStatus` → `body.voice-locked`). Voice controller handles VAD (`app/modules/hub/vad/`), Supabase function calls for transcribe/assistant/tts, and sets `data-voice-state` on `.hub-orbit`. Assistant chat controller syncs intake snapshot + upcoming appointments into pills/list; listens to `appointments:changed`.
+- Voice/assistant: long-press on assistant button triggers voice (if reactivated); gate checks boot/auth state (`computeVoiceGateStatus` → `body.voice-locked`). Voice controller handles VAD (`app/modules/assistant-stack/vad/`), Supabase function calls for transcribe/assistant/tts, and sets `data-voice-state` on `.hub-orbit`. Assistant chat controller syncs intake snapshot + upcoming appointments into pills/list; listens to `appointments:changed`.
 - State exposure: `AppModules.hub` exposes `activateHubLayout`, `openDoctorPanel`, `closePanel`, `forceClosePanel`, `getVoiceGateStatus`, `isVoiceReady`, `onVoiceGateChange`.
 - Helpers: `moveIntakePillsToHub`, `setupDatePill` (ensures `#date` filled), placeholder `setupChat`, `setSpriteStateFn` currently locks orb sprite to idle image.
 

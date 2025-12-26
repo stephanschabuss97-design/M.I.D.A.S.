@@ -118,6 +118,20 @@
     const localId = await addEntry(entry);
     await syncWebhook(entry, localId);
     saved = true;
+    try {
+      const proteinModule = global.AppModules?.protein;
+      if (proteinModule && typeof proteinModule.recomputeTargets === 'function' && entry.weight != null) {
+        await proteinModule.recomputeTargets({
+          weight_kg: Number(entry.weight),
+          dayIso: entry.date,
+          trigger: 'body_save',
+          force: false
+        });
+        global.AppModules?.profile?.syncProfile?.({ reason: 'protein-recompute' });
+      }
+    } catch (err) {
+      diag.add?.(`[protein] recompute failed: ${err?.message || err}`);
+    }
   }
 
   return saved;

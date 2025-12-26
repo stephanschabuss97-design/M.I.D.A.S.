@@ -555,7 +555,7 @@
       const el = document.getElementById(id);
       if (el) el.disabled = state;
     });
-    ['cap-water-add-btn','cap-salt-add-btn','cap-protein-add-btn'].forEach(id => {
+    ['cap-water-add-btn','cap-salt-add-btn','cap-protein-add-btn','cap-salt-protein-btn'].forEach(id => {
       const btn = document.getElementById(id);
       if (btn) btn.disabled = state;
     });
@@ -737,6 +737,12 @@
         statusTop.setAttribute('tabindex','0');
       }
 
+      const inlineSlots = {
+        water: document.querySelector('[data-pill-kind="water"]'),
+        salt: document.querySelector('[data-pill-kind="salt"]'),
+        protein: document.querySelector('[data-pill-kind="protein"]')
+      };
+
       if (!captureIntakeState.logged){
         if (statusEl) {
           statusEl.textContent = 'Bitte anmelden, um Intake zu erfassen.';
@@ -747,6 +753,12 @@
           statusTop.style.display = 'none';
           statusTop.setAttribute('aria-label', 'Tagesaufnahme: Bitte anmelden, um Intake zu erfassen.');
         }
+        Object.values(inlineSlots).forEach((slot) => {
+          if (slot) {
+            slot.innerHTML = '';
+            slot.style.display = 'none';
+          }
+        });
         return;
       }
 
@@ -756,10 +768,14 @@
       const proteinVal = Number(t.protein_g || 0);
 
       const pills = [
-        { cls: 'plain', label: 'Wasser', value: `${waterVal} ml` },
-        { cls: 'plain', label: 'Salz', value: `${fmtDE(saltVal,1)} g` },
-        { cls: 'plain', label: 'Protein', value: `${fmtDE(proteinVal,1)} g` }
+        { key: 'water', cls: 'plain', label: 'Wasser', value: `${waterVal} ml` },
+        { key: 'salt', cls: 'plain', label: 'Salz', value: `${fmtDE(saltVal,1)} g` },
+        { key: 'protein', cls: 'plain', label: 'Protein', value: `${fmtDE(proteinVal,1)} g` }
       ];
+
+      Object.values(inlineSlots).forEach((slot) => {
+        if (slot) slot.innerHTML = '';
+      });
 
       if (latestTrendpilotEntry && latestTrendpilotEntry.severity) {
         const tpMeta = getTrendpilotSeverityMeta(latestTrendpilotEntry.severity);
@@ -780,22 +796,47 @@
       }
 
       const summary = pills.map(p => `${p.label} ${p.value}`).join(', ');
-      const html = pills.map(p => {
+      const extraHtml = [];
+      const renderPill = (p) => {
         const aria = p.ariaOverride || `${p.label}: ${p.value}`;
         const titleAttr = p.title ? ` title="${escapeAttr(p.title)}"` : '';
         const dot = p.cls === 'plain' ? '' : '<span class="dot" aria-hidden="true"></span>';
         return `<span class="pill ${p.cls}" role="status" aria-label="${aria}"${titleAttr}>${dot}${p.label}: ${p.value}</span>`;
-      }).join(' ');
+      };
+
+      pills.forEach((p) => {
+        const markup = renderPill(p);
+        const slot = p.key ? inlineSlots[p.key] : null;
+        if (slot) {
+          slot.innerHTML = markup;
+        } else {
+          extraHtml.push(markup);
+        }
+      });
 
       if (statusEl) {
         statusEl.innerHTML = '';
         statusEl.style.display = 'none';
       }
       if (statusTop) {
-        statusTop.innerHTML = html;
-        statusTop.style.display = 'flex';
-        statusTop.setAttribute('aria-label', `Tagesaufnahme: ${summary}`);
+        if (extraHtml.length) {
+          statusTop.innerHTML = extraHtml.join(' ');
+          statusTop.style.display = 'flex';
+          statusTop.setAttribute('aria-label', `Tagesaufnahme: ${summary}`);
+        } else {
+          statusTop.innerHTML = '';
+          statusTop.style.display = 'none';
+          statusTop.removeAttribute('aria-label');
+        }
       }
+
+      Object.values(inlineSlots).forEach((slot) => {
+        if (slot && !slot.innerHTML) {
+          slot.style.display = 'none';
+        } else if (slot) {
+          slot.style.display = '';
+        }
+      });
     } finally {
       recordPerfStat('header_intake', startedAt);
     }
@@ -1017,6 +1058,89 @@
     }
   }
 
+  async function handleSaltProteinCombo(){
+    if (!isHandlerStageReady()) return;
+    const btn = document.getElementById('cap-salt-protein-btn');
+    const saltInput = document.getElementById('cap-salt-add');
+    const proteinInput = document.getElementById('cap-protein-add');
+    if (!btn || !saltInput || !proteinInput) return;
+
+    diag.add?.('[capture] click salt+protein');
+
+    try {
+      if (!AppModules.captureGlobals.getDateUserSelected()) {
+        const todayIso = todayStr();
+        const dateEl = document.getElementById('date');
+        const selected = dateEl?.value || '';
+        const stateDay = captureIntakeState.dayIso || '';
+        if (stateDay !== todayIso || (selected && selected !== todayIso)) {
+          await maybeRefreshForTodayChange({ force: true, source: 'capture:intake-click' });
+        }
+      }
+    } catch (_) {}
+
+    const dayIso = document.getElementById('date')?.value || todayStr();
+    captureIntakeState.dayIso = dayIso;
+
+    const saltVal = toNumDE(saltInput.value) || 0;
+    const proteinVal = toNumDE(proteinInput.value) || 0;
+    if (!(saltVal > 0) && !(proteinVal > 0)) {
+      uiError('Bitte Salz oder Protein eingeben.');
+      return;
+    }
+
+    const totals = { ...captureIntakeState.totals };
+    let messageParts = [];
+
+    if (saltVal > 0) {
+      const totalSalt = Math.max(0, Math.min(MAX_SALT_G, (totals.salt_g || 0) + saltVal));
+      totals.salt_g = roundValue('salt_g', totalSalt);
+      messageParts.push('Salz');
+    }
+    if (proteinVal > 0) {
+      const totalProtein = Math.max(0, Math.min(MAX_PROTEIN_G, (totals.protein_g || 0) + proteinVal));
+      totals.protein_g = roundValue('protein_g', totalProtein);
+      messageParts.push('Protein');
+    }
+
+    diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
+
+    withBusy(btn, true);
+    try {
+      diag.add?.('[capture] save start salt+protein: ' + JSON.stringify(totals));
+      await saveIntakeTotalsRpc({ dayIso, totals });
+      diag.add?.('[capture] save network ok');
+      captureIntakeState.totals = totals;
+      captureIntakeState.logged = true;
+      if (saltVal > 0) saltInput.value = '';
+      if (proteinVal > 0) proteinInput.value = '';
+      updateCaptureIntakeStatus();
+      const needsLifestyle = dayIso === todayStr();
+      requestUiRefresh({
+        reason: 'capture:intake',
+        doctor: false,
+        chart: false,
+        appointments: false,
+        lifestyle: needsLifestyle
+      }).catch((err) => {
+        diag.add?.('ui refresh err: ' + (err?.message || err));
+      });
+      uiInfo(`${messageParts.join(' & ')} aktualisiert.`);
+      diag.add?.('[capture] save ok salt+protein');
+    } catch (e) {
+      const msg = e?.details || e?.message || e;
+      if (e?.status === 401 || e?.status === 403) {
+        showLoginOverlay(true);
+        uiError('Bitte erneut anmelden, um weiter zu speichern.');
+      } else {
+        uiError('Update fehlgeschlagen: ' + msg);
+      }
+      diag.add?.('[capture] save error salt+protein: ' + msg);
+    } finally {
+      withBusy(btn, false);
+    }
+  }
+
   // SUBMODULE: bindIntakeCapture @extract-candidate - verbindet Intake-Inputs mit Save/Guard Flows
   function bindIntakeCapture(){
     if (!isHandlerStageReady()) return;
@@ -1044,6 +1168,16 @@
     wire('cap-water-add-btn',   'water');
     wire('cap-salt-add-btn',    'salt');
     wire('cap-protein-add-btn', 'protein');
+    const comboBtn = document.getElementById('cap-salt-protein-btn');
+    if (comboBtn) {
+      const replacement = comboBtn.cloneNode(true);
+      comboBtn.replaceWith(replacement);
+      replacement.disabled = false;
+      if (!replacement.type) replacement.type = 'button';
+      replacement.addEventListener('click', () => {
+        try { handleSaltProteinCombo(); } catch (_) {}
+      });
+    }
 
     const openDoctorPanel = (startMode) => {
       const hubMod = global.AppModules?.hub;
