@@ -1,4 +1,4 @@
-# Assistant Multimodal + Text Chat Polish Roadmap
+﻿# Assistant Multimodal + Text Chat Polish Roadmap
 
 Goal:
 - Make the text assistant feel like a clean chat product with MIDAS context.
@@ -41,14 +41,14 @@ Expected behavior:
 3) After save, optional follow-up: "Want a CKD-friendly meal idea?"
 
 -------------------------------------------------------------------------------
-Phase 0 - Capture baseline (deterministic)
+Phase 0 - Capture baseline (deterministic) ✅ (done)
 
-0.1 Confirm the current photo auto-run path
+0.1 Confirm the current photo auto-run path ✅ (done)
 - File: `app/modules/hub/index.js`
 - Note function chain and payload fields for vision request.
 - Record: payload fields used now (`image_base64`, `history`, `context`, `session_id`, `meta`).
 
-0.2 Reproduce confirm bug and document it
+0.2 Reproduce confirm bug and document it ✅ (done)
 - Steps: open assistant -> attach photo -> wait for analysis -> click "Ja, speichern".
 - Observe: does the dialog close? does save happen once or multiple times?
 - Record exact steps and visible result.
@@ -56,7 +56,7 @@ Phase 0 - Capture baseline (deterministic)
   - Second click: no additional save runs, and the dialog closes.
   - Visual glitch: garbled characters appear after "Alles klar ..." in the assistant reply.
 
-0.3 Check confirm event wiring
+0.3 Check confirm event wiring ✅ (done)
 - File: `app/modules/hub/index.js` (listener binding inside `setupAssistantChat`)
 - File: `app/modules/assistant-stack/assistant/suggest-ui.js` (inline confirm)
 - Verify listeners only bind once and do not double-bind on re-render.
@@ -66,7 +66,7 @@ Phase 0 - Capture baseline (deterministic)
   - Found: hub listens for `assistant:suggest-confirm` + `assistant:suggest-answer` inside `setupAssistantChat`, guarded by `assistantChatCtrl` so it should bind once.
   - Note: successful confirm relies on `store.dismissCurrent()` to remove the block (no `suggest-confirm-reset` on success).
  
-0.4 UI polish: "Analyse läuft" placeholder
+0.4 UI polish: "Analyse läuft" placeholder ✅ (done)
 - Ensure the status text renders cleanly (no garbled symbols) in photo analysis bubbles.
   - Observed: garbled characters appear after "Alles klar ..." in assistant reply text.
 
