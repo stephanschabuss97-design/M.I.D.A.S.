@@ -93,14 +93,14 @@ import { assistantSuggestStore } from './suggest-store.js';
   };
 
   const renderSuggestion = () => {
-    if (confirmState === 'saving') return;
-    removeBlock('idle');
     const state = resolvedStore.getState();
     const suggestion = state.activeSuggestion;
     if (!suggestion) {
-      setConfirmState('idle');
+      removeBlock('saved');
       return;
     }
+    if (confirmState === 'saving') return;
+    removeBlock('idle');
     setConfirmState('analysis_done');
     attachInlineConfirm(suggestion);
     setConfirmState('confirm_open');

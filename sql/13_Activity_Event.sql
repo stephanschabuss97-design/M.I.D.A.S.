@@ -154,8 +154,8 @@ begin
       if (new.payload->>'protein_g') !~ '^\d+(\.\d+)?$' then
         raise exception 'intake.protein_g muss Zahl sein' using errcode = '22023';
       end if;
-      if (new.payload->>'protein_g')::numeric < 0 or (new.payload->>'protein_g')::numeric > 300 then
-        raise exception 'intake.protein_g ausserhalb Range 0-300' using errcode = '22003';
+      if (new.payload->>'protein_g')::numeric < 0 or (new.payload->>'protein_g')::numeric > 99999999999 then
+        raise exception 'intake.protein_g ausserhalb Range 0-99999999999' using errcode = '22003';
       end if;
     end if;
 
