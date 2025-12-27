@@ -11,7 +11,7 @@
 **Sanity**
 - [ ] Touch-Log meldet `[assistant-vision] analyse start/success/fail` maximal einmal pro Upload; keine zusätzlichen `[capture] refresh` Einträge.
 - [ ] Retry-Button verwendet denselben Snapshot erneut (kein erneuter Kamera-Dialog erforderlich).
-- [ ] Butler-Header (Intake-Pills & Terminliste) bleibt unverändert; kein zusätzlicher Snapshot-Request beim Foto-Upload.
+- [ ] Butler-Header (Pills + Termine + Extras/Expandable) bleibt unverändert; kein zusätzlicher Snapshot-Request beim Foto-Upload.
 
 **Regression**
 - [ ] Textchat (Senden/Empfangen) funktioniert unverändert; Voice-Gate/Needle bleiben gesperrt solange `authState === 'unknown'`.
@@ -73,7 +73,7 @@
 - [ ] Der read-only Hinweis „CKD-Stufe (Lab)“ zeigt nach dem ersten Lab-Eintrag automatisch den kombinierten Wert (z. B. „G3a A2“); ohne Labordaten bleibt der Platzhalter „Noch keine Labordaten“.
 - [ ] Button **Aktualisieren** lädt das bestehende Profil erneut aus Supabase; Änderungen am Backend werden sofort angezeigt.
 - [ ] Charts reagieren auf Profiländerungen: Größe im Profil stark verändern (z. B. 220 cm) → BMI/WHtR springen sofort nach `profile:changed`.
-- [ ] Assistant-Butler (Intake-Pills + Termine + Profil) aktualisiert nach Speichern ohne Reload; DevTools loggt `[assistant-context] profile snapshot updated`.
+- [ ] Assistant-Butler (Pills + Extras + Termine + Expandable) aktualisiert nach Speichern/Refresh ohne Reload.
 
 **Sanity**
 - [ ] Supabase RLS: andere Session versucht Profil zu speichern → 403, Touch-Log enthält `[profile] save failed 403`. Eigene Session kann Insert **und** Update per Upsert.
@@ -125,7 +125,7 @@
   - `[assistant-allowed] success action=intake_save source=suggestion-card`
   - `[assistant-allowed] blocked action=open_module source=voice info=auth-unknown`
   - `[assistant-allowed] error action=intake_save info=dispatcher-missing`
-- [ ] `assistantSuggestStore` Snapshot aktualisiert bei `appointments:changed` und `profile:changed` – Butler-Header + Dayplan nutzen dieselben Werte (Diag: `[assistant-context] snapshot done reason=appointments:changed`).
+- [ ] `assistantSuggestStore` Snapshot aktualisiert bei `appointments:changed` und `profile:changed` – Butler-Header + Dayplan nutzen dieselben Werte.
 - [ ] `assistant:action-request` CustomEvents (z.B. Buttons im Chat) laufen durch `runAllowedAction`; `executeAllowedAction` validiert Stage/Auth und nutzt Supabase-API. Keine Aktion läuft außerhalb des Helpers.
 - [ ] `open_module` versteht Aliase („Termine“, „Personaldaten“, „Sprachchat“) → Orbit-Button klickt, Touchlog `[assistant-allowed] success action=open_module source=chat`.
 

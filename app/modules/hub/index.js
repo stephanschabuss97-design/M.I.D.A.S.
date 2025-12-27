@@ -1,4 +1,4 @@
-ï»¿'use strict';
+'use strict';
 /**
  * MODULE: hub/index.js
  * Description: Aktiviert das neue MIDAS Hub Layout, sobald `CAPTURE_HUB_V2` gesetzt ist.
@@ -1072,12 +1072,107 @@
     };
   };
 
+  const isAssistantDesktop = () => !panelPerfQuery?.matches;
+
   const updateAssistantPill = (key, text, isActive) => {
     const pill = assistantChatCtrl?.pills?.[key];
     if (!pill) return;
     pill.value.textContent = text;
     if (isActive) pill.root.classList.remove('muted');
     else pill.root.classList.add('muted');
+  };
+
+  const updateContextItem = (ref, text, { placeholder = null, keepVisible = false } = {}) => {
+    if (!ref) return false;
+    const resolved = text || (keepVisible ? placeholder : null);
+    if (resolved) {
+      ref.value.textContent = resolved;
+      ref.root.removeAttribute('hidden');
+      return true;
+    }
+    ref.root.setAttribute('hidden', 'true');
+    return false;
+  };
+
+  const formatTargetRange = (min, max, unit) => {
+    const fmt = getCaptureFormatFn();
+    const minVal = Number.isFinite(Number(min)) ? Number(min) : null;
+    const maxVal = Number.isFinite(Number(max)) ? Number(max) : null;
+    if (minVal != null && maxVal != null) {
+      return `${fmt(minVal, 0)}-${fmt(maxVal, 0)} ${unit}`;
+    }
+    if (maxVal != null) return `${fmt(maxVal, 0)} ${unit}`;
+    if (minVal != null) return `${fmt(minVal, 0)} ${unit}`;
+    return null;
+  };
+
+  const renderAssistantContextExtras = (profile) => {
+    const refs = assistantChatCtrl?.contextExtras;
+    if (!refs?.container) return;
+    const keepVisible = isAssistantDesktop();
+    let hasAny = false;
+    const proteinText =
+      formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
+      formatTargetRange(profile?.protein_target, null, 'g');
+    if (updateContextItem(refs.proteinTarget, proteinText, { keepVisible, placeholder: '-- g' })) hasAny = true;
+    const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
+    if (updateContextItem(refs.ckdStage, ckdStage || null, { keepVisible, placeholder: '--' })) hasAny = true;
+    refs.container.hidden = !hasAny;
+  };
+
+  const renderAssistantContextExpandable = (snapshot, profile) => {
+    const refs = assistantChatCtrl?.contextExpandable;
+    if (!refs?.container) return;
+    const totals = snapshot?.totals || {};
+    const fmt = getCaptureFormatFn();
+    const saltLimit = Number.isFinite(Number(profile?.salt_limit_g))
+      ? Number(profile.salt_limit_g)
+      : Number.isFinite(Number(profile?.salt_target_g))
+        ? Number(profile.salt_target_g)
+        : Number.isFinite(Number(profile?.salt_target))
+          ? Number(profile.salt_target)
+          : null;
+    const proteinTarget = Number.isFinite(Number(profile?.protein_target_max))
+      ? Number(profile.protein_target_max)
+      : Number.isFinite(Number(profile?.protein_target))
+        ? Number(profile.protein_target)
+        : Number.isFinite(Number(profile?.protein_target_min))
+          ? Number(profile.protein_target_min)
+          : null;
+    const remainingParts = [];
+    let saltRemaining = null;
+    let proteinRemaining = null;
+    const saltTotal = Number(totals.salt_g) || 0;
+    const proteinTotal = Number(totals.protein_g) || 0;
+    if (saltLimit != null) {
+      saltRemaining = saltLimit - saltTotal;
+      remainingParts.push(`Salz ${fmt(saltRemaining, 1)} g`);
+    }
+    if (proteinTarget != null) {
+      proteinRemaining = proteinTarget - proteinTotal;
+      remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
+    }
+    const keepVisible = isAssistantDesktop();
+    const remainingText = remainingParts.length ? remainingParts.join(', ') : null;
+    const hasRemaining = updateContextItem(refs.remaining, remainingText, { keepVisible, placeholder: '--' });
+    let warningText = null;
+    if (saltRemaining != null && saltRemaining < 0) {
+      warningText = 'Salz ueber Limit';
+    }
+    if (proteinRemaining != null && proteinRemaining < 0) {
+      warningText = warningText ? `${warningText}, Protein ueber Limit` : 'Protein ueber Limit';
+    }
+    const hasWarning = updateContextItem(refs.warning, warningText);
+    let recommendationText = null;
+    if (saltRemaining != null && saltRemaining <= 1) {
+      recommendationText = 'Tipp: Heute eher salzarm bleiben.';
+    } else if (proteinRemaining != null && proteinRemaining <= 5) {
+      recommendationText = 'Tipp: Protein heute eher leicht halten.';
+    } else if (hasRemaining) {
+      recommendationText = 'Tipp: Leicht und ausgewogen bleiben.';
+    }
+    const hasRecommendation = updateContextItem(refs.recommendation, recommendationText);
+    refs.container.hidden = !(hasRemaining || hasWarning || hasRecommendation);
   };
 
   const renderAssistantIntakeTotals = (snapshot) => {
@@ -1135,7 +1230,7 @@
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     const dayLabel = APPOINTMENT_DATE_FORMAT.format(date).replace(/\.$/, '');
     const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
-    return `${dayLabel} â€¢ ${timeLabel}`;
+    return `${dayLabel} • ${timeLabel}`;
   };
 
   const normalizeAppointmentItems = (items, limit = 2) => {
@@ -1157,7 +1252,7 @@
         raw.summary ||
         raw.type ||
         '';
-      let detail =
+            let detail =
         raw.detail ||
         raw.subtitle ||
         raw.when ||
@@ -1166,11 +1261,26 @@
       if (!detail && (raw.start || raw.date)) {
         detail = formatAppointmentDateTime(raw.start || raw.date);
       } else if (!detail && raw.day && raw.time) {
-        detail = `${raw.day} â€¢ ${raw.time}`;
+        detail = `${raw.day} • ${raw.time}`;
       }
+      const startAt =
+        raw.start ||
+        raw.date ||
+        raw.start_at ||
+        raw.starts_at ||
+        raw.startTime ||
+        null;
+      const note =
+        raw.note ||
+        raw.notes ||
+        raw.description ||
+        raw.detail ||
+        raw.subtitle ||
+        '';
       if (!label && detail) label = 'Termin';
-      if (!label && !detail) return false;
-      normalized.push({ id, label, detail });
+      if (!label && !detail && !note && !startAt) return false;
+      normalized.push({ id, label, detail, startAt, note });
+
       return normalized.length >= limit;
     });
     return normalized.slice(0, limit);
@@ -1251,6 +1361,8 @@
         appointments: Array.isArray(appointments) ? appointments : [],
         profile: getAssistantProfileSnapshot(),
       };
+      renderAssistantContextExtras(contextPayload.profile);
+      renderAssistantContextExpandable(snapshot, contextPayload.profile);
       if (assistantChatCtrl) {
         assistantChatCtrl.context = contextPayload;
       }
@@ -1282,7 +1394,7 @@
     if (!panel) {
       assistantChatSetupAttempts += 1;
       if (assistantChatSetupAttempts === 1) {
-        debugLog('assistant-chat panel missing, retrying â€¦');
+        debugLog('assistant-chat panel missing, retrying …');
       }
       if (assistantChatSetupAttempts < ASSISTANT_CHAT_MAX_ATTEMPTS) {
         global.setTimeout(() => setupAssistantChat(hub), ASSISTANT_CHAT_RETRY_DELAY);
@@ -1301,11 +1413,23 @@
     const clearBtn = panel.querySelector('#assistantClearChat');
     const messageTemplate = panel.querySelector('#assistantMessageTemplate');
     const photoTemplate = panel.querySelector('#assistantPhotoTemplate');
+    const contextSection = panel.querySelector('.assistant-context');
+    const contextToggle = panel.querySelector('#assistantContextToggle');
     const pillsWrap = panel.querySelector('#assistantIntakePills');
     const buildPillRef = (key) => {
       const root = pillsWrap?.querySelector(`[data-pill="${key}"]`);
       if (!root) return null;
       const value = root.querySelector('[data-pill-value]');
+      if (!value) return null;
+      return { root, value };
+    };
+    const contextExtras = panel.querySelector('#assistantContextExtras');
+    const contextExpandable = panel.querySelector('#assistantContextExpandable');
+    const buildContextValueRef = (wrap, attr, key, valueAttr) => {
+      if (!wrap) return null;
+      const root = wrap.querySelector(`[data-${attr}="${key}"]`);
+      if (!root) return null;
+      const value = root.querySelector(`[data-${valueAttr}]`);
       if (!value) return null;
       return { root, value };
     };
@@ -1322,6 +1446,45 @@
     if (messageTemplate) messageTemplate.remove();
     if (photoTemplate) photoTemplate.remove();
 
+    const createAssistantPhotoDraftUi = () => {
+      if (!form) return null;
+      const wrap = doc.createElement('div');
+      wrap.className = 'assistant-photo-draft';
+      wrap.hidden = true;
+
+      const thumb = doc.createElement('img');
+      thumb.alt = 'Ausgewähltes Foto';
+      thumb.loading = 'lazy';
+
+      const meta = doc.createElement('div');
+      meta.className = 'assistant-photo-draft-meta';
+      const title = doc.createElement('span');
+      title.className = 'assistant-photo-draft-title';
+      title.textContent = 'Foto bereit';
+      const status = doc.createElement('span');
+      status.className = 'assistant-photo-draft-status';
+      status.textContent = 'Bereit zum Senden';
+      meta.appendChild(title);
+      meta.appendChild(status);
+
+      const actions = doc.createElement('div');
+      actions.className = 'assistant-photo-draft-actions';
+      const clearBtn = doc.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'assistant-photo-draft-clear';
+      clearBtn.textContent = 'Entfernen';
+      actions.appendChild(clearBtn);
+
+      wrap.appendChild(thumb);
+      wrap.appendChild(meta);
+      wrap.appendChild(actions);
+      form.prepend(wrap);
+
+      return { wrap, thumb, status, clearBtn };
+    };
+
+    const photoDraftUi = createAssistantPhotoDraftUi();
+
     assistantChatCtrl = {
       panel,
       chatEl,
@@ -1331,16 +1494,32 @@
       cameraBtn,
       clearBtn,
       photoInput,
+      photoDraft: null,
+      photoDraftUi,
+      contextSection,
+      contextToggle,
+      contextExpanded: false,
       pills: {
         water: buildPillRef('water'),
         salt: buildPillRef('salt'),
         protein: buildPillRef('protein'),
       },
-        appointments: {
-          container: appointmentsContainer,
-          list: appointmentsList,
-          empty: appointmentsEmpty,
-        },
+      contextExtras: {
+        container: contextExtras,
+        proteinTarget: buildContextValueRef(contextExtras, 'extra', 'protein-target', 'extra-value'),
+        ckdStage: buildContextValueRef(contextExtras, 'extra', 'ckd-stage', 'extra-value'),
+      },
+      contextExpandable: {
+        container: contextExpandable,
+        remaining: buildContextValueRef(contextExpandable, 'expandable', 'remaining', 'expandable-value'),
+        warning: buildContextValueRef(contextExpandable, 'expandable', 'warning', 'expandable-value'),
+        recommendation: buildContextValueRef(contextExpandable, 'expandable', 'recommendation', 'expandable-value'),
+      },
+      appointments: {
+        container: appointmentsContainer,
+        list: appointmentsList,
+        empty: appointmentsEmpty,
+      },
         templates: {
           message: messageTemplate?.content?.firstElementChild || null,
           photo: photoTemplate?.content?.firstElementChild || null,
@@ -1354,6 +1533,34 @@
           profile: getAssistantProfileSnapshot(),
         },
       };
+
+    const setAssistantContextExpanded = (expanded) => {
+      if (!assistantChatCtrl?.contextSection) return;
+      assistantChatCtrl.contextExpanded = !!expanded;
+      assistantChatCtrl.contextSection.classList.toggle(
+        'assistant-context-expanded',
+        assistantChatCtrl.contextExpanded,
+      );
+      if (assistantChatCtrl.contextToggle) {
+        assistantChatCtrl.contextToggle.setAttribute(
+          'aria-expanded',
+          assistantChatCtrl.contextExpanded ? 'true' : 'false',
+        );
+        assistantChatCtrl.contextToggle.textContent =
+          assistantChatCtrl.contextExpanded ? 'Weniger' : 'Mehr';
+      }
+    };
+
+    if (assistantChatCtrl.contextToggle && assistantChatCtrl.contextSection) {
+      assistantChatCtrl.contextToggle.addEventListener('click', () => {
+        setAssistantContextExpanded(!assistantChatCtrl.contextExpanded);
+      });
+      setAssistantContextExpanded(false);
+    }
+
+    if (photoDraftUi?.clearBtn) {
+      photoDraftUi.clearBtn.addEventListener('click', () => clearAssistantPhotoDraft());
+    }
 
     debugLog('assistant-chat controller ready');
 
@@ -1458,11 +1665,24 @@
             'assistant',
             buildSuggestionConfirmMessage(payload),
           );
+          const savedAt = Date.now();
+          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+          const followupKey = buildMealFollowupKey({
+            payload,
+            sessionId: assistantChatCtrl?.sessionId,
+            savedAt,
+          });
           await refreshAssistantContext({
             reason: 'suggest:confirmed',
             forceRefresh: true,
           });
           renderSuggestionFollowupAdvice(suggestion);
+          createMealFollowupPrompt({
+            source: 'suggestion-card',
+            snapshot,
+            followupKey,
+            savedAt,
+          });
         } finally {
           suggestionConfirmInFlight = false;
         }
@@ -1480,7 +1700,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar â€“ ich habe ${list} fÃ¼r heute vorgemerkt.`;
+        return `Alles klar - ich habe ${list} fuer heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -1501,45 +1721,156 @@
           appendAssistantMessage('assistant', lines.join(' '));
         }
       };
-      const runIntakeSaveFollowup = async ({ suggestion } = {}) => {
-        try {
-          await refreshAssistantContext({
-            reason: 'intake-saved',
-            forceRefresh: true,
-          });
-        } catch (err) {
-          diag.add?.(
-            `[assistant-followup] context refresh failed: ${err?.message || err}`,
-          );
-          return;
-        }
-        const store = getAssistantSuggestStore();
-        const snapshot =
-          store?.getState?.().snapshot || assistantChatCtrl?.context || null;
-        if (!snapshot) return;
-        const planner = global.AppModules?.assistantDayPlan;
-        const generator = planner?.generateDayPlan;
-        if (typeof generator !== 'function') return;
-        const { lines, hasWarnings } = generator(
-          { ...snapshot, suggestion },
-          {
-            dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
-          },
+      let mealFollowupPromptActive = false;
+      let mealFollowupLastTriggeredAt = 0;
+      let mealFollowupMessageId = null;
+      let mealFollowupSnapshot = null;
+      let mealFollowupMeta = null;
+      let mealFollowupRequestInFlight = false;
+      const mealFollowupSeenKeys = new Set();
+
+      const setMealFollowupSnapshot = (snapshot) => {
+        mealFollowupSnapshot = snapshot || null;
+      };
+
+      const setMealFollowupMeta = (meta) => {
+        mealFollowupMeta = meta || null;
+      };
+
+      const buildMealFollowupKey = ({ payload, sessionId, savedAt } = {}) => {
+        const saveId = payload?.save_id || payload?.saveId || payload?.id || null;
+        if (saveId) return `save:${saveId}`;
+        const sessionKey = payload?.session_id || payload?.sessionId || sessionId || 'unknown';
+        const stamp = payload?.saved_at || payload?.savedAt || savedAt || Date.now();
+        return `session:${sessionKey}:${stamp}`;
+      };
+
+      const removeAssistantMessage = (messageId) => {
+        if (!assistantChatCtrl || !messageId) return;
+        const nextMessages = assistantChatCtrl.messages.filter(
+          (msg) => msg.id !== messageId,
         );
-        if (lines?.length) {
-          appendAssistantMessage('assistant', lines.join(' '));
+        if (nextMessages.length === assistantChatCtrl.messages.length) return;
+        assistantChatCtrl.messages = nextMessages;
+        renderAssistantChat();
+      };
+
+      const createMealFollowupPrompt = ({ source, snapshot, followupKey, savedAt } = {}) => {
+        if (!assistantChatCtrl) return;
+        if (mealFollowupPromptActive) return;
+        const now = Date.now();
+        if (now - mealFollowupLastTriggeredAt < 500) return;
+        const hasFollowup = assistantChatCtrl.messages.some(
+          (msg) => msg.type === 'followup',
+        );
+        if (hasFollowup) return;
+        const resolvedKey = followupKey || null;
+        if (resolvedKey && mealFollowupSeenKeys.has(resolvedKey)) return;
+        mealFollowupPromptActive = true;
+        mealFollowupLastTriggeredAt = now;
+        setMealFollowupSnapshot(snapshot || buildAssistantContextPayload({ includeTimeSlot: true }));
+        const metaSavedAt = savedAt || Date.now();
+        if (resolvedKey) {
+          mealFollowupSeenKeys.add(resolvedKey);
         }
-        if (hasWarnings && isVoiceConversationMode()) {
-          global.dispatchEvent(
-            new CustomEvent('assistant:voice-request', {
-              detail: {
-                source: 'day-plan',
-                text: lines.join(' '),
-              },
-            }),
-          );
+        setMealFollowupMeta({
+          followupKey: resolvedKey,
+          savedAt: metaSavedAt,
+          source: source || 'intake-save',
+        });
+        const promptText =
+          'Soll ich dir basierend auf deinen heutigen Werten und dem naechsten Termin einen Essensvorschlag machen?';
+        const message = appendAssistantMessage('assistant', promptText, {
+          type: 'followup',
+          meta: {
+            followupType: 'meal-idea',
+            source: source || 'intake-save',
+            followupKey: followupKey || null,
+            savedAt: savedAt || null,
+            followupVersion: 1,
+          },
+        });
+        mealFollowupMessageId = message?.id || null;
+      };
+
+      const clearMealFollowupPrompt = () => {
+        if (mealFollowupMessageId) {
+          removeAssistantMessage(mealFollowupMessageId);
+        }
+        mealFollowupMessageId = null;
+        mealFollowupPromptActive = false;
+        setMealFollowupSnapshot(null);
+        setMealFollowupMeta(null);
+      };
+      assistantChatCtrl.followup = {
+        clearPrompt: clearMealFollowupPrompt,
+        getSnapshot: () => mealFollowupSnapshot,
+        getMeta: () => mealFollowupMeta,
+      };
+
+      const buildMealFollowupPromptText = (detail = {}) => {
+        const payload = {
+          followup_key: detail.followup_key || null,
+          saved_at: detail.saved_at || null,
+          context: detail.context || null,
+          meta: detail.meta || { followup_version: 1 },
+        };
+        const payloadJson = JSON.stringify(payload);
+        return [
+          'System: Du bist ein hilfreicher Ernaehrungsassistent fuer kurze Essensideen.',
+          'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
+          'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
+          'Constraints:',
+          '- 1-2 kurze Vorschlaege, insgesamt 2-4 Saetze.',
+          '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
+          '- Beruecksichtige appointment_type und time_slot wenn vorhanden.',
+          '- Ton: praktisch, freundlich, knapp.',
+          '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
+          'Follow-up payload:',
+          payloadJson,
+        ].join('\n');
+      };
+
+      const requestMealFollowupSuggestion = async (detail) => {
+        if (!detail || !detail.context) return;
+        if (mealFollowupRequestInFlight) return;
+        mealFollowupRequestInFlight = true;
+        try {
+          const promptText = buildMealFollowupPromptText(detail);
+          const payload = {
+            session_id: assistantChatCtrl?.sessionId || `followup-${Date.now()}`,
+            mode: 'text',
+            text: promptText,
+            messages: [{ role: 'user', content: promptText }],
+            context: detail.context || null,
+            meta: {
+              followup_key: detail.followup_key || null,
+              saved_at: detail.saved_at || null,
+              followup_version: detail.meta?.followup_version || 1,
+            },
+          };
+          const headers = await buildFunctionJsonHeaders();
+          const response = await fetch(MIDAS_ENDPOINTS.assistant, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) return;
+          const data = await response.json().catch(() => ({}));
+          const reply = (data?.reply || '').trim();
+          if (reply) {
+            appendAssistantMessage('assistant', reply);
+          }
+        } catch (_) {
+          // silent skip on failure
+        } finally {
+          mealFollowupRequestInFlight = false;
         }
       };
+
+      global.addEventListener('assistant:meal-followup-request', (event) => {
+        requestMealFollowupSuggestion(event?.detail);
+      });
 
       doc?.addEventListener('profile:changed', (event) => {
         assistantProfileSnapshot =
@@ -1547,6 +1878,9 @@
         if (assistantChatCtrl?.context) {
           assistantChatCtrl.context.profile = assistantProfileSnapshot;
         }
+        const currentIntake = assistantChatCtrl?.context?.intake || null;
+        renderAssistantContextExtras(assistantProfileSnapshot);
+        renderAssistantContextExpandable(currentIntake, assistantProfileSnapshot);
         const store = getAssistantSuggestStore();
         if (store && assistantChatCtrl?.context) {
           store.setSnapshot(
@@ -1580,7 +1914,22 @@
         if (event?.detail?.type !== 'intake_save') return;
         const detailSource = event?.detail?.source || 'unknown';
         if (detailSource === 'suggestion-card') return;
-        runIntakeSaveFollowup({});
+        const payload = event?.detail?.payload || {};
+        const savedAt = payload.saved_at || payload.savedAt || Date.now();
+        const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+        const followupKey = buildMealFollowupKey({
+          payload,
+          sessionId: assistantChatCtrl?.sessionId,
+          savedAt,
+        });
+        global.setTimeout(() => {
+          createMealFollowupPrompt({
+            source: detailSource,
+            snapshot,
+            followupKey,
+            savedAt,
+          });
+        }, 0);
       });
     };
 
@@ -1640,24 +1989,78 @@
     });
   };
 
+  const updateAssistantPhotoDraftUi = () => {
+    if (!assistantChatCtrl?.photoDraftUi?.wrap) return;
+    const draft = assistantChatCtrl.photoDraft;
+    if (!draft) {
+      assistantChatCtrl.photoDraftUi.wrap.hidden = true;
+      return;
+    }
+    assistantChatCtrl.photoDraftUi.wrap.hidden = false;
+    if (assistantChatCtrl.photoDraftUi.thumb) {
+      assistantChatCtrl.photoDraftUi.thumb.src = draft.dataUrl || '';
+    }
+    if (assistantChatCtrl.photoDraftUi.status) {
+      assistantChatCtrl.photoDraftUi.status.textContent =
+        draft.status || 'Bereit zum Senden';
+    }
+    if (assistantChatCtrl.photoDraftUi.wrap) {
+      assistantChatCtrl.photoDraftUi.wrap.setAttribute(
+        'data-file-name',
+        draft.fileName || '',
+      );
+    }
+    const titleEl = assistantChatCtrl.photoDraftUi.wrap.querySelector(
+      '.assistant-photo-draft-title',
+    );
+    if (titleEl) {
+      titleEl.textContent = draft.fileName
+        ? `Foto: ${draft.fileName}`
+        : 'Foto bereit';
+    }
+  };
+
+  const setAssistantPhotoDraft = (dataUrl, file) => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.photoDraft = {
+      dataUrl,
+      fileName: file?.name || '',
+      file: file || null,
+      status: 'Bereit zum Senden',
+    };
+    updateAssistantPhotoDraftUi();
+  };
+
+  const clearAssistantPhotoDraft = () => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.photoDraft = null;
+    if (assistantChatCtrl.photoInput) {
+      assistantChatCtrl.photoInput.value = '';
+    }
+    updateAssistantPhotoDraftUi();
+  };
+
   const handleAssistantPhotoSelected = async (event) => {
     const file = event?.target?.files?.[0];
     if (!file) return;
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
       const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
       diag.add?.(
-        `[assistant-vision] foto zu groÃŸ: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        `[assistant-vision] foto zu groß: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
-      appendAssistantMessage('system', `Das Foto ist zu groÃŸ (max. ca. ${maxMb} MB).`);
+      appendAssistantMessage('system', `Das Foto ist zu groß (max. ca. ${maxMb} MB).`);
+      if (event?.target) event.target.value = '';
       return;
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      await sendAssistantPhotoMessage(dataUrl, file);
+      setAssistantPhotoDraft(dataUrl, file);
     } catch (err) {
       console.error('[assistant-chat] foto konnte nicht gelesen werden', err);
       diag.add?.(`[assistant-vision] foto konnte nicht gelesen werden: ${err?.message || err}`);
       appendAssistantMessage('system', 'Das Foto konnte nicht gelesen werden.');
+    } finally {
+      if (event?.target) event.target.value = '';
     }
   };
 
@@ -1665,6 +2068,7 @@
     if (!assistantChatCtrl) return;
     assistantChatCtrl.messages = [];
     assistantChatCtrl.sessionId = null;
+    clearAssistantPhotoDraft();
     renderAssistantChat();
     setAssistantSending(false);
     if (focusInput) {
@@ -1683,9 +2087,23 @@
   const handleAssistantChatSubmit = (event) => {
     event.preventDefault();
     if (!assistantChatCtrl) return;
-    const value = assistantChatCtrl.input?.value?.trim();
-    if (!value) return;
+    const value = assistantChatCtrl.input?.value?.trim() || '';
+    const hasDraft = !!assistantChatCtrl.photoDraft?.dataUrl;
+    if (!value && !hasDraft) return;
     debugLog('assistant-chat submit');
+    if (hasDraft) {
+      sendAssistantPhotoMessage(
+        assistantChatCtrl.photoDraft.dataUrl,
+        assistantChatCtrl.photoDraft.file,
+        null,
+        { text: value },
+      );
+      if (assistantChatCtrl.input) {
+        assistantChatCtrl.input.value = '';
+      }
+      clearAssistantPhotoDraft();
+      return;
+    }
     sendAssistantChatMessage(value);
   };
 
@@ -1699,7 +2117,7 @@
     }
     setAssistantSending(true);
     try {
-      const reply = await fetchAssistantTextReply();
+      const reply = await fetchAssistantTextReply(text);
       if (reply) {
         appendAssistantMessage('assistant', reply);
       } else {
@@ -1740,56 +2158,155 @@
       return message;
     };
 
-    const buildAssistantContextPayload = () => {
-      const ctx = assistantChatCtrl?.context;
-      if (!ctx) return null;
-      const payload = {};
-      if (ctx.intake?.totals) {
-        payload.intake = {
-          dayIso: ctx.intake.dayIso || null,
-          logged: !!ctx.intake.logged,
-          totals: {
-            water_ml: Number(ctx.intake.totals?.water_ml) || 0,
-            salt_g: Number(ctx.intake.totals?.salt_g) || 0,
-            protein_g: Number(ctx.intake.totals?.protein_g) || 0,
-          },
-        };
+  const getAssistantTimeSlot = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'morning';
+    if (hour < 17) return 'noon';
+    return 'evening';
+  };
+
+  const APPOINTMENT_TYPE_KEYWORDS = {
+    nephrology: ['nephro', 'niere', 'nieren', 'dialyse', 'kidney', 'ckd'],
+    cardiology: ['cardio', 'herz', 'kardiologie', 'blutdruck', 'hypertension'],
+    internist: ['internist', 'innere', 'innere medizin'],
+    urology: ['urologe', 'urologie'],
+    gastro: ['gastro', 'gastrologe', 'gastrologie', 'gastroenterologe', 'gastroenterologie'],
+  };
+
+  const normalizeAppointmentText = (item = {}) =>
+    `${item.title || item.label || ''} ${item.note || ''} ${item.detail || ''}`
+      .toLowerCase();
+
+  const inferAppointmentType = (item) => {
+    const text = normalizeAppointmentText(item);
+    if (!text.trim()) return 'general';
+    const entries = Object.entries(APPOINTMENT_TYPE_KEYWORDS);
+    for (let i = 0; i < entries.length; i += 1) {
+      const [bucket, keywords] = entries[i];
+      for (let j = 0; j < keywords.length; j += 1) {
+        if (text.includes(keywords[j])) return bucket;
       }
-      if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
-        payload.appointments = ctx.appointments.map((item) => ({
-          id: item.id || null,
-          label: item.label || '',
-          detail: item.detail || '',
-        }));
+    }
+    return 'general';
+  };
+
+  const pickNextAppointmentType = (appointments = []) => {
+    if (!Array.isArray(appointments) || !appointments.length) return null;
+    const parsed = appointments.map((item) => ({
+      item,
+      ts: Number.isFinite(Date.parse(item.start_at || item.startAt || ''))
+        ? Date.parse(item.start_at || item.startAt || '')
+        : null,
+    }));
+    if (!parsed.length) return inferAppointmentType(appointments[0]);
+    parsed.sort((a, b) => {
+      const aTs = a.ts == null ? Number.POSITIVE_INFINITY : a.ts;
+      const bTs = b.ts == null ? Number.POSITIVE_INFINITY : b.ts;
+      return aTs - bTs;
+    });
+    return inferAppointmentType(parsed[0].item);
+  };
+
+  const buildAssistantContextPayload = ({ includeTimeSlot = false } = {}) => {
+    const ctx = assistantChatCtrl?.context;
+    if (!ctx) return null;
+    const payload = {};
+    if (ctx.intake?.totals) {
+      payload.intake = {
+        dayIso: ctx.intake.dayIso || null,
+        logged: !!ctx.intake.logged,
+        totals: {
+          water_ml: Number(ctx.intake.totals?.water_ml) || 0,
+          salt_g: Number(ctx.intake.totals?.salt_g) || 0,
+          protein_g: Number(ctx.intake.totals?.protein_g) || 0,
+        },
+      };
+    }
+    if (Array.isArray(ctx.appointments) && ctx.appointments.length) {
+      payload.appointments = ctx.appointments.map((item) => ({
+        id: item.id || null,
+        title: item.title || item.label || '',
+        start_at: item.startAt || item.start_at || null,
+        note: item.note || null,
+        label: item.label || '',
+        detail: item.detail || '',
+        type: inferAppointmentType(item),
+      }));
+      const appointmentType = pickNextAppointmentType(payload.appointments);
+      if (appointmentType) {
+        payload.appointment_type = appointmentType;
       }
-      if (ctx.profile) {
-        const meds = Array.isArray(ctx.profile.medications)
+    }
+    if (ctx.profile) {
+      const meds = Array.isArray(ctx.profile.medications)
+        ? ctx.profile.medications
+        : typeof ctx.profile.medications === 'string'
           ? ctx.profile.medications
-          : typeof ctx.profile.medications === 'string'
-            ? ctx.profile.medications
-                .split(/[\n;,]+/)
-                .map((entry) => entry.trim())
-                .filter(Boolean)
-            : [];
-        payload.profile = {
-          name: ctx.profile.full_name || null,
-          birth_date: ctx.profile.birth_date || null,
-          height_cm: ctx.profile.height_cm ?? null,
-          ckd_stage: ctx.profile.ckd_stage || null,
-          medications: meds,
-          salt_limit_g: ctx.profile.salt_limit_g ?? null,
-          protein_target_min: ctx.profile.protein_target_min ?? null,
-          protein_target_max: ctx.profile.protein_target_max ?? null,
-          protein_limit_g:
-            ctx.profile.protein_target_max ??
-            ctx.profile.protein_target_min ??
-            null,
-          lifestyle_note: ctx.profile.lifestyle_note || null,
-          smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
-        };
-      }
-      return Object.keys(payload).length ? payload : null;
+              .split(/[\n;,]+/)
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          : [];
+      const proteinTarget =
+        ctx.profile.protein_target_max ??
+        ctx.profile.protein_target_min ??
+        null;
+      const saltTarget =
+        ctx.profile.salt_limit_g ??
+        ctx.profile.salt_target_g ??
+        ctx.profile.salt_target ??
+        null;
+      payload.profile = {
+        name: ctx.profile.full_name || null,
+        birth_date: ctx.profile.birth_date || null,
+        height_cm: ctx.profile.height_cm ?? null,
+        ckd_stage: ctx.profile.ckd_stage || null,
+        medications: meds,
+        salt_limit_g: ctx.profile.salt_limit_g ?? null,
+        protein_target_min: ctx.profile.protein_target_min ?? null,
+        protein_target_max: ctx.profile.protein_target_max ?? null,
+        protein_target: proteinTarget,
+        salt_target: saltTarget,
+        protein_limit_g:
+          ctx.profile.protein_target_max ??
+          ctx.profile.protein_target_min ??
+          null,
+        lifestyle_note: ctx.profile.lifestyle_note || null,
+        smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
+      };
+    }
+    const hasData = Object.keys(payload).length > 0;
+    if (includeTimeSlot || hasData) {
+      payload.time_slot = getAssistantTimeSlot();
+    }
+    return Object.keys(payload).length ? payload : null;
+  };
+
+  const buildAssistantTurnPayload = ({
+    text = '',
+    imageBase64 = '',
+    history = '',
+    sessionId,
+  } = {}) => {
+    if (!assistantChatCtrl) return {};
+    const payload = {
+      session_id: sessionId ?? assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
     };
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
+    if (trimmedText) {
+      payload.text = trimmedText;
+    }
+    if (typeof imageBase64 === 'string' && imageBase64.trim()) {
+      payload.image_base64 = imageBase64.trim();
+    }
+    if (typeof history === 'string' && history.trim()) {
+      payload.history = history.trim();
+    }
+    const contextPayload = buildAssistantContextPayload();
+    if (contextPayload) {
+      payload.context = contextPayload;
+    }
+    return payload;
+  };
 
   const cloneAssistantTemplate = (key) => {
     const tmpl = assistantChatCtrl?.templates?.[key];
@@ -1847,18 +2364,34 @@
               ? 'Analyse fehlgeschlagen.'
               : message.status === 'done'
                 ? 'Analyse abgeschlossen.'
-                : 'Analyse lÃ¤uft â€¦';
+                : 'Analyse läuft …';
           statusEl.textContent = statusText;
         }
         const resultEl = bubble.querySelector('.assistant-photo-result');
         if (resultEl) {
           resultEl.textContent =
-            message.resultText || (message.status === 'done' ? 'Keine Details verfÃ¼gbar.' : 'Noch kein Ergebnis.');
+            message.resultText || (message.status === 'done' ? 'Keine Details verfügbar.' : 'Noch kein Ergebnis.');
           if (message.status === 'error') {
             resultEl.classList.remove('muted');
           } else {
             resultEl.classList.add('muted');
           }
+        }
+        const captionText = message.content?.trim?.() || '';
+        let captionEl = bubble.querySelector('.assistant-photo-caption');
+        if (captionText) {
+          if (!captionEl) {
+            captionEl = doc.createElement('p');
+            captionEl.className = 'assistant-photo-caption';
+            if (resultEl) {
+              bubble.insertBefore(captionEl, resultEl);
+            } else {
+              bubble.appendChild(captionEl);
+            }
+          }
+          captionEl.textContent = captionText;
+        } else if (captionEl) {
+          captionEl.remove();
         }
         bubble.classList.toggle('is-processing', message.status !== 'done' && message.status !== 'error');
         bubble.classList.toggle('is-error', message.status === 'error');
@@ -1875,6 +2408,38 @@
           retryWrap.appendChild(retryBtn);
           bubble.appendChild(retryWrap);
         }
+      } else if (message.type === 'followup') {
+        bubble = cloneAssistantTemplate('message');
+        if (!bubble) {
+          bubble = doc.createElement('div');
+          bubble.className = 'assistant-bubble';
+        }
+        const textLine = bubble.querySelector('.assistant-text-line');
+        if (textLine) {
+          textLine.textContent = message.content;
+        } else if (message.content) {
+          const text = doc.createElement('p');
+          text.className = 'assistant-text-line';
+          text.textContent = message.content;
+          bubble.appendChild(text);
+        }
+        const actions = doc.createElement('div');
+        actions.className = 'assistant-followup-actions';
+        const yesBtn = doc.createElement('button');
+        yesBtn.type = 'button';
+        yesBtn.className = 'btn primary';
+        yesBtn.textContent = 'Ja, bitte';
+        yesBtn.setAttribute('data-assistant-followup-action', 'yes');
+        yesBtn.setAttribute('data-assistant-followup-id', message.id);
+        const noBtn = doc.createElement('button');
+        noBtn.type = 'button';
+        noBtn.className = 'btn ghost';
+        noBtn.textContent = 'Nein';
+        noBtn.setAttribute('data-assistant-followup-action', 'no');
+        noBtn.setAttribute('data-assistant-followup-id', message.id);
+        actions.appendChild(yesBtn);
+        actions.appendChild(noBtn);
+        bubble.appendChild(actions);
       } else {
         bubble = cloneAssistantTemplate('message');
         if (!bubble) {
@@ -1911,19 +2476,21 @@
       assistantChatCtrl.sendBtn?.setAttribute('disabled', 'disabled');
       assistantChatCtrl.input?.setAttribute('disabled', 'disabled');
       assistantChatCtrl.cameraBtn?.setAttribute('disabled', 'disabled');
+      assistantChatCtrl.photoDraftUi?.clearBtn?.setAttribute('disabled', 'disabled');
     } else {
       assistantChatCtrl.sendBtn?.removeAttribute('disabled');
       assistantChatCtrl.input?.removeAttribute('disabled');
       assistantChatCtrl.cameraBtn?.removeAttribute('disabled');
+      assistantChatCtrl.photoDraftUi?.clearBtn?.removeAttribute('disabled');
       assistantChatCtrl.input?.focus();
     }
   };
 
-  const fetchAssistantTextReply = async () => {
+  const fetchAssistantTextReply = async (lastUserText = '') => {
     ensureAssistantSession();
     if (!assistantChatCtrl) return '';
     const payload = {
-      session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
+      ...buildAssistantTurnPayload({ text: lastUserText }),
       mode: 'text',
       messages: assistantChatCtrl.messages
         .filter((msg) => msg.role === 'assistant' || msg.role === 'user')
@@ -1932,10 +2499,6 @@
           content: msg.content,
         })),
     };
-    const contextPayload = buildAssistantContextPayload();
-    if (contextPayload) {
-      payload.context = contextPayload;
-    }
     let response;
     const headers = await buildFunctionJsonHeaders();
     try {
@@ -1956,9 +2519,15 @@
     return reply;
   };
 
-  const sendAssistantPhotoMessage = async (dataUrl, file, existingMessage = null) => {
+  const sendAssistantPhotoMessage = async (
+    dataUrl,
+    file,
+    existingMessage = null,
+    { text = '' } = {},
+  ) => {
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
     ensureAssistantSession();
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
     const resolvedDataUrl =
       dataUrl ||
       existingMessage?.retryPayload?.base64 ||
@@ -1979,10 +2548,10 @@
         retryable: false
       };
     const targetMessage =
-      existingMessage || appendAssistantMessage('user', '', basePayload);
+      existingMessage || appendAssistantMessage('user', trimmedText, basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
-    targetMessage.resultText = 'Analyse lÃ¤uft â€¦';
+    targetMessage.resultText = 'Analyse läuft …';
     targetMessage.retryable = false;
     targetMessage.retryPayload =
       targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
@@ -1990,10 +2559,9 @@
     setAssistantSending(true);
     diag.add?.('[assistant-vision] analyse start');
     try {
-      const result = await fetchAssistantVisionReply(resolvedDataUrl, file);
+      const result = await fetchAssistantVisionReply(resolvedDataUrl, file, trimmedText);
       targetMessage.status = 'done';
       targetMessage.resultText = formatAssistantVisionResult(result);
-      targetMessage.content = '';
       targetMessage.retryable = false;
       diag.add?.('[assistant-vision] analyse success');
       const suggestionStore = getAssistantSuggestStore();
@@ -2001,6 +2569,7 @@
         messageId: targetMessage.id,
       });
       if (suggestionStore && suggestionPayload) {
+        suggestionStore.clear?.({ reason: 'vision-replace' });
         suggestionStore.queueSuggestion(
           {
             ...suggestionPayload,
@@ -2037,29 +2606,24 @@
     }
   };
 
-  const fetchAssistantVisionReply = async (dataUrl, file) => {
-      ensureAssistantSession();
-      if (!assistantChatCtrl) {
-        throw new Error('vision-unavailable');
-      }
-      const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
-      if (!base64) {
-        throw new Error('vision-image-missing');
-      }
-      const payload = {
-        session_id: assistantChatCtrl.sessionId ?? `text-${Date.now()}`,
-        mode: 'vision',
+  const fetchAssistantVisionReply = async (dataUrl, file, text = '') => {
+    ensureAssistantSession();
+    if (!assistantChatCtrl) {
+      throw new Error('vision-unavailable');
+    }
+    const base64 = (dataUrl.includes(',') ? dataUrl.split(',').pop() : dataUrl)?.trim() || '';
+    if (!base64) {
+      throw new Error('vision-image-missing');
+    }
+    const payload = {
+      ...buildAssistantTurnPayload({
+        text,
+        imageBase64: base64,
         history: buildAssistantPhotoHistory(),
-        image_base64: base64,
-      };
-      const contextPayload = buildAssistantContextPayload();
-      if (contextPayload) {
-        payload.context = contextPayload;
-      }
-      if (!payload.history) {
-        delete payload.history;
-      }
-      if (file?.name) {
+      }),
+      mode: 'vision',
+    };
+    if (file?.name) {
       payload.meta = { fileName: file.name };
     }
     const headers = await buildFunctionJsonHeaders();
@@ -2150,6 +2714,38 @@
       event.preventDefault();
       const messageId = retryBtn.getAttribute('data-assistant-retry-id');
       retryAssistantPhoto(messageId);
+      return;
+    }
+    const followupBtn = event.target.closest(
+      'button[data-assistant-followup-action]',
+    );
+    if (followupBtn) {
+      event.preventDefault();
+      const action = followupBtn.getAttribute('data-assistant-followup-action');
+      const messageId = followupBtn.getAttribute('data-assistant-followup-id');
+      const context = assistantChatCtrl?.followup?.getSnapshot?.() || null;
+      const meta = assistantChatCtrl?.followup?.getMeta?.() || {};
+      assistantChatCtrl?.followup?.clearPrompt?.();
+      if (action === 'yes') {
+        if (!context) {
+          diag.add?.('[assistant-followup] missing snapshot context');
+        }
+        global.dispatchEvent(
+          new CustomEvent('assistant:meal-followup-request', {
+            detail: {
+              source: 'intake-save',
+              messageId: messageId || null,
+              followup_key: meta.followupKey || null,
+              saved_at: meta.savedAt || null,
+              context,
+              meta: { followup_version: 1 },
+            },
+          }),
+        );
+        diag.add?.('[assistant-followup] meal idea requested');
+      } else {
+        diag.add?.('[assistant-followup] meal idea dismissed');
+      }
     }
   }
 
@@ -2177,10 +2773,11 @@
     if (analysis.protein_g != null) {
       parts.push(`Protein: ${(Number(analysis.protein_g) || 0).toFixed(1)} g`);
     }
-    if (result.reply) {
-      parts.push(result.reply);
+    const reply = typeof result.reply === 'string' ? result.reply.trim() : '';
+    if (reply) {
+      parts.push(reply);
     }
-    return parts.join(' â€¢ ') || 'Analyse abgeschlossen.';
+    return parts.join(' • ') || 'Analyse abgeschlossen.';
   };
 
   const bootFlow = global.AppModules?.bootFlow;
@@ -2231,3 +2828,4 @@
     closeQuickbar: () => closeQuickbar(),
   });
 })(typeof window !== 'undefined' ? window : globalThis);
+

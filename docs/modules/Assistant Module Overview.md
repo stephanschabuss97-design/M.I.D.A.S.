@@ -59,8 +59,9 @@ Kurze Einordnung:
 ### 4.3 Verarbeitung
 - Text: `session-agent` sendet Messages an `/api/midas-assistant`.
 - Voice (geparkt): Transcribe (`/api/midas-transcribe`) -> Assistant -> TTS (`/api/midas-tts`).
-- Vision: Upload -> `/api/midas-vision` -> Ergebnis im Chat.
+- Vision: Foto bleibt Draft bis "Senden"; Upload -> `/api/midas-vision` -> Ergebnis im Chat.
 - Actions laufen ueber `allowed-actions` und `assistant/actions`.
+- Follow-up: Nach erfolgreichem `intake_save` fragt der Assistant einmal nach einer Essensidee und ruft bei "Ja" den Text-Endpoint mit einem Follow-up Prompt auf.
 
 ### 4.4 Persistenz
 - Keine direkte Persistenz.
@@ -71,7 +72,8 @@ Kurze Einordnung:
 ## 5. UI-Integration
 
 - Panel: `data-hub-panel="assistant-text"` in `index.html`.
-- Kontext: Pills fuer Intake + Termine im Header.
+- Kontext: Pills (Wasser/Salz/Protein), Kontext-Extras (Protein-Ziel, CKD), Termine, Expandable (Restbudget/Warnung/Empfehlung).
+- Mobile: "Mehr/Weniger" Toggle blendet Kontext-Bloecke ein/aus.
 - Suggest-Card (Confirm/Reject) fuer Assistant-Aktionen.
 
 ---
@@ -99,6 +101,7 @@ Kurze Einordnung:
 - Constraints: Voice-Gate (authState unknown) blockt Voice, Actions nur via Allowed-Actions.
 - `assistant:action-request` und `assistant:action-success` fuer Actions.
 - `assistant:suggest-confirm` / `assistant:suggest-answer` fuer Confirm-Flow.
+- `assistant:meal-followup-request` fuer die Meal-Idea Anfrage.
 - Context-Refresh via `appointments:changed` / `profile:changed`.
 
 ---

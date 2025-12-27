@@ -62,6 +62,7 @@ Kurze Einordnung:
 
 - Hub ist zentrales Overlay mit Aura/Orbit und Panels.
 - Panels: Intake, Vitals, Doctor, Profile, Appointments, Assistant.
+- Assistant-Panel zeigt Butler-Header: Pills + Kontext-Extras + Termine + Expandable (Restbudget/Warnung/Empfehlung) inkl. Mobile-Toggle.
 - Voice-States steuern Visuals (`data-voice-state`).
 
 ---

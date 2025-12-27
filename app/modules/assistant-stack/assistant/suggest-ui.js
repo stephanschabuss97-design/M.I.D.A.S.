@@ -30,6 +30,14 @@ import { assistantSuggestStore } from './suggest-store.js';
   let currentSuggestionId = null;
   let currentButtons = { yes: null, no: null };
   let dispatchedSuggestionId = null;
+  let confirmState = 'idle';
+
+  const setConfirmState = (state) => {
+    confirmState = state;
+    if (currentBlock) {
+      currentBlock.dataset.confirmState = state;
+    }
+  };
 
   const formatMetrics = (metrics = {}) => {
     const parts = [];
@@ -45,14 +53,21 @@ import { assistantSuggestStore } from './suggest-store.js';
     return parts.join(' | ');
   };
 
-  const removeBlock = () => {
+  const removeBlock = (nextState = 'idle') => {
     if (currentBlock?.parentElement) {
       currentBlock.parentElement.removeChild(currentBlock);
     }
+    const leftovers = chatContainer.querySelectorAll('.assistant-confirm-block');
+    leftovers.forEach((block) => {
+      if (block?.parentElement) {
+        block.parentElement.removeChild(block);
+      }
+    });
     currentBlock = null;
     currentSuggestionId = null;
     currentButtons = { yes: null, no: null };
     dispatchedSuggestionId = null;
+    setConfirmState(nextState);
   };
 
   const setBusyState = (isBusy) => {
@@ -78,13 +93,17 @@ import { assistantSuggestStore } from './suggest-store.js';
   };
 
   const renderSuggestion = () => {
-    removeBlock();
     const state = resolvedStore.getState();
     const suggestion = state.activeSuggestion;
     if (!suggestion) {
+      removeBlock('saved');
       return;
     }
+    if (confirmState === 'saving') return;
+    removeBlock('idle');
+    setConfirmState('analysis_done');
     attachInlineConfirm(suggestion);
+    setConfirmState('confirm_open');
   };
 
   const attachInlineConfirm = (suggestion) => {
@@ -137,6 +156,7 @@ import { assistantSuggestStore } from './suggest-store.js';
     if (accepted) {
       if (dispatchedSuggestionId === suggestion.id) return;
       dispatchedSuggestionId = suggestion.id;
+      setConfirmState('saving');
       setBusyState(true);
       global.dispatchEvent(
         new CustomEvent('assistant:suggest-confirm', {
@@ -160,7 +180,19 @@ import { assistantSuggestStore } from './suggest-store.js';
   global.addEventListener('assistant:chat-rendered', renderSuggestion);
   global.addEventListener('assistant:suggest-confirm-reset', () => {
     dispatchedSuggestionId = null;
+    setConfirmState('error');
     setBusyState(false);
+  });
+  global.addEventListener('assistant:action-success', (event) => {
+    const detail = event?.detail || {};
+    if (detail.type !== 'intake_save') return;
+    if (detail.source && detail.source !== 'suggestion-card') return;
+    const state = resolvedStore.getState();
+    if (!state.activeSuggestion) return;
+    resolvedStore.dismissCurrent({ reason: 'confirm-success' });
+  });
+  global.addEventListener('assistant:suggest-dismissed', () => {
+    removeBlock('saved');
   });
   renderSuggestion();
 })(typeof window !== 'undefined' ? window : globalThis, assistantSuggestStore);
