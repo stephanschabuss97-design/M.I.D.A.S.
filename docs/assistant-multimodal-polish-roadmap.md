@@ -16,7 +16,8 @@ Status (as of 2025-12-22):
 - Voice archive roadmap completed (voice parked, no UI wiring).
 - Assistant stack refactor completed (assistant files moved to `app/modules/assistant-stack/assistant/`, VAD in `app/modules/assistant-stack/vad/`).
 - Script tags updated to assistant-stack paths; voice stays disabled.
-- This roadmap phases remain not started (analysis + UX work still pending).
+- Phases 0-5 completed.
+- Phase 6 not started (voice chat alignment deferred while voice is parked).
 
 References (source of truth):
 - `docs/modules/Assistant Module Overview.md`

@@ -1052,6 +1052,13 @@
 
   const moveIntakePillsToHub = () => {
     const hub = doc?.querySelector('[data-role="hub-intake-pills"]');
+    const captureApi = appModules.capture || {};
+    if (typeof captureApi.prepareIntakeStatusHeader === 'function') {
+      captureApi.prepareIntakeStatusHeader();
+    }
+    if (typeof captureApi.updateCaptureIntakeStatus === 'function') {
+      captureApi.updateCaptureIntakeStatus();
+    }
     const pills = doc?.getElementById('cap-intake-status-top');
     if (!hub) return;
     if (!pills) {

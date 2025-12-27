@@ -19,7 +19,7 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/activity/index.js` | Public API (load/add/delete) + RPC-Bridge |
+| `app/modules/vitals-stack/activity/index.js` | Public API (load/add/delete) + RPC-Bridge |
 | `assets/js/main.js` | UI-Handler, Validierung, Save/Reset-Flow |
 | `index.html` | Training-Tab + Form im Vitals-Panel |
 | `app/styles/hub.css` | Training-Panel Layout |

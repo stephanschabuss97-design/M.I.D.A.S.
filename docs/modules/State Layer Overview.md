@@ -22,8 +22,8 @@ Kurze Einordnung:
 | `app/core/capture-globals.js` | Capture/Lifestyle Defaults, Timer, Helper, Intake-State |
 | `assets/js/main.js` | UI-Refresh-State (Batching), Datums- und Reset-Flow |
 | `app/modules/doctor/index.js` | Scroll-Snapshot fuer Doctor-Ansicht |
-| `app/modules/trendpilot/index.js` | Trendpilot-Flags + latestSystemComment Cache |
-| `app/modules/charts/index.js` | Chart-Panel State (Meta, Tooltip, Trendpilot-Bands) |
+| `app/modules/vitals-stack/trendpilot/index.js` | Trendpilot-Flags + latestSystemComment Cache |
+| `app/modules/doctor-stack/charts/index.js` | Chart-Panel State (Meta, Tooltip, Trendpilot-Bands) |
 | `app/supabase/core/state.js` | Supabase Runtime-State (Auth, Client, Header Cache) |
 | `app/supabase/auth/guard.js` | authGuardState (Unlock/Doctor Gate) |
 

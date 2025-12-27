@@ -19,11 +19,11 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/capture/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
+| `app/modules/vitals-stack/vitals/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
 | `app/core/capture-globals.js` | Shared State, Helper (`softWarnRange`, `setBusy`, Date Guards) |
 | `app/supabase/api/intake.js` | RPC Wrapper (`loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`) |
 | `app/modules/hub/index.js` | ?ffnet Intake Panel, verschiebt Status-Pills in den Hub-Header |
-| `app/modules/medication/index.js` | Datenquelle f?r IN-Toggles, Low-Stock Box |
+| `app/modules/intake-stack/medication/index.js` | Datenquelle f?r IN-Toggles, Low-Stock Box |
 | `app/styles/hub.css` | Intake Cards, Grid, Pills, Low-Stock/Safety Styles |
 | `docs/Medication Management Module Spec.md` | Kontext f?r Tablettenmanager |
 | `docs/QA_CHECKS.md` | Testf?lle f?r Capture/Intake |

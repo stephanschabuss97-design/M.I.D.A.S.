@@ -19,11 +19,11 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/capture/index.js` | Orchestrierung, Reset/Prefill, Panel-Logik |
-| `app/modules/capture/bp.js` | BP-Validierung, Save-Flow, Kommentarpflicht |
-| `app/modules/capture/body.js` | Body-Panel (Gewicht, Bauchumfang, Fett/Muskel) |
-| `app/modules/capture/lab.js` | Lab-Panel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD, Kommentar) |
-| `app/modules/capture/entry.js` | Shared Entry-Helper (Base Entry) |
+| `app/modules/vitals-stack/vitals/index.js` | Orchestrierung, Reset/Prefill, Panel-Logik |
+| `app/modules/vitals-stack/vitals/bp.js` | BP-Validierung, Save-Flow, Kommentarpflicht |
+| `app/modules/vitals-stack/vitals/body.js` | Body-Panel (Gewicht, Bauchumfang, Fett/Muskel) |
+| `app/modules/vitals-stack/vitals/lab.js` | Lab-Panel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD, Kommentar) |
+| `app/modules/vitals-stack/vitals/entry.js` | Shared Entry-Helper (Base Entry) |
 | `assets/js/main.js` | UI-Handler, Datum, Panel-Buttons, requestUiRefresh |
 | `index.html` | Hub Vitals-Panel + Tabs (BP/Body/Lab/Training) |
 | `app/styles/hub.css` | Hub/Capture Layout inkl. BP-Kontext Dropdown |

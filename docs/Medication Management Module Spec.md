@@ -231,7 +231,7 @@ Liefert:
 ## 8. Client-Modul
 
 **Pfad:**  
-`app/modules/medication/index.js`
+`app/modules/intake-stack/medication/index.js`
 
 ### Exports
 - `loadMedicationForDay(day)`
@@ -282,7 +282,7 @@ Code kopieren
 - Supabase-Tests
 
 ### Phase 1 – Modul Scaffold
-- `app/modules/medication/index.js`
+- `app/modules/intake-stack/medication/index.js`
 - Read-Path (`med_list`)
 
 ### Phase 2 – IN-Tab
@@ -322,12 +322,12 @@ Code kopieren
 ## 13. Dateien
 
 ### New
-- `app/modules/medication/index.js`
+- `app/modules/intake-stack/medication/index.js`
 - `sql/09_Medication.sql`
 - `docs/modules/Medication Module Overview.md`
 
 ### Modified
-- `app/modules/capture/index.js`
+- `app/modules/vitals-stack/vitals/index.js`
 - optional Styles
 
 ---
@@ -344,7 +344,7 @@ Jede Phase baut auf der vorherigen auf, erzeugt eigenständige, testbare Artefak
 3. Minimaler Smoke-Test via Supabase-SQL-Konsole (Insert/Select) inkl. Rollback-Plan = `DROP FUNCTION/TABLE`.
 
 ### Phase B – Client-Modul Scaffold ✅
-1. `app/modules/medication/index.js` mit Loader (`loadMedicationForDay`) und Event-Bus (`medication:changed`) implementieren.
+1. `app/modules/intake-stack/medication/index.js` mit Loader (`loadMedicationForDay`) und Event-Bus (`medication:changed`) implementieren.
 2. RPC-Stubs verdrahten, aber UI noch nicht mounten; Integrationstests via Mock-Day.
 3. Rollback = Modul-Ordner entfernen, Hub lädt weiter ohne Tablets.
 

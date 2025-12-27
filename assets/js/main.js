@@ -398,7 +398,7 @@ async function initCorePhase() {
     window.AppModules.capture?.resetCapturePanels?.();
     window.AppModules.bp.updateBpCommentWarnings?.();
   } catch (_) {}
-  try { addCapturePanelKeys?.(); } catch(_){ }
+    try { window.AppModules.capture?.addCapturePanelKeys?.(); } catch(_){ }
   logBootPhaseSummary('INIT_CORE', 'done');
 }
 

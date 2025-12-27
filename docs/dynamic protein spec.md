@@ -36,7 +36,7 @@ Das Ergebnis wird:
 
 **Modul-Entscheidung:**
 Dieses Feature wird als eigenes Modul umgesetzt (analog zu Trendpilot).
-Es bekommt einen eigenen Ordner unter `app/modules/` (z. B. `app/modules/protein/`).
+Es bekommt einen eigenen Ordner unter `app/modules/vitals-stack/` (z. B. `app/modules/vitals-stack/protein/`).
 
 
 ---
@@ -440,8 +440,8 @@ Assistant-Kontext bezieht Snapshot aus Profil/Intake.
       - cooldown/gewicht/ckd unchanged -> skipped
 
 4) Frontend Trigger (Body Save) âœ…
-   a) Neues Modul anlegen: `app/modules/protein/` (init, API, Edge-call)
-   b) In `app/modules/capture/body.js` nach erfolgreichem Save das Modul rufen
+   a) Neues Modul anlegen: `app/modules/vitals-stack/protein/` (init, API, Edge-call)
+   b) In `app/modules/vitals-stack/vitals/body.js` nach erfolgreichem Save das Modul rufen
    c) Bei jedem Body-Save ausloesen
    d) Nach Response `profile.syncProfile({ reason: 'protein-recompute' })` aufrufen
 

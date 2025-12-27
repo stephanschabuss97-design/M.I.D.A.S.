@@ -19,8 +19,8 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/medication/index.js` | Client-API, RPC Loader, Cache, TAB-UI. |
-| `app/modules/capture/index.js` | IN-Toggles, Low-Stock Box, Safety-Hinweis (nutzt `AppModules.medication`). |
+| `app/modules/intake-stack/medication/index.js` | Client-API, RPC Loader, Cache, TAB-UI. |
+| `app/modules/vitals-stack/vitals/index.js` | IN-Toggles, Low-Stock Box, Safety-Hinweis (nutzt `AppModules.medication`). |
 | `app/styles/hub.css` | Layout/Styles Tablettenmanager. |
 | `sql/12_Medication.sql` | Tabellen + RPCs (`med_list`, `med_upsert`, `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`, `med_ack_low_stock`, `med_set_active`, `med_delete`). |
 | `docs/Medication Management Module Spec.md` | Spezifikation & Roadmap. |
@@ -41,7 +41,7 @@ Kurze Einordnung:
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
-- Modul lädt automatisch über `<script src="app/modules/medication/index.js">`.
+- Modul lädt automatisch über `<script src="app/modules/intake-stack/medication/index.js">`.
 - Aktiv sobald Supabase Auth Stage ≥ INIT_MODULES.
 - Capture subscribe auf `medication:changed`.
 

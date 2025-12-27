@@ -19,8 +19,8 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/protein/index.js` | Modul-API, Edge-Call Bridge (`recomputeTargets`). |
-| `app/modules/capture/body.js` | Trigger nach Body-Save. |
+| `app/modules/vitals-stack/protein/index.js` | Modul-API, Edge-Call Bridge (`recomputeTargets`). |
+| `app/modules/vitals-stack/vitals/body.js` | Trigger nach Body-Save. |
 | `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben. |
 | `app/modules/hub/index.js` | Profil-Payload fuer Assistant/Context. |
 | `app/modules/assistant-stack/assistant/day-plan.js` | Protein-Limit im Tagesplan (max/min + Fallback). |

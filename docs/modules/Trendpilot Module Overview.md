@@ -19,12 +19,12 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
-| `app/modules/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
+| `app/modules/vitals-stack/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
+| `app/modules/vitals-stack/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
 | `app/supabase/api/system-comments.js` | Persistenz fuer `system_comment` (Ack/Status) |
 | `app/modules/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |
-| `app/modules/capture/index.js` | Capture-Pill + `trendpilot:latest` Hook |
-| `app/modules/charts/index.js` | Trendpilot-Bands im BP-Chart |
+| `app/modules/vitals-stack/vitals/index.js` | Capture-Pill + `trendpilot:latest` Hook |
+| `app/modules/doctor-stack/charts/index.js` | Trendpilot-Bands im BP-Chart |
 | `app/styles/doctor.css` | Trendpilot-Block Styling |
 | `app/styles/ui.css` | Trendpilot-Dialog/Overlay Styling |
 
@@ -42,7 +42,7 @@ Kurze Einordnung:
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
-- Trendpilot initialisiert via `app/modules/trendpilot/index.js`.
+- Trendpilot initialisiert via `app/modules/vitals-stack/trendpilot/index.js`.
 - Stub-API, wenn Abhaengigkeiten fehlen.
 
 ### 4.2 User-Trigger
