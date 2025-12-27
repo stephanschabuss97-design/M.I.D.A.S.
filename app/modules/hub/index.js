@@ -1878,6 +1878,9 @@
         if (assistantChatCtrl?.context) {
           assistantChatCtrl.context.profile = assistantProfileSnapshot;
         }
+        const currentIntake = assistantChatCtrl?.context?.intake || null;
+        renderAssistantContextExtras(assistantProfileSnapshot);
+        renderAssistantContextExpandable(currentIntake, assistantProfileSnapshot);
         const store = getAssistantSuggestStore();
         if (store && assistantChatCtrl?.context) {
           store.setSnapshot(
