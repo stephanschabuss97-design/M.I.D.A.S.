@@ -260,7 +260,7 @@ Substeps:
       "meta": { "followup_version": 1 }
     }
 
-3.3 Prompt + output format
+3.3 Prompt + output format ✅ (done)
 - Prompt should instruct the model to:
   - Use current intake totals (salt/protein) to balance the idea.
   - Consider upcoming appointment context when present.
@@ -288,7 +288,7 @@ Substeps:
   - Render the suggestion as a normal assistant message (no confirm card).
   - On failure (network/LLM error), skip silently without retry.
 
-3.4 UI response flow
+3.4 UI response flow ✅ (done)
 - Show the suggestion as a normal assistant message (not a confirm card).
 - No additional save/confirm loop for the suggestion itself.
 - If the suggestion fails (network/LLM error), silently skip and do not retry.
@@ -299,41 +299,70 @@ Acceptance:
 - "Ja, bitte" returns a short, contextual meal idea.
 
 -------------------------------------------------------------------------------
-Phase 4 - QA and docs
+Phase 4 - Butler UI density rules (desktop/tablet/mobile)
 
-4.1 Happy paths
+4.1 Define data tiers (always vs optional vs expandable)
+- Always visible (all devices): water/salt/protein chips.
+- Context extras (desktop/tablet): protein target (min/max), CKD stage.
+- Optional (desktop): last meal summary, last med confirmation, next appointment.
+- Expandable: remaining budget + warning + 1 short recommendation.
+
+4.2 Desktop layout (high density)
+- Show: water/salt/protein + protein target + CKD stage.
+- Show: last meal + last med confirm + next appointment.
+- Expand: remaining budget + warning + recommendation.
+
+4.3 Tablet layout (medium density)
+- Show: water/salt/protein + protein target.
+- Show: one extra line (either next appointment or last med confirmation).
+- Expand: remaining budget + warning.
+
+4.4 Mobile layout (low density)
+- Show: water/salt/protein only.
+- Provide: one compact "More" toggle for everything else.
+- Expand: one item per category only (no lists).
+
+Acceptance:
+- Desktop feels rich, not cramped.
+- Tablet feels balanced.
+- Mobile remains quick with minimal scanning.
+
+-------------------------------------------------------------------------------
+Phase 5 - QA and docs
+
+5.1 Happy paths
 - Text only
 - Photo only
 - Text + photo
 
-4.2 Edge cases
+5.2 Edge cases
 - Double click Send
 - Abort upload
 - Network errors
 - prefers-reduced-motion
 
-4.3 Docs update
+5.3 Docs update
 - `docs/modules/Assistant Module Overview.md` updated to "draft + send" photo flow.
 
 -------------------------------------------------------------------------------
-Phase 5 - Voice chat alignment (deferred while voice is parked)
+Phase 6 - Voice chat alignment (deferred while voice is parked, not required)
 
-5.1 Unify text + voice action layer
+6.1 Unify text + voice action layer
 - Voice flow should reuse the same action handlers as text.
 - Avoid duplicated save logic between text and voice.
 
-5.2 Voice intent engine (fast-path)
+6.2 Voice intent engine (fast-path)
 - Parse common commands locally (no LLM):
   - water/salt/protein quick adds
   - simple vitals (BP/Body)
   - confirmations (yes/no)
 - If intent is uncertain, fall back to LLM.
 
-5.3 Voice UX fixes
+6.3 Voice UX fixes
 - Ensure voice responses map to the same confirm/save flows.
 - Keep a single "confirm once" rule for voice prompts too.
 
-5.4 Optional: Intent Engine module
+6.4 Optional: Intent Engine module
 - If intent logic grows, create `app/modules/intent-engine/`.
 - Add overview doc in `docs/modules/Intent Engine Module Overview.md`.
 
@@ -349,33 +378,7 @@ Notes for new chats
 - Frontend is in this repo; backend edge functions are in `midas-backend`.
 
 -------------------------------------------------------------------------------
-Phase 6 - Butler UI density rules (desktop/tablet/mobile)
 
-6.1 Define data tiers (always vs optional vs expandable)
-- Always visible (all devices): water/salt/protein chips.
-- Context extras (desktop/tablet): protein target (min/max), CKD stage.
-- Optional (desktop): last meal summary, last med confirmation, next appointment.
-- Expandable: remaining budget + warning + 1 short recommendation.
-
-6.2 Desktop layout (high density)
-- Show: water/salt/protein + protein target + CKD stage.
-- Show: last meal + last med confirm + next appointment.
-- Expand: remaining budget + warning + recommendation.
-
-6.3 Tablet layout (medium density)
-- Show: water/salt/protein + protein target.
-- Show: one extra line (either next appointment or last med confirmation).
-- Expand: remaining budget + warning.
-
-6.4 Mobile layout (low density)
-- Show: water/salt/protein only.
-- Provide: one compact "More" toggle for everything else.
-- Expand: one item per category only (no lists).
-
-Acceptance:
-- Desktop feels rich, not cramped.
-- Tablet feels balanced.
-- Mobile remains quick with minimal scanning.
 
 -------------------------------------------------------------------------------
 Action Backlog (assistant/actions.js expansion ideas)

@@ -433,9 +433,51 @@
                 <span class="value" data-pill-value>-- g</span>
               </div>
             </div>
-            <div class="assistant-appointments" id="assistantAppointments">
-              <p class="muted small" data-appointments-empty>Keine Termine geladen.</p>
-              <ul class="assistant-appointments-list" id="assistantAppointmentsList" hidden></ul>
+            <button
+              type="button"
+              class="assistant-context-toggle"
+              id="assistantContextToggle"
+              aria-expanded="false"
+            >
+              Mehr
+            </button>
+            <div class="assistant-context-extras" id="assistantContextExtras" hidden>
+              <div class="assistant-context-item" data-extra="protein-target">
+                <span class="label">Protein-Ziel</span>
+                <span class="value" data-extra-value>-- g</span>
+              </div>
+              <div class="assistant-context-item" data-extra="ckd-stage">
+                <span class="label">CKD</span>
+                <span class="value" data-extra-value>--</span>
+              </div>
+            </div>
+            <div class="assistant-context-optional" id="assistantContextOptional">
+              <div class="assistant-context-item" data-optional="last-meal" hidden>
+                <span class="label">Letzte Mahlzeit</span>
+                <span class="value" data-optional-value>--</span>
+              </div>
+              <div class="assistant-context-item" data-optional="last-med" hidden>
+                <span class="label">Letzte Medikation</span>
+                <span class="value" data-optional-value>--</span>
+              </div>
+              <div class="assistant-appointments" id="assistantAppointments">
+                <p class="muted small" data-appointments-empty>Keine Termine geladen.</p>
+                <ul class="assistant-appointments-list" id="assistantAppointmentsList" hidden></ul>
+              </div>
+            </div>
+            <div class="assistant-context-expandable" id="assistantContextExpandable" hidden>
+              <div class="assistant-context-item" data-expandable="remaining">
+                <span class="label">Restbudget</span>
+                <span class="value" data-expandable-value>--</span>
+              </div>
+              <div class="assistant-context-item" data-expandable="warning" hidden>
+                <span class="label">Warnung</span>
+                <span class="value" data-expandable-value>--</span>
+              </div>
+              <div class="assistant-context-item" data-expandable="recommendation" hidden>
+                <span class="label">Empfehlung</span>
+                <span class="value" data-expandable-value>--</span>
+              </div>
             </div>
           </section>
 

@@ -1080,6 +1080,96 @@
     else pill.root.classList.add('muted');
   };
 
+  const updateContextItem = (ref, text) => {
+    if (!ref) return false;
+    if (text) {
+      ref.value.textContent = text;
+      ref.root.removeAttribute('hidden');
+      return true;
+    }
+    ref.root.setAttribute('hidden', 'true');
+    return false;
+  };
+
+  const formatTargetRange = (min, max, unit) => {
+    const fmt = getCaptureFormatFn();
+    const minVal = Number.isFinite(Number(min)) ? Number(min) : null;
+    const maxVal = Number.isFinite(Number(max)) ? Number(max) : null;
+    if (minVal != null && maxVal != null) {
+      return `${fmt(minVal, 0)}-${fmt(maxVal, 0)} ${unit}`;
+    }
+    if (maxVal != null) return `${fmt(maxVal, 0)} ${unit}`;
+    if (minVal != null) return `${fmt(minVal, 0)} ${unit}`;
+    return null;
+  };
+
+  const renderAssistantContextExtras = (profile) => {
+    const refs = assistantChatCtrl?.contextExtras;
+    if (!refs?.container) return;
+    let hasAny = false;
+    const proteinText =
+      formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
+      formatTargetRange(profile?.protein_target, null, 'g');
+    if (updateContextItem(refs.proteinTarget, proteinText)) hasAny = true;
+    const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
+    if (updateContextItem(refs.ckdStage, ckdStage || null)) hasAny = true;
+    refs.container.hidden = !hasAny;
+  };
+
+  const renderAssistantContextExpandable = (snapshot, profile) => {
+    const refs = assistantChatCtrl?.contextExpandable;
+    if (!refs?.container) return;
+    const totals = snapshot?.totals || {};
+    const fmt = getCaptureFormatFn();
+    const saltLimit = Number.isFinite(Number(profile?.salt_limit_g))
+      ? Number(profile.salt_limit_g)
+      : Number.isFinite(Number(profile?.salt_target_g))
+        ? Number(profile.salt_target_g)
+        : Number.isFinite(Number(profile?.salt_target))
+          ? Number(profile.salt_target)
+          : null;
+    const proteinTarget = Number.isFinite(Number(profile?.protein_target_max))
+      ? Number(profile.protein_target_max)
+      : Number.isFinite(Number(profile?.protein_target))
+        ? Number(profile.protein_target)
+        : Number.isFinite(Number(profile?.protein_target_min))
+          ? Number(profile.protein_target_min)
+          : null;
+    const remainingParts = [];
+    let saltRemaining = null;
+    let proteinRemaining = null;
+    const saltTotal = Number(totals.salt_g) || 0;
+    const proteinTotal = Number(totals.protein_g) || 0;
+    if (saltLimit != null) {
+      saltRemaining = saltLimit - saltTotal;
+      remainingParts.push(`Salz ${fmt(saltRemaining, 1)} g`);
+    }
+    if (proteinTarget != null) {
+      proteinRemaining = proteinTarget - proteinTotal;
+      remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
+    }
+    const remainingText = remainingParts.length ? remainingParts.join(', ') : null;
+    const hasRemaining = updateContextItem(refs.remaining, remainingText);
+    let warningText = null;
+    if (saltRemaining != null && saltRemaining < 0) {
+      warningText = 'Salz ueber Limit';
+    }
+    if (proteinRemaining != null && proteinRemaining < 0) {
+      warningText = warningText ? `${warningText}, Protein ueber Limit` : 'Protein ueber Limit';
+    }
+    const hasWarning = updateContextItem(refs.warning, warningText);
+    let recommendationText = null;
+    if (saltRemaining != null && saltRemaining <= 1) {
+      recommendationText = 'Tipp: Heute eher salzarm bleiben.';
+    } else if (proteinRemaining != null && proteinRemaining <= 5) {
+      recommendationText = 'Tipp: Protein heute eher leicht halten.';
+    } else if (hasRemaining) {
+      recommendationText = 'Tipp: Leicht und ausgewogen bleiben.';
+    }
+    const hasRecommendation = updateContextItem(refs.recommendation, recommendationText);
+    refs.container.hidden = !(hasRemaining || hasWarning || hasRecommendation);
+  };
+
   const renderAssistantIntakeTotals = (snapshot) => {
     const logged = !!snapshot?.logged;
     const totals = snapshot?.totals || {};
@@ -1266,6 +1356,8 @@
         appointments: Array.isArray(appointments) ? appointments : [],
         profile: getAssistantProfileSnapshot(),
       };
+      renderAssistantContextExtras(contextPayload.profile);
+      renderAssistantContextExpandable(snapshot, contextPayload.profile);
       if (assistantChatCtrl) {
         assistantChatCtrl.context = contextPayload;
       }
@@ -1316,11 +1408,24 @@
     const clearBtn = panel.querySelector('#assistantClearChat');
     const messageTemplate = panel.querySelector('#assistantMessageTemplate');
     const photoTemplate = panel.querySelector('#assistantPhotoTemplate');
+    const contextSection = panel.querySelector('.assistant-context');
+    const contextToggle = panel.querySelector('#assistantContextToggle');
     const pillsWrap = panel.querySelector('#assistantIntakePills');
     const buildPillRef = (key) => {
       const root = pillsWrap?.querySelector(`[data-pill="${key}"]`);
       if (!root) return null;
       const value = root.querySelector('[data-pill-value]');
+      if (!value) return null;
+      return { root, value };
+    };
+    const contextExtras = panel.querySelector('#assistantContextExtras');
+    const contextOptional = panel.querySelector('#assistantContextOptional');
+    const contextExpandable = panel.querySelector('#assistantContextExpandable');
+    const buildContextValueRef = (wrap, attr, key, valueAttr) => {
+      if (!wrap) return null;
+      const root = wrap.querySelector(`[data-${attr}="${key}"]`);
+      if (!root) return null;
+      const value = root.querySelector(`[data-${valueAttr}]`);
       if (!value) return null;
       return { root, value };
     };
@@ -1387,16 +1492,35 @@
       photoInput,
       photoDraft: null,
       photoDraftUi,
+      contextSection,
+      contextToggle,
+      contextExpanded: false,
       pills: {
         water: buildPillRef('water'),
         salt: buildPillRef('salt'),
         protein: buildPillRef('protein'),
       },
-        appointments: {
-          container: appointmentsContainer,
-          list: appointmentsList,
-          empty: appointmentsEmpty,
-        },
+      contextExtras: {
+        container: contextExtras,
+        proteinTarget: buildContextValueRef(contextExtras, 'extra', 'protein-target', 'extra-value'),
+        ckdStage: buildContextValueRef(contextExtras, 'extra', 'ckd-stage', 'extra-value'),
+      },
+      contextOptional: {
+        container: contextOptional,
+        lastMeal: buildContextValueRef(contextOptional, 'optional', 'last-meal', 'optional-value'),
+        lastMed: buildContextValueRef(contextOptional, 'optional', 'last-med', 'optional-value'),
+      },
+      contextExpandable: {
+        container: contextExpandable,
+        remaining: buildContextValueRef(contextExpandable, 'expandable', 'remaining', 'expandable-value'),
+        warning: buildContextValueRef(contextExpandable, 'expandable', 'warning', 'expandable-value'),
+        recommendation: buildContextValueRef(contextExpandable, 'expandable', 'recommendation', 'expandable-value'),
+      },
+      appointments: {
+        container: appointmentsContainer,
+        list: appointmentsList,
+        empty: appointmentsEmpty,
+      },
         templates: {
           message: messageTemplate?.content?.firstElementChild || null,
           photo: photoTemplate?.content?.firstElementChild || null,
@@ -1410,6 +1534,30 @@
           profile: getAssistantProfileSnapshot(),
         },
       };
+
+    const setAssistantContextExpanded = (expanded) => {
+      if (!assistantChatCtrl?.contextSection) return;
+      assistantChatCtrl.contextExpanded = !!expanded;
+      assistantChatCtrl.contextSection.classList.toggle(
+        'assistant-context-expanded',
+        assistantChatCtrl.contextExpanded,
+      );
+      if (assistantChatCtrl.contextToggle) {
+        assistantChatCtrl.contextToggle.setAttribute(
+          'aria-expanded',
+          assistantChatCtrl.contextExpanded ? 'true' : 'false',
+        );
+        assistantChatCtrl.contextToggle.textContent =
+          assistantChatCtrl.contextExpanded ? 'Weniger' : 'Mehr';
+      }
+    };
+
+    if (assistantChatCtrl.contextToggle && assistantChatCtrl.contextSection) {
+      assistantChatCtrl.contextToggle.addEventListener('click', () => {
+        setAssistantContextExpanded(!assistantChatCtrl.contextExpanded);
+      });
+      setAssistantContextExpanded(false);
+    }
 
     if (photoDraftUi?.clearBtn) {
       photoDraftUi.clearBtn.addEventListener('click', () => clearAssistantPhotoDraft());

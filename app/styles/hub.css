@@ -2301,6 +2301,25 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-bottom: 18px;
 }
 
+.assistant-context-toggle {
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: none;
+}
+
+.assistant-context-toggle:focus-visible {
+  outline: 2px solid rgba(140, 190, 255, 0.6);
+  outline-offset: 2px;
+}
+
 .assistant-pills {
   display: flex;
   flex-wrap: wrap;
@@ -2329,6 +2348,83 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-pill .value {
   font-weight: 600;
   font-size: 1rem;
+}
+
+.assistant-context-extras,
+.assistant-context-optional,
+.assistant-context-expandable {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assistant-context-item {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(10, 12, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.assistant-context-item .label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.assistant-context-item .value {
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 1024px) {
+  .assistant-context-item[data-extra="ckd-stage"] {
+    display: none;
+  }
+
+  .assistant-context-item[data-optional="last-meal"],
+  .assistant-context-item[data-optional="last-med"] {
+    display: none;
+  }
+
+  .assistant-context-item[data-expandable="recommendation"] {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .assistant-context-toggle {
+    display: inline-flex;
+  }
+
+  .assistant-context:not(.assistant-context-expanded) .assistant-context-extras,
+  .assistant-context:not(.assistant-context-expanded) .assistant-context-optional,
+  .assistant-context:not(.assistant-context-expanded) .assistant-context-expandable {
+    display: none;
+  }
+
+  .assistant-context .assistant-context-extras,
+  .assistant-context .assistant-context-optional,
+  .assistant-context .assistant-context-expandable {
+    gap: 8px;
+  }
+
+  .assistant-context-item[data-extra="ckd-stage"],
+  .assistant-context-item[data-optional="last-meal"],
+  .assistant-context-item[data-optional="last-med"],
+  .assistant-context-item[data-expandable="warning"],
+  .assistant-context-item[data-expandable="recommendation"] {
+    display: none;
+  }
+
+  .assistant-context-expanded .assistant-appointments-list li:nth-child(n + 2) {
+    display: none;
+  }
 }
 
 .assistant-appointments {
