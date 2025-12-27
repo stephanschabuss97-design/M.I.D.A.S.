@@ -35,9 +35,9 @@ Current layout (from repo scan):
 - Intake UI lives in `index.html` under the Intake panel (IN/TAB).
 
 -------------------------------------------------------------------------------
-Phase 0 - Inventory and freeze (deterministic)
+Phase 0 - Inventory and freeze (deterministic) DONE
 
-0.1 Freeze the current file list
+0.1 Freeze the current file list DONE
 - Capture: `app/modules/capture/index.js`, `bp.js`, `body.js`, `lab.js`, `entry.js`
 - Activity: `app/modules/activity/index.js`
 - Medication: `app/modules/medication/index.js`
@@ -45,7 +45,7 @@ Phase 0 - Inventory and freeze (deterministic)
 - Hub: `app/modules/hub/index.js`, `app/styles/hub.css`, `index.html`
 - Intake helpers: `app/core/capture-globals.js`, `app/supabase/api/intake.js`
 
-0.2 List docs to update
+0.2 List docs to update DONE
 - Module overviews:
   - `docs/modules/Capture Module Overview.md`
   - `docs/modules/Activity Module Overview.md`
@@ -63,7 +63,7 @@ Phase 0 - Inventory and freeze (deterministic)
   - `docs/assistant/Assistant_Actions_Spec.md`
   - `docs/assistant/Assistant_Endpoint_Spec.md`
 
-0.3 Define "no break" checks (must still work)
+0.3 Define "no break" checks (must still work) DONE
 - Vitals panel saves (BP/Body/Lab/Training).
 - Intake panel saves (water/salt/protein).
 - Medication toggles (confirm/undo) and TAB CRUD.
@@ -109,13 +109,13 @@ Locked checklist (Phase 0 output):
   - Assistant: Text panel opens and renders.
 
 -------------------------------------------------------------------------------
-Phase 1 - Vitals Stack (merge capture + activity)
+Phase 1 - Vitals Stack (merge capture + activity) DONE
 
-1.1 Create folders
+1.1 Create folders DONE
 - `app/modules/vitals-stack/vitals/`
 - `app/modules/vitals-stack/activity/`
 
-1.2 Move capture logic into vitals
+1.2 Move capture logic into vitals DONE
 - Move files:
   - `app/modules/capture/index.js` -> `app/modules/vitals-stack/vitals/index.js`
   - `app/modules/capture/bp.js` -> `app/modules/vitals-stack/vitals/bp.js`
@@ -124,16 +124,16 @@ Phase 1 - Vitals Stack (merge capture + activity)
   - `app/modules/capture/entry.js` -> `app/modules/vitals-stack/vitals/entry.js`
 - Update any relative imports inside those files.
 
-1.3 Move activity module
+1.3 Move activity module DONE
 - `app/modules/activity/index.js` -> `app/modules/vitals-stack/activity/index.js`
 
-1.4 Update script tags in `index.html`
+1.4 Update script tags in `index.html` DONE
 - Replace old `app/modules/capture/*` and `app/modules/activity/index.js` paths.
 - Ensure load order remains the same as before.
 
-1.5 Update VAD/worklet paths only if Vitals references them (keep in Hub for now).
+1.5 Update VAD/worklet paths only if Vitals references them (keep in Hub for now). DONE
 
-Acceptance:
+Acceptance DONE:
 - Vitals panel (BP/Body/Lab/Training) still saves correctly.
 - No missing script errors in console.
 
