@@ -2351,7 +2351,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .assistant-context-extras,
-.assistant-context-optional,
 .assistant-context-expandable {
   display: flex;
   flex-direction: column;
@@ -2387,11 +2386,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     display: none;
   }
 
-  .assistant-context-item[data-optional="last-meal"],
-  .assistant-context-item[data-optional="last-med"] {
-    display: none;
-  }
-
   .assistant-context-item[data-expandable="recommendation"] {
     display: none;
   }
@@ -2403,20 +2397,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 
   .assistant-context:not(.assistant-context-expanded) .assistant-context-extras,
-  .assistant-context:not(.assistant-context-expanded) .assistant-context-optional,
-  .assistant-context:not(.assistant-context-expanded) .assistant-context-expandable {
+  .assistant-context:not(.assistant-context-expanded) .assistant-context-expandable,
+  .assistant-context:not(.assistant-context-expanded) .assistant-appointments {
     display: none;
   }
 
   .assistant-context .assistant-context-extras,
-  .assistant-context .assistant-context-optional,
   .assistant-context .assistant-context-expandable {
     gap: 8px;
   }
 
   .assistant-context-item[data-extra="ckd-stage"],
-  .assistant-context-item[data-optional="last-meal"],
-  .assistant-context-item[data-optional="last-med"],
   .assistant-context-item[data-expandable="warning"],
   .assistant-context-item[data-expandable="recommendation"] {
     display: none;

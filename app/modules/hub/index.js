@@ -1072,6 +1072,8 @@
     };
   };
 
+  const isAssistantDesktop = () => !panelPerfQuery?.matches;
+
   const updateAssistantPill = (key, text, isActive) => {
     const pill = assistantChatCtrl?.pills?.[key];
     if (!pill) return;
@@ -1080,10 +1082,11 @@
     else pill.root.classList.add('muted');
   };
 
-  const updateContextItem = (ref, text) => {
+  const updateContextItem = (ref, text, { placeholder = null, keepVisible = false } = {}) => {
     if (!ref) return false;
-    if (text) {
-      ref.value.textContent = text;
+    const resolved = text || (keepVisible ? placeholder : null);
+    if (resolved) {
+      ref.value.textContent = resolved;
       ref.root.removeAttribute('hidden');
       return true;
     }
@@ -1106,13 +1109,14 @@
   const renderAssistantContextExtras = (profile) => {
     const refs = assistantChatCtrl?.contextExtras;
     if (!refs?.container) return;
+    const keepVisible = isAssistantDesktop();
     let hasAny = false;
     const proteinText =
       formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
       formatTargetRange(profile?.protein_target, null, 'g');
-    if (updateContextItem(refs.proteinTarget, proteinText)) hasAny = true;
+    if (updateContextItem(refs.proteinTarget, proteinText, { keepVisible, placeholder: '-- g' })) hasAny = true;
     const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
-    if (updateContextItem(refs.ckdStage, ckdStage || null)) hasAny = true;
+    if (updateContextItem(refs.ckdStage, ckdStage || null, { keepVisible, placeholder: '--' })) hasAny = true;
     refs.container.hidden = !hasAny;
   };
 
@@ -1148,8 +1152,9 @@
       proteinRemaining = proteinTarget - proteinTotal;
       remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
     }
+    const keepVisible = isAssistantDesktop();
     const remainingText = remainingParts.length ? remainingParts.join(', ') : null;
-    const hasRemaining = updateContextItem(refs.remaining, remainingText);
+    const hasRemaining = updateContextItem(refs.remaining, remainingText, { keepVisible, placeholder: '--' });
     let warningText = null;
     if (saltRemaining != null && saltRemaining < 0) {
       warningText = 'Salz ueber Limit';
@@ -1419,7 +1424,6 @@
       return { root, value };
     };
     const contextExtras = panel.querySelector('#assistantContextExtras');
-    const contextOptional = panel.querySelector('#assistantContextOptional');
     const contextExpandable = panel.querySelector('#assistantContextExpandable');
     const buildContextValueRef = (wrap, attr, key, valueAttr) => {
       if (!wrap) return null;
@@ -1504,11 +1508,6 @@
         container: contextExtras,
         proteinTarget: buildContextValueRef(contextExtras, 'extra', 'protein-target', 'extra-value'),
         ckdStage: buildContextValueRef(contextExtras, 'extra', 'ckd-stage', 'extra-value'),
-      },
-      contextOptional: {
-        container: contextOptional,
-        lastMeal: buildContextValueRef(contextOptional, 'optional', 'last-meal', 'optional-value'),
-        lastMed: buildContextValueRef(contextOptional, 'optional', 'last-med', 'optional-value'),
       },
       contextExpandable: {
         container: contextExpandable,
