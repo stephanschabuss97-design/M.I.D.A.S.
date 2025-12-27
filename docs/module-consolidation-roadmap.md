@@ -72,6 +72,42 @@ Phase 0 - Inventory and freeze (deterministic)
 Deliverable:
 - Locked checklist of files + docs and baseline behaviors.
 
+Locked checklist (Phase 0 output):
+- Files (frozen set):
+  - `app/modules/capture/index.js`
+  - `app/modules/capture/bp.js`
+  - `app/modules/capture/body.js`
+  - `app/modules/capture/lab.js`
+  - `app/modules/capture/entry.js`
+  - `app/modules/activity/index.js`
+  - `app/modules/medication/index.js`
+  - `app/modules/trendpilot/`
+  - `app/modules/hub/index.js`
+  - `app/styles/hub.css`
+  - `index.html`
+  - `app/core/capture-globals.js`
+  - `app/supabase/api/intake.js`
+- Docs (to update later, frozen list):
+  - `docs/modules/Capture Module Overview.md`
+  - `docs/modules/Activity Module Overview.md`
+  - `docs/modules/Intake Module Overview.md`
+  - `docs/modules/Medication Module Overview.md`
+  - `docs/modules/Trendpilot Module Overview.md`
+  - `docs/modules/Hub Module Overview.md`
+  - `docs/modules/Doctor View Module Overview.md`
+  - `docs/assistant-stack-refactor-roadmap.md`
+  - `docs/assistant-multimodal-polish-roadmap.md`
+  - `docs/Voice Assistant roadmap.md`
+  - `docs/QA_CHECKS.md`
+  - `docs/carousel_integration.md`
+  - `docs/assistant/Assistant_Actions_Spec.md`
+  - `docs/assistant/Assistant_Endpoint_Spec.md`
+- Baseline behaviors (must still work after each phase):
+  - Vitals: BP/Body/Lab/Training save + reset.
+  - Intake: Water/Salt/Protein save + pills update.
+  - Medication: Confirm/Undo, low-stock ack, TAB CRUD.
+  - Assistant: Text panel opens and renders.
+
 -------------------------------------------------------------------------------
 Phase 1 - Vitals Stack (merge capture + activity)
 
