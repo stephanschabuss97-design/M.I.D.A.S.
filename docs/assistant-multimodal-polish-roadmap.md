@@ -299,7 +299,7 @@ Acceptance:
 - "Ja, bitte" returns a short, contextual meal idea.
 
 -------------------------------------------------------------------------------
-Phase 4 - Butler UI density rules (desktop/tablet/mobile)
+Phase 4 - Butler UI density rules (desktop/tablet/mobile) ✅ (done)
 
 4.1 Define data tiers (always vs optional vs expandable)
 - Always visible (all devices): water/salt/protein chips.

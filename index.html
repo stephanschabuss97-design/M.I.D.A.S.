@@ -810,9 +810,9 @@
           <div class="hub-intake-tab-panels">
             <div class="hub-intake-panel is-active" id="hubIntakePanelIn" data-intake-panel="in" role="tabpanel" aria-labelledby="intakeTabInBtn">
               <div class="hub-intake-form" id="cap-intake-wrap">
-                <div class="hub-intake-grid">
-              <label class="hub-input-card">
-                <span>Wasser (ml)</span>
+              <div class="hub-intake-grid intake-card-grid">
+              <label class="intake-card capture-card">
+                <span class="capture-card-label">Wasser (ml)</span>
                 <input
                   type="number"
                   id="cap-water-add"
@@ -850,22 +850,13 @@
                 </div>
               </label>
               <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
+              <div id="medLowStockBox" class="medication-low-stock" hidden></div>
+              <div id="medSafetyHint" class="medication-safety" hidden></div>
             </div>
             <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
             </div>
-            <section class="hub-intake-medications card-nested" aria-live="polite">
-              <header class="hub-intake-medications-header">
-                <div>
-                  <h3>Tablettenmanager</h3>
-                  <p class="muted small">Bestätige deine Medikamente für den gewählten Tag.</p>
-                </div>
-                <button type="button" class="btn ghost small" id="medDailyRefreshBtn">Aktualisieren</button>
-              </header>
-              <div id="medDailyList" class="medication-daily-list" aria-live="polite"></div>
-              <div id="medLowStockBox" class="medication-low-stock" hidden></div>
-              <div id="medSafetyHint" class="medication-safety" hidden></div>
-            </section>
+            
               </div>
             </div>
             <div class="hub-intake-panel" id="hubIntakePanelTab" data-intake-panel="tab" role="tabpanel" aria-labelledby="intakeTabTabBtn" aria-hidden="true" hidden>

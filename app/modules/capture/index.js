@@ -326,22 +326,21 @@
     }
     const items = meds
       .map((med) => {
-        const info = [];
-        if (Number.isFinite(med.stock_count)) info.push(`${med.stock_count} Stk.`);
-        if (Number.isFinite(med.days_left)) info.push(`${med.days_left} Tage übrig`);
-        const infoText = info.join(' • ') || '';
-        const takenTime = med.taken_at ? `Bestätigt ${formatMedTakenTime(med.taken_at)}` : 'Noch offen';
+        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage ?brig` : '';
+        const statusText = daysLeft || '';
+        const detailText = [med.ingredient, med.strength].filter(Boolean).join(' - ');
+        const takenLabel = formatMedTakenTime(med.taken_at);
         const state = med.taken ? 'on' : 'off';
-        const btnLabel = med.taken ? takenTime : 'Einnahme bestätigen';
+        const btnLabel = med.taken ? `Best?tigt ${takenLabel || ''}`.trim() : 'Einnahme best?tigen';
         return `
-          <article class="medication-daily-item ${med.low_stock ? 'is-low' : ''}">
-            <div class="medication-daily-meta">
-              <strong>${escapeHtml(med.name || 'Medikation')}</strong>
-              <span>${escapeHtml([med.ingredient, med.strength].filter(Boolean).join(' • ') || 'Keine Details')}</span>
-              ${infoText ? `<span>${escapeHtml(infoText)}</span>` : ''}
+          <article class="medication-card ${med.low_stock ? 'is-low' : ''}">
+            <div class="medication-card-header">
+              <h4 class="medication-card-title">${escapeHtml(med.name || 'Medikation')}</h4>
+              ${statusText ? `<span class="medication-card-status">${escapeHtml(statusText)}</span>` : ''}
             </div>
+            ${detailText ? `<p class="medication-card-meta small">${escapeHtml(detailText)}</p>` : ''}
             <button type="button"
-              class="med-toggle-btn ${state === 'on' ? 'is-on' : ''}"
+              class="btn primary"
               data-med-toggle="${escapeAttr(med.id || '')}"
               data-med-state="${state}"
               data-med-name="${escapeAttr(med.name || '')}"

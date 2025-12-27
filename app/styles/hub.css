@@ -1184,6 +1184,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   color: #ffd670;
 }
 
+.hub-intake-grid .medication-low-stock,
+.hub-intake-grid .medication-safety {
+  grid-column: 1 / -1;
+}
+
 .medication-low-stock strong {
   display: block;
   margin-bottom: 4px;
