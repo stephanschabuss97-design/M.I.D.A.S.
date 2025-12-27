@@ -1579,6 +1579,7 @@
       let mealFollowupMessageId = null;
       let mealFollowupSnapshot = null;
       let mealFollowupMeta = null;
+      let mealFollowupRequestInFlight = false;
       const mealFollowupSeenKeys = new Set();
 
       const setMealFollowupSnapshot = (snapshot) => {
@@ -1659,6 +1660,70 @@
         getSnapshot: () => mealFollowupSnapshot,
         getMeta: () => mealFollowupMeta,
       };
+
+      const buildMealFollowupPromptText = (detail = {}) => {
+        const payload = {
+          followup_key: detail.followup_key || null,
+          saved_at: detail.saved_at || null,
+          context: detail.context || null,
+          meta: detail.meta || { followup_version: 1 },
+        };
+        const payloadJson = JSON.stringify(payload);
+        return [
+          'System: Du bist ein hilfreicher Ernaehrungsassistent fuer kurze Essensideen.',
+          'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
+          'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
+          'Constraints:',
+          '- 1-2 kurze Vorschlaege, insgesamt 2-4 Saetze.',
+          '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
+          '- Beruecksichtige appointment_type und time_slot wenn vorhanden.',
+          '- Ton: praktisch, freundlich, knapp.',
+          '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
+          'Follow-up payload:',
+          payloadJson,
+        ].join('\n');
+      };
+
+      const requestMealFollowupSuggestion = async (detail) => {
+        if (!detail || !detail.context) return;
+        if (mealFollowupRequestInFlight) return;
+        mealFollowupRequestInFlight = true;
+        try {
+          const promptText = buildMealFollowupPromptText(detail);
+          const payload = {
+            session_id: assistantChatCtrl?.sessionId || `followup-${Date.now()}`,
+            mode: 'text',
+            text: promptText,
+            messages: [{ role: 'user', content: promptText }],
+            context: detail.context || null,
+            meta: {
+              followup_key: detail.followup_key || null,
+              saved_at: detail.saved_at || null,
+              followup_version: detail.meta?.followup_version || 1,
+            },
+          };
+          const headers = await buildFunctionJsonHeaders();
+          const response = await fetch(MIDAS_ENDPOINTS.assistant, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) return;
+          const data = await response.json().catch(() => ({}));
+          const reply = (data?.reply || '').trim();
+          if (reply) {
+            appendAssistantMessage('assistant', reply);
+          }
+        } catch (_) {
+          // silent skip on failure
+        } finally {
+          mealFollowupRequestInFlight = false;
+        }
+      };
+
+      global.addEventListener('assistant:meal-followup-request', (event) => {
+        requestMealFollowupSuggestion(event?.detail);
+      });
 
       doc?.addEventListener('profile:changed', (event) => {
         assistantProfileSnapshot =

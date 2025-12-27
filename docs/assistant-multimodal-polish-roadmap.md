@@ -213,7 +213,7 @@ Current situation (Phase 3):
 - On "Ja, bitte": emits `assistant:meal-followup-request` with current context payload (no generation yet).
 - On "Nein": prompt dismisses and no retry.
 
-3.2 Context bundle (data inputs)
+3.2 Context bundle (data inputs) ✅ (done)
 - Intake totals: salt + protein (and water if available).
 - Next appointment: title + date/time + note (if any).
 - Profile: CKD stage (optional) + protein/salt targets (optional).
@@ -269,6 +269,24 @@ Substeps:
 - Output format (suggested):
   - "Vorschlag: <meal idea>" + short rationale in one sentence.
   - Optional alternative if appointment context suggests a different focus.
+Substeps:
+- 3.3.1 Prompt text (model instruction)
+  - Input: follow-up payload (context + appointment_type + time_slot).
+  - Output: 1-2 short suggestions, 2-4 sentences total, no medical claims.
+  - Draft prompt (DE):
+    - System: You are a helpful nutrition assistant for CKD-aware meal ideas. Use only the provided context snapshot. Do not give medical advice.
+    - User: Generate a short meal suggestion based on the follow-up payload below.
+      Constraints:
+      - 1-2 short suggestions, 2-4 sentences total.
+      - Use intake totals (salt/protein/water) to balance the idea.
+      - Consider appointment_type and time_slot when present.
+      - Keep tone practical, friendly, and concise.
+      - Avoid medical claims, diagnostics, or treatment advice.
+      Follow-up payload:
+      {followup_payload_json}
+- 3.3.2 Output rendering
+  - Render the suggestion as a normal assistant message (no confirm card).
+  - On failure (network/LLM error), skip silently without retry.
 
 3.4 UI response flow
 - Show the suggestion as a normal assistant message (not a confirm card).
