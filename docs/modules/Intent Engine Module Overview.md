@@ -6,6 +6,7 @@ Kurze Einordnung:
 - Zweck: schnelle, lokale Befehls-Erkennung fuer Text (optional Voice) ohne LLM-Call.
 - Rolle innerhalb von MIDAS: Fast-Path vor dem Assistant, spart Tokens und Zeit.
 - Abgrenzung: kein Ersatz fuer Assistant-LLM, nur intent parsing + routing.
+- Status: geplant, aktuell kein Intent-Modul im Repo (nur Dokumentation).
 
 ---
 
@@ -21,10 +22,10 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/assistant-stack/intent/index.js` | Orchestrierung / Public API |
-| `app/modules/assistant-stack/intent/rules.js` | Regelwerk (Regex/Parser) |
-| `app/modules/assistant-stack/intent/normalizers.js` | Einheiten/Parsing Helpers |
-| `app/modules/assistant-stack/assistant/actions.js` | Ziel-Actions (dispatch) |
+| `app/modules/assistant-stack/intent/index.js` | Geplant (nicht im Repo). |
+| `app/modules/assistant-stack/intent/rules.js` | Geplant (nicht im Repo). |
+| `app/modules/assistant-stack/intent/normalizers.js` | Geplant (nicht im Repo). |
+| `app/modules/assistant-stack/assistant/actions.js` | Ziel-Actions (dispatch). |
 | `app/modules/hub/index.js` | Voice/Text Eingang + Routing |
 | `docs/assistant-multimodal-polish-roadmap.md` | Umsetzungsschritte |
 
@@ -106,7 +107,7 @@ Kurze Einordnung:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: geplant.
+- Status: geplant (kein Modul im Repo).
 - Dependencies (hard): `app/modules/assistant-stack/assistant/actions.js`, Hub/Assistant.
 - Dependencies (soft): Profile/Context fuer Defaults.
 - Risks: Falsche Parsing-Regeln, falsche Werteingaben.

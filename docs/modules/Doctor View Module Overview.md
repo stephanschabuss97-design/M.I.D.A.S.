@@ -19,7 +19,7 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/doctor/index.js` | Render-Flow, Tabs, Trendpilot, Reports Inbox |
+| `app/modules/doctor-stack/doctor/index.js` | Render-Flow, Tabs, Trendpilot, Reports Inbox |
 | `app/styles/doctor.css` | Layout/Stil der Arzt-Ansicht |
 | `app/modules/hub/index.js` | Orbit/Panel-Open + Unlock-Flow |
 | `app/supabase/api/vitals.js` | Tagesdaten (BP/Body) |

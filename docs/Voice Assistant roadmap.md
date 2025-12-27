@@ -64,7 +64,7 @@ app/supabase/auth/core.js (lines 291-320). OK
 app/modules/hub/index.js (lines 1500-1504). OK
 - Der Hub initialisiert aktuell sofort nach DOM ready. Schieb activateHubLayout() hinter AppModules.bootFlow.whenStage('INIT_UI', activateHubLayout) und fÃ¼ge body[data-boot-stage!="IDLE"]-Checks in allen Orbit-Klick-Handlern hinzu (so bleiben Buttons inaktiv solange Stage < INIT_UI). Optional: BootFlow liefert lockReason â†’ Zeige im Panel-Header â€žHub lÃ¤dtâ€¦â€œ.
 
-app/modules/doctor/index.js & app/modules/intake-stack/intake/index.js. OK
+app/modules/doctor-stack/doctor/index.js & app/modules/intake-stack/intake/index.js. OK
 - Beide Module greifen beim Laden bereits auf DOM zu. ErgÃ¤nze am Anfang Guard-Code if (!AppModules.bootFlow?.isStageAtLeast('INIT_MODULES')) return; fÃ¼r Handler, die vom Boot-Overlay aus ausgelÃ¶st werden kÃ¶nnten, und registriere ihre globalen window.AppModules.* APIs erst nach INIT_CORE. Damit kollidiert der Stage-Lock nicht mit Legacy-Tab-Aufrufen.
 
 app/core/config.js & assets/js/ui.js.OK
@@ -107,7 +107,7 @@ assets/js/main.js (zweiter Punkt) OK
 app/core/diag.js OK
 - EnthÃ¤lt Fallback console.warn / console.info, wenn Diagnostics off sind. Wir sollten dokumentieren, dass das bewusst so bleibt, aber im Cleanup evtl. ein einheitliches Flag (if (global.DIAGNOSTICS_ENABLED)) nutzen und den Rest stumm schalten.
 
-app/modules/intake-stack/intake/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - Beide Dateien haben neue Boot-Guards. FÃ¼r Phaseâ€¯0.2 mÃ¼ssen wir prÃ¼fen, ob es noch alte, ungenutzte Funktionen/Listener gibt (z.â€¯B. bindLifestyle, resetCapturePanels), die nie aufgerufen werden â€“ offensichtliche Dead-Ends rausnehmen oder markieren.
 - AuÃŸerdem sicherstellen, dass window.AppModules.capture/doctor keine Legacy-Globals (global.renderDoctor) mehr doppelt registrieren â€“ das war die Quelle vergangener Warnungen.
 
@@ -170,7 +170,7 @@ app/modules/hub/index.js OK
 - Debug-Ausgaben ([hub:debug] assistant-chat setup...) feuern in Bl?cken bei jedem init. Halte sie hinter einem Flag oder logge nur beim ersten Setup.
 - Click-/State-Logs sollen nur Benutzeraktionen (Needle, Panels) erfassen, nicht Hintergrund-Retries.
 
-app/modules/intake-stack/intake/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - Boot- und Resume-Hooks rufen 
 efreshCaptureIntake/
 enderDoctor mehrfach; stelle sicher, dass [capture] loadIntakeToday start/done nur ausgegeben wird, wenn der Request tats?chlich anl?uft (kein zweites Mal mit identischem Reason).
@@ -191,7 +191,7 @@ assets/js/main.js OK
 app/modules/hub/index.js OK
 - hub debug spam ([hub:debug] assistant-chat â€¦). Wrap all diagnostic chatter behind a runtime flag (e.g. AppModules.config?.LOG_HUB_DEBUG). Only user-facing actions (needle click, tab switch) should hit the touch log; retries/auto-setup should write to diag only when failing.
 
-app/modules/intake-stack/intake/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - they still log every refresh start/done. Add dedupe caches keyed by {reason, day} and emit a single [capture] refresh reason=boot â€¦ line with (xN) counters when the same refresh fires again before finishing. Similar treatment for doctor view refresh/render logs.
 
 assets/js/data-local.js & app/supabase/auth/core.js OK
@@ -358,7 +358,7 @@ Nur noch **ein** Hub-Entry fÃ¼r Blutdruck/KÃ¶rper, aber schneller Einstieg i
 
 * Hub-Layout (`app/modules/hub/index.js` oder Hub-Konfiguration).
 * Vitals-/Body-Input-Panel (Capture/Vitals-Module, z. B. `app/modules/vitals-stack/vitals/*`).
-* Doctor-View (`app/modules/doctor/index.js` + ggf. Charts-Modul).
+* Doctor-View (`app/modules/doctor-stack/doctor/index.js` + ggf. Charts-Modul).
 
 **Anpassungen:**
 
@@ -410,7 +410,7 @@ Zwei neue Buttons im Panel-Header oder oberhalb der Eingabefelder:
 â€žDiagrammâ€œ â†’ ebenfalls Guard, setzt ein Flag bzw. Ã¼bergibt einen Modus, damit Doctor-View direkt im Chart startet.
 Logik fÃ¼r die Button-Actions (z.â€¯B. AppModules.capture?.openDoctorView({ startMode: 'list' | 'chart' })).
 
-Doctor-Module (app/modules/doctor/index.js + Chartmodul) OK
+Doctor-Module (app/modules/doctor-stack/doctor/index.js + Chartmodul) OK
 Ã–ffnen via Parameter: wenn startMode === 'chart', nach Unlock sofort das Chart zeigen.
 SchlieÃŸen (X) eines Chart-Panels sollte zunÃ¤chst die Doctor-Ansicht zeigen (nicht direkt zum Hub springen), sodass der Nutzer im â€žmedizinischen Raumâ€œ bleibt.
 

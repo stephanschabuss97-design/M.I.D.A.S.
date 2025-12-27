@@ -20,7 +20,7 @@ Kurze Einordnung:
 | Datei | Zweck |
 |------|------|
 | `app/modules/profile/index.js` | UI-Bindung, Supabase Sync/Upsert, `profile:changed` Event |
-| `app/modules/profile/*` | (derzeit leer) â€“ Erweiterungspotenzial fÃ¼r Helpers |
+| `app/modules/profile/` | (currently only index.js; helpers TBD) â€“ Erweiterungspotenzial fÃ¼r Helpers |
 | `app/modules/hub/index.js` | Ã–ffnet Panel via Orbit, konsumiert Snapshot im Assistant |
 | `app/modules/intake-stack/medication/index.js` | Liefert Tagesliste (`loadMedicationForDay`) fÃ¼r das Profil-Snapshot |
 | `app/styles/hub.css` | Formular-/Card-Styling |

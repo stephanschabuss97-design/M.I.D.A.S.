@@ -19,7 +19,7 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/vitals-stack/vitals/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
+| `app/modules/intake-stack/intake/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
 | `app/core/capture-globals.js` | Shared State, Helper (`softWarnRange`, `setBusy`, Date Guards) |
 | `app/supabase/api/intake.js` | RPC Wrapper (`loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`) |
 | `app/modules/hub/index.js` | ?ffnet Intake Panel, verschiebt Status-Pills in den Hub-Header |

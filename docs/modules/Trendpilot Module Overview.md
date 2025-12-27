@@ -22,7 +22,7 @@ Kurze Einordnung:
 | `app/modules/vitals-stack/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
 | `app/modules/vitals-stack/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
 | `app/supabase/api/system-comments.js` | Persistenz fuer `system_comment` (Ack/Status) |
-| `app/modules/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |
+| `app/modules/doctor-stack/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |
 | `app/modules/vitals-stack/vitals/index.js` | Capture-Pill + `trendpilot:latest` Hook |
 | `app/modules/doctor-stack/charts/index.js` | Trendpilot-Bands im BP-Chart |
 | `app/styles/doctor.css` | Trendpilot-Block Styling |

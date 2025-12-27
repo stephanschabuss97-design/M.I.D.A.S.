@@ -121,7 +121,7 @@
     <div class="content">
       <section class="card doctor-panel">
         <header class="doctor-inbox-header small u-mb-4">
-          <div id="doctorInboxRange">Zeitraum: â€“</div>
+          <div id="doctorInboxRange">Zeitraum: -</div>
           <div class="doctor-inbox-actions">
             <div class="muted" id="doctorInboxCount"></div>
             <button class="btn ghost" type="button" id="doctorInboxNewReportBtn">
@@ -141,7 +141,7 @@
           <button class="btn ghost" type="button" data-report-filter="range_report" aria-selected="false">Arzt-Berichte</button>
         </div>
         <div class="doctor-inbox" id="doctorInboxList">
-          <div class="small u-doctor-placeholder">Monatsberichte werden geladen â€¦</div>
+          <div class="small u-doctor-placeholder">Monatsberichte werden geladen ...</div>
         </div>
       </section>
     </div>
@@ -1397,6 +1397,8 @@
   <script src="assets/js/data-local.js"></script>
   <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/index.js -->
   <script src="app/modules/vitals-stack/vitals/index.js"></script>
+  <!-- @refactor: Phase 9 - app/modules/vitals-stack/activity/index.js -->
+  <script src="app/modules/vitals-stack/activity/index.js"></script>
   <!-- @refactor: Phase 2 - app/modules/intake-stack/intake/index.js -->
   <script src="app/modules/intake-stack/intake/index.js"></script>
   <!-- Shared capture helpers -->
@@ -1419,8 +1421,8 @@
   <script src="assets/js/ui-tabs.js"></script>
   <!-- @refactor: moved to app/modules/vitals-stack/trendpilot/index.js -->
   <script src="app/modules/vitals-stack/trendpilot/index.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/doctor/index.js -->
-  <script src="app/modules/doctor/index.js"></script>
+  <!-- @refactor: Phase 10 - app/modules/doctor-stack/doctor/index.js -->
+  <script src="app/modules/doctor-stack/doctor/index.js"></script>
   <!-- @refactor: Phase 9 - app/modules/doctor-stack/charts/index.js -->
   <script src="app/modules/doctor-stack/charts/index.js"></script>
   <script src="assets/js/main.js"></script>
@@ -1513,7 +1515,7 @@
     - DATA ACCESS (REST/RPC) -> #SUBMODULES: 30, #@extract: 1, Exports:[deleteRemote, loadIntakeToday, saveIntakeTotals, saveIntakeTotalsRpc, fetchDailyOverview, deleteRemoteDay]
     - APPOINTMENTS -> #SUBMODULES: 0, #@extract: 12, Exports:[refreshAppointments, handleAppointmentSave, handleAppointmentDone, bindAppointmentsPanel, setAppointmentBadge] (moved to assets/js/appointments.js)
     - CAPTURE (Intake) - Status & RPC Hooks -> #SUBMODULES: 0, #@extract: 7, Exports:[clearCaptureIntakeInputs, setCaptureIntakeDisabled, prepareIntakeStatusHeader, updateCaptureIntakeStatus, handleCaptureIntake] (moved to app/modules/intake-stack/intake/index.js)
-    - DOCTOR VIEW - Logic -> #SUBMODULES: 3, #@extract: 1, Exports:[renderDoctor, renderDoctorDay, exportDoctorJson] (moved to app/modules/doctor/index.js)
+    - DOCTOR VIEW - Logic -> #SUBMODULES: 3, #@extract: 1, Exports:[renderDoctor, renderDoctorDay, exportDoctorJson] (moved to app/modules/doctor-stack/doctor/index.js)
     - CHARTS (SVG/Canvas) -> #SUBMODULES: 15, #@extract: 3, Exports:[chartPanel]
     - UI / ROUTING / VIEWS - Navigation (Tabs/Resume/Focus) -> #SUBMODULES: 1, #@extract: 1, Exports:[setTab, bindTabs]
     - BP (Blood Pressure) - Validierung -> #SUBMODULES: 0, #@extract: 5, Exports:[requiresBpComment, updateBpCommentWarnings, resetBpPanel] (moved to app/modules/vitals-stack/vitals/bp.js)

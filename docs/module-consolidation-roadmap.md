@@ -137,6 +137,7 @@ Phase 1 - Vitals Stack (merge capture + activity) DONE
 1.4 Update script tags in `index.html` DONE
 - Replace old module paths for vitals and activity.
 - Ensure load order remains the same as before.
+- Ensure `app/modules/vitals-stack/activity/index.js` is loaded as a standalone script.
 
 1.5 Update VAD/worklet paths only if Vitals references them (keep in Hub for now). DONE
 
@@ -314,6 +315,34 @@ Phase 9 - Move Charts into Doctor Stack DONE
 9.6 Smoke check DONE
 - Doctor view loads and charts render.
 - Trendpilot overlays still appear in charts.
+
+-------------------------------------------------------------------------------
+Phase 10 - Move Doctor Module into Doctor Stack
+
+10.1 Create folder
+- `app/modules/doctor-stack/doctor/`
+
+10.2 Move Doctor module DONE
+- Move `app/modules/doctor/*` -> `app/modules/doctor-stack/doctor/`
+- Update any relative imports inside moved files.
+
+10.3 Update script tags DONE
+- Replace `app/modules/doctor/` paths in `index.html` with
+  `app/modules/doctor-stack/doctor/`.
+- Keep load order unchanged.
+
+10.4 Update references DONE
+- Search for `app/modules/doctor/` in the repo and update to the new path.
+- Update `docs/modules/Doctor View Module Overview.md`.
+- Update any roadmaps/specs that mention doctor paths.
+
+10.5 Cleanup DONE
+- Remove the empty `app/modules/doctor/` folder.
+- Confirm no runtime dependency on the old path.
+
+10.6 Smoke check
+- Doctor view loads and renders tables.
+- Actions (export, inbox, filters) still work.
 
 Definition of Done:
 - New stack structure in place.

@@ -22,7 +22,7 @@ Kurze Einordnung:
 | `app/modules/doctor-stack/charts/index.js` | Chart-Controller, Rendering, Tooltip, KPIs |
 | `app/modules/doctor-stack/charts/chart.css` | Chart Styles (Panel, Tooltip, Bands) |
 | `assets/js/main.js` | Trigger/Refresh Integration |
-| `app/modules/doctor/index.js` | Doctor-Panel oeffnet Chart-Panel |
+| `app/modules/doctor-stack/doctor/index.js` | Doctor-Panel oeffnet Chart-Panel |
 | `app/modules/vitals-stack/trendpilot/index.js` | Trendpilot-Bands fuer BP-Chart |
 
 ---

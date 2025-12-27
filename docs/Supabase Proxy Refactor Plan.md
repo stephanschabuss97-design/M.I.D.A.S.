@@ -138,7 +138,7 @@ Find and migrate all consumers that still rely on proxy-specific behavior or win
 
    **Status (2025-11-24): Current consumers of the legacy globals**
    - `assets/js/main.js:18-43` owns the shared boot helpers (`getSupabaseApi`, `createSupabaseFn`, `waitForSupabaseApi`) and now resolves everything exclusively via `window.AppModules.supabase`.
-   - `app/modules/vitals-stack/trendpilot/index.js`, `app/modules/hub/index.js`, `app/modules/doctor/index.js` und `app/modules/doctor-stack/charts/index.js` were updated to drop `global.SupabaseAPI` access; they only read the API surface from `AppModules.supabase`.
+   - `app/modules/vitals-stack/trendpilot/index.js`, `app/modules/hub/index.js`, `app/modules/doctor-stack/doctor/index.js` und `app/modules/doctor-stack/charts/index.js` were updated to drop `global.SupabaseAPI` access; they only read the API surface from `AppModules.supabase`.
    - No direct usages of `window.loadIntakeToday`, `window.saveIntakeTotals`, `window.requireSession`, etc. were found outside documentation. The real-world consumers go through the Supabase API object rather than individual globals.
 
 2. **Identify state-level globals**

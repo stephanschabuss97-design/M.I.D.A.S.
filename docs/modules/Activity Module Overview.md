@@ -23,7 +23,7 @@ Kurze Einordnung:
 | `assets/js/main.js` | UI-Handler, Validierung, Save/Reset-Flow |
 | `index.html` | Training-Tab + Form im Vitals-Panel |
 | `app/styles/hub.css` | Training-Panel Layout |
-| `app/modules/doctor/index.js` | Arztansicht: Training-Tab + Reports Inbox |
+| `app/modules/doctor-stack/doctor/index.js` | Arztansicht: Training-Tab + Reports Inbox |
 | `app/styles/doctor.css` | Training-Tab Layout in Arztansicht |
 | `sql/13_Activity_Event.sql` | Typ-Constraint, View, RPCs |
 | `docs/Training module spec.md` | Spezifikation & Roadmap |

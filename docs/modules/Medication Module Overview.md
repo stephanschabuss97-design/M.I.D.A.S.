@@ -2,8 +2,8 @@
 
 Kurze Einordnung:
 - Zweck: Tablettenmanager im Intake-Panel (Daily Toggles) und TAB-Panel (Medikationsverwaltung).
-- Rolle: Ergänzt Capture um pharmakologische Daten; liefert Events für andere Module.
-- Abgrenzung: Eigenständiges Modul; Capture konsumiert es nur über Events/RPCs.
+- Rolle: Ergänzt Intake um pharmakologische Daten; liefert Events für andere Module.
+- Abgrenzung: Eigenständiges Modul; Intake konsumiert es nur über Events/RPCs.
 
 ---
 
@@ -20,7 +20,7 @@ Kurze Einordnung:
 | Datei | Zweck |
 |------|------|
 | `app/modules/intake-stack/medication/index.js` | Client-API, RPC Loader, Cache, TAB-UI. |
-| `app/modules/vitals-stack/vitals/index.js` | IN-Toggles, Low-Stock Box, Safety-Hinweis (nutzt `AppModules.medication`). |
+| `app/modules/intake-stack/intake/index.js` | IN-Toggles, Low-Stock Box, Safety-Hinweis (nutzt `AppModules.medication`). |
 | `app/styles/hub.css` | Layout/Styles Tablettenmanager. |
 | `sql/12_Medication.sql` | Tabellen + RPCs (`med_list`, `med_upsert`, `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`, `med_ack_low_stock`, `med_set_active`, `med_delete`). |
 | `docs/Medication Management Module Spec.md` | Spezifikation & Roadmap. |
@@ -41,9 +41,9 @@ Kurze Einordnung:
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
-- Modul lädt automatisch über `<script src="app/modules/intake-stack/medication/index.js">`.
+- Modul lädt automatisch über `app/modules/intake-stack/medication/index.js` (Script-Tag).
 - Aktiv sobald Supabase Auth Stage ≥ INIT_MODULES.
-- Capture subscribe auf `medication:changed`.
+- Intake subscribe auf `medication:changed`.
 
 ### 4.2 User-Trigger
 - IN-Tab Buttons (`med-toggle-btn`, Low-Stock Ack, Safety Goto).
@@ -64,7 +64,7 @@ Kurze Einordnung:
 
 ## 5. UI-Integration
 
-- IN-Panel (Capture) unter „Tablettenmanager“.
+- IN-Panel (Intake) unter „Tablettenmanager“.
 - TAB-Panel (Intake Subtab „TAB“) mit Formular + Kartenliste.
 - Low-Stock-Box + Safety-Hinweis nur sichtbar, wenn Daten vorhanden.
 
@@ -89,7 +89,7 @@ Kurze Einordnung:
 ## 8. Events & Integration Points
 
 - Custom Event `medication:changed { reason, dayIso, data? }`.
-- Capture reagiert (IN), Profil-Änderungen triggen Low-Stock-Kontakt Update.
+- Intake reagiert (IN), Profil-Änderungen triggen Low-Stock-Kontakt Update.
 - `AppModules.medication` exportiert API für andere Module (z. B. Trendpilot).
 
 ---

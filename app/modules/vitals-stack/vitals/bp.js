@@ -161,7 +161,7 @@ const getCommentElementUnsafe = (normalizedCtx) => {
     try {
       diag.add?.(`[bp] invalid context "${which}": ${err?.message || err}`);
     } catch (_) { /* noop */ }
-    uiError?.('UngÃ¼ltiger Messkontext â€“ bitte morgens oder abends auswÃ¤hlen.');
+    uiError?.('Ung\u00fcltiger Messkontext \u2013 bitte morgens oder abends ausw\u00e4hlen.');
     return false;
   }
   const date = $("#date").value || todayStr();
