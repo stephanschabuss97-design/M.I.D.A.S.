@@ -78,7 +78,7 @@
     </header>
     <div class="content">
       <div class="controls">
-        <select id="metricSel" class="half compact" aria-label="Messgrösse auswaehlen">
+        <select id="metricSel" class="half compact" aria-label="Messgrösse auswählen">
           <option value="bp">Blutdruck (Sys/Dia)</option>
           <option value="weight">Körper</option>
         </select>
@@ -464,10 +464,6 @@
                 <span class="label">Warnung</span>
                 <span class="value" data-expandable-value>--</span>
               </div>
-              <div class="assistant-context-item" data-expandable="recommendation" hidden>
-                <span class="label">Empfehlung</span>
-                <span class="value" data-expandable-value>--</span>
-              </div>
             </div>
           </section>
 
@@ -791,7 +787,7 @@
     >
       <div class="hub-panel-scroll">
         <header class="hub-panel-header">
-          <h2 id="hubIntakeTitle">Fluessigkeit & Intake</h2>
+          <h2 id="hubIntakeTitle">Flüssigkeit & Intake</h2>
           <button
             type="button"
             class="hub-panel-close"
@@ -851,7 +847,6 @@
               </label>
               <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
               <div id="medLowStockBox" class="medication-low-stock" hidden></div>
-              <div id="medSafetyHint" class="medication-safety" hidden></div>
             </div>
             <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
@@ -1020,7 +1015,7 @@
                     aria-label="Datum waehlen"
                   >
                 </div>
-                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen fuer Arztbereich">
+                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen für Arztbereich">
                   <button class="btn ghost" id="vitalsDoctorBtn" type="button">
                     Arzt-Ansicht
                   </button>
@@ -1391,7 +1386,7 @@
   <script src="app/core/utils.js"></script>
   <!-- @refactor: moved to assets/js/format.js -->
   <script src="assets/js/format.js"></script>
-  <!-- @refactor: Phase 2 � app/core/capture-globals.js -->
+  <!-- @refactor: Phase 2 app/core/capture-globals.js -->
   <script src="app/core/capture-globals.js"></script>
   <!-- @refactor: moved to assets/js/data-local.js -->
   <script src="assets/js/data-local.js"></script>
@@ -1488,7 +1483,7 @@
           Passkey einrichten
         </button>
         <button class="btn ghost u-w100-mt6" id="setPinBtn" type="button">
-          PIN setzen/aendern
+          PIN setzen/ändern
         </button>
       </div>
       <button class="btn ghost u-w100-mt8" id="lockCancelBtn" type="button">

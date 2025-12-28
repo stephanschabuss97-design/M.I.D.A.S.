@@ -28,7 +28,7 @@
     /alles erledigt/i,
     /nein[, ]?(alles )?(erledigt|gut|fertig)/i,
     /stop(p)?/i,
-    /tsch[Ç¬u]ss/i,
+    /tschüss/i,
     /ciao/i,
 
     // --- Neue, fÇ¬r dich typische Varianten ---
@@ -63,8 +63,8 @@
     /ja, danke dir/i,
     /ja passt/i,
     /ja danke passt/i,
-    /fÇ¬rs erste passts/i,
-    /fÇ¬r jetzt passts/i,
+    /fürs erste passts/i,
+    /für jetzt passts/i,
     /alles gut danke/i,
     /nein passt eh/i,
     /ne passt/i,

@@ -62,6 +62,7 @@ Kurze Einordnung:
 - Vision: Foto bleibt Draft bis "Senden"; Upload -> `/api/midas-vision` -> Ergebnis im Chat.
 - Actions laufen ueber `allowed-actions` und `assistant/actions`.
 - Follow-up: Nach erfolgreichem `intake_save` fragt der Assistant einmal nach einer Essensidee und ruft bei "Ja" den Text-Endpoint mit einem Follow-up Prompt auf.
+- Profil/Context: Beim Panel-Open wird der Kontext aktualisiert; fehlende Profilwerte werden lazy nachgeladen.
 
 ### 4.4 Persistenz
 - Keine direkte Persistenz.
@@ -72,7 +73,7 @@ Kurze Einordnung:
 ## 5. UI-Integration
 
 - Panel: `data-hub-panel="assistant-text"` in `index.html`.
-- Kontext: Pills (Wasser/Salz/Protein), Kontext-Extras (Protein-Ziel, CKD), Termine, Expandable (Restbudget/Warnung/Empfehlung).
+- Kontext: Pills (Wasser/Salz/Protein), Kontext-Extras (Protein-Ziel, CKD), Termine, Expandable (Restbudget/Warnung).
 - Mobile: "Mehr/Weniger" Toggle blendet Kontext-Bloecke ein/aus.
 - Suggest-Card (Confirm/Reject) fuer Assistant-Aktionen.
 

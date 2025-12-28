@@ -20,7 +20,7 @@ Kurze Einordnung:
 | Datei | Zweck |
 |------|------|
 | `app/modules/intake-stack/medication/index.js` | Client-API, RPC Loader, Cache, TAB-UI. |
-| `app/modules/intake-stack/intake/index.js` | IN-Toggles, Low-Stock Box, Safety-Hinweis (nutzt `AppModules.medication`). |
+| `app/modules/intake-stack/intake/index.js` | IN-Toggles, Low-Stock Box (nutzt `AppModules.medication`). |
 | `app/styles/hub.css` | Layout/Styles Tablettenmanager. |
 | `sql/12_Medication.sql` | Tabellen + RPCs (`med_list`, `med_upsert`, `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`, `med_ack_low_stock`, `med_set_active`, `med_delete`). |
 | `docs/Medication Management Module Spec.md` | Spezifikation & Roadmap. |
@@ -46,14 +46,13 @@ Kurze Einordnung:
 - Intake subscribe auf `medication:changed`.
 
 ### 4.2 User-Trigger
-- IN-Tab Buttons (`med-toggle-btn`, Low-Stock Ack, Safety Goto).
+- IN-Tab Buttons (`med-toggle-btn`, Low-Stock Ack).
 - TAB-Formular Submit/Reset.
 - Kartenaktionen: Restock, Set Stock, Toggle Active, Delete.
 
 ### 4.3 Verarbeitung
 - Client-Validierungen (Name Pflicht, Delta ≠ 0, Stock ≥ 0).
 - Cache & Events sichern, dass UI konsistent bleibt.
-- Safety-Berechnung: Vortag laden, `med_taken` prüfen.
 
 ### 4.4 Persistenz
 - RPCs schreiben in `health_medications` & `health_medication_doses`.
@@ -66,7 +65,7 @@ Kurze Einordnung:
 
 - IN-Panel (Intake) unter „Tablettenmanager“.
 - TAB-Panel (Intake Subtab „TAB“) mit Formular + Kartenliste.
-- Low-Stock-Box + Safety-Hinweis nur sichtbar, wenn Daten vorhanden.
+- Low-Stock-Box sichtbar, wenn Daten vorhanden.
 
 ---
 
@@ -80,7 +79,7 @@ Kurze Einordnung:
 ## 7. Fehler- & Diagnoseverhalten
 
 - Typische Fehler: Nicht authentifiziert, RPC schlägt fehl, fehlende Arzt-Mail.
-- Logging: `[capture:med] refresh/confirm/undo/ack/safety` in diag.
+- Logging: `[capture:med] refresh/confirm/undo/ack` in diag.
 - Fallback: Placeholder-Texte, Buttons disabled, kein Silent Failure.
 - Fehlende Daten → IN zeigt Hinweis „Bitte anmelden…“ oder „Keine Daten vorhanden“.
 
@@ -112,7 +111,7 @@ Kurze Einordnung:
 ## 11. QA-Checkliste
 
 - Siehe `docs/QA_CHECKS.md` Phase E (Smoke/Sanity/Regression).
-- Fokus: Toggles, Low-Stock Box, Safety, TAB CRUD, Kartenaktionen, Logging.
+- Fokus: Toggles, Low-Stock Box, TAB CRUD, Kartenaktionen, Logging.
 
 ---
 

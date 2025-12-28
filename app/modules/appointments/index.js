@@ -336,6 +336,7 @@
       .map((item) => ({
         id: item.id,
         title: item.title,
+        start_at: item.start_at || null,
         date: item.date,
         time: item.time,
         location: item.location,

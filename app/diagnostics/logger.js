@@ -1,9 +1,9 @@
 'use strict';
 /**
  * MODULE: diagnostics/logger.js
- * Description: Leichtgewichtiger Logger f�r das neue Diagnostics-Layer; sammelt Events, bevor die UI das neue Modul konsumiert.
+ * Description: Leichtgewichtiger Logger für das neue Diagnostics-Layer; sammelt Events, bevor die UI das neue Modul konsumiert.
  * Submodules:
- *  - buffer setup (Ringpuffer f�r Logs)
+ *  - buffer setup (Ringpuffer für Logs)
  *  - logEvent helper (normiert Nachrichten)
  *  - diagnosticsLayer export (AppModules.diagnosticsLayer.logger)
  */

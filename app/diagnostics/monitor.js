@@ -1,7 +1,7 @@
 'use strict';
 /**
  * MODULE: diagnostics/monitor.js
- * Description: Platzhalter f�r spaetere Monitoring-Hooks (Touch-Log, Perf Overlay, Remote Dispatch); beobachtet die Diagnostics-Layer Flags.
+ * Description: Platzhalter für spaetere Monitoring-Hooks (Touch-Log, Perf Overlay, Remote Dispatch); beobachtet die Diagnostics-Layer Flags.
  * Submodules:
  *  - visibility tracker (merkt sich ob Overlay aktiv sein darf)
  *  - edge-case guard (Throttle fuer Konsolen-Spam)

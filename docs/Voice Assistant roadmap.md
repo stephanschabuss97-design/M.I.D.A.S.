@@ -16,6 +16,8 @@ Diese Roadmap beschreibt *Phasen*, keine einzelnen Prompts.
 Jede Phase wird separat umgesetzt (eigener Branch / eigener Prompt).  
 Innerhalb einer Phase nur an den explizit genannten Dateien/Modulen arbeiten und keine neuen Features aus anderen Phasen vorziehen.
 **Status-Hinweis:** Voice ist derzeit geparkt; das Modul liegt in `app/modules/assistant-stack/voice/index.js`, VAD in `app/modules/assistant-stack/vad/`.
+**Deep Clean:** Fuer Phase 6 + 6.5 siehe `docs/deep-clean-roadmap.md`.
+
 
 ---
 

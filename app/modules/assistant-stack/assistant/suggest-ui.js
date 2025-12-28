@@ -15,12 +15,6 @@ import { assistantSuggestStore } from './suggest-store.js';
   const chatContainer = doc.getElementById('assistantChat');
   if (!chatContainer) return;
 
-  const legacyCard = doc.getElementById('assistantSuggestCard');
-  if (legacyCard) {
-    legacyCard.hidden = true;
-    legacyCard.setAttribute('aria-hidden', 'true');
-  }
-
   const escapeSelector = (value = '') => {
     if (global.CSS?.escape) return global.CSS.escape(value);
     return String(value).replace(/"/g, '\"');

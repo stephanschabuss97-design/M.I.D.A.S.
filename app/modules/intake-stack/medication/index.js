@@ -30,7 +30,8 @@
       dayIso: null,
       elements: {},
       disabled: false,
-      authRetryTimer: null
+      authRetryTimer: null,
+      cardOrder: []
     }
   };
 
@@ -70,6 +71,30 @@
   const normalizeDayIso = (value) => {
     if (typeof value === 'string' && ISO_DAY_RE.test(value)) return value;
     return todayIso();
+  };
+
+  const syncCardOrder = (order, items) => {
+    const ids = items.map((item) => item?.id).filter(Boolean);
+    const next = order.filter((id) => ids.includes(id));
+    ids.forEach((id) => {
+      if (!next.includes(id)) next.push(id);
+    });
+    return next;
+  };
+
+  const sortByCardOrder = (items, order) => {
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aRank = rank.get(a.item?.id);
+        const bRank = rank.get(b.item?.id);
+        const aValue = Number.isFinite(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+        const bValue = Number.isFinite(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+        if (aValue !== bValue) return aValue - bValue;
+        return a.index - b.index;
+      })
+      .map((entry) => entry.item);
   };
 
   const getConf = (...args) => {
@@ -656,7 +681,7 @@
       if (action === 'delete') {
         const confirmed = global.confirm
           ? global.confirm(
-              `Medikament ${entry.name || ''} dauerhaft loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.`
+              `Medikament ${entry.name || ''} dauerhaft löschen? Diese Aktion kann nicht rueckgaengig gemacht werden.`
             )
           : true;
         if (!confirmed) return;
@@ -677,8 +702,11 @@
         cardsMeta.textContent = '0 Medikamente';
         return;
       }
-      cardsMeta.textContent = `${payload.medications.length} Medikamente`;
-      cardList.innerHTML = payload.medications
+      const nextOrder = syncCardOrder(medicationState.ui.cardOrder, payload.medications);
+      medicationState.ui.cardOrder = nextOrder;
+      const sortedMeds = sortByCardOrder(payload.medications, nextOrder);
+      cardsMeta.textContent = `${sortedMeds.length} Medikamente`;
+      cardList.innerHTML = sortedMeds
         .map((med) => {
           const meta = [
             `Bestand: ${med.stock_count ?? 0}`,
@@ -714,7 +742,7 @@
                   ${med.active === false ? 'Reaktivieren' : 'Archivieren'}
                 </button>
                 <button type="button" class="btn warn small" data-med-action="delete" data-med-id="${med.id}">
-                  Loeschen
+                  Löschen
                 </button>
               </div>
             </article>

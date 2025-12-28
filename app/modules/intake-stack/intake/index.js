@@ -44,14 +44,13 @@
     initialized: false,
     listEl: null,
     lowStockEl: null,
-    safetyEl: null,
     refreshBtn: null,
     dayIso: null,
     data: null,
     authRetryTimer: null,
     doctorWarnedMissing: false,
     lastLowStockCount: null,
-    lastSafetyPending: null
+    cardOrder: []
   };
   let latestTrendpilotEntry = null;
   let trendpilotHookBound = false;
@@ -145,19 +144,28 @@
     return `mailto:${encodeURIComponent(doctorInfo.email)}?${query}`;
   };
 
-  const formatMedTakenTime = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+  const syncCardOrder = (order, items) => {
+    const ids = items.map((item) => item?.id).filter(Boolean);
+    const next = order.filter((id) => ids.includes(id));
+    ids.forEach((id) => {
+      if (!next.includes(id)) next.push(id);
+    });
+    return next;
   };
 
-  const shiftDayIso = (dayIso, delta) => {
-    if (!dayIso) return null;
-    const base = new Date(`${dayIso}T00:00:00Z`);
-    if (Number.isNaN(base.getTime())) return null;
-    base.setUTCDate(base.getUTCDate() + delta);
-    return base.toISOString().slice(0, 10);
+  const sortByCardOrder = (items, order) => {
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aRank = rank.get(a.item?.id);
+        const bRank = rank.get(b.item?.id);
+        const aValue = Number.isFinite(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+        const bValue = Number.isFinite(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+        if (aValue !== bValue) return aValue - bValue;
+        return a.index - b.index;
+      })
+      .map((entry) => entry.item);
   };
 
   function initMedicationDailyUi() {
@@ -168,7 +176,6 @@
     if (!listEl) return;
     medicationDailyState.listEl = listEl;
     medicationDailyState.lowStockEl = doc.getElementById('medLowStockBox');
-    medicationDailyState.safetyEl = doc.getElementById('medSafetyHint');
     medicationDailyState.refreshBtn = doc.getElementById('medDailyRefreshBtn');
     medicationDailyState.initialized = true;
 
@@ -184,20 +191,6 @@
       if (!btn) return;
       event.preventDefault();
       handleLowStockAck(btn);
-    });
-
-    medicationDailyState.safetyEl?.addEventListener('click', (event) => {
-      const btn = event.target.closest('[data-med-safety-goto]');
-      if (!btn) return;
-      event.preventDefault();
-      const targetDay = btn.getAttribute('data-med-safety-goto');
-      if (!targetDay) return;
-      const dateInput = doc.getElementById('date');
-      if (dateInput) {
-        dateInput.value = targetDay;
-        AppModules.captureGlobals.setDateUserSelected(true);
-        maybeRefreshForTodayChange({ force: true, source: 'med-safety' });
-      }
     });
 
     medicationDailyState.refreshBtn?.addEventListener('click', () => {
@@ -240,11 +233,6 @@
       medicationDailyState.lowStockEl.hidden = true;
       medicationDailyState.lowStockEl.innerHTML = '';
       medicationDailyState.lastLowStockCount = null;
-    }
-    if (medicationDailyState.safetyEl) {
-      medicationDailyState.safetyEl.hidden = true;
-      medicationDailyState.safetyEl.innerHTML = '';
-      medicationDailyState.lastSafetyPending = null;
     }
   }
 
@@ -322,14 +310,16 @@
       renderMedicationLowStock(data);
       return;
     }
-    const items = meds
+    const nextOrder = syncCardOrder(medicationDailyState.cardOrder, meds);
+    medicationDailyState.cardOrder = nextOrder;
+    const sortedMeds = sortByCardOrder(meds, nextOrder);
+    const items = sortedMeds
       .map((med) => {
-        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage ?brig` : '';
+        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage übrig` : '';
         const statusText = daysLeft || '';
         const detailText = [med.ingredient, med.strength].filter(Boolean).join(' - ');
-        const takenLabel = formatMedTakenTime(med.taken_at);
         const state = med.taken ? 'on' : 'off';
-        const btnLabel = med.taken ? `Best?tigt ${takenLabel || ''}`.trim() : 'Einnahme best?tigen';
+        const btnLabel = med.taken ? 'Bestätigt' : 'Einnahme bestätigen';
         return `
           <article class="medication-card ${med.low_stock ? 'is-low' : ''}">
             <div class="medication-card-header">
@@ -341,8 +331,7 @@
               class="btn primary"
               data-med-toggle="${escapeAttr(med.id || '')}"
               data-med-state="${state}"
-              data-med-name="${escapeAttr(med.name || '')}"
-              data-med-time="${escapeAttr(med.taken_at || '')}">
+              data-med-name="${escapeAttr(med.name || '')}">
               ${escapeHtml(btnLabel)}
             </button>
           </article>
@@ -367,13 +356,11 @@
     const medId = btn.getAttribute('data-med-toggle');
     if (!medId) return;
     const state = btn.getAttribute('data-med-state') === 'on' ? 'on' : 'off';
-    const takenTime = btn.getAttribute('data-med-time');
     const medName = btn.getAttribute('data-med-name') || 'Medikation';
     const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
     if (state === 'on') {
-      const timeLabel = formatMedTakenTime(takenTime);
       const confirmUndo = global.confirm
-        ? global.confirm(`${medName} wurde heute bereits bestätigt${timeLabel ? ` um ${timeLabel}` : ''}. Rückgängig machen?`)
+        ? global.confirm(`${medName} wurde heute bereits bestätigt. Rückgängig machen?`)
         : true;
       if (!confirmUndo) return;
     }
@@ -429,62 +416,6 @@
     }
   }
 
-  async function updateMedSafetyHint(dayIso) {
-    const hintEl = medicationDailyState.safetyEl;
-    if (!hintEl) return;
-    const medModule = getMedicationModule();
-    if (!medModule) {
-      hintEl.hidden = true;
-      hintEl.innerHTML = '';
-      medicationDailyState.lastSafetyPending = null;
-      return;
-    }
-    const prevDay = shiftDayIso(dayIso, -1);
-    if (!prevDay) {
-      hintEl.hidden = true;
-      hintEl.innerHTML = '';
-      medicationDailyState.lastSafetyPending = null;
-      return;
-    }
-    try {
-      const data = await medModule.loadMedicationForDay(prevDay, { reason: 'capture:safety' });
-      const pending = Array.isArray(data?.medications)
-        ? data.medications.some((med) => med.active !== false && !med.taken)
-        : false;
-      if (!pending) {
-        hintEl.hidden = true;
-        hintEl.innerHTML = '';
-        if (medicationDailyState.lastSafetyPending !== false) {
-          diag.add?.(
-            `[capture:med] safety cleared prev=${prevDay}`
-          );
-          medicationDailyState.lastSafetyPending = false;
-        }
-        return;
-      }
-      if (medicationDailyState.lastSafetyPending !== true) {
-        diag.add?.(`[capture:med] safety pending prev=${prevDay}`);
-        medicationDailyState.lastSafetyPending = true;
-      }
-      hintEl.hidden = false;
-      hintEl.innerHTML = `
-        <strong>Sicherheitshinweis</strong>
-        <p>Für ${prevDay} wurde mindestens eine Einnahme nicht bestätigt.</p>
-        <div class="medication-safety-actions">
-          <button type="button" class="btn ghost small" data-med-safety-goto="${escapeAttr(prevDay)}">Zu gestern wechseln</button>
-        </div>
-      `;
-    } catch (err) {
-      hintEl.hidden = true;
-      hintEl.innerHTML = '';
-      if (medicationDailyState.lastSafetyPending !== null) {
-        diag.add?.('[capture:med] safety hint error');
-        medicationDailyState.lastSafetyPending = null;
-      }
-      diag.add?.(`[capture:med] safety fetch error ${err?.message || err}`);
-    }
-  }
-
   async function refreshMedicationDaily({ dayIso, reason = 'auto', force = false } = {}) {
     if (!isHandlerStageReady()) return;
     initMedicationDailyUi();
@@ -505,7 +436,6 @@
     );
     if (!force && medicationDailyState.data && medicationDailyState.data.dayIso === medicationDailyState.dayIso) {
       renderMedicationDaily(medicationDailyState.data);
-      updateMedSafetyHint(medicationDailyState.dayIso);
       return;
     }
     listEl.innerHTML = '<p class="muted small">Medikamente werden geladen …</p>';
@@ -513,7 +443,6 @@
       const data = await medModule.loadMedicationForDay(medicationDailyState.dayIso, { reason: `capture:${reason}` });
       medicationDailyState.data = data;
       renderMedicationDaily(data);
-      updateMedSafetyHint(medicationDailyState.dayIso);
       const count = Array.isArray(data?.medications) ? data.medications.length : 0;
       diag.add?.(`[capture:med] refresh ok day=${medicationDailyState.dayIso} count=${count}`);
     } catch (err) {
@@ -764,7 +693,7 @@
     } catch (e) {
       const message = e?.message || e;
       diag.add?.('[capture] reset intake error: ' + message);
-      uiError?.('Intake konnte nicht automatisch zurueckgesetzt werden. Bitte erneut versuchen.');
+      uiError?.('Intake konnte nicht automatisch zurückgesetzt werden. Bitte erneut versuchen.');
       throw e;
     } finally {
       if (guardSet) {
@@ -1267,7 +1196,7 @@
 
     if (sLbl) {
       let status = ' * Zielbereich';
-      if (s > LS_SALT_MAX) status = ' * ueber Ziel';
+      if (s > LS_SALT_MAX) status = ' * über Ziel';
       else if (s >= 5) status = ' * Warnung';
       sLbl.textContent = `${fmtDE(s,1)} / ${fmtDE(LS_SALT_MAX,1)} g${status}`;
     }
@@ -1275,7 +1204,7 @@
     if (pLbl) {
       let status = ' * noch offen';
       if (p >= 78 && p <= 90) status = ' * Zielbereich';
-      else if (p > 90) status = ' * ueber Ziel';
+      else if (p > 90) status = ' * über Ziel';
       pLbl.textContent = `${fmtDE(p,1)} / ${fmtDE(LS_PROTEIN_GOAL,1)} g${status}`;
     }
 

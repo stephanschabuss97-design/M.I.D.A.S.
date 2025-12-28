@@ -645,7 +645,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-bp="${day.date}">Loeschen</button>
+      <button class="btn ghost" data-del-bp="${day.date}">Löschen</button>
     </div>
   </div>
 
@@ -696,7 +696,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-body="${day.date}">Loeschen</button>
+      <button class="btn ghost" data-del-body="${day.date}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-body-metrics">
@@ -756,7 +756,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Loeschen</button>
+      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-lab-metrics">
@@ -796,12 +796,12 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Loeschen</button>
+      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-activity-metrics">
     <div class="measure-head">
-      <div class="activity-col">Aktivitaet</div>
+      <div class="activity-col">Aktivität</div>
       <div class="duration-col">Dauer (Min)</div>
       <div class="note-col">Notiz</div>
     </div>
@@ -824,21 +824,21 @@ async function renderDoctor(triggerReason = 'manual'){
       btn.addEventListener('click', async () => {
         const date = btn.getAttribute(attrName);
         if (!date) return;
-        if (!confirm(`Alle ${label}-Eintraege fuer ${date} loeschen?`)) return;
+        if (!confirm(`Alle ${label}-Einträge für ${date} löschen?`)) return;
 
         btn.disabled = true;
         const old = btn.textContent;
-        btn.textContent = 'Loesche...';
+        btn.textContent = 'Lösche...';
         try {
           const result = await deleteRemoteByType(date, type);
           if (!result?.ok) {
-            alert(`Server-Loeschung fehlgeschlagen (${result?.status || "?"}).`);
+            alert(`Server-Löschung fehlgeschlagen (${result?.status || "?"}).`);
             return;
           }
           await requestUiRefresh({ reason: `doctor:delete:${type}` });
         } catch (err) {
           logDoctorError(`deleteRemoteByType failed (${type})`, err);
-          alert('Server-Loeschung fehlgeschlagen (Fehler siehe Konsole).');
+          alert('Server-Löschung fehlgeschlagen (Fehler siehe Konsole).');
         } finally {
           btn.disabled = false;
           btn.textContent = old;
@@ -850,17 +850,17 @@ async function renderDoctor(triggerReason = 'manual'){
     // Rendern / Leerzustand
   if (!daysArr.length){
     if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
-    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Koerperdaten im Zeitraum.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
+    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Körperdaten im Zeitraum.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
     if (panels.bp) panels.bp.innerHTML = daysArr.map(renderDoctorDay).join("");
     if (panels.body) {
       const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
-      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Koerperdaten im Zeitraum.');
+      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Körperdaten im Zeitraum.');
     }
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox oeffnet in einem separaten Fenster.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -881,7 +881,7 @@ async function renderDoctor(triggerReason = 'manual'){
     }
 
     bindDomainDeleteButtons(panels.bp, 'data-del-bp', 'bp', 'Blutdruck');
-    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Koerper');
+    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Körper');
   }
 
   if (panels.lab) {

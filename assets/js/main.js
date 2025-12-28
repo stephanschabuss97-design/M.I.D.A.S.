@@ -398,7 +398,6 @@ async function initCorePhase() {
     window.AppModules.capture?.resetCapturePanels?.();
     window.AppModules.bp.updateBpCommentWarnings?.();
   } catch (_) {}
-    try { window.AppModules.capture?.addCapturePanelKeys?.(); } catch(_){ }
   logBootPhaseSummary('INIT_CORE', 'done');
 }
 
@@ -408,6 +407,7 @@ async function initModulesPhase() {
   bindTabs();
   bindAuthButtons();
   if (getSupabaseState()?.sbClient) watchAuthState();
+  try { window.AppModules.capture?.addCapturePanelKeys?.(); } catch(_){ }
   await maybeRefreshForTodayChange({ force: true, source: 'boot' });
   try {
     await window.AppModules.capture?.refreshCaptureIntake?.('tab:capture');

@@ -48,6 +48,7 @@ Kurze Einordnung:
 ### 4.3 Verarbeitung
 - CRUD via Supabase Client (`appointments_v2`).
 - `computeUpcomingFromState()` erstellt Butler-Listeneintraege.
+- Upcoming-Items enthalten `start_at` fuer Assistant-Datum/Uhrzeit.
 - Event `appointments:changed` nach jeder Mutation.
 
 ### 4.4 Persistenz
