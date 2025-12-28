@@ -72,6 +72,17 @@
     </div>
   </div>
   <button id="helpToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
+  <div
+    id="offlineBanner"
+    class="offline-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="offline-banner__label">Offline-Modus aktiv.</div>
+    <div class="offline-banner__hint">Daten werden synchronisiert, sobald die Verbindung zurueck ist.</div>
+  </div>
   <!-- Diagramm-Panel (Daily) -->
   <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
     <header>

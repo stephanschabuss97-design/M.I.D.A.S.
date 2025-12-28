@@ -94,12 +94,15 @@ Phase 2 - Service worker core (in progress)
 - Add SW registration (single entry point).
 Status:
 - `app/core/pwa.js` registers `/M.I.D.A.S./service-worker.js` on window load.
+- Shell cache + offline fallback implemented in `service-worker.js`.
+- Offline banner added (`#offlineBanner`) and fallback page `offline.html`.
 
 2.2 Cache shell
 - Cache core assets (HTML, CSS, JS, fonts, icons).
 - Provide offline fallback HTML.
 Status:
-- Not implemented yet (SW stub only).
+- Core assets cached on install; runtime cache for static assets added.
+- Offline fallback uses `offline.html` when navigation fails.
 
 2.3 Versioning
 - Define cache naming and cleanup rules.

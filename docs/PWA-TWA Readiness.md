@@ -48,7 +48,7 @@ TODO (must exist before implementation):
 - [ ] Icons prepared (standard + maskable).
 - [ ] Start URL and scope verified (no cross-origin redirects).
 - [ ] CSP policy defined (no inline script blocks in production).
-- [ ] Offline strategy decided (cache-first vs network-first per route).
+- [x] Offline strategy decided (network-first for navigation, cache-first for static assets).
 - [ ] Update flow defined (how to handle SW update + user prompt).
 - [ ] Storage behavior verified on mobile (login survives normal reopen).
 - [ ] Deep link behavior confirmed (open specific panel from URL).
