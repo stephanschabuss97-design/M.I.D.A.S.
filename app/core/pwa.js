@@ -9,6 +9,9 @@
   const updateBanner = global.document?.getElementById('updateBanner');
   const updateReloadBtn = global.document?.getElementById('updateReloadBtn');
   const updateBannerHint = global.document?.getElementById('updateBannerHint');
+  const installBanner = global.document?.getElementById('installBanner');
+  const installBtn = global.document?.getElementById('installBtn');
+  let deferredInstallPrompt = null;
   const showUpdateBanner = () => {
     if (!updateBanner) return;
     updateBanner.hidden = false;
@@ -31,6 +34,40 @@
       registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
     }, { once: true });
   };
+
+  const showInstallBanner = () => {
+    if (!installBanner) return;
+    installBanner.hidden = false;
+    installBanner.setAttribute('aria-hidden', 'false');
+  };
+  const hideInstallBanner = () => {
+    if (!installBanner) return;
+    installBanner.hidden = true;
+    installBanner.setAttribute('aria-hidden', 'true');
+  };
+
+  global.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    showInstallBanner();
+  });
+
+  installBtn?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    hideInstallBanner();
+    deferredInstallPrompt.prompt();
+    try {
+      await deferredInstallPrompt.userChoice;
+    } catch (_) {
+      /* ignore */
+    }
+    deferredInstallPrompt = null;
+  });
+
+  global.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    hideInstallBanner();
+  });
 
   global.navigator.serviceWorker.addEventListener('controllerchange', () => {
     hideUpdateBanner();

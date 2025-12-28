@@ -127,13 +127,17 @@ Acceptance:
 - Update flow is predictable and does not cause data loss.
 
 -------------------------------------------------------------------------------
-Phase 4 - Install UX ? (pending)
+Phase 4 - Install UX (in progress)
 
 4.1 Install prompt
 - Optional: handle `beforeinstallprompt` to show a clean install CTA.
+Status:
+- Install banner wired in `app/core/pwa.js` (`beforeinstallprompt` + CTA).
 
 4.2 Install verification
 - Ensure installed app uses standalone display and correct icon.
+Status:
+- Pending device verification.
 
 Acceptance:
 - Install flow works on desktop and Android.
