@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v1';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 
