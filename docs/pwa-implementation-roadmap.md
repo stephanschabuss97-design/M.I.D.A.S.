@@ -76,6 +76,7 @@ Phase 1 - Manifest and icons (in progress)
 Status:
 - `public/manifest.json` added with Phase 0 values (pending Lighthouse validation).
 - `index.html` links the manifest and sets theme color.
+- Manifest `id` and screenshots added for richer install UI.
 
 1.2 Icons
 - Add standard sizes and maskable icons.
