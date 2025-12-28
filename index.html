@@ -8,9 +8,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data:; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data:; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; manifest-src 'self'; worker-src 'self'; base-uri 'self';">
+  <meta name="theme-color" content="#121417">
   <title>Gesundheits-Logger (V1.7.6)</title>
   <link rel="stylesheet" href="app/app.css">
+  <link rel="manifest" href="public/manifest.json">
   <!-- END MODULE -->
 </head>
 <body data-boot-stage="boot" aria-busy="true">
@@ -1360,6 +1362,7 @@
   <script src="app/core/boot-flow.js"></script>
   <script src="app/core/config.js"></script>
   <script src="app/core/diag.js"></script>
+  <script src="app/core/pwa.js"></script>
   <script src="app/diagnostics/logger.js"></script>
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
