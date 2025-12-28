@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle: Liefert Stammdaten, Limits und Hausarztkontakt an Charts, Intake/Medication, Assistant.
 - Abgrenzung: kein Medical Record; keine Mehrarztverwaltung, keine externen Benachrichtigungen.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

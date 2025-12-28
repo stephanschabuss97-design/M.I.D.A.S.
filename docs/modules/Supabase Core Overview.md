@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: stellt ein einheitliches API-Bundle fuer alle Module bereit.
 - Abgrenzung: keine UI, keine Business-Logik, nur Infrastruktur.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -33,7 +36,7 @@ Kurze Einordnung:
 ## 3. Datenmodell / Storage
 
 - `supabaseState` (Runtime): `authState`, `sbClient`, Header-Cache, `lastUserId`.
-- Keine persistente Speicherung im Frontend.
+- Session wird durch Supabase Auth im Browser persistent gespeichert; Runtime-Status liegt in `supabaseState`.
 
 ---
 
@@ -50,9 +53,10 @@ Kurze Einordnung:
 ### 4.3 Verarbeitung
 - `fetchWithAuth` fuehrt REST calls mit Auth-Headern aus.
 - `createSupabaseFn` (main.js) kapselt Zugriff und Fehler bei fehlenden Exports.
+- `ensureSupabaseClient` erstellt den Client einmal (inflight lock), um Mehrfach-Instanzen zu vermeiden.
 
 ### 4.4 Persistenz
-- Nur in Supabase; Frontend speichert nur Runtime-State.
+- Persistente Session im Browser (Supabase Auth); Frontend haelt zusaetzlich Runtime-State.
 
 ---
 

@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: erzeugt System-Kommentare + UI-Hinweise (Capture/Doctor/Charts).
 - Abgrenzung: keine Echtzeit-Spike-Alerts; keine Datenspeicherung ausser System-Comments.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

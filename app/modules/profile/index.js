@@ -100,6 +100,15 @@
   };
 
   const getSupabaseApi = () => appModules.supabase || {};
+  const ensureLocalDb = async (reason) => {
+    const init = global?.initDB;
+    if (typeof init !== 'function') return;
+    try {
+      await init();
+    } catch (err) {
+      diag?.add?.(`[profile] initDB failed (${reason || 'unknown'}) ${err?.message || err}`);
+    }
+  };
   const getMedicationModule = () => appModules.medication || null;
 
   const requireSupabaseClient = async () => {
@@ -303,6 +312,7 @@
     if (state.syncing) return state.syncPromise;
     const refsOk = ensureRefs();
     if (!refsOk) return null;
+    await ensureLocalDb(reason);
     state.syncing = true;
     setFormDisabled(true);
     const promise = (async () => {

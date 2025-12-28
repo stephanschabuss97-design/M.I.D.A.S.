@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: Konsolidiert Tagesdaten, Trendpilot, Reports.
 - Abgrenzung: keine Dateneingabe (ausser Delete/Report-Trigger), keine Charts-Logik.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

@@ -15,6 +15,16 @@
 
   const getSupabaseApi = () => appModules.supabase || {};
 
+  const ensureLocalDb = async (reason) => {
+    const init = global?.initDB;
+    if (typeof init !== 'function') return;
+    try {
+      await init();
+    } catch (err) {
+      diag?.add?.(`[appointments] initDB failed (${reason || 'unknown'}) ${err?.message || err}`);
+    }
+  };
+
   const selectors = {
     panel: '#hubAppointmentsPanel',
     form: '#appointmentsForm',
@@ -188,6 +198,7 @@
     state.syncing = true;
     setFormDisabled(true);
     const promise = (async () => {
+      await ensureLocalDb(reason);
       try {
         const client = await requireSupabaseClient();
         const { data, error } = await client

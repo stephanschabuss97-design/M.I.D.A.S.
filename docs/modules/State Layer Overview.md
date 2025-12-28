@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: stellt gemeinsame Flags/Status bereit (Capture, Doctor, Trendpilot, Charts, Supabase).
 - Abgrenzung: keine Persistenz, keine Business-Logik, kein UI-Rendering.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

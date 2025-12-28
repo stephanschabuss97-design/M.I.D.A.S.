@@ -8,6 +8,9 @@ Kurze Einordnung:
 - Abgrenzung: kein Ersatz fuer Assistant-LLM, nur intent parsing + routing.
 - Status: geplant, aktuell kein Intent-Modul im Repo (nur Dokumentation).
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

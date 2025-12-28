@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: orchestriert Assistant-UI und Aktionen im Hub; Voice-Logik liegt separat als Legacy-Modul.
 - Abgrenzung: keine eigenen medizinischen Diagnosen, kein Persistieren von Daten (nur Actions triggern Speichern in anderen Modulen).
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

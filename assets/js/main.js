@@ -17,10 +17,10 @@
 
 // SUBMODULE: getSupabaseApi @internal - prüft SupabaseAPI-Verfügbarkeit und loggt fehlende Instanz
 let supabaseMissingLogged = false;
-const getSupabaseApi = () => {
+const getSupabaseApi = (options = {}) => {
   const api = window.AppModules?.supabase;
   if (!api) {
-    if (!supabaseMissingLogged) {
+    if (!options.silent && !supabaseMissingLogged) {
       logBootDiag('Supabase (AppModules.supabase) nicht geladen – prüfe app/supabase/index.js / Script-Reihenfolge.');
       supabaseMissingLogged = true;
     }
@@ -238,7 +238,7 @@ const delay = (ms = 0) => new Promise(resolve => setTimeout(resolve, Math.max(0,
 const waitForSupabaseApi = (() => {
   let pendingPromise = null;
   return ({ timeout = 6000, pollInterval = 25 } = {}) => {
-    const ready = getSupabaseApi();
+    const ready = getSupabaseApi({ silent: true });
     if (ready) return Promise.resolve(ready);
     if (pendingPromise) return pendingPromise;
 
@@ -253,7 +253,7 @@ const waitForSupabaseApi = (() => {
         pendingPromise = null;
       };
       const onReady = () => {
-        const api = getSupabaseApi();
+        const api = getSupabaseApi({ silent: true });
         if (!api) return;
         cleanup();
         resolve(api);
@@ -1894,7 +1894,14 @@ const startBootProcess = () => {
   if (window.__bootDone) return;
   window.__bootDone = true;
   logBootPhaseSummary('BOOTSTRAP', 'start');
-  main()
+  (async () => {
+    try {
+      await waitForSupabaseApi({ timeout: 8000 });
+    } catch (err) {
+      diag.add?.('[boot] Supabase API not ready before boot, continuing...');
+    }
+    return main();
+  })()
     .then(() => {
       logBootPhaseSummary('BOOTSTRAP', 'done');
     })

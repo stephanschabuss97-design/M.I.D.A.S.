@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: Read-Only Diagramme fuer Arzt/Patient.
 - Abgrenzung: keine Datenerfassung; nur Rendering.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

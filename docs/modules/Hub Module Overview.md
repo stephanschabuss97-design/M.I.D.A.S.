@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: oeffnet Panels, orchestriert UI-Flow, Voice-Gate (via Voice-Modul), Assistant-Flow.
 - Abgrenzung: keine eigenen Datenmodelle, keine Persistenz.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

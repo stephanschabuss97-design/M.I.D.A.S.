@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle: Liefert Live-Tageswerte, Status-Pills und Low-Stock-Hinweise.
 - Abgrenzung: Kein Langzeit-Reporting (Charts ?bernehmen), Medikamentenstammdaten liegen im Medication Modul.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

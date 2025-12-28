@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle: Ergänzt Intake um pharmakologische Daten; liefert Events für andere Module.
 - Abgrenzung: Eigenständiges Modul; Intake konsumiert es nur über Events/RPCs.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

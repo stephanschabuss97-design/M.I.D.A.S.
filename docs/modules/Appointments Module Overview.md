@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: liefert Upcoming-Termine und syncen ins Assistant-Header.
 - Abgrenzung: keine Reminder/Push-Logik (spaeter), keine Arzt-Ansicht.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

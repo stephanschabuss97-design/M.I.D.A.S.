@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: Primaries Capture Panel, Quelle fuer Arzt-Ansicht und Reports.
 - Abgrenzung: keine Analyse/Reports, kein Export, keine Charts.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

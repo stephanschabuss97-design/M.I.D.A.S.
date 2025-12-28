@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle: verbindet Body-Save mit Edge-Berechnung; Assistant/Intake lesen nur effektive Targets.
 - Abgrenzung: kein Sensor-Tracking, keine Sportanalyse, Doctor-Lock ist hoheitsmaessig.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

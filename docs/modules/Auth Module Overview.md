@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: steuert Login/Logout, Auth-State, Doctor-Unlock.
 - Abgrenzung: keine Fachlogik; Auth liefert nur Status/Guard/Headers.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -35,7 +38,7 @@ Kurze Einordnung:
 
 - `supabaseState` (Runtime): `authState`, `lastLoggedIn`, `sbClient`, Header-Cache.
 - `authGuardState` (Runtime): `doctorUnlocked`, `pendingAfterUnlock`.
-- Kein persistenter Speicher im Frontend.
+- Supabase Auth speichert Session persistent im Browser (localStorage); Runtime-Status liegt in `supabaseState`.
 
 ---
 
@@ -55,7 +58,7 @@ Kurze Einordnung:
 - `requireDoctorUnlock()` startet Passkey/PIN Flow.
 
 ### 4.4 Persistenz
-- Session liegt in Supabase (Client); im Frontend nur RAM-Status.
+- Session liegt im Supabase Client und wird persistent im Browser gehalten; im Frontend zusaetzlich Runtime-Status.
 
 ---
 
