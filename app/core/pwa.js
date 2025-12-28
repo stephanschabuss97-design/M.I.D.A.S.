@@ -6,9 +6,48 @@
 
 (function registerPwa(global) {
   if (!('serviceWorker' in global.navigator)) return;
+  const updateBanner = global.document?.getElementById('updateBanner');
+  const updateReloadBtn = global.document?.getElementById('updateReloadBtn');
+  const showUpdateBanner = () => {
+    if (!updateBanner) return;
+    updateBanner.hidden = false;
+    updateBanner.setAttribute('aria-hidden', 'false');
+  };
+  const hideUpdateBanner = () => {
+    if (!updateBanner) return;
+    updateBanner.hidden = true;
+    updateBanner.setAttribute('aria-hidden', 'true');
+  };
+  const promptForUpdate = (registration) => {
+    showUpdateBanner();
+    updateReloadBtn?.addEventListener('click', () => {
+      registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    }, { once: true });
+  };
+
+  global.navigator.serviceWorker.addEventListener('controllerchange', () => {
+    hideUpdateBanner();
+    global.location.reload();
+  });
+
   global.addEventListener('load', () => {
     global.navigator.serviceWorker
       .register('service-worker.js')
+      .then((registration) => {
+        if (registration.waiting) {
+          promptForUpdate(registration);
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && registration.waiting) {
+              promptForUpdate(registration);
+            }
+          });
+        });
+      })
       .catch(() => {
         // Keep silent; diagnostics are handled elsewhere.
       });

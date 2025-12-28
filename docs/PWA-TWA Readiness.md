@@ -49,7 +49,7 @@ TODO (must exist before implementation):
 - [ ] Start URL and scope verified (no cross-origin redirects).
 - [ ] CSP policy defined (no inline script blocks in production).
 - [x] Offline strategy decided (network-first for navigation, cache-first for static assets).
-- [ ] Update flow defined (how to handle SW update + user prompt).
+- [x] Update flow defined (banner + user-triggered reload).
 - [ ] Storage behavior verified on mobile (login survives normal reopen).
 - [ ] Deep link behavior confirmed (open specific panel from URL).
 

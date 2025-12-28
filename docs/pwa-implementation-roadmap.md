@@ -115,9 +115,13 @@ Phase 3 - Update flow ? (pending)
 
 3.1 Update detection
 - Detect new SW and surface a UI hint.
+Status:
+- Update banner + reload CTA wired in `app/core/pwa.js` (waiting SW -> prompt).
 
 3.2 Apply update
 - Decide between auto-reload or user-triggered refresh.
+Status:
+- User-triggered refresh only: click "Neu laden" triggers `skipWaiting`, then reload.
 
 Acceptance:
 - Update flow is predictable and does not cause data loss.

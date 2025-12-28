@@ -165,6 +165,30 @@ section.view.active{display:block}
 }
 .offline-banner__label{font-weight:600}
 .offline-banner__hint{font-size:12px;color:var(--color-text-muted)}
+.update-banner{
+  position:fixed;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  z-index:10000;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:rgba(20,23,28,0.95);
+  border:1px solid var(--color-border-subtle);
+  color:var(--color-text-primary);
+  box-shadow:0 12px 28px rgba(0,0,0,0.35);
+}
+.update-banner__label{font-weight:600}
+.update-banner__hint{font-size:12px;color:var(--color-text-muted)}
+.update-banner__text{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
 
 /* SUBMODULE: Accessibility & Safety @internal - Fokusrahmen und versteckte Elemente */
 :focus-visible{ outline:2px solid var(--color-accent); outline-offset:2px; }

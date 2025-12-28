@@ -83,6 +83,20 @@
     <div class="offline-banner__label">Offline-Modus aktiv.</div>
     <div class="offline-banner__hint">Daten werden synchronisiert, sobald die Verbindung zurueck ist.</div>
   </div>
+  <div
+    id="updateBanner"
+    class="update-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="update-banner__text">
+      <div class="update-banner__label">Update verfuegbar.</div>
+      <div class="update-banner__hint">Neu laden, um die aktuelle Version zu nutzen.</div>
+    </div>
+    <button id="updateReloadBtn" type="button" class="btn primary">Neu laden</button>
+  </div>
   <!-- Diagramm-Panel (Daily) -->
   <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
     <header>
