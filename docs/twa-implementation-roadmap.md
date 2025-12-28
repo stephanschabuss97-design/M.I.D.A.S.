@@ -26,27 +26,40 @@ Expected behavior:
 3) Deep links open the correct panel.
 
 -------------------------------------------------------------------------------
-Phase 0 - Prerequisites ? (pending)
+Phase 0 - Prerequisites (done 2025-12-28)
 
 0.1 Domain and HTTPS
 - Confirm production domain is stable and served over HTTPS.
+Decisions:
+- Domain: https://stephanschabuss97-design.github.io/M.I.D.A.S./ (HTTPS ok).
 
 0.2 Package identity
 - Decide package name and application ID.
 - Decide signing key ownership and storage.
+Decisions:
+- Package name: de.schabuss.midas
+- Signing: Play App Signing (Upload Key lokal, Release Key bei Google)
 
 Acceptance:
 - Domain and package identity are locked.
 
 -------------------------------------------------------------------------------
-Phase 1 - Project skeleton ? (pending)
+Phase 1 - Project skeleton (in progress)
 
 1.1 TWA project
 - Generate skeleton (Bubblewrap or Gradle).
 - Configure start URL and fallback URL.
+Decisions:
+- Project location: `twa/` (top-level).
+- start_url: https://stephanschabuss97-design.github.io/M.I.D.A.S./
+Status:
+- Bubblewrap project generated in `twa/`.
+- `twa/twa-manifest.json` created from web manifest.
 
 1.2 Build pipeline
 - Define build scripts and local run instructions.
+Status:
+- Build with `twa/gradlew.bat` (Windows) or `twa/gradlew` (macOS/Linux).
 
 Acceptance:
 - TWA launches locally and loads the PWA.

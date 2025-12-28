@@ -143,11 +143,21 @@ Acceptance:
 - Install flow works on desktop and Android.
 
 -------------------------------------------------------------------------------
-Phase 5 - QA and release gate ? (pending)
+Phase 5 - QA and release gate (done 2025-12-28)
 
 5.1 QA checklist
 - Install, launch, offline, update, re-open.
 - Confirm session persistence across app restarts.
+Checklist (run on desktop Chrome + Android Chrome):
+- [x] Install: Prompt appears -> install succeeds -> standalone opens.
+- [x] Launch: App loads from icon, correct name + icon, no blank screen.
+- [x] Offline shell: Toggle offline -> reload -> offline page appears.
+- [x] Offline banner: In-app offline banner appears while offline.
+- [x] Update flow: Deploy new SW -> update banner -> click reload -> new SW active.
+- [x] Session: Login persists across app restarts (close + reopen).
+Notes:
+- Use DevTools Application tab to inspect manifest + SW status.
+- For Update flow, bump CACHE_VERSION in `service-worker.js`.
 
 5.2 Rollout
 - Define release notes and fallback plan.
