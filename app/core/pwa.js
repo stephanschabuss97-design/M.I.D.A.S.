@@ -8,6 +8,7 @@
   if (!('serviceWorker' in global.navigator)) return;
   const updateBanner = global.document?.getElementById('updateBanner');
   const updateReloadBtn = global.document?.getElementById('updateReloadBtn');
+  const updateBannerHint = global.document?.getElementById('updateBannerHint');
   const showUpdateBanner = () => {
     if (!updateBanner) return;
     updateBanner.hidden = false;
@@ -21,6 +22,12 @@
   const promptForUpdate = (registration) => {
     showUpdateBanner();
     updateReloadBtn?.addEventListener('click', () => {
+      if (updateBannerHint) {
+        updateBannerHint.textContent = 'Aktualisiere...';
+      }
+      if (updateReloadBtn) {
+        updateReloadBtn.disabled = true;
+      }
       registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
     }, { once: true });
   };
