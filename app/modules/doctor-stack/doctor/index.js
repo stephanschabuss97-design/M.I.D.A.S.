@@ -495,7 +495,14 @@ async function renderDoctor(triggerReason = 'manual'){
     scroller.dataset.scrollWatcher = "1";
   }
 
-  if (!(await isLoggedIn())){
+  const online = global?.navigator?.onLine !== false;
+  let loggedIn = false;
+  try {
+    loggedIn = await isLoggedIn();
+  } catch (_) {
+    loggedIn = false;
+  }
+  if (!loggedIn && online){
     fillAllPanels(placeholderHtml('Bitte anmelden, um die Arzt-Ansicht zu sehen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
@@ -534,6 +541,129 @@ async function renderDoctor(triggerReason = 'manual'){
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
   }
+  const isDayInRange = (day) => {
+    if (!day) return false;
+    if (from && day < from) return false;
+    if (to && day > to) return false;
+    return true;
+  };
+  const normalizeLocalCtx = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return null;
+    if (raw === 'm' || raw.startsWith('morg')) return 'M';
+    if (raw === 'a' || raw.startsWith('aben')) return 'A';
+    return null;
+  };
+  const buildDailyFromLocalEntries = (entries = []) => {
+    const days = new Map();
+    for (const entry of entries) {
+      const day = entry?.date || entry?.day || '';
+      if (!day || !isDayInRange(day)) continue;
+      let bucket = days.get(day);
+      if (!bucket) {
+        bucket = {
+          date: day,
+          morning: { sys: null, dia: null, pulse: null, map: null },
+          evening: { sys: null, dia: null, pulse: null, map: null },
+          weight: null,
+          waist_cm: null,
+          fat_pct: null,
+          muscle_pct: null,
+          fat_kg: null,
+          muscle_kg: null,
+          notes: '',
+          remoteIds: [],
+          hasCloud: false,
+          __notesTs: -1,
+          __noteText: '',
+          __bpNotes: []
+        };
+        days.set(day, bucket);
+      }
+      const ts = Number.isFinite(entry?.ts) ? entry.ts : Date.parse(entry?.dateTime || '') || 0;
+      const note = (entry?.notes || '').trim();
+      if (note && ts >= (bucket.__notesTs ?? -1)) {
+        bucket.__noteText = note;
+        bucket.__notesTs = ts;
+      }
+      const ctx = normalizeLocalCtx(entry?.context || entry?.ctx);
+      const bpComment = (entry?.bp_comment || '').trim();
+      if (bpComment && ctx) {
+        const prefix = ctx === 'M' ? '[Morgens] ' : '[Abends] ';
+        bucket.__bpNotes.push(`${prefix}${bpComment}`.trim());
+      }
+      if (entry?.sys != null || entry?.dia != null || entry?.pulse != null) {
+        const block = ctx === 'M' ? bucket.morning : ctx === 'A' ? bucket.evening : null;
+        if (block) {
+          if (entry.sys != null) block.sys = entry.sys;
+          if (entry.dia != null) block.dia = entry.dia;
+          if (entry.pulse != null) block.pulse = entry.pulse;
+          if (entry.map != null) block.map = entry.map;
+        }
+      }
+      if (
+        entry?.weight != null ||
+        entry?.waist_cm != null ||
+        entry?.fat_pct != null ||
+        entry?.muscle_pct != null ||
+        entry?.fat_kg != null ||
+        entry?.muscle_kg != null
+      ) {
+        if (entry.weight != null) bucket.weight = entry.weight;
+        if (entry.waist_cm != null) bucket.waist_cm = entry.waist_cm;
+        if (entry.fat_pct != null) bucket.fat_pct = entry.fat_pct;
+        if (entry.muscle_pct != null) bucket.muscle_pct = entry.muscle_pct;
+        if (entry.fat_kg != null) bucket.fat_kg = entry.fat_kg;
+        if (entry.muscle_kg != null) bucket.muscle_kg = entry.muscle_kg;
+      }
+    }
+    const arr = Array.from(days.values());
+    arr.forEach((row) => {
+      const parts = [];
+      if (Array.isArray(row.__bpNotes)) parts.push(...row.__bpNotes);
+      if (row.__noteText) parts.push(row.__noteText);
+      row.notes = parts.filter(Boolean).join('\n').trim();
+      delete row.__notesTs;
+      delete row.__noteText;
+      delete row.__bpNotes;
+    });
+    arr.sort((a, b) => b.date.localeCompare(a.date));
+    return arr;
+  };
+  const buildLabRowsFromLocalEntries = (entries = []) => {
+    const byDay = new Map();
+    for (const entry of entries) {
+      const day = entry?.date || entry?.day || '';
+      if (!day || !isDayInRange(day)) continue;
+      const hasLab =
+        entry?.egfr != null ||
+        entry?.creatinine != null ||
+        entry?.hba1c != null ||
+        entry?.ldl != null ||
+        entry?.potassium != null ||
+        entry?.ckd_stage != null ||
+        entry?.lab_comment != null;
+      if (!hasLab) continue;
+      const ts = Number.isFinite(entry?.ts) ? entry.ts : Date.parse(entry?.dateTime || '') || 0;
+      const existing = byDay.get(day);
+      if (existing && ts < existing.__ts) continue;
+      byDay.set(day, {
+        day,
+        egfr: entry?.egfr ?? null,
+        creatinine: entry?.creatinine ?? null,
+        hba1c: entry?.hba1c ?? null,
+        ldl: entry?.ldl ?? null,
+        potassium: entry?.potassium ?? null,
+        ckd_stage: entry?.ckd_stage ?? null,
+        doctor_comment: entry?.lab_comment ?? null,
+        __ts: ts
+      });
+    }
+    const rows = Array.from(byDay.values());
+    rows.forEach((row) => { delete row.__ts; });
+    rows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+    return rows;
+  };
   logDoctorRefreshStart(triggerReason, from, to);
   let doctorRefreshLogClosed = false;
   const closeDoctorRefreshLog = (status = 'done', detail, severity) => {
@@ -542,46 +672,63 @@ async function renderDoctor(triggerReason = 'manual'){
     logDoctorRefreshEnd(triggerReason, from, to, status, detail, severity);
   };
 
+  const useLocalFallback = !online || !loggedIn;
+
   //  Server lesen  Tagesobjekte
   let daysArr = [];
   let labRows = [];
   let labLoadError = null;
   let activityRows = [];
   let activityLoadError = null;
-  try{
-    daysArr = await fetchDailyOverview(from, to);
-  }catch(err){
-    logDoctorError('fetchDailyOverview failed', err);
-    fillAllPanels(placeholderHtml('Fehler beim Laden aus der Cloud.'));
-    if (scroller) scroller.scrollTop = 0;
-    __doctorScrollSnapshot = { top: 0, ratio: 0 };
-    closeDoctorRefreshLog('error', err?.message || err, 'error');
-    return;
-  }
-
-  daysArr.sort((a,b)=> b.date.localeCompare(a.date));
-  try {
-    labRows = await loadLabEventsSafe(from, to);
-    if (Array.isArray(labRows)) {
-      labRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
-    } else {
-      labRows = [];
+  if (!useLocalFallback) {
+    try{
+      daysArr = await fetchDailyOverview(from, to);
+    }catch(err){
+      logDoctorError('fetchDailyOverview failed', err);
+      fillAllPanels(placeholderHtml('Fehler beim Laden aus der Cloud.'));
+      if (scroller) scroller.scrollTop = 0;
+      __doctorScrollSnapshot = { top: 0, ratio: 0 };
+      closeDoctorRefreshLog('error', err?.message || err, 'error');
+      return;
     }
-  } catch (err) {
-    labLoadError = err;
-    logDoctorError('lab events fetch failed', err);
-  }
 
-  try {
-    activityRows = await loadActivityEventsSafe(from, to);
-    if (Array.isArray(activityRows)) {
-      activityRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
-    } else {
+    daysArr = daysArr.filter((entry) => isDayInRange(entry?.date));
+    daysArr.sort((a,b)=> b.date.localeCompare(a.date));
+    try {
+      labRows = await loadLabEventsSafe(from, to);
+      if (Array.isArray(labRows)) {
+        labRows = labRows.filter((entry) => isDayInRange(entry?.day));
+        labRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+      } else {
+        labRows = [];
+      }
+    } catch (err) {
+      labLoadError = err;
+      logDoctorError('lab events fetch failed', err);
+    }
+
+    try {
+      activityRows = await loadActivityEventsSafe(from, to);
+      if (Array.isArray(activityRows)) {
+        activityRows = activityRows.filter((entry) => isDayInRange(entry?.day));
+        activityRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+      } else {
+        activityRows = [];
+      }
+    } catch (err) {
+      activityLoadError = err;
+      logDoctorError('activity events fetch failed', err);
+    }
+  } else {
+    try {
+      const local = typeof getAllEntries === 'function' ? await getAllEntries() : [];
+      const filtered = Array.isArray(local) ? local.filter((entry) => isDayInRange(entry?.date)) : [];
+      daysArr = buildDailyFromLocalEntries(filtered);
+      labRows = buildLabRowsFromLocalEntries(filtered);
       activityRows = [];
+    } catch (err) {
+      logDoctorError('local fallback failed', err);
     }
-  } catch (err) {
-    activityLoadError = err;
-    logDoctorError('activity events fetch failed', err);
   }
 
   const trendpilotWrap = document.getElementById('doctorTrendpilot');
@@ -931,8 +1078,128 @@ async function exportDoctorJson(){
     if (!ok) return;
     setAuthPendingAfterUnlock(null);
   }
-  const all = await getAllEntries();
-  dl("gesundheitslog.json", JSON.stringify(all, null, 2), "application/json");
+  const from = $("#from")?.value || '';
+  const to = $("#to")?.value || '';
+  if (!from || !to) {
+    toast('Bitte Zeitraum wählen.');
+    return;
+  }
+  const isDayInRange = (day) => {
+    if (!day) return false;
+    if (from && day < from) return false;
+    if (to && day > to) return false;
+    return true;
+  };
+  const buildEntriesFromDaily = (days = []) => {
+    const out = [];
+    for (const d of days) {
+      const notes = d?.notes || '';
+      const day = d?.date || '';
+      if (!day) continue;
+      const hasMorning =
+        d?.morning?.sys != null || d?.morning?.dia != null || d?.morning?.pulse != null;
+      const hasEvening =
+        d?.evening?.sys != null || d?.evening?.dia != null || d?.evening?.pulse != null;
+      const hasBody =
+        d?.weight != null || d?.waist_cm != null || d?.fat_kg != null || d?.muscle_kg != null;
+      const hasAny = hasMorning || hasEvening || hasBody;
+      const pushEntry = (context, tsHour, patch = {}) => {
+        const ts = Date.parse(`${day}T${tsHour}:00Z`);
+        const dateTime = Number.isFinite(ts) ? new Date(ts).toISOString() : '';
+        out.push({
+          date: day,
+          time: `${tsHour}:00`,
+          dateTime,
+          ts: Number.isFinite(ts) ? ts : null,
+          context,
+          sys: null,
+          dia: null,
+          pulse: null,
+          weight: null,
+          waist_cm: null,
+          fat_kg: null,
+          muscle_kg: null,
+          notes,
+          ...patch
+        });
+      };
+      if (hasMorning) {
+        pushEntry('Morgen', '07', {
+          sys: d.morning.sys ?? null,
+          dia: d.morning.dia ?? null,
+          pulse: d.morning.pulse ?? null
+        });
+      }
+      if (hasEvening) {
+        pushEntry('Abend', '19', {
+          sys: d.evening.sys ?? null,
+          dia: d.evening.dia ?? null,
+          pulse: d.evening.pulse ?? null
+        });
+      }
+      if (hasBody) {
+        pushEntry('Tag', '12', {
+          weight: d.weight ?? null,
+          waist_cm: d.waist_cm ?? null,
+          fat_kg: d.fat_kg ?? null,
+          muscle_kg: d.muscle_kg ?? null
+        });
+      }
+      if (!hasAny && notes) {
+        pushEntry('Tag', '12', {});
+      }
+    }
+    return out;
+  };
+  const payload = {
+    range: { from, to },
+    bp_body_notes: [],
+    lab: [],
+    activity: []
+  };
+
+  const online = global.navigator?.onLine !== false;
+  let useSupabase = false;
+  try {
+    useSupabase = online && (await isLoggedInFast());
+  } catch (_) {
+    useSupabase = online;
+  }
+
+  if (useSupabase) {
+    try {
+      const days = await fetchDailyOverview(from, to);
+      const filtered = Array.isArray(days) ? days.filter((entry) => isDayInRange(entry?.date)) : [];
+      payload.bp_body_notes = buildEntriesFromDaily(filtered);
+    } catch (err) {
+      logDoctorError('export daily overview failed', err);
+    }
+    try {
+      const labRows = await loadLabEventsSafe(from, to);
+      payload.lab = Array.isArray(labRows) ? labRows.filter((entry) => isDayInRange(entry?.day)) : [];
+    } catch (err) {
+      logDoctorError('export lab failed', err);
+    }
+    try {
+      const activityRows = await loadActivityEventsSafe(from, to);
+      payload.activity = Array.isArray(activityRows)
+        ? activityRows.filter((entry) => isDayInRange(entry?.day))
+        : [];
+    } catch (err) {
+      logDoctorError('export activity failed', err);
+    }
+  } else {
+    try {
+      const local = typeof getAllEntries === 'function' ? await getAllEntries() : [];
+      payload.bp_body_notes = Array.isArray(local)
+        ? local.filter((entry) => isDayInRange(entry?.date))
+        : [];
+    } catch (err) {
+      logDoctorError('export local entries failed', err);
+    }
+  }
+
+  dl("gesundheitslog.json", JSON.stringify(payload, null, 2), "application/json");
 }
 // SUBMODULE: doctorApi @internal - registriert öffentliche API-Funktionen im globalen Namespace
   const doctorApi = {

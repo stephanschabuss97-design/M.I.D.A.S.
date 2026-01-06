@@ -38,7 +38,7 @@ begin
   end if;
 
   if new.type = 'bp' then
-    keys := array['sys','dia','pulse','ctx'];
+    keys := array['sys','dia','pulse','ctx','comment'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'bp: payload enthaelt unbekannte Keys' using errcode = '22023';
     end if;
@@ -65,6 +65,12 @@ begin
       end if;
     end if;
 
+    if (new.payload ? 'comment') then
+      if length(btrim(new.payload->>'comment')) < 1 or length(new.payload->>'comment') > 500 then
+        raise exception 'bp.comment Laenge 1-500 Zeichen' using errcode = '22023';
+      end if;
+    end if;
+    
     if (new.payload->>'ctx') not in ('Morgen','Abend') then
       raise exception 'bp.ctx muss "Morgen" or "Abend" sein' using errcode = '22023';
     end if;

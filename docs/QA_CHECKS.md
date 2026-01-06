@@ -38,6 +38,12 @@
 **Regression**
 - [ ] Capture-Saves (Blutdruck/K?rper) laufen unver?ndert; neue Buttons beeinflussen Formulare nicht.
 - [ ] Trendpilot-Block, Export JSON und Diagrammsteuerung funktionieren wie zuvor.
+- [ ] Arzt-Ansicht zeigt nur Werte innerhalb des gesetzten `from/to` (BP/Body/Lab/Training).
+- [ ] JSON-Export basiert auf Supabase und enthaelt nur BP/Body/Lab/Training fuer `from/to`.
+- [ ] Diagramm nutzt denselben `from/to`-Bereich wie die Arzt-Ansicht.
+- [ ] Arzt-Ansicht zeigt nur Werte innerhalb des gesetzten `from/to` (BP/Body/Lab/Training).
+- [ ] JSON-Export basiert auf Supabase und enthaelt nur BP/Body/Lab/Training fuer `from/to`.
+- [ ] Diagramm nutzt denselben `from/to`-Bereich wie die Arzt-Ansicht.
 - [ ] Andere Panels (Assistant, Appointments, Capture Intake) schlie?en normal; keine neuen ARIA-Warnungen in DevTools.
 
 ---

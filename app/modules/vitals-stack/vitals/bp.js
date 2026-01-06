@@ -184,6 +184,10 @@ const getCommentElementUnsafe = (normalizedCtx) => {
   const hasComment = comment.length > 0;
 
   if (!force && !hasAny && !hasComment) return false;
+  if (hasComment && !hasAny) {
+    uiError('Kommentar kann nur mit Messwerten gespeichert werden.');
+    return false;
+  }
 
   if (hasAny){
     if ((sys != null && dia == null) || (dia != null && sys == null)){
@@ -201,19 +205,15 @@ const getCommentElementUnsafe = (normalizedCtx) => {
     entry.pulse = pulse;
     entry.map = (sys!=null && dia!=null) ? calcMAP(sys, dia) : null;
     entry.notes = '';
+    entry.bp_comment = comment;
 
     const localId = await addEntry(entry);
     await syncWebhook(entry, localId);
   }
 
   if (hasComment){
-    try {
-      await appendNote(date, ctx === 'M' ? '[Morgens] ' : '[Abends] ', comment);
-      if (commentEl) commentEl.value = '';
-      updateBpCommentWarnings();
-    } catch(err) {
-      diag.add?.('BP-Kommentar Fehler: ' + (err?.message || err));
-    }
+    if (commentEl) commentEl.value = '';
+    updateBpCommentWarnings();
   }
 
   return hasAny || hasComment;

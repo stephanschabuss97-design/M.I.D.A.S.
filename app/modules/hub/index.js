@@ -48,11 +48,11 @@
     { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
     { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
     { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
-    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
     { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
     { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
     { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
     { id: 'profile', selector: '[data-carousel-id="profile"]', panel: 'profile' },
+    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
   ];
   const PANEL_TO_CAROUSEL_ID = {
     intake: 'intake',

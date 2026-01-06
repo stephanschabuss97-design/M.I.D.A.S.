@@ -289,16 +289,36 @@ const chartPanel = {
   // ----- Helpers -----
   // SUBMODULE: chartPanel.getFiltered @extract-candidate - aggregiert Cloud/Local Daten fuer Zeichnung
 async getFiltered() {
-  const from = $("#from")?.value;
-  const to   = $("#to")?.value;
+  const from = $("#from")?.value || '';
+  const to   = $("#to")?.value || '';
+  if (!from || !to) return [];
+  const isDayInRange = (day) => {
+    if (!day) return false;
+    if (from && day < from) return false;
+    if (to && day > to) return false;
+    return true;
+  };
+
+  const online = global?.navigator?.onLine !== false;
+  let useSupabase = false;
+  try {
+    if (typeof isLoggedInFast === "function") {
+      useSupabase = online && (await isLoggedInFast());
+    } else {
+      useSupabase = online && (await isLoggedIn());
+    }
+  } catch (_) {
+    useSupabase = online;
+  }
 
   // Wenn eingeloggt: Cloud nehmen (Events -> Daily), sonst fallback: lokale Entries
-  if (await isLoggedIn()) {
+  if (useSupabase) {
     // gleiche Aggregation wie Arzt-Ansicht
     const days = await fetchDailyOverview(from, to);
     // Fuer die Chart-Logik bauen wir flache "entry"-aehnliche Objekte
     const flat = [];
-    for (const d of days) {
+    const filteredDays = Array.isArray(days) ? days.filter((d) => isDayInRange(d?.date)) : [];
+    for (const d of filteredDays) {
       // Morgen
       if (d.morning.sys != null || d.morning.dia != null || d.morning.pulse != null) {
         const ts = Date.parse(d.date + "T07:00:00Z"); // Fix-Zeit am Tag
@@ -355,14 +375,10 @@ async getFiltered() {
     return flat.sort((a,b) => (a.ts ?? Date.parse(a.dateTime)) - (b.ts ?? Date.parse(b.dateTime)));
   }
 
-  // Fallback: lokal (wenn nicht eingeloggt)
+  // Fallback: lokal (wenn nicht eingeloggt oder offline)
   const entries = typeof getAllEntries === "function" ? await getAllEntries() : [];
   return entries
-    .filter(e => {
-      if (from && e.date < from) return false;
-      if (to   && e.date > to)   return false;
-      return true;
-  })
+    .filter(e => isDayInRange(e?.date))
     .sort((a,b) => (a.ts ?? Date.parse(a.dateTime)) - (b.ts ?? Date.parse(b.dateTime)));
 },
 

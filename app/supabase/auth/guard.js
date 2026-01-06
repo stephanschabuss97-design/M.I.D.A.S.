@@ -605,10 +605,9 @@ export async function resumeAfterUnlock(intent) {
   }
   if (target === 'export') {
     await globalWindow?.setTab?.('doctor');
-    const all = await globalWindow?.getAllEntries?.();
-    const dl = globalWindow?.dl;
-    if (all && typeof dl === 'function') {
-      dl('gesundheitslog.json', JSON.stringify(all, null, 2), 'application/json');
+    const exportFn = globalWindow?.AppModules?.doctor?.exportDoctorJson;
+    if (typeof exportFn === 'function') {
+      await exportFn();
     }
     return;
   }
