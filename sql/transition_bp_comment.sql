@@ -54,9 +54,9 @@ begin
         raise exception 'bp.comment Laenge 1-500 Zeichen' using errcode = '22023';
       end if;
     end if;
-
+    
     if (new.payload->>'ctx') not in ('Morgen','Abend') then
-      raise exception 'bp.ctx muss "Morgen" oder "Abend" sein' using errcode = '22023';
+      raise exception 'bp.ctx muss "Morgen" or "Abend" sein' using errcode = '22023';
     end if;
     new.ctx := new.payload->>'ctx';
 
@@ -144,9 +144,110 @@ begin
       if (new.payload->>'protein_g') !~ '^\d+(\.\d+)?$' then
         raise exception 'intake.protein_g muss Zahl sein' using errcode = '22023';
       end if;
-      if (new.payload->>'protein_g')::numeric < 0 or (new.payload->>'protein_g')::numeric > 300 then
-        raise exception 'intake.protein_g ausserhalb Range 0-300' using errcode = '22003';
+      if (new.payload->>'protein_g')::numeric < 0 or (new.payload->>'protein_g')::numeric > 99999999999 then
+        raise exception 'intake.protein_g ausserhalb Range 0-99999999999' using errcode = '22003';
       end if;
+    end if;
+
+  elsif new.type = 'lab_event' then
+    keys := array['egfr','creatinine','hba1c','ldl','comment','potassium','ckd_stage'];
+    if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
+      raise exception 'lab_event: payload enthaelt unbekannte Keys' using errcode = '22023';
+    end if;
+
+    if not (new.payload ? 'egfr') then
+      raise exception 'lab_event: payload.egfr (Pflicht) fehlt' using errcode = '23502';
+    end if;
+    if not (new.payload ? 'creatinine') then
+      raise exception 'lab_event: payload.creatinine (Pflicht) fehlt' using errcode = '23502';
+    end if;
+
+    if (new.payload->>'egfr') !~ '^\d+(\.\d+)?$' then
+      raise exception 'lab_event: egfr muss numerisch sein' using errcode = '22023';
+    end if;
+    if (new.payload->>'egfr')::numeric < 0 or (new.payload->>'egfr')::numeric > 200 then
+      raise exception 'lab_event: egfr ausserhalb Range 0-200' using errcode = '22003';
+    end if;
+
+    if (new.payload->>'creatinine') !~ '^\d+(\.\d+)?$' then
+      raise exception 'lab_event: creatinine muss numerisch sein' using errcode = '22023';
+    end if;
+    if (new.payload->>'creatinine')::numeric < 0.1 or (new.payload->>'creatinine')::numeric > 20 then
+      raise exception 'lab_event: creatinine ausserhalb Range 0.1-20' using errcode = '22003';
+    end if;
+
+    if (new.payload ? 'hba1c') then
+      if (new.payload->>'hba1c') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: hba1c muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'hba1c')::numeric < 3 or (new.payload->>'hba1c')::numeric > 99 then
+        raise exception 'lab_event: hba1c ausserhalb Range 3-99' using errcode = '22003';
+      end if;
+    end if;
+
+    if (new.payload ? 'ldl') then
+      if (new.payload->>'ldl') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: ldl muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'ldl')::numeric < 0 or (new.payload->>'ldl')::numeric > 600 then
+        raise exception 'lab_event: ldl ausserhalb Range 0-600' using errcode = '22003';
+      end if;
+    end if;
+
+    if (new.payload ? 'comment') then
+      if length(new.payload->>'comment') < 1 or length(new.payload->>'comment') > 500 then
+        raise exception 'lab_event: comment Laenge 1-500 Zeichen' using errcode = '22023';
+      end if;
+    end if;
+    if (new.payload ? 'potassium') then
+      if (new.payload->>'potassium') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: potassium muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'potassium')::numeric < 2 or (new.payload->>'potassium')::numeric > 7 then
+        raise exception 'lab_event: potassium ausserhalb Range 2-7' using errcode = '22003';
+      end if;
+    end if;
+    if (new.payload ? 'ckd_stage') then
+      if length(new.payload->>'ckd_stage') > 20 then
+        raise exception 'lab_event: ckd_stage zu lang (max 20 Zeichen)' using errcode = '22023';
+      end if;
+      if (new.payload->>'ckd_stage') !~ '^G(1|2|3a|3b|4|5)(?:\\s*A[123])?$' then
+        raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
+      end if;
+    end if;
+
+  elsif new.type = 'activity_event' then
+    keys := array['activity','duration_min','note'];
+    if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
+      raise exception 'activity_event: payload enthaelt unbekannte Keys' using errcode = '22023';
+    end if;
+
+    if not (new.payload ? 'activity') then
+      raise exception 'activity_event: payload.activity (Pflicht) fehlt' using errcode = '23502';
+    end if;
+    if length(btrim(new.payload->>'activity')) < 1 or length(new.payload->>'activity') > 200 then
+      raise exception 'activity_event: activity Laenge 1-200 Zeichen' using errcode = '22023';
+    end if;
+
+    if not (new.payload ? 'duration_min') then
+      raise exception 'activity_event: payload.duration_min (Pflicht) fehlt' using errcode = '23502';
+    end if;
+    if (new.payload->>'duration_min') !~ '^\d+$' then
+      raise exception 'activity_event: duration_min muss int sein' using errcode = '22023';
+    end if;
+    if (new.payload->>'duration_min')::int < 1 then
+      raise exception 'activity_event: duration_min muss >= 1 sein' using errcode = '22023';
+    end if;
+
+    if (new.payload ? 'note') then
+      if length(new.payload->>'note') < 1 or length(new.payload->>'note') > 500 then
+        raise exception 'activity_event: note Laenge 1-500 Zeichen' using errcode = '22023';
+      end if;
+    end if;
+
+  elsif new.type = 'system_comment' then
+    if jsonb_typeof(new.payload) <> 'object' then
+      raise exception 'system_comment: payload muss Objekt sein' using errcode = '23502';
     end if;
 
   else
