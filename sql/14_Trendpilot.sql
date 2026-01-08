@@ -1,7 +1,7 @@
 -- ============================================
 -- 14_Trendpilot.sql
 -- PostgreSQL 15 | Supabase-kompatibel
--- Ziel: Trendpilot-Events (warning/critical) als eigene Tabelle + RLS + Indizes
+-- Ziel: Trendpilot-Events (info/warning/critical) als eigene Tabelle + RLS + Indizes
 -- Abhaengigkeiten: public.auth (Supabase), pgcrypto Extension in Core-Schema
 -- ============================================
 
@@ -10,7 +10,7 @@ create table if not exists public.trendpilot_events (
   user_id     uuid not null default auth.uid(),
   ts          timestamptz not null default now(),
   type        text not null check (type in ('bp','body','lab','combined')),
-  severity    text not null check (severity in ('warning','critical')),
+  severity    text not null check (severity in ('info','warning','critical')),
   ack         boolean not null default false,
   ack_at      timestamptz null,
   source      text null,
@@ -79,7 +79,7 @@ select
   payload,
   created_at
 from public.trendpilot_events
-where severity in ('warning','critical')
+where severity in ('info','warning','critical')
 order by window_from desc, ts desc;
 
 create table if not exists public.trendpilot_state (

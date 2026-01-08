@@ -1,7 +1,7 @@
-﻿﻿'use strict';
+﻿'use strict';
 /**
  * MODULE: app/doctor.js
- * Description: Steuert die Arzt-Ansicht – lädt Tagesdaten, verwaltet Sperrlogik (Unlock), Scrollstatus und Exportfunktionen.
+ * Description: Steuert die Arzt-Ansicht lädt Tagesdaten, verwaltet Sperrlogik (Unlock), Scrollstatus und Exportfunktionen.
  * Submodules:
  *  - globals (AppModules, diag, Scroll-State)
  *  - access-control (Doctor-Unlock-Logik und Fehlerbehandlung)
@@ -59,7 +59,7 @@
     doctorRefreshLogInflight.delete(key);
     const count = entry?.count || 1;
     const suffix = count > 1 ? ` (x${count})` : '';
-    const extra = detail ? ` – ${detail}` : '';
+    const extra = detail ? ` â€“ ${detail}` : '';
     const opts = severity ? { severity } : undefined;
     diag.add?.(
       `[doctor] refresh ${status} reason=${reason} range=${from || 'n/a'}..${to || 'n/a'}${extra}${suffix}`,
@@ -95,8 +95,8 @@
   };
   const TRENDPILOT_STATUS_LABELS = {
     none: 'Kein Arzt-Status',
-    planned: 'Arztabklärung geplant',
-    done: 'Arztabklärung erledigt'
+    planned: 'ArztabklÃ¤rung geplant',
+    done: 'ArztabklÃ¤rung erledigt'
   };
   const getDoctorStatusLabel = (status) =>
     TRENDPILOT_STATUS_LABELS[status] || TRENDPILOT_STATUS_LABELS.none;
@@ -119,6 +119,10 @@
     'bp-weight-correlation-v1': {
       doctor:
         'BP/Gewicht-Korrelation: Gewicht Delta {weight_delta_kg} kg, Zeitraum {window_from} bis {window_to}, BP-Events: {bp_event_ids}, Body-Events: {body_event_ids}.'
+    },
+    'baseline-normalized-v1': {
+      doctor:
+        'Baseline neu gesetzt: {baseline_sys}/{baseline_dia} seit {baseline_from} (stabile Wochen: {sample_weeks}).'
     }
   };
 
@@ -171,6 +175,17 @@
     const api = getSupabaseApi();
     if (typeof api.fetchTrendpilotEventsRange === 'function') return api.fetchTrendpilotEventsRange;
     return typeof api.fetchSystemCommentsRange === 'function' ? api.fetchSystemCommentsRange : null;
+  };
+
+  const resolveTrendpilotDeleter = () => {
+    const api = getSupabaseApi();
+    if (typeof api.deleteTrendpilotEvent === 'function') return api.deleteTrendpilotEvent;
+    return typeof api.deleteSystemComment === 'function' ? api.deleteSystemComment : null;
+  };
+
+  const resolveTrendpilotAckSetter = () => {
+    const api = getSupabaseApi();
+    return typeof api.setTrendpilotAck === 'function' ? api.setTrendpilotAck : null;
   };
 
   const resolveTrendpilotStatusSetter = () => {
@@ -243,10 +258,10 @@
     const isActive = status === (current || 'none');
     const label =
       status === 'planned'
-        ? 'Arztabklärung geplant'
+        ? 'ArztabklÃ¤rung geplant'
         : status === 'done'
           ? 'Erledigt'
-          : 'Zurücksetzen';
+          : 'ZurÃ¼cksetzen';
     return `<button class="btn ghost ${isActive ? 'is-active' : ''}" data-doctor-status="${status}">${label}</button>`;
   };
 
@@ -281,41 +296,50 @@
 
   const renderTrendpilotRow = (entry, fmtDateDE) => {
     const severity = getSeverityMeta(entry.severity);
-    const ackLabel = entry.ack ? 'Bestätigt' : 'Offen';
-    const ackClass = entry.ack ? 'is-ack' : 'is-open';
     const safeText = escapeAttr(resolveTrendpilotText(entry));
     const dateLabel = formatTrendpilotRange(entry, fmtDateDE);
-    const currentStatus = entry.doctorStatus || 'none';
+    const ackLabel = entry.ack ? 'Bestätigt' : 'Akzeptieren';
+    const ackDisabled = entry.ack ? ' disabled' : '';
+    const ackClass = entry.ack ? 'ghost' : 'primary';
     return `
-<article class="tp-row" data-trendpilot-id="${escapeAttr(entry.id || '')}" data-day="${escapeAttr(entry.day || '')}" data-doctor-status="${escapeAttr(currentStatus)}">
+<article class="tp-row" data-trendpilot-id="${escapeAttr(entry.id || '')}">
   <div class="tp-meta">
     <span class="tp-date">${dateLabel}</span>
     <span class="tp-badge ${severity.className}">${severity.label}</span>
-    <span class="tp-ack ${ackClass}">${ackLabel}</span>
   </div>
   <div class="tp-text">${safeText}</div>
-  <div class="tp-status" data-status-label>${getDoctorStatusLabel(currentStatus)}</div>
-  <div class="tp-actions" role="group" aria-label="Trendpilot-Aktion">
-    ${renderTrendpilotActionButton('planned', currentStatus)}
-    ${renderTrendpilotActionButton('done', currentStatus)}
-    ${renderTrendpilotActionButton('none', currentStatus)}
+  <div class="tp-actions">
+    <button class="btn ${ackClass}" type="button" data-trendpilot-action="ack"${ackDisabled}>${ackLabel}</button>
+    <button class="btn ghost" type="button" data-trendpilot-action="delete">Löschen</button>
   </div>
 </article>`;
   };
 
   const renderTrendpilotSection = (host, entries, fmtDateDE, { unavailable = false } = {}) => {
     if (!host) return;
-    const countText = `${entries?.length || 0} Hinweis${entries?.length === 1 ? '' : 'e'}`;
-    let inner = `<div class="doctor-trendpilot-head"><strong>Trendpilot-Hinweise</strong><span class="small">${countText}</span></div>`;
+    const count = entries?.length || 0;
+    const countText = `${count} Hinweis${count === 1 ? '' : 'e'}`;
+    let body = '';
     if (unavailable) {
-      inner += `<div class="doctor-trendpilot-empty">Trendpilot-Hinweise momentan nicht verfügbar.</div>`;
+      body = '<div class="doctor-trendpilot-empty">Trendpilot-Hinweise momentan nicht verfügbar.</div>';
     } else if (!entries?.length) {
-      inner += `<div class="doctor-trendpilot-empty">Keine Trendpilot-Hinweise in diesem Zeitraum.</div>`;
+      body = '<div class="doctor-trendpilot-empty">Keine Trendpilot-Hinweise in diesem Zeitraum.</div>';
     } else {
       const rows = entries.map((entry) => renderTrendpilotRow(entry, fmtDateDE)).join('');
-      inner += `<div class="doctor-trendpilot-list">${rows}</div>`;
+      body = `<div class="doctor-trendpilot-list">${rows}</div>`;
     }
-    host.innerHTML = inner;
+    const hasUnacked = Array.isArray(entries) ? entries.some((entry) => !entry?.ack) : false;
+    const openAttr = hasUnacked ? ' open' : '';
+    host.innerHTML = `
+<details class="doctor-accordion doctor-trendpilot-accordion"${openAttr}>
+  <summary class="doctor-accordion-head">
+    <strong>Trendpilot-Hinweise</strong>
+    <span class="small">${countText}</span>
+  </summary>
+  <div class="doctor-accordion-body">
+    ${body}
+  </div>
+</details>`;
   };
 
   const updateTrendpilotStatusUi = (row, status) => {
@@ -400,7 +424,7 @@
     try {
       const hub = global.AppModules?.hub;
       if (typeof hub?.openDoctorInboxPanel !== 'function') {
-        toast('Inbox ist derzeit nicht verfügbar.');
+        toast('Inbox ist derzeit nicht verfÃ¼gbar.');
         return;
       }
       const doc = global.document;
@@ -497,31 +521,65 @@
   }
 
   async function onTrendpilotAction(event) {
-    const btn = event.target.closest('[data-doctor-status]');
+    const btn = event.target.closest('[data-trendpilot-action]');
     if (!btn) return;
+    const action = btn.getAttribute('data-trendpilot-action');
     const row = btn.closest('[data-trendpilot-id]');
     if (!row) return;
-    const nextStatus = btn.getAttribute('data-doctor-status');
-    if (!nextStatus) return;
-    const currentStatus = row.getAttribute('data-doctor-status') || 'none';
-    if (nextStatus === currentStatus) return;
-    const setter = resolveTrendpilotStatusSetter();
-    if (typeof setter !== 'function') {
-      toast('Trendpilot-Status kann nicht aktualisiert werden.');
-      return;
-    }
     const id = row.getAttribute('data-trendpilot-id');
     if (!id) return;
+
+    if (action === 'ack') {
+    if (btn.disabled) return;
+      const setter = resolveTrendpilotAckSetter();
+      if (typeof setter !== 'function') {
+        toast('Trendpilot-Ack kann nicht gesetzt werden.');
+        return;
+      }
+      row.classList.add('is-loading');
+      btn.disabled = true;
+      try {
+        await setter({ id, ack: true });
+        toast('Trendpilot best?tigt.');
+        const from = global.document?.getElementById('from')?.value || '';
+        const to = global.document?.getElementById('to')?.value || '';
+        const trendpilotWrap = global.document?.getElementById('doctorTrendpilot');
+        if (trendpilotWrap) {
+          const entries = await loadTrendpilotEntries(from, to);
+          renderTrendpilotSection(trendpilotWrap, entries, fmtDateDE, { unavailable: false });
+        }
+      } catch (err) {
+        logDoctorError('trendpilot ack failed', err);
+        uiError?.('Trendpilot-Ack konnte nicht gesetzt werden.');
+      } finally {
+        row.classList.remove('is-loading');
+        btn.disabled = false;
+      }
+      return;
+    }
+
+    if (action !== 'delete') return;
+    const deleter = resolveTrendpilotDeleter();
+    if (typeof deleter !== 'function') {
+      toast('Trendpilot-Eintrag kann nicht gelöscht werden.');
+      return;
+    }
+    if (!confirm('Trendpilot-Eintrag wirklich l?schen?')) return;
     row.classList.add('is-loading');
     btn.disabled = true;
     try {
-      await setter({ id, doctorStatus: nextStatus });
-      row.setAttribute('data-doctor-status', nextStatus);
-      updateTrendpilotStatusUi(row, nextStatus);
-      toast(`Trendpilot: ${getDoctorStatusLabel(nextStatus)}.`);
+      await deleter({ id });
+      toast('Trendpilot-Eintrag gelöscht.');
+      const from = global.document?.getElementById('from')?.value || '';
+      const to = global.document?.getElementById('to')?.value || '';
+      const trendpilotWrap = global.document?.getElementById('doctorTrendpilot');
+      if (trendpilotWrap) {
+        const entries = await loadTrendpilotEntries(from, to);
+        renderTrendpilotSection(trendpilotWrap, entries, fmtDateDE, { unavailable: false });
+      }
     } catch (err) {
-      logDoctorError('trendpilot status update failed', err);
-      uiError?.('Trendpilot-Status konnte nicht aktualisiert werden.');
+      logDoctorError('trendpilot delete failed', err);
+      uiError?.('Trendpilot-Eintrag konnte nicht gelöscht werden.');
     } finally {
       row.classList.remove('is-loading');
       btn.disabled = false;
@@ -596,7 +654,7 @@ async function renderDoctor(triggerReason = 'manual'){
   const from = fromInput?.value || '';
   const to = toInput?.value || '';
   if (!from || !to){
-    fillAllPanels(placeholderHtml('Bitte Zeitraum wählen.'));
+    fillAllPanels(placeholderHtml('Bitte Zeitraum wÃ¤hlen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
@@ -809,7 +867,7 @@ async function renderDoctor(triggerReason = 'manual'){
   }
 
   if (panels.inbox) {
-    panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+    panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
   }
 
   const formatNotesHtml = (notes) => {
@@ -852,7 +910,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-bp="${day.date}">Löschen</button>
+      <button class="btn ghost" data-del-bp="${day.date}">LÃ¶schen</button>
     </div>
   </div>
 
@@ -903,7 +961,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-body="${day.date}">Löschen</button>
+      <button class="btn ghost" data-del-body="${day.date}">LÃ¶schen</button>
     </div>
   </div>
   <div class="col-measure doctor-body-metrics">
@@ -963,7 +1021,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Löschen</button>
+      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">LÃ¶schen</button>
     </div>
   </div>
   <div class="col-measure doctor-lab-metrics">
@@ -1003,12 +1061,12 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Löschen</button>
+      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">LÃ¶schen</button>
     </div>
   </div>
   <div class="col-measure doctor-activity-metrics">
     <div class="measure-head">
-      <div class="activity-col">Aktivität</div>
+      <div class="activity-col">AktivitÃ¤t</div>
       <div class="duration-col">Dauer (Min)</div>
       <div class="note-col">Notiz</div>
     </div>
@@ -1031,21 +1089,21 @@ async function renderDoctor(triggerReason = 'manual'){
       btn.addEventListener('click', async () => {
         const date = btn.getAttribute(attrName);
         if (!date) return;
-        if (!confirm(`Alle ${label}-Einträge für ${date} löschen?`)) return;
+        if (!confirm(`Alle ${label}-EintrÃ¤ge fÃ¼r ${date} lÃ¶schen?`)) return;
 
         btn.disabled = true;
         const old = btn.textContent;
-        btn.textContent = 'Lösche...';
+        btn.textContent = 'LÃ¶sche...';
         try {
           const result = await deleteRemoteByType(date, type);
           if (!result?.ok) {
-            alert(`Server-Löschung fehlgeschlagen (${result?.status || "?"}).`);
+            alert(`Server-LÃ¶schung fehlgeschlagen (${result?.status || "?"}).`);
             return;
           }
           await requestUiRefresh({ reason: `doctor:delete:${type}` });
         } catch (err) {
           logDoctorError(`deleteRemoteByType failed (${type})`, err);
-          alert('Server-Löschung fehlgeschlagen (Fehler siehe Konsole).');
+          alert('Server-LÃ¶schung fehlgeschlagen (Fehler siehe Konsole).');
         } finally {
           btn.disabled = false;
           btn.textContent = old;
@@ -1057,17 +1115,17 @@ async function renderDoctor(triggerReason = 'manual'){
     // Rendern / Leerzustand
   if (!daysArr.length){
     if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
-    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Körperdaten im Zeitraum.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine KÃ¶rperdaten im Zeitraum.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
     if (panels.bp) panels.bp.innerHTML = daysArr.map(renderDoctorDay).join("");
     if (panels.body) {
       const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
-      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Körperdaten im Zeitraum.');
+      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine KÃ¶rperdaten im Zeitraum.');
     }
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox öffnet in einem separaten Fenster.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -1088,7 +1146,7 @@ async function renderDoctor(triggerReason = 'manual'){
     }
 
     bindDomainDeleteButtons(panels.bp, 'data-del-bp', 'bp', 'Blutdruck');
-    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Körper');
+    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'KÃ¶rper');
   }
 
   if (panels.lab) {
@@ -1141,7 +1199,7 @@ async function exportDoctorJson(){
   const from = $("#from")?.value || '';
   const to = $("#to")?.value || '';
   if (!from || !to) {
-    toast('Bitte Zeitraum wählen.');
+    toast('Bitte Zeitraum wÃ¤hlen.');
     return;
   }
   const isDayInRange = (day) => {
@@ -1261,7 +1319,7 @@ async function exportDoctorJson(){
 
   dl("gesundheitslog.json", JSON.stringify(payload, null, 2), "application/json");
 }
-// SUBMODULE: doctorApi @internal - registriert öffentliche API-Funktionen im globalen Namespace
+// SUBMODULE: doctorApi @internal - registriert Ã¶ffentliche API-Funktionen im globalen Namespace
   const doctorApi = {
     renderDoctor,
     exportDoctorJson,
@@ -1419,7 +1477,7 @@ async function exportDoctorJson(){
     const periodTo = report.period?.to || report.day || '';
     const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
     const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
-    const summary = (report.summary || '').trim() || 'Kein Summary verfügbar.';
+    const summary = (report.summary || '').trim() || 'Kein Summary verfÃ¼gbar.';
     const flags = reportFlags(report);
     const badgeHtml = flags
       .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
@@ -1445,14 +1503,14 @@ async function exportDoctorJson(){
   <div class="doctor-report-body">${textHtml}</div>
   <div class="doctor-report-actions">
     <button class="btn ghost" type="button" data-report-action="regenerate">Neu erstellen</button>
-    <button class="btn ghost" type="button" data-report-action="delete">Löschen</button>
+    <button class="btn ghost" type="button" data-report-action="delete">LÃ¶schen</button>
   </div>
 </article>`;
   };
 
   async function renderDoctorInboxOverlay({ from, to } = {}) {
     if (!showDoctorInboxPanel()) {
-      toast('Inbox ist derzeit nicht verfügbar.');
+      toast('Inbox ist derzeit nicht verfÃ¼gbar.');
       return;
     }
     inboxPanelState.range = { from: from || '', to: to || '' };
@@ -1507,10 +1565,10 @@ async function exportDoctorJson(){
       clearInboxBtn.addEventListener('click', async () => {
         const clearer = resolveReportInboxClearer();
         if (typeof clearer !== 'function') {
-          toast('Inbox kann derzeit nicht gelöscht werden.');
+          toast('Inbox kann derzeit nicht gelÃ¶scht werden.');
           return;
         }
-        if (!confirm('Inbox wirklich komplett löschen?')) return;
+        if (!confirm('Inbox wirklich komplett lÃ¶schen?')) return;
         clearInboxBtn.disabled = true;
         try {
           await clearer({ subtypes: ['monthly_report', 'range_report'] });
@@ -1518,7 +1576,7 @@ async function exportDoctorJson(){
           await refreshDoctorAfterMonthlyReport();
         } catch (err) {
           logDoctorError('inbox clear failed', err);
-          uiError?.('Inbox konnte nicht gelöscht werden.');
+          uiError?.('Inbox konnte nicht gelÃ¶scht werden.');
         } finally {
           clearInboxBtn.disabled = false;
         }
@@ -1586,18 +1644,18 @@ async function exportDoctorJson(){
     if (action === 'delete') {
       const deleter = resolveMonthlyReportDeleter();
       if (typeof deleter !== 'function') {
-        toast('Löschen momentan nicht möglich.');
+        toast('LÃ¶schen momentan nicht mÃ¶glich.');
         return;
       }
-      if (!confirm(`Diesen ${reportLabel} endgültig löschen?`)) return;
+      if (!confirm(`Diesen ${reportLabel} endgÃ¼ltig lÃ¶schen?`)) return;
       btn.disabled = true;
       try {
         await deleter({ id: reportId });
-        toast(`${reportLabel} gelöscht.`);
+        toast(`${reportLabel} gelÃ¶scht.`);
         await refreshDoctorAfterMonthlyReport();
       } catch (err) {
         logDoctorError('delete monthly report failed', err);
-        uiError?.('Löschen fehlgeschlagen.');
+        uiError?.('LÃ¶schen fehlgeschlagen.');
       } finally {
         btn.disabled = false;
       }
@@ -1661,7 +1719,7 @@ async function exportDoctorJson(){
     const from = reportType === 'range_report' ? (options.from || defaultFrom) : null;
     const to = reportType === 'range_report' ? (options.to || defaultTo) : null;
     if (reportType === 'range_report' && (!from || !to)) {
-      const err = new Error('Bitte Zeitraum wählen.');
+      const err = new Error('Bitte Zeitraum wÃ¤hlen.');
       logDoctorError('range report missing range', err);
       throw err;
     }
@@ -1679,7 +1737,7 @@ async function exportDoctorJson(){
       throw err;
     }
     const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
-    toast(`${reportLabel} ausgelöst - Inbox aktualisiert.`);
+    toast(`${reportLabel} ausgelÃ¶st - Inbox aktualisiert.`);
     await refreshDoctorAfterMonthlyReport({ from: from || '', to: to || '' });
     return result;
   }

@@ -95,3 +95,29 @@ export async function setTrendpilotAck({ id, ack = true } = {}) {
   }
   return { id, ack: ackValue, ack_at: ackAt };
 }
+
+export async function deleteTrendpilotEvent({ id } = {}) {
+  if (!id) throw new Error('trendpilot delete: id required');
+  const endpoint = await resolveRestEndpoint();
+  const url = `${endpoint}?id=eq.${encodeURIComponent(id)}`;
+  const res = await fetchWithAuth(
+    (headers) =>
+      fetch(url, {
+        method: 'DELETE',
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      }),
+    { tag: 'trendpilot:delete', maxAttempts: 2 }
+  );
+  if (!res.ok) {
+    let details = '';
+    try {
+      const errJson = await res.json();
+      details = errJson?.message || errJson?.details || '';
+    } catch (_) {
+      /* ignore */
+    }
+    diag.add?.(`[trendpilot] delete failed ${res.status} ${details}`);
+    throw new Error(`trendpilot delete failed ${res.status} ${details}`);
+  }
+  return { id };
+}

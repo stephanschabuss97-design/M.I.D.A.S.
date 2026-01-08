@@ -76,6 +76,26 @@
   opacity:.75;
   padding:4px 0;
 }
+.doctor-accordion{
+  border:0;
+  background:transparent;
+}
+.doctor-accordion > summary{
+  list-style:none;
+  cursor:pointer;
+}
+.doctor-accordion > summary::-webkit-details-marker{
+  display:none;
+}
+.doctor-accordion-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.doctor-accordion-body{
+  margin-top:6px;
+}
 .tp-row{
   border:1px solid #2f3442;
   border-radius:10px;
@@ -100,6 +120,10 @@
   gap:8px;
   font-size:13px;
   font-weight:600;
+}
+.tp-actions{
+  display:flex;
+  justify-content:flex-end;
 }
 .tp-badge{
   display:inline-flex;

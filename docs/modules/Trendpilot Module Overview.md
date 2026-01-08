@@ -2,7 +2,7 @@
 
 Kurze Einordnung:
 - Zweck: Trendanalyse ueber Wochenfenster (BP/Body/Lab + Combined).
-- Rolle innerhalb von MIDAS: erzeugt Trendpilot-Events + UI-Hinweise (Capture/Doctor/Charts).
+- Rolle innerhalb von MIDAS: erzeugt Trendpilot-Events + UI-Hinweise (Capture/Doctor/Charts/Hub).
 - Abgrenzung: keine Echtzeit-Spike-Alerts; keine Diagnosen/Therapieentscheidungen.
 
 Related docs:
@@ -38,8 +38,29 @@ Related docs:
 ## 3. Datenmodell / Storage
 
 - Tabellen: `trendpilot_events`, `trendpilot_state`
-- Events: `trendpilot_events` (warning/critical, window_from/window_to, ack/ack_at).
+- Events: `trendpilot_events` (info/warning/critical, window_from/window_to, ack/ack_at).
+- View: `trendpilot_events_range` als standardisierte Range-Query (Sortierung + Severity-Filter).
 - State: `trendpilot_state` (Baseline/Normalisierung pro Typ).
+
+### 3.1 Event-Shape (Payload)
+Minimaler Kern:
+- `type`: bp|body|lab|combined
+- `severity`: info|warning|critical
+- `window_from/window_to`: Wochenfenster (ISO date)
+- `payload.rule_id`: eindeutige Regel-ID
+- `payload.*`: Kennzahlen (Baseline, Deltas, Wochen, IDs)
+
+Beispiele:
+- `bp-trend-v1`: baseline_sys/dia, avg_sys/dia, delta_sys/dia, weeks
+- `body-weight-trend-v1`: baseline_kg, avg_kg, delta_kg, weeks
+- `lab-egfr-creatinine-trend-v1`: baseline_egfr/creatinine, avg_egfr/creatinine, delta_egfr/creatinine, weeks
+- `bp-weight-correlation-v1`: bp_event_ids, body_event_ids, weight_delta_kg, window_days
+- `baseline-normalized-v1`: baseline_from, baseline_sys/dia, sample_weeks (+ prev-baseline Felder)
+
+### 3.2 Dedupe-Strategie
+- Unique: `user_id + type + window_from + severity`
+- Updates erweitern `window_to`, Payload wird gemerged.
+- Ack bleibt erhalten (ack/ack_at), auch wenn Event spaeter erweitert wird.
 
 ---
 
@@ -55,8 +76,13 @@ Related docs:
 
 ### 4.3 Verarbeitung
 - Edge Function berechnet Wochenfenster + Deltas und schreibt Events.
-- Severity: `warning | critical` (nur diese werden persistiert).
+- Severity: `info | warning | critical` (alle werden persistiert).
 - `warning/critical` -> Trendpilot-Event + Ack-Dialog.
+- `info` -> Trendpilot-Event fuer System-Kommentare (kein Popup).
+
+### 4.4 Normalisierung (Baseline Reset)
+- Wenn es Alerts gab und die letzten 6 Wochen stabil sind, wird die Baseline neu gesetzt.
+- Dabei wird ein `info`-Event `baseline-normalized-v1` geschrieben.
 
 ### 4.4 Persistenz
 - `trendpilot_events` speichert Events inkl. Ack/Ack_at.
@@ -67,15 +93,18 @@ Related docs:
 ## 5. UI-Integration
 
 - Capture-Pill zeigt letzte Trendpilot-Meldung.
-- Doctor-Ansicht listet Trendpilot-Hinweise.
+- Doctor-Ansicht listet Trendpilot-Hinweise (Akkordeon).
+- Hub zeigt Popup bei warning/critical + Start/Ende-Toast (dedupe).
+- Hub-Glow faerbt sich rot bei aktivem Trend (ongoing).
 - BP-Chart zeigt Trendpilot-Bands + Legende.
 
 ---
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Trendpilot-Block mit Severity, Zeitraum, Ack-Status.
-- Ack via `setTrendpilotAck`.
+- Trendpilot-Block mit Severity, Zeitraum, Text.
+- Akkordeon offen wenn mind. ein Eintrag nicht bestaetigt.
+- Ack-Button wird zu "Bestaetigt", Loeschen ist separat.
 
 ---
 
@@ -90,8 +119,9 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Public API / Entry Points: `AppModules.trendpilot.refreshLatestSystemComment`.
-- Source of Truth: `trendpilot_events` (warning/critical).
-- Side Effects: emits `trendpilot:latest`, opens ack dialog.
+- Source of Truth: `trendpilot_events` (info/warning/critical).
+- Side Effects: emits `trendpilot:latest`, opens ack dialog (nur warning/critical).
+- Ongoing-Logik in der App: Trend aktiv, wenn `window_to >= heute` (ISO-Tag).
 - Constraints: braucht genug Wochen Daten, depende on Supabase exports.
 - `trendpilot:latest` Event fuer Capture-Pill.
 - `fetchTrendpilotEventsRange` fuer Doctor-Block.
@@ -110,6 +140,7 @@ Related docs:
 - Body (Gewicht): Warning ab +1.2 kg, Critical ab +2.0 kg (jeweils Wochenmittel, Trend >= 2 Wochen).
 - Lab: Evaluation nur bei >=2 Messungen (Range) und >=2 Messungen im Baseline-Slice.
 - Combined (BP x Gewicht): nur wenn weight_delta_kg >= 1.5; Critical bei BP critical oder weight_delta_kg >= 2.0.
+- Normalisierung: 6 stabile Wochen ohne Alerts nach einer Alert-Phase.
 
 ## 9.2 Meldungen / Begruendungen (rule_id)
 
@@ -117,6 +148,7 @@ Related docs:
 - `body-weight-trend-v1`: Gewicht-Wochenmittel ueber Baseline, inkl. delta_kg und Dauer.
 - `lab-egfr-creatinine-trend-v1`: eGFR/Kreatinin Trend inkl. Delta/Absolut-Grenzen.
 - `bp-weight-correlation-v1`: Korrelation BP + Gewicht, inkl. weight_delta_kg und Event-IDs.
+- `baseline-normalized-v1`: Baseline wurde nach stabilen Wochen neu gesetzt (info).
 
 ## 9.3 Begruendungstexte (App-Map)
 
@@ -128,6 +160,7 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 | `body-weight-trend-v1` | Gewicht-Wochenmittel ueber Baseline | Baseline/Delta/Dauer | baseline_kg, avg_kg, delta_kg, weeks, window_from |
 | `lab-egfr-creatinine-trend-v1` | Labor-Trend auffaellig | Baseline/Delta/Dauer | baseline_egfr, baseline_creatinine, avg_egfr, avg_creatinine, delta_egfr, delta_creatinine, weeks, window_from |
 | `bp-weight-correlation-v1` | BP + Gewicht korrelieren | Delta + Event-IDs | weight_delta_kg, window_from, window_to, bp_event_ids, body_event_ids |
+| `baseline-normalized-v1` | Baseline neu gesetzt | Normalisierung/Info | baseline_from, baseline_sys, baseline_dia, sample_weeks, baseline_*_prev |
 ---
 
 ## 10. Feature-Flags / Konfiguration

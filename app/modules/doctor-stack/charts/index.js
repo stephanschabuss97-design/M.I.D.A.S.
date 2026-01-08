@@ -384,19 +384,51 @@ async getFiltered() {
 
   async loadTrendpilotBands({ from, to } = {}) {
     const api = getSupabaseApi();
-    if (typeof api.fetchSystemCommentsRange !== "function") {
+    const useEvents = typeof api.fetchTrendpilotEventsRange === "function";
+    if (!useEvents && typeof api.fetchSystemCommentsRange !== "function") {
       this.currentTrendpilotBands = [];
       return [];
     }
     try {
-      const rows = await api.fetchSystemCommentsRange({
-        from,
-        to,
-        metric: "bp",
-        order: "day.asc"
-      });
+      const resolveTrendpilotNote = (entry) => {
+        const payload = entry?.payload || {};
+        return (
+          payload.text ||
+          payload.summary ||
+          payload.rule_id ||
+          entry?.text ||
+          entry?.summary ||
+          entry?.source ||
+          "Trendpilot-Hinweis"
+        );
+      };
+      let rows = [];
+      if (useEvents) {
+        rows = await api.fetchTrendpilotEventsRange({
+          from,
+          to,
+          type: "bp",
+          order: "window_from.asc"
+        });
+      } else {
+        rows = await api.fetchSystemCommentsRange({
+          from,
+          to,
+          metric: "bp",
+          order: "day.asc"
+        });
+      }
       const filtered = Array.isArray(rows)
-        ? rows.filter((entry) => entry && (entry.severity === "warning" || entry.severity === "critical"))
+        ? rows
+            .filter((entry) =>
+              entry && (entry.severity === "warning" || entry.severity === "critical")
+            )
+            .map((entry) => ({
+              severity: entry.severity,
+              window_from: entry.window_from || entry.day || "",
+              window_to: entry.window_to || entry.day || "",
+              note: resolveTrendpilotNote(entry)
+            }))
         : [];
       this.currentTrendpilotBands = filtered;
       return filtered;
@@ -1020,6 +1052,12 @@ if (metric === "bp") {
       const [y, m, d] = isoDate.split("-").map(Number);
       return Date.UTC(y, (m || 1) - 1, d || 1);
     };
+    const formatIsoDay = (isoDate) => {
+      if (!isoDate) return "";
+      const parts = isoDate.split("-");
+      if (parts.length !== 3) return isoDate;
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    };
     const pairIdFor = (date, ctx) => `${date || ""}__${ctx || ""}`;
 
     // Tageskommentare (erste Zeile)
@@ -1337,14 +1375,24 @@ if (metric === "bp") {
       const daySpan = 24 * 3600 * 1000;
       const severitySeen = new Set();
       let overlays = "";
+      const bandHeight = 8;
+      const bandY = Math.max(PT, H - PB - bandHeight - 2);
       this.currentTrendpilotBands.forEach((entry) => {
-        const dayTs = toDayTs(entry.day);
-        if (!Number.isFinite(dayTs)) return;
-        const start = x(dayTs);
-        const end = x(dayTs + daySpan);
+        const fromDay = entry.window_from || "";
+        const toDay = entry.window_to || fromDay;
+        const startTs = toDayTs(fromDay);
+        const endTs = toDayTs(toDay);
+        if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) return;
+        const start = x(startTs);
+        const end = x(endTs + daySpan);
         const width = Math.max(2, end - start);
         const cls = entry.severity === "critical" ? "tp-band-critical" : "tp-band-warning";
-        overlays += `<rect class="trendpilot-band ${cls}" x="${start.toFixed(1)}" y="${PT}" width="${width.toFixed(1)}" height="${innerH}" pointer-events="none"></rect>`;
+        const rangeLabel = toDay && fromDay !== toDay
+          ? `${formatIsoDay(fromDay)} - ${formatIsoDay(toDay)}`
+          : formatIsoDay(fromDay);
+        const note = entry.note || "";
+        const valueLabel = `Trendpilot (${entry.severity === "critical" ? "Kritisch" : "Warnung"})`;
+        overlays += `<rect class="trendpilot-band chart-hit ${cls}" x="${start.toFixed(1)}" y="${bandY}" width="${width.toFixed(1)}" height="${bandHeight}" data-date="${esc(rangeLabel)}" data-ctx="Trendpilot" data-kind="trendpilot" data-note="${esc(note)}" data-value-label="${esc(valueLabel)}" tabindex="0" role="button"></rect>`;
         severitySeen.add(cls);
       });
       if (overlays) {

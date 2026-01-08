@@ -15,7 +15,7 @@ Wichtige Dateien (aktuell)
 Ziel
 - Trendpilot von JS-Logik in eine Edge Function verlagern.
 - Eigene Trendpilot-Tabelle in Supabase fuer Warnungen und Korrelationen.
-- Arzt-Ansicht bekommt eigenen Trendpilot-Tab mit Filtern.
+- Arzt-Ansicht bekommt einen Trendpilot-Block mit Akkordeon + Aktionen.
 - Datenbasis fuer spaetere Arztberichte und Korrelationslogik schaffen.
 
 Scope
@@ -37,7 +37,7 @@ Annahmen
 - Aktuell keine Trendpilot warning/critical Eintraege in der DB.
 - BP bleibt erster Datensatz, Body/Lab folgen iterativ.
 - Edge Function ist der zentrale, deterministische Evaluationspunkt.
-- Trendpilot speichert nur warning/critical (kein pass).
+- Trendpilot speichert info/warning/critical (kein pass).
 - Datenhaltung: unbegrenzt (keine Retention/Loeschung).
 - Single-User Betrieb (keine Multi-User Anforderungen).
 
@@ -47,7 +47,7 @@ Deterministische Hauptsteps
   1.1 Neue Tabellen `trendpilot_events` und `trendpilot_state` definieren. (done)
   1.2 Indizes fuer Events (user_id, type, severity), (user_id, ts), (user_id, type, window_from, window_to) anlegen. (done)
   1.3 Indizes fuer State (user_id, type) anlegen. (done)
-  1.4 Constraints fuer erlaubte Werte (type: bp/body/lab/combined, severity: warning/critical). (done)
+  1.4 Constraints fuer erlaubte Werte (type: bp/body/lab/combined, severity: info/warning/critical). (done)
   1.5 Dedup-Constraint (user_id + type + window_from + severity). (done)
   1.6 RLS Policies fuer user_id Zugriff anlegen. (done)
   1.7 View fuer Range-Queries (z.B. `trendpilot_events_range`). (done)
@@ -58,12 +58,12 @@ Deterministische Hauptsteps
   2.3 Korrelationen implementieren (z.B. weight+bp). (done)
   2.4 Deterministische Upsert-Strategie (idempotent, kein Duplikat-Noise). (done)
   2.5 Logging/diag Hooks fuer Debugging. (done)
-  2.6 Nur warning/critical schreiben (pass ignorieren). (done)
+  2.6 Warning/critical als Alerts schreiben, info fuer Normalisierung (pass ignorieren). (done)
   2.7 Trend-Logik fuer Start/Ende/Normalisierung:
       - Start: erstes Wochenfenster mit warning/critical -> window_from setzen.
       - Fortsetzung: solange Bedingung erfuellt, window_to woechentlich erweitern.
       - Ende: wenn 2-3 Wochen in Folge keine Bedingung erfuellt, window_to finalisieren.
-      - Normalisierung: nach 4-8 stabilen Wochen im neuen Bereich Baseline anpassen.
+      - Normalisierung: nach 6 stabilen Wochen Baseline anpassen + info-Event schreiben.
   2.8 Reihenfolge: Einzelchecks -> Events upserten/aktualisieren -> Korrelationen bilden -> combined Event schreiben. (done)
 
 3) Scheduler / Trigger
@@ -81,13 +81,15 @@ Deterministische Hauptsteps
   5.2 Hub-Popup anzeigen (warning/critical), Bestaetigung erforderlich. (done)
   5.3 Ack nur beim ersten Auftreten speichern (ack + ack_at). (done)
   5.4 Event Emission `trendpilot:latest` an neue Datenquelle binden. (done)
-  5.5 Begruendungstexte im Hub: rule_id -> Textbausteine (fuer Arzt erklaerbar).
+  5.5 Begruendungstexte im Hub: rule_id -> Textbausteine (fuer Arzt erklaerbar). (done)
+  5.6 Lifecycle-Toast (Start/Ende) mit Dedupe. (done)
+  5.7 Hub-Glow schaltet auf rot bei aktivem Trend. (done)
 
 6) Arzt-Ansicht UI
-  6.1 Neuer Tab "Trendpilot" in doctor view.
-  6.2 Liste der Trendpilot-Events (warning/critical only).
-  6.3 Filter nach type (bp/body/lab/combined).
-  6.4 Badge-Zaehler am Tab (optional).
+  6.1 Trendpilot-Akkordeon in doctor view. (done)
+  6.2 Liste der Trendpilot-Events (info/warning/critical). (done)
+  6.3 Aktionen: Ack/Bestätigt + Loeschen. (done)
+  6.4 Default-Status: geschlossen, wenn alle bestaetigt. (done)
 
 7) Charts Integration
   7.1 Trendpilot-Ranges aus neuer Tabelle laden (window_from/window_to).
@@ -98,13 +100,13 @@ Deterministische Hauptsteps
 8) Migration / Cleanup
   8.1 Alte JS Trendpilot-Logik schrittweise entfernen. (done)
   8.2 System_comment Trendpilot Pfade deaktivieren. (done)
-  8.3 Dokumentation aktualisieren (Trendpilot Module Overview, DB Plan).
+  8.3 Dokumentation aktualisieren (Trendpilot Module Overview, DB Plan). (done)
 
 9) QA / Validierung
   9.1 Edge Function: deterministisch, idempotent, keine Duplikate.
   9.2 Scheduler feuert zu korrekter Zeit (Wien, 02:00).
   9.3 App-Popup + Ack funktioniert End-to-End.
-  9.4 Arzt-Tab zeigt nur warning/critical.
+  9.4 Arzt-Block zeigt info/warning/critical, Popup nur warning/critical.
   9.5 Chart-Bands korrekt im Zeitraum.
   9.6 Keine Regression bei BP/Body/Lab Tabs.
   9.7 Doku-Update Liste:

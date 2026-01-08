@@ -275,6 +275,31 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: scale(calc(1 + 0.06 * var(--midas-aura-boost, 0)));
 }
 
+.hub-orbit.trendpilot-active {
+  --midas-aura-boost: 0.7;
+}
+
+.hub-orbit.trendpilot-active .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    ),
+    conic-gradient(
+      from -40deg,
+      rgba(255, 60, 60, 0.0) 0deg,
+      rgba(255, 60, 60, 0.8) 60deg,
+      rgba(255, 60, 60, 0.0) 120deg,
+      rgba(255, 110, 110, 0.0) 180deg,
+      rgba(255, 110, 110, 0.85) 240deg,
+      rgba(255, 110, 110, 0.0) 300deg,
+      rgba(255, 60, 60, 0.0) 360deg
+    );
+  opacity: 1.15;
+  filter: blur(calc(6px + 8px * var(--midas-aura-boost, 0)));
+}
+
 /* ­Mobile-Boost mehr Glow, größer, intensiver */
 @media (max-width: 640px) {
   .midas-aura-flow {

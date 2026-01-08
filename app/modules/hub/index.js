@@ -103,6 +103,22 @@
   const auraState = {
     canvas: null,
   };
+  let trendpilotAuraBound = false;
+  const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  const getTodayIso = () => new Date().toISOString().slice(0, 10);
+
+  const isTrendpilotOngoing = (entry) => {
+    const to = entry?.window_to || entry?.day || '';
+    if (!to || !ISO_DAY_RE.test(to)) return false;
+    return to >= getTodayIso();
+  };
+
+  const applyTrendpilotAuraState = (entry) => {
+    const orbit = doc?.querySelector('.hub-orbit');
+    if (!orbit) return;
+    orbit.classList.toggle('trendpilot-active', isTrendpilotOngoing(entry));
+  };
 
   const triggerAuraTouchPulse = (event) => {
     if (!auraState.canvas || !aura3dApi?.triggerTouchPulse || !event) return;
@@ -814,6 +830,15 @@
     setupSpriteState(hub);
     setupCarouselController(hub);
     setupQuickbar(hub);
+    if (!trendpilotAuraBound) {
+      trendpilotAuraBound = true;
+      doc.addEventListener('trendpilot:latest', (event) => {
+        applyTrendpilotAuraState(event?.detail?.entry || null);
+      });
+    }
+    if (typeof appModules.trendpilot?.getLatestSystemComment === 'function') {
+      applyTrendpilotAuraState(appModules.trendpilot.getLatestSystemComment());
+    }
     if (aura3dApi?.initAura3D) {
       const auraCanvas = hub.querySelector('#hubAuraCanvas');
       if (auraCanvas) {

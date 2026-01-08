@@ -96,27 +96,33 @@
   const TRENDPILOT_TEXT_MAP = {
     'bp-trend-v1': {
       popup:
-        'Blutdruck-Wochenmittel ueber Baseline ({baseline_sys}/{baseline_dia}). Aktuell {avg_sys}/{avg_dia} (Delta {delta_sys}/{delta_dia}) seit {window_from}.',
+        'Blutdruck über Baseline: Wochenmittel {avg_sys}/{avg_dia} (Baseline {baseline_sys}/{baseline_dia}, Delta {delta_sys}/{delta_dia}). Seit {window_from}.',
       doctor:
-        'BP-Trend: Wochenmittel ueber Baseline. Baseline {baseline_sys}/{baseline_dia}, aktuell {avg_sys}/{avg_dia}, Delta {delta_sys}/{delta_dia}, Dauer {weeks} Wochen.'
+        'BP-Trend: Wochenmittel ücber Baseline. Baseline {baseline_sys}/{baseline_dia}, aktuell {avg_sys}/{avg_dia}, Delta {delta_sys}/{delta_dia}, Dauer {weeks} Wochen.'
     },
     'body-weight-trend-v1': {
       popup:
-        'Gewicht-Wochenmittel ueber Baseline ({baseline_kg} kg). Aktuell {avg_kg} kg (Delta {delta_kg} kg) seit {window_from}.',
+        'Gewicht über Baseline: Wochenmittel {avg_kg} kg (Baseline {baseline_kg} kg, Delta {delta_kg} kg). Seit {window_from}.',
       doctor:
-        'Gewicht-Trend: Wochenmittel ueber Baseline. Baseline {baseline_kg} kg, aktuell {avg_kg} kg, Delta {delta_kg} kg, Dauer {weeks} Wochen.'
+        'Gewicht-Trend: Wochenmittel über Baseline. Baseline {baseline_kg} kg, aktuell {avg_kg} kg, Delta {delta_kg} kg, Dauer {weeks} Wochen.'
     },
     'lab-egfr-creatinine-trend-v1': {
       popup:
-        'Labor-Trend auffaellig (eGFR/Kreatinin). Aktuell {avg_egfr}/{avg_creatinine}, Delta {delta_egfr}/{delta_creatinine} seit {window_from}.',
+        'Labor-Trend auffällig (eGFR/Kreatinin): {avg_egfr}/{avg_creatinine} (Delta {delta_egfr}/{delta_creatinine}) seit {window_from}.',
       doctor:
         'Labor-Trend: eGFR/Kreatinin. Baseline {baseline_egfr}/{baseline_creatinine}, aktuell {avg_egfr}/{avg_creatinine}, Delta {delta_egfr}/{delta_creatinine}, Dauer {weeks} Wochen.'
     },
     'bp-weight-correlation-v1': {
       popup:
-        'BP + Gewicht korrelieren. Gewicht Delta {weight_delta_kg} kg im Zeitraum {window_from} bis {window_to}.',
+        'Blutdruck und Gewicht bewegen sich gemeinsam: Delta Gewicht {weight_delta_kg} kg ({window_from} - {window_to}).',
       doctor:
-        'BP/Gewicht-Korrelation: Gewicht Delta {weight_delta_kg} kg, Zeitraum {window_from} bis {window_to}, BP-Events: {bp_event_ids}, Body-Events: {body_event_ids}.'
+        'BP/Gewicht-Korrelation: Delta Gewicht {weight_delta_kg} kg, Zeitraum {window_from} - {window_to}, BP-Events: {bp_event_ids}, Body-Events: {body_event_ids}.'
+    },
+    'baseline-normalized-v1': {
+      popup:
+        'Neue Baseline nach stabilen Wochen: {baseline_sys}/{baseline_dia} seit {baseline_from}.',
+      doctor:
+        'Baseline neu gesetzt: {baseline_sys}/{baseline_dia} seit {baseline_from} (stabile Wochen: {sample_weeks}).'
     }
   };
 
@@ -129,6 +135,81 @@
       if (typeof value === 'number') return value.toFixed(1).replace(/\.0$/, '');
       return String(value);
     });
+  };
+
+  const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  const formatDayDE = (isoDay) => {
+    if (!isoDay) return '-';
+    try {
+      const d = new Date(`${isoDay}T00:00:00Z`);
+      if (Number.isNaN(d.getTime())) return isoDay;
+      return d.toLocaleDateString('de-AT', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (_) {
+      return isoDay;
+    }
+  };
+
+  const getTodayIso = () => new Date().toISOString().slice(0, 10);
+
+  const isTrendpilotOngoing = (entry) => {
+    const to = entry?.window_to || entry?.day || '';
+    if (!to || !ISO_DAY_RE.test(to)) return false;
+    return to >= getTodayIso();
+  };
+
+  const trendpilotStorage = (() => {
+    try {
+      return global.localStorage || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  const hasSeenTrendpilotNotice = (kind, id) => {
+    if (!trendpilotStorage || !id) return false;
+    return trendpilotStorage.getItem(`trendpilot:${kind}:${id}`) === '1';
+  };
+
+  const markTrendpilotNoticeSeen = (kind, id) => {
+    if (!trendpilotStorage || !id) return;
+    trendpilotStorage.setItem(`trendpilot:${kind}:${id}`, '1');
+  };
+
+  const notifyTrendpilotLifecycle = (entry) => {
+    if (!entry || !entry.id) return;
+    const severity = entry?.severity;
+    if (severity !== 'warning' && severity !== 'critical') return;
+    const ongoing = isTrendpilotOngoing(entry);
+    const from = entry?.window_from || entry?.day || '';
+    const to = entry?.window_to || entry?.day || '';
+    const startLabel = formatDayDE(from);
+    const endLabel = ongoing ? '' : formatDayDE(to);
+    const rangeLabel = ongoing ? `seit ${startLabel}` : `${startLabel} - ${endLabel}`;
+    const summary = resolveTrendpilotMessage(entry);
+    const rangeText = rangeLabel ? `Zeitraum: ${rangeLabel}` : '';
+    const detailText = summary ? `${rangeText ? ' | ' : ''}${summary}` : '';
+    const toastMessage = rangeText || summary ? `${rangeText}${detailText}` : '';
+
+    if (ongoing) {
+      if (!hasSeenTrendpilotNotice('start', entry.id)) {
+        if (entry.ack) {
+          toast(`Trend gestartet. ${toastMessage}`.trim());
+        }
+        markTrendpilotNoticeSeen('start', entry.id);
+      }
+      return;
+    }
+
+    if (!hasSeenTrendpilotNotice('end', entry.id)) {
+      toast(`Trend beendet. ${toastMessage}`.trim());
+      markTrendpilotNoticeSeen('end', entry.id);
+    }
   };
 
   function formatTrendpilotRange(entry) {
@@ -150,7 +231,7 @@
       payload.summary ||
       payload.rule_id ||
       entry?.source ||
-      'Trendpilot-Hinweis.'
+      'Trendpilot erkennt eine Ver\u00e4nderung.'
     );
   }
 
@@ -158,10 +239,14 @@
     return new Promise((resolve) => {
       const doc = global.document;
       const severity = entry?.severity === 'critical' ? 'Kritischer Hinweis' : 'Warnhinweis';
+      const headline =
+        entry?.severity === 'critical'
+          ? 'Trendpilot meldet einen kritischen Hinweis'
+          : 'Trendpilot meldet einen Hinweis';
       const recommendation =
         entry?.severity === 'critical'
-          ? 'Bitte aerztliche Klaerung empfohlen.'
-          : 'Bitte beobachten.';
+          ? 'Bitte zeitnah \u00e4rztlich abkl\u00e4ren lassen.'
+          : 'Bitte beobachten und bei Bedarf abkl\u00e4ren.';
       const message = resolveTrendpilotMessage(entry);
       const range = formatTrendpilotRange(entry);
       if (!doc || !doc.body) {
@@ -179,7 +264,7 @@
       msg.className = 'trendpilot-dialog-message';
       const msgId = 'trendpilotDialogMessage';
       msg.id = msgId;
-      msg.textContent = `Trendpilot: ${severity}. ${recommendation}`;
+      msg.textContent = `${headline}. ${recommendation}`;
       card.setAttribute('aria-labelledby', msgId);
       const deltas = doc.createElement('div');
       deltas.className = 'trendpilot-dialog-deltas';
@@ -308,6 +393,7 @@
         : null;
       emitLatestTrendpilot(latestSystemComment);
       await maybeShowTrendpilotDialog(latestSystemComment);
+      notifyTrendpilotLifecycle(latestSystemComment);
       return latestSystemComment;
     } catch (err) {
       diag.add?.(`[trendpilot] latest load failed: ${err?.message || err}`);
