@@ -1,9 +1,9 @@
 ﻿# Trendpilot Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Trendanalyse fuer Blutdruck ueber Wochenfenster (Warnungen/Kritisch).
-- Rolle innerhalb von MIDAS: erzeugt System-Kommentare + UI-Hinweise (Capture/Doctor/Charts).
-- Abgrenzung: keine Echtzeit-Spike-Alerts; keine Datenspeicherung ausser System-Comments.
+- Zweck: Trendanalyse ueber Wochenfenster (BP/Body/Lab + Combined).
+- Rolle innerhalb von MIDAS: erzeugt Trendpilot-Events + UI-Hinweise (Capture/Doctor/Charts).
+- Abgrenzung: keine Echtzeit-Spike-Alerts; keine Diagnosen/Therapieentscheidungen.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
@@ -24,7 +24,9 @@ Related docs:
 |------|------|
 | `app/modules/vitals-stack/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
 | `app/modules/vitals-stack/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
-| `app/supabase/api/system-comments.js` | Persistenz fuer `system_comment` (Ack/Status) |
+| `supabase/functions/midas-trendpilot/index.ts` | Edge Function (Trendpilot Engine, Scheduler Target) |
+| `app/supabase/api/trendpilot.js` | API fuer Events + Ack (`fetchTrendpilotEventsRange`, `setTrendpilotAck`) |
+| `sql/14_Trendpilot.sql` | Trendpilot DB Schema (`trendpilot_events`, `trendpilot_state`) |
 | `app/modules/doctor-stack/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |
 | `app/modules/vitals-stack/vitals/index.js` | Capture-Pill + `trendpilot:latest` Hook |
 | `app/modules/doctor-stack/charts/index.js` | Trendpilot-Bands im BP-Chart |
@@ -35,10 +37,9 @@ Related docs:
 
 ## 3. Datenmodell / Storage
 
-- Tabelle: `health_events`
-- Typ: `system_comment`
-- Payload-Context: `ack`, `doctorStatus`.
-- Subtypes: `warning`, `critical` (Trendpilot).
+- Tabellen: `trendpilot_events`, `trendpilot_state`
+- Events: `trendpilot_events` (warning/critical, window_from/window_to, ack/ack_at).
+- State: `trendpilot_state` (Baseline/Normalisierung pro Typ).
 
 ---
 
@@ -48,17 +49,18 @@ Related docs:
 - Trendpilot initialisiert via `app/modules/vitals-stack/trendpilot/index.js`.
 - Stub-API, wenn Abhaengigkeiten fehlen.
 
-### 4.2 User-Trigger
-- BP-Abendsave triggert `maybeRunTrendpilotAfterBpSave` (main.js).
+### 4.2 Trigger
+- Scheduler (GitHub Actions Cron) ruft die Edge Function woechentlich auf.
+- Optional manueller Call (z.B. Debug/Dry-Run).
 
 ### 4.3 Verarbeitung
-- `runTrendpilotAnalysis(dayIso)` berechnet Wochenfenster + Deltas.
-- Severity: `info | warning | critical`.
-- `warning/critical` -> `system_comment` schreiben + Ack-Dialog.
+- Edge Function berechnet Wochenfenster + Deltas und schreibt Events.
+- Severity: `warning | critical` (nur diese werden persistiert).
+- `warning/critical` -> Trendpilot-Event + Ack-Dialog.
 
 ### 4.4 Persistenz
-- `upsertSystemCommentRemote` speichert `system_comment`.
-- `setSystemCommentAck` setzt Ack-Flag nach Dialog.
+- `trendpilot_events` speichert Events inkl. Ack/Ack_at.
+- `trendpilot_state` speichert Baseline/Normalisierung.
 
 ---
 
@@ -72,8 +74,8 @@ Related docs:
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Trendpilot-Block mit Severity, Datum, Status-Buttons.
-- Ack/Status via `setSystemCommentDoctorStatus`.
+- Trendpilot-Block mit Severity, Zeitraum, Ack-Status.
+- Ack via `setTrendpilotAck`.
 
 ---
 
@@ -87,12 +89,12 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Public API / Entry Points: `AppModules.trendpilot.runTrendpilotAnalysis`, `refreshLatestSystemComment`.
-- Source of Truth: `system_comment` entries (trendpilot subtype).
+- Public API / Entry Points: `AppModules.trendpilot.refreshLatestSystemComment`.
+- Source of Truth: `trendpilot_events` (warning/critical).
 - Side Effects: emits `trendpilot:latest`, opens ack dialog.
 - Constraints: braucht genug Wochen Daten, depende on Supabase exports.
 - `trendpilot:latest` Event fuer Capture-Pill.
-- `fetchSystemCommentsRange` fuer Doctor-Block.
+- `fetchTrendpilotEventsRange` fuer Doctor-Block.
 - `loadTrendpilotBands` fuer Charts.
 
 ---
@@ -102,6 +104,30 @@ Related docs:
 - Weitere Metriken (Body/Weight).
 - KI-Textgenerierung im Payload.
 
+## 9.1 Aktuelle Schwellen / Gates (v1)
+
+- BP: Warning ab +8 sys oder +5 dia ueber Baseline; Critical ab >=140/90 oder +15/+10 ueber Baseline.
+- Body (Gewicht): Warning ab +1.2 kg, Critical ab +2.0 kg (jeweils Wochenmittel, Trend >= 2 Wochen).
+- Lab: Evaluation nur bei >=2 Messungen (Range) und >=2 Messungen im Baseline-Slice.
+- Combined (BP x Gewicht): nur wenn weight_delta_kg >= 1.5; Critical bei BP critical oder weight_delta_kg >= 2.0.
+
+## 9.2 Meldungen / Begruendungen (rule_id)
+
+- `bp-trend-v1`: BP-Wochenmittel ueber Baseline (Delta + Schwelle), inkl. window_from/window_to.
+- `body-weight-trend-v1`: Gewicht-Wochenmittel ueber Baseline, inkl. delta_kg und Dauer.
+- `lab-egfr-creatinine-trend-v1`: eGFR/Kreatinin Trend inkl. Delta/Absolut-Grenzen.
+- `bp-weight-correlation-v1`: Korrelation BP + Gewicht, inkl. weight_delta_kg und Event-IDs.
+
+## 9.3 Begruendungstexte (App-Map)
+
+Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine statische Map im Client (`app/modules/vitals-stack/trendpilot/index.js`).
+
+| rule_id | Popup (kurz) | Arzt (detail) | Erwartete Payload-Felder |
+|------|------|------|------|
+| `bp-trend-v1` | BP-Wochenmittel ueber Baseline | Baseline/Delta/Dauer | baseline_sys, baseline_dia, avg_sys, avg_dia, delta_sys, delta_dia, weeks, window_from |
+| `body-weight-trend-v1` | Gewicht-Wochenmittel ueber Baseline | Baseline/Delta/Dauer | baseline_kg, avg_kg, delta_kg, weeks, window_from |
+| `lab-egfr-creatinine-trend-v1` | Labor-Trend auffaellig | Baseline/Delta/Dauer | baseline_egfr, baseline_creatinine, avg_egfr, avg_creatinine, delta_egfr, delta_creatinine, weeks, window_from |
+| `bp-weight-correlation-v1` | BP + Gewicht korrelieren | Delta + Event-IDs | weight_delta_kg, window_from, window_to, bp_event_ids, body_event_ids |
 ---
 
 ## 10. Feature-Flags / Konfiguration
@@ -112,17 +138,20 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (BP-only).
-- Dependencies (hard): BP-Daten, `system_comment` Storage, Capture/Doctor/Charts Integration.
+- Status: Refactor in progress (Edge Function + neue Tabellen).
+- Dependencies (hard): BP-Daten, `trendpilot_events`/`trendpilot_state`, GitHub Actions Cron, Capture/Doctor/Charts Integration.
 - Dependencies (soft): n/a.
 - Known issues / risks: braucht genug Daten; false positives; Flag `TREND_PILOT_ENABLED` deaktivierbar.
-- Backend / SQL / Edge: `system_comment` in `health_events`, API `app/supabase/api/system-comments.js`.
+- Backend / SQL / Edge: `trendpilot_events`/`trendpilot_state`, Edge Function `midas-trendpilot`.
+- Hinweis: Bei Edge Functions mit Service-Role muss `user_id` explizit gesetzt werden, da `auth.uid()` leer ist.
+- Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
+ - Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
 
 ---
 
 ## 12. QA-Checkliste
 
-- Genug Wochen -> Systemkommentar erstellt.
+- Genug Wochen -> Trendpilot-Event erstellt.
 - Warning/Critical zeigen Dialog.
 - Capture-Pill/Doctor/Chart synchron.
 
@@ -130,7 +159,7 @@ Related docs:
 
 ## 13. Definition of Done
 
-- Trendpilot erzeugt konsistente System-Kommentare.
+- Trendpilot erzeugt konsistente Events.
 - UI an allen Stellen synchron.
 - Doku aktuell.
 

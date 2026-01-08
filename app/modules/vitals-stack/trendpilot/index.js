@@ -1,7 +1,7 @@
 ﻿'use strict';
 /**
  * MODULE: trendpilot/index.js
- * Description: Orchestriert Trendpilot-Analysen nach Abendmessungen (Severity, Dialog, system_comment).
+ * Description: Laedt Trendpilot-Events (Edge Function) und zeigt Popup-Hinweise bei warning/critical.
  */
 
 (function (global) {
@@ -11,6 +11,8 @@
   let initializingTrendpilot = false;
   let dependencyWarned = false;
   let initRetryCount = 0;
+  let latestSystemComment = null;
+  let lastDialogId = null;
   const MAX_INIT_RETRIES = 20;
   const RETRY_DELAY_BASE = 250;
   const MAX_RETRY_DELAY = 4000;
@@ -35,28 +37,17 @@
     { add() {} };
 
   const toast = global.toast || appModules.ui?.toast || ((msg) => console.info('[trendpilot]', msg));
-
   const stubApi = {
-    getLastTrendpilotStatus: () => null,
-    runTrendpilotAnalysis: () =>
-      Promise.resolve({ severity: 'info', reason: 'dependencies_missing', delta: null, day: null })
+    getLatestSystemComment: () => null,
+    refreshLatestSystemComment: () => Promise.resolve(null)
   };
   appModules.trendpilot = Object.assign(appModules.trendpilot || {}, stubApi);
-  global.runTrendpilotAnalysis = stubApi.runTrendpilotAnalysis;
-
-  const tpData = appModules.trendpilot || {};
-  const buildTrendWindow = tpData.buildTrendWindow;
-  const calcLatestDelta = tpData.calcLatestDelta;
-  const classifyTrendDelta = tpData.classifyTrendDelta;
-  const TREND_PILOT_DEFAULTS = tpData.TREND_PILOT_DEFAULTS;
   const grabTrendpilotDeps = () => {
     const supabaseApi = getSupabaseApi();
     return {
       supabaseApi,
-      fetchDailyOverview: supabaseApi.fetchDailyOverview,
-      upsertSystemCommentRemote: supabaseApi.upsertSystemCommentRemote,
-      setSystemCommentAck: supabaseApi.setSystemCommentAck,
-      fetchSystemCommentsRange: supabaseApi.fetchSystemCommentsRange
+      setTrendpilotAck: supabaseApi.setTrendpilotAck,
+      fetchTrendpilotEventsRange: supabaseApi.fetchTrendpilotEventsRange
     };
   };
 
@@ -70,20 +61,12 @@
 
   const {
     supabaseApi,
-    fetchDailyOverview: fetchDailyOverviewFn,
-    upsertSystemCommentRemote,
-    setSystemCommentAck,
-    fetchSystemCommentsRange
+    setTrendpilotAck,
+    fetchTrendpilotEventsRange
   } = grabTrendpilotDeps();
 
   const missingDeps = [];
-  if (typeof buildTrendWindow !== 'function') missingDeps.push('buildTrendWindow');
-  if (typeof calcLatestDelta !== 'function') missingDeps.push('calcLatestDelta');
-  if (typeof classifyTrendDelta !== 'function') missingDeps.push('classifyTrendDelta');
-  if (!TREND_PILOT_DEFAULTS) missingDeps.push('TREND_PILOT_DEFAULTS');
-  if (typeof fetchDailyOverviewFn !== 'function') missingDeps.push('fetchDailyOverview');
-  if (typeof upsertSystemCommentRemote !== 'function') missingDeps.push('upsertSystemCommentRemote');
-  if (typeof setSystemCommentAck !== 'function') missingDeps.push('setSystemCommentAck');
+  if (typeof fetchTrendpilotEventsRange !== 'function') missingDeps.push('fetchTrendpilotEventsRange');
 
   if (missingDeps.length) {
     if (!dependencyWarned) {
@@ -110,118 +93,79 @@
   }
   dependencyWarned = false;
 
-  const ISO_DAY_RE = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
-  function normalizeDayIso(value) {
-    const fallback = new Date().toISOString().slice(0, 10);
-    if (typeof value !== 'string') return fallback;
-    const match = ISO_DAY_RE.exec(value);
-    if (!match) return fallback;
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const parsed = new Date(Date.UTC(year, month - 1, day));
-    if (
-      parsed.getUTCFullYear() === year &&
-      parsed.getUTCMonth() === month - 1 &&
-      parsed.getUTCDate() === day
-    ) {
-      return match[0];
+  const TRENDPILOT_TEXT_MAP = {
+    'bp-trend-v1': {
+      popup:
+        'Blutdruck-Wochenmittel ueber Baseline ({baseline_sys}/{baseline_dia}). Aktuell {avg_sys}/{avg_dia} (Delta {delta_sys}/{delta_dia}) seit {window_from}.',
+      doctor:
+        'BP-Trend: Wochenmittel ueber Baseline. Baseline {baseline_sys}/{baseline_dia}, aktuell {avg_sys}/{avg_dia}, Delta {delta_sys}/{delta_dia}, Dauer {weeks} Wochen.'
+    },
+    'body-weight-trend-v1': {
+      popup:
+        'Gewicht-Wochenmittel ueber Baseline ({baseline_kg} kg). Aktuell {avg_kg} kg (Delta {delta_kg} kg) seit {window_from}.',
+      doctor:
+        'Gewicht-Trend: Wochenmittel ueber Baseline. Baseline {baseline_kg} kg, aktuell {avg_kg} kg, Delta {delta_kg} kg, Dauer {weeks} Wochen.'
+    },
+    'lab-egfr-creatinine-trend-v1': {
+      popup:
+        'Labor-Trend auffaellig (eGFR/Kreatinin). Aktuell {avg_egfr}/{avg_creatinine}, Delta {delta_egfr}/{delta_creatinine} seit {window_from}.',
+      doctor:
+        'Labor-Trend: eGFR/Kreatinin. Baseline {baseline_egfr}/{baseline_creatinine}, aktuell {avg_egfr}/{avg_creatinine}, Delta {delta_egfr}/{delta_creatinine}, Dauer {weeks} Wochen.'
+    },
+    'bp-weight-correlation-v1': {
+      popup:
+        'BP + Gewicht korrelieren. Gewicht Delta {weight_delta_kg} kg im Zeitraum {window_from} bis {window_to}.',
+      doctor:
+        'BP/Gewicht-Korrelation: Gewicht Delta {weight_delta_kg} kg, Zeitraum {window_from} bis {window_to}, BP-Events: {bp_event_ids}, Body-Events: {body_event_ids}.'
     }
-    return fallback;
-  }
-  let lastStatus = null;
-  let latestSystemComment = null;
+  };
 
-  async function runTrendpilotAnalysis(dayIso) {
-    const normalizedDay = normalizeDayIso(dayIso);
-    if (!TREND_PILOT_FLAG) {
-      lastStatus = { severity: 'info', reason: 'disabled', delta: null, day: normalizedDay };
-      return lastStatus;
-    }
-    try {
-      const stats = await loadDailyStats(normalizedDay);
-      const weekly = Array.isArray(stats?.weekly) ? stats.weekly : [];
-      const baseline = Array.isArray(stats?.baseline) ? stats.baseline : [];
-      const defaultMinWeeks =
-        Number.isInteger(TREND_PILOT_DEFAULTS.minWeeks) && TREND_PILOT_DEFAULTS.minWeeks > 0
-          ? Math.max(4, TREND_PILOT_DEFAULTS.minWeeks)
-          : 8;
-      const minWeeks = Math.max(4, Math.min(defaultMinWeeks, weekly.length));
-      if (weekly.length < minWeeks) {
-        lastStatus = { severity: 'info', reason: 'not_enough_data', delta: null, day: normalizedDay };
-        diag.add?.(
-          `[trendpilot] not_enough_data: have ${weekly.length} weeks, need ${minWeeks}`
-        );
-        toast('Trendpilot: Zu wenige Messwochen für Trendanalyse.');
-        return lastStatus;
-      }
-      const delta = calcLatestDelta(weekly, baseline);
-      const severity = classifyTrendDelta(delta);
-      lastStatus = { severity, delta, day: normalizedDay };
-      diag.add?.(
-        `[trendpilot] severity=${severity} deltaSys=${delta?.deltaSys ?? 'n/a'} deltaDia=${delta?.deltaDia ?? 'n/a'}`
-      );
-      if (severity === 'info') {
-        toast('Trendpilot: Trend stabil. Weiter so!');
-        return lastStatus;
-      }
-      const record = await persistSystemComment(normalizedDay, severity, delta);
-      const acknowledged = await showSeverityDialog(severity, delta);
-      if (acknowledged) {
-        await acknowledgeSystemComment(record?.id);
-      }
-      refreshLatestSystemComment({ silent: true }).catch(() => {});
-      return lastStatus;
-    } catch (err) {
-      diag.add?.(`[trendpilot] analysis failed: ${err?.message || err}`);
-      console.error('Trendpilot analysis failed', err);
-      lastStatus = { severity: 'info', reason: 'error', delta: null, day: normalizedDay };
-      return lastStatus;
-    }
-  }
-
-  async function loadDailyStats(dayIso) {
-    const end = normalizeDayIso(dayIso);
-    const start = new Date(`${end}T00:00:00Z`);
-    start.setUTCDate(start.getUTCDate() - (TREND_PILOT_DEFAULTS.windowDays || 180));
-    const fromIso = start.toISOString().slice(0, 10);
-    const timeoutMs = TREND_PILOT_DEFAULTS.fetchTimeoutMs || 6000;
-    const days = await withTimeout(
-      fetchDailyOverviewFn(fromIso, end),
-      timeoutMs,
-      'Trendpilot fetch timed out'
-    );
-    return buildTrendWindow(days, TREND_PILOT_DEFAULTS);
-  }
-
-  function withTimeout(promise, timeoutMs, message) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(message || 'Operation timed out'));
-      }, timeoutMs);
-      promise
-        .then((val) => {
-          clearTimeout(timer);
-          resolve(val);
-        })
-        .catch((err) => {
-          clearTimeout(timer);
-          reject(err);
-        });
+  const formatTrendpilotText = (template, payload) => {
+    if (!template) return '';
+    return String(template).replace(/\{(\w+)\}/g, (_, key) => {
+      const value = payload?.[key];
+      if (value == null) return '-';
+      if (Array.isArray(value)) return value.join(', ');
+      if (typeof value === 'number') return value.toFixed(1).replace(/\.0$/, '');
+      return String(value);
     });
+  };
+
+  function formatTrendpilotRange(entry) {
+    const from = entry?.window_from || entry?.day || '';
+    const to = entry?.window_to || entry?.day || '';
+    if (from && to && from !== to) return `${from} - ${to}`;
+    return from || to || '';
   }
 
-  function showSeverityDialog(severity, delta) {
+  function resolveTrendpilotMessage(entry) {
+    const payload = entry?.payload || {};
+    const ruleId = payload.rule_id || entry?.source || '';
+    const template = TRENDPILOT_TEXT_MAP[ruleId];
+    if (template) {
+      return formatTrendpilotText(template.popup, payload);
+    }
+    return (
+      payload.text ||
+      payload.summary ||
+      payload.rule_id ||
+      entry?.source ||
+      'Trendpilot-Hinweis.'
+    );
+  }
+
+  function showTrendpilotDialog(entry) {
     return new Promise((resolve) => {
       const doc = global.document;
-      const deltaSys = Number.isFinite(delta?.deltaSys) ? Math.round(delta.deltaSys) : 'n/a';
-      const deltaDia = Number.isFinite(delta?.deltaDia) ? Math.round(delta.deltaDia) : 'n/a';
-      const text =
-        severity === 'critical'
-          ? 'Trendpilot: deutlicher Anstieg - aerztliche Klaerung empfohlen.'
-          : 'Trendpilot: leichter Aufwaertstrend - bitte beobachten.';
+      const severity = entry?.severity === 'critical' ? 'Kritischer Hinweis' : 'Warnhinweis';
+      const recommendation =
+        entry?.severity === 'critical'
+          ? 'Bitte aerztliche Klaerung empfohlen.'
+          : 'Bitte beobachten.';
+      const message = resolveTrendpilotMessage(entry);
+      const range = formatTrendpilotRange(entry);
       if (!doc || !doc.body) {
-        toast(`${text} · Δsys=${deltaSys} mmHg / Δdia=${deltaDia} mmHg`);
+        toast(`Trendpilot: ${severity}. ${message}`);
         resolve(false);
         return;
       }
@@ -235,11 +179,11 @@
       msg.className = 'trendpilot-dialog-message';
       const msgId = 'trendpilotDialogMessage';
       msg.id = msgId;
-      msg.textContent = text;
+      msg.textContent = `Trendpilot: ${severity}. ${recommendation}`;
       card.setAttribute('aria-labelledby', msgId);
       const deltas = doc.createElement('div');
       deltas.className = 'trendpilot-dialog-deltas';
-      deltas.textContent = `Δsys=${deltaSys} mmHg / Δdia=${deltaDia} mmHg`;
+      deltas.textContent = range ? `Zeitraum: ${range} | ${message}` : message;
       const btn = doc.createElement('button');
       btn.textContent = 'Zur Kenntnis genommen';
       btn.type = 'button';
@@ -307,34 +251,6 @@
       setTimeout(() => btn.focus(), 0);
     });
   }
-  async function persistSystemComment(dayIso, severity, delta) {
-    const context = {
-      window_days: TREND_PILOT_DEFAULTS.windowDays,
-      delta_sys: Number.isFinite(delta?.deltaSys) ? delta.deltaSys : null,
-      delta_dia: Number.isFinite(delta?.deltaDia) ? delta.deltaDia : null
-    };
-    try {
-      return await upsertSystemCommentRemote({
-        day: dayIso,
-        severity,
-        metric: 'bp',
-        context
-      });
-    } catch (err) {
-      diag.add?.(`[trendpilot] system_comment failed: ${err?.message || err}`);
-      return null;
-    }
-  }
-
-  async function acknowledgeSystemComment(id) {
-    if (!id) return;
-    try {
-      await setSystemCommentAck({ id, ack: true });
-    } catch (err) {
-      diag.add?.(`[trendpilot] system_comment ack failed: ${err?.message || err}`);
-    }
-  }
-
   function emitLatestTrendpilot(entry) {
     const doc = global.document;
     if (!doc || typeof doc.dispatchEvent !== 'function') return;
@@ -345,20 +261,53 @@
     }
   }
 
+  async function maybeShowTrendpilotDialog(entry) {
+    if (!entry || entry.ack || !entry.id) return;
+    if (entry.severity !== 'warning' && entry.severity !== 'critical') return;
+    if (entry.id === lastDialogId) return;
+    lastDialogId = entry.id;
+    const acknowledged = await showTrendpilotDialog(entry);
+    if (!acknowledged || typeof setTrendpilotAck !== 'function') return;
+    try {
+      await setTrendpilotAck({ id: entry.id, ack: true });
+      latestSystemComment = {
+        ...entry,
+        ack: true,
+        ack_at: new Date().toISOString()
+      };
+      emitLatestTrendpilot(latestSystemComment);
+    } catch (err) {
+      diag.add?.(`[trendpilot] trendpilot ack failed: ${err?.message || err}`);
+    }
+  }
   async function refreshLatestSystemComment({ silent = false } = {}) {
     const fetcher =
-      (typeof fetchSystemCommentsRange === 'function' && fetchSystemCommentsRange) ||
-      supabaseApi.fetchSystemCommentsRange;
+      (typeof fetchTrendpilotEventsRange === 'function' && fetchTrendpilotEventsRange) ||
+      supabaseApi.fetchTrendpilotEventsRange;
     if (typeof fetcher !== 'function') {
       if (!silent) {
-        diag.add?.('[trendpilot] fetchSystemCommentsRange not available');
+        diag.add?.('[trendpilot] fetchTrendpilotEventsRange not available');
       }
       return null;
     }
     try {
-      const rows = await fetcher({ metric: 'bp', order: 'day.desc', limit: 1 });
-      latestSystemComment = Array.isArray(rows) && rows.length ? rows[0] : null;
+      const rows = await fetcher({ order: 'window_from.desc', limit: 1 });
+      const raw = Array.isArray(rows) && rows.length ? rows[0] : null;
+      const payload = raw?.payload || {};
+      latestSystemComment = raw
+        ? {
+            ...raw,
+            day: raw.window_from || raw.day || null,
+            text:
+              payload.text ||
+              payload.summary ||
+              payload.rule_id ||
+              raw.source ||
+              'Trendpilot-Hinweis'
+          }
+        : null;
       emitLatestTrendpilot(latestSystemComment);
+      await maybeShowTrendpilotDialog(latestSystemComment);
       return latestSystemComment;
     } catch (err) {
       diag.add?.(`[trendpilot] latest load failed: ${err?.message || err}`);
@@ -367,14 +316,11 @@
   }
 
   const trendpilotApi = {
-    getLastTrendpilotStatus: () => lastStatus,
-    runTrendpilotAnalysis,
     getLatestSystemComment: () => latestSystemComment,
     refreshLatestSystemComment
   };
 
   appModules.trendpilot = Object.assign(appModules.trendpilot || {}, trendpilotApi);
-  global.runTrendpilotAnalysis = runTrendpilotAnalysis;
   refreshLatestSystemComment({ silent: true }).catch(() => {});
   trendpilotInitialized = true;
   initializingTrendpilot = false;

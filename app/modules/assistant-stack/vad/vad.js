@@ -51,7 +51,7 @@
       if (typeof api?.onVoiceGateChange !== 'function') return null;
       return api.onVoiceGateChange((status) => {
         if (!status?.allowed) {
-          diag.add?.('[vad] stop due to voice gate lock');
+          diag.add?.('[vad] stop d? to voice gate lock');
           stop();
         }
       });

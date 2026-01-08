@@ -103,6 +103,36 @@
   const getSeverityMeta = (severity) =>
     TRENDPILOT_SEVERITY_META[severity] || { label: 'Info', className: 'is-info' };
 
+  const TRENDPILOT_TEXT_MAP = {
+    'bp-trend-v1': {
+      doctor:
+        'BP-Trend: Wochenmittel ueber Baseline. Baseline {baseline_sys}/{baseline_dia}, aktuell {avg_sys}/{avg_dia}, Delta {delta_sys}/{delta_dia}, Dauer {weeks} Wochen.'
+    },
+    'body-weight-trend-v1': {
+      doctor:
+        'Gewicht-Trend: Wochenmittel ueber Baseline. Baseline {baseline_kg} kg, aktuell {avg_kg} kg, Delta {delta_kg} kg, Dauer {weeks} Wochen.'
+    },
+    'lab-egfr-creatinine-trend-v1': {
+      doctor:
+        'Labor-Trend: eGFR/Kreatinin. Baseline {baseline_egfr}/{baseline_creatinine}, aktuell {avg_egfr}/{avg_creatinine}, Delta {delta_egfr}/{delta_creatinine}, Dauer {weeks} Wochen.'
+    },
+    'bp-weight-correlation-v1': {
+      doctor:
+        'BP/Gewicht-Korrelation: Gewicht Delta {weight_delta_kg} kg, Zeitraum {window_from} bis {window_to}, BP-Events: {bp_event_ids}, Body-Events: {body_event_ids}.'
+    }
+  };
+
+  const formatTrendpilotText = (template, payload) => {
+    if (!template) return '';
+    return String(template).replace(/\{(\w+)\}/g, (_, key) => {
+      const value = payload?.[key];
+      if (value == null) return '-';
+      if (Array.isArray(value)) return value.join(', ');
+      if (typeof value === 'number') return value.toFixed(1).replace(/\.0$/, '');
+      return String(value);
+    });
+  };
+
   // SUBMODULE: access-control @internal - Unlock- und Authentifizierungslogik
   const fallbackRequireDoctorUnlock = async () => {
     diag.add?.('[doctor] requireDoctorUnlock missing - blocking access');
@@ -139,6 +169,7 @@
 
   const resolveTrendpilotFetcher = () => {
     const api = getSupabaseApi();
+    if (typeof api.fetchTrendpilotEventsRange === 'function') return api.fetchTrendpilotEventsRange;
     return typeof api.fetchSystemCommentsRange === 'function' ? api.fetchSystemCommentsRange : null;
   };
 
@@ -219,14 +250,41 @@
     return `<button class="btn ghost ${isActive ? 'is-active' : ''}" data-doctor-status="${status}">${label}</button>`;
   };
 
+  
+  
+  const formatTrendpilotRange = (entry, fmtDateDE) => {
+    const from = entry?.window_from || entry?.day || '';
+    const to = entry?.window_to || entry?.day || '';
+    if (!from && !to) return '-';
+    if (from && to && from != to) {
+      return `${fmtDateDE(from)} - ${fmtDateDE(to)}`;
+    }
+    return fmtDateDE(from || to);
+  };
+
+  const resolveTrendpilotText = (entry) => {
+    const payload = entry?.payload || {};
+    const ruleId = payload.rule_id || entry?.source || '';
+    const template = TRENDPILOT_TEXT_MAP[ruleId];
+    if (template?.doctor) {
+      return formatTrendpilotText(template.doctor, payload);
+    }
+    return (
+      payload.text ||
+      payload.summary ||
+      payload.rule_id ||
+      entry?.source ||
+      entry?.text ||
+      'Trendpilot-Hinweis'
+    );
+  };
+
   const renderTrendpilotRow = (entry, fmtDateDE) => {
     const severity = getSeverityMeta(entry.severity);
     const ackLabel = entry.ack ? 'Bestätigt' : 'Offen';
     const ackClass = entry.ack ? 'is-ack' : 'is-open';
-    const safeText = entry.text
-      ? escapeAttr(entry.text)
-      : 'Trendpilot-Hinweis';
-    const dateLabel = fmtDateDE(entry.day);
+    const safeText = escapeAttr(resolveTrendpilotText(entry));
+    const dateLabel = formatTrendpilotRange(entry, fmtDateDE);
     const currentStatus = entry.doctorStatus || 'none';
     return `
 <article class="tp-row" data-trendpilot-id="${escapeAttr(entry.id || '')}" data-day="${escapeAttr(entry.day || '')}" data-doctor-status="${escapeAttr(currentStatus)}">
@@ -401,9 +459,11 @@
   }
 
   async function loadTrendpilotEntries(from, to) {
+    const api = getSupabaseApi();
     const fetcher = resolveTrendpilotFetcher();
     if (typeof fetcher !== 'function') return [];
-    const result = await fetcher({ from, to, metric: 'bp', order: 'day.desc' });
+    const order = typeof api.fetchTrendpilotEventsRange === 'function' ? 'window_from.desc' : 'day.desc';
+    const result = await fetcher({ from, to, order });
     return Array.isArray(result) ? result : [];
   }
 

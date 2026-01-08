@@ -181,12 +181,12 @@ export function bindAuthButtons() {
       try {
         new URL(rawRest);
       } catch {
-        setConfigStatus('REST-Endpoint ist keine gueltige URL.', 'error');
+        setConfigStatus('REST-Endpoint ist keine g?ltige URL.', 'error');
         return;
       }
       let anonKey = rawKey.startsWith('Bearer ') ? rawKey : `Bearer ${rawKey}`;
       if (isServiceRoleKey(anonKey)) {
-        setConfigStatus('service_role Schluessel sind nicht erlaubt.', 'error');
+        setConfigStatus('service_role Schl?ssel sind nicht erlaubt.', 'error');
         return;
       }
       try {

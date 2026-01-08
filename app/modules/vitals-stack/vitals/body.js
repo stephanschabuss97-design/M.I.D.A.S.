@@ -79,7 +79,7 @@
         const pct = toNumDE(raw);
         if (!Number.isFinite(pct) || pct < 0 || pct > 100){
           setFieldError(el);
-          uiError(`Bitte gueltigen Wert fuer ${label} (0-100 %) eingeben.`);
+          uiError(`Bitte g?ltigen Wert f?r ${label} (0-100 %) eingeben.`);
           if (!validationFailed) el.focus();
           validationFailed = true;
           return null;

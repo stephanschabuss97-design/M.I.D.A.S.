@@ -62,14 +62,14 @@ const createStore = () => {
     });
   };
 
-  const queueSuggestion = (payload, { reason = 'enqueue' } = {}) => {
+  const queueSuggestion = (payload, { reason = 'enq??' } = {}) => {
     if (!payload) return null;
     const suggestion = buildSuggestion(payload);
     suggestionQueue.push(suggestion);
     if (!activeSuggestion) {
       setActiveSuggestion(suggestion, { reason });
     } else {
-      dispatch('assistant:suggest-queued', {
+      dispatch('assistant:suggest-q??d', {
         suggestion: { ...suggestion },
         queueLength: suggestionQueue.length,
       });

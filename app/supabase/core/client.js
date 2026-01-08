@@ -33,7 +33,7 @@ const diag =
 const getConfSafe = (...args) => {
   const fn = globalWindow?.getConf;
   if (typeof fn !== 'function') {
-    diag.add?.('Supabase Client: window.getConf ist nicht verfuegbar');
+    diag.add?.('Supabase Client: window.getConf ist nicht verf?gbar');
     return null;
   }
   return fn(...args);
@@ -102,7 +102,7 @@ export async function ensureSupabaseClient() {
     // NEU: niemals mit service_role starten
     const trimmedKey = String(keyConf || '').trim();
     if (isServiceRoleKey(trimmedKey)) {
-      setConfigStatusSafe('service_role Schluessel sind nicht erlaubt.', 'error');
+      setConfigStatusSafe('service_role Schl?ssel sind nicht erlaubt.', 'error');
       diag.add('Sicherheitsblock: service_role Key erkannt - Abbruch');
       return null;
     }
@@ -110,19 +110,19 @@ export async function ensureSupabaseClient() {
     const supabaseUrl = baseUrlFromRest(rest);
     const anonKey = trimmedKey.replace(/^Bearer\s+/i, '');
     if (!supabaseUrl) {
-      setConfigStatusSafe('REST-Endpoint ist ungueltig.', 'error');
-      diag.add('Supabase Auth: ungueltige URL');
+      setConfigStatusSafe('REST-Endpoint ist ung?ltig.', 'error');
+      diag.add('Supabase Auth: ung?ltige URL');
       return null;
     }
     if (!anonKey) {
-      setConfigStatusSafe('ANON-Key ist ungueltig.', 'error');
-      diag.add('Supabase Auth: ungueltiger Key');
+      setConfigStatusSafe('ANON-Key ist ung?ltig.', 'error');
+      diag.add('Supabase Auth: ung?ltiger Key');
       return null;
     }
 
     if (!globalWindow?.supabase || typeof globalWindow.supabase.createClient !== 'function') {
       setConfigStatusSafe('Supabase Client SDK fehlt.', 'error');
-      diag.add('Supabase Auth: window.supabase.createClient nicht verfuegbar');
+      diag.add('Supabase Auth: window.supabase.createClient nicht verf?gbar');
       return null;
     }
 

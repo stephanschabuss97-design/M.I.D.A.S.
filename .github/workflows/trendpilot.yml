@@ -1,0 +1,19 @@
+name: Trendpilot Weekly
+
+on:
+  schedule:
+    # Dienstag 02:00 Europe/Vienna ~= 01:00 UTC (Winterzeit).
+    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
+    - cron: "0 1 * * 2"
+  workflow_dispatch:
+
+jobs:
+  run-trendpilot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Trendpilot Edge Function
+        run: |
+          curl -sS -X POST "${{ secrets.TRENDPILOT_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -d '{"trigger":"scheduler"}'

@@ -202,7 +202,7 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
         } catch (err) {
           // calcMAPValue should already guard, but keep this to be defensive
           diag.add?.(
-            `[vitals] calcMAPValue error for day=${row.day} ctx=${row.ctx}: ${err?.message || err}`
+            `[vitals] calcMAPVal? error for day=${row.day} ctx=${row.ctx}: ${err?.message || err}`
           );
           console.warn('Supabase vitals map calculation failed', {
             day: row.day,
