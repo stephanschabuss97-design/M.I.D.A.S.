@@ -276,10 +276,41 @@ body:has(.hub-panel.is-visible) .hub-icon {
 }
 
 .hub-orbit.trendpilot-active {
-  --midas-aura-boost: 0.7;
+  --midas-aura-boost: 0.9;
 }
 
-.hub-orbit.trendpilot-active .midas-aura-flow {
+.hub-orbit.trendpilot-warning .midas-aura-flow,
+.hub-orbit.trendpilot-critical .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    );
+  filter: blur(calc(7px + 9px * var(--midas-aura-boost, 0)));
+}
+
+.hub-orbit.trendpilot-warning .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    ),
+    conic-gradient(
+      from -40deg,
+      rgba(255, 230, 70, 0.0) 0deg,
+      rgba(255, 230, 70, 1.0) 60deg,
+      rgba(255, 230, 70, 0.0) 120deg,
+      rgba(255, 205, 40, 0.0) 180deg,
+      rgba(255, 205, 40, 1.0) 240deg,
+      rgba(255, 205, 40, 0.0) 300deg,
+      rgba(255, 230, 70, 0.0) 360deg
+    );
+  opacity: 1.35;
+}
+
+.hub-orbit.trendpilot-critical .midas-aura-flow {
   background:
     radial-gradient(circle at 50% 50%,
       rgba(0, 0, 0, 0.7) 0%,
@@ -289,15 +320,14 @@ body:has(.hub-panel.is-visible) .hub-icon {
     conic-gradient(
       from -40deg,
       rgba(255, 60, 60, 0.0) 0deg,
-      rgba(255, 60, 60, 0.8) 60deg,
+      rgba(255, 60, 60, 0.95) 60deg,
       rgba(255, 60, 60, 0.0) 120deg,
       rgba(255, 110, 110, 0.0) 180deg,
-      rgba(255, 110, 110, 0.85) 240deg,
+      rgba(255, 110, 110, 0.98) 240deg,
       rgba(255, 110, 110, 0.0) 300deg,
       rgba(255, 60, 60, 0.0) 360deg
     );
-  opacity: 1.15;
-  filter: blur(calc(6px + 8px * var(--midas-aura-boost, 0)));
+  opacity: 1.35;
 }
 
 /* ­Mobile-Boost mehr Glow, größer, intensiver */

@@ -117,7 +117,16 @@
   const applyTrendpilotAuraState = (entry) => {
     const orbit = doc?.querySelector('.hub-orbit');
     if (!orbit) return;
-    orbit.classList.toggle('trendpilot-active', isTrendpilotOngoing(entry));
+    const ongoing = isTrendpilotOngoing(entry);
+    orbit.classList.toggle('trendpilot-active', ongoing);
+    orbit.classList.toggle(
+      'trendpilot-warning',
+      ongoing && entry?.severity === 'warning'
+    );
+    orbit.classList.toggle(
+      'trendpilot-critical',
+      ongoing && entry?.severity === 'critical'
+    );
   };
 
   const triggerAuraTouchPulse = (event) => {

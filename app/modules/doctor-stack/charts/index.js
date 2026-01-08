@@ -1630,7 +1630,10 @@ const mkBars = () => {
         const swatch = document.createElement("span");
         swatch.className = `tp-legend-swatch ${cls}`;
         const label = document.createElement("span");
-        label.textContent = cls === "tp-band-critical" ? "Trendpilot (kritisch)" : "Trendpilot (Warnung)";
+        label.textContent =
+          cls === "tp-band-critical"
+            ? "Trendpilot (Kritische Warnung)"
+            : "Trendpilot (Warnung)";
         wrap.append(swatch, label);
         this.legend.appendChild(wrap);
       });

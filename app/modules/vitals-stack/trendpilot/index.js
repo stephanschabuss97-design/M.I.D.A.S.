@@ -315,7 +315,7 @@
       const onKeydown = (event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
-          confirmAndClose();
+          btn.focus();
         } else if (event.key === 'Tab') {
           event.preventDefault();
           btn.focus();
@@ -326,7 +326,11 @@
       };
       doc.addEventListener('keydown', onKeydown, true);
       overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) confirmAndClose();
+        if (event.target === overlay) {
+          event.preventDefault();
+          event.stopPropagation();
+          btn.focus();
+        }
       });
       card.addEventListener('click', (event) => event.stopPropagation());
       btn.addEventListener('click', confirmAndClose);
@@ -350,8 +354,10 @@
     if (!entry || entry.ack || !entry.id) return;
     if (entry.severity !== 'warning' && entry.severity !== 'critical') return;
     if (entry.id === lastDialogId) return;
-    lastDialogId = entry.id;
+    diag.add?.(`[trendpilot] popup attempt id=${entry.id} severity=${entry.severity}`);
     const acknowledged = await showTrendpilotDialog(entry);
+    if (!acknowledged) return;
+    lastDialogId = entry.id;
     if (!acknowledged || typeof setTrendpilotAck !== 'function') return;
     try {
       await setTrendpilotAck({ id: entry.id, ack: true });
@@ -403,11 +409,27 @@
 
   const trendpilotApi = {
     getLatestSystemComment: () => latestSystemComment,
-    refreshLatestSystemComment
+    refreshLatestSystemComment,
+    debugShow: (entry) => showTrendpilotDialog(entry)
   };
 
   appModules.trendpilot = Object.assign(appModules.trendpilot || {}, trendpilotApi);
   refreshLatestSystemComment({ silent: true }).catch(() => {});
+  if (typeof supabaseApi.waitForAuthDecision === 'function') {
+    supabaseApi.waitForAuthDecision()
+      .then((state) => {
+        if (state === 'auth') {
+          refreshLatestSystemComment({ silent: true }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }
+  const bootFlow = appModules.bootFlow;
+  if (bootFlow?.whenStage) {
+    bootFlow.whenStage('IDLE', () => {
+      refreshLatestSystemComment({ silent: true }).catch(() => {});
+    });
+  }
   trendpilotInitialized = true;
   initializingTrendpilot = false;
   initRetryCount = 0;

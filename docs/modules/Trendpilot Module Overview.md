@@ -95,7 +95,7 @@ Beispiele:
 - Capture-Pill zeigt letzte Trendpilot-Meldung.
 - Doctor-Ansicht listet Trendpilot-Hinweise (Akkordeon).
 - Hub zeigt Popup bei warning/critical + Start/Ende-Toast (dedupe).
-- Hub-Glow faerbt sich rot bei aktivem Trend (ongoing).
+- Hub-Glow faerbt sich bei aktivem Trend nach Severity (warning=gelb, critical=rot).
 - BP-Chart zeigt Trendpilot-Bands + Legende.
 
 ---
@@ -105,6 +105,7 @@ Beispiele:
 - Trendpilot-Block mit Severity, Zeitraum, Text.
 - Akkordeon offen wenn mind. ein Eintrag nicht bestaetigt.
 - Ack-Button wird zu "Bestaetigt", Loeschen ist separat.
+- Popup ist modal: nur "Zur Kenntnis genommen" setzt Ack (Hintergrund/ESC schliessen nicht).
 
 ---
 
@@ -122,6 +123,8 @@ Beispiele:
 - Source of Truth: `trendpilot_events` (info/warning/critical).
 - Side Effects: emits `trendpilot:latest`, opens ack dialog (nur warning/critical).
 - Ongoing-Logik in der App: Trend aktiv, wenn `window_to >= heute` (ISO-Tag).
+- Hub-Glow reagiert auf `trendpilot:latest` und Severity.
+- Popup-Trigger wird nach Bootflow `IDLE` sowie nach Auth-Decision erneut angestossen.
 - Constraints: braucht genug Wochen Daten, depende on Supabase exports.
 - `trendpilot:latest` Event fuer Capture-Pill.
 - `fetchTrendpilotEventsRange` fuer Doctor-Block.
@@ -132,6 +135,7 @@ Beispiele:
 ## 9. Erweiterungspunkte / Zukunft
 
 - Weitere Metriken (Body/Weight).
+- Optional: Urinteststreifen 1x pro Monat (nach aerztlicher Abklaerung).
 - KI-Textgenerierung im Payload.
 
 ## 9.1 Aktuelle Schwellen / Gates (v1)
@@ -180,13 +184,20 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
  - Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
 
----
+### 11.1 Offene Punkte / Bedenken
+- Zeitlogik: Ongoing-Check im Client basiert auf `window_to >= heute` (UTC). Falls strikte Wien-Zeit gewuenscht, muss der Vergleich angepasst werden.
+- Popup ist strikt modal: nur "Zur Kenntnis genommen" schliesst (kein ESC, kein Overlay-Klick). Fuer spaetere Multi-User/Wearable evtl. zu hart.
+- Encoding-Risiko: einzelne Dateien zeigen noch Legacy-Encoding-Artefakte; langfristig einmal konsistent UTF-8 pruefen.
+- Info-Events: derzeit nur warning/critical im UI sichtbar; wenn info spaeter angezeigt werden soll, braucht es visuelle Differenzierung.
 
-## 12. QA-Checkliste
+## 12. QA-Checkliste (Status)
 
-- Genug Wochen -> Trendpilot-Event erstellt.
-- Warning/Critical zeigen Dialog.
-- Capture-Pill/Doctor/Chart synchron.
+- Edge Function deterministisch, idempotent, keine Duplikate. (done)
+- Scheduler feuert zur korrekten Zeit. (done)
+- Popup + Ack: End-to-End ok. (done)
+- Arzt-Block: info/warning/critical sichtbar; Popup nur warning/critical. (done)
+- Chart-Bands: Zeitraum korrekt, Tooltip zeigt Kommentar. (done)
+- Keine Regressionen in BP/Body/Lab Tabs. (done)
 
 ---
 

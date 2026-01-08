@@ -226,7 +226,7 @@ section.view.active{display:block}
   position:fixed;
   inset:0;
   background:rgba(2,6,23,.65);
-  z-index:9999;
+  z-index:10050;
   display:flex;
   align-items:center;
   justify-content:center;

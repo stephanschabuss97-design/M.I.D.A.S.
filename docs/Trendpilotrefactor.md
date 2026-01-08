@@ -92,10 +92,10 @@ Deterministische Hauptsteps
   6.4 Default-Status: geschlossen, wenn alle bestaetigt. (done)
 
 7) Charts Integration
-  7.1 Trendpilot-Ranges aus neuer Tabelle laden (window_from/window_to).
-  7.2 Eigene Trendpilot-Lane unten an der X-Achse rendern.
-  7.3 Filter auf typ-spezifisch + warning/critical beibehalten.
-  7.4 Tooltip am Band zeigt Trendpilot-Kommentar.
+  7.1 Trendpilot-Ranges aus neuer Tabelle laden (window_from/window_to). (done)
+  7.2 Eigene Trendpilot-Lane unten an der X-Achse rendern. (done)
+  7.3 Filter auf typ-spezifisch + warning/critical beibehalten. (done)
+  7.4 Tooltip am Band zeigt Trendpilot-Kommentar. (done)
 
 8) Migration / Cleanup
   8.1 Alte JS Trendpilot-Logik schrittweise entfernen. (done)
@@ -103,16 +103,17 @@ Deterministische Hauptsteps
   8.3 Dokumentation aktualisieren (Trendpilot Module Overview, DB Plan). (done)
 
 9) QA / Validierung
-  9.1 Edge Function: deterministisch, idempotent, keine Duplikate.
-  9.2 Scheduler feuert zu korrekter Zeit (Wien, 02:00).
-  9.3 App-Popup + Ack funktioniert End-to-End.
-  9.4 Arzt-Block zeigt info/warning/critical, Popup nur warning/critical.
-  9.5 Chart-Bands korrekt im Zeitraum.
-  9.6 Keine Regression bei BP/Body/Lab Tabs.
+  9.1 Edge Function: deterministisch, idempotent, keine Duplikate. (done)
+  9.2 Scheduler feuert zu korrekter Zeit (Wien, 02:00). (done)
+  9.3 App-Popup + Ack funktioniert End-to-End. (done)
+  9.4 Arzt-Block zeigt info/warning/critical, Popup nur warning/critical. (done)
+  9.5 Chart-Bands korrekt im Zeitraum. (done)
+  9.6 Keine Regression bei BP/Body/Lab Tabs. (done)
   9.7 Doku-Update Liste:
       - `docs/modules/Trendpilot Module Overview.md` (Master)
       - `docs/Trendpilotrefactor.md`
-  9.8 Begruendungstexte decken alle rule_id Kombinationen ab.
+  (done)
+  9.8 Begruendungstexte decken alle rule_id Kombinationen ab. (done)
 
 Offene Fragen (vor Start klaeren)
 - Finales Tabellen-Schema (payload Struktur, typed fields vs JSON).
