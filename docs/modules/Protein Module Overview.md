@@ -38,11 +38,11 @@ Related docs:
 
 - `user_profile`:
   - Effektive Targets: `protein_target_min`, `protein_target_max`.
-  - Doctor-Lock: `protein_doctor_lock`, `protein_doctor_min`, `protein_doctor_max`.
+  - Doctor-Lock: `protein_doctor_lock`, `protein_doctor_factor`, `protein_doctor_min`, `protein_doctor_max`.
   - Derived: `protein_calc_version`, `protein_window_days`, `protein_last_calc_at`,
     `protein_age_base`, `protein_activity_level`, `protein_activity_score_28d`,
     `protein_factor_pre_ckd`, `protein_ckd_stage_g`, `protein_ckd_factor`, `protein_factor_current`.
-  - Confirm: `protein_ckd_confirmed_at` (timestamptz) fuer CKD-Staleness-Prompt.
+  - Optional: `protein_ckd_confirmed_at` (timestamptz) fuer spaetere CKD-Staleness-Prompts.
 - `health_events`:
   - `activity_event` (Count im 28d-Window).
   - `lab_event` (CKD-Stufe, letzte Messung).
@@ -71,22 +71,20 @@ Related docs:
 
 ### 4.3 Verarbeitung
 - Edge Function liest Profile + Activity-Count (28d) + CKD-Stufe.
-- Guards: Doctor-Lock, Cooldown, CKD/Weight unveraendert.
+- Guards: Cooldown (7 Tage), Gewicht/Faktor unveraendert -> skip.
 - Berechnung: Age Base + Activity Modifier, CKD Faktor, Min/Max Target.
-- Activity bleibt Count-basiert (bewusste Sessions).
- - CKD-Staleness: Wenn letzter `lab_event` > 180 Tage und Confirm fehlt/alt, erscheint Popup.
+- Doctor-Lock: nutzt `protein_doctor_factor` als Source of Truth (wenn aktiv); fehlt der Faktor, wird der Run skipped.
+- Activity bleibt Count-basiert (bewusste Sessions, keine Minuten).
+- CKD-Stufe kommt aus letztem `lab_event` (Fallback G1, falls kein Wert).
 
 ### 4.4 Persistenz
 - Edge schreibt Targets + Derived Fields in `user_profile`.
 - Frontend refresht Profil-Snapshot und feuert `profile:changed`.
- - Bestätigung setzt `protein_ckd_confirmed_at`.
-
----
-
+- (optional, spaeter) Bestaetigung setzt `protein_ckd_confirmed_at`.
 ## 4.5 Berechnungslogik (v1, deterministisch)
 
-- Rolling Window: 28 Tage (inkl. heute).
-- Activity Score: Anzahl `activity_event` im Window.
+- Rolling Window: 28 Tage (inkl. heute, day >= today-27).
+- Activity Score: Anzahl `activity_event` im Window (Count).
 - Activity Level:
   - ACT1: score < 2
   - ACT2: 2 <= score < 6
@@ -107,19 +105,22 @@ Related docs:
   - G4: 0.75
   - G5: 0.65
 - Faktor:
-  - `factor_pre_ckd = age_base + activity_modifier`
-  - `factor_current = factor_pre_ckd * ckd_factor`
+  - `factor_pre_ckd = round(age_base + activity_modifier, 2)`
+  - `factor_auto = round(factor_pre_ckd * ckd_factor, 2)`
+  - `factor_current = doctor_factor (round 2)` wenn Doctor-Lock aktiv, sonst `factor_auto`
 - Targets:
-  - `target_max = round(weight_kg * factor_current)`
-  - `target_min = round(weight_kg * (factor_current - 0.1))`
+  - `target_max = round(weight_kg * factor_current)` (ganze Gramm)
+  - `target_min = round(weight_kg * (factor_current - 0.1))` (ganze Gramm)
 
 ---
 
 ## 5. UI-Integration
 
 - Profil-Panel:
-  - Doctor-Lock Toggle + Doctor Min/Max.
-  - Read-only Anzeige fuer Auto-Targets (min/max) + Faktor (g/kg) + Activity-Level + CKD-Faktor.
+  - Read-only Anzeige fuer Auto-Faktor (g/kg) + Auto-Targets (min/max).
+  - Doctor-Lock Toggle zeigt Doctor-Faktor + Doctor Min/Max nur wenn aktiv.
+  - CKD-Stufe und Medikation sind aus der Eingabe entfernt (nur Anzeige im Profil).
+  - Activity-Level/CKD-Faktor werden nicht angezeigt.
 - Intake/Assistant:
   - nutzen `protein_target_max` bzw. `protein_target_min` als Fallback.
 - Assistant-Text:
@@ -137,7 +138,7 @@ Related docs:
 
 ## 7. Fehler- & Diagnoseverhalten
 
-- Typische Fehler: fehlendes `birth_date`, Edge-Auth, fehlende Lab-Daten.
+- Typische Fehler: fehlendes `birth_date`, Edge-Auth, fehlende `protein_doctor_factor` bei aktivem Doctor-Lock.
 - Logging: `[protein]` im diag, Edge logs `[midas-protein-targets]`.
 - Fallback: Targets bleiben unveraendert, Intake nutzt Default-Fallback.
 
@@ -148,10 +149,10 @@ Related docs:
 - Public API: `AppModules.protein.recomputeTargets(...)`.
 - Source of Truth: `user_profile` Targets.
 - Side Effects: `profile.syncProfile` + `profile:changed`.
-- Constraints: Doctor-Lock blockt Edge; Cooldown verhindert Spam.
+- Constraints: Doctor-Lock nutzt Doctor-Faktor; fehlt der Faktor, wird der Run skipped. Cooldown verhindert Spam.
 - Externe Inputs: Body-Save, Activity-Count, CKD aus Lab.
 - Optional: manueller Recompute (force=true).
-- Optional: woechentlicher Recompute via GitHub Actions (Do->Fr Nacht).
+- Optional: woechentlicher Recompute via GitHub Actions (Do->Fr Nacht, Service Role Bearer).
 
 ---
 
@@ -170,6 +171,8 @@ Related docs:
 
 - Keine Flags.
 - Cooldown und Window (28d) sind in der Edge Function verankert.
+- Env (Edge): `PROTEIN_TARGETS_USER_ID` fuer Cron-Run.
+- GitHub Secrets: `PROTEIN_TARGETS_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 
@@ -178,15 +181,15 @@ Related docs:
 - Status: aktiv (im Aufbau).
 - Dependencies (hard): `user_profile` Spalten, `activity_event`, `lab_event`, Edge Function.
 - Dependencies (soft): Profil-UI, Intake/Assistant Anzeige.
-- Known issues / risks: fehlendes `birth_date`, falsches Gewicht, stale CKD ohne Confirm, Doctor-Lock ohne Min/Max.
-- Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/13_Activity_Event.sql`, `sql/11_Lab_Event_Extension.sql`, Edge `midas-protein-targets`.
+- Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, CKD-Fallback (G1) wenn kein Lab vorhanden.
+- Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/13_Activity_Event.sql`, `sql/11_Lab_Event_Extension.sql`, Edge `midas-protein-targets`, Workflow `protein-targets.yml`.
 
 ---
 
 ## 12. QA-Checkliste
 
 - Body-Save triggert Edge Function.
-- Doctor-Lock -> skipped.
+- Doctor-Lock nutzt Doctor-Faktor; wenn fehlt -> skipped.
 - Activity-Count beeinflusst ACT1/ACT2/ACT3.
 - CKD-Stufe beeinflusst Faktor.
 - Profil-Targets aktualisieren Intake/Assistant.
@@ -199,3 +202,4 @@ Related docs:
 - Targets werden bei Body-Save aktualisiert.
 - Doctor-Lock wird respektiert.
 - Dokumentation aktuell.
+
