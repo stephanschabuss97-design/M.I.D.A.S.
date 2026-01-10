@@ -55,11 +55,11 @@ Deterministische Hauptsteps
         - "Nein" -> Profil oeffnen (CKD-Felder sichtbar), kein Auto-Update durch MIDAS
       - Prompt nur einmal pro Session zeigen (dedupe).
   2.3 Confirm-Stage wird bewusst nicht gespeichert (schlankes Modell). (done)
-  2.4 Implementierung:
+  2.4 Implementierung: (not used: Prompt-Flow aktuell nicht umgesetzt)
       - Prompt als Popup (konsistent mit Trendpilot).
       - Hinweis: Spaeter optional "Nachrichten-Banner" als Alternative erwaegen.
       - "Nein" oeffnet Profil-Panel direkt.
-  2.5 Module Overview nachziehen (neu erkannte Regeln/Flow). (done)
+  2.5 Module Overview nachziehen (neu erkannte Regeln/Flow). (not used: Prompt-Flow defered)
 
 3) Profil-UX: Faktor & Zielbereich sichtbar machen
   3.1 Anzeige "Zielbereich" (min/max g) + Faktor (g/kg) im Profil. (done)
@@ -88,17 +88,17 @@ Deterministische Hauptsteps
   5.2 Auth-Strategie definieren:
       - Option A: Service Role Bearer + `PROTEIN_TARGETS_USER_ID` in der Edge-Env. (done)
   5.3 Cron-Call implementieren (nur wenn Auth-Struktur steht). (done)
-  5.4 Logger/diag fuer Cron-Runs.
+  5.4 Logger/diag fuer Cron-Runs. (done: Workflow-Logs reichen)
   5.5 Module Overview nachziehen (Cron-Trigger). (done)
 
 6) QA / Validierung
-  6.1 Body-Save triggert Recompute (bestehend).
-  6.2 CKD-Staleness Prompt erscheint nach X Tagen ohne Lab-Update.
-  6.3 "Ja" setzt Confirm-Timer; "Nein" oeffnet Profil.
-  6.4 Profil zeigt Faktor/Range konsistent (Auto vs Doctor-Lock).
-  6.5 Assistant-Text zeigt Faktor/Range, keine Regressions.
-  6.6 Cron-Run schreibt Targets oder skipped sauber.
-  6.7 Module Overview nachziehen (QA-Status).
+  6.1 Body-Save triggert Recompute (bestehend). (not used: bereits beobachtet)
+  6.2 CKD-Staleness Prompt erscheint nach X Tagen ohne Lab-Update. (not used: Prompt-Flow defered)
+  6.3 "Ja" setzt Confirm-Timer; "Nein" oeffnet Profil. (not used: Prompt-Flow defered)
+  6.4 Profil zeigt Faktor/Range konsistent (Auto vs Doctor-Lock). (done)
+  6.5 Assistant-Text zeigt Faktor/Range, keine Regressions. (not used: keine Assistant-Aenderung)
+  6.6 Cron-Run schreibt Targets oder skipped sauber. (done)
+  6.7 Module Overview nachziehen (QA-Status). (done)
 
 Offene Fragen (vor Implementierung klaeren)
 - n/a

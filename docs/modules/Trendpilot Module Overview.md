@@ -216,8 +216,8 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Backend / SQL / Edge: `trendpilot_events`/`trendpilot_state`, Edge Function `midas-trendpilot`.
 - Hinweis: Bei Edge Functions mit Service-Role muss `user_id` explizit gesetzt werden, da `auth.uid()` leer ist.
 - Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
-- Security-Hinweis: `TRENDPILOT_CRON_SECRET` + Header `x-midas-cron-secret` fuer tokenlose Scheduler-Calls.
- - Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
+- Security-Hinweis: Scheduler nutzt Service-Role Bearer (`SUPABASE_SERVICE_ROLE_KEY`) in GitHub Actions.
+- Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
 
 ### 11.1 Offene Punkte / Bedenken
 - Zeitlogik: Ongoing-Check im Client basiert auf `window_to >= heute` (UTC). Falls strikte Wien-Zeit gewuenscht, muss der Vergleich angepasst werden.

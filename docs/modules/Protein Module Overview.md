@@ -67,7 +67,7 @@ Related docs:
 
 ### 4.2 User-Trigger
 - Body-Save im Vitals/Body Panel.
-- Optional: manueller Trigger (Debug/force).
+- Optional: manueller Trigger (Debug/force, aktuell nicht genutzt).
 
 ### 4.3 Verarbeitung
 - Edge Function liest Profile + Activity-Count (28d) + CKD-Stufe.
@@ -124,7 +124,7 @@ Related docs:
 - Intake/Assistant:
   - nutzen `protein_target_max` bzw. `protein_target_min` als Fallback.
 - Assistant-Text:
-  - zeigt Bereich + Faktor (z. B. "Protein 99-108 g (1.08 g/kg)").
+  - zeigt nur den Zielbereich (kein Faktor).
 
 ---
 
@@ -151,7 +151,7 @@ Related docs:
 - Side Effects: `profile.syncProfile` + `profile:changed`.
 - Constraints: Doctor-Lock nutzt Doctor-Faktor; fehlt der Faktor, wird der Run skipped. Cooldown verhindert Spam.
 - Externe Inputs: Body-Save, Activity-Count, CKD aus Lab.
-- Optional: manueller Recompute (force=true).
+- Optional: manueller Recompute (force=true, aktuell nicht genutzt).
 - Optional: woechentlicher Recompute via GitHub Actions (Do->Fr Nacht, Service Role Bearer).
 
 ---
@@ -159,7 +159,7 @@ Related docs:
 ## 9. Erweiterungspunkte / Zukunft
 
 - CKD-Staleness-Check mit "Noch gleiche Stufe?" Prompt (Ja = Timer reset, Nein = Profil oeffnen).
-- Manueller Recompute-Button im Profil.
+- Manueller Recompute-Button im Profil (aktuell nicht genutzt).
 - Woechentlicher Cron-Run (separat von Trendpilot).
 - Aktivitaetspunkte feiner gewichten (nur wenn Minutes spaeter gewuenscht).
 - Albuminurie als optionaler Faktor.
@@ -192,7 +192,7 @@ Related docs:
 - Doctor-Lock nutzt Doctor-Faktor; wenn fehlt -> skipped.
 - Activity-Count beeinflusst ACT1/ACT2/ACT3.
 - CKD-Stufe beeinflusst Faktor.
-- Profil-Targets aktualisieren Intake/Assistant.
+- Profil-Targets aktualisieren Intake/Assistant (Range-only).
 
 ---
 
