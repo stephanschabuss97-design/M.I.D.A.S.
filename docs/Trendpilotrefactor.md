@@ -113,7 +113,17 @@ Deterministische Hauptsteps
       - `docs/modules/Trendpilot Module Overview.md` (Master)
       - `docs/Trendpilotrefactor.md`
   (done)
-  9.8 Begruendungstexte decken alle rule_id Kombinationen ab. (done)
+ 9.8 Begruendungstexte decken alle rule_id Kombinationen ab. (done)
+
+10) Trendpilot Korrelationen (Context)
+  10.1 Edge Function: activity_event + Body-Comp (waist/fat/muscle) aus health_events laden. (done)
+  10.2 Kontext-Gates: 4W Window, Mindest-Samples, Missingness -> "unknown". (done)
+  10.3 Kontext-Regeln: Activity-Level (low/ok/high), Waist/Fat/Muscle Trends, Lab-Naehe. (done)
+  10.4 BP+Gewicht Kontext nur am combined-Event ausgeben (keine Dopplung am BP-Event). (done)
+  10.5 Payload.context Struktur an Events anhaengen (bp/body/combined/lab). (done)
+  10.6 Text-Map: genau 1 Kontextsatz, Prioritaetenliste anwenden. (done)
+  10.7 Anzeige nur bei warning/critical, info bleibt ohne Kontext. (done)
+  10.8 QA: Beispiel-Daten -> Kontextsatz erscheint korrekt in Popup/Arzt/Chart. (done)
 
 Offene Fragen (vor Start klaeren)
 - Finales Tabellen-Schema (payload Struktur, typed fields vs JSON).

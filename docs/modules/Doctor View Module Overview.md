@@ -26,7 +26,7 @@ Related docs:
 | `app/styles/doctor.css` | Layout/Stil der Arzt-Ansicht |
 | `app/modules/hub/index.js` | Orbit/Panel-Open + Unlock-Flow |
 | `app/supabase/api/vitals.js` | Tagesdaten (BP/Body) |
-| `app/supabase/api/system-comments.js` | Trendpilot + Reports CRUD |
+| `app/supabase/api/trendpilot.js` | Trendpilot Events (fetch/ack/delete) |
 | `app/supabase/api/reports.js` | Edge Function Wrapper fuer Reports |
 | `C:\Users\steph\Projekte\midas-backend\supabase\functions\midas-monthly-report\index.ts` | Report-Aggregation (monthly/range) |
 
@@ -38,7 +38,8 @@ Related docs:
 - Source of Truth: Supabase (IndexedDB nur Offline-Fallback).
 - Reads:
   - Views: `v_events_bp`, `v_events_body`, `v_events_lab`, `v_events_activity`
-  - `health_events` (Notes + system_comment fuer Trendpilot/Reports)
+  - `health_events` (Notes + system_comment fuer Reports)
+- Trendpilot: `trendpilot_events` + `trendpilot_state`
 - Report-Subtypes:
   - `monthly_report`
   - `range_report` (Arzt-Bericht)
@@ -106,7 +107,7 @@ Related docs:
 - Side Effects: `requestUiRefresh`, delete actions, report generation.
 - Constraints: Doctor Unlock required, Range muss gesetzt sein.
 - `requestUiRefresh({ doctor: true })` nach Saves/Deletes.
-- Trendpilot-Aktionen via `setSystemCommentDoctorStatus`.
+- Trendpilot-Aktionen via `setTrendpilotAck` und `deleteTrendpilotEvent`.
 - Report-Edge-Function ueber `generateMonthlyReportRemote`.
 - JSON-Export: Supabase-Range-only (BP/Body/Lab/Training).
 
@@ -130,10 +131,10 @@ Related docs:
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (Read-Only + Reports).
-- Dependencies (hard): Supabase APIs (vitals/system-comments/reports), `midas-monthly-report` Edge, Unlock-Flow.
+- Dependencies (hard): Supabase APIs (vitals/trendpilot/reports), `midas-monthly-report` Edge, Unlock-Flow.
 - Dependencies (soft): Charts, Trendpilot.
 - Known issues / risks: grosse Ranges; Edge downtime; Deletes entfernen Daten; Report-Typ muss korrekt sein; Offline-Fallback nur Teilmenge.
-- Backend / SQL / Edge: `health_events` (bp/body/lab/activity/system_comment), Edge `midas-monthly-report`.
+- Backend / SQL / Edge: `health_events` (bp/body/lab/activity/system_comment), `trendpilot_events`/`trendpilot_state`, Edge `midas-monthly-report`.
 
 ---
 

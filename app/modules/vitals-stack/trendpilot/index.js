@@ -223,16 +223,55 @@
     const payload = entry?.payload || {};
     const ruleId = payload.rule_id || entry?.source || '';
     const template = TRENDPILOT_TEXT_MAP[ruleId];
+    const contextSentence = buildTrendpilotContextSentence(entry);
     if (template) {
-      return formatTrendpilotText(template.popup, payload);
+      const base = formatTrendpilotText(template.popup, payload);
+      return contextSentence ? `${base} ${contextSentence}` : base;
     }
-    return (
+    const fallback =
       payload.text ||
       payload.summary ||
       payload.rule_id ||
       entry?.source ||
-      'Trendpilot erkennt eine Ver\u00e4nderung.'
-    );
+      'Trendpilot erkennt eine Ver\u00e4nderung.';
+    return contextSentence ? `${fallback} ${contextSentence}` : fallback;
+  }
+
+  function buildTrendpilotContextSentence(entry) {
+    if (!entry || (entry.severity !== 'warning' && entry.severity !== 'critical')) return '';
+    if (entry.type === 'combined' || entry.type === 'lab') return '';
+    const ctx = entry?.payload?.context;
+    if (!ctx || typeof ctx !== 'object') return '';
+    const weight = ctx.weight || {};
+    const activity = ctx.activity || {};
+    const bodycomp = ctx.bodycomp || {};
+    const lab = ctx.lab || {};
+    const weightUp = weight.trend === 'up';
+    const waistUp = weight.waist_trend === 'up';
+    const activityLevel = activity.level;
+    const muscleUp = bodycomp.muscle_trend === 'up';
+    const fatUp = bodycomp.fat_trend === 'up';
+    const labDown = lab.egfr_trend === 'down';
+
+    if (weightUp && waistUp) {
+      return 'Kontext: Bauchumfang ist in der gleichen Phase gestiegen.';
+    }
+    if (weightUp && activityLevel === 'low') {
+      return 'Kontext: Aktivitaet war in den letzten 4 Wochen niedrig.';
+    }
+    if (weightUp && activityLevel === 'high' && muscleUp) {
+      return 'Kontext: Aktivitaet hoch, Muskelmasse ist gestiegen.';
+    }
+    if (weightUp && activityLevel === 'high' && fatUp) {
+      return 'Kontext: Aktivitaet hoch, Fettanteil ist gestiegen.';
+    }
+    if (weightUp && activityLevel === 'high' && !muscleUp && !fatUp) {
+      return 'Kontext: Aktivitaet hoch; Body-Comp fehlt fuer Einordnung.';
+    }
+    if (labDown) {
+      return 'Kontext: Laborwerte in der Phase ruecklaeufig (eGFR).';
+    }
+    return '';
   }
 
   function showTrendpilotDialog(entry) {

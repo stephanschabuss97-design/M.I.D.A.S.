@@ -49,6 +49,7 @@ Minimaler Kern:
 - `window_from/window_to`: Wochenfenster (ISO date)
 - `payload.rule_id`: eindeutige Regel-ID
 - `payload.*`: Kennzahlen (Baseline, Deltas, Wochen, IDs)
+- `payload.context` (optional): Kontext-Objekt fuer Korrelationen (nur warning/critical, kein info)
 
 Beispiele:
 - `bp-trend-v1`: baseline_sys/dia, avg_sys/dia, delta_sys/dia, weeks
@@ -56,6 +57,36 @@ Beispiele:
 - `lab-egfr-creatinine-trend-v1`: baseline_egfr/creatinine, avg_egfr/creatinine, delta_egfr/creatinine, weeks
 - `bp-weight-correlation-v1`: bp_event_ids, body_event_ids, weight_delta_kg, window_days
 - `baseline-normalized-v1`: baseline_from, baseline_sys/dia, sample_weeks (+ prev-baseline Felder)
+
+### 3.3 Kontext-Objekt (optional, nur warning/critical)
+Kontext ist ein Zusatzsatz zur Einordnung, keine Diagnose. Er wird nur bei warning/critical angehaengt.
+
+Beispielstruktur:
+```
+context: {
+  context_window_weeks: 4,
+  context_window_to: "YYYY-MM-DD",
+  activity: { level: "low|ok|high|unknown", sessions_4w: 3, weeks_with_entries_4w: 2 },
+  bodycomp: { muscle_trend: "up|flat|unknown", fat_trend: "up|flat|unknown", samples: 2 },
+  weight: { trend: "up|flat|unknown", waist_trend: "up|flat|unknown" },
+  lab: { egfr_trend: "down|flat|unknown", days_from_window: 7 }
+}
+```
+
+Prioritaet (max. 1 Satz):
+1) Gewicht + Bauchumfang
+2) Gewicht + Aktivitaet niedrig
+3) Gewicht + Aktivitaet hoch + Muskelmasse
+4) Gewicht + Aktivitaet hoch + Fettanteil
+5) Gewicht + Aktivitaet hoch, Body-Comp fehlt
+6) Lab-Naehe (eGFR ruecklaeufig)
+
+### 3.4 Kontext-Gates (v1)
+- Kontextfenster: 4 Wochen bis `context_window_to`.
+- Aktivitaet: Gate erfuellt, wenn >= 2 Wochen mit Eintrag oder >= 4 Sessions; Level high/ok/low erst danach.
+- Body-Comp: mindestens 2 Messungen mit >= 14 Tagen Abstand.
+- Gewichtstrend: min. 2 Messungen mit >= 14 Tagen Abstand.
+- Lab-Kontext: mind. 2 Samples im Kontextfenster.
 
 ### 3.2 Dedupe-Strategie
 - Unique: `user_id + type + window_from + severity`
@@ -79,6 +110,7 @@ Beispiele:
 - Severity: `info | warning | critical` (alle werden persistiert).
 - `warning/critical` -> Trendpilot-Event + Ack-Dialog.
 - `info` -> Trendpilot-Event fuer System-Kommentare (kein Popup).
+- Kontext wird nur an warning/critical angehaengt.
 
 ### 4.4 Normalisierung (Baseline Reset)
 - Wenn es Alerts gab und die letzten 6 Wochen stabil sind, wird die Baseline neu gesetzt.
@@ -97,6 +129,7 @@ Beispiele:
 - Hub zeigt Popup bei warning/critical + Start/Ende-Toast (dedupe).
 - Hub-Glow faerbt sich bei aktivem Trend nach Severity (warning=gelb, critical=rot).
 - BP-Chart zeigt Trendpilot-Bands + Legende.
+- Kontextsatz erscheint in Popup/Arzt/Chart nur bei warning/critical (nicht fuer info/combined/lab).
 
 ---
 
@@ -137,6 +170,7 @@ Beispiele:
 - Weitere Metriken (Body/Weight).
 - Optional: Urinteststreifen 1x pro Monat (nach aerztlicher Abklaerung).
 - KI-Textgenerierung im Payload.
+- Intake bleibt Tages-UI und ist bewusst nicht Teil der Trendpilot-Korrelationen.
 
 ## 9.1 Aktuelle Schwellen / Gates (v1)
 
@@ -175,13 +209,14 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 
 ## 11. Status / Dependencies / Risks
 
-- Status: Refactor in progress (Edge Function + neue Tabellen).
+- Status: Refactor abgeschlossen; Korrelationen (Kontext v1) umgesetzt.
 - Dependencies (hard): BP-Daten, `trendpilot_events`/`trendpilot_state`, GitHub Actions Cron, Capture/Doctor/Charts Integration.
 - Dependencies (soft): n/a.
 - Known issues / risks: braucht genug Daten; false positives; Flag `TREND_PILOT_ENABLED` deaktivierbar.
 - Backend / SQL / Edge: `trendpilot_events`/`trendpilot_state`, Edge Function `midas-trendpilot`.
 - Hinweis: Bei Edge Functions mit Service-Role muss `user_id` explizit gesetzt werden, da `auth.uid()` leer ist.
 - Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
+- Security-Hinweis: `TRENDPILOT_CRON_SECRET` + Header `x-midas-cron-secret` fuer tokenlose Scheduler-Calls.
  - Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
 
 ### 11.1 Offene Punkte / Bedenken
