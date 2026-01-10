@@ -15,5 +15,5 @@ jobs:
         run: |
           curl -sS -X POST "${{ secrets.TRENDPILOT_URL }}" \
             -H "Content-Type: application/json" \
-            -H "x-midas-cron-secret: ${{ secrets.TRENDPILOT_CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{"trigger":"scheduler"}'
