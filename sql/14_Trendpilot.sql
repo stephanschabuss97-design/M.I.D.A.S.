@@ -30,23 +30,23 @@ alter table public.trendpilot_events enable row level security;
 drop policy if exists "trendpilot_select_own" on public.trendpilot_events;
 create policy "trendpilot_select_own"
   on public.trendpilot_events for select
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_insert_own" on public.trendpilot_events;
 create policy "trendpilot_insert_own"
   on public.trendpilot_events for insert
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_update_own" on public.trendpilot_events;
 create policy "trendpilot_update_own"
   on public.trendpilot_events for update
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_delete_own" on public.trendpilot_events;
 create policy "trendpilot_delete_own"
   on public.trendpilot_events for delete
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create index if not exists idx_trendpilot_user_ts
   on public.trendpilot_events (user_id, ts);
@@ -99,23 +99,23 @@ alter table public.trendpilot_state enable row level security;
 drop policy if exists "trendpilot_state_select_own" on public.trendpilot_state;
 create policy "trendpilot_state_select_own"
   on public.trendpilot_state for select
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_state_insert_own" on public.trendpilot_state;
 create policy "trendpilot_state_insert_own"
   on public.trendpilot_state for insert
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_state_update_own" on public.trendpilot_state;
 create policy "trendpilot_state_update_own"
   on public.trendpilot_state for update
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "trendpilot_state_delete_own" on public.trendpilot_state;
 create policy "trendpilot_state_delete_own"
   on public.trendpilot_state for delete
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create index if not exists idx_trendpilot_state_user_type
   on public.trendpilot_state (user_id, type);
