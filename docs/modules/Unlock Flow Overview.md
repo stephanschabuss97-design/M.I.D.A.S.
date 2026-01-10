@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: Guard-Workflow fuer Doctor/Chart, Pending-Actions nach Unlock.
 - Abgrenzung: kein Login/Session-Handling (liegt im Auth-Modul).
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

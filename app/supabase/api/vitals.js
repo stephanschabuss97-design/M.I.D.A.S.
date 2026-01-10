@@ -61,7 +61,7 @@ export async function loadBpFromView({ user_id, from, to }) {
   if (to) filters.push(['day', `lte.${to}`]);
   return await sbSelect({
     table: 'v_events_bp',
-    select: 'day,ctx,sys,dia,pulse',
+    select: 'day,ctx,sys,dia,pulse,comment',
     filters,
     order: 'day.asc'
   });
@@ -144,6 +144,15 @@ const loadNotesLastPerDay = async ({ user_id, from, to }) => {
 // SUBMODULE: joinViewsToDaily @internal - fusioniert View-Ergebnisse zu Tagesobjekten
 const joinViewsToDaily = ({ bp, body, notes = [] }) => {
   const days = new Map();
+  const appendNote = (entry, text) => {
+    const raw = (text || '').trim();
+    if (!raw) return;
+    if (entry.notes) {
+      entry.notes = `${entry.notes}\n${raw}`.trim();
+      return;
+    }
+    entry.notes = raw;
+  };
   const ensure = (day) => {
     let entry = days.get(day);
     if (!entry) {
@@ -182,18 +191,18 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
     const nctx = normalizeBpCtx(row.ctx);
     const block = nctx === 'M' ? entry.morning : nctx === 'A' ? entry.evening : null;
 
-    if (block) {
-      if (row.sys != null) block.sys = Number(row.sys);
-      if (row.dia != null) block.dia = Number(row.dia);
-      if (row.pulse != null) block.pulse = Number(row.pulse);
-      if (block.sys != null && block.dia != null) {
+      if (block) {
+        if (row.sys != null) block.sys = Number(row.sys);
+        if (row.dia != null) block.dia = Number(row.dia);
+        if (row.pulse != null) block.pulse = Number(row.pulse);
+        if (block.sys != null && block.dia != null) {
         let mapValue = null;
         try {
           mapValue = calcMAPValue(block.sys, block.dia);
         } catch (err) {
           // calcMAPValue should already guard, but keep this to be defensive
           diag.add?.(
-            `[vitals] calcMAPValue error for day=${row.day} ctx=${row.ctx}: ${err?.message || err}`
+            `[vitals] calcMAPVal? error for day=${row.day} ctx=${row.ctx}: ${err?.message || err}`
           );
           console.warn('Supabase vitals map calculation failed', {
             day: row.day,
@@ -204,12 +213,17 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
         block.map = mapValue ?? null;
       }
     }
+    const commentRaw = (row.comment || '').trim();
+    if (commentRaw && nctx) {
+      const prefix = nctx === 'M' ? '[Morgens] ' : '[Abends] ';
+      appendNote(entry, `${prefix}${commentRaw}`);
+    }
   }
 
   // Notes
   for (const note of notes) {
     const entry = ensure(note.day);
-    entry.notes = note.text || '';
+    appendNote(entry, note.text || '');
   }
 
   return Array.from(days.values()).sort((a, b) => b.date.localeCompare(a.date));

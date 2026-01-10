@@ -1,5 +1,5 @@
 ﻿/* ==========================================================================
-   HUB ÔÇö Layout Base
+   HUB Layout Base
    ========================================================================== */
 
 .hub {
@@ -13,10 +13,10 @@
 }
 
 /* ==========================================================================
-   HUB ÔÇö Panel Active State (Milchglas + Lock via :has)
+   HUB Panel Active State (Milchglas + Lock via :has)
    ========================================================================== */
 
-/* Vollfl├ñchiges Milchglas-Overlay ├╝ber dem Hub, inkl. leichter 3D-Refraction */
+/* Vollflächiges Milchglas-Overlay über dem Hub, inkl. leichter 3D-Refraction */
 .hub::after {
   content: '';
   position: fixed;
@@ -58,7 +58,7 @@ body[data-panel-perf="mobile"] .hub::after {
     );
 }
 
-/* Wenn irgendein Panel sichtbar ist ÔåÆ Milchglas aktiv + Lock */
+/* Wenn irgendein Panel sichtbar ist Milchglas aktiv + Lock */
 body:has(.hub-panel.is-visible) .hub::after {
   opacity: 1;
   pointer-events: auto; /* blockt Klicks auf Orbit & Capture */
@@ -91,7 +91,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
 
 
 /* ==========================================================================
-   HUB ÔÇö Hero / Orbit
+   HUB Hero / Orbit
    ========================================================================== */
 
 .hub-hero {
@@ -239,7 +239,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: translate(-50%, 0) scale(1);
 }
 
-/* ­ƒöÁ­ƒƒú M.I.D.A.S. Aura ÔÇö Blau/Magenta */
+/* ­M.I.D.A.S. Aura Blau/Magenta */
 .midas-aura-flow {
   position: absolute;
   inset: 28%;
@@ -275,7 +275,62 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: scale(calc(1 + 0.06 * var(--midas-aura-boost, 0)));
 }
 
-/* ­ƒô▒ Mobile-Boost ÔÇô mehr Glow, gr├Â├ƒer, intensiver */
+.hub-orbit.trendpilot-active {
+  --midas-aura-boost: 0.9;
+}
+
+.hub-orbit.trendpilot-warning .midas-aura-flow,
+.hub-orbit.trendpilot-critical .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    );
+  filter: blur(calc(7px + 9px * var(--midas-aura-boost, 0)));
+}
+
+.hub-orbit.trendpilot-warning .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    ),
+    conic-gradient(
+      from -40deg,
+      rgba(255, 230, 70, 0.0) 0deg,
+      rgba(255, 230, 70, 1.0) 60deg,
+      rgba(255, 230, 70, 0.0) 120deg,
+      rgba(255, 205, 40, 0.0) 180deg,
+      rgba(255, 205, 40, 1.0) 240deg,
+      rgba(255, 205, 40, 0.0) 300deg,
+      rgba(255, 230, 70, 0.0) 360deg
+    );
+  opacity: 1.35;
+}
+
+.hub-orbit.trendpilot-critical .midas-aura-flow {
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.92) 55%,
+      rgba(0, 0, 0, 0) 75%
+    ),
+    conic-gradient(
+      from -40deg,
+      rgba(255, 60, 60, 0.0) 0deg,
+      rgba(255, 60, 60, 0.95) 60deg,
+      rgba(255, 60, 60, 0.0) 120deg,
+      rgba(255, 110, 110, 0.0) 180deg,
+      rgba(255, 110, 110, 0.98) 240deg,
+      rgba(255, 110, 110, 0.0) 300deg,
+      rgba(255, 60, 60, 0.0) 360deg
+    );
+  opacity: 1.35;
+}
+
+/* ­Mobile-Boost mehr Glow, größer, intensiver */
 @media (max-width: 640px) {
   .midas-aura-flow {
     inset: 16%;
@@ -322,7 +377,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   }
 }
 
-/* Zusatz-Pulse f├╝r Aura, wenn Panel aktiv ist */
+/* Zusatz-Pulse für Aura, wenn Panel aktiv ist */
 body:has(.hub-panel.is-visible) .midas-aura-flow {
   animation:
     midasAuraRotate 36s linear infinite,
@@ -335,14 +390,14 @@ body[data-panel-perf="mobile"]:has(.hub-panel.is-visible) .midas-aura-flow {
   filter: blur(2px);
 }
 
-/* OPTION A ÔÇö Aura Echo bei Modul-Interaction (Hover/Focus/Active) */
+/* OPTION A Aura Echo bei Modul-Interaction (Hover/Focus/Active) */
 .hub-orbit:has(.hub-icon:is(:hover, :focus-visible, [aria-pressed='true'])) .midas-aura-flow {
   filter: blur(7px) brightness(2.35);
   opacity: 1.08;
   transform: scale(1.04);
 }
 
-/* ­ƒƒí Goldener Ring-Glow innen */
+/* ­Goldener Ring-Glow innen */
 .midas-ring-gold {
   position: absolute;
   inset: 17%;
@@ -488,7 +543,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 
 
 /* ==========================================================================
-   HUB ÔÇö Orbit icons
+   HUB Orbit icons
    ========================================================================== */
 
 .hub-orbit-icons {
@@ -657,7 +712,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   cursor: not-allowed;
 }
 
-/* Kein eigener Hover-Glow, kein H├╝pfer ÔÇô visuelles Feedback kommt ├╝ber Aura */
+/* Kein eigener Hover-Glow, kein Hüpfer visuelles Feedback kommt über Aura */
 .hub-icon:focus-visible,
 .hub-icon:hover {
   box-shadow: none;
@@ -673,7 +728,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   transform: translate(-50%, -50%);
 }
 
-/* Aktiver Zustand ohne eigenen Hintergrund ÔÇô Orbit bleibt clean */
+/* Aktiver Zustand ohne eigenen Hintergrund Orbit bleibt clean */
 .hub-icon[aria-pressed='true'] {
   background: transparent;
   box-shadow: none;
@@ -709,7 +764,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   filter: grayscale(0.3) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
 }
 
-/* OPTION C ÔÇö ÔÇ×VibrationÔÇ£ auf Touch (Mobil, micro-jitter) */
+/* OPTION C Vibration auf Touch (Mobil, micro-jitter) */
 @keyframes hubIconTapJitter {
   0% {
     transform: translate(-50%, -50%) scale(1);
@@ -803,7 +858,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 
 
 /* ==========================================================================
-   HUB ÔÇô Intake pills
+   HUB Intake pills
    ========================================================================== */
 
 .hub-intake-pills {
@@ -829,7 +884,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 
 
 /* ==========================================================================
-   HUB ÔÇö PANELS (Variante B: Center Overlay + Zoom)
+   HUB PANELS (Variante B: Center Overlay + Zoom)
    ========================================================================== */
 
 .hub-panel {
@@ -978,6 +1033,48 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-intake-panel.is-active {
+  display: block;
+}
+
+.hub-profile-tabs {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 12px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+
+.hub-profile-tabs .btn {
+  min-width: 90px;
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.hub-profile-tabs .btn::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: transparent;
+  bottom: -10px;
+  border-radius: 999px;
+}
+
+.hub-profile-tabs .btn.is-active::after {
+  background: var(--accent, #4f9dff);
+}
+
+.hub-profile-tab-panels {
+  position: relative;
+}
+
+.hub-profile-panel {
+  display: none;
+}
+
+.hub-profile-panel.is-active {
   display: block;
 }
 
@@ -1626,7 +1723,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   overflow: visible;
 }
 
-/* HUB ÔÇö Responsive <=640px (Panels) */
+/* HUB Responsive <=640px (Panels) */
 @media (max-width: 640px) {
   .hub-panel {
     width: calc(100% - 16px);
@@ -1658,7 +1755,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 }
 
-/* HUB ÔÇö Form helpers */
+/* HUB Form helpers */
 .hub-vitals-controls .control-group select,
 .bp-context-header select {
   min-width: 160px;
@@ -1671,10 +1768,10 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 
 /* ==========================================================================
-   Animations ÔÇö Panels
+   Animations Panels
    ========================================================================== */
 
-/* ├ûffnen: aus der Mitte, erst als d├╝nner Balken, dann volle H├Âhe */
+/* Öffnen: aus der Mitte, erst als dünner Balken, dann volle Höhe */
 @keyframes hub-panel-zoom-in-desktop {
   0% {
     opacity: 0;
@@ -1701,7 +1798,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 30px 60px rgba(0, 0, 0, 0.85);
   }
 
-  /* H├Âhe w├ñchst */
+  /* Höhe wächst */
   70% {
     opacity: 1;
     transform: translate(-50%, -50%) scaleX(1) scaleY(0.95);
@@ -1722,11 +1819,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 }
 
-/* Schlie├ƒen: leicht zusammenziehen, dann wieder in den Kern ÔÇ×zur├╝ckschnappenÔÇ£
+/* Schließen: leicht zusammenziehen, dann wieder in den Kern zurückschnappen
    + kleines Lichtecho */
 @keyframes hub-panel-zoom-out-desktop {
 
-  /* exakt das Spiegelbild von 100% ÔåÆ 0% */
+  /* exakt das Spiegelbild von 100% auf 0% */
   0% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
@@ -1775,7 +1872,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 
 /* ==========================================================================
-   HUB ÔÇö Panel Scroll Container
+   HUB Panel Scroll Container
    ========================================================================== */
 
 /* Damit das Panel selbst animiert, aber eine innere Box scrollbar bleibt */
@@ -2118,6 +2215,22 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .profile-form .field-hint {
   font-size: 0.75rem;
   opacity: 0.7;
+}
+
+.profile-doctor-fields {
+  display: contents;
+}
+
+.profile-doctor-fields[hidden] {
+  display: none;
+}
+
+.profile-auto-fields {
+  display: contents;
+}
+
+.profile-auto-fields[hidden] {
+  display: none;
 }
 
 .profile-actions {
@@ -2514,7 +2627,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 
 /* ==========================================================================
-   HUB ÔÇö Legacy Utility Animations (Reserve)
+   HUB Legacy Utility Animations (Reserve)
    ========================================================================== */
 
 @keyframes midasWobble {

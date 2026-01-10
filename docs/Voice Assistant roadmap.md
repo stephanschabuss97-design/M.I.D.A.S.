@@ -16,6 +16,8 @@ Diese Roadmap beschreibt *Phasen*, keine einzelnen Prompts.
 Jede Phase wird separat umgesetzt (eigener Branch / eigener Prompt).  
 Innerhalb einer Phase nur an den explizit genannten Dateien/Modulen arbeiten und keine neuen Features aus anderen Phasen vorziehen.
 **Status-Hinweis:** Voice ist derzeit geparkt; das Modul liegt in `app/modules/assistant-stack/voice/index.js`, VAD in `app/modules/assistant-stack/vad/`.
+**Deep Clean:** Fuer Phase 6 + 6.5 siehe `docs/deep-clean-roadmap.md`.
+
 
 ---
 
@@ -64,7 +66,7 @@ app/supabase/auth/core.js (lines 291-320). OK
 app/modules/hub/index.js (lines 1500-1504). OK
 - Der Hub initialisiert aktuell sofort nach DOM ready. Schieb activateHubLayout() hinter AppModules.bootFlow.whenStage('INIT_UI', activateHubLayout) und fÃ¼ge body[data-boot-stage!="IDLE"]-Checks in allen Orbit-Klick-Handlern hinzu (so bleiben Buttons inaktiv solange Stage < INIT_UI). Optional: BootFlow liefert lockReason â†’ Zeige im Panel-Header â€žHub lÃ¤dtâ€¦â€œ.
 
-app/modules/doctor/index.js & app/modules/capture/index.js. OK
+app/modules/doctor-stack/doctor/index.js & app/modules/intake-stack/intake/index.js. OK
 - Beide Module greifen beim Laden bereits auf DOM zu. ErgÃ¤nze am Anfang Guard-Code if (!AppModules.bootFlow?.isStageAtLeast('INIT_MODULES')) return; fÃ¼r Handler, die vom Boot-Overlay aus ausgelÃ¶st werden kÃ¶nnten, und registriere ihre globalen window.AppModules.* APIs erst nach INIT_CORE. Damit kollidiert der Stage-Lock nicht mit Legacy-Tab-Aufrufen.
 
 app/core/config.js & assets/js/ui.js.OK
@@ -107,7 +109,7 @@ assets/js/main.js (zweiter Punkt) OK
 app/core/diag.js OK
 - EnthÃ¤lt Fallback console.warn / console.info, wenn Diagnostics off sind. Wir sollten dokumentieren, dass das bewusst so bleibt, aber im Cleanup evtl. ein einheitliches Flag (if (global.DIAGNOSTICS_ENABLED)) nutzen und den Rest stumm schalten.
 
-app/modules/capture/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - Beide Dateien haben neue Boot-Guards. FÃ¼r Phaseâ€¯0.2 mÃ¼ssen wir prÃ¼fen, ob es noch alte, ungenutzte Funktionen/Listener gibt (z.â€¯B. bindLifestyle, resetCapturePanels), die nie aufgerufen werden â€“ offensichtliche Dead-Ends rausnehmen oder markieren.
 - AuÃŸerdem sicherstellen, dass window.AppModules.capture/doctor keine Legacy-Globals (global.renderDoctor) mehr doppelt registrieren â€“ das war die Quelle vergangener Warnungen.
 
@@ -133,7 +135,7 @@ Gate boot stages to auth. runBootPhase currently goes straight from AUTH_CHECK t
 app/styles/base.css / app/styles/auth.css OK
 Visual lock for auth gate. Ensure thereâ€™s a style for body.auth-unknown (or reuse auth-locked) that keeps inputs inert and shows a short message on the boot overlay. We already dim via body.auth-locked, but for Phaseâ€¯0.3 we need a distinct class so UX can show â€œSupabase prÃ¼ft Session â€¦â€.
 
-app/modules/hub/index.js, app/modules/capture/index.js, etc.
+app/modules/hub/index.js, app/modules/intake-stack/intake/index.js, etc.
 Honor the new auth gate. Each module that currently checks AppModules.bootFlow?.isStageAtLeast('INIT_UI') should also check supabaseState.authState !== 'unknown' (hooked via a helper exported from app/supabase/auth/core.js). For example, handleCaptureIntake, renderDoctor, hub button handlers, etc., should bail immediately when the new auth gate reports â€œunknownâ€.
 
 docs/Voice Assistant roadmap.md / QA docs OK
@@ -170,7 +172,7 @@ app/modules/hub/index.js OK
 - Debug-Ausgaben ([hub:debug] assistant-chat setup...) feuern in Bl?cken bei jedem init. Halte sie hinter einem Flag oder logge nur beim ersten Setup.
 - Click-/State-Logs sollen nur Benutzeraktionen (Needle, Panels) erfassen, nicht Hintergrund-Retries.
 
-app/modules/capture/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - Boot- und Resume-Hooks rufen 
 efreshCaptureIntake/
 enderDoctor mehrfach; stelle sicher, dass [capture] loadIntakeToday start/done nur ausgegeben wird, wenn der Request tats?chlich anl?uft (kein zweites Mal mit identischem Reason).
@@ -191,7 +193,7 @@ assets/js/main.js OK
 app/modules/hub/index.js OK
 - hub debug spam ([hub:debug] assistant-chat â€¦). Wrap all diagnostic chatter behind a runtime flag (e.g. AppModules.config?.LOG_HUB_DEBUG). Only user-facing actions (needle click, tab switch) should hit the touch log; retries/auto-setup should write to diag only when failing.
 
-app/modules/capture/index.js & app/modules/doctor/index.js OK
+app/modules/intake-stack/intake/index.js & app/modules/doctor-stack/doctor/index.js OK
 - they still log every refresh start/done. Add dedupe caches keyed by {reason, day} and emit a single [capture] refresh reason=boot â€¦ line with (xN) counters when the same refresh fires again before finishing. Similar treatment for doctor view refresh/render logs.
 
 assets/js/data-local.js & app/supabase/auth/core.js OK
@@ -357,8 +359,8 @@ Nur noch **ein** Hub-Entry fÃ¼r Blutdruck/KÃ¶rper, aber schneller Einstieg i
 **Betroffene Module:**
 
 * Hub-Layout (`app/modules/hub/index.js` oder Hub-Konfiguration).
-* Vitals-/Body-Input-Panel (Capture/Vitals-Module, z. B. `app/modules/capture/*`).
-* Doctor-View (`app/modules/doctor/index.js` + ggf. Charts-Modul).
+* Vitals-/Body-Input-Panel (Capture/Vitals-Module, z. B. `app/modules/vitals-stack/vitals/*`).
+* Doctor-View (`app/modules/doctor-stack/doctor/index.js` + ggf. Charts-Modul).
 
 **Anpassungen:**
 
@@ -404,13 +406,13 @@ Hub-Layout (app/modules/hub/index.js) OK
 Orbit-Konfiguration anpassen: Vitals-Button wird der einzige Eintrag fÃ¼r Blutdruck/KÃ¶rper; Doctor-Icon entfÃ¤llt.
 Handler aktualisieren, damit der Vitals-Button immer das Vitals-/Body-Panel Ã¶ffnet (keine separaten Buttons mehr fÃ¼r Doctor).
 
-Capture/Vitals-Panel (vermutlich app/modules/capture/index.js + zugehÃ¶riges Template) OK
+Capture/Vitals-Panel (vermutlich app/modules/vitals-stack/vitals/index.js + zugehÃ¶riges Template) OK
 Zwei neue Buttons im Panel-Header oder oberhalb der Eingabefelder:
 â€žArzt-Ansichtâ€œ â†’ ruft requireDoctorUnlock() auf und Ã¶ffnet die klassische Doctor-View.
 â€žDiagrammâ€œ â†’ ebenfalls Guard, setzt ein Flag bzw. Ã¼bergibt einen Modus, damit Doctor-View direkt im Chart startet.
 Logik fÃ¼r die Button-Actions (z.â€¯B. AppModules.capture?.openDoctorView({ startMode: 'list' | 'chart' })).
 
-Doctor-Module (app/modules/doctor/index.js + Chartmodul) OK
+Doctor-Module (app/modules/doctor-stack/doctor/index.js + Chartmodul) OK
 Ã–ffnen via Parameter: wenn startMode === 'chart', nach Unlock sofort das Chart zeigen.
 SchlieÃŸen (X) eines Chart-Panels sollte zunÃ¤chst die Doctor-Ansicht zeigen (nicht direkt zum Hub springen), sodass der Nutzer im â€žmedizinischen Raumâ€œ bleibt.
 
@@ -550,7 +552,7 @@ app/styles/hub.css ggf. um .profile-panel erweitern: Grid fÃ¼r Form, Labels, L
 Checkbox/Dropdown an Terminpanel-Stil angleichen.
 
 ## Weitere Anpassungen OK
-app/modules/charts/index.js spÃ¤ter an profile:changed hÃ¤ngen.
+app/modules/doctor-stack/charts/index.js spaeter an profile:changed haengen.
 FÃ¼r Assistant genÃ¼gt es zunÃ¤chst, wenn wir das Profil-Event zur VerfÃ¼gung haben; die Edge Function wird separat erweitert.
 
 Damit haben wir einen klaren Umbauplan und Wissen, welche Dateien angefasst werden mÃ¼ssen (index.html, app/styles/hub.css, app/modules/hub/index.js, neues app/modules/profile/index.js).

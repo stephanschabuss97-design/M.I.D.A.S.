@@ -120,7 +120,7 @@ begin
 
   if new.type = 'bp' then
     -- erlaubte Keys
-    keys := array['sys','dia','pulse','ctx'];
+    keys := array['sys','dia','pulse','ctx','comment'];
     if exists (select 1 from jsonb_object_keys(new.payload) as t(k) where k <> all(keys)) then
       raise exception 'bp: payload enth?lt unbekannte Keys' using errcode = '22023';
     end if;
@@ -149,6 +149,12 @@ begin
       end if;
     end if;
 
+    if (new.payload ? 'comment') then
+      if length(btrim(new.payload->>'comment')) < 1 or length(new.payload->>'comment') > 500 then
+        raise exception 'bp.comment Laenge 1-500 Zeichen' using errcode = '22023';
+      end if;
+    end if;
+    
     -- ctx Spiegelung in Spalte
     if (new.payload->>'ctx') not in ('Morgen','Abend') then
       raise exception 'bp.ctx muss "Morgen" oder "Abend" sein' using errcode = '22023';
@@ -282,7 +288,8 @@ select
   e.ctx,
   (e.payload->>'sys')::int   as sys,
   (e.payload->>'dia')::int   as dia,
-  (e.payload->>'pulse')::int as pulse
+  (e.payload->>'pulse')::int as pulse,
+  e.payload->>'comment'       as comment
 from public.health_events e
 where e.type = 'bp';
 

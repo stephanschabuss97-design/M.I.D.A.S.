@@ -2,15 +2,18 @@
 
 Kurze Einordnung:
 - Zweck: t?gliche Erfassung von Wasser/Salz/Protein samt Medikamentenstatus im Hub.
-- Rolle: Liefert Live-Tageswerte, Status-Pills und Low-Stock/Sicherheits-Hinweise.
+- Rolle: Liefert Live-Tageswerte, Status-Pills und Low-Stock-Hinweise.
 - Abgrenzung: Kein Langzeit-Reporting (Charts ?bernehmen), Medikamentenstammdaten liegen im Medication Modul.
+
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
 
 ---
 
 ## 1. Zielsetzung
 
 - Patienten erfassen Fl?ssigkeit & Makros per Schnellbuttons und sehen sofortige Tagesfortschritte.
-- Gleiche Oberfl?che zeigt Medikamenten-Toggles (Confirm/Undo) samt Low-Stock/Safety-Hinweisen.
+- Gleiche Oberfl?che zeigt Medikamenten-Toggles (Confirm/Undo) samt Low-Stock-Hinweisen.
 - Nichtziel: Historische Auswertungen oder automatisierte Benachrichtigungen ? Fokus liegt auf der aktuellen Tagesansicht.
 
 ---
@@ -19,12 +22,12 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/capture/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
+| `app/modules/intake-stack/intake/index.js` | Fachlogik f?r Intake, Medication-Integration, Timer, Warnungen |
 | `app/core/capture-globals.js` | Shared State, Helper (`softWarnRange`, `setBusy`, Date Guards) |
 | `app/supabase/api/intake.js` | RPC Wrapper (`loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`) |
 | `app/modules/hub/index.js` | ?ffnet Intake Panel, verschiebt Status-Pills in den Hub-Header |
-| `app/modules/medication/index.js` | Datenquelle f?r IN-Toggles, Low-Stock Box |
-| `app/styles/hub.css` | Intake Cards, Grid, Pills, Low-Stock/Safety Styles |
+| `app/modules/intake-stack/medication/index.js` | Datenquelle f?r IN-Toggles, Low-Stock Box |
+| `app/styles/hub.css` | Intake Cards, Grid, Pills, Low-Stock Styles |
 | `docs/Medication Management Module Spec.md` | Kontext f?r Tablettenmanager |
 | `docs/QA_CHECKS.md` | Testf?lle f?r Capture/Intake |
 
@@ -50,7 +53,6 @@ Kurze Einordnung:
 - Buttons `cap-*-add-btn` f?r Wasser/Salz/Protein (+ Kombobutton Salz+Protein).
 - Medikamenten-Toggles (`data-med-toggle`) best?tigen/undo Tagesdosen.
 - Low-Stock Box: `data-med-ack` (Erledigt) + globaler ?Mail vorbereiten?-Button.
-- Safety-Hinweis: `data-med-safety-goto` wechselt Datum zu gestern.
 
 ### 4.3 Verarbeitung
 - Numerische Werte werden validiert (`softWarnRange`, `toNumDE`).
@@ -68,7 +70,7 @@ Kurze Einordnung:
 
 - Panel `#hubIntakePanel` mit Tabs **IN** (t?glicher Flow) und **TAB** (Medikationsverwaltung).
 - IN-Tab: `.intake-card-grid` (1 Spalte Mobile, 2 Spalten Desktop) enth?lt Intake-Karten und Medikamentenkarten im identischen Stil.
-- Unter dem Grid: Status-Pills, Low-Stock Box (Hausarzt + Mailto + Items), Safety-Hinweis.
+- Unter dem Grid: Status-Pills, Low-Stock Box (Hausarzt + Mailto + Items).
 - TAB-Tab wird vom Medication Modul gerendert (Form + CRUD-Karten), bleibt im selben Panel.
 
 ---
@@ -132,7 +134,7 @@ Kurze Einordnung:
 
 - Save/Load Wasser/Salz/Protein (inkl. Kombobutton) f?r heute/gestern.
 - Midnight/Noon Timer testen (State Reset, Pills aktualisieren).
-- Medication Toggle + Low-Stock + Safety-Hinweis (inkl. Profil?nderung des Hausarztkontakts).
+- Medication Toggle + Low-Stock (inkl. Profil?nderung des Hausarztkontakts).
 - Offline/RPC-Error Pfad (Toast + unver?nderte UI).
 - Tab-Wechsel IN/TAB bewahrt Fokus und ARIA-States.
 
@@ -142,6 +144,6 @@ Kurze Einordnung:
 
 - Panel ?ffnet/ schlie?t ohne Fehler, Grid reagiert responsiv.
 - Intake Saves persistieren serverseitig, Pills spiegeln Status.
-- Low-Stock/Sicherheits-Hinweise verhalten sich konsistent mit Medication Profilen.
+- Low-Stock-Hinweise verhalten sich konsistent mit Medication Profilen.
 - Dokumentation & QA aktualisiert, keine offenen `diag` Errors.
 

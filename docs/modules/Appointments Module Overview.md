@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: liefert Upcoming-Termine und syncen ins Assistant-Header.
 - Abgrenzung: keine Reminder/Push-Logik (spaeter), keine Arzt-Ansicht.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -48,6 +51,7 @@ Kurze Einordnung:
 ### 4.3 Verarbeitung
 - CRUD via Supabase Client (`appointments_v2`).
 - `computeUpcomingFromState()` erstellt Butler-Listeneintraege.
+- Upcoming-Items enthalten `start_at` fuer Assistant-Datum/Uhrzeit.
 - Event `appointments:changed` nach jeder Mutation.
 
 ### 4.4 Persistenz

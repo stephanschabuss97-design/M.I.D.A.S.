@@ -48,11 +48,11 @@
     { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
     { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
     { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
-    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
     { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
     { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
     { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
     { id: 'profile', selector: '[data-carousel-id="profile"]', panel: 'profile' },
+    { id: 'assistant-text', selector: '[data-carousel-id="assistant-text"]', panel: 'assistant-text' },
   ];
   const PANEL_TO_CAROUSEL_ID = {
     intake: 'intake',
@@ -102,6 +102,31 @@
   let aura3dCleanup = null;
   const auraState = {
     canvas: null,
+  };
+  let trendpilotAuraBound = false;
+  const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  const getTodayIso = () => new Date().toISOString().slice(0, 10);
+
+  const isTrendpilotOngoing = (entry) => {
+    const to = entry?.window_to || entry?.day || '';
+    if (!to || !ISO_DAY_RE.test(to)) return false;
+    return to >= getTodayIso();
+  };
+
+  const applyTrendpilotAuraState = (entry) => {
+    const orbit = doc?.querySelector('.hub-orbit');
+    if (!orbit) return;
+    const ongoing = isTrendpilotOngoing(entry);
+    orbit.classList.toggle('trendpilot-active', ongoing);
+    orbit.classList.toggle(
+      'trendpilot-warning',
+      ongoing && entry?.severity === 'warning'
+    );
+    orbit.classList.toggle(
+      'trendpilot-critical',
+      ongoing && entry?.severity === 'critical'
+    );
   };
 
   const triggerAuraTouchPulse = (event) => {
@@ -814,6 +839,15 @@
     setupSpriteState(hub);
     setupCarouselController(hub);
     setupQuickbar(hub);
+    if (!trendpilotAuraBound) {
+      trendpilotAuraBound = true;
+      doc.addEventListener('trendpilot:latest', (event) => {
+        applyTrendpilotAuraState(event?.detail?.entry || null);
+      });
+    }
+    if (typeof appModules.trendpilot?.getLatestSystemComment === 'function') {
+      applyTrendpilotAuraState(appModules.trendpilot.getLatestSystemComment());
+    }
     if (aura3dApi?.initAura3D) {
       const auraCanvas = hub.querySelector('#hubAuraCanvas');
       if (auraCanvas) {
@@ -1052,6 +1086,13 @@
 
   const moveIntakePillsToHub = () => {
     const hub = doc?.querySelector('[data-role="hub-intake-pills"]');
+    const captureApi = appModules.capture || {};
+    if (typeof captureApi.prepareIntakeStatusHeader === 'function') {
+      captureApi.prepareIntakeStatusHeader();
+    }
+    if (typeof captureApi.updateCaptureIntakeStatus === 'function') {
+      captureApi.updateCaptureIntakeStatus();
+    }
     const pills = doc?.getElementById('cap-intake-status-top');
     if (!hub) return;
     if (!pills) {
@@ -1106,17 +1147,32 @@
     return null;
   };
 
+  const ASSISTANT_CONTEXT_LOADING_HINT = 'Aktualisiere...';
+
   const renderAssistantContextExtras = (profile) => {
     const refs = assistantChatCtrl?.contextExtras;
     if (!refs?.container) return;
-    const keepVisible = isAssistantDesktop();
+    const isMissingProfile = !profile;
+    const keepVisible = isAssistantDesktop() || isMissingProfile;
     let hasAny = false;
     const proteinText =
       formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
       formatTargetRange(profile?.protein_target, null, 'g');
-    if (updateContextItem(refs.proteinTarget, proteinText, { keepVisible, placeholder: '-- g' })) hasAny = true;
+    if (
+      updateContextItem(refs.proteinTarget, proteinText, {
+        keepVisible,
+        placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '-- g',
+      })
+    )
+      hasAny = true;
     const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
-    if (updateContextItem(refs.ckdStage, ckdStage || null, { keepVisible, placeholder: '--' })) hasAny = true;
+    if (
+      updateContextItem(refs.ckdStage, ckdStage || null, {
+        keepVisible,
+        placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
+      })
+    )
+      hasAny = true;
     refs.container.hidden = !hasAny;
   };
 
@@ -1152,27 +1208,22 @@
       proteinRemaining = proteinTarget - proteinTotal;
       remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
     }
-    const keepVisible = isAssistantDesktop();
+    const isMissingProfile = !profile;
+    const keepVisible = isAssistantDesktop() || isMissingProfile;
     const remainingText = remainingParts.length ? remainingParts.join(', ') : null;
-    const hasRemaining = updateContextItem(refs.remaining, remainingText, { keepVisible, placeholder: '--' });
+    const hasRemaining = updateContextItem(refs.remaining, remainingText, {
+      keepVisible,
+      placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
+    });
     let warningText = null;
     if (saltRemaining != null && saltRemaining < 0) {
-      warningText = 'Salz ueber Limit';
+      warningText = 'Salz √ºber Limit';
     }
     if (proteinRemaining != null && proteinRemaining < 0) {
-      warningText = warningText ? `${warningText}, Protein ueber Limit` : 'Protein ueber Limit';
+      warningText = warningText ? `${warningText}, Protein √ºber Limit` : 'Protein √ºber Limit';
     }
     const hasWarning = updateContextItem(refs.warning, warningText);
-    let recommendationText = null;
-    if (saltRemaining != null && saltRemaining <= 1) {
-      recommendationText = 'Tipp: Heute eher salzarm bleiben.';
-    } else if (proteinRemaining != null && proteinRemaining <= 5) {
-      recommendationText = 'Tipp: Protein heute eher leicht halten.';
-    } else if (hasRemaining) {
-      recommendationText = 'Tipp: Leicht und ausgewogen bleiben.';
-    }
-    const hasRecommendation = updateContextItem(refs.recommendation, recommendationText);
-    refs.container.hidden = !(hasRemaining || hasWarning || hasRecommendation);
+    refs.container.hidden = !(hasRemaining || hasWarning);
   };
 
   const renderAssistantIntakeTotals = (snapshot) => {
@@ -1224,13 +1275,14 @@
     minute: '2-digit'
   });
 
-  const formatAppointmentDateTime = (value) => {
+  const formatAppointmentDateTime = (value, { includeTime = true } = {}) => {
     if (!value) return '';
     const date = value instanceof Date ? value : new Date(value);
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     const dayLabel = APPOINTMENT_DATE_FORMAT.format(date).replace(/\.$/, '');
+    if (!includeTime) return dayLabel;
     const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
-    return `${dayLabel} ï ${timeLabel}`;
+    return `${dayLabel} - ${timeLabel}`;
   };
 
   const normalizeAppointmentItems = (items, limit = 2) => {
@@ -1258,15 +1310,22 @@
         raw.when ||
         raw.dateLabel ||
         '';
-      if (!detail && (raw.start || raw.date)) {
-        detail = formatAppointmentDateTime(raw.start || raw.date);
+      if (!detail && raw.start_at) {
+        detail = formatAppointmentDateTime(raw.start_at);
+      } else if (!detail && (raw.start || raw.date) && raw.time) {
+        const dayLabel = formatAppointmentDateTime(raw.start || raw.date, { includeTime: false });
+        detail = dayLabel ? `${dayLabel} - ${raw.time}` : `${raw.time}`;
+      } else if (!detail && (raw.start || raw.date)) {
+        detail = formatAppointmentDateTime(raw.start || raw.date, { includeTime: false });
       } else if (!detail && raw.day && raw.time) {
-        detail = `${raw.day} ï ${raw.time}`;
+        detail = `${raw.day} - ${raw.time}`;
+      } else if (!detail && raw.day) {
+        detail = raw.day;
       }
       const startAt =
+        raw.start_at ||
         raw.start ||
         raw.date ||
-        raw.start_at ||
         raw.starts_at ||
         raw.startTime ||
         null;
@@ -1338,8 +1397,24 @@
       return snapshot;
     };
 
-    const getAssistantProfileSnapshot = () => {
-      if (assistantProfileSnapshot) return assistantProfileSnapshot;
+    let assistantProfileSyncInFlight = false;
+
+    const requestAssistantProfileSync = async ({ reason } = {}) => {
+      if (assistantProfileSyncInFlight) return;
+      const profileApi = appModules.profile;
+      if (!profileApi?.sync) return;
+      assistantProfileSyncInFlight = true;
+      try {
+        await profileApi.sync({ reason: reason || 'assistant:lazy-refresh' });
+      } catch (err) {
+        diag.add?.(`[assistant-context] profile sync failed: ${err?.message || err}`);
+      } finally {
+        assistantProfileSyncInFlight = false;
+      }
+    };
+
+    const getAssistantProfileSnapshot = ({ force = false } = {}) => {
+      if (!force && assistantProfileSnapshot) return assistantProfileSnapshot;
       const data = appModules.profile?.getData?.();
       if (data) {
         assistantProfileSnapshot = data;
@@ -1350,6 +1425,10 @@
 
     const refreshAssistantContext = async ({ reason, forceRefresh = false } = {}) => {
       if (!assistantChatCtrl?.panel) return;
+      const profileSnapshot = getAssistantProfileSnapshot({ force: forceRefresh });
+      if (!profileSnapshot) {
+        requestAssistantProfileSync({ reason: reason || 'assistant:lazy-refresh' });
+      }
       const [snapshot, appointments] = await Promise.all([
         loadAssistantIntakeSnapshot({ reason, forceRefresh }),
         fetchAssistantAppointments({ limit: 2, reason }),
@@ -1394,7 +1473,7 @@
     if (!panel) {
       assistantChatSetupAttempts += 1;
       if (assistantChatSetupAttempts === 1) {
-        debugLog('assistant-chat panel missing, retrying Ö');
+        debugLog('assistant-chat panel missing, retrying');
       }
       if (assistantChatSetupAttempts < ASSISTANT_CHAT_MAX_ATTEMPTS) {
         global.setTimeout(() => setupAssistantChat(hub), ASSISTANT_CHAT_RETRY_DELAY);
@@ -1453,7 +1532,7 @@
       wrap.hidden = true;
 
       const thumb = doc.createElement('img');
-      thumb.alt = 'Ausgew‰hltes Foto';
+      thumb.alt = 'Ausgew√§hltes Foto';
       thumb.loading = 'lazy';
 
       const meta = doc.createElement('div');
@@ -1513,7 +1592,6 @@
         container: contextExpandable,
         remaining: buildContextValueRef(contextExpandable, 'expandable', 'remaining', 'expandable-value'),
         warning: buildContextValueRef(contextExpandable, 'expandable', 'warning', 'expandable-value'),
-        recommendation: buildContextValueRef(contextExpandable, 'expandable', 'recommendation', 'expandable-value'),
       },
       appointments: {
         container: appointmentsContainer,
@@ -1584,9 +1662,14 @@
     debugLog('assistant-chat setup complete');
     refreshAssistantContext({ reason: 'assistant:init', forceRefresh: false });
 
-      doc?.addEventListener('appointments:changed', () => {
-        refreshAssistantContext({ reason: 'appointments:changed', forceRefresh: true });
-      });
+    doc?.addEventListener('appointments:changed', () => {
+      refreshAssistantContext({ reason: 'appointments:changed', forceRefresh: true });
+    });
+    doc?.addEventListener('profile:changed', (event) => {
+      const detail = event?.detail || {};
+      assistantProfileSnapshot = detail.data || null;
+      refreshAssistantContext({ reason: 'profile:changed', forceRefresh: true });
+    });
       const runAllowedAction = async (type, payload = {}, { source } = {}) => {
         const allowedActions = global.AppModules?.assistantAllowedActions;
         const executeAction = allowedActions?.executeAllowedAction;
@@ -1700,7 +1783,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar - ich habe ${list} fuer heute vorgemerkt.`;
+        return `Alles klar - ich habe ${list} f√ºr heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -1779,7 +1862,7 @@
           source: source || 'intake-save',
         });
         const promptText =
-          'Soll ich dir basierend auf deinen heutigen Werten und dem naechsten Termin einen Essensvorschlag machen?';
+          'Soll ich dir basierend auf deinen heutigen Werten und dem n√§chsten Termin einen Essensvorschlag machen?';
         const message = appendAssistantMessage('assistant', promptText, {
           type: 'followup',
           meta: {
@@ -1817,13 +1900,13 @@
         };
         const payloadJson = JSON.stringify(payload);
         return [
-          'System: Du bist ein hilfreicher Ernaehrungsassistent fuer kurze Essensideen.',
+          'System: Du bist ein hilfreicher Ern√§hrungsassistent fuer kurze Essensideen.',
           'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
           'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
           'Constraints:',
-          '- 1-2 kurze Vorschlaege, insgesamt 2-4 Saetze.',
+          '- 1-2 kurze Vorschl√§ge, insgesamt 2-4 Saetze.',
           '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
-          '- Beruecksichtige appointment_type und time_slot wenn vorhanden.',
+          '- Ber√ºcksichtige appointment_type und time_slot wenn vorhanden.',
           '- Ton: praktisch, freundlich, knapp.',
           '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
           'Follow-up payload:',
@@ -2046,9 +2129,9 @@
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
       const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
       diag.add?.(
-        `[assistant-vision] foto zu groﬂ: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        `[assistant-vision] foto zu gro√ü: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
-      appendAssistantMessage('system', `Das Foto ist zu groﬂ (max. ca. ${maxMb} MB).`);
+      appendAssistantMessage('system', `Das Foto ist zu gro√ü (max. ca. ${maxMb} MB).`);
       if (event?.target) event.target.value = '';
       return;
     }
@@ -2364,13 +2447,13 @@
               ? 'Analyse fehlgeschlagen.'
               : message.status === 'done'
                 ? 'Analyse abgeschlossen.'
-                : 'Analyse l‰uft Ö';
+                : 'Analyse l√§uft ';
           statusEl.textContent = statusText;
         }
         const resultEl = bubble.querySelector('.assistant-photo-result');
         if (resultEl) {
           resultEl.textContent =
-            message.resultText || (message.status === 'done' ? 'Keine Details verf¸gbar.' : 'Noch kein Ergebnis.');
+            message.resultText || (message.status === 'done' ? 'Keine Details verf√ºgbar.' : 'Noch kein Ergebnis.');
           if (message.status === 'error') {
             resultEl.classList.remove('muted');
           } else {
@@ -2551,7 +2634,7 @@
       existingMessage || appendAssistantMessage('user', trimmedText, basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
-    targetMessage.resultText = 'Analyse l‰uft Ö';
+    targetMessage.resultText = 'Analyse l√§uft ';
     targetMessage.retryable = false;
     targetMessage.retryPayload =
       targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
@@ -2777,7 +2860,7 @@
     if (reply) {
       parts.push(reply);
     }
-    return parts.join(' ï ') || 'Analyse abgeschlossen.';
+    return parts.join(' - ') || 'Analyse abgeschlossen.';
   };
 
   const bootFlow = global.AppModules?.bootFlow;

@@ -1,0 +1,272 @@
+﻿'use strict';
+/**
+ * MODULE: bp.js
+ * Description: Verwaltet Blutdruck-Erfassung, Validierung und Persistierung inkl. Kommentar-Pflicht, Panel-Reset und Datensynchronisation.
+ * Submodules:
+ *  - requiresBpComment (public, Kommentar-Pflichtprüfung)
+ *  - updateBpCommentWarnings (public, UI-Hinweislogik)
+ *  - bpFieldId / bpSelector (internal, ID-Mapping)
+ *  - resetBpPanel (public, Panel-Reset)
+ *  - blockHasData (internal, Eingabe-Erkennung)
+ *  - saveBlock (public, Messwert-Speicherung)
+ *  - appendNote (internal, Zusatz-Notizen)
+ *  - allocateNoteTimestamp (internal, Zeitstempel-Generator)
+ *  - API export & global attach (internal)
+ */
+
+// SUBMODULE: namespace init @internal - initialisiert globales Modul-Objekt
+(function(global){
+  global.AppModules = global.AppModules || {};
+  const appModules = global.AppModules;
+  const BP_CONTEXTS = Object.freeze(['M','A']);
+  const CONTEXT_LABELS = Object.freeze({ M: 'Morgen', A: 'Abend' });
+  const BP_SYS_THRESHOLD = 130;
+  const BP_DIA_THRESHOLD = 90;
+  const BP_WARN_ON_COLLISION = Boolean(global?.BP_DEBUG_COLLISIONS);
+
+  const createBaseEntry =
+    appModules.captureEntry?.createBaseEntry ||
+    ((date, time, contextLabel) => {
+      const safeDate = typeof date === 'string' && date ? date : todayStr();
+      const safeTime = typeof time === 'string' && time ? time : '12:00';
+      const iso = new Date(`${safeDate}T${safeTime}`).toISOString();
+      const ts = new Date(`${safeDate}T${safeTime}`).getTime();
+      return {
+        date: safeDate,
+        time: safeTime,
+        dateTime: iso,
+        ts,
+        context: contextLabel || 'Tag',
+        sys: null,
+        dia: null,
+        pulse: null,
+        weight: null,
+        map: null,
+        notes: (document.getElementById('notesDay')?.value || '').trim()
+      };
+    });
+
+  const normalizeContext = (ctx) => {
+    if (ctx === 'A' || ctx === 'M') return ctx;
+    throw new Error(`Invalid BP context "${ctx}"`);
+  };
+
+const getCommentElementUnsafe = (normalizedCtx) => {
+  return document.getElementById(bpFieldId('bpComment', normalizedCtx));
+};
+
+  const getCommentElement = (ctx) => {
+    const normalized = normalizeContext(ctx);
+    return getCommentElementUnsafe(normalized);
+  };
+
+  function requiresBpComment(which) {
+    let ctx;
+    try {
+      ctx = normalizeContext(which);
+    } catch (_) {
+      return false;
+    }
+    const sys = Number($(bpSelector('sys', ctx))?.value);
+    const dia = Number($(bpSelector('dia', ctx))?.value);
+    const el = getCommentElement(ctx);
+    const comment = (el?.value || "").trim();
+    const sysHigh = Number.isFinite(sys) && sys > BP_SYS_THRESHOLD;
+    const diaHigh = Number.isFinite(dia) && dia > BP_DIA_THRESHOLD;
+    if (!sysHigh && !diaHigh) return false;
+    return comment.length === 0;
+  }
+
+  function updateBpCommentWarnings() {
+    BP_CONTEXTS.forEach(which => {
+      let needs = false;
+      try {
+        needs = requiresBpComment(which);
+      } catch (_) {
+        needs = false;
+      }
+      const el = getCommentElement(which);
+      if (!el) return;
+      if (needs) {
+        el.style.outline = "2px solid var(--danger)";
+        el.setAttribute("aria-invalid", "true");
+      } else {
+        el.style.outline = "";
+        el.removeAttribute("aria-invalid");
+      }
+    });
+  }
+
+  // SUBMODULE: bpFieldId @internal - maps BP field ids for capture contexts
+  function bpFieldId(base, ctx){
+    if (base === 'sys' && ctx === 'M') return 'captureAmount';
+    return base + ctx;
+  }
+
+  // SUBMODULE: bpSelector @internal - resolves selector for BP inputs
+  function bpSelector(base, ctx){
+    return base === 'sys' && ctx === 'M' ? '#captureAmount' : `#${base}${ctx}`;
+  }
+
+  // SUBMODULE: resetBpPanel @internal - clears BP inputs per context
+  function resetBpPanel(which, opts = {}) {
+    const { focus = true } = opts;
+    let ctx;
+    try {
+      ctx = normalizeContext(which);
+    } catch (_) {
+      ctx = 'M';
+    }
+    ['sys','dia','pulse','bpComment'].forEach(id => {
+      const el = document.getElementById(bpFieldId(id, ctx));
+      if (el) el.value = '';
+    });
+    updateBpCommentWarnings();
+    if (focus) {
+      const target = document.getElementById(bpFieldId('sys', ctx));
+      if (target) target.focus();
+    }
+  }
+
+  // SUBMODULE: blockHasData @internal - detects if BP panel has any input before saving
+  function blockHasData(which){
+    let ctx;
+    try {
+      ctx = normalizeContext(which);
+    } catch (_) {
+      return false;
+    }
+    const getVal = (sel) => document.querySelector(sel)?.value?.trim();
+    const sys = getVal(bpSelector('sys', ctx));
+    const dia = getVal(`#dia${ctx}`);
+    const pulse = getVal(`#pulse${ctx}`);
+    const commentEl = getCommentElement(ctx);
+    const comment = (commentEl?.value || "").trim();
+    return !!(sys || dia || pulse || comment);
+  }
+
+  // SUBMODULE: saveBlock @internal - persists BP measurements and optional comments
+  const resolveContextLabel = (ctx, providedLabel) => {
+    if (typeof providedLabel === 'string' && providedLabel.trim()) {
+      return providedLabel.trim();
+    }
+    return CONTEXT_LABELS[ctx] || null;
+  };
+
+  async function saveBlock(contextLabelInput, which, includeWeight=false, force=false){
+  let ctx;
+  try {
+    ctx = normalizeContext(which);
+  } catch (err) {
+    try {
+      diag.add?.(`[bp] invalid context "${which}": ${err?.message || err}`);
+    } catch (_) { /* noop */ }
+    uiError?.('Ung\u00fcltiger Messkontext \u2013 bitte morgens oder abends ausw\u00e4hlen.');
+    return false;
+  }
+  const date = $("#date").value || todayStr();
+  const time = ctx === 'M' ? '07:00' : '22:00';
+  const contextLabel = resolveContextLabel(ctx, contextLabelInput);
+  if (!contextLabel) {
+    diag.add?.(`[bp] saveBlock missing context label for "${ctx}"`);
+    uiError?.('Messzeitpunkt konnte nicht ermittelt werden.');
+    return false;
+  }
+
+  const sys   = $(bpSelector('sys', ctx)).value   ? toNumDE($(bpSelector('sys', ctx)).value)   : null;
+  const dia   = $(`#dia${ctx}`).value   ? toNumDE($(`#dia${ctx}`).value)   : null;
+  const pulse = $(`#pulse${ctx}`).value ? toNumDE($(`#pulse${ctx}`).value) : null;
+
+  const commentEl = getCommentElement(ctx);
+  const comment = (commentEl?.value || '').trim();
+
+  const hasAny = (sys != null) || (dia != null) || (pulse != null);
+  const hasComment = comment.length > 0;
+
+  if (!force && !hasAny && !hasComment) return false;
+  if (hasComment && !hasAny) {
+    uiError('Kommentar kann nur mit Messwerten gespeichert werden.');
+    return false;
+  }
+
+  if (hasAny){
+    if ((sys != null && dia == null) || (dia != null && sys == null)){
+      uiError('Bitte beide Blutdruck-Werte (Sys und Dia) eingeben.');
+      return false;
+    }
+    if (pulse != null && (sys == null || dia == null)){
+      uiError('Puls kann nur mit Sys und Dia zusammen gespeichert werden.');
+      return false;
+    }
+
+    const entry = createBaseEntry(date, time, contextLabel);
+    entry.sys = sys;
+    entry.dia = dia;
+    entry.pulse = pulse;
+    entry.map = (sys!=null && dia!=null) ? calcMAP(sys, dia) : null;
+    entry.notes = '';
+    entry.bp_comment = comment;
+
+    const localId = await addEntry(entry);
+    await syncWebhook(entry, localId);
+  }
+
+  if (hasComment){
+    if (commentEl) commentEl.value = '';
+    updateBpCommentWarnings();
+  }
+
+  return hasAny || hasComment;
+  }
+
+  // SUBMODULE: appendNote @internal - stores supplemental note entries for BP comments
+  async function appendNote(date, prefix, text){
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    const stamp = allocateNoteTimestamp(date);
+    const entry = createBaseEntry(date, stamp.time, 'Tag');
+    entry.dateTime = stamp.iso;
+    entry.ts = stamp.ts;
+    entry.notes = prefix + trimmed;
+    const localId = await addEntry(entry);
+    await syncWebhook(entry, localId);
+  }
+
+  // SUBMODULE: allocateNoteTimestamp @internal - generates staggered timestamps for notes
+  function allocateNoteTimestamp(date){
+    const base = new Date(date + "T22:30:00");
+    const now = Date.now();
+    const minuteOffset = now % 60;
+    const secondOffset = Math.floor(now / 1000) % 60;
+    base.setMinutes(base.getMinutes() + minuteOffset);
+    base.setSeconds(base.getSeconds() + secondOffset);
+    const iso = base.toISOString();
+    return { iso, ts: base.getTime(), time: iso.slice(11,16) };
+  }
+
+// SUBMODULE: API export & global attach @internal - registriert Ã¶ffentliche Methoden unter AppModules.bp
+  const bpApi = {
+    requiresBpComment,
+    updateBpCommentWarnings,
+    resetBpPanel,
+    blockHasData,
+    saveBlock
+  };
+  appModules.bp = Object.assign(appModules.bp || {}, bpApi);
+  global.AppModules.bp = appModules.bp;
+  // Expose functions globally, skip silently on collision (warn if debug enabled)
+  Object.entries(bpApi).forEach(([name, fn]) => {
+    if (typeof global[name] !== 'undefined') {
+      if (BP_WARN_ON_COLLISION) {
+        const existing = global[name];
+        console.warn('[bp] global collision', {
+          name,
+          existingType: typeof existing,
+          incomingType: typeof fn
+        });
+      }
+      return;
+    }
+    global[name] = fn;
+  });
+})(typeof window !== 'undefined' ? window : globalThis);

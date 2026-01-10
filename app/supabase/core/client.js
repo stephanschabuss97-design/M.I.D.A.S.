@@ -33,7 +33,7 @@ const diag =
 const getConfSafe = (...args) => {
   const fn = globalWindow?.getConf;
   if (typeof fn !== 'function') {
-    diag.add?.('Supabase Client: window.getConf ist nicht verfuegbar');
+    diag.add?.('Supabase Client: window.getConf ist nicht verf?gbar');
     return null;
   }
   return fn(...args);
@@ -84,48 +84,57 @@ export function isServiceRoleKey(raw) {
 }
 
 // SUBMODULE: ensureSupabaseClient @public - erstellt oder cached den Supabase-Client
+let inflightClientPromise = null;
+
 export async function ensureSupabaseClient() {
   if (supabaseState.sbClient) return supabaseState.sbClient;
+  if (inflightClientPromise) return inflightClientPromise;
 
-  const rest = await getConfSafe('webhookUrl');
-  const keyConf = await getConfSafe('webhookKey'); // ANON key (nicht service_role)
-  if (!rest || !keyConf) {
-    setConfigStatusSafe('Bitte REST-Endpoint und ANON-Key speichern.', 'error');
-    diag.add('Supabase Auth: fehlende Konfiguration');
-    return null;
-  }
+  inflightClientPromise = (async () => {
+    const rest = await getConfSafe('webhookUrl');
+    const keyConf = await getConfSafe('webhookKey'); // ANON key (nicht service_role)
+    if (!rest || !keyConf) {
+      setConfigStatusSafe('Bitte REST-Endpoint und ANON-Key speichern.', 'error');
+      diag.add('Supabase Auth: fehlende Konfiguration');
+      return null;
+    }
 
-  // NEU: niemals mit service_role starten
-  const trimmedKey = String(keyConf || '').trim();
-  if (isServiceRoleKey(trimmedKey)) {
-    setConfigStatusSafe('service_role Schluessel sind nicht erlaubt.', 'error');
-    diag.add('Sicherheitsblock: service_role Key erkannt - Abbruch');
-    return null;
-  }
+    // NEU: niemals mit service_role starten
+    const trimmedKey = String(keyConf || '').trim();
+    if (isServiceRoleKey(trimmedKey)) {
+      setConfigStatusSafe('service_role Schl?ssel sind nicht erlaubt.', 'error');
+      diag.add('Sicherheitsblock: service_role Key erkannt - Abbruch');
+      return null;
+    }
 
-  const supabaseUrl = baseUrlFromRest(rest);
-  const anonKey = trimmedKey.replace(/^Bearer\s+/i, '');
-  if (!supabaseUrl) {
-    setConfigStatusSafe('REST-Endpoint ist ungueltig.', 'error');
-    diag.add('Supabase Auth: ungueltige URL');
-    return null;
-  }
-  if (!anonKey) {
-    setConfigStatusSafe('ANON-Key ist ungueltig.', 'error');
-    diag.add('Supabase Auth: ungueltiger Key');
-    return null;
-  }
+    const supabaseUrl = baseUrlFromRest(rest);
+    const anonKey = trimmedKey.replace(/^Bearer\s+/i, '');
+    if (!supabaseUrl) {
+      setConfigStatusSafe('REST-Endpoint ist ung?ltig.', 'error');
+      diag.add('Supabase Auth: ung?ltige URL');
+      return null;
+    }
+    if (!anonKey) {
+      setConfigStatusSafe('ANON-Key ist ung?ltig.', 'error');
+      diag.add('Supabase Auth: ung?ltiger Key');
+      return null;
+    }
 
-  if (!globalWindow?.supabase || typeof globalWindow.supabase.createClient !== 'function') {
-    setConfigStatusSafe('Supabase Client SDK fehlt.', 'error');
-    diag.add('Supabase Auth: window.supabase.createClient nicht verfuegbar');
-    return null;
-  }
+    if (!globalWindow?.supabase || typeof globalWindow.supabase.createClient !== 'function') {
+      setConfigStatusSafe('Supabase Client SDK fehlt.', 'error');
+      diag.add('Supabase Auth: window.supabase.createClient nicht verf?gbar');
+      return null;
+    }
 
-  supabaseState.sbClient = globalWindow.supabase.createClient(supabaseUrl, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: true } // Session nur im RAM
+    supabaseState.sbClient = globalWindow.supabase.createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    diag.add('Supabase: Client (Auth) initialisiert');
+    setConfigStatusSafe('', 'info');
+    return supabaseState.sbClient;
+  })().finally(() => {
+    inflightClientPromise = null;
   });
-  diag.add('Supabase: Client (Auth) initialisiert');
-  setConfigStatusSafe('', 'info');
-  return supabaseState.sbClient;
+
+  return inflightClientPromise;
 }

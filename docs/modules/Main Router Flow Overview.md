@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: steuert requestUiRefresh, Modul-Refresh, Global Hooks.
 - Abgrenzung: keine eigene UI; orchestriert bestehende Module.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

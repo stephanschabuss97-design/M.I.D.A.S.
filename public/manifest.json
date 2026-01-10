@@ -1,0 +1,52 @@
+{
+  "name": "Medical Incident and Data Analysis Software",
+  "short_name": "MIDAS",
+  "description": "Personal medical software for structured capture, analysis and review of medical incidents, daily health data and long-term trends.",
+  "lang": "de",
+  "id": "/M.I.D.A.S./?source=pwa",
+  "start_url": "/M.I.D.A.S./?source=pwa",
+  "scope": "/M.I.D.A.S./",
+  "display": "standalone",
+  "background_color": "#121417",
+  "theme_color": "#121417",
+  "screenshots": [
+    {
+      "src": "img/screenshots/screen-narrow.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "img/screenshots/screen-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "img/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "img/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

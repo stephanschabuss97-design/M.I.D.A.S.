@@ -64,7 +64,7 @@ Throughout all interactions, the MIDAS Core remains partially visible to maintai
 
 ### Modules & Panels Inventory
 - Panels in hub: assistant-text, profile, appointments, intake, doctor, vitals. Log (`#diag`) is outside hub but opened via orbit button.
-- Modules in codebase: `app/modules/{assistant,appointments,capture,charts,doctor,hub,profile,trendpilot}` plus Supabase API layer.
+- Modules in codebase: `app/modules/{assistant-stack,appointments,charts,doctor,hub,profile,intake-stack,vitals-stack}` plus Supabase API layer.
 - IDs/attributes: panels keyed by `data-hub-panel`; buttons by `data-hub-module` + `data-orbit-pos`; doctor guard via Supabase guard (`requireDoctorUnlock`).
 - Data sources available for future dashboard/quickbar: `AppModules.captureGlobals.captureIntakeState` / `capture.getCaptureIntakeSnapshot()`, `AppModules.appointments.getUpcoming?` (exposed in appointments module), vitals/BP state via capture module and `AppModules.bp`, profile data via `AppModules.profile.getData()`, trendpilot summaries via `AppModules.trendpilot`.
 
@@ -188,7 +188,7 @@ Each phase lists scope, affected files, dependency (must be completed), and succ
 
 6) Phase 6 - Behavior Wiring  ✅
    - Scope: Connect carousel/quickbar actions to existing open handlers; dashboard reads real data snapshots (intake, appointments, vitals).  
-   - Files: `app/modules/hub/index.js`; minor hooks in `app/modules/appointments/index.js`, `app/modules/capture/index.js` if needed for snapshot helpers.  
+   - Files: `app/modules/hub/index.js`; minor hooks in `app/modules/appointments/index.js`, `app/modules/intake-stack/intake/index.js` if needed for snapshot helpers.  
    - Dependency: Phase 5.  
    - Success: Selecting items triggers existing panels/flows; dashboard shows live summaries without breaking current save flows.
 

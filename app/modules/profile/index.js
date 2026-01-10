@@ -12,6 +12,9 @@
 
   const selectors = {
     panel: '#hubProfilePanel',
+    tabsHost: '.hub-profile-tabs',
+    tabButtons: '[data-profile-tab]',
+    tabPanels: '[data-profile-panel]',
     form: '#profileForm',
     fullName: '#profileFullName',
     birthDate: '#profileBirthDate',
@@ -23,9 +26,13 @@
     saltLimit: '#profileSaltLimit',
     proteinMin: '#profileProteinMin',
     proteinMax: '#profileProteinMax',
+    proteinFactor: '#profileProteinFactorInput',
     proteinDoctorLock: '#profileProteinDoctorLock',
+    proteinDoctorFactor: '#profileProteinDoctorFactor',
     proteinDoctorMin: '#profileProteinDoctorMin',
     proteinDoctorMax: '#profileProteinDoctorMax',
+    proteinDoctorFields: '#profileDoctorFields',
+    proteinAutoFields: '#profileAutoFields',
     smoker: '#profileIsSmoker',
     lifestyle: '#profileLifestyleNote',
     saveBtn: '#profileSaveBtn',
@@ -59,6 +66,9 @@
     if (!panel) return null;
     refs = {
       panel,
+      tabsHost: panel.querySelector(selectors.tabsHost),
+      tabButtons: panel.querySelectorAll(selectors.tabButtons),
+      tabPanels: panel.querySelectorAll(selectors.tabPanels),
       form: panel.querySelector(selectors.form),
       fullName: panel.querySelector(selectors.fullName),
       birthDate: panel.querySelector(selectors.birthDate),
@@ -70,9 +80,13 @@
       saltLimit: panel.querySelector(selectors.saltLimit),
       proteinMin: panel.querySelector(selectors.proteinMin),
       proteinMax: panel.querySelector(selectors.proteinMax),
+      proteinFactor: panel.querySelector(selectors.proteinFactor),
       proteinDoctorLock: panel.querySelector(selectors.proteinDoctorLock),
+      proteinDoctorFactor: panel.querySelector(selectors.proteinDoctorFactor),
       proteinDoctorMin: panel.querySelector(selectors.proteinDoctorMin),
       proteinDoctorMax: panel.querySelector(selectors.proteinDoctorMax),
+      proteinDoctorFields: panel.querySelector(selectors.proteinDoctorFields),
+      proteinAutoFields: panel.querySelector(selectors.proteinAutoFields),
       smoker: panel.querySelector(selectors.smoker),
       lifestyle: panel.querySelector(selectors.lifestyle),
       saveBtn: panel.querySelector(selectors.saveBtn),
@@ -100,6 +114,15 @@
   };
 
   const getSupabaseApi = () => appModules.supabase || {};
+  const ensureLocalDb = async (reason) => {
+    const init = global?.initDB;
+    if (typeof init !== 'function') return;
+    try {
+      await init();
+    } catch (err) {
+      diag?.add?.(`[profile] initDB failed (${reason || 'unknown'}) ${err?.message || err}`);
+    }
+  };
   const getMedicationModule = () => appModules.medication || null;
 
   const requireSupabaseClient = async () => {
@@ -186,6 +209,18 @@
 
   const getDerivedCkdStage = () => state.latestLab?.ckd_stage || null;
 
+  const formatFactor = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '--';
+    return num.toFixed(2).replace('.', ',');
+  };
+
+  const formatFactorInput = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '';
+    return num.toFixed(2);
+  };
+
   const updateCkdBadge = () => {
     if (!refs?.ckdBadge) return;
     const stage = getDerivedCkdStage();
@@ -197,6 +232,27 @@
     refs.medications.value = text || '';
     refs.medications.readOnly = !!derived;
     refs.medications.classList.toggle('is-derived', !!derived);
+  };
+
+  const updateDoctorFieldsVisibility = () => {
+    if (!refs?.proteinDoctorLock) return;
+    const isActive = !!refs.proteinDoctorLock.checked;
+    if (refs.proteinDoctorFields) {
+      refs.proteinDoctorFields.hidden = !isActive;
+      if (isActive) {
+        refs.proteinDoctorFields.removeAttribute('aria-hidden');
+      } else {
+        refs.proteinDoctorFields.setAttribute('aria-hidden', 'true');
+      }
+    }
+    if (refs.proteinAutoFields) {
+      refs.proteinAutoFields.hidden = isActive;
+      if (isActive) {
+        refs.proteinAutoFields.setAttribute('aria-hidden', 'true');
+      } else {
+        refs.proteinAutoFields.removeAttribute('aria-hidden');
+      }
+    }
   };
 
   const fillForm = (profile) => {
@@ -212,6 +268,9 @@
     if (refs.proteinDoctorLock) {
       refs.proteinDoctorLock.checked = !!data.protein_doctor_lock;
     }
+    if (refs.proteinDoctorFactor) {
+      refs.proteinDoctorFactor.value = formatFactorInput(data.protein_doctor_factor);
+    }
     if (refs.proteinDoctorMin) {
       refs.proteinDoctorMin.value = data.protein_doctor_min != null ? String(data.protein_doctor_min) : '';
     }
@@ -222,6 +281,10 @@
       refs.proteinMin.value = data.protein_target_min != null ? String(data.protein_target_min) : '';
     }
     refs.proteinMax.value = data.protein_target_max != null ? String(data.protein_target_max) : '';
+    if (refs.proteinFactor) {
+      refs.proteinFactor.value = formatFactor(data.protein_factor_current);
+    }
+    updateDoctorFieldsVisibility();
     refs.smoker.value = data.is_smoker ? 'yes' : 'no';
     refs.lifestyle.value = sanitize(data.lifestyle_note);
     updateCkdBadge();
@@ -244,23 +307,28 @@
     const rows = [
       ['Name', state.data.full_name],
       ['Geburtsdatum', state.data.birth_date],
-      ['Größe (cm)', state.data.height_cm],
+      ['Gr???Ye (cm)', state.data.height_cm],
       ['CKD-Stufe (Lab)', getDerivedCkdStage()],
-      ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '—'],
+      ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '??"'],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],
-      ['Protein Min (g/Tag)', state.data.protein_target_min],
-      ['Protein Max (g/Tag)', state.data.protein_target_max],
-      ['Doctor-Lock (Protein)', state.data.protein_doctor_lock ? 'aktiv' : 'aus'],
-      ['Doctor Min (g/Tag)', state.data.protein_doctor_min],
-      ['Doctor Max (g/Tag)', state.data.protein_doctor_max],
+      ['Protein Faktor', state.data.protein_factor_current != null ? formatFactor(state.data.protein_factor_current) : null],
+      ['Protein Min (g/Tag)', state.data.protein_doctor_lock ? null : state.data.protein_target_min],
+      ['Protein Max (g/Tag)', state.data.protein_doctor_lock ? null : state.data.protein_target_max],
       ['Raucherstatus', state.data.is_smoker ? 'Raucher' : 'Nichtraucher'],
       ['Lifestyle', state.data.lifestyle_note],
       ['Arzt (Name)', state.data.primary_doctor_name],
       ['Arzt (E-Mail)', state.data.primary_doctor_email],
-      ['Aktualisiert', state.data.updated_at ? new Date(state.data.updated_at).toLocaleString('de-AT') : '—'],
+      ['Aktualisiert', state.data.updated_at ? new Date(state.data.updated_at).toLocaleString('de-AT') : '??"'],
     ];
+    if (state.data.protein_doctor_lock) {
+      rows.splice(6, 0,
+        ['Protein Min (Arzt, g/Tag)', state.data.protein_doctor_min],
+        ['Protein Max (Arzt, g/Tag)', state.data.protein_doctor_max],
+      );
+    }
     const dl = doc.createElement('dl');
     rows.forEach(([label, value]) => {
+      if (value == null || value === '') return;
       const dt = doc.createElement('dt');
       dt.textContent = label;
       const dd = doc.createElement('dd');
@@ -274,6 +342,7 @@
     if (!refs) return null;
     const medications = parseMedicationsInput(refs.medications?.value);
     const doctorLock = !!refs.proteinDoctorLock?.checked;
+    const doctorFactor = toNumberOrNull(refs.proteinDoctorFactor?.value, { precision: 2 });
     const doctorMin = toNumberOrNull(refs.proteinDoctorMin?.value, { precision: 1 });
     const doctorMax = toNumberOrNull(refs.proteinDoctorMax?.value, { precision: 1 });
     const prevMin = state.data?.protein_target_min ?? null;
@@ -287,6 +356,7 @@
       medications: medications.length ? medications : [],
       salt_limit_g: toNumberOrNull(refs.saltLimit?.value, { precision: 1 }),
       protein_doctor_lock: doctorLock,
+      protein_doctor_factor: doctorFactor,
       protein_doctor_min: doctorMin,
       protein_doctor_max: doctorMax,
       protein_target_min: targetMin,
@@ -303,6 +373,7 @@
     if (state.syncing) return state.syncPromise;
     const refsOk = ensureRefs();
     if (!refsOk) return null;
+    await ensureLocalDb(reason);
     state.syncing = true;
     setFormDisabled(true);
     const promise = (async () => {
@@ -312,7 +383,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_factor_current, protein_doctor_lock, protein_doctor_factor, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
@@ -373,7 +444,7 @@
         .from('user_profile')
         .upsert(upsertPayload, { onConflict: 'user_id' })
         .select(
-          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_factor_current, protein_doctor_factor, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
         )
         .single();
       if (error) throw error;
@@ -398,6 +469,36 @@
     if (state.ready) return;
     const panelRefs = ensureRefs();
     if (!panelRefs) return;
+    const setActiveProfileTab = (tab) => {
+      panelRefs.tabButtons?.forEach((btn) => {
+        const isActive = btn.getAttribute('data-profile-tab') === tab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+      });
+      panelRefs.tabPanels?.forEach((panel) => {
+        const isActive = panel.getAttribute('data-profile-panel') === tab;
+        panel.classList.toggle('is-active', isActive);
+        if (isActive) {
+          panel.hidden = false;
+          panel.removeAttribute('aria-hidden');
+        } else {
+          panel.hidden = true;
+          panel.setAttribute('aria-hidden', 'true');
+        }
+      });
+    };
+    if (panelRefs.tabsHost && panelRefs.tabButtons?.length && panelRefs.tabPanels?.length) {
+      panelRefs.tabsHost.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-profile-tab]');
+        if (!btn) return;
+        const next = btn.getAttribute('data-profile-tab');
+        if (!next) return;
+        setActiveProfileTab(next);
+      });
+      setActiveProfileTab('view');
+    }
+    panelRefs.proteinDoctorLock?.addEventListener('change', updateDoctorFieldsVisibility);
+    updateDoctorFieldsVisibility();
     panelRefs.saveBtn?.addEventListener('click', handleSave);
     panelRefs.refreshBtn?.addEventListener('click', handleRefresh);
     state.ready = true;

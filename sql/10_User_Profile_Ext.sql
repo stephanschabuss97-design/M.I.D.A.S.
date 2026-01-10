@@ -16,6 +16,7 @@ alter table public.user_profile
   add column if not exists protein_target_min numeric,
   add column if not exists protein_target_max numeric,
   add column if not exists protein_doctor_lock boolean default false,
+  add column if not exists protein_doctor_factor numeric,
   add column if not exists protein_doctor_min numeric,
   add column if not exists protein_doctor_max numeric,
   add column if not exists protein_calc_version text,

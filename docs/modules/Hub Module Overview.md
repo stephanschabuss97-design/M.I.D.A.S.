@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: oeffnet Panels, orchestriert UI-Flow, Voice-Gate (via Voice-Modul), Assistant-Flow.
 - Abgrenzung: keine eigenen Datenmodelle, keine Persistenz.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -62,7 +65,7 @@ Kurze Einordnung:
 
 - Hub ist zentrales Overlay mit Aura/Orbit und Panels.
 - Panels: Intake, Vitals, Doctor, Profile, Appointments, Assistant.
-- Assistant-Panel zeigt Butler-Header: Pills + Kontext-Extras + Termine + Expandable (Restbudget/Warnung/Empfehlung) inkl. Mobile-Toggle.
+- Assistant-Panel zeigt Butler-Header: Pills + Kontext-Extras + Termine + Expandable (Restbudget/Warnung) inkl. Mobile-Toggle.
 - Voice-States steuern Visuals (`data-voice-state`).
 
 ---

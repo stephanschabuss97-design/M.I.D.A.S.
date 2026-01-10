@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: zentrale Diagnose-Schnittstelle fuer alle Module.
 - Abgrenzung: kein Business-Output, keine Produktfeatures.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

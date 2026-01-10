@@ -1,7 +1,7 @@
 'use strict';
 /**
  * MODULE: diagnostics/perf.js
- * Description: Per-Module Performance-Sampler (Readiness-Version) f�r das Diagnostics-Layer; ersetzt sp�ter die perfStats-Helpers aus app/core/diag.js.
+ * Description: Per-Module Performance-Sampler (Readiness-Version) für das Diagnostics-Layer; ersetzt später die perfStats-Helpers aus app/core/diag.js.
  * Submodules:
  *  - bucket registry (key validation + sample buffer)
  *  - record helper (ruft performance.now und schreibt Snapshots)

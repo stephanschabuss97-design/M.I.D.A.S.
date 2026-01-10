@@ -140,9 +140,9 @@ export async function syncWebhook(entry, localId) {
       }
 
       if (res.status === 409 || /duplicate|unique/i.test(details)) {
-        uiError('Es gibt bereits einen Eintrag fuer diesen Tag/Kontext.');
+        uiError('Es gibt bereits einen Eintrag f?r diesen Tag/Kontext.');
       } else if (res.status === 422 || /invalid|range|pflicht|check constraint/i.test(details)) {
-        uiError('Eingaben ungueltig - bitte Wertebereiche/Pflichtfelder pruefen.');
+        uiError('Eingaben ung?ltig - bitte Wertebereiche/Pflichtfelder pr?fen.');
       } else {
         uiError(`Speichern fehlgeschlagen (HTTP ${res.status}).`);
       }
@@ -161,13 +161,13 @@ export async function syncWebhook(entry, localId) {
       uiInfo('Gespeichert.');
       diag.add(`Webhook: OK (${events.length} Event(s))`);
     } else {
-      uiError('Unerwartete Antwort vom Server - kein Datensatz zurueckgegeben.');
+      uiError('Unerwartete Antwort vom Server - kein Datensatz zur?ckgegeben.');
     }
   } catch (err) {
     if (err?.status === 401 || err?.status === 403) {
       uiError('Bitte erneut anmelden, um weiter zu speichern.');
     } else {
-      uiError('Netzwerkfehler beim Speichern. Bitte spaeter erneut versuchen.');
+      uiError('Netzwerkfehler beim Speichern. Bitte sp?ter erneut versuchen.');
     }
     diag.add('Webhook: Netzwerkfehler');
     throw err;

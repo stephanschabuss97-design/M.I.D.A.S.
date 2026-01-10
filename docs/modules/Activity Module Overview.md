@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -19,11 +22,11 @@ Kurze Einordnung:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/activity/index.js` | Public API (load/add/delete) + RPC-Bridge |
+| `app/modules/vitals-stack/activity/index.js` | Public API (load/add/delete) + RPC-Bridge |
 | `assets/js/main.js` | UI-Handler, Validierung, Save/Reset-Flow |
 | `index.html` | Training-Tab + Form im Vitals-Panel |
 | `app/styles/hub.css` | Training-Panel Layout |
-| `app/modules/doctor/index.js` | Arztansicht: Training-Tab + Reports Inbox |
+| `app/modules/doctor-stack/doctor/index.js` | Arztansicht: Training-Tab + Reports Inbox |
 | `app/styles/doctor.css` | Training-Tab Layout in Arztansicht |
 | `sql/13_Activity_Event.sql` | Typ-Constraint, View, RPCs |
 | `docs/Training module spec.md` | Spezifikation & Roadmap |

@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle: Liefert Stammdaten, Limits und Hausarztkontakt an Charts, Intake/Medication, Assistant.
 - Abgrenzung: kein Medical Record; keine Mehrarztverwaltung, keine externen Benachrichtigungen.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung
@@ -20,9 +23,9 @@ Kurze Einordnung:
 | Datei | Zweck |
 |------|------|
 | `app/modules/profile/index.js` | UI-Bindung, Supabase Sync/Upsert, `profile:changed` Event |
-| `app/modules/profile/*` | (derzeit leer) â€“ Erweiterungspotenzial fÃ¼r Helpers |
+| `app/modules/profile/` | (currently only index.js; helpers TBD) â€“ Erweiterungspotenzial fÃ¼r Helpers |
 | `app/modules/hub/index.js` | Ã–ffnet Panel via Orbit, konsumiert Snapshot im Assistant |
-| `app/modules/medication/index.js` | Liefert Tagesliste (`loadMedicationForDay`) fÃ¼r das Profil-Snapshot |
+| `app/modules/intake-stack/medication/index.js` | Liefert Tagesliste (`loadMedicationForDay`) fÃ¼r das Profil-Snapshot |
 | `app/styles/hub.css` | Formular-/Card-Styling |
 | `sql/10_User_Profile_Ext.sql` | Tabelle + Spalten (inkl. Hausarztfelder) |
 | `docs/modules/Profile Module Overview.md` | Diese Referenz |

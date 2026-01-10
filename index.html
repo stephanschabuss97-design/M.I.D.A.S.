@@ -8,9 +8,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data:; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'self';">
-  <title>Gesundheits-Logger (V1.7.6)</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data:; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; manifest-src 'self'; worker-src 'self'; base-uri 'self';">
+  <meta name="theme-color" content="#121417">
+  <title>Medical Incident and Data Analysis Software</title>
   <link rel="stylesheet" href="app/app.css">
+  <link rel="manifest" href="public/manifest.json">
   <!-- END MODULE -->
 </head>
 <body data-boot-stage="boot" aria-busy="true">
@@ -70,6 +72,45 @@
     </div>
   </div>
   <button id="helpToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
+  <div
+    id="offlineBanner"
+    class="offline-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="offline-banner__label">Offline-Modus aktiv.</div>
+    <div class="offline-banner__hint">Daten werden synchronisiert, sobald die Verbindung zurueck ist.</div>
+  </div>
+  <div
+    id="updateBanner"
+    class="update-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="update-banner__text">
+      <div class="update-banner__label">Update verfuegbar.</div>
+      <div class="update-banner__hint" id="updateBannerHint">Neu laden, um die aktuelle Version zu nutzen.</div>
+    </div>
+    <button id="updateReloadBtn" type="button" class="btn primary">Neu laden</button>
+  </div>
+  <div
+    id="installBanner"
+    class="install-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="install-banner__text">
+      <div class="install-banner__label">App installieren</div>
+      <div class="install-banner__hint">MIDAS als App installieren fuer schnelleren Zugriff.</div>
+    </div>
+    <button id="installBtn" type="button" class="btn ghost">Installieren</button>
+  </div>
   <!-- Diagramm-Panel (Daily) -->
   <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
     <header>
@@ -78,7 +119,7 @@
     </header>
     <div class="content">
       <div class="controls">
-        <select id="metricSel" class="half compact" aria-label="Messgrösse auswaehlen">
+        <select id="metricSel" class="half compact" aria-label="Messgrösse auswählen">
           <option value="bp">Blutdruck (Sys/Dia)</option>
           <option value="weight">Körper</option>
         </select>
@@ -121,7 +162,7 @@
     <div class="content">
       <section class="card doctor-panel">
         <header class="doctor-inbox-header small u-mb-4">
-          <div id="doctorInboxRange">Zeitraum: â€“</div>
+          <div id="doctorInboxRange">Zeitraum: -</div>
           <div class="doctor-inbox-actions">
             <div class="muted" id="doctorInboxCount"></div>
             <button class="btn ghost" type="button" id="doctorInboxNewReportBtn">
@@ -141,7 +182,7 @@
           <button class="btn ghost" type="button" data-report-filter="range_report" aria-selected="false">Arzt-Berichte</button>
         </div>
         <div class="doctor-inbox" id="doctorInboxList">
-          <div class="small u-doctor-placeholder">Monatsberichte werden geladen â€¦</div>
+          <div class="small u-doctor-placeholder">Monatsberichte werden geladen ...</div>
         </div>
       </section>
     </div>
@@ -464,10 +505,6 @@
                 <span class="label">Warnung</span>
                 <span class="value" data-expandable-value>--</span>
               </div>
-              <div class="assistant-context-item" data-expandable="recommendation" hidden>
-                <span class="label">Empfehlung</span>
-                <span class="value" data-expandable-value>--</span>
-              </div>
             </div>
           </section>
 
@@ -536,169 +573,212 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <form class="profile-form" id="profileForm" autocomplete="off">
-            <div class="form-grid">
-              <label class="field-group" for="profileFullName">
-                <span class="label">Name</span>
-                <input
-                  type="text"
-                  id="profileFullName"
-                  placeholder="z. B. Stephan Schabuss"
-                >
-              </label>
-              <label class="field-group" for="profileBirthDate">
-                <span class="label">Geburtsdatum</span>
-                <input type="date" id="profileBirthDate">
-              </label>
-              <label class="field-group" for="profileHeight">
-                <span class="label">Größe (cm)</span>
-                <input
-                  type="number"
-                  id="profileHeight"
-                  inputmode="numeric"
-                  min="120"
-                  max="230"
-                  placeholder="183"
-                >
-              <span class="field-hint muted small">
-                Wird für BMI/Charts verwendet.
-              </span>
-            </label>
-            <label class="field-group" for="profileCkdBadge">
-              <span class="label">CKD-Stufe (Lab)</span>
-              <input
-                type="text"
-                id="profileCkdBadge"
-                placeholder="Noch keine Labordaten"
-                disabled
-              >
-              <span class="field-hint muted small">
-                Wird automatisch aus den letzten Labordaten ermittelt.
-              </span>
-            </label>
-            <label class="field-group" for="profileMedications">
-              <span class="label">Medikation</span>
-              <textarea
-                id="profileMedications"
-                rows="3"
-                placeholder="Wird automatisch geladen"
-                readonly
-              ></textarea>
-              <span class="field-hint muted small">
-                Anzeige der aktiven Medikamente (Tablettenmanager). Änderungen im TAB-Panel vornehmen.
-              </span>
-            </label>
-              <label class="field-group" for="profileDoctorName">
-                <span class="label">Hausarzt</span>
-                <input
-                  type="text"
-                  id="profileDoctorName"
-                  placeholder="z. B. Dr. Maier"
-                >
-              </label>
-              <label class="field-group" for="profileDoctorEmail">
-                <span class="label">Hausarzt E-Mail</span>
-                <input
-                  type="email"
-                  id="profileDoctorEmail"
-                  placeholder="arzt@example.com"
-                >
-                <span class="field-hint muted small">
-                  Wird für Mail-Shortcuts (Low-Stock Hinweis) verwendet.
-                </span>
-              </label>
-              <label class="field-group" for="profileSaltLimit">
-                <span class="label">Salzlimit (g/Tag)</span>
-                <input
-                  type="number"
-                  id="profileSaltLimit"
-                  step="0.1"
-                  min="0"
-                  placeholder="5"
-                >
-              </label>
-              <label class="field-group checkbox" for="profileProteinDoctorLock">
-                <input type="checkbox" id="profileProteinDoctorLock">
-                <span class="label">Doctor-Lock (Protein fix)</span>
-              </label>
-              <label class="field-group" for="profileProteinDoctorMin">
-                <span class="label">Doctor Min (g/Tag)</span>
-                <input
-                  type="number"
-                  id="profileProteinDoctorMin"
-                  step="1"
-                  min="0"
-                  placeholder="90"
-                >
-              </label>
-              <label class="field-group" for="profileProteinDoctorMax">
-                <span class="label">Doctor Max (g/Tag)</span>
-                <input
-                  type="number"
-                  id="profileProteinDoctorMax"
-                  step="1"
-                  min="0"
-                  placeholder="110"
-                >
-              </label>
-              <label class="field-group" for="profileProteinMin">
-                <span class="label">Protein Min (Auto, g/Tag)</span>
-                <input
-                  type="number"
-                  id="profileProteinMin"
-                  step="1"
-                  min="0"
-                  placeholder="95"
-                  disabled
-                >
-              </label>
-              <label class="field-group" for="profileProteinMax">
-                <span class="label">Protein Max (Auto, g/Tag)</span>
-                <input
-                  type="number"
-                  id="profileProteinMax"
-                  step="1"
-                  min="0"
-                  placeholder="110"
-                  disabled
-                >
-                <span class="field-hint muted small">
-                  Wird automatisch berechnet.
-                </span>
-              </label>
-              <label class="field-group" for="profileIsSmoker">
-                <span class="label">Raucherstatus</span>
-                <select id="profileIsSmoker">
-                  <option value="no" selected>Nichtraucher</option>
-                  <option value="yes">Raucher</option>
-                </select>
-              </label>
-              <label class="field-group" for="profileLifestyleNote">
-                <span class="label">Lifestyle-Notiz</span>
-                <textarea
-                  id="profileLifestyleNote"
-                  rows="3"
-                  placeholder="z. B. 1–3× Krafttraining/Woche."
-                ></textarea>
-              </label>
-            </div>
-            <div class="profile-actions">
-              <button type="button" class="btn primary" id="profileSaveBtn">
-                Profil speichern
-              </button>
-              <button type="button" class="btn ghost" id="profileRefreshBtn">
-                Aktualisieren
-              </button>
-            </div>
-          </form>
-          <section class="profile-overview card" aria-live="polite">
-            <header>
-              <h3>Aktuelle Daten</h3>
-            </header>
-            <div id="profileOverview" class="profile-overview-list">
-              <p class="muted small">Noch keine Daten gespeichert.</p>
-            </div>
-          </section>
+          <div class="hub-profile-tabs" role="tablist" aria-label="Profil Bereiche">
+            <button
+              class="btn ghost is-active"
+              id="profileTabViewBtn"
+              type="button"
+              data-profile-tab="view"
+              aria-controls="hubProfilePanelView"
+              aria-selected="true"
+            >
+              Profil
+            </button>
+            <button
+              class="btn ghost"
+              id="profileTabEditBtn"
+              type="button"
+              data-profile-tab="edit"
+              aria-controls="hubProfilePanelEdit"
+              aria-selected="false"
+            >
+              Eingabe
+            </button>
+          </div>
+          <div class="hub-profile-tab-panels">
+            <section
+              class="hub-profile-panel is-active"
+              id="hubProfilePanelView"
+              data-profile-panel="view"
+              role="tabpanel"
+              aria-hidden="false"
+            >
+              <section class="profile-overview card" aria-live="polite">
+                <header>
+                  <h3>Aktuelle Daten</h3>
+                </header>
+                <div id="profileOverview" class="profile-overview-list">
+                  <p class="muted small">Noch keine Daten gespeichert.</p>
+                </div>
+              </section>
+            </section>
+            <section
+              class="hub-profile-panel"
+              id="hubProfilePanelEdit"
+              data-profile-panel="edit"
+              role="tabpanel"
+              aria-hidden="true"
+              hidden
+            >
+              <form class="profile-form" id="profileForm" autocomplete="off">
+                <div class="form-grid">
+                  <label class="field-group" for="profileFullName">
+                    <span class="label">Name</span>
+                    <input
+                      type="text"
+                      id="profileFullName"
+                      placeholder="z. B. Stephan Schabuss"
+                    >
+                  </label>
+                  <label class="field-group" for="profileBirthDate">
+                    <span class="label">Geburtsdatum</span>
+                    <input type="date" id="profileBirthDate">
+                  </label>
+                  <label class="field-group" for="profileHeight">
+                    <span class="label">Groesse (cm)</span>
+                    <input
+                      type="number"
+                      id="profileHeight"
+                      inputmode="numeric"
+                      min="120"
+                      max="230"
+                      placeholder="183"
+                    >
+                  <span class="field-hint muted small">
+                    Wird fuer BMI/Charts verwendet.
+                  </span>
+                </label>
+                  <label class="field-group" for="profileDoctorName">
+                    <span class="label">Hausarzt</span>
+                    <input
+                      type="text"
+                      id="profileDoctorName"
+                      placeholder="z. B. Dr. Maier"
+                    >
+                  </label>
+                  <label class="field-group" for="profileDoctorEmail">
+                    <span class="label">Hausarzt E-Mail</span>
+                    <input
+                      type="email"
+                      id="profileDoctorEmail"
+                      placeholder="arzt@example.com"
+                    >
+                    <span class="field-hint muted small">
+                      Wird fuer Mail-Shortcuts (Low-Stock Hinweis) verwendet.
+                    </span>
+                  </label>
+                  <label class="field-group" for="profileSaltLimit">
+                    <span class="label">Salzlimit (g/Tag)</span>
+                    <input
+                      type="number"
+                      id="profileSaltLimit"
+                      step="0.1"
+                      min="0"
+                      placeholder="5"
+                    >
+                  </label>
+                  <label class="field-group checkbox" for="profileProteinDoctorLock">
+                    <input type="checkbox" id="profileProteinDoctorLock">
+                    <span class="label">Doctor-Lock (Protein fix)</span>
+                  </label>
+                  <div class="profile-doctor-fields" id="profileDoctorFields">
+                    <label class="field-group" for="profileProteinDoctorFactor">
+                      <span class="label">Doctor Faktor (g/kg)</span>
+                      <input
+                        type="number"
+                        id="profileProteinDoctorFactor"
+                        step="0.01"
+                        min="0"
+                        placeholder="1.05"
+                      >
+                    </label>
+                    <label class="field-group" for="profileProteinDoctorMin">
+                      <span class="label">Doctor Min (g/Tag)</span>
+                      <input
+                        type="number"
+                        id="profileProteinDoctorMin"
+                        step="1"
+                        min="0"
+                        placeholder="90"
+                        disabled
+                      >
+                    </label>
+                    <label class="field-group" for="profileProteinDoctorMax">
+                      <span class="label">Doctor Max (g/Tag)</span>
+                      <input
+                        type="number"
+                        id="profileProteinDoctorMax"
+                        step="1"
+                        min="0"
+                        placeholder="110"
+                        disabled
+                      >
+                    </label>
+                  </div>
+                  <div class="profile-auto-fields" id="profileAutoFields">
+                    <label class="field-group" for="profileProteinFactorInput">
+                      <span class="label">Protein Faktor (Auto)</span>
+                      <input
+                        type="text"
+                        id="profileProteinFactorInput"
+                        placeholder="--"
+                        readonly
+                        disabled
+                      >
+                    </label>
+                    <label class="field-group" for="profileProteinMin">
+                      <span class="label">Protein Min (Auto, g/Tag)</span>
+                      <input
+                        type="number"
+                        id="profileProteinMin"
+                        step="1"
+                        min="0"
+                        placeholder="95"
+                        disabled
+                      >
+                    </label>
+                    <label class="field-group" for="profileProteinMax">
+                      <span class="label">Protein Max (Auto, g/Tag)</span>
+                      <input
+                        type="number"
+                        id="profileProteinMax"
+                        step="1"
+                        min="0"
+                        placeholder="110"
+                        disabled
+                      >
+                      <span class="field-hint muted small">
+                        Wird automatisch berechnet.
+                      </span>
+                    </label>
+                  </div>
+                  <label class="field-group" for="profileIsSmoker">
+                    <span class="label">Raucherstatus</span>
+                    <select id="profileIsSmoker">
+                      <option value="no" selected>Nichtraucher</option>
+                      <option value="yes">Raucher</option>
+                    </select>
+                  </label>
+                  <label class="field-group" for="profileLifestyleNote">
+                    <span class="label">Lifestyle-Notiz</span>
+                    <textarea
+                      id="profileLifestyleNote"
+                      rows="3"
+                      placeholder="z. B. 1-3x Krafttraining/Woche."
+                    ></textarea>
+                  </label>
+                </div>
+                <div class="profile-actions">
+                  <button type="button" class="btn primary" id="profileSaveBtn">
+                    Profil speichern
+                  </button>
+                  <button type="button" class="btn ghost" id="profileRefreshBtn">
+                    Aktualisieren
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
         </div>
       </div>
     </section>
@@ -791,7 +871,7 @@
     >
       <div class="hub-panel-scroll">
         <header class="hub-panel-header">
-          <h2 id="hubIntakeTitle">Fluessigkeit & Intake</h2>
+          <h2 id="hubIntakeTitle">Flüssigkeit & Intake</h2>
           <button
             type="button"
             class="hub-panel-close"
@@ -851,7 +931,6 @@
               </label>
               <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
               <div id="medLowStockBox" class="medication-low-stock" hidden></div>
-              <div id="medSafetyHint" class="medication-safety" hidden></div>
             </div>
             <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
@@ -1020,7 +1099,7 @@
                     aria-label="Datum waehlen"
                   >
                 </div>
-                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen fuer Arztbereich">
+                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen für Arztbereich">
                   <button class="btn ghost" id="vitalsDoctorBtn" type="button">
                     Arzt-Ansicht
                   </button>
@@ -1365,6 +1444,7 @@
   <script src="app/core/boot-flow.js"></script>
   <script src="app/core/config.js"></script>
   <script src="app/core/diag.js"></script>
+  <script src="app/core/pwa.js"></script>
   <script src="app/diagnostics/logger.js"></script>
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
@@ -1374,7 +1454,7 @@
   <script src="app/modules/hub/hub-aura3d.js"></script>
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>
-  <script src="app/modules/medication/index.js"></script>
+  <script src="app/modules/intake-stack/medication/index.js"></script>
   <script type="module" src="app/modules/assistant-stack/assistant/suggest-store.js"></script>
   <script type="module" src="app/modules/assistant-stack/assistant/suggest-ui.js"></script>
   <script type="module" src="app/modules/assistant-stack/assistant/allowed-actions.js"></script>
@@ -1391,34 +1471,38 @@
   <script src="app/core/utils.js"></script>
   <!-- @refactor: moved to assets/js/format.js -->
   <script src="assets/js/format.js"></script>
-  <!-- @refactor: Phase 2 � app/core/capture-globals.js -->
+  <!-- @refactor: Phase 2 app/core/capture-globals.js -->
   <script src="app/core/capture-globals.js"></script>
   <!-- @refactor: moved to assets/js/data-local.js -->
   <script src="assets/js/data-local.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/capture/index.js -->
-  <script src="app/modules/capture/index.js"></script>
+  <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/index.js -->
+  <script src="app/modules/vitals-stack/vitals/index.js"></script>
+  <!-- @refactor: Phase 9 - app/modules/vitals-stack/activity/index.js -->
+  <script src="app/modules/vitals-stack/activity/index.js"></script>
+  <!-- @refactor: Phase 2 - app/modules/intake-stack/intake/index.js -->
+  <script src="app/modules/intake-stack/intake/index.js"></script>
   <!-- Shared capture helpers -->
-  <script src="app/modules/capture/entry.js"></script>
-    <!-- @refactor: Phase 3 - app/modules/capture/bp.js -->
-    <script src="app/modules/capture/bp.js"></script>
-    <!-- @refactor: Phase 3 - app/modules/capture/body.js -->
-    <script src="app/modules/capture/body.js"></script>
-    <!-- @refactor: Phase 4 - app/modules/capture/lab.js -->
-    <script src="app/modules/capture/lab.js"></script>
-  <!-- @refactor: moved to app/modules/trendpilot/data.js -->
-  <script src="app/modules/trendpilot/data.js"></script>
+  <script src="app/modules/vitals-stack/vitals/entry.js"></script>
+    <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/bp.js -->
+    <script src="app/modules/vitals-stack/vitals/bp.js"></script>
+    <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/body.js -->
+    <script src="app/modules/vitals-stack/vitals/body.js"></script>
+    <!-- @refactor: Phase 8 - app/modules/vitals-stack/protein/index.js -->
+    <script src="app/modules/vitals-stack/protein/index.js"></script>
+    <!-- @refactor: Phase 4 - app/modules/vitals-stack/vitals/lab.js -->
+    <script src="app/modules/vitals-stack/vitals/lab.js"></script>
   <!-- @refactor: Phase 2 - app/supabase/index.js -->
   <!-- @refactor: Phase 2 - legacy proxy thin shim -->
   <script type="module" src="app/supabase/index.js"></script>
   <script type="module" src="assets/js/boot-auth.js"></script>
   <!-- @refactor: moved to assets/js/ui-tabs.js -->
   <script src="assets/js/ui-tabs.js"></script>
-  <!-- @refactor: moved to app/modules/trendpilot/index.js -->
-  <script src="app/modules/trendpilot/index.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/doctor/index.js -->
-  <script src="app/modules/doctor/index.js"></script>
-  <!-- @refactor: Phase 3 - app/modules/charts/index.js -->
-  <script src="app/modules/charts/index.js"></script>
+  <!-- @refactor: moved to app/modules/vitals-stack/trendpilot/index.js -->
+  <script src="app/modules/vitals-stack/trendpilot/index.js"></script>
+  <!-- @refactor: Phase 10 - app/modules/doctor-stack/doctor/index.js -->
+  <script src="app/modules/doctor-stack/doctor/index.js"></script>
+  <!-- @refactor: Phase 9 - app/modules/doctor-stack/charts/index.js -->
+  <script src="app/modules/doctor-stack/charts/index.js"></script>
   <script src="assets/js/main.js"></script>
   <!-- Login-Overlay (zentriert) -->
   <div id="loginOverlay" class="u-hidden">
@@ -1482,7 +1566,7 @@
           Passkey einrichten
         </button>
         <button class="btn ghost u-w100-mt6" id="setPinBtn" type="button">
-          PIN setzen/aendern
+          PIN setzen/ändern
         </button>
       </div>
       <button class="btn ghost u-w100-mt8" id="lockCancelBtn" type="button">
@@ -1503,19 +1587,19 @@
     - UI / ROUTING / VIEWS - Core (Refresh/Help) -> #SUBMODULES: 7, #@extract: 0, Exports:[requestUiRefresh, runUiRefresh, maybeRefreshForTodayChange, setUnderlayInert]
     - AUTH - Guards -> #SUBMODULES: 3, #@extract: 0, Exports:[isLoggedIn, isLoggedInFast, setAuthGuard, setDoctorAccess]
     - UTILITIES -> #SUBMODULES: 0, #@extract: 0, Exports:[$,$$,fmtNum,todayStr,timeStr,esc,nl2br]
-    - CAPTURE (Intake) - State & Timer -> #SUBMODULES: 0, #@extract: 5, Exports:[refreshCaptureIntake, scheduleMidnightRefresh, maybeResetIntakeForToday, bindIntakeCapture, updateCaptureIntakeStatus] (moved to app/modules/capture/index.js)
+    - CAPTURE (Intake) - State & Timer -> #SUBMODULES: 0, #@extract: 5, Exports:[refreshCaptureIntake, scheduleMidnightRefresh, maybeResetIntakeForToday, bindIntakeCapture, updateCaptureIntakeStatus] (moved to app/modules/intake-stack/intake/index.js)
     - DATA ACCESS (IndexedDB) -> #SUBMODULES: 2, #@extract: 0, Exports:[initDB, putConf, getConf, addEntry, updateEntry, getAllEntries, getEntryByRemoteId, deleteEntryLocal, dayIsoToMidnightIso]
     - AUTH - Header Cache -> #SUBMODULES: 1, #@extract: 0, Exports:[getHeaders]
     - DATA ACCESS (REST/RPC) -> #SUBMODULES: 30, #@extract: 1, Exports:[deleteRemote, loadIntakeToday, saveIntakeTotals, saveIntakeTotalsRpc, fetchDailyOverview, deleteRemoteDay]
     - APPOINTMENTS -> #SUBMODULES: 0, #@extract: 12, Exports:[refreshAppointments, handleAppointmentSave, handleAppointmentDone, bindAppointmentsPanel, setAppointmentBadge] (moved to assets/js/appointments.js)
-    - CAPTURE (Intake) - Status & RPC Hooks -> #SUBMODULES: 0, #@extract: 7, Exports:[clearCaptureIntakeInputs, setCaptureIntakeDisabled, prepareIntakeStatusHeader, updateCaptureIntakeStatus, handleCaptureIntake] (moved to app/modules/capture/index.js)
-    - DOCTOR VIEW - Logic -> #SUBMODULES: 3, #@extract: 1, Exports:[renderDoctor, renderDoctorDay, exportDoctorJson] (moved to app/modules/doctor/index.js)
+    - CAPTURE (Intake) - Status & RPC Hooks -> #SUBMODULES: 0, #@extract: 7, Exports:[clearCaptureIntakeInputs, setCaptureIntakeDisabled, prepareIntakeStatusHeader, updateCaptureIntakeStatus, handleCaptureIntake] (moved to app/modules/intake-stack/intake/index.js)
+    - DOCTOR VIEW - Logic -> #SUBMODULES: 3, #@extract: 1, Exports:[renderDoctor, renderDoctorDay, exportDoctorJson] (moved to app/modules/doctor-stack/doctor/index.js)
     - CHARTS (SVG/Canvas) -> #SUBMODULES: 15, #@extract: 3, Exports:[chartPanel]
     - UI / ROUTING / VIEWS - Navigation (Tabs/Resume/Focus) -> #SUBMODULES: 1, #@extract: 1, Exports:[setTab, bindTabs]
-    - BP (Blood Pressure) - Validierung -> #SUBMODULES: 0, #@extract: 5, Exports:[requiresBpComment, updateBpCommentWarnings, resetBpPanel] (moved to app/modules/capture/bp.js)
-    - CAPTURE (Intake) - Panel Resets & Shortcuts -> #SUBMODULES: 0, #@extract: 2, Exports:[resetBodyPanel, resetCapturePanels, addCapturePanelKeys] (moved to app/modules/capture/index.js)
-    - BP (Blood Pressure) - Persistenz -> #SUBMODULES: 0, #@extract: 6, Exports:[saveBlock, appendNote, allocateNoteTimestamp] (moved to app/modules/capture/bp.js)
-    - BODY (Körperwerte) -> #SUBMODULES: 0, #@extract: 1, Exports:[resetBodyPanel, saveDaySummary, prefillBodyInputs] (moved to app/modules/capture/body.js)
+    - BP (Blood Pressure) - Validierung -> #SUBMODULES: 0, #@extract: 5, Exports:[requiresBpComment, updateBpCommentWarnings, resetBpPanel] (moved to app/modules/vitals-stack/vitals/bp.js)
+    - CAPTURE (Intake) - Panel Resets & Shortcuts -> #SUBMODULES: 0, #@extract: 2, Exports:[resetBodyPanel, resetCapturePanels, addCapturePanelKeys] (moved to app/modules/vitals-stack/vitals/index.js)
+    - BP (Blood Pressure) - Persistenz -> #SUBMODULES: 0, #@extract: 6, Exports:[saveBlock, appendNote, allocateNoteTimestamp] (moved to app/modules/vitals-stack/vitals/bp.js)
+    - BODY (Körperwerte) -> #SUBMODULES: 0, #@extract: 1, Exports:[resetBodyPanel, saveDaySummary, prefillBodyInputs] (moved to app/modules/vitals-stack/vitals/body.js)
     - DATA ACCESS (Auth Helpers) -> #SUBMODULES: 3, #@extract: 2, Exports:[withRetry, fetchWithAuth, syncWebhook]
     - REALTIME -> #SUBMODULES: 17, #@extract: 8, Exports:[ensureSupabaseClient, setupRealtime, requireDoctorUnlock, resumeFromBackground]
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]

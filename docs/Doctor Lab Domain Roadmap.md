@@ -41,7 +41,7 @@ This document captures the restructuring prompt and translates it into a determi
    1.1 ✅ Add a tab strip inside `#doctor` (buttons for BP, Body, Lab, Inbox, Diagramm) with ARIA state toggles.
    1.2 ✅ Introduce tab-specific containers/scroll regions so each domain can render independently.
    1.3 ✅ Preserve the existing toolbar actions (Apply range, Werte anzeigen, Export, Monatsbericht) above the tabs.
-2. Refactor `app/modules/doctor/index.js` into per-domain loaders/renderers. Each tab pulls only its domain events, keeps its own scroll snapshot, and renders domain-specific cards:
+2. Refactor `app/modules/doctor-stack/doctor/index.js` into per-domain loaders/renderers. Each tab pulls only its domain events, keeps its own scroll snapshot, and renders domain-specific cards:
    2.1 ✅ BP tab reuses the current blood-pressure table + Trendpilot section + delete actions.
    2.2 ✅ Body tab lists body composition metrics (weight, waist, fat %, muscle %) without BP columns.
    2.3 ✅ Lab tab renders lab entries (eGFR, creatinine, CKD stage, optional markers, doctor comment).

@@ -5,6 +5,9 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: erkennt Speech/Silence und stoppt Recording bei Stille.
 - Abgrenzung: kein Speech-to-Text, kein Audio-Upload, keine Transkription.
 
+Related docs:
+- [Bootflow Overview](bootflow overview.md)
+
 ---
 
 ## 1. Zielsetzung

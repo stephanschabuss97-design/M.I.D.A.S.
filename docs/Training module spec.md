@@ -198,7 +198,7 @@ Liefert:
 ## 7. Client-Modul
 
 **Pfad:**
-`app/modules/activity/index.js`
+`app/modules/vitals-stack/activity/index.js`
 
 ### Exports
 
@@ -278,7 +278,7 @@ Liefert:
 
 ### Phase 1 – Modul Scaffold
 
-* `app/modules/activity/index.js`
+* `app/modules/vitals-stack/activity/index.js`
 * Read / Write RPCs
 
 ---
@@ -334,12 +334,12 @@ Liefert:
 
 ### New
 
-* `app/modules/activity/index.js`
+* `app/modules/vitals-stack/activity/index.js`
 * `docs/modules/Activity Module Overview.md`
 
 ### Modified
 
-* `app/modules/capture/index.js`
+* `app/modules/vitals-stack/vitals/index.js`
 * optionale Styles
 
 ```
@@ -356,7 +356,7 @@ Liefert:
 3. Optionalen Index `(user_id, type, day)` erstellen, falls Query-Last.
 
 ### Hauptstep 2: Client-Modul implementieren ✅
-1. Datei `app/modules/activity/index.js` anlegen.
+1. Datei `app/modules/vitals-stack/activity/index.js` anlegen.
 2. Funktionen implementieren:
    - `loadActivities(from, to)` ruft `activity_list`.
    - `addActivity(data)` ruft `activity_add`.

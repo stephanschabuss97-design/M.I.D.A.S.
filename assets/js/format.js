@@ -79,9 +79,11 @@
           const sys = toNumberOrNull(entry.sys);
           const dia = toNumberOrNull(entry.dia);
           const pulse = toNumberOrNull(entry.pulse);
+          const comment = (entry.bp_comment || entry.comment || '').trim();
           if (sys !== null) payload.sys = sys;
           if (dia !== null) payload.dia = dia;
           if (pulse !== null) payload.pulse = pulse;
+          if (comment) payload.comment = comment;
           payload.ctx = entry.context;
           out.push({ ts: tsIso, type: 'bp', payload });
         }
