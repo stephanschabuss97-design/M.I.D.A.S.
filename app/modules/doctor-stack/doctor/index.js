@@ -95,8 +95,8 @@
   };
   const TRENDPILOT_STATUS_LABELS = {
     none: 'Kein Arzt-Status',
-    planned: 'ArztabklÃ¤rung geplant',
-    done: 'ArztabklÃ¤rung erledigt'
+    planned: 'Arztabklärung geplant',
+    done: 'Arztabklärung erledigt'
   };
   const getDoctorStatusLabel = (status) =>
     TRENDPILOT_STATUS_LABELS[status] || TRENDPILOT_STATUS_LABELS.none;
@@ -231,10 +231,10 @@
     const isActive = status === (current || 'none');
     const label =
       status === 'planned'
-        ? 'ArztabklÃ¤rung geplant'
+        ? 'Arztabklärung geplant'
         : status === 'done'
           ? 'Erledigt'
-          : 'ZurÃ¼cksetzen';
+          : 'Zurücksetzen';
     return `<button class="btn ghost ${isActive ? 'is-active' : ''}" data-doctor-status="${status}">${label}</button>`;
   };
 
@@ -436,7 +436,7 @@
     try {
       const hub = global.AppModules?.hub;
       if (typeof hub?.openDoctorInboxPanel !== 'function') {
-        toast('Inbox ist derzeit nicht verfÃ¼gbar.');
+        toast('Inbox ist derzeit nicht verfügbar.');
         return;
       }
       const doc = global.document;
@@ -524,7 +524,7 @@
       btn.disabled = true;
       try {
         await setter({ id, ack: true });
-        toast('Trendpilot best?tigt.');
+        toast('Trendpilot bestätigt.');
         const from = global.document?.getElementById('from')?.value || '';
         const to = global.document?.getElementById('to')?.value || '';
         const trendpilotWrap = global.document?.getElementById('doctorTrendpilot');
@@ -638,7 +638,7 @@ async function renderDoctor(triggerReason = 'manual'){
   const from = fromInput?.value || '';
   const to = toInput?.value || '';
   if (!from || !to){
-    fillAllPanels(placeholderHtml('Bitte Zeitraum wÃ¤hlen.'));
+    fillAllPanels(placeholderHtml('Bitte Zeitraum wählen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
@@ -851,7 +851,7 @@ async function renderDoctor(triggerReason = 'manual'){
   }
 
   if (panels.inbox) {
-    panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
+    panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
   }
 
   const formatNotesHtml = (notes) => {
@@ -894,7 +894,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-bp="${day.date}">LÃ¶schen</button>
+      <button class="btn ghost" data-del-bp="${day.date}">Löschen</button>
     </div>
   </div>
 
@@ -945,7 +945,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-body="${day.date}">LÃ¶schen</button>
+      <button class="btn ghost" data-del-body="${day.date}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-body-metrics">
@@ -1005,7 +1005,7 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">LÃ¶schen</button>
+      <button class="btn ghost" data-del-lab="${escapeAttr(entry.day || '')}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-lab-metrics">
@@ -1045,12 +1045,12 @@ async function renderDoctor(triggerReason = 'manual'){
       <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">LÃ¶schen</button>
+      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-activity-metrics">
     <div class="measure-head">
-      <div class="activity-col">AktivitÃ¤t</div>
+      <div class="activity-col">Aktivität</div>
       <div class="duration-col">Dauer (Min)</div>
       <div class="note-col">Notiz</div>
     </div>
@@ -1073,21 +1073,21 @@ async function renderDoctor(triggerReason = 'manual'){
       btn.addEventListener('click', async () => {
         const date = btn.getAttribute(attrName);
         if (!date) return;
-        if (!confirm(`Alle ${label}-EintrÃ¤ge fÃ¼r ${date} lÃ¶schen?`)) return;
+        if (!confirm(`Alle ${label}-Einträge für ${date} löschen?`)) return;
 
         btn.disabled = true;
         const old = btn.textContent;
-        btn.textContent = 'LÃ¶sche...';
+        btn.textContent = 'Lösche...';
         try {
           const result = await deleteRemoteByType(date, type);
           if (!result?.ok) {
-            alert(`Server-LÃ¶schung fehlgeschlagen (${result?.status || "?"}).`);
+            alert(`Server-Löschung fehlgeschlagen (${result?.status || "?"}).`);
             return;
           }
           await requestUiRefresh({ reason: `doctor:delete:${type}` });
         } catch (err) {
           logDoctorError(`deleteRemoteByType failed (${type})`, err);
-          alert('Server-LÃ¶schung fehlgeschlagen (Fehler siehe Konsole).');
+          alert('Server-Löschung fehlgeschlagen (Fehler siehe Konsole).');
         } finally {
           btn.disabled = false;
           btn.textContent = old;
@@ -1099,17 +1099,17 @@ async function renderDoctor(triggerReason = 'manual'){
     // Rendern / Leerzustand
   if (!daysArr.length){
     if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
-    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine KÃ¶rperdaten im Zeitraum.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
+    if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Körperdaten im Zeitraum.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
     if (panels.bp) panels.bp.innerHTML = daysArr.map(renderDoctorDay).join("");
     if (panels.body) {
       const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
-      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine KÃ¶rperdaten im Zeitraum.');
+      panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Körperdaten im Zeitraum.');
     }
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Ã¶ffnet in einem separaten Fenster.');
+    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -1130,7 +1130,7 @@ async function renderDoctor(triggerReason = 'manual'){
     }
 
     bindDomainDeleteButtons(panels.bp, 'data-del-bp', 'bp', 'Blutdruck');
-    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'KÃ¶rper');
+    bindDomainDeleteButtons(panels.body, 'data-del-body', 'body', 'Körper');
   }
 
   if (panels.lab) {
@@ -1183,7 +1183,7 @@ async function exportDoctorJson(){
   const from = $("#from")?.value || '';
   const to = $("#to")?.value || '';
   if (!from || !to) {
-    toast('Bitte Zeitraum wÃ¤hlen.');
+    toast('Bitte Zeitraum wählen.');
     return;
   }
   const isDayInRange = (day) => {
@@ -1303,7 +1303,7 @@ async function exportDoctorJson(){
 
   dl("gesundheitslog.json", JSON.stringify(payload, null, 2), "application/json");
 }
-// SUBMODULE: doctorApi @internal - registriert Ã¶ffentliche API-Funktionen im globalen Namespace
+// SUBMODULE: doctorApi @internal - registriert Öffentliche API-Funktionen im globalen Namespace
   const doctorApi = {
     renderDoctor,
     exportDoctorJson,
@@ -1382,7 +1382,7 @@ async function exportDoctorJson(){
 
   async function renderDoctorInboxOverlay({ from, to } = {}) {
     if (!showDoctorInboxPanel()) {
-      toast('Inbox ist derzeit nicht verfÃ¼gbar.');
+      toast('Inbox ist derzeit nicht verfügbar.');
       return;
     }
     inboxPanelState.range = { from: from || '', to: to || '' };

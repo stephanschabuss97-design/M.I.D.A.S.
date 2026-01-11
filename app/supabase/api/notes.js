@@ -140,7 +140,7 @@ export async function syncWebhook(entry, localId) {
       }
 
       if (res.status === 409 || /duplicate|unique/i.test(details)) {
-        uiError('Es gibt bereits einen Eintrag f?r diesen Tag/Kontext.');
+        uiError('Es gibt bereits einen Eintrag für diesen Tag/Kontext.');
       } else if (res.status === 422 || /invalid|range|pflicht|check constraint/i.test(details)) {
         uiError('Eingaben ung?ltig - bitte Wertebereiche/Pflichtfelder pr?fen.');
       } else {
@@ -161,7 +161,7 @@ export async function syncWebhook(entry, localId) {
       uiInfo('Gespeichert.');
       diag.add(`Webhook: OK (${events.length} Event(s))`);
     } else {
-      uiError('Unerwartete Antwort vom Server - kein Datensatz zur?ckgegeben.');
+      uiError('Unerwartete Antwort vom Server - kein Datensatz zurückgegeben.');
     }
   } catch (err) {
     if (err?.status === 401 || err?.status === 403) {

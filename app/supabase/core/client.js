@@ -33,7 +33,7 @@ const diag =
 const getConfSafe = (...args) => {
   const fn = globalWindow?.getConf;
   if (typeof fn !== 'function') {
-    diag.add?.('Supabase Client: window.getConf ist nicht verf?gbar');
+    diag.add?.('Supabase Client: window.getConf ist nicht verfügbar');
     return null;
   }
   return fn(...args);
@@ -122,7 +122,7 @@ export async function ensureSupabaseClient() {
 
     if (!globalWindow?.supabase || typeof globalWindow.supabase.createClient !== 'function') {
       setConfigStatusSafe('Supabase Client SDK fehlt.', 'error');
-      diag.add('Supabase Auth: window.supabase.createClient nicht verf?gbar');
+      diag.add('Supabase Auth: window.supabase.createClient nicht verfügbar');
       return null;
     }
 

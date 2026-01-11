@@ -244,7 +244,7 @@ const getCommentElementUnsafe = (normalizedCtx) => {
     return { iso, ts: base.getTime(), time: iso.slice(11,16) };
   }
 
-// SUBMODULE: API export & global attach @internal - registriert Ã¶ffentliche Methoden unter AppModules.bp
+// SUBMODULE: API export & global attach @internal - registriert Öffentliche Methoden unter AppModules.bp
   const bpApi = {
     requiresBpComment,
     updateBpCommentWarnings,
