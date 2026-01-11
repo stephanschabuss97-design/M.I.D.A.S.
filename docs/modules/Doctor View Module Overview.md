@@ -2,11 +2,12 @@
 
 Kurze Einordnung:
 - Zweck: Read-Only Uebersicht fuer Arzt/Patient im Arztmodus.
-- Rolle innerhalb von MIDAS: Konsolidiert Tagesdaten, Trendpilot, Reports.
+- Rolle innerhalb von MIDAS: Konsolidiert Tagesdaten, Trendpilot und bietet Zugang zur Reports-Inbox.
 - Abgrenzung: keine Dateneingabe (ausser Delete/Report-Trigger), keine Charts-Logik.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Reports Module Overview](Reports Module Overview.md)
 
 ---
 
@@ -23,6 +24,7 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/modules/doctor-stack/doctor/index.js` | Render-Flow, Tabs, Trendpilot, Reports Inbox |
+| `app/modules/doctor-stack/reports/index.js` | Reports UI/Inbox (aus Doctor-View ausgelagert) |
 | `app/styles/doctor.css` | Layout/Stil der Arzt-Ansicht |
 | `app/modules/hub/index.js` | Orbit/Panel-Open + Unlock-Flow |
 | `app/supabase/api/vitals.js` | Tagesdaten (BP/Body) |
@@ -130,7 +132,7 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (Read-Only + Reports).
+- Status: aktiv (Read-Only + Reports via Reports-Modul).
 - Dependencies (hard): Supabase APIs (vitals/trendpilot/reports), `midas-monthly-report` Edge, Unlock-Flow.
 - Dependencies (soft): Charts, Trendpilot.
 - Known issues / risks: grosse Ranges; Edge downtime; Deletes entfernen Daten; Report-Typ muss korrekt sein; Offline-Fallback nur Teilmenge.

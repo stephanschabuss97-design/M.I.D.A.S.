@@ -194,33 +194,6 @@
       ? api.setSystemCommentDoctorStatus
       : null;
   };
-  const resolveMonthlyReportFetcher = () => {
-    const api = getSupabaseApi();
-    return typeof api.fetchSystemCommentsBySubtype === 'function'
-      ? api.fetchSystemCommentsBySubtype
-      : null;
-  };
-
-  const resolveMonthlyReportGenerator = () => {
-    const api = getSupabaseApi();
-    if (typeof api.generateMonthlyReportRemote === 'function') {
-      return api.generateMonthlyReportRemote;
-    }
-    return null;
-  };
-
-  const resolveMonthlyReportDeleter = () => {
-    const api = getSupabaseApi();
-    return typeof api.deleteSystemComment === 'function'
-      ? api.deleteSystemComment
-      : null;
-  };
-  const resolveReportInboxClearer = () => {
-    const api = getSupabaseApi();
-    return typeof api.deleteSystemCommentsBySubtypes === 'function'
-      ? api.deleteSystemCommentsBySubtypes
-      : null;
-  };
 
   const resolveLabRangeLoader = () => {
     const api = getSupabaseApi();
@@ -530,34 +503,6 @@
     return Array.isArray(result) ? result : [];
   }
 
-  async function loadMonthlyReports(from, to) {
-    const fetcher = resolveMonthlyReportFetcher();
-    if (typeof fetcher !== 'function') return [];
-    const [monthly, rangeReports] = await Promise.all([
-      fetcher({
-        from,
-        to,
-        subtype: 'monthly_report',
-        order: 'day.desc'
-      }),
-      fetcher({
-        from,
-        to,
-        subtype: 'range_report',
-        order: 'day.desc'
-      })
-    ]);
-    const merged = [
-      ...(Array.isArray(monthly) ? monthly : []),
-      ...(Array.isArray(rangeReports) ? rangeReports : [])
-    ];
-    merged.sort((a, b) => {
-      const dayCmp = (b.day || '').localeCompare(a.day || '');
-      if (dayCmp !== 0) return dayCmp;
-      return (b.ts || '').localeCompare(a.ts || '');
-    });
-    return merged;
-  }
 
   async function onTrendpilotAction(event) {
     const btn = event.target.closest('[data-trendpilot-action]');
@@ -1365,7 +1310,6 @@ async function exportDoctorJson(){
     renderDoctorInboxOverlay,
     showDoctorInboxPanel,
     hideDoctorInboxPanel,
-    generateMonthlyReport
   };
 
   function bindHubDoctorCloseButton() {
@@ -1405,147 +1349,36 @@ async function exportDoctorJson(){
     bindHubDoctorCloseButton();
   }
 
-  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, { error, emptyLabel } = {}) => {
+  const getReportsModule = () => global.AppModules?.reports || {};
+  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, opts = {}) => {
+    const reportsModule = getReportsModule();
+    if (typeof reportsModule.renderMonthlyReportsSection === 'function') {
+      return reportsModule.renderMonthlyReportsSection(panel, reports, fmtDateDE, opts);
+    }
     if (!panel) return;
-    if (error) {
-      panel.innerHTML = `<div class="small u-doctor-placeholder">Monatsberichte konnten nicht geladen werden.</div>`;
-      return;
-    }
-    if (!reports?.length) {
-      panel.innerHTML = `<div class="small u-doctor-placeholder">${emptyLabel || 'Noch keine Berichte vorhanden.'}</div>`;
-      return;
-    }
-    const cards = reports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
-    panel.innerHTML = `<div class="doctor-inbox">${cards}</div>`;
+    panel.innerHTML = '<div class="small u-doctor-placeholder">Reports-Modul nicht geladen.</div>';
   };
 
   const filterReportsByType = (reports, filter) => {
+    const reportsModule = getReportsModule();
+    if (typeof reportsModule.filterReportsByType === 'function') {
+      return reportsModule.filterReportsByType(reports, filter);
+    }
     if (!Array.isArray(reports)) return [];
     if (!filter || filter === 'all') return reports;
     return reports.filter((report) => (report.subtype || report.payload?.subtype) === filter);
   };
 
   const getFilterEmptyLabel = (filter) => {
+    const reportsModule = getReportsModule();
+    if (typeof reportsModule.getFilterEmptyLabel === 'function') {
+      return reportsModule.getFilterEmptyLabel(filter);
+    }
     if (filter === 'monthly_report') return 'Keine Monatsberichte vorhanden.';
     if (filter === 'range_report') return 'Keine Arzt-Berichte vorhanden.';
     return 'Noch keine Berichte vorhanden.';
   };
 
-  const formatMonthLabel = (value) => {
-    if (!value) return 'Monat unbekannt';
-    const parseDate = (iso) => {
-      const d = new Date(iso);
-      return Number.isNaN(d.getTime()) ? null : d;
-    };
-    let candidate = parseDate(value);
-    if (!candidate && value.length <= 7) {
-      candidate = parseDate(`${value}-01T00:00:00Z`);
-    }
-    if (!candidate) return value;
-    try {
-      return candidate.toLocaleDateString('de-AT', { month: 'long', year: 'numeric' });
-    } catch (_) {
-      return value;
-    }
-  };
-
-  const formatReportDateTime = (iso) => {
-    if (!iso) return '-';
-    try {
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return '-';
-      return d.toLocaleString('de-AT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (_) {
-      return '-';
-    }
-  };
-
-  const markdownToHtml = (text = '') => {
-    let html = escapeAttr(text);
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    return html;
-  };
-
-  const formatReportNarrative = (text) => {
-    const raw = (text || '').trim();
-    if (!raw) return '<p class="report-empty">Kein Berichtstext vorhanden.</p>';
-    const lines = raw.split(/\r?\n/);
-    const blocks = [];
-    let bulletBuffer = [];
-
-    const flushBullets = () => {
-      if (!bulletBuffer.length) return;
-      const items = bulletBuffer.map((entry) => `<li>${markdownToHtml(entry)}</li>`).join('');
-      blocks.push(`<ul>${items}</ul>`);
-      bulletBuffer = [];
-    };
-
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        flushBullets();
-        return;
-      }
-      if (trimmed.startsWith('- ')) {
-        bulletBuffer.push(trimmed.slice(2));
-      } else {
-        flushBullets();
-        blocks.push(`<p>${markdownToHtml(trimmed)}</p>`);
-      }
-    });
-    flushBullets();
-    return blocks.join('');
-  };
-
-  const reportFlags = (report) => {
-    const flags = report?.payload?.meta?.flags;
-    if (!Array.isArray(flags)) return [];
-    return flags.filter((flag) => typeof flag === 'string' && flag.trim());
-  };
-
-  const renderMonthlyReportCard = (report, fmtDateDE) => {
-    const subtype = report.subtype || report.reportType || 'monthly_report';
-    const isRangeReport = subtype === 'range_report';
-    const periodFrom = report.period?.from || report.day || '';
-    const periodTo = report.period?.to || report.day || '';
-    const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
-    const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
-    const summary = (report.summary || '').trim() || 'Kein Summary verfÃ¼gbar.';
-    const flags = reportFlags(report);
-    const badgeHtml = flags
-      .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
-      .join('');
-    const textHtml = formatReportNarrative(report.text);
-    const monthTag = isRangeReport ? '' : report.reportMonth || '';
-    const title = isRangeReport
-      ? 'Arzt-Bericht - Zeitraum'
-      : `Monatsbericht - ${monthLabel || 'Unbekannter Monat'}`;
-    const subtitle = `Zeitraum: ${periodFrom || '-'} bis ${periodTo || '-'}`;
-    const tag = isRangeReport ? 'Arzt-Bericht' : 'Monatsbericht';
-    return `
-<article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}" data-report-type="${escapeAttr(subtype)}" data-report-from="${escapeAttr(periodFrom)}" data-report-to="${escapeAttr(periodTo)}">
-  <div class="doctor-report-head">
-    <div class="doctor-report-period">
-      <strong>${escapeAttr(title)}</strong>
-      <span>${escapeAttr(subtitle)}</span>
-    </div>
-    <div class="doctor-report-meta">Erstellt ${escapeAttr(createdLabel)}</div>
-  </div>
-  <div class="doctor-report-tag">${escapeAttr(tag)}</div>
-  <div class="doctor-report-summary">${escapeAttr(summary)}${badgeHtml}</div>
-  <div class="doctor-report-body">${textHtml}</div>
-  <div class="doctor-report-actions">
-    <button class="btn ghost" type="button" data-report-action="regenerate">Neu erstellen</button>
-    <button class="btn ghost" type="button" data-report-action="delete">LÃ¶schen</button>
-  </div>
-</article>`;
-  };
 
   async function renderDoctorInboxOverlay({ from, to } = {}) {
     if (!showDoctorInboxPanel()) {
@@ -1558,8 +1391,18 @@ async function exportDoctorJson(){
     const rangeEl = doc?.getElementById('doctorInboxRange');
     const countEl = doc?.getElementById('doctorInboxCount');
     if (!list) return;
+    const reportsModule = getReportsModule();
+    const reportDeps = {
+      toast,
+      uiError,
+      logError: logDoctorError,
+      refreshAfter: refreshDoctorAfterMonthlyReport
+    };
     if (!list.dataset.reportActionsBound) {
-      list.addEventListener('click', handleReportCardAction);
+      list.addEventListener('click', (event) => {
+        if (typeof reportsModule.handleReportCardAction !== 'function') return;
+        reportsModule.handleReportCardAction(event, reportDeps);
+      });
       list.dataset.reportActionsBound = '1';
     }
     const newReportBtn = doc?.getElementById('doctorInboxNewReportBtn');
@@ -1568,7 +1411,10 @@ async function exportDoctorJson(){
       newReportBtn.addEventListener('click', async () => {
         newReportBtn.disabled = true;
         try {
-          await generateMonthlyReport({ report_type: 'monthly_report' });
+          if (typeof reportsModule.generateMonthlyReport !== 'function') {
+            throw new Error('monthly report generator missing');
+          }
+          await reportsModule.generateMonthlyReport({ report_type: 'monthly_report' }, reportDeps);
         } catch (err) {
           logDoctorError('new monthly report button failed', err);
           uiError?.('Neuer Monatsbericht fehlgeschlagen.');
@@ -1589,7 +1435,10 @@ async function exportDoctorJson(){
             : {};
         newRangeReportBtn.disabled = true;
         try {
-          await generateMonthlyReport({ ...opts, report_type: 'range_report' });
+          if (typeof reportsModule.generateMonthlyReport !== 'function') {
+            throw new Error('monthly report generator missing');
+          }
+          await reportsModule.generateMonthlyReport({ ...opts, report_type: 'range_report' }, reportDeps);
         } catch (err) {
           logDoctorError('new range report button failed', err);
           uiError?.('Neuer Arzt-Bericht fehlgeschlagen.');
@@ -1602,26 +1451,26 @@ async function exportDoctorJson(){
     if (clearInboxBtn && !clearInboxBtn.dataset.boundClearInbox) {
       clearInboxBtn.dataset.boundClearInbox = '1';
       clearInboxBtn.addEventListener('click', async () => {
-        const clearer = resolveReportInboxClearer();
-        if (typeof clearer !== 'function') {
-          toast('Inbox kann derzeit nicht gelÃ¶scht werden.');
+        if (typeof reportsModule.clearReportInbox !== 'function') {
+          toast('Inbox kann derzeit nicht geloescht werden.');
           return;
         }
-        if (!confirm('Inbox wirklich komplett lÃ¶schen?')) return;
         clearInboxBtn.disabled = true;
         try {
-          await clearer({ subtypes: ['monthly_report', 'range_report'] });
-          toast('Inbox geleert.');
-          await refreshDoctorAfterMonthlyReport();
+          await reportsModule.clearReportInbox({
+            subtypes: ['monthly_report', 'range_report'],
+            ...reportDeps
+          });
         } catch (err) {
           logDoctorError('inbox clear failed', err);
-          uiError?.('Inbox konnte nicht gelÃ¶scht werden.');
+          uiError?.('Inbox konnte nicht geloescht werden.');
         } finally {
           clearInboxBtn.disabled = false;
         }
       });
     }
     if (rangeEl) {
+
       const fromLabel = from || '-';
       const toLabel = to || '-';
       rangeEl.textContent = `Zeitraum: ${fromLabel} bis ${toLabel}`;
@@ -1660,7 +1509,10 @@ async function exportDoctorJson(){
     list.innerHTML = `<div class="small u-doctor-placeholder">Berichte werden geladen ...</div>`;
     if (countEl) countEl.textContent = '';
     try {
-      const reports = await loadMonthlyReports(from, to);
+      const reportsModule = getReportsModule();
+      const reports = typeof reportsModule.loadMonthlyReports === 'function'
+        ? await reportsModule.loadMonthlyReports(from, to)
+        : [];
       inboxPanelState.reports = reports;
       applyFilterState(inboxPanelState.filter || 'all', reports, {});
     } catch (err) {
@@ -1670,59 +1522,6 @@ async function exportDoctorJson(){
     }
   }
 
-  async function handleReportCardAction(event) {
-    const btn = event.target.closest('[data-report-action]');
-    if (!btn) return;
-    const card = btn.closest('.doctor-report-card');
-    if (!card) return;
-    const reportId = card.getAttribute('data-report-id');
-    if (!reportId) return;
-    const action = btn.getAttribute('data-report-action');
-    const reportType = card.getAttribute('data-report-type') || 'monthly_report';
-    const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
-    if (action === 'delete') {
-      const deleter = resolveMonthlyReportDeleter();
-      if (typeof deleter !== 'function') {
-        toast('LÃ¶schen momentan nicht mÃ¶glich.');
-        return;
-      }
-      if (!confirm(`Diesen ${reportLabel} endgÃ¼ltig lÃ¶schen?`)) return;
-      btn.disabled = true;
-      try {
-        await deleter({ id: reportId });
-        toast(`${reportLabel} gelÃ¶scht.`);
-        await refreshDoctorAfterMonthlyReport();
-      } catch (err) {
-        logDoctorError('delete monthly report failed', err);
-        uiError?.('LÃ¶schen fehlgeschlagen.');
-      } finally {
-        btn.disabled = false;
-      }
-    } else if (action === 'regenerate') {
-      const monthTag = card.getAttribute('data-report-month') || null;
-      const periodFrom = card.getAttribute('data-report-from') || '';
-      const periodTo = card.getAttribute('data-report-to') || '';
-      btn.disabled = true;
-      try {
-        if (reportType === 'range_report') {
-          await generateMonthlyReport({
-            report_type: 'range_report',
-            from: periodFrom,
-            to: periodTo
-          });
-        } else {
-          await generateMonthlyReport(monthTag ? { month: monthTag } : {});
-        }
-      } catch (err) {
-        logDoctorError('regenerate monthly report failed', err);
-        uiError?.(reportType === 'range_report'
-          ? 'Neuer Arzt-Bericht fehlgeschlagen.'
-          : 'Neuer Monatsbericht fehlgeschlagen.');
-      } finally {
-        btn.disabled = false;
-      }
-    }
-  }
 
   async function refreshDoctorAfterMonthlyReport(range = {}) {
     const defaultRange =
@@ -1749,37 +1548,6 @@ async function exportDoctorJson(){
     }
   }
 
-  async function generateMonthlyReport(options = {}) {
-    const doc = global.document;
-    const defaultFrom = doc?.getElementById('from')?.value || '';
-    const defaultTo = doc?.getElementById('to')?.value || '';
-    const month = options.month || null;
-    const reportType = options.report_type || 'monthly_report';
-    const from = reportType === 'range_report' ? (options.from || defaultFrom) : null;
-    const to = reportType === 'range_report' ? (options.to || defaultTo) : null;
-    if (reportType === 'range_report' && (!from || !to)) {
-      const err = new Error('Bitte Zeitraum wÃ¤hlen.');
-      logDoctorError('range report missing range', err);
-      throw err;
-    }
-    const generator = resolveMonthlyReportGenerator();
-    if (typeof generator !== 'function') {
-      const err = new Error('monthly report generator missing');
-      logDoctorError('monthly report generator unavailable', err);
-      throw err;
-    }
-    let result;
-    try {
-      result = await generator({ from, to, month, report_type: reportType });
-    } catch (err) {
-      logDoctorError('monthly report edge call failed', err);
-      throw err;
-    }
-    const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
-    toast(`${reportLabel} ausgelÃ¶st - Inbox aktualisiert.`);
-    await refreshDoctorAfterMonthlyReport({ from: from || '', to: to || '' });
-    return result;
-  }
 
   appModules.doctor = appModules.doctor || {};
   Object.assign(appModules.doctor, doctorApi);
