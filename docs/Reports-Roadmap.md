@@ -64,17 +64,10 @@ Deterministische Hauptsteps
       - Supabase Edge Secret:
         - Name: MONTHLY_REPORT_USER_ID
           - Value: <DEIN user_id UUID>
-      - Supabase Edge Secret:
-        - Name: MONTHLY_REPORT_CRON_SECRET
-          - Value: <Zufallswert fuer Cron-Secret, identisch zum GitHub Secret>
-      - GitHub Secret:
-        - Name: MONTHLY_REPORT_CRON_SECRET
-          - Value: <gleicher Wert wie in Supabase>
       - Curl im Workflow:
         curl -sS -X POST "${{ secrets.REPORTS_URL }}" \\
           -H "Content-Type: application/json" \\
           -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \\
-          -H "x-midas-cron-secret: ${{ secrets.MONTHLY_REPORT_CRON_SECRET }}" \\
           -d '{"trigger":"scheduler"}'
   4.3 Schedule testen (manuell + Cron).
   4.4 Module Overview nachziehen.
