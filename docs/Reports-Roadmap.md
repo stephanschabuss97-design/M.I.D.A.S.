@@ -47,14 +47,14 @@ Deterministische Hauptsteps
   2.5 Module Overview nachziehen. (done)
 
 3) Edge Function: Stabilitaet & Textqualitaet (geplant)
-  3.1 Encoding-Artefakte lokalisieren (Liste + Zeilen), manuelle Korrektur durch Stephan.
-  3.2 Manuelle Korrektur der Artefakte (durch Stephan).
-  3.3 Texte glatten (keine Platzhalter, konsistente Formulierungen).
-  3.4 Optional: Dry-Run Ausgabe fuer Debug (nur intern).
-  3.5 Module Overview nachziehen.
+  3.1 Encoding-Artefakte lokalisieren (Liste + Zeilen), manuelle Korrektur durch Stephan. (done)
+  3.2 Manuelle Korrektur der Artefakte (durch Stephan). (done)
+  3.3 Texte glatten (keine Platzhalter, konsistente Formulierungen). (done)
+  3.4 Optional: Dry-Run Ausgabe fuer Debug (nur intern). (done)
+  3.5 Module Overview nachziehen. (done)
 
 4) Monatsbericht Cron (geplant)
-  4.1 GitHub Actions Workflow fuer Monatsbericht erstellen (Service Role Auth).
+  4.1 GitHub Actions Workflow fuer Monatsbericht erstellen (Service Role Auth). (done)
   4.2 Secrets setzen:
       - GitHub Secrets:
         - Name: REPORTS_URL
@@ -64,10 +64,17 @@ Deterministische Hauptsteps
       - Supabase Edge Secret:
         - Name: MONTHLY_REPORT_USER_ID
           - Value: <DEIN user_id UUID>
+      - Supabase Edge Secret:
+        - Name: MONTHLY_REPORT_CRON_SECRET
+          - Value: <Zufallswert fuer Cron-Secret, identisch zum GitHub Secret>
+      - GitHub Secret:
+        - Name: MONTHLY_REPORT_CRON_SECRET
+          - Value: <gleicher Wert wie in Supabase>
       - Curl im Workflow:
         curl -sS -X POST "${{ secrets.REPORTS_URL }}" \\
           -H "Content-Type: application/json" \\
           -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \\
+          -H "x-midas-cron-secret: ${{ secrets.MONTHLY_REPORT_CRON_SECRET }}" \\
           -d '{"trigger":"scheduler"}'
   4.3 Schedule testen (manuell + Cron).
   4.4 Module Overview nachziehen.

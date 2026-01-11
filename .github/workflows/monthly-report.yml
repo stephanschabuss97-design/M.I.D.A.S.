@@ -1,0 +1,20 @@
+name: Monthly Report
+
+on:
+  schedule:
+    # Erster Tag im Monat 02:00 Europe/Vienna ~= 01:00 UTC (Winterzeit).
+    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
+    - cron: "0 1 1 * *"
+  workflow_dispatch:
+
+jobs:
+  run-monthly-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Monthly Report Edge Function
+        run: |
+          curl -sS -X POST "${{ secrets.REPORTS_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-midas-cron-secret: ${{ secrets.MONTHLY_REPORT_CRON_SECRET }}" \
+            -d '{"trigger":"scheduler"}'

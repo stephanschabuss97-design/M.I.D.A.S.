@@ -149,14 +149,10 @@ Doctor-View ruft ausschliesslich das Reports-Modul auf und kapselt UI-Overlay.
 
 ## 11. Encoding / Textqualitaet
 
-Bekannte Risiken:
-- Textartefakte durch Encoding (legacy).
-- Uneinheitliche Formulierungen bei einigen Abschnitten.
-
-Geplanter Fix:
-- Encoding-Artefakte lokalisieren (Liste/Zeilen).
-- Manuelle Korrektur durch Stephan.
-- Text-Glattung in der Edge Function.
+Status:
+- Encoding-Artefakte bereinigt (manuell).
+- Formulierungen vereinheitlicht (kein Platzhaltertext).
+- Dry-Run wurde bewusst nicht umgesetzt.
 
 ---
 
@@ -176,4 +172,3 @@ Geplanter Fix:
 - Inbox-UI stabil und nachvollziehbar.
 - Monatsbericht manuell + optional per Cron.
 - Encoding der Reporttexte konsistent (UTF-8).
-
