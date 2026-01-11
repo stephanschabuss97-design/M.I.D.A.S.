@@ -16,4 +16,4 @@ jobs:
           curl -sS -X POST "${{ secrets.REPORTS_URL }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -d '{"trigger":"scheduler"}'
+            -d '{"trigger":"scheduler","report_type":"monthly_report"}'
