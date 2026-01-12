@@ -392,6 +392,7 @@
     panel.setAttribute('inert', '');
     panel.classList.remove('is-open');
     panel.style.display = 'none';
+    global.document?.body?.classList.remove('is-inbox-open');
     inboxPanelState.el = panel;
     getFocusTrap()?.deactivate?.();
   }
@@ -428,6 +429,7 @@
     panel.style.display = 'block';
     panel.setAttribute('aria-hidden', 'false');
     panel.classList.add('is-open');
+    global.document?.body?.classList.add('is-inbox-open');
     getFocusTrap()?.activate?.(panel);
     return true;
   };

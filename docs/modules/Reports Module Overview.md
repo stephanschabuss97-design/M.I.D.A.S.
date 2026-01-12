@@ -28,6 +28,8 @@ Related docs:
 | `app/supabase/api/reports.js` | Edge Function Wrapper (`generateMonthlyReportRemote`) |
 | `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-monthly-report\\index.ts` | Report-Engine (monthly + range) |
 | `app/styles/doctor.css` | Report-Karten + Inbox-Overlay Styling |
+| `public.user_profile` | Patientenkopf + Protein-Ziel (Range-Report) |
+| `public.trendpilot_events_range` | Trendpilot-Liste im Range-Report |
 
 ---
 
@@ -40,7 +42,7 @@ Related docs:
   - `payload.month`: `YYYY-MM` (nur Monthly)
   - `payload.month_label`: Lesbarer Monatsname
   - `payload.period`: `{ from, to }` (Range oder expliziter Zeitraum)
-  - `payload.summary`: Kurzfassung
+  - `payload.summary`: Kurzfassung (Monthly; Range leer)
   - `payload.text`: Fliesstext (Markdown-Style)
   - `payload.meta`: strukturierte Kennzahlen
   - `payload.generated_at`
@@ -57,6 +59,10 @@ Die Report-Engine arbeitet auf Views, nicht auf Roh-Events:
 - `v_events_lab`
 - `v_events_activity`
 
+Range-Report zieht zusaetzlich:
+- `user_profile` (Name, Birthdate, Height, Smoker, Meds, Protein-Ziel)
+- `trendpilot_events_range` (alle Eintraege, chronologisch)
+
 Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
 
 ---
@@ -66,7 +72,7 @@ Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
 ### 5.1 Trigger
 - Monthly: manuell via Doctor-Inbox Button.
 - Range: manuell via Doctor-Inbox, nur mit `from/to`.
-- (Geplant) Monthly via Cron (GitHub Actions).
+- Monthly via Cron (GitHub Actions).
 
 ### 5.2 Edge Function Verarbeitung
 - Normalisiert Range:
@@ -87,6 +93,7 @@ Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
   - Loeschen
   - Regenerieren
 - Nach Generierung wird Inbox refresh ausgeloest.
+ - Inbox ist fullscreen (Desktop + Mobile).
 
 ---
 
@@ -94,6 +101,8 @@ Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
 
 - Reports werden als Karten dargestellt (Titel + Zeitraum + Summary + Text).
 - Filter: `monthly_report` vs `range_report`.
+- Monatsberichte sind nach Monat gruppiert (Accordion, standardmaessig eingeklappt).
+- Arzt-Berichte sind eigener Accordion-Block, standardmaessig geoeffnet.
 - Aktionen:
   - Regenerate: erstellt Report neu (Monthly ueberschreibt, Range erstellt neu).
   - Delete: entfernt den aktuellen Report.
@@ -122,7 +131,8 @@ Doctor-View ruft ausschliesslich das Reports-Modul auf und kapselt UI-Overlay.
 ## 8. Auth / Sicherheit
 
 - Edge Function laeuft mit User JWT (manual).
-- Cron-Run (geplant) nutzt Service Role + `MONTHLY_REPORT_USER_ID`.
+- Cron-Run nutzt Service Role + `MONTHLY_REPORT_USER_ID`.
+- Cron-Payload: `{"trigger":"scheduler","report_type":"monthly_report"}`.
 - Single-User Betrieb erlaubt vereinfachte Strategien, aber:
   - Scheduler braucht immer definierten User.
   - Keine offenen Endpoints ohne Auth.
@@ -163,6 +173,7 @@ Status:
 - Inbox-Filter (monthly/range) korrekt.
 - Delete/Regenerate funktioniert.
 - Clear Inbox loescht Subtype korrekt.
+- Cron-Run erstellt einen Monatsbericht ohne Fehler.
 
 ---
 

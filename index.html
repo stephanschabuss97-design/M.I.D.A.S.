@@ -807,55 +807,62 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <form class="appointments-form" id="appointmentsForm" autocomplete="off">
-            <div class="appointments-grid">
-              <label>
-                <span>Terminname</span>
-                <input type="text" id="apptTitle" placeholder="z. B. Kontrollbesuch" required>
-              </label>
-              <label class="appointments-date">
-                <span>Datum</span>
-                <input type="date" id="apptDate" required>
-              </label>
-              <label class="appointments-repeat">
-                <span>Wiederholen</span>
-                <select id="apptRepeatRule">
-                  <option value="none">Nie</option>
-                  <option value="monthly">Monatlich</option>
-                  <option value="annual">Jährlich</option>
-                </select>
-              </label>
-              <label>
-                <span>Uhrzeit</span>
-                <input type="time" id="apptTime">
-              </label>
-              <label>
-                <span>Ort / Adresse</span>
-                <input type="text" id="apptLocation" placeholder="z. B. Ordination Dr. XY">
-              </label>
-            </div>
-            <label class="appointments-notes">
-              <span>Notizen / Vorbereitung</span>
-              <textarea id="apptNotes" rows="2" placeholder="Mitbringen: Befunde, Liste der Medikamente ..."></textarea>
-            </label>
-            <div class="appointments-actions">
-              <button class="btn primary" type="submit">
-                &#x1F4BE; Termin speichern
-              </button>
-              <button class="btn ghost" type="button" id="appointmentsOverviewBtn">
-                Übersicht anzeigen
-              </button>
-            </div>
-          </form>
-          <section class="appointments-overview" id="appointmentsOverview" aria-live="polite">
-            <header class="appointments-overview-header">
-              <h3>Kommende Termine</h3>
-              <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
-            </header>
-            <div class="appointments-columns" id="appointmentsColumns">
-              <!-- dynamische Karten -->
-            </div>
-          </section>
+          <div class="hub-appointments-tabs" role="tablist" aria-label="Termine Bereiche">
+            <button class="btn ghost is-active" id="appointmentsTabOverviewBtn" type="button" data-appointments-tab="overview" aria-controls="hubAppointmentsPanelOverview" aria-selected="true">Übersicht</button>
+            <button class="btn ghost" id="appointmentsTabNewBtn" type="button" data-appointments-tab="new" aria-controls="hubAppointmentsPanelNew" aria-selected="false">Neu</button>
+          </div>
+          <div class="hub-appointments-tab-panels">
+            <section class="hub-appointments-panel is-active" id="hubAppointmentsPanelOverview" data-appointments-panel="overview" role="tabpanel" aria-labelledby="appointmentsTabOverviewBtn">
+              <section class="appointments-overview" id="appointmentsOverview" aria-live="polite">
+                <header class="appointments-overview-header">
+                  <h3>Kommende Termine</h3>
+                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Eintr?0ge.</p>
+                </header>
+                <div class="appointments-columns" id="appointmentsColumns">
+                  <!-- dynamische Karten -->
+                </div>
+              </section>
+            </section>
+            <section class="hub-appointments-panel" id="hubAppointmentsPanelNew" data-appointments-panel="new" role="tabpanel" aria-labelledby="appointmentsTabNewBtn" aria-hidden="true" hidden>
+              <form class="appointments-form" id="appointmentsForm" autocomplete="off">
+                <div class="appointments-grid">
+                  <label>
+                    <span>Terminname</span>
+                    <input type="text" id="apptTitle" placeholder="z. B. Kontrollbesuch" required>
+                  </label>
+                  <label class="appointments-date">
+                    <span>Datum</span>
+                    <input type="date" id="apptDate" required>
+                  </label>
+                  <label class="appointments-repeat">
+                    <span>Wiederholen</span>
+                    <select id="apptRepeatRule">
+                      <option value="none">Nie</option>
+                      <option value="monthly">Monatlich</option>
+                      <option value="annual">J?0hrlich</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Uhrzeit</span>
+                    <input type="time" id="apptTime">
+                  </label>
+                  <label>
+                    <span>Ort / Adresse</span>
+                    <input type="text" id="apptLocation" placeholder="z. B. Ordination Dr. XY">
+                  </label>
+                </div>
+                <label class="appointments-notes">
+                  <span>Notizen / Vorbereitung</span>
+                  <textarea id="apptNotes" rows="2" placeholder="Mitbringen: Befunde, Liste der Medikamente ..."></textarea>
+                </label>
+                <div class="appointments-actions">
+                  <button class="btn primary" type="submit">
+                    &#x1F4BE; Termin speichern
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
         </div>
       </div>
     </section>

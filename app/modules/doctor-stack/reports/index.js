@@ -99,18 +99,23 @@
     const periodTo = report.period?.to || report.day || '';
     const monthLabel = formatMonthLabel(report.reportMonth || report.day || '');
     const createdLabel = formatReportDateTime(report.reportCreatedAt || report.ts);
-    const summary = (report.summary || '').trim() || 'Kein Summary verfuegbar.';
+    const summaryRaw = (report.summary || '').trim();
+    const summaryText = isRangeReport ? '' : (summaryRaw || 'Kein Summary verfügbar.');
     const flags = reportFlags(report);
     const badgeHtml = flags
       .map((flag) => `<span class="report-flag">${escapeAttr(flag)}</span>`)
       .join('');
+    const summaryHtml = summaryText
+      ? `<div class="doctor-report-summary">${escapeAttr(summaryText)}${badgeHtml}</div>`
+      : badgeHtml
+        ? `<div class="doctor-report-summary">${badgeHtml}</div>`
+        : '';
     const textHtml = formatReportNarrative(report.text);
     const monthTag = isRangeReport ? '' : report.reportMonth || '';
     const title = isRangeReport
       ? 'Arzt-Bericht - Zeitraum'
       : `Monatsbericht - ${monthLabel || 'Unbekannter Monat'}`;
     const subtitle = `Zeitraum: ${periodFrom || '-'} bis ${periodTo || '-'}`;
-    const tag = isRangeReport ? 'Arzt-Bericht' : 'Monatsbericht';
     return `
 <article class="doctor-report-card" data-report-id="${escapeAttr(report.id || '')}" data-report-month="${escapeAttr(monthTag)}" data-report-type="${escapeAttr(subtype)}" data-report-from="${escapeAttr(periodFrom)}" data-report-to="${escapeAttr(periodTo)}">
   <div class="doctor-report-head">
@@ -120,12 +125,11 @@
     </div>
     <div class="doctor-report-meta">Erstellt ${escapeAttr(createdLabel)}</div>
   </div>
-  <div class="doctor-report-tag">${escapeAttr(tag)}</div>
-  <div class="doctor-report-summary">${escapeAttr(summary)}${badgeHtml}</div>
+  ${summaryHtml}
   <div class="doctor-report-body">${textHtml}</div>
   <div class="doctor-report-actions">
     <button class="btn ghost" type="button" data-report-action="regenerate">Neu erstellen</button>
-    <button class="btn ghost" type="button" data-report-action="delete">Loeschen</button>
+    <button class="btn ghost" type="button" data-report-action="delete">Löschen</button>
   </div>
 </article>`;
   };
@@ -140,8 +144,59 @@
       panel.innerHTML = `<div class="small u-doctor-placeholder">${emptyLabel || 'Noch keine Berichte vorhanden.'}</div>`;
       return;
     }
-    const cards = reports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
-    panel.innerHTML = `<div class="doctor-inbox">${cards}</div>`;
+    const monthlyReports = reports.filter((report) => (report.subtype || report.payload?.subtype) !== 'range_report');
+    const rangeReports = reports.filter((report) => (report.subtype || report.payload?.subtype) === 'range_report');
+    const sections = [];
+
+    if (monthlyReports.length) {
+      const grouped = new Map();
+      monthlyReports.forEach((report) => {
+        const key = report.reportMonth || report.day?.slice(0, 7) || 'unknown';
+        const entry = grouped.get(key) || [];
+        entry.push(report);
+        grouped.set(key, entry);
+      });
+      const sortedKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a));
+      const groupsHtml = sortedKeys
+        .map((key, index) => {
+          const groupReports = grouped.get(key) || [];
+          const monthLabel = formatMonthLabel(key);
+          const countText = `${groupReports.length} Bericht${groupReports.length === 1 ? '' : 'e'}`;
+          const cards = groupReports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
+          const openAttr = '';
+          return `
+<details class="doctor-report-group"${openAttr}>
+  <summary class="doctor-report-group-head">
+    <span>${escapeAttr(monthLabel)}</span>
+    <span class="small">${countText}</span>
+  </summary>
+  <div class="doctor-report-group-body">
+    ${cards}
+  </div>
+</details>`;
+        })
+        .join('');
+      sections.push(`<div class="doctor-report-group-list">${groupsHtml}</div>`);
+    }
+
+    if (rangeReports.length) {
+      const cards = rangeReports.map((report) => renderMonthlyReportCard(report, fmtDateDE)).join('');
+      const countText = `${rangeReports.length} Bericht${rangeReports.length === 1 ? '' : 'e'}`;
+      const label = monthlyReports.length ? '<div class="doctor-report-group-label">Arzt-Berichte</div>' : '';
+      const rangeGroup = `
+<details class="doctor-report-group" open>
+  <summary class="doctor-report-group-head">
+    <span>Arzt-Berichte</span>
+    <span class="small">${countText}</span>
+  </summary>
+  <div class="doctor-report-group-body">
+    ${cards}
+  </div>
+</details>`;
+      sections.push(`${label}${rangeGroup}`);
+    }
+
+    panel.innerHTML = sections.join('');
   };
 
   const filterReportsByType = (reports, filter) => {
@@ -228,7 +283,7 @@
     const from = reportType === 'range_report' ? (options.from || defaultFrom) : null;
     const to = reportType === 'range_report' ? (options.to || defaultTo) : null;
     if (reportType === 'range_report' && (!from || !to)) {
-      const err = new Error('Bitte Zeitraum waehlen.');
+      const err = new Error('Bitte Zeitraum wählen.');
       if (typeof logError === 'function') {
         logError('range report missing range', err);
       }
@@ -253,7 +308,7 @@
     }
     const reportLabel = reportType === 'range_report' ? 'Arzt-Bericht' : 'Monatsbericht';
     if (typeof toast === 'function') {
-      toast(`${reportLabel} ausgeloest - Inbox aktualisiert.`);
+      toast(`${reportLabel} ausgelöst - Inbox aktualisiert.`);
     }
     if (typeof refreshAfter === 'function') {
       await refreshAfter({ from: from || '', to: to || '' });
@@ -283,16 +338,16 @@
       const deleter = resolveMonthlyReportDeleter();
       if (typeof deleter !== 'function') {
         if (typeof toast === 'function') {
-          toast('Loeschen momentan nicht moeglich.');
+          toast('Löschen momentan nicht möglich.');
         }
         return;
       }
-      if (!confirmSafe?.(`Diesen ${reportLabel} endgueltig loeschen?`)) return;
+      if (!confirmSafe?.(`Diesen ${reportLabel} endgültig löschen?`)) return;
       btn.disabled = true;
       try {
         await deleter({ id: reportId });
         if (typeof toast === 'function') {
-          toast(`${reportLabel} geloescht.`);
+          toast(`${reportLabel} gelöscht.`);
         }
         if (typeof refreshAfter === 'function') {
           await refreshAfter();
@@ -302,7 +357,7 @@
           logError('delete monthly report failed', err);
         }
         if (typeof uiError === 'function') {
-          uiError?.('Loeschen fehlgeschlagen.');
+          uiError?.('Löschen fehlgeschlagen.');
         }
       } finally {
         btn.disabled = false;
@@ -350,11 +405,11 @@
     const clearer = resolveReportInboxClearer();
     if (typeof clearer !== 'function') {
       if (typeof toast === 'function') {
-        toast('Inbox kann derzeit nicht geloescht werden.');
+        toast('Inbox kann derzeit nicht gelöscht werden.');
       }
       return;
     }
-    if (!confirmSafe?.('Inbox wirklich komplett loeschen?')) return;
+    if (!confirmSafe?.('Inbox wirklich komplett löschen?')) return;
     try {
       await clearer({ subtypes });
       if (typeof toast === 'function') {
@@ -368,7 +423,7 @@
         logError('inbox clear failed', err);
       }
       if (typeof uiError === 'function') {
-        uiError?.('Inbox konnte nicht geloescht werden.');
+        uiError?.('Inbox konnte nicht gelöscht werden.');
       }
     }
   };

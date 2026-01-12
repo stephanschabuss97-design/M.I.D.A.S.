@@ -659,6 +659,52 @@
     activePanel = panel;
     syncCarouselToPanel(panelName);
     doc.addEventListener('keydown', handlePanelEsc);
+    if (panelName === 'intake') {
+      const tabButtons = panel.querySelectorAll('[data-intake-tab]');
+      const tabPanels = panel.querySelectorAll('[data-intake-panel]');
+      if (tabButtons.length && tabPanels.length) {
+        const activeTab = 'in';
+        tabButtons.forEach((btn) => {
+          const isActive = btn.getAttribute('data-intake-tab') === activeTab;
+          btn.classList.toggle('is-active', isActive);
+          btn.setAttribute('aria-selected', String(isActive));
+        });
+        tabPanels.forEach((tabPanel) => {
+          const isActive = tabPanel.getAttribute('data-intake-panel') === activeTab;
+          tabPanel.classList.toggle('is-active', isActive);
+          if (isActive) {
+            tabPanel.hidden = false;
+            tabPanel.removeAttribute('aria-hidden');
+          } else {
+            tabPanel.hidden = true;
+            tabPanel.setAttribute('aria-hidden', 'true');
+          }
+        });
+      }
+    }
+    if (panelName === 'appointments') {
+      const tabButtons = panel.querySelectorAll('[data-appointments-tab]');
+      const tabPanels = panel.querySelectorAll('[data-appointments-panel]');
+      if (tabButtons.length && tabPanels.length) {
+        const activeTab = 'overview';
+        tabButtons.forEach((btn) => {
+          const isActive = btn.getAttribute('data-appointments-tab') === activeTab;
+          btn.classList.toggle('is-active', isActive);
+          btn.setAttribute('aria-selected', String(isActive));
+        });
+        tabPanels.forEach((tabPanel) => {
+          const isActive = tabPanel.getAttribute('data-appointments-panel') === activeTab;
+          tabPanel.classList.toggle('is-active', isActive);
+          if (isActive) {
+            tabPanel.hidden = false;
+            tabPanel.removeAttribute('aria-hidden');
+          } else {
+            tabPanel.hidden = true;
+            tabPanel.setAttribute('aria-hidden', 'true');
+          }
+        });
+      }
+    }
     if (typeof panel.scrollIntoView === 'function') {
       requestAnimationFrame(() => {
         panel.scrollIntoView({ block: 'start', behavior: 'smooth' });

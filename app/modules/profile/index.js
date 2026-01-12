@@ -307,7 +307,7 @@
     const rows = [
       ['Name', state.data.full_name],
       ['Geburtsdatum', state.data.birth_date],
-      ['Gr???Ye (cm)', state.data.height_cm],
+      ['Größe (cm)', state.data.height_cm],
       ['CKD-Stufe (Lab)', getDerivedCkdStage()],
       ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '??"'],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],

@@ -367,6 +367,39 @@
     if (initialized) return;
     const panelRefs = ensureRefs();
     if (!panelRefs) return;
+    const tabHost = panelRefs.panel.querySelector('.hub-appointments-tabs');
+    const tabButtons = panelRefs.panel.querySelectorAll('[data-appointments-tab]');
+    const tabPanels = panelRefs.panel.querySelectorAll('[data-appointments-panel]');
+    let activeTab = 'overview';
+    const setActiveTab = (tab) => {
+      activeTab = tab;
+      tabButtons.forEach((btn) => {
+        const isActive = btn.getAttribute('data-appointments-tab') === tab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+      });
+      tabPanels.forEach((panel) => {
+        const isActive = panel.getAttribute('data-appointments-panel') === tab;
+        panel.classList.toggle('is-active', isActive);
+        if (isActive) {
+          panel.hidden = false;
+          panel.removeAttribute('aria-hidden');
+        } else {
+          panel.hidden = true;
+          panel.setAttribute('aria-hidden', 'true');
+        }
+      });
+    };
+    if (tabHost && tabButtons.length && tabPanels.length) {
+      tabHost.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-appointments-tab]');
+        if (!btn) return;
+        const next = btn.getAttribute('data-appointments-tab');
+        if (!next || next === activeTab) return;
+        setActiveTab(next);
+      });
+      setActiveTab(activeTab);
+    }
     panelRefs.form?.addEventListener('submit', handleSubmit);
     panelRefs.overviewBtn?.addEventListener('click', (event) => {
       event.preventDefault();
