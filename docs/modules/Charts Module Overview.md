@@ -1,4 +1,4 @@
-﻿# Charts Module - Functional Overview
+# Charts Module - Functional Overview
 
 Kurze Einordnung:
 - Zweck: Visualisierung von BP- und Body-Daten inkl. Tooltip/KPIs.
@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Body Chart Roadmap](../BodyChart-Roadmap.md)
 
 ---
 
@@ -24,8 +25,8 @@ Related docs:
 |------|------|
 | `app/modules/doctor-stack/charts/index.js` | Chart-Controller, Rendering, Tooltip, KPIs |
 | `app/modules/doctor-stack/charts/chart.css` | Chart Styles (Panel, Tooltip, Bands) |
-| `assets/js/main.js` | Trigger/Refresh Integration |
 | `app/modules/doctor-stack/doctor/index.js` | Doctor-Panel oeffnet Chart-Panel |
+| `app/supabase/api/vitals.js` | Daily-Overview (BP/Body) via Views |
 | `app/modules/vitals-stack/trendpilot/index.js` | Trendpilot-Bands fuer BP-Chart |
 
 ---
@@ -33,7 +34,8 @@ Related docs:
 ## 3. Datenmodell / Storage
 
 - Keine eigene Persistenz.
-- Daten kommen aus Supabase oder Local (über `getFiltered`).
+- Daten kommen aus Supabase (Views) oder Local (fallback via `getFiltered`).
+- Body-Werte basieren auf `v_events_body` (kg/cm/fat_pct/muscle_pct + fat_kg/muscle_kg berechnet).
 
 ---
 
@@ -45,11 +47,14 @@ Related docs:
 ### 4.2 User-Trigger
 - Doctor-Panel: Button `Werte anzeigen`.
 - Metric-Select (`#metricSel`) wechselt zwischen BP/Body.
+- Body-Comp Toggle (BIA) erscheint nur im Body-Chart.
 
 ### 4.3 Verarbeitung
-- `getFiltered()` lädt Range-Daten (Supabase oder Local).
+- `getFiltered()` laedt Range-Daten (Supabase oder Local).
 - `draw()` berechnet Scales, rendert SVG, KPI-Box, Tooltip.
 - Trendpilot-Bands werden fuer BP eingeblendet.
+- Body-Chart: Gewicht/Bauchumfang als Linien, BIA-Werte optional als Balken (Toggle).
+- Muskelstatus-Trend als dezente Linie (Rolling-Median, Zeitraum-basiert).
 
 ### 4.4 Persistenz
 - Keine Persistenz.
@@ -61,12 +66,15 @@ Related docs:
 - Chart-Panel `#chart` mit SVG `#chartSvg`.
 - Tooltip `#chartTip` + Live-Region `#chartAria`.
 - KPI-Box `#chartAverages`.
+- KPI-Header: BMI/WHtR Snapshot mit Trendpfeil; Muskelstatus als Prozenttrend mit Gewichtsdifferenz im Zeitraum.
 
 ---
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Chart wird aus Doctor-Ansicht geöffnet und nutzt deren Range.
+- Chart wird aus Doctor-Ansicht geoeffnet und nutzt deren Range.
+- BMI/WHtR basieren auf letztem Messwert; Trendpfeile basieren auf erstem vs letztem Wert im Zeitraum.
+- Muskelstatus wird aus Body-Messungen (kg + BIA) geglaettet und als Trend angezeigt, inklusive Gewichtsdifferenz im Header.
 
 ---
 
@@ -74,6 +82,7 @@ Related docs:
 
 - `diag.add` bei Trendpilot-Band- oder Render-Fehlern.
 - Fallbacks bei fehlenden DOM-Elementen.
+- Body-Tooltip enthaelt Hinweis auf BIA-Schaetzung und Glaettung, wenn Body-Comp vorhanden ist.
 
 ---
 
@@ -93,6 +102,7 @@ Related docs:
 - Export (SVG/PNG).
 - Weitere Metriken.
 - Konfigurierbare Range-Presets.
+- Optional: Layer 3 deaktivierbar, falls visuell zu dominant.
 
 ---
 
@@ -118,6 +128,7 @@ Related docs:
 - Chart laedt fuer gewaehlten Range.
 - Tooltips/Keyboard funktionieren.
 - Trendpilot-Bands sichtbar bei BP.
+- Body-Comp Toggle steuert BIA-Balken; Muskelstatus/Trendpfeile folgen dem Range.
 
 ---
 
@@ -126,4 +137,3 @@ Related docs:
 - Chart-Panel stabil und interaktiv.
 - Keine Render-Fehler im diag.
 - Doku aktuell.
-

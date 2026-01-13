@@ -19,7 +19,7 @@
   const appModules = global.AppModules;
   const doc = global.document;
 
-/* Fallbacks nur, wenn extern nicht verfuegbar */
+/* Fallbacks nur, wenn extern nicht verfügbar */
 const safeEnsureSupabaseClient = async () => {
   try { if (typeof ensureSupabaseClient === "function") return await ensureSupabaseClient(); } catch(_) {}
   return null;
@@ -125,7 +125,7 @@ const chartPanel = {
   _colorCtx: null,
   _colorCache: null,
   SHOW_CHART_ANIMATIONS: true,
-  SHOW_BODY_COMP_BARS: true,
+  SHOW_BODY_COMP_BARS: false,
   tipDefaultBg: null,
   tipDefaultBorder: null,
 
@@ -148,6 +148,15 @@ const chartPanel = {
     if (closeBtn) closeBtn.addEventListener("click", () => this.hide());
     const metricSel = $("#metricSel");
     if (metricSel) metricSel.addEventListener("change", () => this.draw());
+    const bodyCompToggle = $("#chartBodyCompToggle");
+    if (bodyCompToggle) {
+      bodyCompToggle.checked = false;
+      this.SHOW_BODY_COMP_BARS = false;
+      bodyCompToggle.addEventListener("change", () => {
+        this.SHOW_BODY_COMP_BARS = !!bodyCompToggle.checked;
+        if (this.open) this.draw();
+      });
+    }
 
     // Tooltip (hover/click)
     const contentHost = this.el?.querySelector(".content") || this.el || document.body;
@@ -183,7 +192,7 @@ const chartPanel = {
     contentHost.appendChild(live);
     this.live = live;
 
-    // Interaktivitaet
+    // Interaktivität
     if (this.svg) {
       this.svg.addEventListener("pointermove", (e) => {
         if (this.tipSticky) return;
@@ -266,7 +275,7 @@ const chartPanel = {
     }
   },
 
-  // SUBMODULE: chartPanel.show @internal - oeffnet Panel und aktiviert focusTrap
+  // SUBMODULE: chartPanel.show @internal - öffnet Panel und aktiviert focusTrap
   show() {
     this.open = true;
     if (this.el) {
@@ -315,7 +324,7 @@ async getFiltered() {
   if (useSupabase) {
     // gleiche Aggregation wie Arzt-Ansicht
     const days = await fetchDailyOverview(from, to);
-    // Fuer die Chart-Logik bauen wir flache "entry"-aehnliche Objekte
+    // Fuer die Chart-Logik bauen wir flache "entry"-ähnliche Objekte
     const flat = [];
     const filteredDays = Array.isArray(days) ? days.filter((d) => isDayInRange(d?.date)) : [];
     for (const d of filteredDays) {
@@ -410,19 +419,19 @@ async getFiltered() {
           return "Kontext: Bauchumfang ist in der gleichen Phase gestiegen.";
         }
         if (weightUp && activityLevel === "low") {
-          return "Kontext: Aktivitaet war in den letzten 4 Wochen niedrig.";
+          return "Kontext: Aktivität war in den letzten 4 Wochen niedrig.";
         }
         if (weightUp && activityLevel === "high" && muscleUp) {
-          return "Kontext: Aktivitaet hoch, Muskelmasse ist gestiegen.";
+          return "Kontext: Aktivität hoch, Muskelmasse ist gestiegen.";
         }
         if (weightUp && activityLevel === "high" && fatUp) {
-          return "Kontext: Aktivitaet hoch, Fettanteil ist gestiegen.";
+          return "Kontext: Aktivität hoch, Fettanteil ist gestiegen.";
         }
         if (weightUp && activityLevel === "high" && !muscleUp && !fatUp) {
-          return "Kontext: Aktivitaet hoch; Body-Comp fehlt fuer Einordnung.";
+          return "Kontext: Aktivität hoch; Body-Comp fehlt fuer Einordnung.";
         }
         if (labDown) {
-          return "Kontext: Laborwerte in der Phase ruecklaeufig (eGFR).";
+          return "Kontext: Laborwerte in der Phase rueckläufig (eGFR).";
         }
         return "";
       };
@@ -477,8 +486,8 @@ async getFiltered() {
     }
   },
 
-  // Hoehe laden (Konfig oder Fallback 183 cm)
-  // SUBMODULE: chartPanel.getHeightCm @internal - liest Nutzerkoerpergroesse aus Supabase/Lokal
+  // Höhe laden (Konfig oder Fallback 183 cm)
+  // SUBMODULE: chartPanel.getHeightCm @internal - liest Nutzerkörpergrösse aus Supabase/Lokal
   async getHeightCm() {
     const cachedProfile = profileCache || appModules.profile?.getData?.() || null;
     if (cachedProfile?.height_cm) {
@@ -653,6 +662,27 @@ async getFiltered() {
         parts.push(`<div class="chart-tip-value">${esc(txt)}</div>`);
         liveParts.push(txt);
       });
+      if (muscleTxt || fatTxt) {
+        const biaNote = "BIA-Schaetzung (Trenddarstellung)";
+        parts.push(`<div class="chart-tip-value">${esc(biaNote)}</div>`);
+        liveParts.push(biaNote);
+        const rangeFrom = $("#from")?.value || "";
+        const rangeTo = $("#to")?.value || "";
+        const fmt = (isoDate) => {
+          if (!isoDate || typeof isoDate !== "string") return "";
+          const parts = isoDate.split("-");
+          if (parts.length !== 3) return isoDate;
+          return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        };
+        if (rangeFrom && rangeTo) {
+          const rangeText = `Zeitraum: ${fmt(rangeFrom)} - ${fmt(rangeTo)}`;
+          parts.push(`<div class="chart-tip-value">${esc(rangeText)}</div>`);
+          liveParts.push(rangeText);
+        }
+        const smoothNote = "Glättung: Median (4 Messungen)";
+        parts.push(`<div class="chart-tip-value">${esc(smoothNote)}</div>`);
+        liveParts.push(smoothNote);
+      }
     } else if (valueLabel) {
       this.setTipTheme(null);
       parts.push(`<div class="chart-tip-value">${esc(valueLabel)}</div>`);
@@ -933,6 +963,7 @@ async getFiltered() {
       { k: "pulsepressure", label: "Durchschnittlicher Pulsdruck: -" },
       { k: "bmi",  label: "BMI (letzter): -" },
       { k: "whtr", label: "WHtR (letzter): -" },
+      { k: "muscle-status", label: "Muskeln (Zeitraum): -" },
     ];
     need.forEach((n) => {
       if (!box.querySelector(`[data-k="${n.k}"]`)) {
@@ -951,17 +982,17 @@ async getFiltered() {
     if (v < 18.5) return "#60a5fa";         // untergew.
     if (v < 25)   return "#10b981";         // normal
     if (v < 30)   return "#f59e0b";         // uebergew.
-    return "#ef4444";                        // adipoes
+    return "#ef4444";                        // adipös
   },
   // SUBMODULE: chartPanel.kpiColorWHtR @internal - mappt WHtR auf WHO-Farben
   kpiColorWHtR(v) {
     if (v == null) return "#9aa3af";
     if (v < 0.5)   return "#10b981";        // ok
-    if (v <= 0.6)  return "#f59e0b";        // erhoeht
+    if (v <= 0.6)  return "#f59e0b";        // erhöht
     return "#ef4444";                        // hoch
   },
 
-  // Ein Punkt pro KPI, korrekt eingefaerbt; saubere Separatoren
+  // Ein Punkt pro KPI, korrekt eingefärbt; saubere Separatoren
   // SUBMODULE: chartPanel.layoutKpis @internal - zeichnet KPI-Dots/Sep dynamisch
   layoutKpis() {
     const box = $("#chartAverages");
@@ -1059,6 +1090,10 @@ if (!(await isLoggedIn())) {
 }
 const metric = $("#metricSel")?.value || "bp";
 this.currentMetric = metric;
+const bodyToggleWrap = this.el?.querySelector?.(".chart-switch") || null;
+if (bodyToggleWrap) {
+  bodyToggleWrap.style.display = metric === "weight" ? "inline-flex" : "none";
+}
 const BASE_WEIGHT_MIN = 75;
 const rangeFrom = $("#from")?.value;
 const rangeTo = $("#to")?.value;
@@ -1074,6 +1109,7 @@ if (metric === "bp") {
     const xsAll = data.map(e => e.ts ?? Date.parse(e.dateTime));
     let series = [];
     let barSeries = [];
+    let muscleTrendSeries = null;
     let X = xsAll;
     let pendingBodyHitsSvg = "";
 
@@ -1111,7 +1147,7 @@ if (metric === "bp") {
 
     let bodyMetaByDate = new Map();
 
-    // Fuer BP benoetigen wir Meta je Punkt
+    // Fuer BP benötigen wir Meta je Punkt
     let meta = null;
     let bpPairs = null;
     this.currentMeta = null;
@@ -1208,12 +1244,14 @@ if (metric === "bp") {
         const ppEl = avgBox.querySelector('[data-k="pulsepressure"]');
         const bmiEl  = avgBox.querySelector('[data-k="bmi"]');
         const whtrEl = avgBox.querySelector('[data-k="whtr"]');
+        const muscleEl = avgBox.querySelector('[data-k="muscle-status"]');
         if (sEl)  { sEl.style.display  = ""; sEl.textContent  = "Durchschnitt Sys: " + f0(avgSys); }
         if (dEl)  { dEl.style.display  = ""; dEl.textContent  = "Durchschnitt Dia: " + f0(avgDia); }
         if (mEl)  { mEl.style.display  = ""; mEl.textContent  = "Durchschnitt MAP: " + f0(avgMap); }
         if (ppEl) { ppEl.style.display = ""; ppEl.textContent = `Durchschnittlicher Pulsdruck: ${f0(avgPulsePressure)}`; }
         if (bmiEl)  bmiEl.style.display  = "none";
         if (whtrEl) whtrEl.style.display = "none";
+        if (muscleEl) muscleEl.style.display = "none";
 
         avgBox.style.display = (avgSys != null || avgDia != null || avgMap != null) ? "inline-flex" : "none";
         this.layoutKpis();
@@ -1249,7 +1287,9 @@ if (metric === "bp") {
     }
   ];
 
-  // KPI-Leiste: BMI & WHtR aus dem LETZTEN verfuegbaren Wert
+  let smooth = null;
+  let bodyEntries = [];
+  // KPI-Leiste: BMI & WHtR aus dem LETZTEN verfügbaren Wert
   if (avgBox) {
     // BP-KPIs ausblenden
     ["sys","dia","map","pulsepressure"].forEach(k => {
@@ -1257,7 +1297,13 @@ if (metric === "bp") {
       if (el) el.style.display = "none";
     });
 
-    // letzten Weight/Bauchumfang finden (data ist aufsteigend sortiert)
+    // ersten/letzten Weight/Bauchumfang finden (data ist aufsteigend sortiert)
+    let firstWeight = null, firstWaist = null;
+    for (let i = 0; i < data.length; i++) {
+      if (firstWeight == null && data[i].weight   != null) firstWeight = Number(data[i].weight);
+      if (firstWaist  == null && data[i].waist_cm != null) firstWaist  = Number(data[i].waist_cm);
+      if (firstWeight != null && firstWaist != null) break;
+    }
     let lastWeight = null, lastWaist = null;
     for (let i = data.length - 1; i >= 0; i--) {
       if (lastWeight == null && data[i].weight   != null) lastWeight = Number(data[i].weight);
@@ -1270,12 +1316,88 @@ if (metric === "bp") {
 
     const bmi  = (lastWeight != null && hM)         ? lastWeight / (hM * hM) : null;
     const whtr = (lastWaist  != null && heightCm>0) ? lastWaist  / heightCm  : null;
+    const trendArrow = (start, end, epsilon) => {
+      if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
+      const delta = end - start;
+      if (Math.abs(delta) <= epsilon) return "→";
+      return delta > 0 ? "↑" : "↓";
+    };
+    const bmiStart = (firstWeight != null && hM) ? firstWeight / (hM * hM) : null;
+    const bmiEnd = (lastWeight != null && hM) ? lastWeight / (hM * hM) : null;
+    const whtrStart = (firstWaist != null && heightCm > 0) ? firstWaist / heightCm : null;
+    const whtrEnd = (lastWaist != null && heightCm > 0) ? lastWaist / heightCm : null;
+    const bmiArrow = trendArrow(bmiStart, bmiEnd, 0.1);
+    const whtrArrow = trendArrow(whtrStart, whtrEnd, 0.01);
 
     const bmiEl  = avgBox.querySelector('[data-k="bmi"]');
     const whtrEl = avgBox.querySelector('[data-k="whtr"]');
+    const muscleEl = avgBox.querySelector('[data-k="muscle-status"]');
 
-    if (bmiEl)  { bmiEl.textContent  = `BMI (letzter): ${bmi  == null ? "-" : bmi.toFixed(1)}`;  bmiEl.style.display  = ""; }
-    if (whtrEl) { whtrEl.textContent = `WHtR (letzter): ${whtr == null ? "-" : whtr.toFixed(2)}`; whtrEl.style.display = ""; }
+    if (bmiEl)  {
+      const bmiTxt = bmi == null ? "-" : bmi.toFixed(1);
+      bmiEl.textContent = `BMI (letzter): ${bmiTxt}${bmiArrow ? ` ${bmiArrow}` : ""}`;
+      bmiEl.style.display  = "";
+    }
+    if (whtrEl) {
+      const whtrTxt = whtr == null ? "-" : whtr.toFixed(2);
+      whtrEl.textContent = `WHtR (letzter): ${whtrTxt}${whtrArrow ? ` ${whtrArrow}` : ""}`;
+      whtrEl.style.display = "";
+    }
+
+    const rollingMedianSeries = (values, windowSize) => values.map((_, idx) => {
+      const start = Math.max(0, idx - windowSize + 1);
+      const slice = values.slice(start, idx + 1).filter(v => Number.isFinite(v));
+      if (!slice.length) return null;
+      const sorted = slice.slice().sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    });
+    const formatSignedPercent = (value) => {
+      if (!Number.isFinite(value)) return "-";
+      const rounded = Math.round(value * 10) / 10;
+      const abs = Math.abs(rounded);
+      const txt = abs % 1 === 0 ? abs.toFixed(0) : abs.toFixed(1);
+      const sign = rounded > 0 ? "+" : (rounded < 0 ? "-" : "");
+      return `${sign}${txt} %`;
+    };
+    const formatSignedKg = (value) => {
+      if (!Number.isFinite(value)) return "-";
+      const rounded = Math.round(value * 10) / 10;
+      const abs = Math.abs(rounded);
+      const txt = abs % 1 === 0 ? abs.toFixed(0) : abs.toFixed(1);
+      const sign = rounded > 0 ? "+" : (rounded < 0 ? "-" : "");
+      return `${sign}${txt} kg`;
+    };
+    let muscleTrend = null;
+    const resolveMuscleValue = (meta) => {
+      const muscleVal = Number(meta?.muscle_kg);
+      if (Number.isFinite(muscleVal)) return muscleVal;
+      const weightVal = Number(meta?.weight);
+      const fatVal = Number(meta?.fat_kg);
+      if (!Number.isFinite(weightVal) || !Number.isFinite(fatVal)) return null;
+      return weightVal - fatVal;
+    };
+    bodyEntries = Array.from(bodyMetaByDate.values())
+      .filter((meta) => meta && resolveMuscleValue(meta) != null)
+      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+    const muscleMeasurements = bodyEntries.map(resolveMuscleValue);
+    smooth = rollingMedianSeries(muscleMeasurements, 4);
+    const start = smooth.find(v => Number.isFinite(v));
+    const end = [...smooth].reverse().find(v => Number.isFinite(v));
+    if (Number.isFinite(start) && Number.isFinite(end) && start !== 0) {
+      muscleTrend = ((end - start) / start) * 100;
+    }
+    if (muscleEl) {
+      const valueText = Number.isFinite(muscleTrend) ? formatSignedPercent(muscleTrend) : "-";
+      const weightDelta = (Number.isFinite(firstWeight) && Number.isFinite(lastWeight))
+        ? (lastWeight - firstWeight)
+        : null;
+      const weightText = formatSignedKg(weightDelta);
+      muscleEl.textContent = `Muskeln (Zeitraum): ${valueText} (Gewicht ${weightText})`;
+      muscleEl.style.display = "";
+    }
 
     avgBox.style.display = "inline-flex";
     this.layoutKpis();
@@ -1288,6 +1410,20 @@ if (metric === "bp") {
     { key: "body-fat",    name: "Fettmasse (kg)",   values: fatKg,    color: "var(--chart-bar-fat)" },
   ];
   this.currentBodyMeta = bodyMetaByDate;
+  const smoothByDate = new Map();
+  bodyEntries.forEach((meta, idx) => {
+    const value = smooth?.[idx];
+    if (Number.isFinite(value) && meta?.date) {
+      smoothByDate.set(meta.date, value);
+    }
+  });
+  muscleTrendSeries = data.map((entry) => {
+    if (!entry || !entry.date) return null;
+    const isBodyEntry = entry.weight != null || entry.waist_cm != null || entry.fat_kg != null || entry.muscle_kg != null;
+    if (!isBodyEntry) return null;
+    const value = smoothByDate.get(entry.date);
+    return Number.isFinite(value) ? value : null;
+  });
 }
 
   // --- Render-Prep ---
@@ -1313,7 +1449,7 @@ if (metric === "bp") {
       return;
     }
 
-    // Dynamische Groesse
+    // Dynamische Grösse
     const bbox = this.svg?.getBoundingClientRect?.() || { width: 640, height: 280 };
     const W = Math.max(300, Math.floor(bbox.width  || 640));
     const H = Math.max(200, Math.floor(bbox.height || 280));
@@ -1476,6 +1612,32 @@ grid += text(W - PR - 2, yDia  + 4, "Dia 90",  "end");
 
 
     // Linien + Punkte
+    let muscleTrendLine = "";
+    if (metric === "weight" && Array.isArray(muscleTrendSeries)) {
+      const finiteVals = muscleTrendSeries.filter(v => Number.isFinite(v));
+      if (finiteVals.length >= 2) {
+        let minVal = Math.min(...finiteVals);
+        let maxVal = Math.max(...finiteVals);
+        if (!Number.isFinite(minVal) || !Number.isFinite(maxVal) || minVal === maxVal) {
+          minVal = 0;
+          maxVal = 1;
+        }
+        const bandTop = PT + innerH * 0.08;
+        const bandHeight = Math.max(18, innerH * 0.12);
+        const yBand = (val) => {
+          const norm = (val - minVal) / Math.max(1e-9, maxVal - minVal);
+          return bandTop + (1 - Math.min(1, Math.max(0, norm))) * bandHeight;
+        };
+        let d = "";
+        muscleTrendSeries.forEach((v, i) => {
+          if (!Number.isFinite(v) || !Number.isFinite(X[i])) return;
+          d += (d === "" ? "M" : "L") + `${x(X[i]).toFixed(1)},${yBand(v).toFixed(1)} `;
+        });
+        if (d) {
+          muscleTrendLine = `<path class="muscle-trend-line" data-series="body-muscle-trend" d="${d}" fill="none" pointer-events="none" />`;
+        }
+      }
+    }
 const isFiniteTs = (t) => Number.isFinite(t);
 
 const getBodyNote = (date) => (date ? (bodyMetaByDate.get(date)?.note || "") : "");
@@ -1632,6 +1794,9 @@ const mkBars = () => {
         this.svg.insertAdjacentHTML("beforeend", bars);
       }
     }
+    if (muscleTrendLine && this.svg) {
+      this.svg.insertAdjacentHTML("beforeend", muscleTrendLine);
+    }
     series.forEach((s) => {
       if (!this.svg) return;
       this.svg.insertAdjacentHTML("beforeend", mkPath(s));
@@ -1657,6 +1822,20 @@ const mkBars = () => {
       this.legend.appendChild(wrap);
     }
   });
+
+    if (metric === "weight" && muscleTrendLine && this.legend) {
+      const wrap = document.createElement("span");
+      wrap.style.display = "inline-flex";
+      wrap.style.alignItems = "center";
+      wrap.style.gap = "6px";
+      wrap.setAttribute("data-series", "body-muscle-trend");
+      const swatch = document.createElement("span");
+      swatch.className = "trend-line-swatch";
+      const label = document.createElement("span");
+      label.textContent = "Muskelstatus (Trend)";
+      wrap.append(swatch, label);
+      this.legend.appendChild(wrap);
+    }
 
     if (metric === "bp" && this.legend && trendpilotLegendKeys.length) {
       trendpilotLegendKeys.forEach((cls) => {
@@ -1699,6 +1878,13 @@ const mkBars = () => {
         wrap.append(dot, label);
         this.legend.appendChild(wrap);
       });
+    }
+
+    if (metric === "weight" && includeBars && this.legend) {
+      const wrap = document.createElement("span");
+      wrap.className = "chart-legend-note";
+      wrap.textContent = "BIA-Schätzwerte (kg), roh - nicht geglättet";
+      this.legend.appendChild(wrap);
     }
 
     if (this.tipSticky) { this.tipSticky = false; this.hideTip(); }
