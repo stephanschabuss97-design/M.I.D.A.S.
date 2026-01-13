@@ -18,6 +18,7 @@
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
   const doc = global.document;
+  const diag = appModules.diag || global.diag || null;
 
 /* Fallbacks nur, wenn extern nicht verfügbar */
 const safeEnsureSupabaseClient = async () => {
@@ -533,7 +534,7 @@ async getFiltered() {
     const keys = Array.isArray(seriesKey)
       ? seriesKey.filter(Boolean)
       : (seriesKey ? [seriesKey] : []);
-    const signature = keys.length ? [...keys].sort().join("|") : null;
+    const signature = keys.length ? [...keys].sort().join(" / ") : null;
     if (this.hoverSeries === signature) return;
     this.hoverSeries = signature;
 
@@ -611,7 +612,7 @@ async getFiltered() {
 
     const parts = [];
     const liveParts = [date, ctx];
-    const hdrText = [date, ctx].filter(Boolean).join(" . ");
+    const hdrText = [date, ctx].filter(Boolean).join(" / ");
     if (hdrText) {
       parts.push(`<div class="chart-tip-header">${esc(hdrText)}</div>`);
     }
@@ -663,7 +664,7 @@ async getFiltered() {
         liveParts.push(txt);
       });
       if (muscleTxt || fatTxt) {
-        const biaNote = "BIA-Schaetzung (Trenddarstellung)";
+        const biaNote = "BIA-Schätzung (Trenddarstellung)";
         parts.push(`<div class="chart-tip-value">${esc(biaNote)}</div>`);
         liveParts.push(biaNote);
         const rangeFrom = $("#from")?.value || "";
@@ -696,11 +697,11 @@ async getFiltered() {
     }
 
     if (!parts.length) return false;
-    this.tip.innerHTML = parts.join("");
+    this.tip.innerHTML = parts.join(" / ");
     this.tip.dataset.visible = "1";
     this.tip.style.display = "block";
     this.tip.style.opacity = "1";
-    if (this.live) this.live.textContent = liveParts.filter(Boolean).join(" ").trim();
+    if (this.live) this.live.textContent = liveParts.filter(Boolean).join(" / ").trim();
     return true;
   },
   getBpPairDetails(tgt) {
@@ -800,9 +801,9 @@ async getFiltered() {
         normalizeBodyVal(e.fat_kg),
         normalizeBodyVal(e.muscle_kg),
         firstLine(e.notes || "")
-      ].join("|"));
+      ].join(" / "));
     }
-    return parts.length ? parts.join("||") : "body:none";
+    return parts.length ? parts.join(" / ") : "body:none";
   },
   buildBodyMetaMap(entries, notesByDate) {
     const map = new Map();
@@ -849,7 +850,7 @@ async getFiltered() {
     if (hexMatch?.groups?.hex) {
       let hex = hexMatch.groups.hex;
       if (hex.length === 3) {
-        hex = hex.split("").map(c => c + c).join("");
+        hex = hex.split("").map(c => c + c).join(" / ");
       }
       const intVal = parseInt(hex, 16);
       const rgb = {
@@ -1097,6 +1098,28 @@ if (bodyToggleWrap) {
 const BASE_WEIGHT_MIN = 75;
 const rangeFrom = $("#from")?.value;
 const rangeTo = $("#to")?.value;
+const toDayTs = (isoDate /* "YYYY-MM-DD" */) => {
+  if (!isoDate) return NaN;
+  if (isoDate instanceof Date) {
+    return Date.UTC(isoDate.getUTCFullYear(), isoDate.getUTCMonth(), isoDate.getUTCDate());
+  }
+  const raw = String(isoDate);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    return Date.UTC(y, (m || 1) - 1, d || 1);
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+const normalizeDayKey = (value) => {
+  if (!value) return "";
+  const raw = String(value);
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : raw;
+};
 if (metric === "bp") {
   await this.loadTrendpilotBands({ from: rangeFrom, to: rangeTo });
 } else {
@@ -1104,12 +1127,46 @@ if (metric === "bp") {
 }
 
     const data   = await this.getFiltered();
+    let activityByDate = new Map();
+    if (metric === "weight") {
+      const activityModule = appModules?.activity || {};
+      const activityLoader = activityModule.loadActivities;
+      if (typeof activityLoader === "function" && rangeFrom && rangeTo) {
+        try {
+          let rows = await activityLoader(rangeFrom, rangeTo, { reason: "chart:activity" });
+          if ((!Array.isArray(rows) || !rows.length) && typeof activityModule._callActivityRpc === "function") {
+            try {
+              const fallbackRows = await activityModule._callActivityRpc(
+                "activity_list",
+                { p_from: rangeFrom, p_to: rangeTo },
+                { reason: "chart:activity-fallback" }
+              );
+              rows = Array.isArray(fallbackRows) ? fallbackRows : rows;
+            } catch (fallbackErr) {
+              appModules?.diag?.add?.(`[chart] activity fallback failed: ${fallbackErr?.message || fallbackErr}`);
+            }
+          }
+          if (Array.isArray(rows)) {
+            rows.forEach((row) => {
+              const dayKey = normalizeDayKey(row?.day);
+              if (dayKey) activityByDate.set(dayKey, row);
+            });
+          }
+          diag?.add?.(
+            `[chart] activity load: rows=${Array.isArray(rows) ? rows.length : 0} map=${activityByDate.size}`
+          );
+        } catch (err) {
+          diag?.add?.(`[chart] activity load failed: ${err?.message || err}`);
+        }
+      }
+    }
 
     // X-Basis
     const xsAll = data.map(e => e.ts ?? Date.parse(e.dateTime));
     let series = [];
     let barSeries = [];
     let muscleTrendSeries = null;
+    let smoothByDate = new Map();
     let X = xsAll;
     let pendingBodyHitsSvg = "";
 
@@ -1120,12 +1177,6 @@ if (metric === "bp") {
     const TH_SYS = 130;
     const TH_DIA = 90;
 
-    // Tagesstempel (UTC, 00:00)
-    const toDayTs = (isoDate /* "YYYY-MM-DD" */) => {
-      if (!isoDate) return NaN;
-      const [y, m, d] = isoDate.split("-").map(Number);
-      return Date.UTC(y, (m || 1) - 1, d || 1);
-    };
     const formatIsoDay = (isoDate) => {
       if (!isoDate) return "";
       const parts = isoDate.split("-");
@@ -1287,8 +1338,9 @@ if (metric === "bp") {
     }
   ];
 
-  let smooth = null;
-  let bodyEntries = [];
+    let smooth = null;
+    let bodyEntries = [];
+    smoothByDate = new Map();
   // KPI-Leiste: BMI & WHtR aus dem LETZTEN verfügbaren Wert
   if (avgBox) {
     // BP-KPIs ausblenden
@@ -1319,8 +1371,8 @@ if (metric === "bp") {
     const trendArrow = (start, end, epsilon) => {
       if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
       const delta = end - start;
-      if (Math.abs(delta) <= epsilon) return "→";
-      return delta > 0 ? "↑" : "↓";
+      if (Math.abs(delta) <= epsilon) return "\u2192";
+      return delta > 0 ? "\u2191" : "\u2193";
     };
     const bmiStart = (firstWeight != null && hM) ? firstWeight / (hM * hM) : null;
     const bmiEnd = (lastWeight != null && hM) ? lastWeight / (hM * hM) : null;
@@ -1409,19 +1461,23 @@ if (metric === "bp") {
     { key: "body-muscle", name: "Muskelmasse (kg)", values: muscleKg, color: "var(--chart-bar-muscle)" },
     { key: "body-fat",    name: "Fettmasse (kg)",   values: fatKg,    color: "var(--chart-bar-fat)" },
   ];
-  this.currentBodyMeta = bodyMetaByDate;
-  const smoothByDate = new Map();
+    this.currentBodyMeta = bodyMetaByDate;
   bodyEntries.forEach((meta, idx) => {
     const value = smooth?.[idx];
-    if (Number.isFinite(value) && meta?.date) {
-      smoothByDate.set(meta.date, value);
+    const dayKey = normalizeDayKey(meta?.date);
+    if (Number.isFinite(value) && dayKey) {
+      smoothByDate.set(dayKey, value);
     }
   });
+  diag?.add?.(
+    `[chart] muscle smooth: entries=${bodyEntries.length} smooth=${smooth?.length || 0} map=${smoothByDate.size}`
+  );
   muscleTrendSeries = data.map((entry) => {
-    if (!entry || !entry.date) return null;
+    const dayKey = normalizeDayKey(entry?.date);
+    if (!dayKey) return null;
     const isBodyEntry = entry.weight != null || entry.waist_cm != null || entry.fat_kg != null || entry.muscle_kg != null;
     if (!isBodyEntry) return null;
-    const value = smoothByDate.get(entry.date);
+    const value = smoothByDate.get(dayKey);
     return Number.isFinite(value) ? value : null;
   });
 }
@@ -1613,6 +1669,7 @@ grid += text(W - PR - 2, yDia  + 4, "Dia 90",  "end");
 
     // Linien + Punkte
     let muscleTrendLine = "";
+    let activityMarkers = "";
     if (metric === "weight" && Array.isArray(muscleTrendSeries)) {
       const finiteVals = muscleTrendSeries.filter(v => Number.isFinite(v));
       if (finiteVals.length >= 2) {
@@ -1635,6 +1692,36 @@ grid += text(W - PR - 2, yDia  + 4, "Dia 90",  "end");
         });
         if (d) {
           muscleTrendLine = `<path class="muscle-trend-line" data-series="body-muscle-trend" d="${d}" fill="none" pointer-events="none" />`;
+        }
+        if (activityByDate.size && smoothByDate.size) {
+          const smoothEntries = Array.from(smoothByDate.entries())
+            .map(([day, value]) => ({ day, ts: toDayTs(day), value }))
+            .filter((entry) => Number.isFinite(entry.ts) && Number.isFinite(entry.value));
+          diag?.add?.(
+            `[chart] activity markers: activity=${activityByDate.size} smooth=${smoothByDate.size} smoothEntries=${smoothEntries.length}`
+          );
+          activityByDate.forEach((act, day) => {
+            const dayKey = normalizeDayKey(day);
+            const actTs = toDayTs(dayKey);
+            if (!Number.isFinite(actTs)) return;
+            let closest = null;
+            let closestDist = Infinity;
+            smoothEntries.forEach((entry) => {
+              const dist = Math.abs(entry.ts - actTs);
+              if (dist < closestDist) {
+                closestDist = dist;
+                closest = entry;
+              }
+            });
+            if (!closest) return;
+            const cy = yBand(closest.value).toFixed(1);
+            const cx = x(actTs).toFixed(1);
+            const note = act?.note || "";
+            const duration = Number.isFinite(act?.duration_min) && act.duration_min > 0 ? `${act.duration_min} min` : "";
+            const label = [act?.activity || "Training", duration].filter(Boolean).join(" / ");
+            const valueLabel = label ? `Training: ${label}` : "Training";
+            activityMarkers += `<circle class="activity-marker chart-hit" cx="${cx}" cy="${cy}" r="3.8" data-kind="activity" data-date="${esc(dayKey)}" data-ctx="Training" data-note="${esc(note)}" data-value-label="${esc(valueLabel)}" data-series="body-muscle-trend" tabindex="0" role="button" aria-label="${esc(valueLabel)}"></circle>`;
+          });
         }
       }
     }
@@ -1708,7 +1795,7 @@ const mkDots = (seriesItem) => {
     }
     if (key) attrs.push(`data-series="${esc(key)}"`);
     attrs.push("/>");
-    out += attrs.filter(Boolean).join(" ");
+    out += attrs.filter(Boolean).join(" / ");
   });
   return out;
 };
@@ -1781,7 +1868,7 @@ const mkBars = () => {
         `aria-label="${esc(valueLabel)}"`
       ];
       if (seriesItem.key) attrParts.push(`data-series="${esc(seriesItem.key)}"`);
-      out += `<rect ${attrParts.join(" ")}></rect>`;
+      out += `<rect ${attrParts.join(" / ")}></rect>`;
     });
   });
   return out;
@@ -1822,6 +1909,10 @@ const mkBars = () => {
       this.legend.appendChild(wrap);
     }
   });
+
+    if (activityMarkers && this.svg) {
+      this.svg.insertAdjacentHTML("beforeend", activityMarkers);
+    }
 
     if (metric === "weight" && muscleTrendLine && this.legend) {
       const wrap = document.createElement("span");
