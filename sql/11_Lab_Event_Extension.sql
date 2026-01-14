@@ -227,7 +227,15 @@ begin
       if length(new.payload->>'ckd_stage') > 20 then
         raise exception 'lab_event: ckd_stage zu lang (max 20 Zeichen)' using errcode = '22023';
       end if;
-      if (new.payload->>'ckd_stage') !~ '^G(1|2|3a|3b|4|5)(?:\\s*A[123])?$' then
+      if (new.payload->>'ckd_stage') not in (
+        'G1', 'G2', 'G3a', 'G3b', 'G4', 'G5',
+        'G1 A1', 'G1 A2', 'G1 A3',
+        'G2 A1', 'G2 A2', 'G2 A3',
+        'G3a A1', 'G3a A2', 'G3a A3',
+        'G3b A1', 'G3b A2', 'G3b A3',
+        'G4 A1', 'G4 A2', 'G4 A3',
+        'G5 A1', 'G5 A2', 'G5 A3'
+      ) then
         raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
       end if;
     end if;

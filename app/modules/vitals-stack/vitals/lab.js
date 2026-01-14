@@ -100,7 +100,7 @@
       label: 'eGFR',
       min: 0,
       max: 200,
-      required: true
+      required: false
     });
     if (!egfrResult.valid) valid = false;
 

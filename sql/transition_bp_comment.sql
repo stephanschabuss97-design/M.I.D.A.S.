@@ -1,6 +1,7 @@
 -- ============================================
 -- transition_bp_comment.sql
--- Purpose: Store BP comments inline in bp payload (no separate note event).
+-- Purpose: Store BP comments inline in bp payload (no separate note event),
+--          plus CKD stage whitelist validation for lab_event.
 -- Safe: No table drops. Updates validation trigger + bp view only.
 -- ============================================
 
@@ -155,28 +156,25 @@ begin
       raise exception 'lab_event: payload enthaelt unbekannte Keys' using errcode = '22023';
     end if;
 
-    if not (new.payload ? 'egfr') then
-      raise exception 'lab_event: payload.egfr (Pflicht) fehlt' using errcode = '23502';
-    end if;
-    if not (new.payload ? 'creatinine') then
-      raise exception 'lab_event: payload.creatinine (Pflicht) fehlt' using errcode = '23502';
-    end if;
-
-    if (new.payload->>'egfr') !~ '^\d+(\.\d+)?$' then
-      raise exception 'lab_event: egfr muss numerisch sein' using errcode = '22023';
-    end if;
-    if (new.payload->>'egfr')::numeric < 0 or (new.payload->>'egfr')::numeric > 200 then
-      raise exception 'lab_event: egfr ausserhalb Range 0-200' using errcode = '22003';
+    if nullif(btrim(new.payload->>'egfr'), '') is not null then
+      if (new.payload->>'egfr') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: egfr muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'egfr')::numeric < 0 or (new.payload->>'egfr')::numeric > 200 then
+        raise exception 'lab_event: egfr ausserhalb Range 0-200' using errcode = '22003';
+      end if;
     end if;
 
-    if (new.payload->>'creatinine') !~ '^\d+(\.\d+)?$' then
-      raise exception 'lab_event: creatinine muss numerisch sein' using errcode = '22023';
-    end if;
-    if (new.payload->>'creatinine')::numeric < 0.1 or (new.payload->>'creatinine')::numeric > 20 then
-      raise exception 'lab_event: creatinine ausserhalb Range 0.1-20' using errcode = '22003';
+    if nullif(btrim(new.payload->>'creatinine'), '') is not null then
+      if (new.payload->>'creatinine') !~ '^\d+(\.\d+)?$' then
+        raise exception 'lab_event: creatinine muss numerisch sein' using errcode = '22023';
+      end if;
+      if (new.payload->>'creatinine')::numeric < 0.1 or (new.payload->>'creatinine')::numeric > 20 then
+        raise exception 'lab_event: creatinine ausserhalb Range 0.1-20' using errcode = '22003';
+      end if;
     end if;
 
-    if (new.payload ? 'hba1c') then
+    if nullif(btrim(new.payload->>'hba1c'), '') is not null then
       if (new.payload->>'hba1c') !~ '^\d+(\.\d+)?$' then
         raise exception 'lab_event: hba1c muss numerisch sein' using errcode = '22023';
       end if;
@@ -185,7 +183,7 @@ begin
       end if;
     end if;
 
-    if (new.payload ? 'ldl') then
+    if nullif(btrim(new.payload->>'ldl'), '') is not null then
       if (new.payload->>'ldl') !~ '^\d+(\.\d+)?$' then
         raise exception 'lab_event: ldl muss numerisch sein' using errcode = '22023';
       end if;
@@ -194,12 +192,12 @@ begin
       end if;
     end if;
 
-    if (new.payload ? 'comment') then
-      if length(new.payload->>'comment') < 1 or length(new.payload->>'comment') > 500 then
+    if nullif(btrim(new.payload->>'comment'), '') is not null then
+      if length(new.payload->>'comment') > 500 then
         raise exception 'lab_event: comment Laenge 1-500 Zeichen' using errcode = '22023';
       end if;
     end if;
-    if (new.payload ? 'potassium') then
+    if nullif(btrim(new.payload->>'potassium'), '') is not null then
       if (new.payload->>'potassium') !~ '^\d+(\.\d+)?$' then
         raise exception 'lab_event: potassium muss numerisch sein' using errcode = '22023';
       end if;
@@ -207,11 +205,19 @@ begin
         raise exception 'lab_event: potassium ausserhalb Range 2-7' using errcode = '22003';
       end if;
     end if;
-    if (new.payload ? 'ckd_stage') then
+    if nullif(btrim(new.payload->>'ckd_stage'), '') is not null then
       if length(new.payload->>'ckd_stage') > 20 then
         raise exception 'lab_event: ckd_stage zu lang (max 20 Zeichen)' using errcode = '22023';
       end if;
-      if (new.payload->>'ckd_stage') !~ '^G(1|2|3a|3b|4|5)(?:\\s*A[123])?$' then
+      if (new.payload->>'ckd_stage') not in (
+        'G1', 'G2', 'G3a', 'G3b', 'G4', 'G5',
+        'G1 A1', 'G1 A2', 'G1 A3',
+        'G2 A1', 'G2 A2', 'G2 A3',
+        'G3a A1', 'G3a A2', 'G3a A3',
+        'G3b A1', 'G3b A2', 'G3b A3',
+        'G4 A1', 'G4 A2', 'G4 A3',
+        'G5 A1', 'G5 A2', 'G5 A3'
+      ) then
         raise exception 'lab_event: ckd_stage Format erwartet z.B. "G3a A2"' using errcode = '22023';
       end if;
     end if;
