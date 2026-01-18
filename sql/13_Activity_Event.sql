@@ -211,8 +211,8 @@ begin
     end if;
 
     if (new.payload ? 'comment') then
-      if length(new.payload->>'comment') < 1 or length(new.payload->>'comment') > 500 then
-        raise exception 'lab_event: comment Laenge 1-500 Zeichen' using errcode = '22023';
+      if length(new.payload->>'comment') < 1 or length(new.payload->>'comment') > 2000 then
+        raise exception 'lab_event: comment Laenge 1-2000 Zeichen' using errcode = '22023';
       end if;
     end if;
     if (new.payload ? 'potassium') then

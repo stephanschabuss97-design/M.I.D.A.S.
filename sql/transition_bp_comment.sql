@@ -178,9 +178,6 @@ begin
       if (new.payload->>'hba1c') !~ '^\d+(\.\d+)?$' then
         raise exception 'lab_event: hba1c muss numerisch sein' using errcode = '22023';
       end if;
-      if (new.payload->>'hba1c')::numeric < 3 or (new.payload->>'hba1c')::numeric > 99 then
-        raise exception 'lab_event: hba1c ausserhalb Range 3-99' using errcode = '22003';
-      end if;
     end if;
 
     if nullif(btrim(new.payload->>'ldl'), '') is not null then
@@ -193,8 +190,8 @@ begin
     end if;
 
     if nullif(btrim(new.payload->>'comment'), '') is not null then
-      if length(new.payload->>'comment') > 500 then
-        raise exception 'lab_event: comment Laenge 1-500 Zeichen' using errcode = '22023';
+      if length(new.payload->>'comment') > 2000 then
+        raise exception 'lab_event: comment Laenge 1-2000 Zeichen' using errcode = '22023';
       end if;
     end if;
     if nullif(btrim(new.payload->>'potassium'), '') is not null then
@@ -286,5 +283,24 @@ select
   e.payload->>'comment'       as comment
 from public.health_events e
 where e.type = 'bp';
+
+-- (4) Expose lab values safely (empty strings -> NULL)
+create or replace view public.v_events_lab
+  with (security_invoker = on)
+as
+select
+  e.id,
+  e.user_id,
+  e.ts,
+  e.day,
+  nullif(btrim(e.payload->>'egfr'), '')::numeric       as egfr,
+  nullif(btrim(e.payload->>'creatinine'), '')::numeric as creatinine,
+  nullif(btrim(e.payload->>'hba1c'), '')::numeric      as hba1c,
+  nullif(btrim(e.payload->>'ldl'), '')::numeric        as ldl,
+  nullif(btrim(e.payload->>'potassium'), '')::numeric  as potassium,
+  nullif(btrim(e.payload->>'ckd_stage'), '')           as ckd_stage,
+  nullif(btrim(e.payload->>'comment'), '')             as doctor_comment
+from public.health_events e
+where e.type = 'lab_event';
 
 commit;
