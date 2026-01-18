@@ -78,7 +78,7 @@ Related docs:
 - Ergebnis: Eine Aenderung an Tokens oder Patterns wirkt auf alle Module (Intake, Vitals, Profile, Appointments, Assistant, Doctor).
 
 ### 5.1 Tokens & Basis
-- **`base.css`**: Farben, Typografie, Radius, Shadows, Surfaces als Tokens.
+- **`base.css`**: Farben, Typografie, Radius, Shadows, Surfaces, Glows als Tokens.
 - Keine Feature-Klassen hier.
 
 ### 5.2 Layout-Grundlage
@@ -86,7 +86,7 @@ Related docs:
 - Nur strukturelle Layouts (kein Modul-spezifischer Look).
 
 ### 5.3 Utilities
-- **`utilities.css`**: `u-*` Klassen fuer Spacing/Alignment/Text (inkl. Text-Skalen).
+- **`utilities.css`**: `u-*` Klassen fuer Spacing/Alignment/Text (inkl. Text-Skalen + Label-Pattern).
 - Nur Helpers, keine Komponentendefinitionen.
 
 ### 5.4 Globale Patterns

@@ -59,6 +59,10 @@
   --surface-card: var(--color-surface-card);
   --surface-card-secondary: var(--color-surface-card-secondary);
   --surface-elevated: var(--color-surface-elevated);
+  --glow-soft: 0 0 0 2px rgba(79, 157, 255, 0.2);
+  --glow-strong: 0 0 12px rgba(255, 200, 60, 0.15);
+  --glow-accent: 0 0 0 2px rgba(58, 61, 255, 0.25);
+  --glow-warn: 0 0 12px rgba(255, 200, 60, 0.15);
   --boot-stage-bg: rgba(8, 10, 14, 0.96);
   --boot-stage-border: rgba(255, 255, 255, 0.08);
   --boot-stage-text: var(--color-text-primary);
@@ -82,7 +86,6 @@
   --ok: var(--color-success);
   --danger: var(--color-danger);
   --border-subtle: var(--color-border-subtle);
-  --surface-elevated: var(--color-surface-elevated);
   --chart-line-primary: var(--color-chart-line-primary);
   --chart-line-primary-soft: var(--color-chart-line-primary-soft);
   --chart-line-secondary: var(--color-chart-line-secondary);
@@ -350,7 +353,7 @@ select:focus-visible,
 textarea:focus-visible {
   outline: none;
   border-color: rgba(79, 157, 255, 0.8);
-  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+  box-shadow: var(--glow-soft);
 }
 
 /* SUBMODULE: Button Reset @internal - erbt Schriftstil aus globalem Font */

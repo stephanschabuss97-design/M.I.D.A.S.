@@ -577,8 +577,6 @@ body.is-inbox-open {
   border: 1px solid #2b2f3a;
   font-size: var(--text-xxs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -596,7 +594,6 @@ body.is-inbox-open {
   color: #121417;
   font-size: var(--text-xxs);
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .doctor-report-body {
@@ -683,7 +680,5 @@ body.is-inbox-open {
   margin: 8px 0 6px;
   font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   opacity: 0.7;
 }

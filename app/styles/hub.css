@@ -493,8 +493,6 @@ body.voice-locked .hub-orbit {
   inset: auto 10% -46px 10%;
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   opacity: 0;
   transition: opacity 200ms ease;
 }
@@ -1125,8 +1123,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .medication-form .field-group .label {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -1143,7 +1139,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-form .field-group input:focus-visible {
   outline: none;
   border-color: rgba(79, 157, 255, 0.8);
-  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+  box-shadow: var(--glow-soft);
 }
 
 .medication-form.is-disabled {
@@ -1431,8 +1427,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-vitals-activity .field-group .label {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -1450,7 +1444,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .hub-vitals-activity textarea:focus-visible {
   outline: none;
   border-color: rgba(79, 157, 255, 0.8);
-  box-shadow: 0 0 0 2px rgba(79, 157, 255, 0.2);
+  box-shadow: var(--glow-soft);
 }
 
 .hub-vitals-activity .activity-form-actions {
@@ -1514,8 +1508,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .capture-card-label {
   font-size: 0.9rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   opacity: 0.8;
 }
 
@@ -1547,7 +1539,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .medication-card.is-low {
   border-color: rgba(255, 200, 60, 0.5);
-  box-shadow: 0 0 12px rgba(255, 200, 60, 0.15);
+  box-shadow: var(--glow-strong);
 }
 
 .capture-card-actions {
@@ -1568,16 +1560,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-card-grid .medication-card-title {
   font-size: 1rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   opacity: 0.85;
 }
 
 .medication-card-grid .medication-card-status {
   font-size: 0.85rem;
   opacity: 0.8;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .medication-card-grid .medication-card .btn {
@@ -1631,7 +1619,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .hub-date-control:hover,
 .hub-date-control:focus-visible {
   border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+  box-shadow: var(--glow-soft);
 }
 
 .hub-date-control::-webkit-calendar-picker-indicator {
@@ -1658,8 +1646,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-vitals-controls .control-group label {
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -1696,8 +1682,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .bp-context-header label {
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -2186,8 +2170,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .profile-form .label {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -2353,7 +2335,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-input:focus-visible {
   outline: none;
   border-color: rgba(120, 170, 255, 0.7);
-  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.3);
+  box-shadow: var(--glow-soft);
 }
 
 .assistant-input-tools {
@@ -2456,8 +2438,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .assistant-pill .label {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.75);
 }
@@ -2487,8 +2467,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .assistant-context-item .label {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.7);
 }

@@ -250,3 +250,73 @@ Ziel: CSS-Struktur nach Best Practice ausrichten (Tokens + Utilities zentral, Fe
        - `app/styles/ui.css`: `--color-surface-elevated` durch `--surface-elevated` ersetzt, `--shadow-soft` durch `--shadow-card`.
        - `app/styles/layout.css`: `--shadow-soft` durch `--shadow-card`.
      - 8.8.2 (done) CSS Module Overview aktualisieren.
+
+9) **Weitere Harmonisierung (Inputs, Labels, Glows)**
+   - 9.1 Inventar erweitern: lokale Input/Field-Styles sammeln.
+     - 9.1.1 (done) Dateien scannen (hub/capture/doctor/auth).
+       - `app/styles/capture.css`: `#cap-intake-wrap input` (border, background, focus, placeholder).
+       - `app/styles/auth.css`: `#appLock .pin-wrap input` (layout).
+       - `app/styles/hub.css`: Medication form inputs, vitals activity inputs/textarea, lab-grid inputs/select/textarea, capture-card input, bp-context select, appointments repeat select, appointments notes textarea, profile select/textarea, assistant input.
+       - `app/styles/doctor.css`: keine eigenen input/select/textarea Styles.
+     - 9.1.2 (done) Trefferliste (Selector + Eigenschaft + Datei).
+       - `app/styles/capture.css`: `#cap-intake-wrap input` -> `background`, `border`, `border-radius`, `color`, `transition`
+       - `app/styles/capture.css`: `#cap-intake-wrap input:focus-visible` -> `border-color`, `box-shadow`
+       - `app/styles/capture.css`: `#cap-intake-wrap input::placeholder` -> `color`, `opacity`
+       - `app/styles/auth.css`: `#appLock .pin-wrap input` -> `flex: 1`
+       - `app/styles/hub.css`: `.medication-form .field-group input[type="text"]` -> `border`, `border-radius`, `background`, `color`, `padding`
+       - `app/styles/hub.css`: `.medication-form .field-group input[type="number"]` -> `border`, `border-radius`, `background`, `color`, `padding`
+       - `app/styles/hub.css`: `.medication-form .field-group input:focus-visible` -> `border-color`, `box-shadow`
+       - `app/styles/hub.css`: `.medication-form.is-disabled input/select` -> `pointer-events: none`
+       - `app/styles/hub.css`: `.hub-vitals-activity input/textarea` -> `border`, `border-radius`, `background`, `color`, `padding`
+       - `app/styles/hub.css`: `.hub-vitals-activity input/textarea:focus-visible` -> `border-color`, `box-shadow`
+       - `app/styles/hub.css`: `.hub-vitals-lab .lab-grid input/select/textarea` -> `width: 100%`
+       - `app/styles/hub.css`: `.hub-vitals-lab .lab-grid textarea` -> `min-height`, `resize`
+       - `app/styles/hub.css`: `.capture-card input` -> `border-bottom`, `background`, `color`, `font-size`, `padding`
+       - `app/styles/hub.css`: `.bp-context-header select` -> `border`, `border-radius`, `background`, `color`, `padding`
+       - `app/styles/hub.css`: `.hub-vitals-controls .control-group select` -> `min-width`
+       - `app/styles/hub.css`: `.appointments-repeat select` -> `min-width`
+       - `app/styles/hub.css`: `.appointments-notes textarea` -> `width`, `min-height`, `resize`
+       - `app/styles/hub.css`: `.profile-form textarea` -> `min-height`, `resize`
+       - `app/styles/hub.css`: `.profile-form select` -> `appearance`, `background-image`, `background-position`, `background-repeat`, `background-size`, `padding-right`
+       - `app/styles/hub.css`: `.profile-form select option` -> `color`, `background`
+       - `app/styles/hub.css`: `.assistant-input` -> `border`, `border-radius`, `background`, `color`, `padding`
+       - `app/styles/hub.css`: `.assistant-input:focus-visible` -> `border-color`, `box-shadow`
+     - 9.1.3 (done) Cluster (Border/Focus/Padding).
+       - Border/Radius Cluster: `border: 1px solid rgba(255,255,255,0.15)` + `border-radius: 12px` (medication form, vitals activity, bp context select).
+       - Focus Cluster: `border-color: rgba(79,157,255,0.8)` + `box-shadow: 0 0 0 2px rgba(79,157,255,0.2)` (medication form, vitals activity).
+       - Full-Width Inputs: `width: 100%` (lab grid inputs/select/textarea, appointments notes).
+       - Textarea Sizing: `min-height: 96px` (appointments notes, profile textarea), `resize: vertical`.
+       - Minimal Inputs: `border-bottom` only (capture-card input).
+       - Select-Layout: `min-width: 160px` (bp context, vitals controls, appointments repeat).
+       - Assistant Input: custom border/background + focus color (separate style cluster).
+   - 9.2 Labels/Badges vereinheitlichen (Uppercase, Letter-Spacing, Weight).
+     - 9.2.1 (done) Alle Label-Styles erfassen.
+       - `app/styles/hub.css`: viele Uppercase/Letter-Spacing Labels (medication form label, vitals label, capture-card label, vitals controls, bp context, profile labels, assistant pill/context labels).
+       - `app/styles/doctor.css`: date labels, measure labels, lab comment label, report tag/labels (letter-spacing + uppercase).
+       - `app/styles/capture.css`: accordion header label + progress label (letter-spacing).
+       - `app/styles/auth.css`: keine eigenen label/uppercase Regeln.
+     - 9.2.2 (done) Globales Label-Pattern definieren.
+       - Basisklasse: `.u-label` (uppercase, letter-spacing, font-weight, color).
+       - Varianten: `.u-label-tight` (kleinere letter-spacing), `.u-label-muted` (opacity/color), `.u-label-lg` (groessere size).
+     - 9.2.3 (done) Feature-CSS auf Pattern umstellen.
+       - `app/styles/utilities.css`: Globales Label-Pattern hinzugefuegt und auf bestehende Label-Selektoren gemappt.
+       - `app/styles/hub.css`: lokale text-transform/letter-spacing in Label-Selektoren entfernt.
+       - `app/styles/doctor.css`: lokale text-transform/letter-spacing bei Report-Labels entfernt.
+   - 9.3 Shadows/Glows harmonisieren (Hub/Aura/Panel).
+     - 9.3.1 (done) Glow-Varianten erfassen.
+       - `app/styles/capture.css`: Progress-Bar Inset/Glow (ok/warn/bad/neutral) + Focus-Glow fuer Inputs.
+       - `app/styles/hub.css`: Aura/Orbit Glows, Voice-Ring Glow, Panel Open Glows, Drop-Shadows fuer Hub Icons.
+       - `app/styles/hub.css`: Input/Control Focus-Glows (vitals, assistant input).
+       - `app/styles/doctor.css`/`auth.css`: nur Token-Shadows, keine eigenen Glow-Patterns.
+     - 9.3.2 (done) Token-Set definieren (Glow-Light/Glow-Strong).
+       - Tokens: `--glow-soft` (0 0 0 2px rgba(79,157,255,0.2)), `--glow-strong` (0 0 12px rgba(255,200,60,0.15)).
+       - Accent-Glows: `--glow-accent` (0 0 0 2px rgba(58,61,255,0.25)), `--glow-warn` (0 0 12px rgba(255,200,60,0.15)).
+     - 9.3.3 (done) Hub/Feature-Glow auf Tokens umstellen.
+       - `app/styles/base.css`: Glow-Tokens hinzugefuegt, globales Focus-Glow auf Token umgestellt.
+       - `app/styles/hub.css`: Focus/State-Glows auf `--glow-soft` / `--glow-strong` umgestellt.
+       - `app/styles/capture.css`: Focus-Glow auf `--glow-accent` umgestellt.
+   - 9.4 QA + Cleanup.
+     - 9.4.1 (done) Visuelle Regression pruefen.
+     - 9.4.2 (done) Verwaiste Klassen entfernen, Doku aktualisieren.
+       - `app/styles/base.css`: doppeltes `--surface-elevated` Alias entfernt.
+       - `docs/modules/CSS Module Overview.md`: Tokens/Utilities Abschnitt erweitert (Glows, Label-Pattern).

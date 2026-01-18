@@ -47,6 +47,34 @@
 .u-text-md{font-size:var(--text-md)}
 .u-text-lg{font-size:var(--text-lg)}
 .u-text-xl{font-size:var(--text-xl)}
+.u-label-muted{color:var(--color-text-muted);opacity:.75;}
+.u-label-lg{font-size:var(--text-sm);}
+.u-label,
+.medication-form .field-group .label,
+.hub-vitals-activity .field-group .label,
+.capture-card-label,
+.medication-card-grid .medication-card-title,
+.medication-card-grid .medication-card-status,
+.hub-vitals-controls .control-group label,
+.bp-context-header label,
+.profile-form .label,
+.assistant-pill .label,
+.assistant-context-item .label,
+.hub-core-trigger.is-voice-locked::after,
+.doctor-report-tag,
+.doctor-report-summary span.report-flag,
+.doctor-report-group-label{
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-weight:600;
+}
+.u-label-tight,
+.medication-card-grid .medication-card-status,
+.assistant-pill .label,
+.assistant-context-item .label,
+.doctor-report-group-label{
+  letter-spacing:0.06em;
+}
 .u-w100-h48{width:100%;height:48px;}
 .u-w100-h48-mb12{width:100%;height:48px;margin-bottom:12px;}
 .u-w100-mt4{width:100%;margin-top:4px;}
