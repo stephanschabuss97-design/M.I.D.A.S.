@@ -436,6 +436,9 @@
       return;
     }
     try {
+      const panel = refs?.panel || null;
+      const saveBtn = refs?.saveBtn || null;
+      saveFeedback?.start({ button: saveBtn, panel });
       setFormDisabled(true);
       const client = await requireSupabaseClient();
       const userId = await requireUserId();
@@ -453,8 +456,13 @@
       renderOverview();
       notifyChange('save');
       log?.('profil gespeichert');
+      saveFeedback?.ok({ button: saveBtn, panel, successText: '&#x2705; Profil gespeichert' });
     } catch (err) {
       diag?.add?.(`[profile] save failed ${err.message || err}`);
+      saveFeedback?.error({
+        button: refs?.saveBtn || null,
+        message: err?.message || 'Speichern fehlgeschlagen.'
+      });
     } finally {
       setFormDisabled(false);
     }

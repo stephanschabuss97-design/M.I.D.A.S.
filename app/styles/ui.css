@@ -3,7 +3,7 @@
  * Description: Definiert globale Button-, Tab- und Layout-Stile inkl. Farbzustände, Animationen und Accessibility-Anpassungen.
  * Submodules:
  *  - Base Buttons (btn, states, variants)
- *  - Tabs Navigation (nav.tabs)
+ *  - Tabs Pattern (.tabs)
  *  - Flash Animation (gradient flash effect)
  *  - Layout Helpers (spacer, view, hidden)
  *  - Accessibility & Safety Rules (:focus-visible, [hidden])
@@ -12,7 +12,7 @@
 
 textarea{min-height:64px;resize:vertical}
 
-.small{font-size:12px;color:var(--color-text-muted)}
+.small{font-size:var(--text-xs);color:var(--color-text-muted)}
 
 /* SUBMODULE: Base Buttons @public - Grundstil für interaktive Buttons (Neutral, Primary, Ghost, Warn, Toggle) */
 .btn{
@@ -75,7 +75,7 @@ textarea{min-height:64px;resize:vertical}
 }
 .btn.toggle{
   border:1px solid var(--color-border-subtle);
-  background:var(--color-surface-elevated);
+  background:var(--surface-elevated);
   color:var(--color-text-primary);
 }
 .btn.toggle.active{
@@ -84,43 +84,76 @@ textarea{min-height:64px;resize:vertical}
   color:#062615;
 }
 
-/* SUBMODULE: Tabs Navigation @public - Optische Hervorhebung aktiver Tab-Buttons */
-nav.tabs .btn{
-  height:40px;
-  padding:0 16px;
-  border-radius:8px;
-  background:transparent;
-  border:1px solid transparent;
-  color:var(--color-text-muted);
+/* SUBMODULE: Tabs Pattern @public - Gemeinsames Tab-Underline fuer alle Module */
+.tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
   position:relative;
-  transition:color .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  z-index:2;
 }
-nav.tabs .btn:not(.primary):hover{
-  color:var(--color-text-primary);
-  border-color:var(--color-border-subtle);
-  background:var(--color-surface-elevated);
+.tabs .btn{
+  position:relative;
+  padding-bottom:2px;
 }
-nav.tabs .btn:focus-visible{
-  outline:none;
-  box-shadow:0 0 0 2px rgba(58,61,255,0.25);
-}
-nav.tabs .btn.primary {
-  color:#fff;
-  background:rgba(58,61,255,0.2);
-  border-color:rgba(58,61,255,0.35);
-  box-shadow:0 10px 25px rgba(58,61,255,0.18);
-}
-nav.tabs .btn.primary::after{
+.tabs .btn::after{
   content:"";
   position:absolute;
-  left:12px;
-  right:12px;
-  bottom:-6px;
+  left:8px;
+  right:8px;
   height:2px;
+  background:transparent;
+  bottom:-10px;
   border-radius:999px;
-  background:var(--color-accent);
-  box-shadow:0 4px 12px rgba(58,61,255,0.35);
 }
+.tabs .btn.is-active::after{
+  background:var(--accent, var(--color-accent));
+  box-shadow:0 4px 12px rgba(79,70,229,0.35);
+}
+
+/* SUBMODULE: Pills & Badges @public - Globale Status-Pills und KPI-Badges */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:var(--text-xs);
+  font-weight:600;
+  background:var(--surface-elevated);
+  border:1px solid var(--color-border-subtle);
+  color:var(--color-text-primary);
+}
+.pill .dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#6b7280;
+  box-shadow:0 0 0 1px rgba(0,0,0,.4);
+}
+.pill.ok .dot{background:var(--color-success)}
+.pill.warn .dot{background:var(--color-warn)}
+.pill.bad .dot{background:var(--color-danger)}
+.pill.neutral .dot{background:var(--color-accent)}
+.pill.plain{
+  background:rgba(255,255,255,0.05);
+  border-color:rgba(255,255,255,0.12);
+  font-weight:500;
+}
+.pill.plain .dot{display:none}
+
+.badge{
+  display:inline-block;
+  padding:6px 12px;
+  border:1.5px solid #2b2f3a;
+  border-radius:12px;
+  font-size:var(--text-sm);
+  font-weight:600;
+  color:var(--color-text-primary);
+}
+.badge.good{border-color:var(--color-success); color:var(--color-success)}
+.badge.bad{border-color:var(--color-danger); color:var(--color-danger)}
+.badge.hidden{display:none !important}
 
 /* SUBMODULE: Flash Animation @internal - temporäre visuelle Hervorhebung mit Farbverlauf */
 .btn.flash{
@@ -137,6 +170,29 @@ nav.tabs .btn.primary::after{
 0% { transform: scale(1) }
 50% { transform: scale(1.03) }
 100% { transform: scale(1) }
+}
+
+/* SUBMODULE: Save Feedback @internal - zentralisierte Save-Optik (Panel-Flash + Statuszeile) */
+.save-flash{
+  animation:panelFlash 0.45s ease-in-out forwards;
+}
+@keyframes panelFlash{
+  0%{
+    box-shadow:var(--shadow-card);
+    background:var(--panel-bg);
+  }
+  40%{
+    box-shadow:0 0 0 3px rgba(46,204,113,0.45), 0 14px 30px rgba(46,204,113,0.18);
+    background:rgba(46,204,113,0.12);
+  }
+  100%{
+    box-shadow:var(--shadow-card);
+    background:var(--panel-bg);
+  }
+}
+.save-status{
+  min-height:16px;
+  color:#9aa3af;
 }
 
 /* SUBMODULE: Layout Helpers @internal - Basis-Layout-Utilities (Flex, Sections, Spacer) */
@@ -164,7 +220,7 @@ section.view.active{display:block}
   box-shadow:0 12px 28px rgba(0,0,0,0.35);
 }
 .offline-banner__label{font-weight:600}
-.offline-banner__hint{font-size:12px;color:var(--color-text-muted)}
+.offline-banner__hint{font-size:var(--text-xs);color:var(--color-text-muted)}
 .update-banner{
   position:fixed;
   left:12px;
@@ -183,7 +239,7 @@ section.view.active{display:block}
   box-shadow:0 12px 28px rgba(0,0,0,0.35);
 }
 .update-banner__label{font-weight:600}
-.update-banner__hint{font-size:12px;color:var(--color-text-muted)}
+.update-banner__hint{font-size:var(--text-xs);color:var(--color-text-muted)}
 .update-banner__text{
   display:flex;
   flex-direction:column;
@@ -207,7 +263,7 @@ section.view.active{display:block}
   box-shadow:0 12px 28px rgba(0,0,0,0.35);
 }
 .install-banner__label{font-weight:600}
-.install-banner__hint{font-size:12px;color:var(--color-text-muted)}
+.install-banner__hint{font-size:var(--text-xs);color:var(--color-text-muted)}
 .install-banner__text{
   display:flex;
   flex-direction:column;
@@ -239,7 +295,7 @@ section.view.active{display:block}
   max-width:360px;
   color:#f1f5f9;
   box-shadow:0 24px 60px rgba(0,0,0,.65);
-  font-size:15px;
+  font-size:var(--text-md);
   line-height:1.4;
 }
 .trendpilot-dialog-message{

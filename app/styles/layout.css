@@ -1,14 +1,14 @@
-﻿/**
+/**
  * MODULE: assets/css/ui/layout-base.css
- * Description: Grundlegendes Layout-Styling für Header, Tabs, Main-Container und Kartenraster der App-Oberfläche.
+ * Description: Grundlegendes Layout-Styling fuer Header, Main-Container und Kartenraster der App-Oberflaeche.
  * Submodules:
  *  - Header (sticky top navigation)
- *  - Tabs Navigation Bar
  *  - Main Content Layout
  *  - Card Components
  *  - Flex & Grid Utilities
  *  - Responsive Grid Adjustments
  */
+
 
 /* SUBMODULE: Header @public - Fixierter App-Header mit Blur- und Schatteneffekten */
 header {
@@ -28,37 +28,13 @@ header.is-elevated {
   background: linear-gradient(180deg, rgba(18, 20, 23, 1), rgba(18, 20, 23, 0.85));
 }
 
-/* SUBMODULE: Heading Styles @internal - Standardgrößen für h1-Überschriften */
+/* SUBMODULE: Heading Styles @internal - Standardgroessen fuer h1-Ueberschriften */
 h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--text-xl);
 }
 
-/* SUBMODULE: Tabs Navigation Bar @public - Sticky Tab-Leiste unterhalb des Headers */
-nav.tabs {
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px 14px;
-  position: sticky;
-  top: var(--size-header-height, 56px);
-  background: rgba(18, 20, 23, 0.92);
-  backdrop-filter: blur(6px);
-  z-index: 11;
-  transition: box-shadow .25s ease, background .25s ease;
-}
-
-nav.tabs.is-elevated {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  background: rgba(18, 20, 23, 0.96);
-}
-
-nav.tabs button {
-  flex: 1;
-  min-width: 100px;
-  touch-action: manipulation;
-}
-
-/* SUBMODULE: Main Content Layout @public - Grundabstände und Layout-Padding für Hauptinhalte */
+/* SUBMODULE: Main Content Layout @public - Grundabstaende und Layout-Padding fuer Hauptinhalte */
 main {
   padding: 12px;
   position: relative;
@@ -74,7 +50,7 @@ main {
   border-radius: 8px;
   padding: 24px 20px;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-card);
 }
 
 /* SUBMODULE: Flex & Grid Utilities @public - Hilfsklassen für Layout-Strukturierung */

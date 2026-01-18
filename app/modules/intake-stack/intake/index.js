@@ -884,6 +884,11 @@
     const btn = document.getElementById(`cap-${kind}-add-btn`);
     const input = document.getElementById(`cap-${kind}-add`);
     if (!btn || !input) return;
+    const panel = btn.closest('#cap-intake-wrap') || document.getElementById('cap-intake-wrap');
+    if (typeof input.reportValidity === 'function') {
+      input.required = true;
+      if (!input.reportValidity()) return;
+    }
 
     diag.add?.(`[capture] click ${kind}`);
 
@@ -906,14 +911,19 @@
     if (kind === 'water'){
       value = Number(input.value);
       if (!(value > 0)){
-        uiError('Bitte gueltige Wassermenge eingeben.');
+        saveFeedback?.error({ button: btn, message: 'Bitte gueltige Wassermenge eingeben.' });
         diag.add?.('[capture] blocked: invalid water value ' + input.value);
         return;
       }
     } else {
       value = toNumDE(input.value);
       if (!(value > 0)){
-        uiError(kind === 'salt' ? 'Bitte gueltige Salzmenge eingeben.' : 'Bitte gueltige Proteinmenge eingeben.');
+        saveFeedback?.error({
+          button: btn,
+          message: kind === 'salt'
+            ? 'Bitte gueltige Salzmenge eingeben.'
+            : 'Bitte gueltige Proteinmenge eingeben.'
+        });
         diag.add?.(`[capture] blocked: invalid ${kind} value ${input.value}`);
         return;
       }
@@ -921,23 +931,23 @@
     diag.add?.(`[capture] parsed ${kind}=${value}`);
 
     const totals = { ...captureIntakeState.totals };
-    let message = '';
+    let successText = '';
     if (kind === 'water'){
       const total = Math.max(0, Math.min(MAX_WATER_ML, (totals.water_ml || 0) + value));
       totals.water_ml = roundValue('water_ml', total);
-      message = 'Wasser aktualisiert.';
+      successText = '&#x2705; Wasser gespeichert';
     } else if (kind === 'salt'){
       const total = Math.max(0, Math.min(MAX_SALT_G, (totals.salt_g || 0) + value));
       totals.salt_g = roundValue('salt_g', total);
-      message = 'Salz aktualisiert.';
+      successText = '&#x2705; Salz gespeichert';
     } else {
       const total = Math.max(0, Math.min(MAX_PROTEIN_G, (totals.protein_g || 0) + value));
       totals.protein_g = roundValue('protein_g', total);
-      message = 'Protein aktualisiert.';
+      successText = '&#x2705; Protein gespeichert';
     }
     diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
 
-    withBusy(btn, true);
+    saveFeedback?.start({ button: btn, panel });
     try {
       diag.add?.(`[capture] save start ${kind}: ${JSON.stringify(totals)}`);
       await saveIntakeTotalsRpc({ dayIso, totals });
@@ -956,19 +966,17 @@
       }).catch(err => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
       });
-      uiInfo(message);
+      saveFeedback?.ok({ button: btn, panel, successText });
       diag.add?.(`[capture] save ok ${kind}`);
     } catch (e) {
       const msg = e?.details || e?.message || e;
       if (e?.status === 401 || e?.status === 403) {
         showLoginOverlay?.(true);
-        uiError('Bitte erneut anmelden, um weiter zu speichern.');
+        saveFeedback?.error({ button: btn, message: 'Bitte erneut anmelden, um weiter zu speichern.' });
       } else {
-        uiError('Update fehlgeschlagen: ' + msg);
+        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen: ' + msg });
       }
       diag.add?.(`[capture] save error ${kind}: ` + msg);
-    } finally {
-      withBusy(btn, false);
     }
   }
 
@@ -978,6 +986,7 @@
     const saltInput = document.getElementById('cap-salt-add');
     const proteinInput = document.getElementById('cap-protein-add');
     if (!btn || !saltInput || !proteinInput) return;
+    const panel = btn.closest('#cap-intake-wrap') || document.getElementById('cap-intake-wrap');
 
     diag.add?.('[capture] click salt+protein');
 
@@ -998,8 +1007,21 @@
 
     const saltVal = toNumDE(saltInput.value) || 0;
     const proteinVal = toNumDE(proteinInput.value) || 0;
+    const canReport =
+      typeof saltInput.reportValidity === 'function' &&
+      typeof proteinInput.reportValidity === 'function';
+    if (canReport) {
+      const requireSalt = !(proteinVal > 0);
+      const requireProtein = !(saltVal > 0);
+      saltInput.required = requireSalt;
+      proteinInput.required = requireProtein;
+      if (requireSalt && requireProtein) {
+        saltInput.reportValidity();
+        return;
+      }
+    }
     if (!(saltVal > 0) && !(proteinVal > 0)) {
-      uiError('Bitte Salz oder Protein eingeben.');
+      saveFeedback?.error({ button: btn, message: 'Bitte Salz oder Protein eingeben.' });
       return;
     }
 
@@ -1019,7 +1041,7 @@
 
     diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
 
-    withBusy(btn, true);
+    saveFeedback?.start({ button: btn, panel });
     try {
       diag.add?.('[capture] save start salt+protein: ' + JSON.stringify(totals));
       await saveIntakeTotalsRpc({ dayIso, totals });
@@ -1039,19 +1061,21 @@
       }).catch((err) => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
       });
-      uiInfo(`${messageParts.join(' & ')} aktualisiert.`);
+      saveFeedback?.ok({
+        button: btn,
+        panel,
+        successText: `&#x2705; ${messageParts.join(' & ')} gespeichert`
+      });
       diag.add?.('[capture] save ok salt+protein');
     } catch (e) {
       const msg = e?.details || e?.message || e;
       if (e?.status === 401 || e?.status === 403) {
         showLoginOverlay?.(true);
-        uiError('Bitte erneut anmelden, um weiter zu speichern.');
+        saveFeedback?.error({ button: btn, message: 'Bitte erneut anmelden, um weiter zu speichern.' });
       } else {
-        uiError('Update fehlgeschlagen: ' + msg);
+        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen: ' + msg });
       }
       diag.add?.('[capture] save error salt+protein: ' + msg);
-    } finally {
-      withBusy(btn, false);
     }
   }
 

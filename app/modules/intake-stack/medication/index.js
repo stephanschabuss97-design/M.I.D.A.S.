@@ -444,10 +444,10 @@
       active: form.querySelector('#medFormActive')
     };
 
-    const updateFormStatus = (msg) => {
-      if (!statusEl) return;
-      statusEl.textContent = msg || '';
-    };
+      const updateFormStatus = (msg) => {
+        if (!statusEl) return;
+        statusEl.textContent = msg || '';
+      };
 
     const setFormBusy = (busy) => {
       if (medicationState.ui.disabled) return;
@@ -531,9 +531,7 @@
       event.preventDefault();
       if (!(await ensureAuthForUi({ prompt: true }))) return;
       const ui = medicationState.ui.elements;
-      if (!ui.name.value.trim()) {
-        ui.name.focus();
-        updateFormStatus('Name ist Pflicht.');
+      if (form && typeof form.reportValidity === 'function' && !form.reportValidity()) {
         return;
       }
       const payload = {
@@ -551,9 +549,17 @@
       try {
         await upsertMedication(payload, { reason: 'form:save' });
         clearForm();
-        updateFormStatus('Gespeichert.');
+        saveFeedback?.ok({
+          button: ui.saveBtn,
+          statusEl,
+          successText: '&#x2705; Medikament gespeichert'
+        });
       } catch (err) {
-        updateFormStatus(err?.message || 'Speichern fehlgeschlagen.');
+        saveFeedback?.error({
+          button: ui.saveBtn,
+          statusEl,
+          message: err?.message || 'Speichern fehlgeschlagen.'
+        });
       } finally {
         setFormBusy(false);
       }
@@ -615,7 +621,7 @@
         if (raw === null) return;
         const delta = Number(raw.replace(',', '.'));
         if (!Number.isFinite(delta) || delta === 0) {
-          updateFormStatus('Ungueltige Menge fuer Restock.');
+          saveFeedback?.error({ statusEl, message: 'Ungueltige Menge fuer Restock.' });
           return;
         }
         return withBusy(target, async () => {
@@ -623,9 +629,10 @@
             reason: 'card:restock',
             dayIso: currentDayIso
           });
-          updateFormStatus(
-            `Bestand ${delta > 0 ? '+' : ''}${Math.trunc(delta)} gespeichert.`
-          );
+          saveFeedback?.ok({
+            statusEl,
+            successText: `&#x2705; Bestand ${delta > 0 ? '+' : ''}${Math.trunc(delta)} gespeichert`
+          });
         });
         return;
       }
@@ -640,7 +647,7 @@
         if (raw === null) return;
         const value = Number(raw.replace(',', '.'));
         if (!Number.isFinite(value) || value < 0) {
-          updateFormStatus('Bestand muss >= 0 sein.');
+          saveFeedback?.error({ statusEl, message: 'Bestand muss >= 0 sein.' });
           return;
         }
         return withBusy(target, async () => {
@@ -648,7 +655,10 @@
             reason: 'card:set-stock',
             dayIso: currentDayIso
           });
-          updateFormStatus(`Bestand auf ${Math.trunc(value)} gesetzt.`);
+          saveFeedback?.ok({
+            statusEl,
+            successText: `&#x2705; Bestand auf ${Math.trunc(value)} gesetzt`
+          });
         });
         return;
       }
@@ -668,9 +678,10 @@
             dayIso: currentDayIso,
             reason: nextActive ? 'card:reactivate' : 'card:archive'
           });
-          updateFormStatus(
-            nextActive ? 'Medikament reaktiviert.' : 'Medikament archiviert.'
-          );
+          saveFeedback?.ok({
+            statusEl,
+            successText: nextActive ? '&#x2705; Medikament reaktiviert' : '&#x2705; Medikament archiviert'
+          });
           if (!nextActive && ui.id.value === id) {
             clearForm();
           }
@@ -687,7 +698,7 @@
         if (!confirmed) return;
         return withBusy(target, async () => {
           await deleteMedication(id, { dayIso: currentDayIso, reason: 'card:delete' });
-          updateFormStatus('Medikament geloescht.');
+          saveFeedback?.ok({ statusEl, successText: '&#x2705; Medikament geloescht' });
           if (ui.id.value === id) {
             clearForm();
           }

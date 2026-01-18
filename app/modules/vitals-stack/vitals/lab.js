@@ -74,7 +74,6 @@
     if (!raw) {
       if (required) {
         setFieldError?.(el);
-        uiError?.(`Bitte ${label} eingeben.`);
         return { value: null, valid: false };
       }
       clearFieldError?.(el);
@@ -108,7 +107,7 @@
       label: 'Kreatinin',
       min: 0.1,
       max: 20,
-      required: true
+      required: false
     });
     if (!creatinineResult.valid) valid = false;
 

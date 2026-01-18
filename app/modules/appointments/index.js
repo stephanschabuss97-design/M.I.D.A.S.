@@ -267,8 +267,7 @@
     if (!refs) return;
     const title = sanitize(refs.title?.value);
     const date = refs.date?.value;
-    if (!title || !date) {
-      log?.('Speichern abgebrochen (Titel/Datum fehlt)');
+    if (refs?.form && !refs.form.reportValidity()) {
       return;
     }
     const iso = toIsoUtc(date, refs.time?.value);
@@ -280,6 +279,9 @@
       repeat_rule: refs.repeat?.value || 'none',
     };
     try {
+      const panel = refs?.panel || null;
+      const saveBtn = refs?.form?.querySelector('button[type="submit"]') || null;
+      saveFeedback?.start({ button: saveBtn, panel });
       setFormDisabled(true);
       const inserted = await insertAppointmentRemote(payload);
       if (inserted) {
@@ -290,9 +292,14 @@
         if (refs.repeat) refs.repeat.value = 'none';
         log?.(`saved ${inserted.title}`);
         notifyChange('insert');
+        saveFeedback?.ok({ button: saveBtn, panel, successText: '&#x2705; Termin gespeichert' });
       }
     } catch (err) {
       diag?.add?.(`[appointments] save failed ${err.message || err}`);
+      saveFeedback?.error({
+        button: refs?.form?.querySelector('button[type="submit"]') || null,
+        message: err?.message || 'Speichern fehlgeschlagen.'
+      });
     } finally {
       setFormDisabled(false);
     }
@@ -307,23 +314,34 @@
     const idx = state.items.findIndex((item) => item.id === id);
     if (idx === -1) return;
     const action = btn.dataset.action;
+    const panel = refs?.panel || null;
     btn.disabled = true;
     try {
       if (action === 'delete') {
         await deleteAppointmentRemote(id);
         state.items.splice(idx, 1);
         notifyChange('delete');
+        saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Termin geloescht' });
       } else if (action === 'toggle') {
         const nextStatus = state.items[idx].status === 'done' ? 'scheduled' : 'done';
         const updated = await updateAppointmentRemote(id, { status: nextStatus });
         if (updated) {
           state.items[idx] = updated;
           notifyChange('toggle');
+          saveFeedback?.ok({
+            button: btn,
+            panel,
+            successText: nextStatus === 'done' ? '&#x2705; Termin erledigt' : '&#x2705; Termin reaktiviert'
+          });
         }
       }
       renderOverview();
     } catch (err) {
       diag?.add?.(`[appointments] action ${action} failed ${err.message || err}`);
+      saveFeedback?.error({
+        button: btn,
+        message: err?.message || 'Speichern fehlgeschlagen.'
+      });
     } finally {
       btn.disabled = false;
     }

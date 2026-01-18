@@ -1374,27 +1374,7 @@ async function maybeRefreshForTodayChange({ force = false, source = '' } = {}){
 /** END MODULE */
 
 
-/* --- Button-Flash (nur Platzhalter, wie gehabt) --- */
-
-
-function flashButtonOk(btn, successHtml){
-  if (!btn) return;
-  const base = btn.dataset.label || btn.innerHTML;
-  btn.dataset.label = base;
-  btn.disabled = true;
-  btn.innerHTML = successHtml;
-  const panel = btn.closest('.card, .card-nested');
-  if (panel){
-    panel.classList.remove('panel-flash');
-    void panel.offsetWidth;
-    panel.classList.add('panel-flash');
-    setTimeout(()=>panel.classList.remove('panel-flash'), 480);
-  }
-  setTimeout(()=>{
-    btn.innerHTML = btn.dataset.label;
-    btn.disabled = false;
-  }, 1200);
-}
+/* --- Save-Feedback via saveFeedback helper --- */
 
 /** MODULE: UI / ROUTING / VIEWS - Navigation (Tabs/Resume/Focus)
  * intent: Tab- und Overlay-Routing, Resume-Listener, Fokusreparatur
@@ -1478,7 +1458,7 @@ const handleBpPanelSave = async (e) => {
   const btn = e.currentTarget || e.target;
   if (!btn) {
     diag.add?.('[panel] bp save aborted: missing event target');
-    uiError('Interner Fehler beim Speichern.');
+    saveFeedback?.error({ message: 'Interner Fehler beim Speichern.' });
     return;
   }
   try {
@@ -1498,9 +1478,8 @@ const handleBpPanelSave = async (e) => {
     ctxSel?.value
   );
   if (!which) {
-    withBusy(btn, false);
     diag.add?.('[panel] bp save aborted: unable to resolve context');
-    uiError('Messzeitpunkt konnte nicht ermittelt werden.');
+    saveFeedback?.error({ button: btn, message: 'Messzeitpunkt konnte nicht ermittelt werden.' });
     return;
   }
   if (ctxSel && ctxSel.value !== which) {
@@ -1512,7 +1491,8 @@ const handleBpPanelSave = async (e) => {
     }
   }
   window.AppModules?.captureGlobals?.setBpUserOverride?.(true);
-  withBusy(btn, true);
+  const panel = btn.closest('.card, .card-nested');
+  saveFeedback?.start({ button: btn, panel });
   let savedOk = false;
   try {
     const saved = await window.AppModules.bp.saveBlock(
@@ -1521,8 +1501,10 @@ const handleBpPanelSave = async (e) => {
       false,
       false
     );
-    if (!saved) {
-      uiError('Keine Daten fuer diesen Messzeitpunkt eingegeben.');
+    if (saved === false) {
+      saveFeedback?.error({ button: btn, message: 'Keine Daten fuer diesen Messzeitpunkt eingegeben.' });
+    } else if (saved === null) {
+      // Pflichtfeld-Fehler sind bereits per reportValidity angezeigt.
     } else {
       savedOk = true;
       requestUiRefresh({ reason: 'panel:bp' }).catch((err) => {
@@ -1531,14 +1513,12 @@ const handleBpPanelSave = async (e) => {
     }
   } catch (err) {
     diag.add?.('Panel BP Fehler: ' + (err?.message || err));
-    uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
-  } finally {
-    withBusy(btn, false);
+    saveFeedback?.error({ button: btn, message: 'Speichern fehlgeschlagen. Bitte erneut versuchen.' });
   }
   if (savedOk) {
     window.AppModules.bp.updateBpCommentWarnings?.();
     window.AppModules.bp.resetBpPanel(which);
-    flashButtonOk(btn, '&#x2705; Blutdruck gespeichert');
+    saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Blutdruck gespeichert' });
     await maybeRunTrendpilotAfterBpSave(which);
   }
 };
@@ -1556,13 +1536,18 @@ if (saveBodyPanelBtn){
     } catch(err) {
       console.error('isLoggedInFast check failed', err);
     }
-    const btn = e.currentTarget;
-    withBusy(btn, true);
+    const btn = e.currentTarget || e.target;
+    if (!btn || typeof btn.closest !== 'function') {
+      saveFeedback?.error({ message: 'Interner Fehler beim Speichern.' });
+      return;
+    }
+    const panel = btn.closest('.card, .card-nested');
+    saveFeedback?.start({ button: btn, panel });
     let savedOk = false;
     try{
       const saved = await window.AppModules.body.saveDaySummary({ includeBody: true });
       if (!saved){
-        uiError('Keine Koerperdaten eingegeben.');
+        saveFeedback?.error({ button: btn, message: 'Keine Koerperdaten eingegeben.' });
       } else {
         savedOk = true;
         requestUiRefresh({ reason: 'panel:body' }).catch(err => {
@@ -1571,14 +1556,12 @@ if (saveBodyPanelBtn){
       }
     }catch(err){
       diag.add?.('Panel Koerper Fehler: ' + (err?.message || err));
-      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
-    }finally{
-      withBusy(btn, false);
+      saveFeedback?.error({ button: btn, message: 'Speichern fehlgeschlagen. Bitte erneut versuchen.' });
     }
     if (savedOk){
       window.AppModules.body.resetBodyPanel();
       diag.add?.('[body] cleared');
-      flashButtonOk(btn, '&#x2705; Koerper gespeichert');
+      saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Koerper gespeichert' });
     }
   });
 }
@@ -1594,13 +1577,18 @@ if (saveLabPanelBtn){
     } catch (err) {
       console.error('isLoggedInFast check failed', err);
     }
-    const btn = e.currentTarget;
-    withBusy(btn, true);
+    const btn = e.currentTarget || e.target;
+    if (!btn || typeof btn.closest !== 'function') {
+      saveFeedback?.error({ message: 'Interner Fehler beim Speichern.' });
+      return;
+    }
+    const panel = btn.closest('.card, .card-nested');
+    saveFeedback?.start({ button: btn, panel });
     let savedOk = false;
     try {
       const saved = await window.AppModules.lab?.saveLabEntry?.();
       if (!saved) {
-        uiError('Keine Labordaten eingegeben.');
+        saveFeedback?.error({ button: btn, message: 'Keine Labordaten eingegeben.' });
       } else {
         savedOk = true;
         requestUiRefresh({ reason: 'panel:lab' }).catch((err) => {
@@ -1609,13 +1597,11 @@ if (saveLabPanelBtn){
       }
     } catch (err) {
       diag.add?.('[lab] panel save failed: ' + (err?.message || err));
-      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
-    } finally {
-      withBusy(btn, false);
+      saveFeedback?.error({ button: btn, message: 'Speichern fehlgeschlagen. Bitte erneut versuchen.' });
     }
     if (savedOk) {
       window.AppModules.lab?.resetLabPanel?.({ focus: false });
-      flashButtonOk(btn, '&#x2705; Labor gespeichert');
+      saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Labor gespeichert' });
     }
   });
 }
@@ -1656,7 +1642,8 @@ activityForm?.addEventListener('submit', async (event) => {
     activityDurationInput.focus();
     return;
   }
-  withBusy(activitySaveBtn, true);
+  const activityPanel = activitySaveBtn?.closest?.('.card, .card-nested');
+  saveFeedback?.start({ button: activitySaveBtn, panel: activityPanel });
   activityFormStatus.textContent = '';
   try {
     await window.AppModules?.activity?.addActivity?.({
@@ -1666,12 +1653,14 @@ activityForm?.addEventListener('submit', async (event) => {
       note: activityNoteInput?.value || ''
     }, { reason: 'panel:activity' });
     clearActivityForm();
-    flashButtonOk(activitySaveBtn, '&#x2705; Training gespeichert');
+    saveFeedback?.ok({ button: activitySaveBtn, panel: activityPanel, successText: '&#x2705; Training gespeichert' });
   } catch (err) {
-    activityFormStatus.textContent = err?.message || 'Speichern fehlgeschlagen.';
+    saveFeedback?.error({
+      button: activitySaveBtn,
+      statusEl: activityFormStatus,
+      message: err?.message || 'Speichern fehlgeschlagen.'
+    });
     uiError?.('Training konnte nicht gespeichert werden.');
-  } finally {
-    withBusy(activitySaveBtn, false);
   }
 });
 

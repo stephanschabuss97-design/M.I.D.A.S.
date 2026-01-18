@@ -185,18 +185,45 @@ const getCommentElementUnsafe = (normalizedCtx) => {
 
   if (!force && !hasAny && !hasComment) return false;
   if (hasComment && !hasAny) {
-    uiError('Kommentar kann nur mit Messwerten gespeichert werden.');
-    return false;
+    const sysEl = document.getElementById(bpFieldId('sys', ctx));
+    const diaEl = document.getElementById(bpFieldId('dia', ctx));
+    if (sysEl && diaEl) {
+      sysEl.required = true;
+      diaEl.required = true;
+      sysEl.reportValidity?.();
+      diaEl.reportValidity?.();
+      sysEl.required = false;
+      diaEl.required = false;
+    }
+    return null;
   }
 
   if (hasAny){
     if ((sys != null && dia == null) || (dia != null && sys == null)){
-      uiError('Bitte beide Blutdruck-Werte (Sys und Dia) eingeben.');
-      return false;
+      const sysEl = document.getElementById(bpFieldId('sys', ctx));
+      const diaEl = document.getElementById(bpFieldId('dia', ctx));
+      if (sysEl && diaEl) {
+        sysEl.required = true;
+        diaEl.required = true;
+        if (sys == null) sysEl.reportValidity?.();
+        if (dia == null) diaEl.reportValidity?.();
+        sysEl.required = false;
+        diaEl.required = false;
+      }
+      return null;
     }
     if (pulse != null && (sys == null || dia == null)){
-      uiError('Puls kann nur mit Sys und Dia zusammen gespeichert werden.');
-      return false;
+      const sysEl = document.getElementById(bpFieldId('sys', ctx));
+      const diaEl = document.getElementById(bpFieldId('dia', ctx));
+      if (sysEl && diaEl) {
+        sysEl.required = true;
+        diaEl.required = true;
+        sysEl.reportValidity?.();
+        diaEl.reportValidity?.();
+        sysEl.required = false;
+        diaEl.required = false;
+      }
+      return null;
     }
 
     const entry = createBaseEntry(date, time, contextLabel);

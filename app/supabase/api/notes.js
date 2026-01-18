@@ -36,20 +36,20 @@ const getConf = (...args) => {
   }
 };
 
-const uiInfo = (...args) => {
-  const fn = globalWindow?.uiInfo;
-  if (typeof fn === 'function') {
-    return fn(...args);
-  }
-  return undefined;
-};
-
 const uiError = (...args) => {
   const fn = globalWindow?.uiError;
   if (typeof fn === 'function') {
     return fn(...args);
   }
   return undefined;
+};
+
+const reportError = (message) => {
+  if (typeof globalWindow?.saveFeedback?.error === 'function') {
+    globalWindow.saveFeedback.error({ message });
+    return;
+  }
+  uiError(message);
 };
 
 const updateEntry = (...args) => {
@@ -121,7 +121,6 @@ export async function syncWebhook(entry, localId) {
           const dayIso = entry.date;
           const merged = await appendNoteRemote({ user_id: uid, dayIso, noteEvent });
           await updateEntry(localId, { remote_id: merged?.id ?? -1 });
-          uiInfo('Kommentar aktualisiert.');
           diag.add('Fallback: note via PATCH/POST');
           return;
         }
@@ -140,11 +139,11 @@ export async function syncWebhook(entry, localId) {
       }
 
       if (res.status === 409 || /duplicate|unique/i.test(details)) {
-        uiError('Es gibt bereits einen Eintrag für diesen Tag/Kontext.');
+        reportError('Es gibt bereits einen Eintrag fuer diesen Tag/Kontext.');
       } else if (res.status === 422 || /invalid|range|pflicht|check constraint/i.test(details)) {
-        uiError('Eingaben ung?ltig - bitte Wertebereiche/Pflichtfelder pr?fen.');
+        reportError('Eingaben ungueltig - bitte Wertebereiche/Pflichtfelder pruefen.');
       } else {
-        uiError(`Speichern fehlgeschlagen (HTTP ${res.status}).`);
+        reportError(`Speichern fehlgeschlagen (HTTP ${res.status}).`);
       }
 
       diag.add(`Webhook-Fehler ${res.status}: ${details || '-'}`);
@@ -158,16 +157,15 @@ export async function syncWebhook(entry, localId) {
     const firstId = json?.[0]?.id ?? null;
     if (firstId != null) {
       await updateEntry(localId, { remote_id: firstId });
-      uiInfo('Gespeichert.');
       diag.add(`Webhook: OK (${events.length} Event(s))`);
     } else {
-      uiError('Unerwartete Antwort vom Server - kein Datensatz zurückgegeben.');
+      reportError('Unerwartete Antwort vom Server - kein Datensatz zurueckgegeben.');
     }
   } catch (err) {
     if (err?.status === 401 || err?.status === 403) {
-      uiError('Bitte erneut anmelden, um weiter zu speichern.');
+      reportError('Bitte erneut anmelden, um weiter zu speichern.');
     } else {
-      uiError('Netzwerkfehler beim Speichern. Bitte sp?ter erneut versuchen.');
+      reportError('Netzwerkfehler beim Speichern. Bitte spaeter erneut versuchen.');
     }
     diag.add('Webhook: Netzwerkfehler');
     throw err;

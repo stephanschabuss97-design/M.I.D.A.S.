@@ -37,27 +37,15 @@
 }
 
 /* SUBMODULE: KPI Badges Styles @public - visuelle Kennzeichnung guter/schlechter Tageswerte */
-.badge {
-  display:inline-block;
-  padding:6px 12px;         /* etwas mehr Platz */
-  border:1.5px solid #2b2f3a;
-  border-radius:12px;       /* runder = moderner */
-  font-size:13px;           /* +1pt groesser */
-  font-weight:600;          /* kraeftiger */
-  margin-left:10px;
-}
-.badge.good{border-color:var(--color-success); color:var(--color-success)}
-.badge.bad{ border-color:var(--color-danger); color:var(--color-danger)}
-.badge.hidden{ display:none !important; }
 
 /* SUBMODULE: Trendpilot Section @public - listet Regel-Hinweise + Aktionen */
 .doctor-trendpilot{
   border:1px solid #242833;
-  border-radius:12px;
+  border-radius:var(--radius-md);
   padding:12px 14px;
   margin-bottom:12px;
-  background:var(--color-surface-card);
-  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  background:var(--surface-card);
+  box-shadow:var(--shadow-card);
 }
 .doctor-trendpilot-head{
   display:flex;
@@ -72,7 +60,7 @@
   gap:10px;
 }
 .doctor-trendpilot-empty{
-  font-size:13px;
+  font-size:var(--text-sm);
   opacity:.75;
   padding:4px 0;
 }
@@ -118,12 +106,8 @@
   align-items:center;
   flex-wrap:wrap;
   gap:8px;
-  font-size:13px;
+  font-size:var(--text-sm);
   font-weight:600;
-}
-.tp-actions{
-  display:flex;
-  justify-content:flex-end;
 }
 .tp-badge{
   display:inline-flex;
@@ -131,7 +115,7 @@
   justify-content:center;
   padding:2px 8px;
   border-radius:999px;
-  font-size:12px;
+  font-size:var(--text-xs);
   font-weight:600;
   border:1px solid transparent;
 }
@@ -151,7 +135,7 @@
   color:var(--color-primary);
 }
 .tp-ack{
-  font-size:12px;
+  font-size:var(--text-xs);
   padding:2px 6px;
   border-radius:6px;
   font-weight:600;
@@ -165,27 +149,19 @@
   color:var(--color-danger);
 }
 .tp-text{
-  font-size:13px;
+  font-size:var(--text-sm);
   line-height:1.35;
   color:var(--color-text);
 }
 .tp-status{
-  font-size:12px;
+  font-size:var(--text-xs);
   opacity:.8;
 }
 .tp-actions{
   display:flex;
   flex-wrap:wrap;
   gap:6px;
-}
-.tp-actions .btn{
-  padding:4px 10px;
-  font-size:12px;
-  line-height:1.2;
-}
-.tp-actions .btn.is-active{
-  border-color:var(--color-primary);
-  color:var(--color-primary);
+  justify-content:flex-end;
 }
 .tp-row.is-loading{
   opacity:.6;
@@ -200,10 +176,10 @@
   align-items:start;
   padding:12px 14px;
   margin:8px 0;
-  border-radius:12px;
-  background:var(--color-surface-card);
+  border-radius:var(--radius-md);
+  background:var(--surface-card);
   border:1px solid #242833;
-  box-shadow:0 6px 18px rgba(0,0,0,.25);
+  box-shadow:var(--shadow-panel);
   page-break-inside:avoid;
   break-inside:avoid;
 }
@@ -258,7 +234,7 @@
   font-size:clamp(16px,1.6vw,20px);
   letter-spacing:.2px;
 }
-.doctor-view .col-date .date-cloud{ font-size:16px; line-height:1; }
+.doctor-view .col-date .date-cloud{ font-size:var(--text-lg); line-height:1; }
 .doctor-view .col-date .date-actions{
   display:flex;
   justify-content:flex-start; /* oder center, wenn du's mittig magst */
@@ -271,13 +247,13 @@
   grid-template-columns:minmax(70px, auto) repeat(5, 1fr);
   gap:4px;
 }
-.doctor-view .measure-head{ font-size:12px; opacity:.8; }
+.doctor-view .measure-head{ font-size:var(--text-xs); opacity:.8; }
 
 .doctor-view .measure-head > div{ display:flex; align-items:center; }
 .doctor-view .measure-head > div:first-child{ justify-content:flex-start; }
 .doctor-view .measure-head > div:not(:first-child){ justify-content:flex-end; }
 .doctor-view .measure-row{ display:contents; }
-.doctor-view .label{ display:flex; align-items:center; font-size:13px; opacity:.9; }
+.doctor-view .label{ display:flex; align-items:center; font-size:var(--text-sm); opacity:.9; }
 
 .doctor-body-day .doctor-body-metrics .measure-head,
 .doctor-body-day .doctor-body-metrics .measure-grid{
@@ -313,7 +289,7 @@
   line-height:1.35;
 }
 .doctor-activity-day .doctor-activity-metrics .note-col{
-  font-size:13px;
+  font-size:var(--text-sm);
   opacity:.85;
 }
 
@@ -353,7 +329,7 @@
 
 .doctor-view .weight-line > :first-child,
 .doctor-view .waist-line > :first-child{
-  font-size:12px;
+  font-size:var(--text-xs);
   opacity:.8;
   font-weight:600;
   letter-spacing:.2px;
@@ -387,9 +363,10 @@
 .doctor-view .waist-line .num{ font-variant-numeric:tabular-nums; }
 
 .doctor-view .notes{
-  font-size:13px;
+  font-size:var(--text-sm);
   line-height:1.35;
   display:-webkit-box;
+  line-clamp:3;
   -webkit-line-clamp:3;      /* 3 Zeilen, bei Bedarf 2 setzen */
   -webkit-box-orient:vertical;
   overflow:hidden;
@@ -401,7 +378,7 @@
 .doctor-view .notes::before{
   content:"Kommentar";
   display:block;
-  font-size:12px;
+  font-size:var(--text-xs);
   opacity:.8;
   font-weight:600;
   letter-spacing:.2px;
@@ -414,7 +391,7 @@
   .doctor-view .measure-grid{
     grid-template-columns:minmax(72px, 1fr) repeat(5, minmax(56px, 1fr));
   }
-  .doctor-view .measure-head{ font-size:11px; }
+  .doctor-view .measure-head{ font-size:var(--text-xxs); }
 
   .doctor-view .num{
     min-width:4.5ch; /* ~ "96.7" passt sicher */
@@ -434,6 +411,7 @@
     grid-column:1 / -1;
   }
   .doctor-view .notes{
+    line-clamp:4;
     -webkit-line-clamp:4; /* bei Bedarf auf 5 erhoehen */
   }
 
@@ -460,14 +438,14 @@
   padding:8px 0;
 }
 .doctor-lab-comment-label{
-  font-size:12px;
+  font-size:var(--text-xs);
   opacity:.8;
   font-weight:600;
   letter-spacing:.2px;
   margin-bottom:4px;
 }
 .doctor-lab-comment-text{
-  font-size:13px;
+  font-size:var(--text-sm);
   line-height:1.4;
   word-break:break-word;
 }
@@ -483,14 +461,6 @@
   gap: 8px;
   margin-bottom: 12px;
   flex-wrap: wrap;
-}
-
-.doctor-tabs .btn {
-  min-width: 70px;
-}
-
-.doctor-tabs .btn.is-active {
-  border-bottom: 2px solid var(--accent, #4f9dff);
 }
 
 .doctor-view {
@@ -520,9 +490,9 @@ body.is-inbox-open {
   height: 100vh;
   max-height: 100vh;
   transform: none;
-  background: var(--color-surface-card, #0f1116);
+  background: var(--surface-card, #0f1116);
   border-radius: 0;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-modal);
 }
 
 .doctor-inbox-panel .content {
@@ -562,11 +532,6 @@ body.is-inbox-open {
   gap: 12px;
 }
 
-.doctor-inbox-actions .btn {
-  font-size: 12px;
-  padding: 4px 10px;
-}
-
 .doctor-inbox-filters {
   display: flex;
   gap: 8px;
@@ -574,22 +539,12 @@ body.is-inbox-open {
   margin: 8px 0 12px;
 }
 
-.doctor-inbox-filters .btn {
-  font-size: 12px;
-  padding: 4px 10px;
-}
-
-.doctor-inbox-filters .btn.is-active {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
 .doctor-report-card {
   border: 1px solid #242833;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
-  background: var(--color-surface-card);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
 }
 
 .doctor-report-head {
@@ -598,16 +553,16 @@ body.is-inbox-open {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .doctor-report-period strong {
   display: block;
-  font-size: 16px;
+  font-size: var(--text-lg);
 }
 
 .doctor-report-meta {
-  font-size: 12px;
+  font-size: var(--text-xs);
   opacity: 0.75;
   text-align: right;
 }
@@ -618,9 +573,9 @@ body.is-inbox-open {
   gap: 6px;
   margin-bottom: 8px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid #2b2f3a;
-  font-size: 11px;
+  font-size: var(--text-xxs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -636,16 +591,16 @@ body.is-inbox-open {
   display: inline-block;
   margin-left: 6px;
   padding: 2px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-warning, #f4c15d);
   color: #121417;
-  font-size: 11px;
+  font-size: var(--text-xxs);
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .doctor-report-body {
-  font-size: 13px;
+  font-size: var(--text-sm);
   line-height: 1.4;
   opacity: 0.95;
   word-break: break-word;
@@ -685,11 +640,6 @@ body.is-inbox-open {
   margin-top: 10px;
 }
 
-.doctor-report-actions .btn {
-  font-size: 12px;
-  padding: 4px 10px;
-}
-
 .doctor-report-group-list{
   display: flex;
   flex-direction: column;
@@ -698,7 +648,7 @@ body.is-inbox-open {
 
 .doctor-report-group{
   border: 1px solid #242833;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(15, 19, 29, 0.85);
   overflow: hidden;
 }
@@ -718,7 +668,7 @@ body.is-inbox-open {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -731,7 +681,7 @@ body.is-inbox-open {
 
 .doctor-report-group-label{
   margin: 8px 0 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;

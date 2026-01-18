@@ -162,44 +162,45 @@ export function bindAuthButtons() {
 
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
+      const panel = document.getElementById('loginOverlay');
       const restInput = document.getElementById('configRestUrl');
       const keyInput = document.getElementById('configAnonKey');
       const rawRest = (restInput?.value || '').trim();
       const rawKey = (keyInput?.value || '').trim();
       if (!rawRest || !rawKey) {
-        setConfigStatus('Bitte REST-Endpoint und ANON-Key eingeben.', 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'Bitte REST-Endpoint und ANON-Key eingeben.' });
         return;
       }
       if (!/\/rest\/v1\//i.test(rawRest)) {
-        setConfigStatus('REST-Endpoint muss /rest/v1/ enthalten.', 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'REST-Endpoint muss /rest/v1/ enthalten.' });
         return;
       }
       if (!/\/rest\/v1\/health_events(?:[/?#]|$)/i.test(rawRest)) {
-        setConfigStatus('Endpoint muss auf /rest/v1/health_events zeigen.', 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'Endpoint muss auf /rest/v1/health_events zeigen.' });
         return;
       }
       try {
         new URL(rawRest);
       } catch {
-        setConfigStatus('REST-Endpoint ist keine g?ltige URL.', 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'REST-Endpoint ist keine gueltige URL.' });
         return;
       }
       let anonKey = rawKey.startsWith('Bearer ') ? rawKey : `Bearer ${rawKey}`;
       if (isServiceRoleKey(anonKey)) {
-        setConfigStatus('service_role Schl?ssel sind nicht erlaubt.', 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'service_role Schluessel sind nicht erlaubt.' });
         return;
       }
       try {
-        setConfigStatus('Speichere Konfiguration ...', 'info');
+        saveFeedback?.start({ button: saveBtn, panel, statusEl: document.getElementById('configStatus'), label: 'Speichere Konfiguration ...', showStatusOnStart: true });
         await putConf('webhookUrl', rawRest);
         await putConf('webhookKey', anonKey);
         supabaseState.sbClient = null;
         await ensureSupabaseClient();
         await requireSession();
-        setConfigStatus('Konfiguration gespeichert.', 'success');
+        saveFeedback?.ok({ button: saveBtn, panel, statusEl: document.getElementById('configStatus'), successText: 'Konfiguration gespeichert', showStatusOnOk: true });
       } catch (e) {
         const message = restErrorMessage(e?.status || 0, e?.details || e?.message || '');
-        setConfigStatus(message, 'error');
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message });
       }
     });
   }

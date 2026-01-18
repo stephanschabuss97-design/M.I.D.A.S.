@@ -312,3 +312,129 @@
     }
   });
 })(window);
+
+// SUBMODULE: saveFeedback @public - zentraler Save-Feedback-Helper (Button/Panel/Status)
+(function (global) {
+  const appModules = (global.AppModules = global.AppModules || {});
+  const timers = new WeakMap();
+
+  const DEFAULTS = Object.freeze({
+    busyText: 'Speichere ...',
+    successText: 'OK gespeichert',
+    errorText: 'Speichern fehlgeschlagen.',
+    successMs: 1200,
+    errorMs: 5000,
+    flashMs: 480
+  });
+
+  const resolveEl = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      return global.document?.querySelector?.(value) || null;
+    }
+    return value;
+  };
+
+  const setStatus = (el, text, clearMs) => {
+    if (!el) return;
+    el.textContent = text || '';
+    if (clearMs && clearMs > 0) {
+      const prev = timers.get(el);
+      if (prev) global.clearTimeout(prev);
+      const t = global.setTimeout(() => {
+        el.textContent = '';
+        timers.delete(el);
+      }, clearMs);
+      timers.set(el, t);
+    }
+  };
+
+  const rememberLabel = (btn) => {
+    if (!btn) return;
+    if (!btn.dataset.saveLabel) {
+      btn.dataset.saveLabel = btn.innerHTML || btn.textContent || '';
+    }
+  };
+
+  const restoreLabel = (btn) => {
+    if (!btn) return;
+    const base = btn.dataset.saveLabel;
+    if (typeof base === 'string') {
+      btn.innerHTML = base;
+    }
+    btn.disabled = false;
+  };
+
+  const flashPanel = (panel) => {
+    if (!panel) return;
+    panel.classList.remove('save-flash');
+    void panel.offsetWidth;
+    panel.classList.add('save-flash');
+    global.setTimeout(() => panel.classList.remove('save-flash'), DEFAULTS.flashMs);
+  };
+
+  const saveFeedback = {
+    start(opts = {}) {
+      const btn = resolveEl(opts.button);
+      const panel = resolveEl(opts.panel);
+      const status = resolveEl(opts.statusEl);
+      const text = opts.label || opts.busyText || DEFAULTS.busyText;
+
+      if (btn) {
+        rememberLabel(btn);
+        btn.disabled = true;
+        btn.innerHTML = text;
+      }
+      if (status && opts.showStatusOnStart) {
+        setStatus(status, text, 0);
+      }
+      if (panel) {
+        panel.classList.remove('save-flash');
+      }
+    },
+
+    ok(opts = {}) {
+      const btn = resolveEl(opts.button);
+      const panel = resolveEl(opts.panel);
+      const status = resolveEl(opts.statusEl);
+      const text = opts.successText || DEFAULTS.successText;
+      const resetMs = opts.successMs || DEFAULTS.successMs;
+
+      if (btn) {
+        rememberLabel(btn);
+        btn.disabled = true;
+        btn.innerHTML = text;
+      }
+      if (status && opts.showStatusOnOk) {
+        setStatus(status, text, opts.statusClearMs || DEFAULTS.errorMs);
+      }
+      if (panel) {
+        flashPanel(panel);
+      }
+      if (btn) {
+        global.setTimeout(() => restoreLabel(btn), resetMs);
+      }
+    },
+
+    error(opts = {}) {
+      const btn = resolveEl(opts.button);
+      const status = resolveEl(opts.statusEl);
+      const message = opts.message || DEFAULTS.errorText;
+      const clearMs = opts.statusClearMs || DEFAULTS.errorMs;
+
+      if (status) {
+        setStatus(status, message, clearMs);
+      } else {
+        global.uiError?.(message);
+      }
+      if (btn) {
+        restoreLabel(btn);
+      }
+    }
+  };
+
+  appModules.saveFeedback = saveFeedback;
+  if (typeof global.saveFeedback === 'undefined') {
+    global.saveFeedback = saveFeedback;
+  }
+})(window);

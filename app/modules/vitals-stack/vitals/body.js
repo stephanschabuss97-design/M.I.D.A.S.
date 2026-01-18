@@ -69,6 +69,17 @@
 
       const fatPctEl = document.getElementById('fatPctDay');
       const musclePctEl = document.getElementById('musclePctDay');
+      const weightEl = document.getElementById('weightDay');
+      const waistEl = document.getElementById('input-waist-cm');
+      if (weightEl && waistEl) {
+        weightEl.required = true;
+        waistEl.required = true;
+        if (!weightEl.reportValidity?.() || !waistEl.reportValidity?.()) {
+          validationFailed = true;
+        }
+        weightEl.required = false;
+        waistEl.required = false;
+      }
       const parsePct = (el, label) => {
         if (!el) return null;
         const raw = (el.value || '').trim();

@@ -895,11 +895,11 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   max-width: calc(100% - 32px);
   margin: 0;
   padding: clamp(20px, 3vw, 48px);
-  border-radius: 32px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background:
     radial-gradient(circle at 50% 0%, rgba(33, 54, 102, 0.35), rgba(10, 12, 20, 0.85) 75%);
-  box-shadow: 0 40px 70px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-hub-panel);
   text-align: left;
   display: none;
   opacity: 0;
@@ -949,7 +949,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 }
 
 body[data-panel-perf="mobile"] .hub-panel {
-  box-shadow: 0 26px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-panel);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   animation-duration: 220ms;
@@ -977,7 +977,7 @@ body[data-panel-perf="mobile"] .hub-panel {
 
 body[data-panel-perf="mobile"] .hub-panel.hub-panel-open {
   animation: hub-panel-zoom-in-mobile 220ms cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
-  box-shadow: 0 20px 32px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-panel);
 }
 
 body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
@@ -1031,12 +1031,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-intake-tabs {
-  display: flex;
-  gap: 8px;
   margin: -6px 0 12px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 2;
 }
 
 .hub-panel[data-hub-panel="intake"] .hub-intake-tabs {
@@ -1049,23 +1044,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .hub-intake-tabs .btn {
   min-width: 70px;
-  position: relative;
-  padding-bottom: 2px;
-}
-
-.hub-intake-tabs .btn::after {
-  content: "";
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: transparent;
-  bottom: -10px;
-  border-radius: 999px;
-}
-
-.hub-intake-tabs .btn.is-active::after {
-  background: var(--accent, #4f9dff);
 }
 
 .hub-intake-tab-panels {
@@ -1082,33 +1060,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-appointments-tabs {
-  display: flex;
-  gap: 8px;
   margin: 0 0 12px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 2;
 }
 
 .hub-appointments-tabs .btn {
   min-width: 90px;
-  position: relative;
-  padding-bottom: 2px;
-}
-
-.hub-appointments-tabs .btn::after {
-  content: "";
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: transparent;
-  bottom: -10px;
-  border-radius: 999px;
-}
-
-.hub-appointments-tabs .btn.is-active::after {
-  background: var(--accent, #4f9dff);
 }
 
 .hub-appointments-tab-panels {
@@ -1124,33 +1080,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-profile-tabs {
-  display: flex;
-  gap: 8px;
   margin: -6px 0 12px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 2;
 }
 
 .hub-profile-tabs .btn {
   min-width: 90px;
-  position: relative;
-  padding-bottom: 2px;
-}
-
-.hub-profile-tabs .btn::after {
-  content: "";
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: transparent;
-  bottom: -10px;
-  border-radius: 999px;
-}
-
-.hub-profile-tabs .btn.is-active::after {
-  background: var(--accent, #4f9dff);
 }
 
 .hub-profile-tab-panels {
@@ -1168,7 +1102,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .hub-intake-placeholder {
   padding: 24px;
   background: rgba(15, 17, 30, 0.85);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -1236,10 +1170,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 12px;
 }
 
-.medication-form-status {
-  min-height: 1.2em;
-}
-
 .medication-cards-header {
   display: flex;
   align-items: baseline;
@@ -1257,7 +1187,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .medication-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 16px;
   background: rgba(12, 14, 24, 0.85);
   display: flex;
@@ -1318,7 +1248,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   align-items: center;
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 12px 16px;
   background: rgba(14, 16, 28, 0.8);
 }
@@ -1361,7 +1291,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-low-stock,
 .medication-safety {
   margin-top: 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 14px;
   background: rgba(255, 200, 60, 0.08);
   border: 1px solid rgba(255, 200, 60, 0.4);
@@ -1413,39 +1343,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-vitals-tabs {
-  display: flex;
-  gap: 8px;
   margin: -12px 0 -4px;
-  flex-wrap: wrap;
   padding: 0;
-  position: relative;
-  z-index: 2;
 }
 
 .hub-vitals-tabs .btn {
   min-width: 70px;
-  position: relative;
-  padding-bottom: 2px;
   transform: translateY(-6px);
 }
 
 .hub-vitals-tabs .btn:not(:disabled):active {
   transform: translateY(-6px);
-}
-
-.hub-vitals-tabs .btn::after {
-  content: "";
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: transparent;
-  bottom: -10px;
-  border-radius: 999px;
-}
-
-.hub-vitals-tabs .btn.is-active::after {
-  background: var(--accent, #4f9dff);
 }
 
 .hub-vitals-panel {
@@ -1625,7 +1533,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   background: rgba(15, 17, 30, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #fefefe;
@@ -1873,7 +1781,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 0 0 rgba(0, 0, 0, 0);
   }
 
-  /* Stabiler, symmetrischer Start (keine Schiefe m├Âglich) */
+  /* Stabiler, symmetrischer Start (keine Schiefe möglich) */
   15% {
     opacity: 0.8;
     transform: translate(-50%, -50%) scaleX(0.25) scaleY(0.25);
@@ -1999,7 +1907,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-chat {
   min-height: 320px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: rgba(10, 12, 20, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 18px;
@@ -2018,7 +1926,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-bubble {
   padding: 10px 14px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   line-height: 1.4;
   max-width: 80%;
   word-break: break-word;
@@ -2112,7 +2020,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .appointments-overview {
   padding: 24px;
   background: rgba(0, 0, 0, 0.25);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
 }
 
 .appointments-overview-header {
@@ -2131,7 +2039,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .appointments-card {
   padding: 16px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
@@ -2333,7 +2241,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .profile-overview {
   margin-top: 12px;
   padding: 24px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -2538,7 +2446,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-pill {
   flex: 1 1 120px;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
@@ -2568,7 +2476,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-context-item {
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(10, 12, 20, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
@@ -2629,7 +2537,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-appointments {
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(10, 12, 20, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.06);
   min-height: 56px;
@@ -2655,13 +2563,14 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .assistant-suggest-card {
+  border-radius: var(--radius-md);
   display: none !important;
 }
 
 .assistant-confirm-block {
   border: 1px solid rgba(120, 170, 255, 0.35);
   background: rgba(15, 18, 30, 0.9);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   margin-top: 12px;
   display: flex;

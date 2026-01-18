@@ -41,6 +41,24 @@
   --color-chart-tooltip-bg: rgba(20, 23, 28, 0.96);
   --size-header-height: 56px;
   --size-tabs-height: 48px;
+  --text-xxs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  --shadow-card: var(--shadow-soft);
+  --shadow-panel: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --shadow-modal: 0 18px 48px rgba(0, 0, 0, 0.35);
+  --shadow-hub-panel: 0 40px 70px rgba(0, 0, 0, 0.6);
+  --surface-card: var(--color-surface-card);
+  --surface-card-secondary: var(--color-surface-card-secondary);
+  --surface-elevated: var(--color-surface-elevated);
   --boot-stage-bg: rgba(8, 10, 14, 0.96);
   --boot-stage-border: rgba(255, 255, 255, 0.08);
   --boot-stage-text: var(--color-text-primary);
@@ -121,7 +139,6 @@ body.auth-locked main {
 
 body.auth-unknown #appMain,
 body.auth-unknown header,
-body.auth-unknown nav.tabs,
 body.auth-unknown #touchLog,
 body.auth-unknown .panel,
 body.auth-unknown .fab-wrap {
@@ -299,7 +316,7 @@ body.auth-unknown .boot-stage-label {
 
 /* SUBMODULE: Form Controls @public - vereinheitlichte Eingabeelemente mit dynamischen Rändern */
 label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   display: block;
   margin-bottom: 6px;

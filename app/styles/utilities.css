@@ -19,7 +19,7 @@
 .u-flex-center-gap10{display:flex;align-items:center;gap:10px;}
 .u-flex-col-gap6-mt4{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
 .u-hidden{display:none;}
-.u-diag-log{display:none;position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow:auto;background:#111;color:#eee;font-size:12px;padding:4px;z-index:10000;}
+.u-diag-log{display:none;position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow:auto;background:#111;color:#eee;font-size:var(--text-xs);padding:4px;z-index:10000;}
 .u-flex-fixed-220{flex:0 0 220px;}
 .u-flex-grow-min180{flex:1;min-width:180px;}
 .u-gap-8{gap:8px;}
@@ -33,7 +33,6 @@
 .u-mt-6{margin-top:6px;}
 .u-mt6-muted{margin-top:6px;color:#6b7280;}
 .u-mt8-opacity80{margin-top:8px;opacity:.8;}
-.u-status-muted{min-height:16px;color:#9aa3af;}
 .u-minw-180{min-width:180px;}
 .u-opacity-70{opacity:.7;}
 .u-opacity70-mt6{opacity:.7;margin-top:6px;}
@@ -42,6 +41,12 @@
 .u-text-center-mt6{text-align:center;margin-top:6px;}
 
 /* SUBMODULE: Width Utilities @public - standardisierte Klassen für Breiten-, Höhen- und Eingabefeld-Styling */
+.u-text-xxs{font-size:var(--text-xxs)}
+.u-text-xs{font-size:var(--text-xs)}
+.u-text-sm{font-size:var(--text-sm)}
+.u-text-md{font-size:var(--text-md)}
+.u-text-lg{font-size:var(--text-lg)}
+.u-text-xl{font-size:var(--text-xl)}
 .u-w100-h48{width:100%;height:48px;}
 .u-w100-h48-mb12{width:100%;height:48px;margin-bottom:12px;}
 .u-w100-mt4{width:100%;margin-top:4px;}

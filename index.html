@@ -183,7 +183,7 @@
             </button>
           </div>
         </header>
-        <div class="doctor-inbox-filters" role="tablist" aria-label="Report Filter">
+        <div class="doctor-inbox-filters tabs" role="tablist" aria-label="Report Filter">
           <button class="btn ghost is-active" type="button" data-report-filter="all" aria-selected="true">Alle</button>
           <button class="btn ghost" type="button" data-report-filter="monthly_report" aria-selected="false">Monatsberichte</button>
           <button class="btn ghost" type="button" data-report-filter="range_report" aria-selected="false">Arzt-Berichte</button>
@@ -580,7 +580,7 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <div class="hub-profile-tabs" role="tablist" aria-label="Profil Bereiche">
+          <div class="hub-profile-tabs tabs" role="tablist" aria-label="Profil Bereiche">
             <button
               class="btn ghost is-active"
               id="profileTabViewBtn"
@@ -814,7 +814,7 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <div class="hub-appointments-tabs" role="tablist" aria-label="Termine Bereiche">
+          <div class="hub-appointments-tabs tabs" role="tablist" aria-label="Termine Bereiche">
             <button class="btn ghost is-active" id="appointmentsTabOverviewBtn" type="button" data-appointments-tab="overview" aria-controls="hubAppointmentsPanelOverview" aria-selected="true">Übersicht</button>
             <button class="btn ghost" id="appointmentsTabNewBtn" type="button" data-appointments-tab="new" aria-controls="hubAppointmentsPanelNew" aria-selected="false">Neu</button>
           </div>
@@ -823,7 +823,7 @@
               <section class="appointments-overview" id="appointmentsOverview" aria-live="polite">
                 <header class="appointments-overview-header">
                   <h3>Kommende Termine</h3>
-                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Eintr?0ge.</p>
+                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
                 </header>
                 <div class="appointments-columns" id="appointmentsColumns">
                   <!-- dynamische Karten -->
@@ -846,7 +846,7 @@
                     <select id="apptRepeatRule">
                       <option value="none">Nie</option>
                       <option value="monthly">Monatlich</option>
-                      <option value="annual">J?0hrlich</option>
+                      <option value="annual">Jährlich</option>
                     </select>
                   </label>
                   <label>
@@ -897,7 +897,7 @@
           </button>
         </header>
         <div class="hub-panel-body" id="hubOverlayContent">
-          <div class="hub-intake-tabs" role="tablist" aria-label="Intake Bereiche">
+          <div class="hub-intake-tabs tabs" role="tablist" aria-label="Intake Bereiche">
             <button class="btn ghost is-active" id="intakeTabInBtn" type="button" data-intake-tab="in" aria-controls="hubIntakePanelIn" aria-selected="true">IN</button>
             <button class="btn ghost" id="intakeTabTabBtn" type="button" data-intake-tab="tab" aria-controls="hubIntakePanelTab" aria-selected="false">TAB</button>
           </div>
@@ -910,9 +910,10 @@
                 <input
                   type="number"
                   id="cap-water-add"
-                  min="0"
+                  min="1"
                   step="50"
                   placeholder="z. B. 250"
+                  required
                 >
                 <div class="capture-card-actions">
                   <button class="btn primary" id="cap-water-add-btn" type="button">+ Menge</button>
@@ -989,7 +990,7 @@
                   <div class="medication-form-actions">
                     <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
                     <button class="btn ghost" type="button" id="medFormResetBtn">Reset</button>
-                    <span class="medication-form-status small muted" id="medFormStatus" aria-live="polite"></span>
+                    <span class="save-status small muted" id="medFormStatus" aria-live="polite"></span>
                   </div>
                 </form>
                 <section class="medication-cards card-nested" id="medicationCards" aria-live="polite">
@@ -1058,12 +1059,12 @@
             </div>
             <div class="doctor-trendpilot" id="doctorTrendpilot" aria-live="polite"></div>
             <div id="doctorDailyWrap">
-              <nav class="doctor-tabs" role="tablist" aria-label="Domains">
+              <div class="doctor-tabs tabs" role="tablist" aria-label="Domains">
                 <button class="btn ghost is-active" id="doctorTabBpBtn" data-doctor-tab="bp" role="tab" aria-selected="true" aria-controls="doctorTabBp" type="button">BP</button>
                 <button class="btn ghost" id="doctorTabBodyBtn" data-doctor-tab="body" role="tab" aria-selected="false" aria-controls="doctorTabBody" type="button">Body</button>
                 <button class="btn ghost" id="doctorTabLabBtn" data-doctor-tab="lab" role="tab" aria-selected="false" aria-controls="doctorTabLab" type="button">Lab</button>
                 <button class="btn ghost" id="doctorTabActivityBtn" data-doctor-tab="activity" role="tab" aria-selected="false" aria-controls="doctorTabActivity" type="button">Training</button>
-              </nav>
+              </div>
               <div class="doctor-view" id="doctorView">
                 <div class="doctor-tab-panel is-active" id="doctorTabBp" data-doctor-panel="bp" role="tabpanel" aria-labelledby="doctorTabBpBtn"></div>
                 <div class="doctor-tab-panel" id="doctorTabBody" data-doctor-panel="body" role="tabpanel" aria-labelledby="doctorTabBodyBtn" hidden></div>
@@ -1122,7 +1123,7 @@
                   </button>
                 </div>
               </div>
-              <div class="hub-vitals-tabs" role="tablist" aria-label="Vitals Bereiche">
+              <div class="hub-vitals-tabs tabs" role="tablist" aria-label="Vitals Bereiche">
                 <button class="btn ghost is-active" type="button" data-vitals-tab="bp" aria-selected="true">BP</button>
                 <button class="btn ghost" type="button" data-vitals-tab="body" aria-selected="false">Body</button>
                 <button class="btn ghost" type="button" data-vitals-tab="lab" aria-selected="false">Lab</button>
@@ -1240,6 +1241,7 @@
                     id="weightDay"
                     inputmode="decimal"
                     placeholder="z. B. 84.2"
+                    required
                   >
                 </div>
                 <div>
@@ -1250,6 +1252,7 @@
                     inputmode="decimal"
                     autocomplete="off"
                     placeholder="z. B. 104,5"
+                    required
                   >
                 </div>
                 <div>
@@ -1549,7 +1552,7 @@
           <button class="btn ghost u-w100-mt4" id="configSaveBtn" type="button">
             Konfiguration speichern
           </button>
-          <div id="configStatus" class="small u-status-muted"></div>
+          <div id="configStatus" class="small save-status"></div>
         </div>
       </details>
       <div id="whoAmI" class="small u-text-center-mt6"></div>
