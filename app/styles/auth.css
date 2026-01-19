@@ -19,7 +19,7 @@
   max-height: 80vh;
   overflow: auto;
   background: var(--surface-card, #0f1116);
-  border: 1px solid #2b2f3a;
+  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
   display: none;
@@ -31,7 +31,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px;
-  border-bottom: 1px solid #2b2f3a;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 .panel h4 {
   margin: 0;
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #2b2f3a;
+  border: 1px solid var(--color-border-subtle);
   background: var(--surface-card, #0f1116);
   cursor: pointer;
 }
@@ -87,9 +87,9 @@
 }
 #busy .box {
   background: var(--surface-card, #10131a);
-  border: 1px solid #2b2f3a;
+  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: var(--card-padding);
   font-weight: 600;
 }
 .seg {
@@ -116,14 +116,12 @@
 #appLock .lock-card,
 #loginOverlay .login-card {
   width: min(420px, 92vw);
-  border-radius: var(--radius-lg);
-  padding: 18px;
+  border-radius: var(--panel-radius);
+  padding: var(--card-padding);
   box-shadow: var(--shadow-modal);
-  border: 1px solid #e5e7eb;
-}
-#appLock .lock-card {
-  background: #fff;
-  color: #111;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--surface-card);
+  color: var(--color-text-primary);
 }
 #appLock .lock-card h3,
 #loginOverlay .login-card h3 {

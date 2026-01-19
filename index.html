@@ -610,7 +610,7 @@
               role="tabpanel"
               aria-hidden="false"
             >
-              <section class="profile-overview card" aria-live="polite">
+              <section class="profile-overview card subtle" aria-live="polite">
                 <header>
                   <h3>Aktuelle Daten</h3>
                 </header>
@@ -820,7 +820,7 @@
           </div>
           <div class="hub-appointments-tab-panels">
             <section class="hub-appointments-panel is-active" id="hubAppointmentsPanelOverview" data-appointments-panel="overview" role="tabpanel" aria-labelledby="appointmentsTabOverviewBtn">
-              <section class="appointments-overview" id="appointmentsOverview" aria-live="polite">
+              <section class="appointments-overview card subtle" id="appointmentsOverview" aria-live="polite">
                 <header class="appointments-overview-header">
                   <h3>Kommende Termine</h3>
                   <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
@@ -904,7 +904,7 @@
           <div class="hub-intake-tab-panels">
             <div class="hub-intake-panel is-active" id="hubIntakePanelIn" data-intake-panel="in" role="tabpanel" aria-labelledby="intakeTabInBtn">
               <div class="hub-intake-form" id="cap-intake-wrap">
-              <div class="hub-intake-grid intake-card-grid">
+              <div class="hub-intake-grid intake-card-grid form-grid">
               <label class="intake-card capture-card">
                 <span class="capture-card-label">Wasser (ml)</span>
                 <input
@@ -915,14 +915,14 @@
                   placeholder="z. B. 250"
                   required
                 >
-                <div class="capture-card-actions">
+                <div class="capture-card-actions form-actions">
                   <button class="btn primary" id="cap-water-add-btn" type="button">+ Menge</button>
                   <div class="intake-pill-slot" data-pill-kind="water" aria-live="polite"></div>
                 </div>
               </label>
               <label class="intake-card capture-card">
                 <span class="capture-card-label">Salz &amp; Protein</span>
-                <div class="capture-card-fields">
+                <div class="capture-card-fields form-grid">
                   <input
                     type="text"
                     id="cap-salt-add"
@@ -938,7 +938,7 @@
                   placeholder="Protein (z. B. 20,0)"
                 >
                 </div>
-                <div class="capture-card-actions">
+                <div class="capture-card-actions form-actions">
                   <button class="btn primary" id="cap-salt-protein-btn" type="button">+ Menge</button>
                   <div class="intake-pill-slot" data-pill-kind="salt" aria-live="polite"></div>
                   <div class="intake-pill-slot" data-pill-kind="protein" aria-live="polite"></div>
@@ -955,9 +955,9 @@
             </div>
             <div class="hub-intake-panel" id="hubIntakePanelTab" data-intake-panel="tab" role="tabpanel" aria-labelledby="intakeTabTabBtn" aria-hidden="true" hidden>
               <div class="medication-manager" id="medicationManager">
-                <form id="medicationForm" class="medication-form card-nested" autocomplete="off">
+                <form id="medicationForm" class="medication-form card" autocomplete="off">
                   <input type="hidden" id="medFormId">
-                  <div class="medication-form-grid">
+                  <div class="medication-form-grid form-grid">
                     <label class="field-group" for="medFormName">
                       <span class="label">Name *</span>
                       <input type="text" id="medFormName" placeholder="z. B. Valsartan" required>
@@ -987,13 +987,13 @@
                       <span class="label">Aktiv</span>
                     </label>
                   </div>
-                  <div class="medication-form-actions">
+                  <div class="medication-form-actions form-actions">
                     <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
                     <button class="btn ghost" type="button" id="medFormResetBtn">Reset</button>
                     <span class="save-status small muted" id="medFormStatus" aria-live="polite"></span>
                   </div>
                 </form>
-                <section class="medication-cards card-nested" id="medicationCards" aria-live="polite">
+                <section class="medication-cards card" id="medicationCards" aria-live="polite">
                   <header class="medication-cards-header">
                     <h3>Medikamente</h3>
                     <p class="muted small" id="medicationCardsMeta">Noch keine Daten geladen.</p>
@@ -1104,7 +1104,7 @@
         </header>
         <div class="hub-panel-body">
             <div class="hub-vitals">
-              <div class="card-nested hub-vitals-controls">
+              <div class="card hub-vitals-controls">
                 <div class="control-group">
                   <label for="date">Datum</label>
                   <input
@@ -1114,7 +1114,7 @@
                     aria-label="Datum waehlen"
                   >
                 </div>
-                <div class="hub-vitals-actions hub-vitals-actions-inline" role="group" aria-label="Aktionen für Arztbereich">
+                <div class="hub-vitals-actions hub-vitals-actions-inline form-actions" role="group" aria-label="Aktionen für Arztbereich">
                   <button class="btn ghost" id="vitalsDoctorBtn" type="button">
                     Arzt-Ansicht
                   </button>
@@ -1131,7 +1131,7 @@
               </div>
               <div class="hub-vitals-panel is-active" data-vitals-panel="bp">
                 <div class="hub-vitals-bp">
-              <div class="card-nested bp-combined-card">
+              <div class="card bp-combined-card">
               <div class="bp-context-card">
                 <div class="bp-context-header">
                   <label for="bpContextSel">Messzeitpunkt</label>
@@ -1142,7 +1142,7 @@
                 </div>
               </div>
               <div class="bp-pane active" data-context="M">
-                <div class="grid">
+                <div class="form-grid">
                   <div>
                     <label>Systolisch (mmHg)</label>
                     <input
@@ -1178,14 +1178,14 @@
                     placeholder="Kommentar Morgens (optional)"
                   ></textarea>
                 </div>
-                <div class="panel-actions">
+                <div class="form-actions">
                   <button class="btn primary save-bp-panel-btn" data-context="M" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
                 </div>
               </div>
               <div class="bp-pane" data-context="A">
-                <div class="grid">
+                <div class="form-grid">
                   <div>
                     <label>Systolisch (mmHg)</label>
                     <input
@@ -1221,7 +1221,7 @@
                     placeholder="Kommentar Abends (optional)"
                   ></textarea>
                 </div>
-                <div class="panel-actions">
+                <div class="form-actions">
                   <button class="btn primary save-bp-panel-btn" data-context="A" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
@@ -1231,8 +1231,8 @@
               </div>
               </div>
               <div class="hub-vitals-panel" data-vitals-panel="body" aria-hidden="true" hidden>
-            <div class="hub-vitals-body card-nested">
-              <div class="body-grid">
+            <div class="hub-vitals-body card">
+              <div class="form-grid">
                 <div>
                   <label>Gewicht (kg)</label>
                   <input
@@ -1276,7 +1276,7 @@
                   >
                 </div>
               </div>
-                <div class="panel-actions">
+                <div class="form-actions">
                   <button class="btn primary" id="saveBodyPanelBtn" type="button">
                     &#x1F4BE; Körper speichern
                   </button>
@@ -1284,8 +1284,8 @@
               </div>
               </div>
               <div class="hub-vitals-panel" data-vitals-panel="lab" aria-hidden="true" hidden>
-            <div class="hub-vitals-lab card-nested">
-              <div class="lab-grid">
+            <div class="hub-vitals-lab card">
+              <div class="lab-grid form-grid">
                 <div>
                   <label>eGFR (ml/min/1,73 m²)</label>
                   <input
@@ -1375,7 +1375,7 @@
                   ></textarea>
                 </div>
               </div>
-              <div class="panel-actions">
+              <div class="form-actions">
                 <button class="btn primary" id="saveLabPanelBtn" type="button">
                   &#x1F489; Labor speichern
                 </button>
@@ -1383,9 +1383,9 @@
             </div>
           </div>
               <div class="hub-vitals-panel" data-vitals-panel="activity" aria-hidden="true" hidden>
-            <div class="hub-vitals-activity card-nested">
+            <div class="hub-vitals-activity card">
               <form id="activityForm" class="activity-form" autocomplete="off">
-                <div class="activity-form-grid">
+                <div class="activity-form-grid form-grid">
                   <label class="field-group" for="activityName">
                     <span class="label">Aktivität</span>
                     <input
@@ -1415,7 +1415,7 @@
                     placeholder="Kurznotiz"
                   ></textarea>
                 </label>
-                <div class="activity-form-actions">
+                <div class="activity-form-actions form-actions">
                   <button class="btn primary" id="activitySaveBtn" type="submit">Speichern</button>
                   <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
                   <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
@@ -1624,3 +1624,4 @@
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]
   total @extract-candidate markers: 18
 -->
+

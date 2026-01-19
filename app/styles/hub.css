@@ -1,4 +1,4 @@
-Ôªø/* ==========================================================================
+/* ==========================================================================
    HUB Layout Base
    ========================================================================== */
 
@@ -16,7 +16,7 @@
    HUB Panel Active State (Milchglas + Lock via :has)
    ========================================================================== */
 
-/* Vollfl√§chiges Milchglas-Overlay √ºber dem Hub, inkl. leichter 3D-Refraction */
+/* Vollfl‰chiges Milchglas-Overlay ¸ber dem Hub, inkl. leichter 3D-Refraction */
 .hub::after {
   content: '';
   position: fixed;
@@ -239,7 +239,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: translate(-50%, 0) scale(1);
 }
 
-/* ¬≠M.I.D.A.S. Aura Blau/Magenta */
+/* ≠M.I.D.A.S. Aura Blau/Magenta */
 .midas-aura-flow {
   position: absolute;
   inset: 28%;
@@ -330,7 +330,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   opacity: 1.35;
 }
 
-/* ¬≠Mobile-Boost mehr Glow, gr√∂√üer, intensiver */
+/* ≠Mobile-Boost mehr Glow, grˆﬂer, intensiver */
 @media (max-width: 640px) {
   .midas-aura-flow {
     inset: 16%;
@@ -377,7 +377,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   }
 }
 
-/* Zusatz-Pulse f√ºr Aura, wenn Panel aktiv ist */
+/* Zusatz-Pulse f¸r Aura, wenn Panel aktiv ist */
 body:has(.hub-panel.is-visible) .midas-aura-flow {
   animation:
     midasAuraRotate 36s linear infinite,
@@ -397,7 +397,7 @@ body[data-panel-perf="mobile"]:has(.hub-panel.is-visible) .midas-aura-flow {
   transform: scale(1.04);
 }
 
-/* ¬≠Goldener Ring-Glow innen */
+/* ≠Goldener Ring-Glow innen */
 .midas-ring-gold {
   position: absolute;
   inset: 17%;
@@ -684,7 +684,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   background: radial-gradient(circle, rgba(255, 120, 120, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-/* Stealth-Touch-Targets: unsichtbare Buttons, Feedback ‚îú‚ïùber Aura + Vibration */
+/* Stealth-Touch-Targets: unsichtbare Buttons, Feedback ++ber Aura + Vibration */
 .hub-icon {
   border: none;
   background: transparent;
@@ -710,7 +710,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   cursor: not-allowed;
 }
 
-/* Kein eigener Hover-Glow, kein H√ºpfer visuelles Feedback kommt √ºber Aura */
+/* Kein eigener Hover-Glow, kein H¸pfer visuelles Feedback kommt ¸ber Aura */
 .hub-icon:focus-visible,
 .hub-icon:hover {
   box-shadow: none;
@@ -787,7 +787,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   }
 }
 
-/* Mobile Tweaks f‚îú‚ïùr Orbit */
+/* Mobile Tweaks f++r Orbit */
 @media (max-width: 640px) {
   .hub-hero {
     padding-top: 4px;
@@ -816,7 +816,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   }
 }
 
-/* Strukturunabh‚îú√±ngiger Aura-Boost ‚îú‚ïùber CSS-Variablen */
+/* Strukturunabh+Òngiger Aura-Boost ++ber CSS-Variablen */
 .hub-orbit:has(.hub-icon:is(:hover, :focus-visible)) {
   --midas-aura-boost: 0.35;
 }
@@ -868,7 +868,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 }
 
 .hub-intake-pills .cap-pill {
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  
   background: rgba(255, 255, 255, 0.02);
   border-radius: 999px;
   padding: 6px 14px;
@@ -876,9 +876,6 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   letter-spacing: 0.05em;
 }
 
-.hub-mode #capture .capture-header {
-  display: none;
-}
 
 
 /* ==========================================================================
@@ -960,7 +957,7 @@ body[data-panel-perf="mobile"] .hub-panel {
 }
 
 /* Etwas cineastischer: langsameres Aufbauen, schnelleres Einrollen
-   + Omni-Gel Glow beim ‚îú√ªffnen */
+   + Omni-Gel Glow beim +˚ffnen */
 .hub-panel.hub-panel-open {
   animation: hub-panel-zoom-in-desktop 500ms cubic-bezier(0.22, 0.8, 0.25, 1) forwards;
   box-shadow:
@@ -1029,7 +1026,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-intake-tabs {
-  margin: -6px 0 12px;
+  margin: 0 0 12px;
 }
 
 .hub-panel[data-hub-panel="intake"] .hub-intake-tabs {
@@ -1101,7 +1098,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 24px;
   background: rgba(15, 17, 30, 0.85);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
 }
 
 .medication-manager {
@@ -1110,38 +1107,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 20px;
 }
 
-.medication-form .field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.medication-form.card,
+.medication-cards.card,
+.hub-vitals-body.card,
+.hub-vitals-lab.card,
+.hub-vitals-activity.card,
+.bp-combined-card.card {
+  --panel-bg: transparent;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
-
-.medication-form .field-group.checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-
-.medication-form .field-group .label {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.medication-form .field-group input[type="text"],
-.medication-form .field-group input[type="number"] {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  background: rgba(10, 12, 22, 0.65);
-  color: #fff;
-  padding: 10px 12px;
-}
-
-.medication-form .field-group input:focus-visible {
-  outline: none;
-  border-color: rgba(79, 157, 255, 0.8);
-  box-shadow: var(--glow-soft);
-}
-
 .medication-form.is-disabled {
   opacity: 0.6;
 }
@@ -1154,16 +1130,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .medication-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.medication-form-actions {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
+  gap: var(--form-grid-gap);
 }
 
 .medication-cards-header {
@@ -1178,11 +1146,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-card-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--card-gap);
 }
 
 .medication-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
   border-radius: var(--radius-lg);
   padding: 16px;
   background: rgba(12, 14, 24, 0.85);
@@ -1207,8 +1175,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.75);
 }
 
 .medication-card-actions {
@@ -1243,7 +1209,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   background: rgba(14, 16, 28, 0.8);
@@ -1254,16 +1220,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   flex-direction: column;
   gap: 4px;
 }
-
-.medication-daily-meta strong {
-  letter-spacing: 0.08em;
-}
-
-.medication-daily-meta span {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
 .med-toggle-btn {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.05);
@@ -1336,20 +1292,20 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   flex-direction: column;
   gap: 0;
   width: 100%;
+  --form-grid-min: 220px;
 }
 
 .hub-vitals-tabs {
-  margin: -12px 0 -4px;
+  margin: 0 0 12px;
   padding: 0;
 }
 
 .hub-vitals-tabs .btn {
   min-width: 70px;
-  transform: translateY(-6px);
 }
 
 .hub-vitals-tabs .btn:not(:disabled):active {
-  transform: translateY(-6px);
+  transform: none;
 }
 
 .hub-vitals-panel {
@@ -1362,25 +1318,13 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   display: block;
 }
 
-.hub-vitals-panel.is-active .card-nested:first-child {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.hub-vitals-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: center;
-}
 
 .hub-vitals-actions .btn {
-  min-width: 140px;
+  min-width: 0;
 }
 
 .hub-vitals-actions-inline {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .hub-vitals-bp {
@@ -1416,49 +1360,13 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .hub-vitals-activity .activity-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
+  gap: var(--form-grid-gap);
 }
-
-.hub-vitals-activity .field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hub-vitals-activity .field-group .label {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.hub-vitals-activity input,
-.hub-vitals-activity textarea {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  background: rgba(10, 12, 22, 0.65);
-  color: #fff;
-  padding: 10px 12px;
-}
-
-.hub-vitals-activity input:focus-visible,
-.hub-vitals-activity textarea:focus-visible {
-  outline: none;
-  border-color: rgba(79, 157, 255, 0.8);
-  box-shadow: var(--glow-soft);
-}
-
-.hub-vitals-activity .activity-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
 .hub-vitals-lab .lab-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
+  gap: var(--form-grid-gap);
 }
 
 .hub-vitals-lab .lab-grid input,
@@ -1468,8 +1376,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-vitals-lab .lab-grid textarea {
-  min-height: 70px;
+  min-height: 96px;
   resize: vertical;
+}
+
+.hub-vitals-lab .lab-comment {
+  grid-column: 1 / -1;
 }
 
 .intake-card-grid {
@@ -1509,25 +1421,18 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .capture-card-label {
   font-size: 0.9rem;
   opacity: 0.8;
-}
-
-.capture-card input {
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #fff;
-  font-size: 1.1rem;
-  padding: 4px 0;
+  display: block;
+  margin-bottom: var(--label-gap);
 }
 
 .intake-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px;
-  border-radius: var(--radius-xl);
-  background: rgba(15, 17, 30, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: var(--card-padding);
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+  border: 1px solid var(--color-border-subtle);
   color: #fefefe;
   min-height: 80px;
 }
@@ -1540,13 +1445,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-card.is-low {
   border-color: rgba(255, 200, 60, 0.5);
   box-shadow: var(--glow-strong);
-}
-
-.capture-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .capture-card-actions .btn {
@@ -1591,8 +1489,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .capture-card-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
+  gap: var(--form-grid-gap);
 }
 
 .hub-intake-note {
@@ -1601,7 +1499,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .hub-date-control {
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(17, 21, 36, 0.95), rgba(9, 11, 19, 0.95));
   color: #fff;
@@ -1636,7 +1534,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 16px;
   align-items: flex-end;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: var(--panel-header-margin);
 }
 
 .hub-vitals-controls .control-group {
@@ -1652,17 +1550,26 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .hub-panel .hub-intake-form,
 .hub-panel .doctor-panel,
-.hub-panel .hub-vitals-bp .card-nested,
-.hub-panel .hub-vitals-body.card-nested,
-.hub-panel .hub-vitals-lab.card-nested {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+
+.hub-panel .doctor-panel.card {
+  --panel-bg: transparent;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .bp-context-card {
   margin-bottom: 18px;
 }
+
+.bp-pane {
+  display: none;
+}
+
+.bp-pane.active {
+  display: block;
+}
+
 
 .hub-vitals-bp .bp-combined-card .bp-context-card {
   margin-bottom: 16px;
@@ -1687,18 +1594,10 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .bp-context-header select {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  background: rgba(16, 20, 36, 0.95);
-  color: #fff;
-  padding: 10px 14px;
+  
   min-width: 180px;
 }
 
-.hub-panel .panel-actions {
-  display: flex;
-  justify-content: flex-end;
-}
 
 .hub-panel #doctorDailyWrap,
 .hub-panel .u-overflow-auto {
@@ -1754,7 +1653,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
    Animations Panels
    ========================================================================== */
 
-/* √ñffnen: aus der Mitte, erst als d√ºnner Balken, dann volle H√∂he */
+/* ÷ffnen: aus der Mitte, erst als d¸nner Balken, dann volle Hˆhe */
 @keyframes hub-panel-zoom-in-desktop {
   0% {
     opacity: 0;
@@ -1765,7 +1664,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 0 0 rgba(0, 0, 0, 0);
   }
 
-  /* Stabiler, symmetrischer Start (keine Schiefe m√∂glich) */
+  /* Stabiler, symmetrischer Start (keine Schiefe mˆglich) */
   15% {
     opacity: 0.8;
     transform: translate(-50%, -50%) scaleX(0.25) scaleY(0.25);
@@ -1781,7 +1680,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 30px 60px rgba(0, 0, 0, 0.85);
   }
 
-  /* H√∂he w√§chst */
+  /* Hˆhe w‰chst */
   70% {
     opacity: 1;
     transform: translate(-50%, -50%) scaleX(1) scaleY(0.95);
@@ -1802,7 +1701,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 }
 
-/* Schlie√üen: leicht zusammenziehen, dann wieder in den Kern zur√ºckschnappen
+/* Schlieﬂen: leicht zusammenziehen, dann wieder in den Kern zur¸ckschnappen
    + kleines Lichtecho */
 @keyframes hub-panel-zoom-out-desktop {
 
@@ -1860,14 +1759,14 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 /* Damit das Panel selbst animiert, aber eine innere Box scrollbar bleibt */
 .hub-panel-scroll {
-  max-height: calc(100vh - 120px); /* genug Luft ‚îú‚ïùber/unter dem Panel */
+  max-height: calc(100vh - 120px); /* genug Luft ++ber/unter dem Panel */
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch; /* smooth scroll f‚îú‚ïùr iOS + Android */
+  -webkit-overflow-scrolling: touch; /* smooth scroll f++r iOS + Android */
   padding-right: 6px; /* verhindert Text-Cut rechts */
 }
 
-/* Optional: h‚îú‚ïùbscher Scroll-Fade oben/unten */
+/* Optional: h++bscher Scroll-Fade oben/unten */
 .hub-panel-scroll::before,
 .hub-panel-scroll::after {
   content: "";
@@ -1893,7 +1792,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   min-height: 320px;
   border-radius: var(--radius-lg);
   background: rgba(10, 12, 20, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -1927,7 +1826,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-bubble.assistant-assistant {
   align-self: flex-start;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
 }
 
 .assistant-bubble[data-role="system"],
@@ -1995,16 +1894,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   min-height: 96px;
 }
 
-.appointments-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .appointments-overview {
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: var(--radius-xl);
+  margin: 0;
 }
 
 .appointments-overview-header {
@@ -2025,7 +1916,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 16px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2037,12 +1928,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   align-items: baseline;
   gap: 12px;
 }
-
-.appointments-card .appointments-meta {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.65);
-}
-
 .appointments-card .appointments-actions {
   display: flex;
   gap: 8px;
@@ -2099,9 +1984,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .assistant-photo-caption {
   margin-top: 8px;
-  font-size: 0.95rem;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .assistant-photo-bubble.is-processing .assistant-photo-result {
@@ -2157,23 +2040,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 16px;
 }
 
-.profile-form .field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.profile-form .field-group.checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile-form .label {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
 .profile-form textarea {
   min-height: 96px;
   resize: vertical;
@@ -2192,12 +2058,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   color: #111;
   background: #fff;
 }
-
-.profile-form .field-hint {
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
 .profile-doctor-fields {
   display: contents;
 }
@@ -2214,18 +2074,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   display: none;
 }
 
-.profile-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .profile-overview {
   margin-top: 12px;
-  padding: 24px;
-  border-radius: var(--radius-lg);
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .profile-overview-list {
@@ -2272,8 +2122,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: 12px;
   padding: 8px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.4);
+    background: var(--surface-elevated);
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -2284,7 +2133,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   height: 52px;
   object-fit: cover;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  
 }
 
 .assistant-photo-draft-meta {
@@ -2309,8 +2158,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .assistant-photo-draft-clear {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   padding: 6px 12px;
@@ -2325,17 +2173,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-input {
   flex: 1;
   min-width: 0;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  padding: 10px 16px;
-}
-
-.assistant-input:focus-visible {
-  outline: none;
-  border-color: rgba(120, 170, 255, 0.7);
-  box-shadow: var(--glow-soft);
+  
 }
 
 .assistant-input-tools {
@@ -2352,7 +2190,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     flex: 0 0 auto;
   }
 
-  .assistant-input {
+ .assistant-input {
     flex: 1 1 auto;
   }
 
@@ -2366,8 +2204,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
   color: #fefefe;
   font-size: 1.1rem;
   cursor: pointer;
@@ -2430,7 +2267,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 10px 14px;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2458,7 +2295,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 10px 14px;
   border-radius: var(--radius-md);
   background: rgba(10, 12, 20, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2517,7 +2354,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   padding: 12px 14px;
   border-radius: var(--radius-md);
   background: rgba(10, 12, 20, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  
   min-height: 56px;
 }
 
@@ -2697,3 +2534,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     transform: translate(-50%, -50%) translateX(80px) scale(0.86);
   }
 }
+
+
+
+

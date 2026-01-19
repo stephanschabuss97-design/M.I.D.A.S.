@@ -91,6 +91,8 @@ textarea{min-height:64px;resize:vertical}
   flex-wrap:wrap;
   position:relative;
   z-index:2;
+  min-height:var(--size-tabs-height);
+  align-items:center;
 }
 .tabs .btn{
   position:relative;
@@ -154,6 +156,56 @@ textarea{min-height:64px;resize:vertical}
 .badge.good{border-color:var(--color-success); color:var(--color-success)}
 .badge.bad{border-color:var(--color-danger); color:var(--color-danger)}
 .badge.hidden{display:none !important}
+
+/* SUBMODULE: Progress Bars @public - Globale Progress-Pattern */
+.progress{
+  position:relative;
+  width:100%;
+  height:18px;
+  background:#0f1116;
+  border:1px solid #2b2f3a;
+  border-radius:var(--radius-pill);
+  overflow:hidden;
+  margin-top:8px;
+}
+.progress .bar{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,var(--color-accent),#7c3aed);
+  transition:width .35s ease, filter .2s ease;
+  box-shadow:inset 0 0 0 1px rgba(79,70,229,.25);
+}
+.progress .label{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:var(--text-xs);
+  font-weight:600;
+  color:rgba(255,255,255,.9);
+  text-shadow:0 1px 2px rgba(0,0,0,.6);
+  pointer-events:none;
+}
+.progress.ok .bar{
+  background:linear-gradient(90deg,#10b981,#34d399);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.25), 0 8px 20px rgba(16,185,129,.18);
+}
+.progress.warn .bar{
+  background:linear-gradient(90deg,#f59e0b,#fbbf24);
+  box-shadow: inset 0 0 0 1px rgba(245,158,11,.25), 0 8px 20px rgba(245,158,11,.18);
+}
+.progress.bad .bar{
+  background:linear-gradient(90deg,#ef4444,#f87171);
+  box-shadow: inset 0 0 0 1px rgba(239,68,68,.25), 0 8px 20px rgba(239,68,68,.18);
+}
+.progress.neutral .bar{
+  background:linear-gradient(90deg,#6b7280,#9ca3af);
+  box-shadow: inset 0 0 0 1px rgba(107,114,128,.25);
+}
+@media (hover:hover){
+  .progress:hover .bar{ filter:brightness(1.05); }
+}
 
 /* SUBMODULE: Flash Animation @internal - temporäre visuelle Hervorhebung mit Farbverlauf */
 .btn.flash{

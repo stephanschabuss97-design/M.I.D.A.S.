@@ -1,244 +1,29 @@
 /**
  * MODULE: assets/css/ui/capture-and-appointments.css
- * Description: Enthält Stile für Capture-Accordion-Panels, Lifestyle-/Intake-Statusanzeigen und Arztterminkarten.
+ * Description: Enth�lt Stile f�r Capture-Intake Panels.
  * Submodules:
- *  - Capture Accordions & Nested Panels
- *  - Lifestyle Progress Bars
- *  - Intake Panels & Status Pills
- *  - Arzttermine (Appointments)
+ *  - Intake Panels
  */
-
-/* SUBMODULE: Capture Accordions & Nested Panels @public - UI-Struktur für Datenabschnitte (auf-/zuklappbare Panels) */
-.accordion{
-  background:var(--surface-card-secondary);
-  border:1px solid var(--color-border-subtle);
-  border-radius:var(--radius-sm);
-  margin:24px 0;
-  overflow:hidden;
-  transition:border-color .2s ease, background .2s ease, box-shadow .2s ease;
-  box-shadow:var(--shadow-card);
-}
-.accordion summary{
-  list-style:none;
-  cursor:pointer;
-  padding:18px 20px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  font-weight:600;
-  color:var(--color-text-primary);
-  letter-spacing:0.3px;
-  transition:background .2s ease, color .2s ease;
-  position:relative;
-}
-.accordion summary::after{
-  content:"";
-  position:absolute;
-  left:20px;
-  right:20px;
-  bottom:0;
-  height:1px;
-  background:var(--color-border-subtle);
-  transition:background .2s ease;
-}
-.accordion summary::-webkit-details-marker{display:none;}
-.accordion .chevron{
-  transition:transform .2s ease;
-}
-.accordion[open] .chevron{
-  transform:rotate(90deg);
-}
-.accordion summary:hover{
-  background:rgba(58,61,255,0.06);
-}
-.accordion[open]{
-  border-color:rgba(58,61,255,0.3);
-  box-shadow:var(--shadow-panel);
-}
-.accordion[open] summary{
-  background:rgba(58,61,255,0.08);
-}
-.accordion[open] summary::after{
-  background:rgba(58,61,255,0.15);
-}
-.accordion summary:focus-visible{
-  outline:none;
-  box-shadow:inset var(--glow-accent);
-}
-.accordion .accordion-body{
-  padding:0 20px 20px;
-  display:flex;
-  flex-direction:column;
-  gap:24px;
-}
-.bp-pane{display:none;}
-.bp-pane.active{display:block;}
-.panel-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  justify-content:flex-start;
-  align-items:center;
-  margin:24px 0 0;
-}
-.panel-actions .btn{min-width:160px;}
-.card-nested{
-  --panel-bg:var(--surface-card-secondary);
-  background:var(--panel-bg);
-  border:1px solid var(--color-border-subtle);
-  border-radius:var(--radius-sm);
-  padding:24px 20px;
-  margin-top:24px;
-  box-shadow:var(--shadow-card);
-}
-.card-nested:first-of-type{margin-top:0;}
-.card-nested h3.blockTitle{margin-top:0;}
-@media (max-width:640px){
-  .accordion summary{padding:14px 16px;}
-  .accordion .accordion-body{padding:0 16px 18px;}
-}
-
-/* SUBMODULE: Lifestyle Progress Bars @public - visuelle Fortschrittsanzeigen für Hydration, Ernährung etc. */
-#lifestyle .progress,
-#cap-intake-wrap .progress {
-  position: relative;
-  width:100%;
-  height:18px;
-  background:#0f1116;
-  border:1px solid #2b2f3a;
-  border-radius:var(--radius-pill);
-  overflow:hidden;
-  margin-top:8px;
-}
-#lifestyle .progress .bar,
-#cap-intake-wrap .progress .bar {
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg,var(--color-accent),#7c3aed);
-  transition: width .35s ease, filter .2s ease;
-  box-shadow: inset 0 0 0 1px rgba(79,70,229,.25);
-}
-#lifestyle .progress .label,
-#cap-intake-wrap .progress .label {
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:var(--text-xs);
-  font-weight:600;
-  color:rgba(255,255,255,.9);
-  text-shadow:0 1px 2px rgba(0,0,0,.6);
-  pointer-events:none;
-}
-#lifestyle .progress.ok   .bar,
-#cap-intake-wrap .progress.ok   .bar {
-  background:linear-gradient(90deg,#10b981,#34d399);
-  box-shadow: inset 0 0 0 1px rgba(16,185,129,.25), 0 8px 20px rgba(16,185,129,.18);
-}
-#lifestyle .progress.warn .bar,
-#cap-intake-wrap .progress.warn .bar {
-  background:linear-gradient(90deg,#f59e0b,#fbbf24);
-  box-shadow: inset 0 0 0 1px rgba(245,158,11,.25), 0 8px 20px rgba(245,158,11,.18);
-}
-#lifestyle .progress.bad  .bar,
-#cap-intake-wrap .progress.bad  .bar {
-  background:linear-gradient(90deg,#ef4444,#f87171);
-  box-shadow: inset 0 0 0 1px rgba(239,68,68,.25), 0 8px 20px rgba(239,68,68,.18);
-}
-#lifestyle .progress.neutral .bar,
-#cap-intake-wrap .progress.neutral .bar {
-  background:linear-gradient(90deg,#6b7280,#9ca3af);
-  box-shadow: inset 0 0 0 1px rgba(107,114,128,.25);
-}
-@media (hover:hover){
-  #lifestyle .progress:hover .bar,
-  #cap-intake-wrap .progress:hover .bar { filter:brightness(1.05); }
-}
 
 /* SUBMODULE: Intake Panels @public - Eingabebereich und Zusammenfassung für Tagesintakes */
 #cap-intake-wrap{
   display:flex;
   flex-direction:column;
-  gap:24px;
-  background:var(--surface-card-secondary);
-  border:1px solid var(--color-border-subtle);
-  border-radius:var(--radius-sm);
-  padding:24px 20px;
-  box-shadow:var(--shadow-card);
-}
-#cap-intake-wrap .blockTitle{
-  margin:0;
-  padding-bottom:12px;
-  font-size:1.1rem;
-  font-weight:600;
-  color:var(--color-text-primary);
-  letter-spacing:0.3px;
-  position:relative;
-}
-#cap-intake-wrap .blockTitle::after{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  height:1px;
-  background:var(--color-border-subtle);
-}
-#cap-intake-status{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:8px;
-  margin:0 !important;
-  opacity:.85;
-}
-#cap-intake-wrap .row{
-  align-items:flex-end;
-  gap:16px;
-  flex-wrap:wrap;
-  margin:0;
-}
-#cap-intake-wrap .row + .row{margin-top:24px;}
-#cap-intake-wrap .row > div:last-child{
-  width:160px;
-  min-width:140px;
-  display:flex;
-  justify-content:flex-end;
-}
-#cap-intake-wrap .row > div:last-child .btn{
-  width:100%;
-}
-#cap-intake-wrap > .small:last-of-type{
-  margin-top:0 !important;
-  text-align:right;
-  color:var(--color-text-muted);
+  gap:var(--form-grid-gap);
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
 }
 #cap-intake-wrap input{
-  background:var(--surface-elevated);
-  border:1px solid var(--color-border-subtle);
-  border-radius:var(--radius-sm);
-  color:var(--color-text-primary);
   transition:border-color .25s ease, box-shadow .25s ease, background .25s ease;
-}
-#cap-intake-wrap input:focus-visible{
-  outline:none;
-  border-color:var(--color-accent);
-  box-shadow:var(--glow-accent);
 }
 #cap-intake-wrap input::placeholder{
   color:var(--color-text-muted);
   opacity:.65;
 }
-#cap-intake-wrap .blockTitle,
-#bodyAccordion .blockTitle{
-  display:none;
-}
 
-/* SUBMODULE: Intake Status Pills @public - komprimierte Statusanzeigen für Wasser, Salz, Protein etc. */
-.body-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-.capture-header{ display:flex; flex-direction:column; gap:8px; }
-.capture-header .capture-date{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-.capture-header .capture-pills{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.capture-header .capture-pills .pill{ margin:0; }
+
+
+

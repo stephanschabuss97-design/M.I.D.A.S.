@@ -32,7 +32,7 @@ Related docs:
 | `app/styles/utilities.css` | Utilities (u-*) fuer Spacing, Layout, Text-Skalen |
 | `app/styles/ui.css` | Globale UI-Patterns (Buttons, Tabs-Pattern, Pills/Badges, Save-Feedback) |
 | `app/styles/hub.css` | Hub-spezifische Styles (Orbit, Panels, Aura) |
-| `app/styles/capture.css` | Capture-UI (Accordions, Intake, Pills, Progress) |
+| `app/styles/capture.css` | Capture-UI (Intake Panels) |
 | `app/styles/doctor.css` | Doctor-Ansicht (Karten, Badges, Grids) |
 | `app/styles/auth.css` | Auth-Overlays (Login, Unlock, Busy) |
 | `app/modules/doctor-stack/charts/chart.css` | Chart-Styles (Arzt-Ansicht) |
@@ -170,3 +170,31 @@ Nur modul-spezifische Komponenten:
 - Neue Styles sind klar zuordenbar (Token, Utility, Global Pattern, Feature).
 - Globale Styles und Feature-Styles sind getrennt.
 - Dokumentation aktuell.
+
+---
+
+## 14. Layout Alignment Zielwerte (verbindlich)
+
+Quelle: `docs/Layout Alignment.md`
+
+| Kategorie | Zielwert | Owner (global) |
+|----------|----------|----------------|
+| Panel-Breite | `width: min(100%, 1200px); max-width: calc(100% - 32px);` (<=640px: `calc(100% - 16px)`) | `app/styles/layout.css` |
+| Panel-Padding | `padding: clamp(20px, 3vw, 48px);` (<=640px: `clamp(16px, 6vw, 32px)`) | `app/styles/layout.css` |
+| Panel-Radius | `var(--radius-xl)` | `app/styles/base.css`, `app/styles/layout.css` |
+| Panel-Header | `min-height: 40px; gap: 16px; margin-bottom: clamp(16px, 2vw, 24px)` | `app/styles/layout.css` |
+| Tabs | `.tabs` gap `8px`; `.btn` `height: 40px`; Tabs-Area `--size-tabs-height: 48px`; Underline `2px` bei `-10px` | `app/styles/ui.css`, `app/styles/base.css` |
+| Form-Grid | `grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px` | `app/styles/layout.css` |
+| Inputs | `min-height: 40px; padding: 10px 12px; border-radius: var(--radius-md); font-size: 1rem` | `app/styles/base.css`, `app/styles/utilities.css` |
+| Buttons | `height: 40px; padding: 0 18px; border-radius: 8px; font-size: 1rem` | `app/styles/ui.css` |
+| Actions | Form-Ende, links, `gap: 12px`, kein Extra-Margin | `app/styles/layout.css`, `app/styles/ui.css` |
+| Cards (Standard) | `padding: 16px; border-radius: var(--radius-lg);` Card-Abstand `16px` | `app/styles/layout.css` |
+| Section-Header | `margin-bottom: 12px;` Label-Abstand `6px` | `app/styles/layout.css`, `app/styles/utilities.css` |
+
+Zusatz (Patterns + Tokens)
+- Globale Layout-Patterns: `.panel-shell`, `.panel-header`, `.panel-body`, `.form-grid`, `.form-actions`, `.section-header` liegen in `app/styles/layout.css`.
+- Tokens in `app/styles/base.css`: `--panel-max-width`, `--panel-side-gap`, `--panel-side-gap-mobile`, `--panel-padding`, `--panel-padding-mobile`, `--panel-radius`, `--panel-header-min-height`, `--panel-header-gap`, `--panel-header-margin`, `--form-grid-min`, `--form-grid-gap`, `--card-padding`, `--card-gap`, `--section-header-margin`, `--label-gap`.
+- Input-Token (global): `--input-bg`, `--input-border` in `app/styles/base.css` (greifen in `base.css` + `utilities.css`).
+- Globale Form-Pattern: `.field-group`, `.field-group.checkbox`, `.field-hint`, `.field-group .label` in `app/styles/utilities.css`.
+- Subtle Cards: `.card.subtle` in `app/styles/layout.css` (Overview-Optik fuer Profile/Appointments).
+- Actions-Aliases: `.appointments-actions`, `.profile-actions`, `.medication-form-actions`, `.activity-form-actions`, `.capture-card-actions` als Alias auf `.form-actions` in `app/styles/layout.css`.

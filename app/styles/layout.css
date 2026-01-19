@@ -47,10 +47,66 @@ main {
   --panel-bg: var(--color-surface-card);
   background: var(--panel-bg);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 24px 20px;
-  margin-bottom: 24px;
+  border-radius: var(--radius-lg);
+  padding: var(--card-padding);
+  margin-bottom: var(--card-gap);
   box-shadow: var(--shadow-card);
+}
+
+.card.subtle {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.panel-shell {
+  width: min(100%, var(--panel-max-width));
+  max-width: calc(100% - var(--panel-side-gap));
+  padding: var(--panel-padding);
+  border-radius: var(--panel-radius);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--panel-header-gap);
+  min-height: var(--panel-header-min-height);
+  margin-bottom: var(--panel-header-margin);
+}
+
+.panel-body {
+  width: 100%;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
+  gap: var(--form-grid-gap);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.appointments-actions,
+.profile-actions,
+.medication-form-actions,
+.activity-form-actions,
+.capture-card-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.section-header {
+  margin: 0 0 var(--section-header-margin);
 }
 
 /* SUBMODULE: Flex & Grid Utilities @public - Hilfsklassen für Layout-Strukturierung */
@@ -68,6 +124,11 @@ main {
 
 /* SUBMODULE: Responsive Grid Adjustments @public - Anpassung der Grid-Struktur für Mobilgeräte */
 @media (max-width: 640px) {
+  .panel-shell {
+    max-width: calc(100% - var(--panel-side-gap-mobile));
+    padding: var(--panel-padding-mobile);
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }

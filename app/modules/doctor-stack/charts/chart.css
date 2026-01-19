@@ -67,58 +67,6 @@
   border-color:var(--color-accent);
   box-shadow:0 0 0 2px rgba(58,61,255,0.25);
 }
-#chart .controls .chart-switch{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:0 12px;
-  height:40px;
-  border-radius:999px;
-  background:var(--color-surface-elevated);
-  border:1px solid var(--color-border-subtle);
-  color:var(--color-text-primary);
-  font-size:12px;
-  letter-spacing:0.02em;
-  white-space:nowrap;
-  cursor:pointer;
-}
-#chart .controls .chart-switch input{
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
-}
-#chart .controls .chart-switch .switch-track{
-  width:34px;
-  height:18px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.12);
-  border:1px solid rgba(255,255,255,0.2);
-  display:flex;
-  align-items:center;
-  padding:1px;
-  transition:background .2s ease, border-color .2s ease;
-}
-#chart .controls .chart-switch .switch-thumb{
-  width:14px;
-  height:14px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.85);
-  box-shadow:0 2px 6px rgba(0,0,0,0.35);
-  transform:translateX(0);
-  transition:transform .2s ease, background .2s ease;
-}
-#chart .controls .chart-switch input:checked + .switch-track{
-  background:rgba(58,61,255,0.55);
-  border-color:rgba(58,61,255,0.6);
-}
-#chart .controls .chart-switch input:checked + .switch-track .switch-thumb{
-  background:#ffffff;
-  transform:translateX(16px);
-}
-#chart .controls .chart-switch input:focus-visible + .switch-track{
-  outline:2px solid rgba(58,61,255,0.5);
-  outline-offset:2px;
-}
 #chart .controls .kpis{
   display:inline-flex;
   align-items:center;

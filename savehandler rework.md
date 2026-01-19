@@ -318,5 +318,60 @@ Ziel: CSS-Struktur nach Best Practice ausrichten (Tokens + Utilities zentral, Fe
    - 9.4 QA + Cleanup.
      - 9.4.1 (done) Visuelle Regression pruefen.
      - 9.4.2 (done) Verwaiste Klassen entfernen, Doku aktualisieren.
+
+10) **Weitere Harmonisierung (Inputs, Toggles, Progress, Meta-Typo)**
+    - 10.1 Inputs globalisieren (Border, Focus, Padding, Radius).
+      - 10.1.1 (done) Inventar Inputs/Select/textarea erweitern.
+        - `app/styles/capture.css`: `#cap-intake-wrap input` + focus/placeholder.
+        - `app/styles/auth.css`: `#appLock .pin-wrap input`.
+        - `app/styles/hub.css`: medication form inputs + focus/disabled; vitals activity inputs/textarea + focus; lab-grid inputs/select/textarea + textarea sizing; capture-card input; bp context select; vitals controls select; appointments select/textarea; profile select/textarea; assistant input + focus.
+        - `app/styles/doctor.css`: keine Input/Select/Textarea Styles.
+      - 10.1.2 (done) Globales Input-Pattern definieren (`.u-input`, `.u-select`, `.u-textarea`).
+        - Basis: `border: 1px solid rgba(255,255,255,0.15)`, `border-radius: var(--radius-md)`, `background: var(--surface-elevated)`, `color: var(--color-text-primary)`, `padding: 10px 12px`.
+        - Focus: `border-color: rgba(79,157,255,0.8)` + `box-shadow: var(--glow-soft)`.
+        - Textarea: `min-height` + `resize: vertical`.
+      - 10.1.3 (done) Feature-CSS auf Pattern umstellen.
+        - `app/styles/utilities.css`: Globales Input-Pattern eingefuehrt und auf bestehende Input/Select/Textarea-Selektoren gemappt.
+        - `app/styles/capture.css`: Input-Basisstyles entfernt (vererbt aus Utilities), Placeholder bleibt lokal.
+        - `app/styles/hub.css`: Input-Basisstyles entfernt, nur Layout/Varianten verbleiben.
+    - 10.2 Toggles/Checkboxes vereinheitlichen.
+      - 10.2.1 (done) Toggle/Checkbox-Styles erfassen.
+        - `index.html`: `chart-switch` (checkbox UI in Charts), `field-group checkbox` in Profile/Medication.
+        - `app/styles/hub.css`: `.med-toggle-btn`, `.field-group.checkbox`, `.assistant-context-toggle`.
+        - `app/modules/doctor-stack/charts/chart.css`: `#chart .controls .chart-switch` + switch-track/thumb.
+      - 10.2.2 (done) Globales Toggle-Pattern definieren.
+        - Basisklasse: `.u-toggle` (track + thumb), `.u-toggle input` hidden, `.u-toggle.is-on`.
+        - Varianten: `.u-toggle-sm` (kompakt), `.u-toggle-label` (text).
+      - 10.2.3 (done) Feature-CSS auf Pattern umstellen.
+        - `app/styles/utilities.css`: Globales Toggle-Pattern hinzugefuegt (`.u-toggle`, `.u-toggle-btn`) und `chart-switch`/`med-toggle-btn` gemappt.
+        - `app/modules/doctor-stack/charts/chart.css`: lokale `chart-switch` Styles entfernt (nutzt globales Pattern).
+        - `app/styles/hub.css`: lokale `med-toggle-btn` Styles entfernt (nutzt globales Pattern).
+    - 10.3 Progress-Bars vereinheitlichen.
+      - 10.3.1 (done) Progress-Varianten erfassen (capture/hub).
+        - `app/styles/capture.css`: `#lifestyle .progress`, `#cap-intake-wrap .progress` inkl. `.bar` + Status (ok/warn/bad/neutral).
+        - `app/styles/hub.css`: keine eigenen Progress-Bars (nur Layout/Panel-Styling).
+      - 10.3.2 (done) Globales Progress-Pattern definieren (ok/warn/bad/neutral).
+        - Basisklasse: `.progress` + `.progress .bar` + `.progress .label`.
+        - Statusklassen: `.progress.ok`, `.progress.warn`, `.progress.bad`, `.progress.neutral`.
+        - Hover: leichter Brightness-Boost.
+      - 10.3.3 (done) Feature-CSS auf Pattern umstellen.
+        - `app/styles/ui.css`: Globales Progress-Pattern eingefuegt.
+        - `app/styles/capture.css`: lokale Progress-Styles entfernt (nutzt globales Pattern).
+    - 10.4 Meta-Typo harmonisieren (uppercase/letter-spacing/size).
+      - 10.4.1 (done) Meta-Labels erfassen.
+        - `app/styles/hub.css`: medication-card-meta, medication-daily-meta, appointments-meta, assistant-photo-caption, profile field-hint, assistant-photo-draft-meta.
+        - `app/styles/doctor.css`: tp-meta, doctor-report-meta.
+        - `app/styles/capture.css`: `#cap-intake-wrap > .small:last-of-type` (meta note).
+      - 10.4.2 (done) Globales Meta-Pattern definieren.
+        - Basisklasse: `.u-meta` (kleine Schrift, muting).
+        - Varianten: `.u-meta-strong` (leicht betont), `.u-meta-subtle` (stärker gedimmt).
+      - 10.4.3 (done) Feature-CSS auf Pattern umstellen.
+        - `app/styles/utilities.css`: Globales Meta-Pattern hinzugefuegt und auf Meta-Selektoren gemappt.
+        - `app/styles/hub.css`: lokale meta-font-size/color/opacity entfernt (nutzt globales Pattern).
+        - `app/styles/doctor.css`: lokale meta-font-size/opacity entfernt (nutzt globales Pattern).
+        - `app/styles/capture.css`: lokale meta-color/opacity entfernt (nutzt globales Pattern).
+    - 10.5 QA + Cleanup.
+      - 10.5.1 Visuelle Regression pruefen.
+      - 10.5.2 Verwaiste Klassen entfernen, Doku aktualisieren.
        - `app/styles/base.css`: doppeltes `--surface-elevated` Alias entfernt.
        - `docs/modules/CSS Module Overview.md`: Tokens/Utilities Abschnitt erweitert (Glows, Label-Pattern).

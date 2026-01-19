@@ -49,15 +49,65 @@
 .u-text-xl{font-size:var(--text-xl)}
 .u-label-muted{color:var(--color-text-muted);opacity:.75;}
 .u-label-lg{font-size:var(--text-sm);}
+.u-meta{
+  font-size:var(--text-xs);
+  color:var(--color-text-muted);
+  opacity:.75;
+}
+.u-meta-strong{
+  font-weight:600;
+  opacity:.85;
+}
+.u-meta-subtle{
+  opacity:.6;
+}
+
+.u-meta,
+.medication-card-meta,
+.medication-daily-meta span,
+.appointments-card .appointments-meta,
+.assistant-photo-caption,
+.assistant-photo-draft-meta,
+.field-hint,
+.tp-meta,
+.doctor-report-meta,
+#cap-intake-wrap > .small:last-of-type{
+  font-size:var(--text-xs);
+  color:var(--color-text-muted);
+  opacity:.75;
+}
+
+.u-meta-strong,
+.medication-daily-meta strong{
+  font-weight:600;
+  letter-spacing:0.08em;
+  opacity:.85;
+}
+
+.u-meta-subtle,
+.appointments-card .appointments-meta,
+.field-hint{
+  opacity:.6;
+}
+
+.field-group{
+  display:flex;
+  flex-direction:column;
+  gap:var(--label-gap);
+}
+
+.field-group.checkbox{
+  flex-direction:row;
+  align-items:center;
+  gap:10px;
+}
 .u-label,
-.medication-form .field-group .label,
-.hub-vitals-activity .field-group .label,
+.field-group .label,
 .capture-card-label,
 .medication-card-grid .medication-card-title,
 .medication-card-grid .medication-card-status,
 .hub-vitals-controls .control-group label,
 .bp-context-header label,
-.profile-form .label,
 .assistant-pill .label,
 .assistant-context-item .label,
 .hub-core-trigger.is-voice-locked::after,
@@ -84,3 +134,135 @@
 .u-textarea-field{width:100%;padding:10px;border-radius:8px;border:1px solid #d1d5db;resize:vertical;}
 .u-w-140{width:140px;}
 .u-w-auto{width:auto;}
+.u-input,
+.u-select,
+.u-textarea,
+#cap-intake-wrap input,
+.medication-form .field-group input[type="text"],
+.medication-form .field-group input[type="number"],
+.hub-vitals-activity input,
+.hub-vitals-activity textarea,
+.hub-vitals-lab .lab-grid input,
+.hub-vitals-lab .lab-grid select,
+.hub-vitals-lab .lab-grid textarea,
+.bp-context-header select,
+.hub-vitals-controls .control-group select,
+.appointments-repeat select,
+.appointments-notes textarea,
+.profile-form textarea,
+.profile-form select,
+.assistant-input{
+  border:1px solid var(--input-border);
+  border-radius:var(--radius-md);
+  background:var(--input-bg);
+  color:var(--color-text-primary);
+  padding:10px 12px;
+  min-height:40px;
+}
+.u-input:focus-visible,
+.u-select:focus-visible,
+.u-textarea:focus-visible,
+#cap-intake-wrap input:focus-visible,
+.medication-form .field-group input[type="text"]:focus-visible,
+.medication-form .field-group input[type="number"]:focus-visible,
+.hub-vitals-activity input:focus-visible,
+.hub-vitals-activity textarea:focus-visible,
+.hub-vitals-lab .lab-grid input:focus-visible,
+.hub-vitals-lab .lab-grid select:focus-visible,
+.hub-vitals-lab .lab-grid textarea:focus-visible,
+.bp-context-header select:focus-visible,
+.hub-vitals-controls .control-group select:focus-visible,
+.appointments-repeat select:focus-visible,
+.appointments-notes textarea:focus-visible,
+.profile-form textarea:focus-visible,
+.profile-form select:focus-visible,
+.assistant-input:focus-visible{
+  outline:none;
+  border-color:rgba(79,157,255,0.8);
+  box-shadow:var(--glow-soft);
+}
+.u-textarea{
+  min-height:96px;
+  resize:vertical;
+}
+
+/* SUBMODULE: Toggles @public - globale Toggle/Checkbox Patterns */
+.u-toggle,
+.chart-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:0 12px;
+  height:40px;
+  border-radius:var(--radius-pill);
+  background:var(--surface-elevated);
+  border:1px solid rgba(255,255,255,0.15);
+  color:var(--color-text-primary);
+  font-size:var(--text-xs);
+  letter-spacing:0.02em;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.u-toggle input,
+.chart-switch input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.u-toggle .switch-track,
+.chart-switch .switch-track{
+  width:34px;
+  height:18px;
+  border-radius:var(--radius-pill);
+  background:rgba(255,255,255,0.12);
+  border:1px solid rgba(255,255,255,0.2);
+  display:flex;
+  align-items:center;
+  padding:1px;
+  transition:background .2s ease, border-color .2s ease;
+}
+.u-toggle .switch-thumb,
+.chart-switch .switch-thumb{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.85);
+  box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  transform:translateX(0);
+  transition:transform .2s ease, background .2s ease;
+}
+.u-toggle input:checked + .switch-track,
+.chart-switch input:checked + .switch-track{
+  background:rgba(58,61,255,0.55);
+  border-color:rgba(58,61,255,0.6);
+}
+.u-toggle input:checked + .switch-track .switch-thumb,
+.chart-switch input:checked + .switch-track .switch-thumb{
+  background:#ffffff;
+  transform:translateX(16px);
+}
+.u-toggle input:focus-visible + .switch-track,
+.chart-switch input:focus-visible + .switch-track{
+  outline:2px solid rgba(58,61,255,0.5);
+  outline-offset:2px;
+}
+
+.u-toggle-btn,
+.med-toggle-btn{
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.05);
+  color:#fff;
+  padding:10px 18px;
+  border-radius:var(--radius-pill);
+  cursor:pointer;
+}
+.u-toggle-btn.is-on,
+.med-toggle-btn.is-on{
+  background:linear-gradient(135deg, rgba(50, 205, 120, 0.9), rgba(30, 160, 90, 0.9));
+  border-color:rgba(120, 255, 170, 0.6);
+}
+.u-toggle-btn:disabled,
+.med-toggle-btn:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
