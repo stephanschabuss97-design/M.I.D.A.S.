@@ -814,8 +814,9 @@
           </button>
         </header>
         <div class="hub-panel-body">
-          <div class="hub-appointments-tabs tabs" role="tablist" aria-label="Termine Bereiche">
+                    <div class="hub-appointments-tabs tabs" role="tablist" aria-label="Termine Bereiche">
             <button class="btn ghost is-active" id="appointmentsTabOverviewBtn" type="button" data-appointments-tab="overview" aria-controls="hubAppointmentsPanelOverview" aria-selected="true">Übersicht</button>
+            <button class="btn ghost" id="appointmentsTabDoneBtn" type="button" data-appointments-tab="done" aria-controls="hubAppointmentsPanelDone" aria-selected="false">Erledigt</button>
             <button class="btn ghost" id="appointmentsTabNewBtn" type="button" data-appointments-tab="new" aria-controls="hubAppointmentsPanelNew" aria-selected="false">Neu</button>
           </div>
           <div class="hub-appointments-tab-panels">
@@ -823,9 +824,20 @@
               <section class="appointments-overview card subtle" id="appointmentsOverview" aria-live="polite">
                 <header class="appointments-overview-header">
                   <h3>Kommende Termine</h3>
-                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
+                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Eintraege.</p>
                 </header>
                 <div class="appointments-columns" id="appointmentsColumns">
+                  <!-- dynamische Karten -->
+                </div>
+              </section>
+            </section>
+            <section class="hub-appointments-panel" id="hubAppointmentsPanelDone" data-appointments-panel="done" role="tabpanel" aria-labelledby="appointmentsTabDoneBtn" aria-hidden="true" hidden>
+              <section class="appointments-overview card subtle" id="appointmentsDone" aria-live="polite">
+                <header class="appointments-overview-header">
+                  <h3>Erledigte Termine</h3>
+                  <p class="muted small" id="appointmentsDoneSubtitle">Noch keine erledigten Termine.</p>
+                </header>
+                <div class="appointments-columns" id="appointmentsDoneColumns">
                   <!-- dynamische Karten -->
                 </div>
               </section>
@@ -1052,9 +1064,6 @@
                 </button>
                 <button class="btn ghost" id="doctorExportJson" type="button">Export JSON</button>
                 <button class="btn ghost" id="doctorTabInboxBtn" data-doctor-tab="inbox" type="button" role="tab" aria-selected="false" aria-controls="doctorTabInbox">Inbox</button>
-                <button class="btn ghost" id="doctorMonthlyReportBtn" type="button" disabled>
-                  Monatsbericht
-                </button>
               </div>
             </div>
             <div class="doctor-trendpilot" id="doctorTrendpilot" aria-live="polite"></div>
@@ -1624,4 +1633,8 @@
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]
   total @extract-candidate markers: 18
 -->
+
+
+
+
 

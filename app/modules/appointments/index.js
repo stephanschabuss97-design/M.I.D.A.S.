@@ -37,7 +37,9 @@
     overviewBtn: '#appointmentsOverviewBtn',
     overview: '#appointmentsOverview',
     overviewSubtitle: '#appointmentsOverviewSubtitle',
+    doneSubtitle: '#appointmentsDoneSubtitle',
     columns: '#appointmentsColumns',
+    doneColumns: '#appointmentsDoneColumns',
   };
 
   const state = {
@@ -63,7 +65,7 @@
     if (refs) return refs;
     const panel = doc?.querySelector(selectors.panel);
     if (!panel) return null;
-    refs = {
+        refs = {
       panel,
       form: panel.querySelector(selectors.form),
       title: panel.querySelector(selectors.title),
@@ -75,7 +77,9 @@
       overviewBtn: panel.querySelector(selectors.overviewBtn),
       overview: panel.querySelector(selectors.overview),
       overviewSubtitle: panel.querySelector(selectors.overviewSubtitle),
+      doneSubtitle: panel.querySelector(selectors.doneSubtitle),
       columns: panel.querySelector(selectors.columns),
+      doneColumns: panel.querySelector(selectors.doneColumns),
     };
     return refs;
   };
@@ -133,47 +137,58 @@
   };
 
   const renderOverview = () => {
-    if (!refs?.columns) return;
+    if (!refs?.columns || !refs?.doneColumns) return;
     refs.columns.innerHTML = '';
-    if (!state.items.length) {
-      updateSubtitle();
-      return;
-    }
-    state.items.forEach((appt) => {
+    refs.doneColumns.innerHTML = '';
+    const openItems = state.items.filter((item) => item.status !== 'done');
+    const doneItems = state.items.filter((item) => item.status === 'done');
+    const buildCard = (appt) => {
       const card = doc.createElement('article');
       card.className = 'appointments-card';
       card.dataset.id = appt.id;
       card.innerHTML = `
         <header>
           <strong>${appt.title}</strong>
-          <span class="appointments-meta">${formatDateDisplay(appt.start_at)} • ${appt.time || '--:--'}</span>
+          <span class="appointments-meta">${formatDateDisplay(appt.start_at)} - ${appt.time || '--:--'}</span>
         </header>
         <p class="muted small">${appt.location || 'Ort folgt'}</p>
         ${appt.notes ? `<p class="muted small">${appt.notes}</p>` : ''}
         <div class="appointments-meta">
           Status: ${appt.status === 'done' ? 'Erledigt' : 'Geplant'}${
-            appt.repeatRule !== 'none' ? ` • Wiederholen: ${appt.repeatRule}` : ''
+            appt.repeatRule !== 'none' ? ` - Wiederholen: ${appt.repeatRule}` : ''
           }
         </div>
         <div class="appointments-actions">
           <button class="btn ghost small" data-action="toggle" type="button">
-            ${appt.status === 'done' ? 'Zurücksetzen' : 'Erledigt'}
+            ${appt.status === 'done' ? 'Zuruecksetzen' : 'Erledigt'}
           </button>
           <button class="btn ghost small" data-action="delete" type="button">Löschen</button>
         </div>
       `;
-      refs.columns.appendChild(card);
+      return card;
+    };
+
+    openItems.forEach((appt) => {
+      refs.columns.appendChild(buildCard(appt));
     });
+
+    doneItems.forEach((appt) => {
+      refs.doneColumns.appendChild(buildCard(appt));
+    });
+
     updateSubtitle();
   };
 
   const updateSubtitle = () => {
-    if (!refs?.overviewSubtitle) return;
-    if (!state.items.length) {
-      refs.overviewSubtitle.textContent = 'Noch keine Einträge.';
-      return;
-    }
-    refs.overviewSubtitle.textContent = `${state.items.filter((item) => item.status !== 'done').length} offene Termine • Insgesamt ${state.items.length}`;
+    if (!refs?.overviewSubtitle || !refs?.doneSubtitle) return;
+    const openCount = state.items.filter((item) => item.status !== 'done').length;
+    const doneCount = state.items.filter((item) => item.status === 'done').length;
+    refs.overviewSubtitle.textContent = openCount
+      ? `${openCount} offene Termine - Insgesamt ${state.items.length}`
+      : 'Noch keine Eintraege.';
+    refs.doneSubtitle.textContent = doneCount
+      ? `${doneCount} erledigte Termine`
+      : 'Noch keine erledigten Termine.';
   };
 
   const setFormDisabled = (flag) => {
@@ -450,3 +465,10 @@
     doc?.addEventListener('DOMContentLoaded', init, { once: true });
   }
 })(window);
+
+
+
+
+
+
+
