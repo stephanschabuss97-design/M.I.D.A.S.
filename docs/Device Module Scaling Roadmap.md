@@ -22,9 +22,9 @@ Status
 - Step 5: done
 - Step 6: done
 - Step 7: done
-- Step 8: pending
-- Step 9: pending
-- Step 10: pending
+- Step 8: done
+- Step 9: done
+- Step 10: done
 
 Scope
 - Geraete-Prioritaeten pro Modul (Mobile/Tablet/Desktop).
@@ -123,19 +123,19 @@ Exit-Kriterium: Mobile-Regression-Checks gruen.
 
 Step 8: Phase 3 Umsetzung (Tablet-Module)
 8.1 Arzt-Ansicht und Charts nach Tablet-Portrait-Regeln anpassen. (done)
-8.2 UI-Kurztest auf Tablet-Portrait.
+8.2 UI-Kurztest auf Tablet-Portrait. (done)
 Output: Tablet-Module A-Qualitaet.
 Exit-Kriterium: Chart/Filter/Listen ohne Layout-Brueche.
 
 Step 9: Phase 4 Umsetzung (Desktop-Module)
-9.1 Profil und Touchlog nach Desktop-Regeln anpassen.
-9.2 UI-Kurztest auf Desktop.
+9.1 Profil und Touchlog nach Desktop-Regeln anpassen. (done)
+9.2 UI-Kurztest auf Desktop. (done)
 Output: Desktop-Module A-Qualitaet.
 Exit-Kriterium: Formulare und Tabellen stabil.
 
 Step 10: Abschluss & QA
-10.1 Gesamtschau (alle Module/Devices).
-10.2 Restlisten / Follow-ups dokumentieren.
+10.1 Gesamtschau (alle Module/Devices). (done)
+10.2 Restlisten / Follow-ups dokumentieren. (done)
 Output: Roadmap abgeschlossen.
 Exit-Kriterium: Keine kritischen offenen Punkte.
 Output: Realistischer Umsetzungsplan mit Reihenfolge.

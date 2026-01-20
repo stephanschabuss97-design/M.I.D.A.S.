@@ -954,9 +954,28 @@
                   <div class="intake-pill-slot" data-pill-kind="protein" aria-live="polite"></div>
                 </div>
               </label>
-              <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
-              <div id="medLowStockBox" class="medication-low-stock" hidden></div>
-            </div>
+                <div id="medDailyList" class="medication-card-grid" aria-live="polite"></div>
+                <div id="medLowStockBox" class="medication-low-stock" hidden></div>
+                <div class="medication-batch-footer" id="medicationBatchFooter">
+                  <div class="medication-batch-actions form-actions" id="medicationBatchActions">
+                    <button class="btn primary" id="medBatchConfirmBtn" type="button">
+                      Auswahl bestaetigen (0)
+                    </button>
+                    <button class="btn ghost" id="medBatchAllBtn" type="button">
+                      Alle genommen
+                    </button>
+                    <span class="save-status small muted" id="medBatchStatus" aria-live="polite"></span>
+                  </div>
+                  <div class="medication-batch-status form-actions" id="medicationBatchStatus" hidden>
+                    <button class="btn toggle active" id="medBatchStatusBtn" type="button" disabled>
+                      Tabletten genommen
+                    </button>
+                    <button class="btn ghost" id="medBatchUndoBtn" type="button">
+                      Rueckgaengig
+                    </button>
+                  </div>
+                </div>
+              </div>
             <div class="hub-intake-pills" id="capturePillsRow" data-role="hub-intake-pills">
               <div id="cap-intake-status-top" class="small u-flex-wrap-gap8-opacity80"></div>
             </div>

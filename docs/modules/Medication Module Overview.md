@@ -1,9 +1,9 @@
-# Medication Module – Functional Overview
+# Medication Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Tablettenmanager im Intake-Panel (Daily Toggles) und TAB-Panel (Medikationsverwaltung).
-- Rolle: Ergänzt Intake um pharmakologische Daten; liefert Events für andere Module.
-- Abgrenzung: Eigenständiges Modul; Intake konsumiert es nur über Events/RPCs.
+- Zweck: Tablettenmanager im Intake-Panel (Daily Batch) und TAB-Panel (Medikationsverwaltung).
+- Rolle: Ergaenzt Intake um pharmakologische Daten; liefert Events fuer andere Module.
+- Abgrenzung: Eigenstaendiges Modul; Intake konsumiert es nur ueber Events/RPCs.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
@@ -33,7 +33,7 @@ Related docs:
 
 ## 3. Datenmodell / Storage
 
-- `health_medications`: Stammdaten + Bestände, Low-Stock-Felder, `active` Flag.
+- `health_medications`: Stammdaten + Bestaende, Low-Stock-Felder, `active` Flag.
 - `health_medication_doses`: tägliche Einnahmen je Nutzer/Medikation (unique per day).
 - `health_medication_stock_log`: optionaler Verlauf für Bestandskorrekturen.
 - Beziehungen: Doses & Log referenzieren `health_medications`.
@@ -49,7 +49,9 @@ Related docs:
 - Intake subscribe auf `medication:changed`.
 
 ### 4.2 User-Trigger
-- IN-Tab Buttons (`med-toggle-btn`, Low-Stock Ack).
+- IN-Tab: Checkbox-Auswahl pro Medikament + Batch-Footer (Auswahl bestaetigen/Alle genommen).
+- Status-Row nach Batch-Save mit Rueckgaengig (zeitlich begrenzt).
+- Low-Stock Ack im IN-Tab.
 - TAB-Formular Submit/Reset.
 - Kartenaktionen: Restock, Set Stock, Toggle Active, Delete.
 
@@ -59,15 +61,15 @@ Related docs:
 
 ### 4.4 Persistenz
 - RPCs schreiben in `health_medications` & `health_medication_doses`.
-- `med_upsert` Upsert; `med_confirm_dose/undo` passen Dosen & Bestände an.
+- `med_upsert` Upsert; `med_confirm_dose/undo` passen Dosen & Bestaende an.
 - `med_adjust_stock` und `med_set_stock` loggen in `health_medication_stock_log`.
 
 ---
 
 ## 5. UI-Integration
 
-- IN-Panel (Intake) unter „Tablettenmanager“.
-- TAB-Panel (Intake Subtab „TAB“) mit Formular + Kartenliste.
+- IN-Panel (Intake) mit Medikamenten-Checkboxen + Batch-Footer (Actions/Status).
+- TAB-Panel (Intake Subtab "TAB") mit Formular + Kartenliste.
 - Low-Stock-Box sichtbar, wenn Daten vorhanden.
 
 ---
@@ -90,7 +92,7 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Custom Event `medication:changed { reason, dayIso, data? }`.
+- Custom Event `medication:changed { reason, dayIso, datass }`.
 - Intake reagiert (IN), Profil-Änderungen triggen Low-Stock-Kontakt Update.
 - `AppModules.medication` exportiert API für andere Module (z. B. Trendpilot).
 

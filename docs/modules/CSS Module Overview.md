@@ -11,6 +11,55 @@ Related docs:
 - [Doctor View Module Overview](Doctor View Module Overview.md)
 - [Auth Module Overview](Auth Module Overview.md)
 
+
+## 0. Start hier (aktuell)
+
+Quickstart fuer neue Sessions (Device Scaling):
+1) Oeffne:
+   - `docs/Device Module Scaling Roadmap.md`
+   - `app/styles/hub.css`
+   - `app/styles/doctor.css`
+   - `app/modules/doctor-stack/charts/chart.css`
+   - `app/styles/auth.css`
+2) Wichtige Regeln (Lessons Learned):
+   - Hub-Panel: Nur `.hub-panel-scroll` scrollt.
+   - Keine `overflow`-Scrolls auf `.hub-panel-body`.
+   - Kein `height: 100%` auf `.hub-panel-scroll` (Mobile blockiert Scroll).
+   - Panel braucht feste Hoehe (`height: min(80vh, 860px)`) damit Scroll-Container wirkt (inkl. doctor/vitals/assistant-text).
+3) Breakpoints fuer Device-Scaling:
+   - Mobile: <= 640px
+   - Tablet-Portrait: 641px - 900px
+   - Desktop: >= 901px
+
+---
+
+## 0.1 Aktuelle Device-Scaling Anpassungen
+
+- Mobile (Hub-Panels): Actions werden vertikal gestapelt, Buttons full-width.
+- Mobile (Intake/Vitals/Appointments/Assistant): Intake-Inputs groesser, Vitals-Controls gestapelt, Appointments-Header vertikal, Assistant-Input sticky.
+- Tablet-Portrait (Doctor/Charts): Doctor-Toolbar gestapelt, Reports in 2 Spalten; Chart-Controls 2 Spalten + KPI-Block full-width.
+- Desktop (Profil/Touchlog): Profil-Form 2 Spalten, Diagnostics-Panel breiter.
+
+---
+
+## 0.2 Einstieg fuer neue Chats (Datei-Orientierung)
+
+- `app/styles/hub.css`: Hub-Panels, Scroll-Container, Device-Scaling (Mobile/Tablet/Desktop).
+- `app/styles/doctor.css`: Doctor-Ansicht Layout und Tablet-Portrait Regeln.
+- `app/modules/doctor-stack/charts/chart.css`: Chart-Panel (Daily) und Tablet-Portrait Regeln.
+- `app/styles/auth.css`: Diagnostics/Touchlog Panel Groessen (Desktop).
+- `app/styles/layout.css` + `app/styles/ui.css`: globale Layout- und Button-Patterns.
+
+---
+
+## 0.3 Known Gotchas (aus Tests)
+
+- Hub-Panel Scroll: Immer nur `.hub-panel-scroll` scrollen lassen.
+- Kein `height: 100%` auf `.hub-panel-scroll` (bricht Mobile-Scroll in Arzt-Ansicht).
+- Panel-Hoehe fuer doctor/vitals/assistant-text muss gesetzt sein, sonst kollabiert der Scroll-Container.
+- Chart-Panel (`.panel.chart`) ist ein eigenes Overlay, nicht Teil der Hub-Panels.
+- Hub-Panel Hoehen (fix): Intake/Appointments/Profile/Doctor/Vitals/Assistant-Text laufen auf `height: min(80vh, 860px)`.
+
 ---
 
 ## 1. Zielsetzung
@@ -124,11 +173,12 @@ Nur modul-spezifische Komponenten:
 - Integration nur ueber Klassen/IDs im DOM.
 - Kritische Hooks:
   - Save-Feedback: `.save-flash`, `.save-status`.
-- Buttons: `.btn`, `.btn.primary`, `.btn.ghost`.
-- Pills/Badges: `.pill`, `.badge`.
-- Tabs: `.tabs` + `.btn.is-active` (global underline).
-- Panels: `.panel`, `.panel-header`, `.panel-body` (Hub/Capture).
-- Hub-Scroll: `.hub-panel-scroll` ist der einzige Scroll-Container im Panel (keine `overflow`-Scrolls auf `.hub-panel-body`).
+  - Buttons: `.btn`, `.btn.primary`, `.btn.ghost`.
+  - Pills/Badges: `.pill`, `.badge`.
+  - Tabs: `.tabs` + `.btn.is-active` (global underline).
+  - Panels: `.panel`, `.panel-header`, `.panel-body` (Hub/Capture).
+  - Hub-Scroll: `.hub-panel-scroll` ist der einzige Scroll-Container im Panel (keine `overflow`-Scrolls auf `.hub-panel-body`).
+  - Hub-Scroll (Mobile): Kein `height: 100%` auf `.hub-panel-scroll`; nur `max-height` + `min-height` nutzen, sonst blockiert Scroll in der Arzt-Ansicht.
 
 ---
 

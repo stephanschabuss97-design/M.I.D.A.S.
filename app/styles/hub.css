@@ -1399,6 +1399,31 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   width: 100%;
 }
 
+.medication-batch-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 12, 20, 0.45);
+}
+
+
+
+.medication-batch-actions,
+.medication-batch-status {
+    align-items: center;
+  }
+
+.medication-batch-actions .save-status {
+    flex: 1 1 100%;
+  }
+
+
+
 @media (min-width: 900px) {
   .medication-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1446,18 +1471,83 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .medication-card-grid .medication-card {
   gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
+
+
+.medication-card-grid .medication-card.is-taken {
+  opacity: 0.75;
+}
+
+.medication-card-grid .medication-card.is-selected {
+  border-color: rgba(120, 170, 255, 0.55);
+  background: rgba(20, 26, 44, 0.9);
+  box-shadow: 0 0 0 1px rgba(120, 170, 255, 0.25), 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+
+
+.medication-card-grid .medication-card-header {
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+  letter-spacing: 0;
+}
+
+
+
+
+.medication-card-grid .medication-card-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+
+.medication-card-grid .medication-card-select {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+.medication-card-grid .medication-card-select input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+
+
+.medication-card-grid .medication-card-select {
+  display: inline-flex;
+  align-items: center;
+}
+
 
 .medication-card-grid .medication-card-title {
-  font-size: 1rem;
-  font-weight: 500;
-  opacity: 0.85;
+  font-size: 1.05rem;
+  font-weight: 600;
+  opacity: 0.92;
 }
 
+
+
+.medication-card-grid .medication-card-meta {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+
 .medication-card-grid .medication-card-status {
-  font-size: 0.85rem;
-  opacity: 0.8;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
 }
+
 
 .medication-card-grid .medication-card .btn {
   align-self: stretch;
@@ -2582,3 +2672,14 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 
 
+
+
+@media (min-width: 901px) {
+  .hub-panel[data-hub-panel="profile"] .profile-form .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hub-panel[data-hub-panel="profile"] .profile-overview-list dl {
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  }
+}
