@@ -682,3 +682,34 @@ body.is-inbox-open {
   font-weight: 700;
   opacity: 0.7;
 }
+
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .doctor-panel .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .doctor-panel .toolbar .center-group {
+    justify-content: flex-start;
+  }
+
+  .doctor-report-group-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .doctor-report-meta {
+    text-align: left;
+  }
+
+  .doctor-report-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .doctor-report-actions .btn {
+    flex: 1 1 auto;
+  }
+}

@@ -927,6 +927,14 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   flex-direction: column;
 }
 
+.hub-panel[data-hub-panel="doctor"],
+.hub-panel[data-hub-panel="vitals"],
+.hub-panel[data-hub-panel="assistant-text"] {
+  height: min(80vh, 860px);
+  display: flex;
+  flex-direction: column;
+}
+
 
 body[data-panel-perf="mobile"] .hub-panel {
   box-shadow: var(--shadow-panel);

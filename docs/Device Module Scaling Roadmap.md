@@ -21,7 +21,7 @@ Status
 - Step 4: done
 - Step 5: done
 - Step 6: done
-- Step 7: pending
+- Step 7: done
 - Step 8: pending
 - Step 9: pending
 - Step 10: pending
@@ -111,17 +111,18 @@ Step 5: Umsetzungsreihenfolge
 Step 6: Phase 1 Umsetzung (Quick Wins)
 6.1 Scroll-Container vereinheitlichen (ein Scroll pro Panel). (done)
 6.2 Mobile-Spacing und Button-Breiten vereinheitlichen. (done)
+    - Hinweis: Scroll-Container auf volle Panel-Hoehe gesetzt (height/max-height 100% + padding-bottom).
 Output: Keine abgeschnittenen Inhalte auf Mobile.
 Exit-Kriterium: Scroll bis unten in allen Panels.
 
 Step 7: Phase 2 Umsetzung (Mobile-Module)
 7.1 Intake/Vitals/Appointments/Text-Chat nach Mobile-Regeln anpassen. (done)
-7.2 UI-Kurztest auf Mobile (Touch, Scroll, Lesbarkeit).
+7.2 UI-Kurztest auf Mobile (Touch, Scroll, Lesbarkeit). (done)
 Output: Mobile-Module A-Qualitaet.
 Exit-Kriterium: Mobile-Regression-Checks gruen.
 
 Step 8: Phase 3 Umsetzung (Tablet-Module)
-8.1 Arzt-Ansicht und Charts nach Tablet-Portrait-Regeln anpassen.
+8.1 Arzt-Ansicht und Charts nach Tablet-Portrait-Regeln anpassen. (done)
 8.2 UI-Kurztest auf Tablet-Portrait.
 Output: Tablet-Module A-Qualitaet.
 Exit-Kriterium: Chart/Filter/Listen ohne Layout-Brueche.

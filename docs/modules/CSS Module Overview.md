@@ -124,10 +124,11 @@ Nur modul-spezifische Komponenten:
 - Integration nur ueber Klassen/IDs im DOM.
 - Kritische Hooks:
   - Save-Feedback: `.save-flash`, `.save-status`.
-  - Buttons: `.btn`, `.btn.primary`, `.btn.ghost`.
-  - Pills/Badges: `.pill`, `.badge`.
-  - Tabs: `.tabs` + `.btn.is-active` (global underline).
-  - Panels: `.panel`, `.panel-header`, `.panel-body` (Hub/Capture).
+- Buttons: `.btn`, `.btn.primary`, `.btn.ghost`.
+- Pills/Badges: `.pill`, `.badge`.
+- Tabs: `.tabs` + `.btn.is-active` (global underline).
+- Panels: `.panel`, `.panel-header`, `.panel-body` (Hub/Capture).
+- Hub-Scroll: `.hub-panel-scroll` ist der einzige Scroll-Container im Panel (keine `overflow`-Scrolls auf `.hub-panel-body`).
 
 ---
 

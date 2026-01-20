@@ -276,3 +276,19 @@
 .tp-legend-swatch.tp-band-critical{
   background:rgba(239,68,68,.55);
 }
+
+
+@media (min-width: 641px) and (max-width: 900px) {
+  #chart .controls > * {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  #chart .controls .kpis {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  #chart .legend {
+    font-size: 13px;
+  }
+}
