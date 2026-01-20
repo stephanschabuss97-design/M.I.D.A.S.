@@ -913,11 +913,6 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   flex-direction: column;
 }
 
-.hub-panel[data-hub-panel="intake"] .hub-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
 
 .hub-panel[data-hub-panel="appointments"] {
   height: min(80vh, 860px);
@@ -925,11 +920,6 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   flex-direction: column;
 }
 
-.hub-panel[data-hub-panel="appointments"] .hub-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
 
 .hub-panel[data-hub-panel="profile"] {
   height: min(80vh, 860px);
@@ -937,11 +927,6 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   flex-direction: column;
 }
 
-.hub-panel[data-hub-panel="profile"] .hub-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
 
 body[data-panel-perf="mobile"] .hub-panel {
   box-shadow: var(--shadow-panel);
@@ -1635,6 +1620,26 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     width: 100%;
     margin: 4px 0 0;
   }
+
+  .hub-panel .form-actions,
+  .hub-panel .appointments-actions,
+  .hub-panel .profile-actions,
+  .hub-panel .medication-form-actions,
+  .hub-panel .activity-form-actions,
+  .hub-panel .capture-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .hub-panel .form-actions .btn,
+  .hub-panel .appointments-actions .btn,
+  .hub-panel .profile-actions .btn,
+  .hub-panel .medication-form-actions .btn,
+  .hub-panel .activity-form-actions .btn,
+  .hub-panel .capture-card-actions .btn {
+    width: 100%;
+  }
 }
 
 /* HUB Form helpers */
@@ -1759,12 +1764,15 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 /* Damit das Panel selbst animiert, aber eine innere Box scrollbar bleibt */
 .hub-panel-scroll {
+  flex: 1;
+  min-height: 0;
   max-height: calc(100vh - 120px); /* genug Luft ++ber/unter dem Panel */
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* smooth scroll f++r iOS + Android */
   padding-right: 6px; /* verhindert Text-Cut rechts */
 }
+
 
 /* Optional: h++bscher Scroll-Fade oben/unten */
 .hub-panel-scroll::before,
@@ -2184,19 +2192,46 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 @media (max-width: 640px) {
   .assistant-input-bar {
     gap: 8px;
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0;
+    background: linear-gradient(to top, rgba(10, 12, 20, 0.95), rgba(10, 12, 20, 0));
   }
 
   .assistant-input-tools {
     flex: 0 0 auto;
   }
 
- .assistant-input {
+  .assistant-input {
     flex: 1 1 auto;
   }
 
   #assistantSendBtn {
     flex: 0 0 auto;
     padding: 10px 14px;
+  }
+
+  .assistant-chat {
+    padding-bottom: 64px;
+  }
+
+  .hub-panel[data-hub-panel="intake"] #cap-intake-wrap input {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .hub-panel[data-hub-panel="vitals"] .hub-vitals-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hub-panel[data-hub-panel="vitals"] .hub-vitals-controls .control-group {
+    width: 100%;
+  }
+
+  .hub-panel[data-hub-panel="appointments"] .appointments-overview-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

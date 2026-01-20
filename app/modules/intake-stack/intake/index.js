@@ -885,11 +885,6 @@
     const input = document.getElementById(`cap-${kind}-add`);
     if (!btn || !input) return;
     const panel = btn.closest('#cap-intake-wrap') || document.getElementById('cap-intake-wrap');
-    if (typeof input.reportValidity === 'function') {
-      input.required = true;
-      if (!input.reportValidity()) return;
-    }
-
     diag.add?.(`[capture] click ${kind}`);
 
     try {
@@ -908,16 +903,18 @@
     captureIntakeState.dayIso = dayIso;
 
     let value;
+    const raw = input.value;
     if (kind === 'water'){
-      value = Number(input.value);
-      if (!(value > 0)){
+      value = Number(raw);
+      if (raw.trim() && !Number.isFinite(value)){
         saveFeedback?.error({ button: btn, message: 'Bitte gueltige Wassermenge eingeben.' });
         diag.add?.('[capture] blocked: invalid water value ' + input.value);
         return;
       }
+      if (!raw.trim()) value = 0;
     } else {
-      value = toNumDE(input.value);
-      if (!(value > 0)){
+      const parsed = toNumDE(raw);
+      if (raw.trim() && !Number.isFinite(parsed)){
         saveFeedback?.error({
           button: btn,
           message: kind === 'salt'
@@ -927,22 +924,20 @@
         diag.add?.(`[capture] blocked: invalid ${kind} value ${input.value}`);
         return;
       }
+      value = Number.isFinite(parsed) ? parsed : 0;
     }
     diag.add?.(`[capture] parsed ${kind}=${value}`);
 
     const totals = { ...captureIntakeState.totals };
     let successText = '';
     if (kind === 'water'){
-      const total = Math.max(0, Math.min(MAX_WATER_ML, (totals.water_ml || 0) + value));
-      totals.water_ml = roundValue('water_ml', total);
+      totals.water_ml = roundValue('water_ml', (totals.water_ml || 0) + value);
       successText = '&#x2705; Wasser gespeichert';
     } else if (kind === 'salt'){
-      const total = Math.max(0, Math.min(MAX_SALT_G, (totals.salt_g || 0) + value));
-      totals.salt_g = roundValue('salt_g', total);
+      totals.salt_g = roundValue('salt_g', (totals.salt_g || 0) + value);
       successText = '&#x2705; Salz gespeichert';
     } else {
-      const total = Math.max(0, Math.min(MAX_PROTEIN_G, (totals.protein_g || 0) + value));
-      totals.protein_g = roundValue('protein_g', total);
+      totals.protein_g = roundValue('protein_g', (totals.protein_g || 0) + value);
       successText = '&#x2705; Protein gespeichert';
     }
     diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
@@ -1005,37 +1000,30 @@
     const dayIso = document.getElementById('date')?.value || todayStr();
     captureIntakeState.dayIso = dayIso;
 
-    const saltVal = toNumDE(saltInput.value) || 0;
-    const proteinVal = toNumDE(proteinInput.value) || 0;
-    const canReport =
-      typeof saltInput.reportValidity === 'function' &&
-      typeof proteinInput.reportValidity === 'function';
-    if (canReport) {
-      const requireSalt = !(proteinVal > 0);
-      const requireProtein = !(saltVal > 0);
-      saltInput.required = requireSalt;
-      proteinInput.required = requireProtein;
-      if (requireSalt && requireProtein) {
-        saltInput.reportValidity();
-        return;
-      }
-    }
-    if (!(saltVal > 0) && !(proteinVal > 0)) {
-      saveFeedback?.error({ button: btn, message: 'Bitte Salz oder Protein eingeben.' });
+    const saltRaw = saltInput.value;
+    const proteinRaw = proteinInput.value;
+    const saltParsed = toNumDE(saltRaw);
+    const proteinParsed = toNumDE(proteinRaw);
+    if (saltRaw.trim() && !Number.isFinite(saltParsed)) {
+      saveFeedback?.error({ button: btn, message: 'Bitte gueltige Salzmenge eingeben.' });
       return;
     }
+    if (proteinRaw.trim() && !Number.isFinite(proteinParsed)) {
+      saveFeedback?.error({ button: btn, message: 'Bitte gueltige Proteinmenge eingeben.' });
+      return;
+    }
+    const saltVal = Number.isFinite(saltParsed) ? saltParsed : 0;
+    const proteinVal = Number.isFinite(proteinParsed) ? proteinParsed : 0;
 
     const totals = { ...captureIntakeState.totals };
     let messageParts = [];
 
-    if (saltVal > 0) {
-      const totalSalt = Math.max(0, Math.min(MAX_SALT_G, (totals.salt_g || 0) + saltVal));
-      totals.salt_g = roundValue('salt_g', totalSalt);
+    if (saltVal !== 0) {
+      totals.salt_g = roundValue('salt_g', (totals.salt_g || 0) + saltVal);
       messageParts.push('Salz');
     }
-    if (proteinVal > 0) {
-      const totalProtein = Math.max(0, Math.min(MAX_PROTEIN_G, (totals.protein_g || 0) + proteinVal));
-      totals.protein_g = roundValue('protein_g', totalProtein);
+    if (proteinVal !== 0) {
+      totals.protein_g = roundValue('protein_g', (totals.protein_g || 0) + proteinVal);
       messageParts.push('Protein');
     }
 
@@ -1064,7 +1052,9 @@
       saveFeedback?.ok({
         button: btn,
         panel,
-        successText: `&#x2705; ${messageParts.join(' & ')} gespeichert`
+        successText: messageParts.length
+          ? `&#x2705; ${messageParts.join(' & ')} gespeichert`
+          : '&#x2705; Intake gespeichert'
       });
       diag.add?.('[capture] save ok salt+protein');
     } catch (e) {
