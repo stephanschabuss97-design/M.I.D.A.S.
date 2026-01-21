@@ -106,3 +106,96 @@ QA-Status
 
 Hinweis
 - Texte hier sind absichtlich mit ae/oe/ue, du korrigierst spaeter manuell.
+
+---
+
+# Intake Medication UX Roadmap (Status-Pfeil + Glow)
+
+Ziel
+- Pro Medikament klares, ruhiges Status-Feedback (Pfeil/Check hinter Milchglas + Glow).
+- Kein Ausgrauen/Timeout-Lock, Status bleibt logisch und reversibel.
+- Visuelle Basis global nutzbar (Design-Token-Ansatz).
+
+Status
+- Step 6: completed
+- Step 7: completed
+- Step 8: completed
+- Step 9: completed
+- Step 10: pending
+
+Scope
+- Status-Icon rechts an der Karte (SVG, Glasflaeche, softer Glow).
+- Removal des Timeout-Locks (kein Auto-Reset).
+- Reversibel pro Medikament (genommen <-> offen).
+- Globaler Glow-Style als Pattern (spaeter fuer Save/States nutzbar).
+
+Nicht im Scope
+- Neue Backend-Modelle.
+- Vollstaendiges Redesign des Intake-Panels.
+- Neue Supabase RPCs.
+
+Deterministische Steps
+
+Step 6: Interaktionsmodell fixieren
+6.1 Definiere, wie Auswahl/Bestaetigung ohne Checkbox funktioniert (Tap-Zone, Status-Toggle, Footer-CTA).
+6.2 Definiere Status-States (neutral/offen vs genommen) + Reversibel-Regel.
+6.3 Entscheide, ob "Alle genommen" entfernt oder als Option fuer leere Auswahl bleibt.
+Output: klare Interaktionsregeln (Text) + finale Button-Liste.
+Exit-Kriterium: UX-Regeln sind fixiert.
+
+6.1 Entwurf (Interaktionsmodell)
+- Default: alle offenen Medikamente sind im Batch-Selection State (subtiler Rahmen/Glow).
+- Tap auf Karte toggelt Selection (ohne Checkbox sichtbar).
+- Primary CTA: "Auswahl bestaetigen (n)" bestaetigt nur selektierte Karten.
+- Status-Indicator (Pfeil/Check + Glow) erscheint erst nach bewusstem Save.
+- Revert: Tap auf Status-Indicator toggelt genommen <-> offen (kein Timeout).
+
+6.2 Entwurf (Status-States + Reversibel)
+- Zustand "offen": kein Status-Icon, neutrale Karte (kein Grau).
+- Zustand "genommen": Status-Pfeil erscheint (Glas + Glow).
+- Reversibel: Tap auf Status-Pfeil setzt wieder "offen" (RPC `med_undo_dose`).
+- Direktes Toggle: keine Sperrfrist, keine Auto-Resets.
+
+6.3 Entscheidung (Buttons)
+- "Alle genommen" wird entfernt.
+
+Step 7: Globale Glow-Basis
+7.1 Tokens in `app/styles/base.css` (Farbe/Blur/Shadow fuer Status-Glow).
+7.2 Pattern in `app/styles/ui.css` (z. B. `.status-glow`, Varianten ok/neutral).
+Output: wiederverwendbare Glow-Basis.
+Exit-Kriterium: Glow-Pattern ist global und modulunabhaengig.
+
+Status-Update
+- Tokens in `app/styles/base.css` + Pattern in `app/styles/ui.css` angelegt.
+
+Step 8: Markup fuer Status-Pfeil
+8.1 Karten-Markup ergaenzen (Status-Container rechts, SVG-Icon, Glasflaeche).
+8.2 Checkbox-Elemente entfernen oder als Hidden-State ersetzen (je nach Step 6).
+Output: neues Markup in `index.html`.
+Exit-Kriterium: Karte hat Status-Slot fuer Icon/Glow.
+
+Status-Update
+- Status-Slot pro Karte in `app/modules/intake-stack/intake/index.js` + "Alle genommen" aus Footer entfernt in `index.html`.
+
+Step 9: JS-Logik (Status Toggle + No Timeout)
+9.1 Timeout-Reset entfernen.
+9.2 Status-Icon zeigt taken/offen pro Medikament.
+9.3 Reversibel: pro Karte toggelbar (Undo ohne Zeitfenster).
+9.4 Footer-CTA an neues Modell anpassen (Label/States).
+9.5 CTA nur anzeigen, wenn mindestens ein Medikament "offen" ist (sonst ausblenden oder Status-Pill).
+Output: funktionierende Status-Logik ohne Lock.
+Exit-Kriterium: taken/offen ist jederzeit logisch aenderbar.
+
+Status-Update
+- Auto-Reset/Timeout nach Batch-Save entfernt (kein Lock).
+- Status-Icon Slot + Toggle-Handling fuer taken/offen eingebaut.
+- Reversibel per Status-Icon (med_confirm_dose/med_undo_dose).
+- Footer-CTA wird ausgeblendet, wenn keine offenen Medikamente vorhanden sind.
+- Auswahl-Info unter dem CTA entfernt.
+
+Step 10: Styling / Feinschliff
+10.1 Glasflaeche + Glow auf Status-Slot (ruhig, kein Neon).
+10.2 Karte bleibt visuell stabil (kein Ausgrauen).
+10.3 Mobile-Layout pruefen (Icon rechts gut lesbar).
+Output: konsistenter Look (MIDAS-Style).
+Exit-Kriterium: Status ist peripher gut erkennbar, ohne zu dominieren.

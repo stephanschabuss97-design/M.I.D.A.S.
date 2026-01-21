@@ -237,31 +237,34 @@
   };
 
   const updateMedicationBatchFooter = () => {
-    const ui = medicationDailyState.elements;
-    if (!ui?.footer) return;
-    const data = medicationDailyState.data;
-    const activeRows = getActiveMedicationRows(data);
-    const openIds = getOpenMedicationIds(data);
-    const selectedIds = getSelectedOpenIds(data);
-    const selectedCount = selectedIds.length;
+      const ui = medicationDailyState.elements;
+      if (!ui?.footer) return;
+      const data = medicationDailyState.data;
+      const activeRows = getActiveMedicationRows(data);
+      const openIds = getOpenMedicationIds(data);
+      const selectedIds = getSelectedOpenIds(data);
+      const selectedCount = selectedIds.length;
+      const hasOpen = openIds.length > 0;
+      const showFooter = activeRows.length && (medicationDailyState.footerMode !== 'actions' || hasOpen);
 
-    ui.footer.hidden = !activeRows.length;
-    if (ui.confirmBtn) {
-      ui.confirmBtn.textContent = `Auswahl bestätigen (${selectedCount})`;
-      ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
-    }
-    if (ui.allBtn) {
-      ui.allBtn.disabled = medicationDailyState.busy || openIds.length === 0;
-    }
-    if (ui.statusText && medicationDailyState.footerMode === 'actions') {
-      ui.statusText.textContent = selectedCount
-        ? `${selectedCount} ausgewählt`
-        : 'Noch keine Auswahl';
-    }
-    if (!activeRows.length) {
-      setMedicationFooterMode('actions');
-    }
-  };
+      ui.footer.hidden = !showFooter;
+      if (ui.actions && medicationDailyState.footerMode === 'actions') {
+        ui.actions.hidden = !hasOpen;
+      }
+      if (ui.confirmBtn) {
+        ui.confirmBtn.textContent = `Auswahl bestaetigen (${selectedCount})`;
+        ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
+      }
+      if (ui.allBtn) {
+        ui.allBtn.disabled = medicationDailyState.busy || openIds.length === 0;
+      }
+      if (ui.statusText && medicationDailyState.footerMode === 'actions') {
+        ui.statusText.textContent = '';
+      }
+      if (!activeRows.length) {
+        setMedicationFooterMode('actions');
+      }
+    };
 
   function initMedicationDailyUi() {
     if (medicationDailyState.initialized) return;
@@ -292,6 +295,12 @@
     });
 
     listEl.addEventListener('click', (event) => {
+      const statusBtn = event.target.closest('[data-med-status-id]');
+      if (statusBtn) {
+        event.preventDefault();
+        handleMedicationStatusToggle(statusBtn);
+        return;
+      }
       const card = event.target.closest('.medication-card');
       if (!card) return;
       if (event.target.closest('button, a, input, label')) return;
@@ -474,6 +483,17 @@
                   <h4 class="medication-card-title">${escapeHtml(med.name || 'Medikation')}</h4>
                   ${statusText ? `<span class="medication-card-status">${escapeHtml(statusText)}</span>` : ''}
                 </div>
+                <button
+                  type="button"
+                  class="medication-card-status-slot status-glow ${isTaken ? 'ok' : 'neutral'}"
+                  data-med-status-slot
+                  data-med-status-id="${escapeAttr(medId)}"
+                  aria-label="${escapeAttr(isTaken ? 'Einnahme zuruecknehmen' : 'Einnahme bestaetigen')}"
+                >
+                  <svg class="medication-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
               </div>
             ${detailText ? `<p class="medication-card-meta small">${escapeHtml(detailText)}</p>` : ''}
           </article>
@@ -556,11 +576,6 @@
       medicationDailyState.selectionDirty = false;
       setMedicationFooterMode('status', { statusText, allowUndo: true });
       clearMedicationStatusTimer();
-      medicationDailyState.statusTimer = setTimeout(() => {
-        resetMedicationBatchState();
-        setMedicationFooterMode('actions');
-        updateMedicationBatchFooter();
-      }, 7000);
       saveFeedback?.ok({ button: triggerBtn, panel, successText: '&#x2705; Tabletten gespeichert' });
       if (typeof medModule.invalidateMedicationCache === 'function') {
         medModule.invalidateMedicationCache(dayIso);
@@ -620,6 +635,42 @@
     } finally {
       medicationDailyState.busy = false;
       updateMedicationBatchFooter();
+    }
+  }
+
+  async function handleMedicationStatusToggle(btn) {
+    if (!btn || medicationDailyState.busy) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      uiError('Medikationsmodul nicht verfuegbar.');
+      return;
+    }
+    if (!captureIntakeState.logged) {
+      uiError('Bitte anmelden, um Medikamente zu bestaetigen.');
+      return;
+    }
+    const medId = btn.getAttribute('data-med-status-id');
+    if (!medId) return;
+    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    const isTaken = btn.classList.contains('ok');
+    withBusy(btn, true);
+    try {
+      if (isTaken) {
+        await medModule.undoMedication(medId, { dayIso, reason: 'capture-status-toggle' });
+        uiInfo('Einnahme zurueckgenommen.');
+      } else {
+        await medModule.confirmMedication(medId, { dayIso, reason: 'capture-status-toggle' });
+        uiInfo('Einnahme bestaetigt.');
+      }
+      if (typeof medModule.invalidateMedicationCache === 'function') {
+        medModule.invalidateMedicationCache(dayIso);
+      }
+      await refreshMedicationDaily({ dayIso, reason: 'status-toggle', force: true });
+    } catch (err) {
+      uiError(err?.message || 'Aktion fehlgeschlagen.');
+      diag.add?.(`[capture:med] status toggle error med=${medId} ${err?.message || err}`);
+    } finally {
+      withBusy(btn, false);
     }
   }
 

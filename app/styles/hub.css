@@ -1485,6 +1485,27 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   background: rgba(20, 26, 44, 0.9);
   box-shadow: 0 0 0 1px rgba(120, 170, 255, 0.25), 0 12px 24px rgba(0, 0, 0, 0.35);
 }
+.medication-card-grid .medication-card-status-slot {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  color: var(--status-icon-ok);
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.medication-card-grid .medication-card.is-taken .medication-card-status-slot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.medication-card-grid .medication-card-status-slot .medication-status-icon {
+  width: 18px;
+  height: 18px;
+}
+
 
 
 

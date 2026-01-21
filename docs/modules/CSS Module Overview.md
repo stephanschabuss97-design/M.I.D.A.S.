@@ -128,6 +128,7 @@ Quickstart fuer neue Sessions (Device Scaling):
 
 ### 5.1 Tokens & Basis
 - **`base.css`**: Farben, Typografie, Radius, Shadows, Surfaces, Glows als Tokens.
+- Status-Glow Tokens: `--status-glass-*`, `--status-glow-*`, `--status-icon-ok`.
 - Keine Feature-Klassen hier.
 
 ### 5.2 Layout-Grundlage
@@ -140,6 +141,7 @@ Quickstart fuer neue Sessions (Device Scaling):
 
 ### 5.4 Globale Patterns
 - **`ui.css`**: Buttons, Tabs-Pattern (`.tabs`), Pills/Badges, Save-Feedback (`save-flash`, `save-status`).
+- Status-Glow Pattern: `.status-glow` (Varianten `.ok`, `.neutral`).
 - Zentraler Ort fuer wiederkehrende Patterns.
 
 ### 5.5 Feature-CSS
@@ -173,6 +175,7 @@ Nur modul-spezifische Komponenten:
 - Integration nur ueber Klassen/IDs im DOM.
 - Kritische Hooks:
   - Save-Feedback: `.save-flash`, `.save-status`.
+  - Status-Glow: `.status-glow`, `.status-glow.ok`, `.status-glow.neutral`.
   - Buttons: `.btn`, `.btn.primary`, `.btn.ghost`.
   - Pills/Badges: `.pill`, `.badge`.
   - Tabs: `.tabs` + `.btn.is-active` (global underline).

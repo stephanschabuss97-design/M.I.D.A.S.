@@ -157,6 +157,28 @@ textarea{min-height:64px;resize:vertical}
 .badge.bad{border-color:var(--color-danger); color:var(--color-danger)}
 .badge.hidden{display:none !important}
 
+
+/* SUBMODULE: Status Glow @public - Glasflaeche + sanfter Glow fuer Status-Indicator */
+.status-glow{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px;
+  border-radius:12px;
+  background:var(--status-glass-bg);
+  border:1px solid var(--status-glass-border);
+  box-shadow:var(--status-glow-soft);
+  backdrop-filter:blur(var(--status-glass-blur));
+  -webkit-backdrop-filter:blur(var(--status-glass-blur));
+  transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.status-glow.ok{
+  box-shadow:var(--status-glow-ok);
+}
+.status-glow.neutral{
+  box-shadow:var(--status-glow-neutral);
+}
+
 /* SUBMODULE: Progress Bars @public - Globale Progress-Pattern */
 .progress{
   position:relative;
