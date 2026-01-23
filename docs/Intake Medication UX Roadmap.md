@@ -121,7 +121,7 @@ Status
 - Step 7: completed
 - Step 8: completed
 - Step 9: completed
-- Step 10: pending
+- Step 10: completed
 
 Scope
 - Status-Icon rechts an der Karte (SVG, Glasflaeche, softer Glow).
@@ -199,3 +199,6 @@ Step 10: Styling / Feinschliff
 10.3 Mobile-Layout pruefen (Icon rechts gut lesbar).
 Output: konsistenter Look (MIDAS-Style).
 Exit-Kriterium: Status ist peripher gut erkennbar, ohne zu dominieren.
+
+Status-Update
+- Checkboxen reduziert, Status-Slot verfeinert, Detailtext lesbarer (Mobile).

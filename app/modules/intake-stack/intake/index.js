@@ -53,10 +53,7 @@
     cardOrder: [],
     selection: new Set(),
     selectionDirty: false,
-    footerMode: 'actions',
     busy: false,
-    statusTimer: null,
-    lastBatch: null,
     elements: {}
   };
   let latestTrendpilotEntry = null;
@@ -186,34 +183,6 @@
   const getOpenMedicationIds = (data) =>
     getOpenMedicationRows(data).map((med) => med.id).filter(Boolean);
 
-  const clearMedicationStatusTimer = () => {
-    if (medicationDailyState.statusTimer) {
-      clearTimeout(medicationDailyState.statusTimer);
-      medicationDailyState.statusTimer = null;
-    }
-  };
-
-  const resetMedicationBatchState = () => {
-    medicationDailyState.footerMode = 'actions';
-    medicationDailyState.lastBatch = null;
-    clearMedicationStatusTimer();
-  };
-
-  const setMedicationFooterMode = (mode, { statusText, allowUndo } = {}) => {
-    const ui = medicationDailyState.elements;
-    if (!ui?.footer) return;
-    medicationDailyState.footerMode = mode === 'status' ? 'status' : 'actions';
-    if (ui.actions) ui.actions.hidden = medicationDailyState.footerMode !== 'actions';
-    if (ui.statusWrap) ui.statusWrap.hidden = medicationDailyState.footerMode !== 'status';
-    if (ui.statusBtn && statusText) {
-      ui.statusBtn.textContent = statusText;
-    }
-    if (ui.undoBtn) {
-      ui.undoBtn.hidden = !allowUndo;
-      ui.undoBtn.disabled = !allowUndo;
-    }
-  };
-
   const syncMedicationSelection = (data, { reset = false } = {}) => {
     const openIds = getOpenMedicationIds(data);
     const openSet = new Set(openIds);
@@ -245,24 +214,18 @@
       const selectedIds = getSelectedOpenIds(data);
       const selectedCount = selectedIds.length;
       const hasOpen = openIds.length > 0;
-      const showFooter = activeRows.length && (medicationDailyState.footerMode !== 'actions' || hasOpen);
+      const showFooter = activeRows.length && hasOpen;
 
       ui.footer.hidden = !showFooter;
-      if (ui.actions && medicationDailyState.footerMode === 'actions') {
+      if (ui.actions) {
         ui.actions.hidden = !hasOpen;
       }
       if (ui.confirmBtn) {
         ui.confirmBtn.textContent = `Auswahl bestaetigen (${selectedCount})`;
         ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
       }
-      if (ui.allBtn) {
-        ui.allBtn.disabled = medicationDailyState.busy || openIds.length === 0;
-      }
-      if (ui.statusText && medicationDailyState.footerMode === 'actions') {
-        ui.statusText.textContent = '';
-      }
       if (!activeRows.length) {
-        setMedicationFooterMode('actions');
+        ui.footer.hidden = true;
       }
     };
 
@@ -278,12 +241,7 @@
     medicationDailyState.elements = {
       footer: doc.getElementById('medicationBatchFooter'),
       actions: doc.getElementById('medicationBatchActions'),
-      confirmBtn: doc.getElementById('medBatchConfirmBtn'),
-      allBtn: doc.getElementById('medBatchAllBtn'),
-      statusWrap: doc.getElementById('medicationBatchStatus'),
-      statusBtn: doc.getElementById('medBatchStatusBtn'),
-      undoBtn: doc.getElementById('medBatchUndoBtn'),
-      statusText: doc.getElementById('medBatchStatus')
+      confirmBtn: doc.getElementById('medBatchConfirmBtn')
     };
     medicationDailyState.initialized = true;
 
@@ -321,15 +279,7 @@
     });
 
     medicationDailyState.elements.confirmBtn?.addEventListener('click', () => {
-      handleMedicationBatchConfirm('selected');
-    });
-
-    medicationDailyState.elements.allBtn?.addEventListener('click', () => {
-      handleMedicationBatchConfirm('all');
-    });
-
-    medicationDailyState.elements.undoBtn?.addEventListener('click', () => {
-      handleMedicationBatchUndo();
+      handleMedicationBatchConfirm();
     });
 
     doc.addEventListener('medication:changed', (event) => {
@@ -361,7 +311,6 @@
     }
     medicationDailyState.selection = new Set();
     medicationDailyState.selectionDirty = false;
-    resetMedicationBatchState();
     updateMedicationBatchFooter();
     diag.add?.(
       `[capture:med] placeholder day=${medicationDailyState.dayIso || 'n/a'} msg="${effectiveMessage}"`
@@ -447,7 +396,6 @@
       renderMedicationLowStock(data);
       medicationDailyState.selection = new Set();
       medicationDailyState.selectionDirty = false;
-      resetMedicationBatchState();
       updateMedicationBatchFooter();
       return;
     }
@@ -509,10 +457,6 @@
     if (!checkbox || checkbox.disabled) return;
     const medId = checkbox.getAttribute('data-med-select');
     if (!medId) return;
-    if (medicationDailyState.footerMode === 'status') {
-      resetMedicationBatchState();
-      setMedicationFooterMode('actions');
-    }
     const card = checkbox.closest('.medication-card');
     if (checkbox.checked) {
       medicationDailyState.selection.add(medId);
@@ -535,7 +479,7 @@
     handleMedicationSelectionToggle(checkbox);
   }
 
-  async function handleMedicationBatchConfirm(mode) {
+  async function handleMedicationBatchConfirm() {
     if (!captureIntakeState.logged) {
       uiError('Bitte anmelden, um Medikamente zu bestätigen.');
       return;
@@ -546,18 +490,12 @@
       return;
     }
     const data = medicationDailyState.data;
-    const openIds = getOpenMedicationIds(data);
-    const selectedIds = mode === 'all' ? openIds : getSelectedOpenIds(data);
+    const selectedIds = getSelectedOpenIds(data);
     if (!selectedIds.length) return;
 
     const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
     const panel = document.getElementById('cap-intake-wrap');
-    const triggerBtn =
-      mode === 'all'
-        ? medicationDailyState.elements.allBtn
-        : medicationDailyState.elements.confirmBtn;
-    const wasAll = selectedIds.length === openIds.length;
-    const statusText = wasAll ? 'Tabletten genommen' : 'Tabletten teilweise genommen';
+    const triggerBtn = medicationDailyState.elements.confirmBtn;
 
     medicationDailyState.busy = true;
     updateMedicationBatchFooter();
@@ -568,14 +506,7 @@
           medModule.confirmMedication(medId, { dayIso, reason: 'capture-batch' })
         )
       );
-      medicationDailyState.lastBatch = {
-        dayIso,
-        medIds: selectedIds,
-        selection: new Set(medicationDailyState.selection)
-      };
       medicationDailyState.selectionDirty = false;
-      setMedicationFooterMode('status', { statusText, allowUndo: true });
-      clearMedicationStatusTimer();
       saveFeedback?.ok({ button: triggerBtn, panel, successText: '&#x2705; Tabletten gespeichert' });
       if (typeof medModule.invalidateMedicationCache === 'function') {
         medModule.invalidateMedicationCache(dayIso);
@@ -595,48 +526,6 @@
     }
   }
 
-  async function handleMedicationBatchUndo() {
-    const batch = medicationDailyState.lastBatch;
-    if (!batch || !batch.medIds?.length) return;
-    const medModule = getMedicationModule();
-    if (!medModule) {
-      uiError('Medikationsmodul nicht verfügbar.');
-      return;
-    }
-    const panel = document.getElementById('cap-intake-wrap');
-    const triggerBtn = medicationDailyState.elements.undoBtn;
-    medicationDailyState.busy = true;
-    updateMedicationBatchFooter();
-    saveFeedback?.start({ button: triggerBtn, panel });
-    try {
-      await Promise.all(
-        batch.medIds.map((medId) =>
-          medModule.undoMedication(medId, { dayIso: batch.dayIso, reason: 'capture-batch-undo' })
-        )
-      );
-      medicationDailyState.selection = new Set(batch.selection || []);
-      medicationDailyState.selectionDirty = true;
-      resetMedicationBatchState();
-      setMedicationFooterMode('actions');
-      clearMedicationStatusTimer();
-      saveFeedback?.ok({ button: triggerBtn, panel, successText: '&#x21A9; Rückgängig' });
-      if (typeof medModule.invalidateMedicationCache === 'function') {
-        medModule.invalidateMedicationCache(batch.dayIso);
-      }
-      await refreshMedicationDaily({ dayIso: batch.dayIso, reason: 'batch-undo', force: true });
-    } catch (err) {
-      saveFeedback?.error({
-        button: triggerBtn,
-        panel,
-        message: err?.message || 'Undo fehlgeschlagen.'
-      });
-      uiError(err?.message || 'Undo fehlgeschlagen.');
-      diag.add?.(`[capture:med] batch undo error ${err?.message || err}`);
-    } finally {
-      medicationDailyState.busy = false;
-      updateMedicationBatchFooter();
-    }
-  }
 
   async function handleMedicationStatusToggle(btn) {
     if (!btn || medicationDailyState.busy) return;
@@ -718,7 +607,6 @@
     medicationDailyState.dayIso = nextDayIso;
     if (dayChanged) {
       medicationDailyState.selectionDirty = false;
-      resetMedicationBatchState();
     }
     if (!captureIntakeState.logged) {
       renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');

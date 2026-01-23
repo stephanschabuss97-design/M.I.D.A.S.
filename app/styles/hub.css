@@ -1412,18 +1412,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 
-
-.medication-batch-actions,
-.medication-batch-status {
-    align-items: center;
-  }
-
-.medication-batch-actions .save-status {
-    flex: 1 1 100%;
-  }
-
-
-
 @media (min-width: 900px) {
   .medication-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

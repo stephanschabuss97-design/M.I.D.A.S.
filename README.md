@@ -112,6 +112,7 @@ Komplette Historie siehe `CHANGELOG.md`.
 ## Beitrag & Feedback
 
 Pull Requests, Issues und Ideen sind willkommen. Bitte ASCII (ae/oe/ue) verwenden und Patches knapp kommentieren. Viel Erfolg mit dem Gesundheits-Logger!
+
 ```
 M.I.D.A.S
 ├─ .nojekyll
@@ -257,7 +258,9 @@ M.I.D.A.S
 │  ├─ Codex Programmandi.docx
 │  ├─ db-transition-plan.md
 │  ├─ deep-clean-roadmap.md
+│  ├─ Device Module Scaling Roadmap.md
 │  ├─ Doctor Lab Domain Roadmap.md
+│  ├─ Doctor Report Roadmap.md
 │  ├─ doctor-range-export-plan.md
 │  ├─ dynamic protein spec.md
 │  ├─ Encoding-Cleanup-Guide.md
@@ -267,11 +270,16 @@ M.I.D.A.S
 │  ├─ hub-momentum-showtime-plan.md
 │  ├─ Import Inventory.md
 │  ├─ Input_Style_Polish_Plan.md
+│  ├─ Intake Medication UX Roadmap.md
+│  ├─ Layout Alignment.md
 │  ├─ lazy-load-roadmap.md
 │  ├─ M.I.D.A.S. – Design Guide v1.2.md
 │  ├─ M.I.D.A.S._Implementation_Spec_v1.2.yaml
 │  ├─ Medication Management Module Spec.md
+│  ├─ MIDAS Incidents & Push Roadmap.md
 │  ├─ MIDAS Orb Vision.md
+│  ├─ MIDAS Sensory Feedback Roadmap.md
+│  ├─ MIDAS Ticker Bar Roadmap.md
 │  ├─ Milestone.md
 │  ├─ Module Update Plan.md
 │  ├─ module-consolidation-roadmap.md
@@ -283,6 +291,7 @@ M.I.D.A.S
 │  │  ├─ bootflow overview.md
 │  │  ├─ Capture Module Overview.md
 │  │  ├─ Charts Module Overview.md
+│  │  ├─ CSS Module Overview.md
 │  │  ├─ Diagnostics Module Overview.md
 │  │  ├─ Doctor View Module Overview.md
 │  │  ├─ Hub Module Overview.md
@@ -304,6 +313,7 @@ M.I.D.A.S
 │  ├─ PWA-TWA Readiness.md
 │  ├─ QA_CHECKS.md
 │  ├─ QA_Notes.md
+│  ├─ Repo Cleanup Roadmap.md
 │  ├─ Repo Tree v2.md
 │  ├─ Reports-Roadmap.md
 │  ├─ Supabase Proxy Refactor Plan.md
@@ -338,6 +348,7 @@ M.I.D.A.S
 │     └─ Android
 │        └─ README.md
 ├─ README.md
+├─ savehandler rework.md
 ├─ service-worker.js
 ├─ sql
 │  ├─ 00_Tabua Rasa.sql
