@@ -27,6 +27,130 @@
     return null;
   };
 
+  const formatNumberDE = (value, digits = 1) => {
+    if (!Number.isFinite(value)) return '--';
+    if (!digits) return String(Math.round(value));
+    return Number(value).toFixed(digits).replace('.', ',');
+  };
+
+  const formatTargetRange = (min, max, unit) => {
+    const minVal = min == null ? null : Number(min);
+    const maxVal = max == null ? null : Number(max);
+    const minOk = Number.isFinite(minVal) && minVal > 0;
+    const maxOk = Number.isFinite(maxVal) && maxVal > 0;
+    if (minOk && maxOk) {
+      return `${formatNumberDE(minVal, 0)}-${formatNumberDE(maxVal, 0)} ${unit}`;
+    }
+    if (maxOk) return `${formatNumberDE(maxVal, 0)} ${unit}`;
+    if (minOk) return `${formatNumberDE(minVal, 0)} ${unit}`;
+    return '--';
+  };
+
+  const activityModifierFor = (score) => {
+    if (!Number.isFinite(score)) return null;
+    if (score >= 6) return 0.3;
+    if (score >= 2) return 0.2;
+    return 0.1;
+  };
+
+  let latestWeightCache = null;
+  let latestWeightFetch = null;
+
+  const fetchLatestWeight = async () => {
+    if (latestWeightCache && Number.isFinite(latestWeightCache.value)) {
+      return latestWeightCache.value;
+    }
+    if (latestWeightFetch) return latestWeightFetch;
+    const supabase = global.AppModules?.supabase;
+    if (!supabase?.getUserId || !supabase?.sbSelect) return null;
+    latestWeightFetch = (async () => {
+      const uid = await supabase.getUserId();
+      if (!uid) return null;
+      const rows = await supabase.sbSelect({
+        table: 'v_events_body',
+        select: 'day,kg',
+        filters: [['user_id', `eq.${uid}`]],
+        order: 'day.desc',
+        limit: 1
+      });
+      const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+      const val = row && Number.isFinite(Number(row.kg)) ? Number(row.kg) : null;
+      if (val !== null) {
+        latestWeightCache = { value: val };
+      }
+      return val;
+    })().finally(() => {
+      latestWeightFetch = null;
+    });
+    return latestWeightFetch;
+  };
+
+  const setProteinMetricValue = (key, value) => {
+    const el = document.querySelector(`[data-protein-value="${key}"]`);
+    if (el) el.textContent = value;
+  };
+
+  const renderProteinMetrics = (profile) => {
+    const data = profile || global.AppModules?.profile?.getData?.() || null;
+    if (!data) {
+      ['age-base', 'activity-score', 'ckd-factor', 'factor-current', 'weight-latest', 'target-range'].forEach((key) => {
+        setProteinMetricValue(key, '--');
+      });
+      return;
+    }
+    const ageBase = data.protein_age_base;
+    setProteinMetricValue(
+      'age-base',
+      typeof ageBase === 'number' && Number.isFinite(ageBase) ? formatNumberDE(ageBase, 1) : '--'
+    );
+
+    const activityScore = data.protein_activity_score_28d;
+    const activityModifier = activityModifierFor(activityScore);
+    const activityText =
+      Number.isFinite(activityScore) && Number.isFinite(activityModifier)
+        ? `${formatNumberDE(activityScore, 0)} (+${formatNumberDE(activityModifier, 1)})`
+        : '--';
+    setProteinMetricValue('activity-score', activityText);
+
+    const ckdFactor = data.protein_ckd_factor;
+    const ckdText = typeof ckdFactor === 'number' && Number.isFinite(ckdFactor)
+      ? `x${formatNumberDE(ckdFactor, 2)}`
+      : '--';
+    setProteinMetricValue('ckd-factor', ckdText);
+
+    const factorCurrent = data.protein_factor_current;
+    setProteinMetricValue(
+      'factor-current',
+      typeof factorCurrent === 'number' && Number.isFinite(factorCurrent)
+        ? formatNumberDE(factorCurrent, 2)
+        : '--'
+    );
+
+    const weightEl = document.getElementById('weightDay');
+    const weightRaw = weightEl?.value?.trim();
+    const weightVal = weightRaw ? Number(weightRaw.replace(',', '.')) : null;
+    if (Number.isFinite(weightVal)) {
+      setProteinMetricValue('weight-latest', `${formatNumberDE(weightVal, 1)} kg`);
+    } else {
+      setProteinMetricValue('weight-latest', '--');
+      fetchLatestWeight().then((latest) => {
+        if (Number.isFinite(latest)) {
+          setProteinMetricValue('weight-latest', `${formatNumberDE(latest, 1)} kg`);
+        }
+      });
+    }
+
+    let targetText = formatTargetRange(
+      data.protein_target_min,
+      data.protein_target_max,
+      'g'
+    );
+    if (targetText === '--') {
+      targetText = formatTargetRange(data.protein_target, null, 'g');
+    }
+    setProteinMetricValue('target-range', targetText);
+  };
+
   function resetCapturePanels(opts = {}) {
     if (!isHandlerStageReady()) return;
     const { focus = true } = opts;
@@ -133,10 +257,25 @@
     }
   }
 
+  function initProteinMetrics() {
+    renderProteinMetrics();
+    if (document?.addEventListener) {
+      document.addEventListener('profile:changed', (event) => {
+        renderProteinMetrics(event?.detail?.data);
+      });
+    }
+  }
+
   const captureApi = {
     resetCapturePanels,
     addCapturePanelKeys
   };
   appModules.capture = appModules.capture || {};
   Object.assign(appModules.capture, captureApi);
+
+  if (document?.readyState === 'complete' || document?.readyState === 'interactive') {
+    initProteinMetrics();
+  } else {
+    document?.addEventListener('DOMContentLoaded', initProteinMetrics, { once: true });
+  }
 })(typeof window !== 'undefined' ? window : globalThis);

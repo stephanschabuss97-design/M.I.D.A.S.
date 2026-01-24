@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!-- MODULE: BOOTSTRAP & CONSTANTS
-  intent: HTML-Grundgeruest, Meta-Bootstrap, Basis-Themetokens fuer den Monolithen
-  contracts: definiert Head-Struktur, laedt globale Styles, bereitet Container fuer nachgelagerte Module vor
-  notes: Kommentarpflege; Markup fuer W3C-Compliance unveraendert lassen
+  intent: HTML-Grundgeruest, Meta-Bootstrap, Basis-Themetokens für den Monolithen
+  contracts: definiert Head-Struktur, lädt globale Styles, bereitet Container für nachgelagerte Module vor
+  notes: Kommentarpflege; Markup für W3C-Compliance unverändert lassen
 -->
 <html lang="de">
 <head>
@@ -68,7 +68,7 @@
       <button class="btn ghost" id="helpClose" type="button" aria-label="Hilfe schliessen">x</button>
     </header>
     <div class="content small u-m-0">
-      Hilfe-Inhalt folgt in einer spaeteren Version.
+      Hilfe-Inhalt folgt in einer späteren Version.
     </div>
   </div>
   <button id="helpToggle" type="button" hidden aria-hidden="true" tabindex="-1"></button>
@@ -81,7 +81,7 @@
     aria-hidden="true"
   >
     <div class="offline-banner__label">Offline-Modus aktiv.</div>
-    <div class="offline-banner__hint">Daten werden synchronisiert, sobald die Verbindung zurueck ist.</div>
+    <div class="offline-banner__hint">Daten werden synchronisiert, sobald die Verbindung zurück ist.</div>
   </div>
   <div
     id="updateBanner"
@@ -131,7 +131,7 @@
           <span class="sep" aria-hidden="true">*</span>
           <span data-k="map">Durchschnitt MAP: -</span>
           <label class="chart-switch" for="chartBodyCompToggle">
-            <input id="chartBodyCompToggle" type="checkbox" aria-label="BIA-Schaetzwerte (kg) anzeigen">
+            <input id="chartBodyCompToggle" type="checkbox" aria-label="BIA-Schätzwerte (kg) anzeigen">
             <span class="switch-track" aria-hidden="true">
               <span class="switch-thumb" aria-hidden="true"></span>
             </span>
@@ -642,7 +642,7 @@
                     <input type="date" id="profileBirthDate">
                   </label>
                   <label class="field-group" for="profileHeight">
-                    <span class="label">Groesse (cm)</span>
+                    <span class="label">Grösse (cm)</span>
                     <input
                       type="number"
                       id="profileHeight"
@@ -652,7 +652,7 @@
                       placeholder="183"
                     >
                   <span class="field-hint muted small">
-                    Wird fuer BMI/Charts verwendet.
+                    Wird für BMI/Charts verwendet.
                   </span>
                 </label>
                   <label class="field-group" for="profileDoctorName">
@@ -671,7 +671,7 @@
                       placeholder="arzt@example.com"
                     >
                     <span class="field-hint muted small">
-                      Wird fuer Mail-Shortcuts (Low-Stock Hinweis) verwendet.
+                      Wird für Mail-Shortcuts (Low-Stock Hinweis) verwendet.
                     </span>
                   </label>
                   <label class="field-group" for="profileSaltLimit">
@@ -789,7 +789,7 @@
         </div>
       </div>
     </section>
-    <!-- Milchglas-/Lock-Overlay fuer aktive Panels -->
+    <!-- Milchglas-/Lock-Overlay für aktive Panels -->
     <div class="hub-backdrop" data-hub-backdrop aria-hidden="true"></div>
     <!-- HUB-PANEL: Appointments -->
     <section
@@ -824,7 +824,7 @@
               <section class="appointments-overview card subtle" id="appointmentsOverview" aria-live="polite">
                 <header class="appointments-overview-header">
                   <h3>Kommende Termine</h3>
-                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Eintraege.</p>
+                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
                 </header>
                 <div class="appointments-columns" id="appointmentsColumns">
                   <!-- dynamische Karten -->
@@ -959,7 +959,7 @@
                 <div class="medication-batch-footer" id="medicationBatchFooter">
                     <div class="medication-batch-actions form-actions" id="medicationBatchActions">
                       <button class="btn primary" id="medBatchConfirmBtn" type="button">
-                        Auswahl bestaetigen (0)
+                        Auswahl bestätigen (0)
                       </button>
                     </div>
                 </div>
@@ -1125,7 +1125,7 @@
                     type="date"
                     id="date"
                     class="hub-date-control"
-                    aria-label="Datum waehlen"
+                    aria-label="Datum wählen"
                   >
                 </div>
                 <div class="hub-vitals-actions hub-vitals-actions-inline form-actions" role="group" aria-label="Aktionen für Arztbereich">
@@ -1434,6 +1434,32 @@
                   <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
                   <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
                 </div>
+                <div class="activity-metrics" aria-label="Protein-Berechnung">
+                  <div class="activity-metric">
+                    <span class="label">Alter-Basis</span>
+                    <span class="value" data-protein-value="age-base">--</span>
+                  </div>
+                  <div class="activity-metric">
+                    <span class="label">Aktivität (28d)</span>
+                    <span class="value" data-protein-value="activity-score">--</span>
+                  </div>
+                  <div class="activity-metric">
+                    <span class="label">CKD-Faktor</span>
+                    <span class="value" data-protein-value="ckd-factor">--</span>
+                  </div>
+                  <div class="activity-metric">
+                    <span class="label">Faktor</span>
+                    <span class="value" data-protein-value="factor-current">--</span>
+                  </div>
+                  <div class="activity-metric">
+                    <span class="label">Gewicht</span>
+                    <span class="value" data-protein-value="weight-latest">--</span>
+                  </div>
+                  <div class="activity-metric">
+                    <span class="label">Protein-Ziel</span>
+                    <span class="value" data-protein-value="target-range">--</span>
+                  </div>
+                </div>
               </form>
             </div>
           </div>
@@ -1447,7 +1473,7 @@
     <!-- MODULE: CAPTURE (Intake)
       intent: Tageserfassung (UI) inkl. Intake/BP/Body/Termine, verbindet Benutzeraktionen mit Save-Flows
       contracts: nutzt DATA ACCESS.saveIntakeTotals*, AUTH.isLoggedIn, UI.requestUiRefresh
-      todo: @extract-candidate bindIntakeCapture, refreshCaptureIntake spaeter extrahieren
+      todo: @extract-candidate bindIntakeCapture, refreshCaptureIntake später extrahieren
     -->
     <!-- Capture -->
     <section class="view active" id="capture" aria-labelledby="captureHeading">
@@ -1456,9 +1482,9 @@
     <!-- END MODULE -->
     <!-- Lifestyle (Heute) -->
     <!-- MODULE: DOCTOR VIEW
-      intent: Aggregations-UI fuer Aerzt:innen, steuert Zeitraum-Filter, Export und Chart-Pivot
+      intent: Aggregations-UI für Ärzt:innen, steuert Zeitraum-Filter, Export und Chart-Pivot
       contracts: nutzt DATA ACCESS.fetchDailyOverview, CHARTS.renderDailyChart, AUTH.setDoctorAccess @public
-      todo: @extract-candidate buildDoctorSummaryJson @public spaeter bereitstellen
+      todo: @extract-candidate buildDoctorSummaryJson @public später bereitstellen
     -->
     <!-- Doctor -->
     <!-- END MODULE -->
