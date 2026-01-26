@@ -657,6 +657,9 @@
       panel.setAttribute('aria-hidden', 'true');
       panel.setAttribute('inert', '');
       activePanel = null;
+      if (doc?.body) {
+        doc.body.classList.remove('hub-panel-active');
+      }
       doc.removeEventListener('keydown', handlePanelEsc);
       setSpriteStateFn?.('idle');
       if (!skipButtonSync) {
@@ -746,6 +749,9 @@
     void panel.offsetWidth; // eslint-disable-line no-unused-expressions
     panel.classList.add('hub-panel-open');
     activePanel = panel;
+    if (doc?.body) {
+      doc.body.classList.add('hub-panel-active');
+    }
     syncCarouselToPanel(panelName);
     doc.addEventListener('keydown', handlePanelEsc);
     if (panelName === 'intake') {

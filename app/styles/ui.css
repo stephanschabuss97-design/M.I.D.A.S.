@@ -190,7 +190,8 @@ textarea{min-height:64px;resize:vertical}
   justify-content:center;
   pointer-events:none;
 }
-body:not(.hub-mode) .ticker-bar{
+body:not(.hub-mode) .ticker-bar,
+body.hub-panel-active .ticker-bar{
   display:none;
 }
 .ticker-bar__inner{
