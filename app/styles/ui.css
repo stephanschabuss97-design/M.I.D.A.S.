@@ -184,7 +184,7 @@ textarea{min-height:64px;resize:vertical}
   position:fixed;
   left:0;
   right:0;
-  bottom:calc(800px + env(safe-area-inset-bottom, 0px));
+  bottom:calc(400px + env(safe-area-inset-bottom, 0px));
   z-index:20;
   display:flex;
   justify-content:center;
