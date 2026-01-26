@@ -18,6 +18,7 @@
 (function(global){
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const doc = global.document;
   const BP_CONTEXTS = Object.freeze(['M','A']);
   const CONTEXT_LABELS = Object.freeze({ M: 'Morgen', A: 'Abend' });
   const BP_SYS_THRESHOLD = 130;
@@ -236,6 +237,21 @@ const getCommentElementUnsafe = (normalizedCtx) => {
 
     const localId = await addEntry(entry);
     await syncWebhook(entry, localId);
+    if (doc) {
+      try {
+        doc.dispatchEvent(new CustomEvent('bp:changed', {
+          detail: {
+            context: ctx,
+            contextLabel,
+            dayIso: date,
+            date,
+            source: 'bp-save'
+          }
+        }));
+      } catch (_) {
+        // ignore
+      }
+    }
   }
 
   if (hasComment){

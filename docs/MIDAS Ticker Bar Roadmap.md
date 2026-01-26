@@ -12,8 +12,8 @@ Status
 - Step 1: done
 - Step 2: done
 - Step 3: done
-- Step 4: pending
-- Step 5: pending
+- Step 4: done
+- Step 5: done
 
 Start hier (fuer neue Sessions)
 1) Oeffne:

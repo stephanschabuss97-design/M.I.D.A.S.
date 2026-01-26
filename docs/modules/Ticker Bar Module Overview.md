@@ -70,14 +70,15 @@ Related docs:
 ## 5. UI-Integration
 
 - Position: fixed bottom, immer untergeordnet (niemals in den Vordergrund).
-- Vertikaler Abstand (fest): Desktop ca. 80px + safe-area, Mobile ca. 60px + safe-area.
+- Vertikaler Abstand (fest): Desktop `bottom: calc(400px + safe-area)`, Mobile `bottom: calc(250px + safe-area)`.
 - Sichtbarkeit: nur bei relevanten Terminen, sonst komplett verborgen.
-- Lauftext: ruhige Marquee-Animation (reduzierte Bewegung respektieren).
+- Sichtbarkeit (Hub): Ticker nur im Hub-Idle sichtbar; ausgeblendet sobald ein Hub-Panel offen ist.
+- Lauftext: ruhige Marquee-Animation (reduzierte Bewegung respektieren), aktuell 18s linear.
 - Milchglas-Optik (Best Practice / Industriestandard im MIDAS-Kontext):
   - nutzt bestehende `--status-glass-*` Tokens statt neue Farben.
   - dezenter Blur/Transparenz, klare Lesbarkeit, kein aggressiver Glow.
   - keine Animationen ausser sanftem Lauftext.
-  - subtile Glas-Textur (Grain) + sehr langsamer Shimmer im Hintergrund.
+- subtile Glas-Textur (Grain) + sehr langsamer Shimmer im Hintergrund (~22s).
   - ausreichender Kontrast und safe-area Ruecksicht auf Mobile.
   - zentriert mit max-width analog Panel-Breite.
 
