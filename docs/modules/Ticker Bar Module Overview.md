@@ -70,7 +70,7 @@ Related docs:
 ## 5. UI-Integration
 
 - Position: fixed bottom, immer untergeordnet (niemals in den Vordergrund).
-- Vertikaler Abstand (fest): Desktop ca. 36px + safe-area, Mobile ca. 28px + safe-area.
+- Vertikaler Abstand (fest): Desktop ca. 80px + safe-area, Mobile ca. 60px + safe-area.
 - Sichtbarkeit: nur bei relevanten Terminen, sonst komplett verborgen.
 - Lauftext: ruhige Marquee-Animation (reduzierte Bewegung respektieren).
 - Milchglas-Optik (Best Practice / Industriestandard im MIDAS-Kontext):
