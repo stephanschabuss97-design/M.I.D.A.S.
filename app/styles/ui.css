@@ -179,6 +179,65 @@ textarea{min-height:64px;resize:vertical}
   box-shadow:var(--status-glow-neutral);
 }
 
+/* SUBMODULE: Ticker Bar @public - Ruhige Statusleiste (Appointments only) */
+.ticker-bar{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index:20;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+}
+.ticker-bar__inner{
+  width:min(100%, 1200px);
+  max-width:calc(100% - 32px);
+  padding:10px 16px;
+  border-radius:999px;
+  background:var(--status-glass-bg);
+  border:1px solid var(--status-glass-border);
+  backdrop-filter:blur(var(--status-glass-blur));
+  -webkit-backdrop-filter:blur(var(--status-glass-blur));
+  box-shadow:var(--status-glow-soft);
+  overflow:hidden;
+}
+.ticker-bar__text{
+  display:block;
+  font-size:var(--text-sm);
+  font-weight:600;
+  color:var(--color-text-primary);
+  white-space:nowrap;
+  will-change:transform;
+  animation:tickerMarquee 18s linear infinite;
+  padding-left:100%;
+  box-sizing:content-box;
+}
+@keyframes tickerMarquee{
+  0%{ transform:translateX(0); }
+  100%{ transform:translateX(-100%); }
+}
+@media (prefers-reduced-motion: reduce){
+  .ticker-bar__text{
+    animation:none;
+    padding-left:0;
+  }
+}
+@media (max-width: 640px){
+  .ticker-bar{
+    bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .ticker-bar__inner{
+    max-width:calc(100% - 16px);
+    padding:9px 14px;
+  }
+}
+@supports not (backdrop-filter: blur(1px)){
+  .ticker-bar__inner{
+    background:rgba(20,22,26,0.92);
+  }
+}
+
 /* SUBMODULE: Progress Bars @public - Globale Progress-Pattern */
 .progress{
   position:relative;

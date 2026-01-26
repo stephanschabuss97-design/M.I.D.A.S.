@@ -73,3 +73,6 @@ Step 5: QA
 5.2 Kein Feedback bei Trendpilot-Warnungen.
 5.3 Abschaltbarkeit getestet.
 Exit-Kriterium: Feedback ist ruhig, funktional, abschaltbar.
+
+Follow-up
+- Nach Step 5: `docs/Repo Cleanup Roadmap.md` beginnen.

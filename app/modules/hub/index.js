@@ -105,8 +105,97 @@
   };
   let trendpilotAuraBound = false;
   const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const TICKER_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+  const TICKER_DAY_FORMAT = new Intl.DateTimeFormat('de-AT', { weekday: 'short' });
+  const TICKER_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const getTodayIso = () => new Date().toISOString().slice(0, 10);
+  const getTickerRefs = () => {
+    if (!doc) return null;
+    const bar = doc.getElementById('tickerBar');
+    const text = doc.getElementById('tickerBarText');
+    if (!bar || !text) return null;
+    return { bar, text };
+  };
+  const isSameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const getTickerDayLabel = (date) => {
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    if (isSameDay(date, today)) return 'Heute';
+    if (isSameDay(date, tomorrow)) return 'Morgen';
+    return TICKER_DAY_FORMAT.format(date).replace(/\.$/, '');
+  };
+  const getAppointmentDate = (item) => {
+    if (!item) return null;
+    if (item.start_at) {
+      const dt = new Date(item.start_at);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
+    if (item.date) {
+      const dt = new Date(item.date);
+      if (Number.isNaN(dt.getTime())) return null;
+      if (item.time) {
+        const [h = 0, m = 0] = String(item.time).split(':').map((val) => Number(val) || 0);
+        dt.setHours(h, m, 0, 0);
+      } else {
+        dt.setHours(0, 0, 0, 0);
+      }
+      return dt;
+    }
+    return null;
+  };
+  const buildTickerLine = (item) => {
+    const startAt = getAppointmentDate(item);
+    if (!startAt) return '';
+    const dayLabel = getTickerDayLabel(startAt);
+    const timeLabel = TICKER_TIME_FORMAT.format(startAt);
+    const title = String(item.title || 'Termin').trim();
+    const location = String(item.location || '').trim();
+    const tail = location ? `, ${location}` : '';
+    return `${dayLabel} ${timeLabel} ${title}${tail}`;
+  };
+  const updateTickerBar = ({ reason = 'init' } = {}) => {
+    const refs = getTickerRefs();
+    if (!refs) return;
+    const provider = appModules.appointments;
+    const items = provider?.getAll?.() || [];
+    const now = Date.now();
+    const visible = Array.isArray(items)
+      ? items
+        .filter((item) => item && item.status !== 'done' && item.status !== 'cancelled')
+        .map((item) => {
+          const startAt = getAppointmentDate(item);
+          return {
+            item,
+            startAt,
+            ts: startAt ? startAt.getTime() : NaN,
+          };
+        })
+        .filter((entry) => Number.isFinite(entry.ts))
+        .filter((entry) => entry.ts > now && now >= entry.ts - TICKER_WINDOW_MS)
+        .sort((a, b) => a.ts - b.ts)
+      : [];
+    const lines = visible.map(({ item }) => buildTickerLine(item)).filter(Boolean);
+    if (!lines.length) {
+      refs.bar.hidden = true;
+      refs.bar.setAttribute('aria-hidden', 'true');
+      refs.text.textContent = '';
+      return;
+    }
+    refs.text.textContent = lines.join(' | ');
+    refs.bar.hidden = false;
+    refs.bar.setAttribute('aria-hidden', 'false');
+    if (HUB_DEBUG_ENABLED) {
+      diag.add?.(`[ticker] update reason=${reason} items=${lines.length}`);
+    }
+  };
 
   const isTrendpilotOngoing = (entry) => {
     const to = entry?.window_to || entry?.day || '';
@@ -885,6 +974,7 @@
     setupSpriteState(hub);
     setupCarouselController(hub);
     setupQuickbar(hub);
+    updateTickerBar({ reason: 'hub-init' });
     if (!trendpilotAuraBound) {
       trendpilotAuraBound = true;
       doc.addEventListener('trendpilot:latest', (event) => {
@@ -1710,6 +1800,7 @@
 
     doc?.addEventListener('appointments:changed', () => {
       refreshAssistantContext({ reason: 'appointments:changed', forceRefresh: true });
+      updateTickerBar({ reason: 'appointments:changed' });
     });
     doc?.addEventListener('profile:changed', (event) => {
       const detail = event?.detail || {};

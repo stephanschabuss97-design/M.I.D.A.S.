@@ -1489,6 +1489,19 @@
     <!-- Doctor -->
     <!-- END MODULE -->
   </main>
+  <!-- Ticker Bar (Appointments only) -->
+  <div
+    id="tickerBar"
+    class="ticker-bar"
+    role="status"
+    aria-live="polite"
+    hidden
+    aria-hidden="true"
+  >
+    <div class="ticker-bar__inner">
+      <span class="ticker-bar__text" id="tickerBarText"></span>
+    </div>
+  </div>
   <!-- Supabase (UMD, v2) -->
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
