@@ -225,7 +225,7 @@ textarea{min-height:64px;resize:vertical}
 }
 @media (max-width: 640px){
   .ticker-bar{
-    bottom:calc(400px + env(safe-area-inset-bottom, 0px));
+    bottom:calc(250px + env(safe-area-inset-bottom, 0px));
   }
   .ticker-bar__inner{
     max-width:calc(100% - 16px);
