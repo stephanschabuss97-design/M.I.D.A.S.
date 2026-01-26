@@ -77,6 +77,7 @@ Related docs:
   - nutzt bestehende `--status-glass-*` Tokens statt neue Farben.
   - dezenter Blur/Transparenz, klare Lesbarkeit, kein aggressiver Glow.
   - keine Animationen ausser sanftem Lauftext.
+  - subtile Glas-Textur (Grain) + sehr langsamer Shimmer im Hintergrund.
   - ausreichender Kontrast und safe-area Ruecksicht auf Mobile.
   - zentriert mit max-width analog Panel-Breite.
 
