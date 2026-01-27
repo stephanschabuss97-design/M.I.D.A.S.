@@ -95,3 +95,53 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+self.addEventListener('push', (event) => {
+  const fallback = {
+    title: 'MIDAS Hinweis',
+    body: 'Es liegt ein Incident vor.',
+    tag: 'midas-incident',
+    data: {}
+  };
+  let payload = {};
+  try {
+    payload = event?.data?.json?.() || {};
+  } catch (_) {
+    payload = {};
+  }
+  const title = payload.title || fallback.title;
+  const options = {
+    body: payload.body || fallback.body,
+    tag: payload.tag || fallback.tag,
+    data: payload.data || {},
+    silent: !!payload.silent,
+    renotify: !!payload.renotify,
+    icon: 'public/img/icons/icon-192.png',
+    badge: 'public/img/icons/icon-192.png'
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification?.close?.();
+  const data = event.notification?.data || {};
+  const params = new URLSearchParams();
+  if (data.type) params.set('incident', data.type);
+  if (data.dayIso) params.set('day', data.dayIso);
+  const targetUrl = params.toString()
+    ? new URL(`./?${params.toString()}`, self.registration.scope).toString()
+    : new URL('./', self.registration.scope).toString();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url === targetUrl && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+      return undefined;
+    })
+  );
+});

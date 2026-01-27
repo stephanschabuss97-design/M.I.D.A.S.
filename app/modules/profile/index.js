@@ -38,6 +38,9 @@
     saveBtn: '#profileSaveBtn',
     refreshBtn: '#profileRefreshBtn',
     overview: '#profileOverview',
+    pushEnableBtn: '#profilePushEnableBtn',
+    pushDisableBtn: '#profilePushDisableBtn',
+    pushStatus: '#profilePushStatus'
   };
 
   const state = {
@@ -46,10 +49,14 @@
     ready: false,
     syncPromise: null,
     latestLab: null,
-    medicationSummary: null
+    medicationSummary: null,
+    pushSyncing: false
   };
 
   let refs = null;
+  const VAPID_PUBLIC_KEY =
+    global?.VAPID_PUBLIC_KEY ||
+    'BCUnF1w9VYIKZ9KPnEx_TNjpiwVuqGY7CZE2oEijz72tjGUORqZQdcJ_CR7nI-rIxkzHiyjOgsxUwZhbIVP6Bxw';
 
   const sanitize = (val) => (val == null ? '' : String(val).trim());
   const todayIso = () => {
@@ -92,6 +99,9 @@
       saveBtn: panel.querySelector(selectors.saveBtn),
       refreshBtn: panel.querySelector(selectors.refreshBtn),
       overview: panel.querySelector(selectors.overview),
+      pushEnableBtn: panel.querySelector(selectors.pushEnableBtn),
+      pushDisableBtn: panel.querySelector(selectors.pushDisableBtn),
+      pushStatus: panel.querySelector(selectors.pushStatus)
     };
     return refs;
   };
@@ -143,6 +153,157 @@
     const uid = await getUid();
     if (!uid) throw new Error('Supabase User nicht angemeldet');
     return uid;
+  };
+
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = global.atob(base64);
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) {
+      output[i] = raw.charCodeAt(i);
+    }
+    return output;
+  };
+
+  const setPushStatus = (text) => {
+    if (!refs?.pushStatus) return;
+    refs.pushStatus.textContent = text;
+  };
+
+  const ensurePushSupport = () => {
+    if (!('serviceWorker' in global.navigator)) {
+      throw new Error('Service Worker nicht verfuegbar');
+    }
+    if (!('PushManager' in global)) {
+      throw new Error('Push wird nicht unterstuetzt');
+    }
+    if (!VAPID_PUBLIC_KEY) {
+      throw new Error('VAPID Public Key fehlt');
+    }
+  };
+
+  const getPushRegistration = async () => {
+    ensurePushSupport();
+    const registration = await global.navigator.serviceWorker.ready;
+    if (!registration) throw new Error('Service Worker nicht bereit');
+    return registration;
+  };
+
+  const getCurrentSubscription = async () => {
+    const registration = await getPushRegistration();
+    return registration.pushManager.getSubscription();
+  };
+
+  const upsertSubscription = async ({ userId, subscription }) => {
+    const client = await requireSupabaseClient();
+    const json = subscription?.toJSON?.() || {};
+    const keys = json.keys || {};
+    const payload = {
+      user_id: userId,
+      endpoint: subscription.endpoint,
+      p256dh: keys.p256dh || null,
+      auth: keys.auth || null,
+      subscription: json,
+      disabled: false
+    };
+    const { error } = await client
+      .from('push_subscriptions')
+      .upsert(payload, { onConflict: 'user_id,endpoint' });
+    if (error) throw error;
+  };
+
+  const deleteSubscription = async ({ userId, endpoint }) => {
+    const client = await requireSupabaseClient();
+    const { error } = await client
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint);
+    if (error) throw error;
+  };
+
+  const refreshPushStatus = async ({ reason = 'refresh' } = {}) => {
+    if (!refs?.pushStatus) return;
+    try {
+      ensurePushSupport();
+      const permission = global.Notification?.permission || 'default';
+      if (permission === 'denied') {
+        setPushStatus('Status: blockiert (Browser)');
+        return;
+      }
+      const subscription = await getCurrentSubscription();
+      if (subscription) {
+        setPushStatus('Status: aktiv');
+        return;
+      }
+      setPushStatus(permission === 'granted' ? 'Status: bereit (kein Abo)' : 'Status: aus');
+    } catch (err) {
+      setPushStatus(`Status: nicht verfuegbar (${err.message || err})`);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    if (state.pushSyncing) return;
+    state.pushSyncing = true;
+    const btn = refs?.pushEnableBtn || null;
+    try {
+      btn?.setAttribute('disabled', 'true');
+      ensurePushSupport();
+      if (global.Notification?.permission === 'denied') {
+        throw new Error('Push ist im Browser blockiert');
+      }
+      if (global.Notification?.permission !== 'granted') {
+        const perm = await global.Notification?.requestPermission?.();
+        if (perm !== 'granted') {
+          throw new Error('Push-Berechtigung verweigert');
+        }
+      }
+      const registration = await getPushRegistration();
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const key = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key
+        });
+      }
+      const userId = await requireUserId();
+      await upsertSubscription({ userId, subscription });
+      setPushStatus('Status: aktiv');
+      log?.('push subscription aktiv');
+    } catch (err) {
+      diag?.add?.(`[profile] push enable failed ${err.message || err}`);
+      setPushStatus(`Status: Fehler (${err.message || err})`);
+    } finally {
+      btn?.removeAttribute('disabled');
+      state.pushSyncing = false;
+    }
+  };
+
+  const handleDisablePush = async () => {
+    if (state.pushSyncing) return;
+    state.pushSyncing = true;
+    const btn = refs?.pushDisableBtn || null;
+    try {
+      btn?.setAttribute('disabled', 'true');
+      const subscription = await getCurrentSubscription();
+      if (!subscription) {
+        setPushStatus('Status: aus');
+        return;
+      }
+      const userId = await requireUserId();
+      await deleteSubscription({ userId, endpoint: subscription.endpoint });
+      await subscription.unsubscribe();
+      setPushStatus('Status: aus');
+      log?.('push subscription deaktiviert');
+    } catch (err) {
+      diag?.add?.(`[profile] push disable failed ${err.message || err}`);
+      setPushStatus(`Status: Fehler (${err.message || err})`);
+    } finally {
+      btn?.removeAttribute('disabled');
+      state.pushSyncing = false;
+    }
   };
 
   const parseMedicationsInput = (text) => {
@@ -509,12 +670,16 @@
     updateDoctorFieldsVisibility();
     panelRefs.saveBtn?.addEventListener('click', handleSave);
     panelRefs.refreshBtn?.addEventListener('click', handleRefresh);
+    panelRefs.pushEnableBtn?.addEventListener('click', handleEnablePush);
+    panelRefs.pushDisableBtn?.addEventListener('click', handleDisablePush);
     state.ready = true;
     syncProfile({ reason: 'init' });
+    refreshPushStatus({ reason: 'init' });
     doc?.addEventListener(
       'supabase:ready',
       () => {
         syncProfile({ reason: 'supabase-ready' });
+        refreshPushStatus({ reason: 'supabase-ready' });
       },
       { once: true }
     );
