@@ -27,6 +27,7 @@
     },
     timer: null,
     lastMedicationPayload: null,
+    started: false,
   };
 
   const toDayIso = (date = new Date()) => {
@@ -77,6 +78,10 @@
   };
 
   const refreshBpStateFromLocal = async () => {
+    const bootFlow = appModules.bootFlow || global.AppModules?.bootFlow || null;
+    if (bootFlow?.isStageAtLeast && !bootFlow.isStageAtLeast('INIT_MODULES')) {
+      return;
+    }
     if (typeof global.getAllEntries !== 'function') return;
     try {
       const all = await global.getAllEntries();
@@ -210,6 +215,8 @@
   };
 
   const init = () => {
+    if (state.started) return;
+    state.started = true;
     updateDayState();
     scheduleChecks();
     evaluateIncidents({ reason: 'init' });
@@ -227,7 +234,10 @@
     refresh: evaluateIncidents,
   });
 
-  if (doc?.readyState === 'loading') {
+  const bootFlow = appModules.bootFlow || global.AppModules?.bootFlow || null;
+  if (bootFlow?.whenStage) {
+    bootFlow.whenStage('INIT_MODULES', init);
+  } else if (doc?.readyState === 'loading') {
     doc.addEventListener('DOMContentLoaded', init, { once: true });
   } else {
     init();
