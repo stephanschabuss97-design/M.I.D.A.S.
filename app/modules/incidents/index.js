@@ -27,6 +27,8 @@
     },
     timer: null,
     lastMedicationPayload: null,
+    medLoadDay: null,
+    medLoadInFlight: false,
     started: false,
   };
 
@@ -56,6 +58,10 @@
     state.sent.bp = null;
     state.bpMorning = false;
     state.bpEvening = false;
+    state.medsOpen = null;
+    state.lastMedicationPayload = null;
+    state.medLoadDay = null;
+    state.medLoadInFlight = false;
     return true;
   };
 
@@ -75,6 +81,30 @@
       state.lastMedicationPayload = cached;
     }
     return cached || null;
+  };
+
+  const ensureMedicationPayload = async () => {
+    const dayIso = getDayIso();
+    if (state.medLoadDay === dayIso || state.medLoadInFlight) {
+      return state.lastMedicationPayload || loadMedicationCache();
+    }
+    const mod = appModules.medication;
+    if (!mod?.loadMedicationForDay) {
+      return loadMedicationCache();
+    }
+    state.medLoadInFlight = true;
+    try {
+      const payload = await mod.loadMedicationForDay(dayIso, { reason: 'incidents' });
+      if (payload) {
+        state.lastMedicationPayload = payload;
+        state.medLoadDay = dayIso;
+      }
+      return payload || state.lastMedicationPayload;
+    } catch (_) {
+      return loadMedicationCache();
+    } finally {
+      state.medLoadInFlight = false;
+    }
   };
 
   const refreshBpStateFromLocal = async () => {
@@ -151,7 +181,10 @@
   const evaluateIncidents = async ({ reason = 'manual' } = {}) => {
     updateDayState();
 
-    const medPayload = state.lastMedicationPayload || loadMedicationCache();
+    const medPayload =
+      state.lastMedicationPayload ||
+      loadMedicationCache() ||
+      (state.medsOpen === null ? await ensureMedicationPayload() : null);
     const medsOpen = resolveMedicationOpen(medPayload);
     if (typeof medsOpen === 'boolean') {
       state.medsOpen = medsOpen;

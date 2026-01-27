@@ -153,12 +153,50 @@ Step 5: Remote Push (ohne geoeffnete App)
 Output: Remote-Push-Architektur + Payload-Schema.
 Exit-Kriterium: Push funktioniert bei geschlossener App.
 
+Step 5.1 Output (Draft)
+Push-Subscription Flow (Remote)
+- User opt-in: Permission Request nur nach User-Intent (Button im Hub/Settings).
+- VAPID Keys: Public Key im Client, Private Key nur auf Server/Edge.
+- Subscription speichern: endpoint + keys (p256dh/auth) + user_id in Supabase.
+- Re-Subscribe: wenn Browser/OS Subscription rotiert -> Update in DB.
+- Opt-out: Delete Subscription in DB (User toggles Push off).
+- Minimal UI: "Push aktivieren" / "Push deaktivieren" + Statusanzeige.
+
+Step 5.2 Output (Draft)
+Server-Trigger (GitHub Actions -> Edge Function)
+- Neue Edge Function: z. B. `midas-incident-push`.
+- GitHub Actions Workflow mit `schedule` (2x taeglich: 10:00 & 21:00 lokal).
+- Workflow ruft per `curl` die Edge Function auf.
+- Secrets: `INCIDENTS_PUSH_URL` (Edge Function URL) + `SUPABASE_SERVICE_ROLE_KEY`.
+- DST-Handling: Entweder 2 Cron-Zeilen pro Zeitpunkt (Sommer/Winter) oder Edge Function filtert lokale Zeit.
+Setup-Notiz (bereits erledigt)
+- Edge Function `midas-incident-push` deployed.
+- Supabase Edge Function Secrets gesetzt: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `INCIDENTS_USER_ID`, `INCIDENTS_TZ`.
+
+Step 5.3 Output (Draft)
+Payload-Format (Incident Push)
+- Pflichtfelder: `title`, `body`, `tag`, `data`.
+- `tag`: `midas-incident-<type>-<dayIso>` (verhindert Mehrfach-Push).
+- `data`: `{ type, dayIso, source }` fuer Click-Handling.
+- `silent`: true (ruhig), `renotify`: false.
+- Typen: `medication_morning`, `bp_evening`.
+
+Step 5.4 Output (Draft)
+Service Worker Handling
+- `self.addEventListener('push')`: parse payload, showNotification.
+- `self.addEventListener('notificationclick')`: open/focus App (Hub), deep link mit `?incident=<type>&day=<dayIso>`.
+- Fallback: wenn kein payload -> generische Notification.
+- Sicherheit: nur eigene origin, keine externen URLs.
+
 Step 6: QA
 6.1 Medikation nicht bestaetigt bis 10:00 -> Push einmalig.
 6.2 Abend-BP Flow: Ticker zuerst, Push spaeter falls offen.
 6.3 Keine Push bei Terminen.
 6.4 Remote Push kommt auch ohne geoeffnete App an.
 6.5 Push-Click fuehrt zu App-Open und zeigt Incident-Context.
+6.6 Local Push Voraussetzungen: Notification Permission granted + Service Worker aktiv.
+6.7 Med-State geladen (Medication Cache) bevor 10:00 (oder Engine loaded ihn nach).
+6.8 Tageswechsel resettiert Incident-Flags (keine Push-Reste vom Vortag).
 Exit-Kriterium: Push nur bei echten Incidents.
 
 Follow-up

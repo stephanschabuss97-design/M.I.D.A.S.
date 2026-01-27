@@ -1,0 +1,41 @@
+name: Incidents Push
+
+on:
+  schedule:
+    # 10:00 Europe/Vienna ~= 09:00 UTC (Winterzeit).
+    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
+    - cron: "0 9 * * *"
+    # 21:00 Europe/Vienna ~= 20:00 UTC (Winterzeit).
+    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+    inputs:
+      window:
+        description: "Optional: med | bp | all"
+        required: false
+        default: ""
+
+jobs:
+  incidents-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Incidents Edge Function
+        run: |
+          WINDOW_INPUT="${{ github.event.inputs.window }}"
+          if [ -n "$WINDOW_INPUT" ]; then
+            WINDOW="$WINDOW_INPUT"
+          else
+            HOUR_UTC=$(date -u +%H)
+            if [ "$HOUR_UTC" = "09" ]; then
+              WINDOW="med"
+            elif [ "$HOUR_UTC" = "20" ]; then
+              WINDOW="bp"
+            else
+              WINDOW="all"
+            fi
+          fi
+
+          curl -sS -X POST "${{ secrets.INCIDENTS_PUSH_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -d "{\"trigger\":\"scheduler\",\"window\":\"$WINDOW\"}"

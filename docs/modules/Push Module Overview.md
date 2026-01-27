@@ -8,7 +8,7 @@ Kurze Einordnung:
 Related docs:
 - [MIDAS Incidents & Push Roadmap](../MIDAS Incidents & Push Roadmap.md)
 - [Intake Module Overview](Intake Module Overview.md)
-- [Vitals Module Overview](Vitals Module Overview.md)
+- [Medication Module Overview](Medication Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
 
 ---
@@ -117,7 +117,15 @@ Related docs:
 
 ---
 
-## 12. QA-Checkliste
+## 12. Remote Push Setup-Notiz (ohne Werte)
+
+- Edge Function `midas-incident-push` ist deployed (Supabase).
+- Secrets angelegt: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `INCIDENTS_USER_ID`, `INCIDENTS_TZ`.
+- GitHub Actions Schedule fuer 10:00/21:00 wird als naechster Schritt verdrahtet.
+
+---
+
+## 13. QA-Checkliste
 
 - Medikation nicht bestaetigt bis 10:00 -> Push einmalig.
 - Abend-BP fehlt, Morgen-BP vorhanden -> Push einmalig ab 20:00.
@@ -126,7 +134,7 @@ Related docs:
 
 ---
 
-## 13. Definition of Done
+## 14. Definition of Done
 
 - Pushes nur bei echten Incidents.
 - Maximal 1 Push pro Incident/Tag.
