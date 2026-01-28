@@ -74,8 +74,8 @@ Related docs:
 
 ## 6. UI-Integration
 
-- Keine UI-Komponenten.
-- Keine Panel-Abhaengigkeit.
+- Profil-Panel (View Tab): Push aktivieren/deaktivieren + Statusanzeige.
+- Opt-in nur per User-Intent (Button).
 
 ---
 
@@ -110,10 +110,10 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (lokal).
-- Dependencies (hard): PWA/Service Worker, Medication- und BP-Events.
+- Status: aktiv (lokal + remote).
+- Dependencies (hard): PWA/Service Worker, Medication- und BP-Events, Edge Function + GitHub Actions.
 - Dependencies (soft): Notification Permission.
-- Known issues / risks: keine Persistenz, Permission blockiert Push, Zeitzonen-Edgecases.
+- Known issues / risks: keine Persistenz, Permission blockiert Push, Zeitzonen-Edgecases, Schedule-Jitter toleriert.
 
 ---
 
@@ -121,7 +121,11 @@ Related docs:
 
 - Edge Function `midas-incident-push` ist deployed (Supabase).
 - Secrets angelegt: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `INCIDENTS_USER_ID`, `INCIDENTS_TZ`.
-- GitHub Actions Schedule fuer 10:00/21:00 wird als naechster Schritt verdrahtet.
+- GitHub Actions Schedule fuer 10:00/21:00 aktiv (UTC-Cron, Zeitfenster tolerant).
+
+Status-Notiz
+- Client Subscription Flow aktiv (Opt-in im Profil).
+- Service Worker: `push` + `notificationclick` aktiv.
 
 ---
 

@@ -11,6 +11,7 @@
   const appModules = global.AppModules;
   const doc = global.document;
   const diag = appModules.diag || global.diag || null;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const log = (msg) => diag?.add?.(`[appointments] ${msg}`);
 
   const getSupabaseApi = () => appModules.supabase || {};
@@ -307,6 +308,7 @@
         if (refs.repeat) refs.repeat.value = 'none';
         log?.(`saved ${inserted.title}`);
         notifyChange('insert');
+        feedbackApi?.feedback?.('appointments:save', { intent: true, source: 'user' });
         saveFeedback?.ok({ button: saveBtn, panel, successText: '&#x2705; Termin gespeichert' });
       }
     } catch (err) {
@@ -336,6 +338,7 @@
         await deleteAppointmentRemote(id);
         state.items.splice(idx, 1);
         notifyChange('delete');
+        feedbackApi?.feedback?.('appointments:delete', { intent: true, source: 'user' });
         saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Termin geloescht' });
       } else if (action === 'toggle') {
         const nextStatus = state.items[idx].status === 'done' ? 'scheduled' : 'done';
@@ -343,6 +346,7 @@
         if (updated) {
           state.items[idx] = updated;
           notifyChange('toggle');
+          feedbackApi?.feedback?.('appointments:toggle', { intent: true, source: 'user' });
           saveFeedback?.ok({
             button: btn,
             panel,

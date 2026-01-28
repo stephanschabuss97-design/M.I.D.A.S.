@@ -8,6 +8,7 @@
 (function(global){
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const getSupabaseApi = () => global.AppModules?.supabase || {};
   const getSupabaseState = () => getSupabaseApi().supabaseState || null;
   const getAuthState = () => getSupabaseState()?.authState || 'unauth';
@@ -153,7 +154,10 @@
 
   function resetCapturePanels(opts = {}) {
     if (!isHandlerStageReady()) return;
-    const { focus = true } = opts;
+    const { focus = true, intent = false } = opts;
+    if (intent) {
+      feedbackApi?.feedback?.('vitals:reset', { intent: true, source: 'user' });
+    }
     invokeResetBpPanel('M', { focus: false });
     invokeResetBpPanel('A', { focus: false });
     const resetBodyPanelFn = getResetBodyPanel();
@@ -182,11 +186,11 @@
         });
       });
     };
-    bind('#captureAmount, #diaM, #pulseM, #bpCommentM', () => getActiveBpSaveButton()?.click(), () => invokeResetBpPanel('M'));
-    bind('#sysA, #diaA, #pulseA, #bpCommentA', () => getActiveBpSaveButton()?.click(), () => invokeResetBpPanel('A'));
+    bind('#captureAmount, #diaM, #pulseM, #bpCommentM', () => getActiveBpSaveButton()?.click(), () => invokeResetBpPanel('M', { intent: true }));
+    bind('#sysA, #diaA, #pulseA, #bpCommentA', () => getActiveBpSaveButton()?.click(), () => invokeResetBpPanel('A', { intent: true }));
     const resetBodyPanelFn = getResetBodyPanel();
-    bind('#weightDay, #input-waist-cm, #fatPctDay, #musclePctDay', () => document.getElementById('saveBodyPanelBtn')?.click(), () => resetBodyPanelFn?.());
-    bind('#labEgfr, #labCreatinine, #labCkdStage, #labHba1c, #labLdl, #labPotassium, #labComment', () => document.getElementById('saveLabPanelBtn')?.click(), () => window.AppModules?.lab?.resetLabPanel?.());
+    bind('#weightDay, #input-waist-cm, #fatPctDay, #musclePctDay', () => document.getElementById('saveBodyPanelBtn')?.click(), () => resetBodyPanelFn?.({ intent: true }));
+    bind('#labEgfr, #labCreatinine, #labCkdStage, #labHba1c, #labLdl, #labPotassium, #labComment', () => document.getElementById('saveLabPanelBtn')?.click(), () => window.AppModules?.lab?.resetLabPanel?.({ intent: true }));
 
     const vitalsTabsHost = document.querySelector('.hub-vitals');
     const vitalsTabButtons = document.querySelectorAll('[data-vitals-tab]');

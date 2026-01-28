@@ -14,6 +14,7 @@
 (function(global){
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const getSupabaseApi = () => global.AppModules?.supabase || {};
   const getSupabaseState = () => getSupabaseApi().supabaseState || null;
   const getAuthState = () => getSupabaseState()?.authState || 'unauth';
@@ -465,6 +466,7 @@
       medicationDailyState.selection.delete(medId);
       card?.classList.remove('is-selected');
     }
+    feedbackApi?.feedback?.('medication:toggle', { intent: true, source: 'user' });
     medicationDailyState.selectionDirty = true;
     updateMedicationBatchFooter();
   }
@@ -507,6 +509,11 @@
         )
       );
       medicationDailyState.selectionDirty = false;
+      feedbackApi?.feedback?.('medication:confirm', {
+        intent: true,
+        source: 'user',
+        dedupeKey: 'medication:confirm:batch'
+      });
       saveFeedback?.ok({ button: triggerBtn, panel, successText: '&#x2705; Tabletten gespeichert' });
       if (typeof medModule.invalidateMedicationCache === 'function') {
         medModule.invalidateMedicationCache(dayIso);
@@ -547,9 +554,11 @@
       if (isTaken) {
         await medModule.undoMedication(medId, { dayIso, reason: 'capture-status-toggle' });
         uiInfo('Einnahme zurueckgenommen.');
+        feedbackApi?.feedback?.('medication:undo', { intent: true, source: 'user' });
       } else {
         await medModule.confirmMedication(medId, { dayIso, reason: 'capture-status-toggle' });
         uiInfo('Einnahme bestaetigt.');
+        feedbackApi?.feedback?.('medication:confirm', { intent: true, source: 'user' });
       }
       if (typeof medModule.invalidateMedicationCache === 'function') {
         medModule.invalidateMedicationCache(dayIso);
@@ -1142,6 +1151,7 @@
       }).catch(err => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
       });
+      feedbackApi?.feedback?.('intake:save', { intent: true, source: 'user' });
       saveFeedback?.ok({ button: btn, panel, successText });
       diag.add?.(`[capture] save ok ${kind}`);
     } catch (e) {
@@ -1230,6 +1240,7 @@
       }).catch((err) => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
       });
+      feedbackApi?.feedback?.('intake:combo-save', { intent: true, source: 'user' });
       saveFeedback?.ok({
         button: btn,
         panel,

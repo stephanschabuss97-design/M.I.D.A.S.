@@ -11,6 +11,7 @@
   const appModules = global.AppModules;
   const doc = global.document;
   const SUPABASE_PROJECT_URL = 'https://jlylmservssinsavlkdi.supabase.co';
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const MIDAS_ENDPOINTS = (() => {
     const base = `${SUPABASE_PROJECT_URL}/functions/v1`;
     if (global.location?.hostname?.includes('github.io')) {
@@ -614,17 +615,20 @@
 
   const handlePanelEsc = (event) => {
     if (event.key === 'Escape') {
-      closeActivePanel();
+      closeActivePanel({ intent: true });
     }
   };
 
   const getChartPanel = () => global.AppModules?.charts?.chartPanel;
 
-  const closeActivePanel = ({ skipButtonSync = false, instant = false } = {}) => {
+  const closeActivePanel = ({ skipButtonSync = false, instant = false, intent = false } = {}) => {
     if (!activePanel) return;
     const panel = activePanel;
     const panelName = panel.dataset?.hubPanel || 'unknown';
     diag.add?.(`[hub] close panel ${panelName} instant=${instant}`);
+    if (intent) {
+      feedbackApi?.feedback?.('hub:close', { intent: true, source: 'user' });
+    }
     if (panelName === 'doctor') {
       if (typeof doctorUnlockWaitCancel === 'function') {
         diag.add?.('[hub] doctor close -> cancel pending unlock wait');
@@ -868,7 +872,7 @@
           diag.add?.(
             `[hub] close button ${panel.dataset.hubPanel || 'unknown'} mode=${mode}`
           );
-          closeActivePanel({ instant: mode === 'instant' });
+          closeActivePanel({ instant: mode === 'instant', intent: true });
         });
       });
     });
@@ -1052,7 +1056,7 @@
 
     const openPanelHandler = (panelName) => async (btn) => {
       if (activePanel?.dataset?.hubPanel === panelName) {
-        closeActivePanel();
+        closeActivePanel({ intent: true });
         return;
       }
       const panel = openPanel(panelName);
@@ -1061,6 +1065,7 @@
         setSpriteStateFn?.('idle');
         return;
       }
+      feedbackApi?.feedback?.('hub:open', { intent: true, source: 'user' });
       syncButtonState(btn);
       setSpriteStateFn?.(panelName);
     };

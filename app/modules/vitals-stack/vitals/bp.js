@@ -19,6 +19,7 @@
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
   const doc = global.document;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const BP_CONTEXTS = Object.freeze(['M','A']);
   const CONTEXT_LABELS = Object.freeze({ M: 'Morgen', A: 'Abend' });
   const BP_SYS_THRESHOLD = 130;
@@ -112,6 +113,9 @@ const getCommentElementUnsafe = (normalizedCtx) => {
   // SUBMODULE: resetBpPanel @internal - clears BP inputs per context
   function resetBpPanel(which, opts = {}) {
     const { focus = true } = opts;
+    if (opts.intent) {
+      feedbackApi?.feedback?.('vitals:reset', { intent: true, source: 'user' });
+    }
     let ctx;
     try {
       ctx = normalizeContext(which);
@@ -252,6 +256,11 @@ const getCommentElementUnsafe = (normalizedCtx) => {
         // ignore
       }
     }
+    feedbackApi?.feedback?.('vitals:save', {
+      intent: true,
+      source: 'user',
+      dedupeKey: `vitals:save:bp:${ctx}`
+    });
   }
 
   if (hasComment){

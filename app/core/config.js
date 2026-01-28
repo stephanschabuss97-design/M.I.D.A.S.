@@ -50,6 +50,24 @@
 
   const TREND_PILOT_ENABLED = readTrendPilotFlag();
   const DIAGNOSTICS_ENABLED = readDiagnosticsFlag();
+  const readFeedbackFlag = (key, defaultValue = true) => {
+    const globalKey = `FEEDBACK_${key}_ENABLED`;
+    if (typeof global?.[globalKey] === 'boolean') return global[globalKey];
+    try {
+      const lsValue = global?.localStorage?.getItem(globalKey);
+      const parsedLs = parseBoolean(lsValue);
+      if (parsedLs != null) return parsedLs;
+    } catch (_) {
+      /* ignore */
+    }
+    const attr = parseBoolean(
+      global?.document?.body?.dataset?.[`feedback${key}Enabled`]
+    );
+    if (attr != null) return attr;
+    return defaultValue;
+  };
+  const FEEDBACK_SOUND_ENABLED = readFeedbackFlag('SOUND', true);
+  const FEEDBACK_HAPTIC_ENABLED = readFeedbackFlag('HAPTIC', true);
   const readCaptureHubFlag = () => {
     if (typeof global?.CAPTURE_HUB_V2 === 'boolean') return global.CAPTURE_HUB_V2;
     try {
@@ -74,6 +92,8 @@
     DEV_ALLOW_DEFAULTS,
     TREND_PILOT_ENABLED,
     DIAGNOSTICS_ENABLED,
+    FEEDBACK_SOUND_ENABLED,
+    FEEDBACK_HAPTIC_ENABLED,
     CAPTURE_HUB_V2,
     BOOT_STAGE_DEBUG: bootStageDebug
   });

@@ -13,6 +13,7 @@
 (function(global){
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const createBaseEntry =
     appModules.captureEntry?.createBaseEntry ||
     ((date, time, contextLabel) => {
@@ -39,6 +40,9 @@
   // SUBMODULE: resetBodyPanel @internal - leert Body-Eingaben und stellt optional den Fokus wieder her
   function resetBodyPanel(opts = {}) {
     const { focus = true } = opts;
+    if (opts.intent) {
+      feedbackApi?.feedback?.('vitals:reset', { intent: true, source: 'user' });
+    }
     const weightEl = document.getElementById('weightDay');
     const waistEl = document.getElementById('input-waist-cm');
     const fatEl = document.getElementById('fatPctDay');
@@ -129,6 +133,11 @@
     const localId = await addEntry(entry);
     await syncWebhook(entry, localId);
     saved = true;
+    feedbackApi?.feedback?.('vitals:save', {
+      intent: true,
+      source: 'user',
+      dedupeKey: 'vitals:save:body'
+    });
     try {
       const proteinModule = global.AppModules?.protein;
       if (proteinModule && typeof proteinModule.recomputeTargets === 'function' && entry.weight != null) {

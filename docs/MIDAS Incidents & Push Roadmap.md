@@ -13,7 +13,7 @@ Status
 - Step 2: done
 - Step 3: done
 - Step 4: done
-- Step 5: pending
+- Step 5: done
 
 Start hier (fuer neue Sessions)
 1) Oeffne:
@@ -152,6 +152,13 @@ Step 5: Remote Push (ohne geoeffnete App)
 5.4 Service Worker: `push` + `notificationclick` handling.
 Output: Remote-Push-Architektur + Payload-Schema.
 Exit-Kriterium: Push funktioniert bei geschlossener App.
+
+Step 5 Status
+- 5.1 umgesetzt (Client Subscription + Opt-in UI im Profil).
+- 5.2 umgesetzt (Edge Function + GitHub Actions Schedule + Secrets).
+- 5.3 umgesetzt (Payload Schema in Edge Function).
+- 5.4 umgesetzt (Service Worker Push + Click).
+- Validierung: Push funktioniert (Zeitfenster bewusst tolerant).
 
 Step 5.1 Output (Draft)
 Push-Subscription Flow (Remote)

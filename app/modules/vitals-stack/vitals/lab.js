@@ -11,6 +11,7 @@
 (function (global) {
   global.AppModules = global.AppModules || {};
   const appModules = global.AppModules;
+  const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const diag =
     global.diag ||
     global.AppModules?.diag ||
@@ -45,6 +46,9 @@
 
   function resetLabPanel(opts = {}) {
     const { focus = true } = opts;
+    if (opts.intent) {
+      feedbackApi?.feedback?.('vitals:reset', { intent: true, source: 'user' });
+    }
     const ids = [
       'labEgfr',
       'labCreatinine',
@@ -150,6 +154,11 @@
     try {
       const localId = await addEntry(entry);
       await syncWebhook(entry, localId);
+      feedbackApi?.feedback?.('vitals:save', {
+        intent: true,
+        source: 'user',
+        dedupeKey: 'vitals:save:lab'
+      });
       return true;
     } catch (err) {
       diag.add?.(`[lab] save failed: ${err?.message || err}`);
