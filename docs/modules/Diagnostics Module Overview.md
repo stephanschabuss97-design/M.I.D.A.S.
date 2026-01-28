@@ -27,10 +27,11 @@ Related docs:
 | `app/diagnostics/logger.js` | Ringbuffer-Logger (diagnosticsLayer.logger) |
 | `app/diagnostics/perf.js` | Perf-Sampler (diagnosticsLayer.perf) |
 | `app/diagnostics/monitor.js` | Heartbeat/Monitor (diagnosticsLayer.monitor) |
+| `app/diagnostics/devtools.js` | Dev-Toggles (Push/Sound/Haptik/No-Cache) |
 | `app/core/boot-flow.js` | Boot-Fehleroverlay mit Touch-Log | 
 | `index.html` | Touch-Log Panel + Script-Reihenfolge |
 | `app/styles/utilities.css` | Touch-Log Styling |
-| `app/styles/ui.css` | Diagnostics Overlay Styles |
+| `app/styles/auth.css` | Diagnostics Panel Layout + Toggles |
 
 ---
 
@@ -64,7 +65,9 @@ Related docs:
 
 ## 5. UI-Integration
 
-- Touch-Log Panel (`#diag` + `#diagLog`).
+- Touch-Log Panel (`#diag` + `#diagLog`) zweispaltig:
+  - Links: Dev-Toggles (Push, Sound, Haptik, No-Cache)
+  - Rechts: Log-Stream
 - Floating/Quickbar Trigger fuer Diagnostics.
 
 ---
@@ -106,6 +109,8 @@ Related docs:
 ## 10. Feature-Flags / Konfiguration
 
 - `DIAGNOSTICS_ENABLED` (Config/LocalStorage).
+- `FEEDBACK_SOUND_ENABLED`, `FEEDBACK_HAPTIC_ENABLED` (via Dev-Toggles).
+- `DEV_NOCACHE_ASSETS` (CSS Cache-Buster).
 
 ---
 

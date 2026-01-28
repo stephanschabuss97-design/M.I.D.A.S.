@@ -51,7 +51,35 @@
       <h4 id="diagTitle">Touch-Log</h4>
       <button class="btn ghost" id="diagClose" type="button">x</button>
     </header>
-    <pre id="diagLog" class="content u-m-0"></pre>
+    <div class="diag-body">
+      <aside class="diag-controls">
+        <h5 class="diag-controls-title">Dev Toggles</h5>
+        <label class="chart-switch diag-toggle">
+          <span>Push</span>
+          <input type="checkbox" id="devTogglePush">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <label class="chart-switch diag-toggle">
+          <span>Sound</span>
+          <input type="checkbox" id="devToggleSound">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <label class="chart-switch diag-toggle">
+          <span>Haptik</span>
+          <input type="checkbox" id="devToggleHaptic">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <label class="chart-switch diag-toggle">
+          <span>No Cache</span>
+          <input type="checkbox" id="devToggleNoCache">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <p class="u-meta u-mt8-opacity80">
+          Dev-Modus: lokale Flags, keine Persistenz in Profil.
+        </p>
+      </aside>
+      <pre id="diagLog" class="content u-m-0 diag-log"></pre>
+    </div>
   </div>
   <!-- Placeholder help panel to satisfy ui-core init (no visible toggle yet) -->
   <div
@@ -617,48 +645,6 @@
                 <div id="profileOverview" class="profile-overview-list">
                   <p class="muted small">Noch keine Daten gespeichert.</p>
                 </div>
-              </section>
-              <section class="profile-push card subtle" aria-live="polite">
-                <header>
-                  <h3>Push Erinnerungen</h3>
-                </header>
-                <p class="muted small">
-                  Pushs kommen nur bei echten Incidents (Medikation/BP).
-                </p>
-                <div class="row u-gap-8">
-                  <button class="btn ghost" id="profilePushEnableBtn" type="button">
-                    Push aktivieren
-                  </button>
-                  <button class="btn ghost" id="profilePushDisableBtn" type="button">
-                    Push deaktivieren
-                  </button>
-                </div>
-                <div class="small u-mt-8" id="profilePushStatus">Status: -</div>
-              </section>
-              <section class="profile-feedback card subtle" aria-live="polite">
-                <header>
-                  <h3>Feedback</h3>
-                </header>
-                <p class="muted small">
-                  Kurze Sounds und Haptik bestaetigen Aktionen (kein Gamification).
-                </p>
-                <div class="row u-gap-8">
-                  <button class="btn ghost" id="profileFeedbackSoundEnableBtn" type="button">
-                    Sound aktivieren
-                  </button>
-                  <button class="btn ghost" id="profileFeedbackSoundDisableBtn" type="button">
-                    Sound deaktivieren
-                  </button>
-                </div>
-                <div class="row u-gap-8 u-mt-8">
-                  <button class="btn ghost" id="profileFeedbackHapticEnableBtn" type="button">
-                    Haptik aktivieren
-                  </button>
-                  <button class="btn ghost" id="profileFeedbackHapticDisableBtn" type="button">
-                    Haptik deaktivieren
-                  </button>
-                </div>
-                <div class="small u-mt-8" id="profileFeedbackStatus">Sound: - | Haptik: -</div>
               </section>
             </section>
             <section
@@ -1561,6 +1547,7 @@
   <script src="app/diagnostics/logger.js"></script>
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
+  <script src="app/diagnostics/devtools.js"></script>
   <!-- Voice parked (legacy): VAD + voice module disabled -->
   <!-- <script src="app/modules/assistant-stack/vad/vad.js"></script> -->
   <!-- <script src="app/modules/assistant-stack/voice/index.js"></script> -->

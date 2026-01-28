@@ -42,6 +42,35 @@
   font-size: var(--text-sm);
   line-height: 1.45;
 }
+#diag .diag-body {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+}
+#diag .diag-controls {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#diag .diag-controls-title {
+  margin: 0 0 4px;
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#diag .diag-toggle {
+  width: 100%;
+  justify-content: space-between;
+}
+#diag .diag-log {
+  flex: 1 1 auto;
+  min-width: 220px;
+  margin: 0;
+  padding: 8px;
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+}
 #diag pre {
   margin: 0;
   padding: 8px;
@@ -185,5 +214,14 @@ body[data-boot-stage]:not([data-boot-stage="idle"]) #busy {
   .u-diag-log {
     max-height: 50vh;
     font-size: var(--text-sm);
+  }
+}
+
+@media (max-width: 700px) {
+  #diag .diag-body {
+    flex-direction: column;
+  }
+  #diag .diag-controls {
+    flex: 1 1 auto;
   }
 }

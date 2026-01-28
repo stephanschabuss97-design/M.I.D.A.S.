@@ -79,6 +79,7 @@ Related docs:
   - Limits: `profileSaltLimit`, `profileProteinMax`, Raucherstatus-Dropdown, Lifestyle-Textarea.
 - Buttons `profileSaveBtn` / `profileRefreshBtn`.
 - Card â€žAktuelle Datenâ€œ (`#profileOverview`) rendert Snapshot (inkl. Medikamentenliste, CKD-Stufe, Zeitstempel).
+- Keine Dev-Toggles im Profil (Push/Sound/Haptik sind im Touch-Log Dev Panel).
 
 ---
 

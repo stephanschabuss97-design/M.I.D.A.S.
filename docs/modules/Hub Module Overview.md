@@ -66,6 +66,7 @@ Related docs:
 
 - Hub ist zentrales Overlay mit Aura/Orbit und Panels.
 - Panels: Intake, Vitals, Doctor, Profile, Appointments, Assistant.
+- Touch-Log Panel ist im Hub-Kontext erreichbar (Quickbar Action) und enthaelt Dev-Toggles links, Log rechts.
 - Assistant-Panel zeigt Butler-Header: Pills + Kontext-Extras + Termine + Expandable (Restbudget/Warnung) inkl. Mobile-Toggle.
 - Voice-States steuern Visuals (`data-voice-state`).
 

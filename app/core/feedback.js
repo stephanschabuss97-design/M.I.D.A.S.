@@ -68,12 +68,12 @@
   };
 
   const SOUND_PRESETS = {
-    snd_open: { freq: 740, dur: 90, type: 'sine', gain: 0.035 },
-    snd_close: { freq: 520, dur: 90, type: 'sine', gain: 0.035 },
-    snd_confirm: { freq: 620, dur: 110, type: 'triangle', gain: 0.04 },
-    snd_undo: { freq: 420, dur: 150, type: 'triangle', gain: 0.04 },
-    snd_toggle: { freq: 560, dur: 60, type: 'sine', gain: 0.02 },
-    snd_error: { freq: 360, dur: 140, type: 'square', gain: 0.03 }
+    snd_open: { freq: 440, dur: 120, type: 'sine', gain: 0.03 },
+    snd_close: { freq: 360, dur: 120, type: 'sine', gain: 0.03 },
+    snd_confirm: { freq: 480, dur: 140, type: 'triangle', gain: 0.032 },
+    snd_undo: { freq: 320, dur: 170, type: 'triangle', gain: 0.032 },
+    snd_toggle: { freq: 400, dur: 80, type: 'sine', gain: 0.02 },
+    snd_error: { freq: 300, dur: 160, type: 'triangle', gain: 0.03 }
   };
 
   const EVENT_TO_SOUND = {
@@ -147,7 +147,7 @@
       osc.type = preset.type;
       osc.frequency.setValueAtTime(preset.freq, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(targetGain, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(targetGain, now + 0.04);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);

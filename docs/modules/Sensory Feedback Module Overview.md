@@ -26,6 +26,7 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/core/feedback.js` | Zentrale Feedback-Utility (sound + haptic) |
+| `app/diagnostics/devtools.js` | Dev-Toggles im Touch-Log Panel |
 | `app/modules/hub/index.js` | Panel-Open/Close Hooks |
 | `app/modules/intake-stack/intake/index.js` | Save/Confirm/Undo Hooks |
 | `app/modules/vitals-stack/vitals/index.js` | Vitals Save/Reset Hooks |
@@ -60,7 +61,7 @@ Related docs:
 ## 5. UI-Integration
 
 - Kein eigenes UI-Panel.
-- Opt-in/Opt-out spaeter ueber Settings (geplant).
+- Opt-in/Opt-out im Touch-Log Dev Panel (Sound/Haptik Toggle).
 
 ---
 
@@ -87,7 +88,7 @@ Related docs:
 
 ## 9. Status / Dependencies / Risks
 
-- Status: geplant (Step 4 Implementierung).
+- Status: implementiert (Step 4 done, Step 5 done).
 - Dependencies: Browser Audio + Vibration API (optional).
 - Risks: zu viel Feedback wirkt gamy; falsche Trigger erzeugen Lärm.
 
@@ -106,3 +107,16 @@ Related docs:
 - Feedback leise, kurz, konsistent.
 - Keine Gamification.
 - Doku aktuell.
+
+---
+
+## 12. Settings / Toggles
+
+- Touch-Log Dev Panel:
+  - Sound aktivieren/deaktivieren
+  - Haptik aktivieren/deaktivieren
+- Touch-Log Panel (Dev):
+  - Sound/Haptik Toggle Pills
+- Storage Keys:
+  - `FEEDBACK_SOUND_ENABLED`
+  - `FEEDBACK_HAPTIC_ENABLED`
