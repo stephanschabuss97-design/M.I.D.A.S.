@@ -92,9 +92,9 @@
   };
 
   const HAPTIC_PRESETS = {
-    tap_light: [12],
-    tap_soft: [8],
-    tap_double: [12, 60, 12]
+    tap_light: [30],
+    tap_soft: [20],
+    tap_double: [30, 70, 30]
   };
 
   const EVENT_TO_HAPTIC = {
