@@ -40,7 +40,12 @@
     overview: '#profileOverview',
     pushEnableBtn: '#profilePushEnableBtn',
     pushDisableBtn: '#profilePushDisableBtn',
-    pushStatus: '#profilePushStatus'
+    pushStatus: '#profilePushStatus',
+    feedbackSoundEnableBtn: '#profileFeedbackSoundEnableBtn',
+    feedbackSoundDisableBtn: '#profileFeedbackSoundDisableBtn',
+    feedbackHapticEnableBtn: '#profileFeedbackHapticEnableBtn',
+    feedbackHapticDisableBtn: '#profileFeedbackHapticDisableBtn',
+    feedbackStatus: '#profileFeedbackStatus'
   };
 
   const state = {
@@ -101,7 +106,12 @@
       overview: panel.querySelector(selectors.overview),
       pushEnableBtn: panel.querySelector(selectors.pushEnableBtn),
       pushDisableBtn: panel.querySelector(selectors.pushDisableBtn),
-      pushStatus: panel.querySelector(selectors.pushStatus)
+      pushStatus: panel.querySelector(selectors.pushStatus),
+      feedbackSoundEnableBtn: panel.querySelector(selectors.feedbackSoundEnableBtn),
+      feedbackSoundDisableBtn: panel.querySelector(selectors.feedbackSoundDisableBtn),
+      feedbackHapticEnableBtn: panel.querySelector(selectors.feedbackHapticEnableBtn),
+      feedbackHapticDisableBtn: panel.querySelector(selectors.feedbackHapticDisableBtn),
+      feedbackStatus: panel.querySelector(selectors.feedbackStatus)
     };
     return refs;
   };
@@ -169,6 +179,53 @@
   const setPushStatus = (text) => {
     if (!refs?.pushStatus) return;
     refs.pushStatus.textContent = text;
+  };
+
+  const getFeedbackApi = () => appModules.feedback || global.AppModules?.feedback || null;
+  const setFeedbackPref = (key, value) => {
+    const flagKey = `FEEDBACK_${key}_ENABLED`;
+    try {
+      global.localStorage?.setItem(flagKey, String(!!value));
+    } catch (_) {
+      /* ignore */
+    }
+  };
+  const setFeedbackStatus = () => {
+    if (!refs?.feedbackStatus) return;
+    const feedback = getFeedbackApi();
+    const soundOn = feedback?.isSoundEnabled?.();
+    const hapticOn = feedback?.isHapticEnabled?.();
+    const soundText = soundOn ? 'aktiv' : 'deaktiviert';
+    const hapticText = hapticOn ? 'aktiv' : 'deaktiviert';
+    refs.feedbackStatus.textContent = `Sound: ${soundText} | Haptik: ${hapticText}`;
+  };
+
+  const handleEnableFeedbackSound = () => {
+    const feedback = getFeedbackApi();
+    setFeedbackPref('SOUND', true);
+    feedback?.setSoundEnabled?.(true);
+    setFeedbackStatus();
+  };
+
+  const handleDisableFeedbackSound = () => {
+    const feedback = getFeedbackApi();
+    setFeedbackPref('SOUND', false);
+    feedback?.setSoundEnabled?.(false);
+    setFeedbackStatus();
+  };
+
+  const handleEnableFeedbackHaptic = () => {
+    const feedback = getFeedbackApi();
+    setFeedbackPref('HAPTIC', true);
+    feedback?.setHapticEnabled?.(true);
+    setFeedbackStatus();
+  };
+
+  const handleDisableFeedbackHaptic = () => {
+    const feedback = getFeedbackApi();
+    setFeedbackPref('HAPTIC', false);
+    feedback?.setHapticEnabled?.(false);
+    setFeedbackStatus();
   };
 
   const ensurePushSupport = () => {
@@ -672,9 +729,14 @@
     panelRefs.refreshBtn?.addEventListener('click', handleRefresh);
     panelRefs.pushEnableBtn?.addEventListener('click', handleEnablePush);
     panelRefs.pushDisableBtn?.addEventListener('click', handleDisablePush);
+    panelRefs.feedbackSoundEnableBtn?.addEventListener('click', handleEnableFeedbackSound);
+    panelRefs.feedbackSoundDisableBtn?.addEventListener('click', handleDisableFeedbackSound);
+    panelRefs.feedbackHapticEnableBtn?.addEventListener('click', handleEnableFeedbackHaptic);
+    panelRefs.feedbackHapticDisableBtn?.addEventListener('click', handleDisableFeedbackHaptic);
     state.ready = true;
     syncProfile({ reason: 'init' });
     refreshPushStatus({ reason: 'init' });
+    setFeedbackStatus();
     doc?.addEventListener(
       'supabase:ready',
       () => {
