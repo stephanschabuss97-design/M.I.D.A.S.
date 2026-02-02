@@ -35,7 +35,6 @@
     location: '#apptLocation',
     notes: '#apptNotes',
     repeat: '#apptRepeatRule',
-    overviewBtn: '#appointmentsOverviewBtn',
     overview: '#appointmentsOverview',
     overviewSubtitle: '#appointmentsOverviewSubtitle',
     doneSubtitle: '#appointmentsDoneSubtitle',
@@ -75,7 +74,6 @@
       location: panel.querySelector(selectors.location),
       notes: panel.querySelector(selectors.notes),
       repeat: panel.querySelector(selectors.repeat),
-      overviewBtn: panel.querySelector(selectors.overviewBtn),
       overview: panel.querySelector(selectors.overview),
       overviewSubtitle: panel.querySelector(selectors.overviewSubtitle),
       doneSubtitle: panel.querySelector(selectors.doneSubtitle),
@@ -366,10 +364,6 @@
     }
   };
 
-  const scrollToOverview = () => {
-    refs?.overview?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   const computeUpcomingFromState = (limit = 2) => {
     const now = Date.now();
     return state.items
@@ -438,10 +432,6 @@
       setActiveTab(activeTab);
     }
     panelRefs.form?.addEventListener('submit', handleSubmit);
-    panelRefs.overviewBtn?.addEventListener('click', (event) => {
-      event.preventDefault();
-      scrollToOverview();
-    });
     panelRefs.columns?.addEventListener('click', handleCardAction);
     initialized = true;
     log?.('module initialised');

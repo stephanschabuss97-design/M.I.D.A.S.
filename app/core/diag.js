@@ -253,15 +253,11 @@
         if (this.logEl && this.lines.length) {
           this.logEl.textContent = this.lines.join('\n');
         }
-        const t1 = document.getElementById('diagToggle');
-        const t2 = document.getElementById('diagToggleFab');
         const close = document.getElementById('diagClose');
         const toggle = () => {
           this.open = !this.open;
           this.open ? this.show() : this.hide();
         };
-        if (t1) t1.addEventListener('click', toggle);
-        if (t2) t2.addEventListener('click', toggle);
         if (close) close.addEventListener('click', () => this.hide());
       } catch (err) {
         logDiagConsole('error', '[diagnostics:init] failed', err);
@@ -306,19 +302,8 @@
 
   // SUBMODULE: uiInfo @public - zeigt Info-/Statusmeldung im UI oder Fallback-Console an
   function uiInfo(msg) {
-    const infoBox = document.getElementById('infoBox');
     const text = String(msg || 'OK');
-    if (infoBox) {
-      infoBox.setAttribute('role', 'status');
-      infoBox.setAttribute('aria-live', 'polite');
-      infoBox.textContent = text;
-      infoBox.style.display = 'block';
-      setTimeout(() => {
-        infoBox.style.display = 'none';
-      }, 2000);
-    } else {
-      logDiagConsole('log', '[uiInfo]', text);
-    }
+    logDiagConsole('log', '[uiInfo]', text);
   }
 
   // SUBMODULE: diagnosticsApi export @internal - registriert API unter AppModules.diagnostics und legt globale Referenzen an

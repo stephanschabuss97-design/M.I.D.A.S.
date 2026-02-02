@@ -63,7 +63,7 @@ Related docs:
 ## 5. UI-Integration
 
 - Hub-Panel `#hubAppointmentsPanel` mit Formular + Overview.
-- Button `appointmentsOverviewBtn` scrollt zur Liste.
+- Navigation zwischen Listen erfolgt ueber Tabs (Uebersicht/Erledigt/Neu).
 - Assistant-Header zeigt max. zwei Upcoming-Termine.
 
 ---

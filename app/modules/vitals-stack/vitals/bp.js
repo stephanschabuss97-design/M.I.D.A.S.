@@ -44,7 +44,7 @@
         pulse: null,
         weight: null,
         map: null,
-        notes: (document.getElementById('notesDay')?.value || '').trim()
+        notes: ''
       };
     });
 

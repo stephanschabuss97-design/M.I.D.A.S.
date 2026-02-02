@@ -21,14 +21,14 @@ Start hier (fuer neue Sessions)
 3) Starte mit Step 1.
 
 Status
-- Step 1: pending
-- Step 2: pending
-- Step 3: pending
-- Step 4: pending
-- Step 5: pending
-- Step 6: pending
-- Step 7: pending
-- Step 8: pending
+- Step 1: done
+- Step 2: done
+- Step 3: done
+- Step 4: done
+- Step 5: done
+- Step 6: done
+- Step 7: done
+- Step 8: done
 
 Deterministische Steps
 
@@ -61,6 +61,29 @@ Step 5: Globales UI Glue
 5.2 Offensichtliche UI-Duplikate markieren.
 Output: Liste "sicher tot" + "verdaechtig".
 Exit-Kriterium: Liste ist komplett.
+
+Schlachtplan (Step 5 Cleanup, deterministisch & rueckbaubar)
+Ziel: Nur wirklich tote UI-Glue-Pfade entfernen oder bewusst dokumentieren.
+Vorgehen:
+1) Kandidatenliste (aus Step 5.1/5.2) fixieren:
+   - cap-intake-status
+   - diagToggle / diagToggleFab / helpToggleFab
+   - doctorLive / doctorMonthlyReportBtn
+   - lifestyle
+   - infoBox
+2) Pro Kandidat: Entscheiden "entfernen" vs. "bewusst parken".
+   - Entfernen nur, wenn im HTML kein Element existiert und kein Modul es dynamisch erzeugt.
+   - Falls bewusst geparkt: kurze Kommentar-Notiz im relevanten JS (warum).
+3) Entfernen in minimalen, isolierten Deltas:
+   - Pro Kandidat separat, jeweils nur die direkte Referenz entfernen.
+   - Keine Seiteneffekte (keine Refactors).
+4) Rueckbaubarkeit sicherstellen:
+   - Pro Kandidat dokumentieren, welche Datei/Zeilen geaendert wurden.
+   - Wenn Funktion entfernt: nur die kleinste betroffene Funktion/Handler.
+5) Sanity-Check (ohne Tests):
+   - rg-Suche: keine Referenzen auf entfernte IDs mehr.
+   - Keine neuen "missing element" Logs in diag.
+Output: Abgearbeitete Liste mit Status (entfernt / geparkt).
 
 Step 6: Inventar Core
 6.1 `app/core/**` scannen (boot flow, globals, utils).

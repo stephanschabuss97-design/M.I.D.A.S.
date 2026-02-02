@@ -298,7 +298,6 @@ const uiRefreshState = {
   running: false,
   docNeeded: false,
   chartNeeded: false,
-  lifestyleNeeded: false,
   appointmentsNeeded: false,
   resolvers: [],
   lastReason: '',
@@ -497,16 +496,8 @@ function requestUiRefresh(opts = {}) {
   try { chartDefault = !!(chartPanel?.open); } catch(_) {}
   const chart = opts.chart !== undefined ? !!opts.chart : chartDefault;
 
-  let lifestyleDefault = false;
-  try {
-    const lifestyleEl = document.getElementById('lifestyle');
-    lifestyleDefault = !!(lifestyleEl?.classList?.contains('active'));
-  } catch(_) {}
-  const lifestyle = opts.lifestyle !== undefined ? !!opts.lifestyle : lifestyleDefault;
-
   uiRefreshState.docNeeded = uiRefreshState.docNeeded || doctor;
   uiRefreshState.chartNeeded = uiRefreshState.chartNeeded || chart;
-  uiRefreshState.lifestyleNeeded = uiRefreshState.lifestyleNeeded || lifestyle;
   uiRefreshState.appointmentsNeeded = false;
   uiRefreshState.lastReason = reason || uiRefreshState.lastReason;
   if (reason) uiRefreshState.reasons.add(reason);
@@ -584,13 +575,11 @@ async function runUiRefresh(){
     logUiRefreshSummary(reasonLabel, 'start');
   });
   try {
-    while (state.docNeeded || state.chartNeeded || state.lifestyleNeeded) {
+    while (state.docNeeded || state.chartNeeded) {
       const doc = state.docNeeded;
       const chart = state.chartNeeded;
-      const lifestyle = state.lifestyleNeeded;
       state.docNeeded = false;
       state.chartNeeded = false;
-      state.lifestyleNeeded = false;
 
       const doctorModule = getDoctorModule();
       const chartPanel = getChartPanel();
@@ -599,11 +588,6 @@ async function runUiRefresh(){
         await doctorModule?.renderDoctor?.(reasonLabel);
       });
       // appointments substep entfernt
-      await runUiSubStep(
-        'lifestyle',
-        lifestyle && typeof window.AppModules.capture?.renderLifestyle === 'function',
-        async () => { await window.AppModules.capture?.renderLifestyle?.(); }
-      );
       await runUiSubStep('chart', chart && !!chartPanel?.draw, async () => { await chartPanel?.draw?.(); });
     }
   } finally {
@@ -615,7 +599,7 @@ async function runUiRefresh(){
     const resolvers = state.resolvers;
     state.resolvers = [];
     resolvers.forEach(resolve => { try { resolve(); } catch(_){} });
-    if ((state.docNeeded || state.chartNeeded || state.lifestyleNeeded) && !state.timer){
+    if ((state.docNeeded || state.chartNeeded) && !state.timer){
       state.timer = setTimeout(() => {
         uiRefreshState.timer = null;
         runUiRefresh().catch(err => diag.add?.('[ui] refresh fatal: ' + (err?.message || err)));
@@ -623,15 +607,6 @@ async function runUiRefresh(){
     }
   }
 }
-// kleines visuelles Ping bei Realtime
-// SUBMODULE: livePulse @internal - flashes heartbeat indicator for realtime events
-function livePulse(){
-  const el = document.getElementById('doctorLive');
-  if (!el) return;
-  el.classList.add('pulse');
-  setTimeout(() => el.classList.remove('pulse'), 900);
-}
-
 /** END MODULE */
 
 // --- Service-Role-Schutz (NIEMALS im Browser) ---
@@ -733,16 +708,7 @@ function setDoctorAccess(enabled){
     chartBtn.disabled = !enabled;
     chartBtn.title = enabled ? 'Werte als Grafik' : 'Bitte zuerst anmelden';
   }
-  const monthlyBtn = document.getElementById('doctorMonthlyReportBtn');
-  if (monthlyBtn) {
-    monthlyBtn.disabled = !enabled;
-    monthlyBtn.title = enabled ? 'Manuellen Monatsbericht starten' : 'Bitte zuerst anmelden';
-  }
-  // Lifestyle-Tab mitsteuern
-  
-}
-  
-/** END MODULE */
+  /** END MODULE */
   
 /** MODULE: UTILITIES
  * intent: generische DOM/Format Helper fuer das Monolith-Skript
@@ -934,7 +900,6 @@ const REQUIRED_GLOBALS = [
   'getEntryByRemoteId',
   'deleteEntryLocal',
   'fmtDE',
-  'updateLifestyleBars',
   'AppModules.uiCore.helpPanel',
   'AppModules.uiCore.debounce',
   'AppModules.uiCore.setUnderlayInert',
@@ -1078,14 +1043,12 @@ function prepareIntakeStatusHeader(){
 const updateCaptureIntakeStatus = debounce(function(){
   const startedAt = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : null;
   try {
-    const statusEl = document.getElementById('cap-intake-status');
     let statusTop = document.getElementById('cap-intake-status-top');
-    if (!statusEl && !statusTop) return;
-
     if (!statusTop) {
       prepareIntakeStatusHeader();
       statusTop = document.getElementById('cap-intake-status-top');
     }
+    if (!statusTop) return;
 
     if (statusTop) {
       statusTop.setAttribute('role','group');
@@ -1094,10 +1057,6 @@ const updateCaptureIntakeStatus = debounce(function(){
     }
 
     if (!captureIntakeState.logged){
-      if (statusEl) {
-        statusEl.textContent = 'Bitte anmelden, um Intake zu erfassen.';
-        statusEl.style.display = '';
-      }
       if (statusTop) {
         statusTop.innerHTML = '';
         statusTop.style.display = 'none';
@@ -1337,23 +1296,11 @@ function applyBpContext(value){
 // SUBMODULE: maybeRefreshForTodayChange @extract-candidate - reconciles capture state across day changes
 async function maybeRefreshForTodayChange({ force = false, source = '' } = {}){
   const todayIso = todayStr();
-  const dateEl = document.getElementById('date');
-  const selected = dateEl?.value || '';
   const todayChanged = AppModules.captureGlobals.getLastKnownToday() !== todayIso;
   if (!force && !todayChanged) return;
 
-  const userPinnedOtherDay = AppModules.captureGlobals.getDateUserSelected() && selected && selected !== todayIso;
-  if (!userPinnedOtherDay && dateEl) {
-    if (selected !== todayIso) {
-      dateEl.value = todayIso;
-    }
-    AppModules.captureGlobals.setDateUserSelected(false);
-  }
-
   // Tageswechsel erkannt -> Intake ggf. automatisch auf 0 zuruecksetzen
-  if (!userPinnedOtherDay) {
-    try { await maybeResetIntakeForToday(todayIso); } catch(_) {}
-  }
+  try { await maybeResetIntakeForToday(todayIso); } catch(_) {}
 
   const normalizedSource = typeof source === 'string' && source.trim() ? source.trim() : '';
   const refreshReason = normalizedSource || (force ? 'force' : 'auto');
@@ -1364,10 +1311,8 @@ async function maybeRefreshForTodayChange({ force = false, source = '' } = {}){
   AppModules.captureGlobals.setLastKnownToday(todayIso);
   if (!AppModules.captureGlobals.getMidnightTimer()) scheduleMidnightRefresh();
   scheduleNoonSwitch();
-  if (!userPinnedOtherDay) {
-    AppModules.captureGlobals.setBpUserOverride(false);
-    maybeAutoApplyBpContext({ force: true, source: source || 'day-change' });
-  }
+  AppModules.captureGlobals.setBpUserOverride(false);
+  maybeAutoApplyBpContext({ force: true, source: source || 'day-change' });
   diag.add?.(`intake: day refresh (${source || 'auto'})`);
 }
 
@@ -1664,7 +1609,7 @@ activityForm?.addEventListener('submit', async (event) => {
   }
 });
 
-// Sync toggles when the date changes in capture view
+// Sync vitals panels when the date changes in capture view
 const dateEl = document.getElementById('date');
   if (dateEl) {
     dateEl.addEventListener('change', async () => {
@@ -1672,7 +1617,6 @@ const dateEl = document.getElementById('date');
         const todayIso = todayStr();
   AppModules.captureGlobals.setDateUserSelected((dateEl.value || '') !== todayIso);
         // was du beim Datum aendern haben willst:
-        await window.AppModules.capture?.refreshCaptureIntake?.('date-change:user');
         window.AppModules.capture?.resetCapturePanels?.();
         window.AppModules.bp.updateBpCommentWarnings?.();
         await window.AppModules.body.prefillBodyInputs();
@@ -1718,45 +1662,6 @@ doctorChartBtn.addEventListener("click", async ()=>{
   } else {
     diag.add?.('[doctor] chart button missing - hub overlay active?');
   }
-
-const doctorMonthlyReportBtn = document.getElementById('doctorMonthlyReportBtn');
-if (doctorMonthlyReportBtn) {
-  doctorMonthlyReportBtn.addEventListener('click', async () => {
-    diag.add?.('[doctor] monthly report button clicked');
-    try {
-      const logged = await isLoggedInFast();
-      if (!logged) {
-        diag.add?.('[doctor] monthly report while auth unknown');
-      }
-    } catch (err) {
-      console.error('isLoggedInFast check failed', err);
-    }
-    if (!isDoctorUnlocked()) {
-      setAuthPendingAfterUnlock('monthly-report');
-      const ok = await requireDoctorUnlock();
-      if (!ok) return;
-      setAuthPendingAfterUnlock(null);
-    }
-    const doctorModule = getDoctorModule();
-    const handler = doctorModule?.generateMonthlyReport;
-    if (typeof handler !== 'function') {
-      diag.add?.('[doctor] monthly report handler missing');
-      uiError?.('Monatsbericht-Generator wird in Kürze aktiviert.');
-      return;
-    }
-    withBusy(doctorMonthlyReportBtn, true);
-    try {
-      await handler();
-    } catch (err) {
-      diag.add?.('[doctor] monthly report failed: ' + (err?.message || err));
-      uiError('Monatsbericht konnte nicht erstellt werden.');
-    } finally {
-      withBusy(doctorMonthlyReportBtn, false);
-    }
-  });
-} else {
-  diag.add?.('[doctor] monthly report button missing - hub overlay active?');
-}
 
 document.addEventListener('keydown', (e)=>{
   if (e.key !== 'Escape') return;

@@ -32,7 +32,7 @@
         pulse: null,
         weight: null,
         map: null,
-        notes: (document.getElementById('notesDay')?.value || '').trim()
+        notes: ''
       };
     });
   const BODY_WARN_ON_COLLISION = Boolean(global?.BP_DEBUG_COLLISIONS);
@@ -63,7 +63,7 @@
     const entry = createBaseEntry(date, time, "Tag");
     let validationFailed = false;
 
-    const notesRaw = ($("#notesDay")?.value || "").trim();
+    const notesRaw = "";
     if (includeBody){
       entry.notes = notesRaw;
       const w = $("#weightDay")?.value?.trim();

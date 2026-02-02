@@ -57,7 +57,6 @@
       this.open = false;
 
       const t1 = global.document.getElementById('helpToggle');
-      const t2 = global.document.getElementById('helpToggleFab');
       const close = global.document.getElementById('helpClose');
 
       const toggle = () => {
@@ -69,9 +68,6 @@
       const bindHelpAfterBoot = () => {
         if (t1 && typeof t1.addEventListener === 'function') {
           t1.addEventListener('click', toggle);
-        }
-        if (t2 && typeof t2.addEventListener === 'function') {
-          t2.addEventListener('click', toggle);
         }
         if (close && typeof close.addEventListener === 'function') {
           close.addEventListener('click', () => this.hide());

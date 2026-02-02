@@ -45,7 +45,6 @@
     initialized: false,
     listEl: null,
     lowStockEl: null,
-    refreshBtn: null,
     dayIso: null,
     data: null,
     authRetryTimer: null,
@@ -238,7 +237,6 @@
     if (!listEl) return;
     medicationDailyState.listEl = listEl;
     medicationDailyState.lowStockEl = doc.getElementById('medLowStockBox');
-    medicationDailyState.refreshBtn = doc.getElementById('medDailyRefreshBtn');
     medicationDailyState.elements = {
       footer: doc.getElementById('medicationBatchFooter'),
       actions: doc.getElementById('medicationBatchActions'),
@@ -271,12 +269,6 @@
       if (!btn) return;
       event.preventDefault();
       handleLowStockAck(btn);
-    });
-
-    medicationDailyState.refreshBtn?.addEventListener('click', () => {
-      if (medicationDailyState.dayIso) {
-        refreshMedicationDaily({ dayIso: medicationDailyState.dayIso, reason: 'manual', force: true });
-      }
     });
 
     medicationDailyState.elements.confirmBtn?.addEventListener('click', () => {
@@ -495,10 +487,11 @@
     const selectedIds = getSelectedOpenIds(data);
     if (!selectedIds.length) return;
 
-    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
     const panel = document.getElementById('cap-intake-wrap');
     const triggerBtn = medicationDailyState.elements.confirmBtn;
 
+    medicationDailyState.dayIso = dayIso;
     medicationDailyState.busy = true;
     updateMedicationBatchFooter();
     saveFeedback?.start({ button: triggerBtn, panel });
@@ -547,8 +540,9 @@
     }
     const medId = btn.getAttribute('data-med-status-id');
     if (!medId) return;
-    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
     const isTaken = btn.classList.contains('ok');
+    medicationDailyState.dayIso = dayIso;
     withBusy(btn, true);
     try {
       if (isTaken) {
@@ -586,7 +580,8 @@
     const medId = btn.getAttribute('data-med-ack');
     if (!medId) return;
     const stock = Number(btn.getAttribute('data-med-stock')) || 0;
-    const dayIso = medicationDailyState.dayIso || document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
+    medicationDailyState.dayIso = dayIso;
     withBusy(btn, true);
     try {
       await medModule.ackLowStock(medId, { dayIso, stockSnapshot: stock, reason: 'capture-low-stock' });
@@ -611,7 +606,7 @@
       renderMedicationDailyPlaceholder('Medikationsmodul noch nicht aktiv.');
       return;
     }
-    const nextDayIso = dayIso || todayStr();
+    const nextDayIso = todayStr();
     const dayChanged = medicationDailyState.dayIso && medicationDailyState.dayIso !== nextDayIso;
     medicationDailyState.dayIso = nextDayIso;
     if (dayChanged) {
@@ -703,14 +698,13 @@
   const updateCaptureIntakeStatus = (typeof debounce === 'function' ? debounce : (fn) => fn)(function(){
     const startedAt = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : null;
     try {
-      const statusEl = document.getElementById('cap-intake-status');
       let statusTop = document.getElementById('cap-intake-status-top');
       const slotWater = document.querySelector('[data-pill-kind="water"]');
       const slotSalt = document.querySelector('[data-pill-kind="salt"]');
       const slotProtein = document.querySelector('[data-pill-kind="protein"]');
       const hasSlots = !!(slotWater || slotSalt || slotProtein);
 
-      if (!statusEl && !statusTop && !hasSlots) return;
+      if (!statusTop && !hasSlots) return;
 
       if (!statusTop && !hasSlots) {
         prepareIntakeStatusHeader();
@@ -724,10 +718,6 @@
       };
 
       if (!captureIntakeState.logged){
-        if (statusEl) {
-          statusEl.textContent = 'Bitte anmelden, um Intake zu erfassen.';
-          statusEl.style.display = '';
-        }
         if (statusTop) {
           statusTop.innerHTML = '';
           statusTop.style.display = 'none';
@@ -916,22 +906,10 @@
 
   async function maybeRefreshForTodayChange({ force = false, source = '' } = {}){
     const todayIso = todayStr();
-    const dateEl = document.getElementById('date');
-    const selected = dateEl?.value || '';
     const todayChanged = AppModules.captureGlobals.getLastKnownToday() !== todayIso;
     if (!force && !todayChanged) return;
 
-    const userPinnedOtherDay = AppModules.captureGlobals.getDateUserSelected() && selected && selected !== todayIso;
-    if (!userPinnedOtherDay && dateEl) {
-      if (selected !== todayIso) {
-        dateEl.value = todayIso;
-      }
-      AppModules.captureGlobals.setDateUserSelected(false);
-    }
-
-    if (!userPinnedOtherDay) {
-      try { await maybeResetIntakeForToday(todayIso); } catch(_) {}
-    }
+    try { await maybeResetIntakeForToday(todayIso); } catch(_) {}
 
     const normalizedSource = typeof source === 'string' && source.trim() ? source.trim() : '';
     const refreshReason = normalizedSource || (force ? 'force' : 'auto');
@@ -942,9 +920,7 @@
     AppModules.captureGlobals.setLastKnownToday(todayIso);
     if (!AppModules.captureGlobals.getMidnightTimer()) scheduleMidnightRefresh();
     scheduleNoonSwitch();
-    if (!userPinnedOtherDay) {
-      AppModules.captureGlobals.setBpUserOverride(false);
-    }
+    AppModules.captureGlobals.setBpUserOverride(false);
     diag.add?.(`intake: day refresh (${source || 'auto'})`);
   }
 
@@ -986,13 +962,12 @@
 
   async function refreshCaptureIntake(reasonOrOptions){
     const wrap = document.getElementById('cap-intake-wrap');
-    const statusEl = document.getElementById('cap-intake-status');
     const opts = (typeof reasonOrOptions === 'object' && reasonOrOptions) ? reasonOrOptions : {};
     const refreshReason = typeof reasonOrOptions === 'string'
       ? reasonOrOptions
       : (opts.reason || opts.source || 'manual');
 
-    const dayIso = document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
     captureIntakeState.dayIso = dayIso;
     clearCaptureIntakeInputs();
 
@@ -1019,7 +994,6 @@
       captureIntakeState.totals = { water_ml: 0, salt_g: 0, protein_g: 0 };
       setCaptureIntakeDisabled(true);
       updateCaptureIntakeStatus();
-      if (statusEl) statusEl.textContent = 'Bitte anmelden, um Intake zu erfassen.';
       renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
       if (wrap) wrap.classList.remove('busy');
       closeRefreshLog('done');
@@ -1043,7 +1017,6 @@
       const totals = await loadIntakeToday({ user_id: uid, dayIso, reason: refreshReason });
       captureIntakeState.totals = totals || { water_ml: 0, salt_g: 0, protein_g: 0 };
       captureIntakeState.logged = true;
-      try { __lsTotals = captureIntakeState.totals; updateLifestyleBars(); } catch(_) {}
     } catch (e) {
       captureIntakeState.totals = { water_ml: 0, salt_g: 0, protein_g: 0 };
       captureIntakeState.logged = false;
@@ -1077,19 +1050,7 @@
     const panel = btn.closest('#cap-intake-wrap') || document.getElementById('cap-intake-wrap');
     diag.add?.(`[capture] click ${kind}`);
 
-    try {
-      if (!AppModules.captureGlobals.getDateUserSelected()) {
-        const todayIso = todayStr();
-        const dateEl = document.getElementById('date');
-        const selected = dateEl?.value || '';
-        const stateDay = captureIntakeState.dayIso || '';
-        if (stateDay !== todayIso || (selected && selected !== todayIso)) {
-          await maybeRefreshForTodayChange({ force: true, source: 'capture:intake-click' });
-        }
-      }
-    } catch(_){ }
-
-    const dayIso = document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
     captureIntakeState.dayIso = dayIso;
 
     let value;
@@ -1176,19 +1137,7 @@
 
     diag.add?.('[capture] click salt+protein');
 
-    try {
-      if (!AppModules.captureGlobals.getDateUserSelected()) {
-        const todayIso = todayStr();
-        const dateEl = document.getElementById('date');
-        const selected = dateEl?.value || '';
-        const stateDay = captureIntakeState.dayIso || '';
-        if (stateDay !== todayIso || (selected && selected !== todayIso)) {
-          await maybeRefreshForTodayChange({ force: true, source: 'capture:intake-click' });
-        }
-      }
-    } catch (_) {}
-
-    const dayIso = document.getElementById('date')?.value || todayStr();
+    const dayIso = todayStr();
     captureIntakeState.dayIso = dayIso;
 
     const saltRaw = saltInput.value;
@@ -1282,8 +1231,6 @@
     };
 
     wire('cap-water-add-btn',   'water');
-    wire('cap-salt-add-btn',    'salt');
-    wire('cap-protein-add-btn', 'protein');
     const comboBtn = document.getElementById('cap-salt-protein-btn');
     if (comboBtn) {
       const replacement = comboBtn.cloneNode(true);
@@ -1356,93 +1303,9 @@
         setActiveIntakeTab(activeIntakeTab);
       }
 
-  function setProgState(el, state){
-    if (!el) return;
-    el.classList.remove('ok','warn','bad');
-    if (state) el.classList.add(state);
-  }
-
   function fmtDE(n, digits){
     if (!Number.isFinite(n)) return '0';
     return n.toFixed(digits).replace('.', ',');
-  }
-
-  function updateLifestyleBars(){
-    if (!isHandlerStageReady()) return;
-    const wBar = document.getElementById('ls-water-bar');
-    const wProg = document.getElementById('ls-water-prog');
-    const wLbl = document.getElementById('ls-water-label');
-    const sBar = document.getElementById('ls-salt-bar');
-    const sProg = document.getElementById('ls-salt-prog');
-    const sLbl = document.getElementById('ls-salt-label');
-    const pBar = document.getElementById('ls-protein-bar');
-    const pProg = document.getElementById('ls-protein-prog');
-    const pLbl = document.getElementById('ls-protein-label');
-
-    const w = Math.max(0, Math.min(__lsTotals.water_ml || 0, MAX_WATER_ML));
-    const s = Math.max(0, Math.min(__lsTotals.salt_g || 0, MAX_SALT_G));
-    const p = Math.max(0, Math.min(__lsTotals.protein_g || 0, MAX_PROTEIN_G));
-
-    const wPct = Math.min(1, w / LS_WATER_GOAL) * 100;
-    const sPct = Math.min(1, s / LS_SALT_MAX) * 100;
-    const pPct = Math.min(1, p / LS_PROTEIN_GOAL) * 100;
-
-    if (wBar) wBar.style.width = `${wPct.toFixed(1)}%`;
-    if (sBar) sBar.style.width = `${sPct.toFixed(1)}%`;
-    if (pBar) pBar.style.width = `${pPct.toFixed(1)}%`;
-
-    if (wLbl) {
-      let status = '';
-      if (w >= LS_WATER_GOAL * 1.1) status = ' * Ziel erreicht';
-      else if (w >= LS_WATER_GOAL * 0.9) status = ' * Zielbereich';
-      else if (w >= LS_WATER_GOAL * 0.5) status = ' * moderate Aufnahme';
-      else status = ' * niedrig';
-      wLbl.textContent = `${w|0} / ${LS_WATER_GOAL} ml${status}`;
-    }
-
-    if (sLbl) {
-      let status = ' * Zielbereich';
-      if (s > LS_SALT_MAX) status = ' * über Ziel';
-      else if (s >= 5) status = ' * Warnung';
-      sLbl.textContent = `${fmtDE(s,1)} / ${fmtDE(LS_SALT_MAX,1)} g${status}`;
-    }
-
-    if (pLbl) {
-      let status = ' * noch offen';
-      if (p >= 78 && p <= 90) status = ' * Zielbereich';
-      else if (p > 90) status = ' * über Ziel';
-      pLbl.textContent = `${fmtDE(p,1)} / ${fmtDE(LS_PROTEIN_GOAL,1)} g${status}`;
-    }
-
-    let wState = 'bad';
-    if (w >= LS_WATER_GOAL * 0.9) wState = 'ok';
-    else if (w >= LS_WATER_GOAL * 0.5) wState = 'warn';
-    setProgState(wProg, wState);
-
-    let sState = 'ok';
-    if (s > LS_SALT_MAX) sState = 'bad';
-    else if (s >= 5) sState = 'warn';
-    setProgState(sProg, sState);
-
-    let pState = 'neutral';
-    if (p >= 78 && p <= 90) pState = 'ok';
-    else if (p > 90) pState = 'bad';
-    setProgState(pProg, pState);
-  }
-
-  async function renderLifestyle(){
-    if (!isHandlerStageReady()) return;
-    const logged = await isLoggedIn?.();
-    if (!logged){
-      return;
-    }
-    try{
-      const uid = await getUserId?.();
-      const dayIso = todayStr();
-      const cur = await loadIntakeToday({ user_id: uid, dayIso });
-      __lsTotals = { water_ml: cur.water_ml||0, salt_g: cur.salt_g||0, protein_g: cur.protein_g||0 };
-      updateLifestyleBars();
-    }catch(_){ }
   }
 
 function initTrendpilotCaptureHook() {
@@ -1478,7 +1341,7 @@ function initTrendpilotCaptureHook() {
       const el = document.getElementById(id);
       if (el) el.disabled = state;
     });
-    ['cap-water-add-btn','cap-salt-add-btn','cap-protein-add-btn','cap-salt-protein-btn'].forEach(id => {
+    ['cap-water-add-btn','cap-salt-protein-btn'].forEach(id => {
       const btn = document.getElementById(id);
       if (btn) btn.disabled = state;
     });
@@ -1502,14 +1365,12 @@ function initTrendpilotCaptureHook() {
     scheduleNoonSwitch: scheduleNoonSwitch,
     maybeRefreshForTodayChange: maybeRefreshForTodayChange,
     bindIntakeCapture: bindIntakeCapture,
-    renderLifestyle: renderLifestyle,
-    updateLifestyleBars: updateLifestyleBars,
     fmtDE: fmtDE
   };
   appModules.capture = appModules.capture || {};
   Object.assign(appModules.capture, captureApi);
 
-  ['fmtDE', 'updateLifestyleBars'].forEach((key) => {
+  ['fmtDE'].forEach((key) => {
     if (typeof captureApi[key] !== 'function') return;
     if (typeof global[key] === 'undefined') {
       Object.defineProperty(global, key, {

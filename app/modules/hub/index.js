@@ -980,7 +980,6 @@
     setupPanels();
     setupDatePill(hub);
     moveIntakePillsToHub();
-    setupChat(hub);
     setupSpriteState(hub);
     setupCarouselController(hub);
     setupQuickbar(hub);
@@ -1114,6 +1113,7 @@
     };
 
     bindAssistantButton();
+    // Chart uses a shortcut: no hub panel exists; open doctor panel and trigger chart button.
     bindButton(
       '[data-hub-module="chart"]',
       async (btn) => {
@@ -1188,22 +1188,6 @@
       { sync: false },
     );
   };
-  const setupChat = (hub) => {
-    const form = hub.querySelector('#hubChatForm');
-    if (!form) return;
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const input = form.querySelector('#hubMessage');
-      const value = input?.value?.trim();
-      if (value) {
-        if (HUB_DEBUG_ENABLED) {
-          diag.add?.(`[hub-chat] stub send: ${value}`);
-        }
-        input.value = '';
-      }
-    });
-  };
-
   const setupSpriteState = (hub) => {
     const orb = hub.querySelector('.hub-orb');
     const fg = hub.querySelector('.hub-orb-fg');
