@@ -4,17 +4,25 @@ Added:
 - MIDAS Orbit Hub experience: shared hero markup, animated aura overlays, and a doc-ready .hub-panel stage replace the old Capture Hub preview. Panels open/close symmetrically (zoom-in/out easing), intake pills live inside the Intake panel, and stealth orbit buttons now read the same ARIA labels on desktop/mobile.
 - Trendpilot flow refresh: Capture header shows live severity pills, the Doctor Trendpilot block supports Plan/Done/Reset actions, and Supabase exposes fetchSystemCommentsRange + setSystemCommentDoctorStatus for chart overlays and pills.
 - Repository documentation sweep: every file under docs/modules/*.md was rewritten from the Module Update Plan, and docs/Supabase Proxy Refactor Plan.md tracks the upcoming proxy removal.
+- Boot error history persistence: last 3 normalized boot errors are now stored in `localStorage` and exposed via `bootFlow.getErrorHistory()` / `bootFlow.clearErrorHistory()`.
 
 Changed:
 - Doctor unlock flow: the first tap that triggers biometrics now opens the panel immediately after requireDoctorUnlock() resolves; subsequent clicks still reuse the guard state.
 - Hub overlay polish: body/backdrop locking uses smooth transitions, Milky glass dimming is driven by :has(.hub-panel.is-visible), and aura/halo boosts now use CSS variables so hover/touch feedback works regardless of DOM order.
 - QA and knowledge base: docs/QA_CHECKS.md begins with a Phase 4 checklist covering MIDAS Orbit, Trendpilot severity handling, diagnostics flagging and guard/resume; CHANGELOG formatting was normalised (UTF-8 dashes, no stray control chars).
+- Boot error handling: diagnostics are initialized earlier in bootstrap, and boot failures now route through a single `bootFlow.reportError(...)` path with normalized payload + duplicate guard.
+
+Fixed:
+- Boot error "Touch-Log oeffnen" is now reliable: if `diag.show()` is unavailable, a fallback log is rendered directly in the boot error panel.
+- Diagnostics panel visibility during `boot_error`: `#diag` is forced above `#bootScreen` and remains scrollable/clickable on desktop and mobile.
+- Very-early boot failures (before normal panel availability) now show a minimal plaintext fallback overlay (`#earlyBootErrorFallback`) until the standard boot error UI is available.
 
 Removed:
 - Legacy duplicates and experiment files (temp_snippet, index_normalized.html, *.bak/*.txt leftovers) to keep the tree clean before the Supabase proxy refactor.
 
 Docs:
 - docs/Module Update Plan.md tracks the refresh, docs/Supabase Proxy Refactor Plan.md defines the rewrite -> test -> remove workflow, and every module overview now reflects the current app/ layout.
+- docs/QA_CHECKS.md now includes `Phase F3 - Boot Error Browser Smoke` with a copy/paste console script for manual verification of boot error panel, fallback behavior, and persisted error history.
 ## v1.8.2 – Phase 2 Step 4-6 (App CSS/JS Switch)
 
 Added:

@@ -170,6 +170,8 @@
   const diag = {
     el: null,
     logEl: null,
+    closeEl: null,
+    onCloseClick: null,
     open: false,
     lines: [],
     eventIndex: new Map(),
@@ -248,22 +250,30 @@
     init() {
       try {
         monitorHeartbeat('diag-init');
-        this.el = document.getElementById('diag');
-        this.logEl = document.getElementById('diagLog');
-        if (this.logEl && this.lines.length) {
-          this.logEl.textContent = this.lines.join('\n');
+        const nextEl = document.getElementById('diag');
+        const nextLogEl = document.getElementById('diagLog');
+        const nextCloseEl = document.getElementById('diagClose');
+        if (nextEl) this.el = nextEl;
+        if (nextLogEl) this.logEl = nextLogEl;
+        if (this.logEl) {
+          this._refreshDom();
         }
-        const close = document.getElementById('diagClose');
-        const toggle = () => {
-          this.open = !this.open;
-          this.open ? this.show() : this.hide();
-        };
-        if (close) close.addEventListener('click', () => this.hide());
+        if (nextCloseEl && this.closeEl !== nextCloseEl) {
+          if (this.closeEl && this.onCloseClick) {
+            this.closeEl.removeEventListener('click', this.onCloseClick);
+          }
+          this.onCloseClick = () => this.hide();
+          this.closeEl = nextCloseEl;
+          this.closeEl.addEventListener('click', this.onCloseClick);
+        }
       } catch (err) {
         logDiagConsole('error', '[diagnostics:init] failed', err);
       }
     },
     show() {
+      if (!this.el) {
+        this.init();
+      }
       if (!this.el) return;
       monitorToggle(true);
       monitorHeartbeat('diag-open');

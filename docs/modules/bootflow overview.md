@@ -14,7 +14,7 @@ Purpose: single source of truth for how MIDAS boots, in which order modules are 
 2) `app/core/boot-flow.js` starts boot tracking and error overlay hooks.
 3) `app/supabase/index.js` exposes `window.AppModules.supabase` and emits `supabase:ready`.
 4) `assets/js/boot-auth.js` sets initial auth state and UI overlay.
-5) `assets/js/main.js` waits for Supabase API readiness, then binds auth watchers and module init.
+5) `assets/js/main.js` ensures diagnostics are ready early (`ensureDiagReady`) and then waits for Supabase API readiness.
 6) Each module `init()` runs: cache DOM refs, bind events, and set safe defaults.
 7) Auth state resolves; `afterLoginBoot` triggers the first refresh cycle.
 8) The UI refresh pipeline runs (capture, doctor, charts, trendpilot) in a controlled order.
@@ -30,6 +30,10 @@ Notes:
 - Auth state is authoritative and resolved before protected actions.
 - IndexedDB is initialized before any `dataLocal` read or write.
 - Modules do not force login; they request auth only when needed.
+- Boot errors are reported through one central path (`bootFlow.reportError`) with normalized payload fields.
+- Boot error diagnostics remain visible even if the diagnostics panel cannot be opened (fallback log in boot error panel).
+- Boot error history keeps the last 3 normalized entries in `localStorage` for post-crash inspection (`bootFlow.getErrorHistory()`).
+- Very-early boot errors before panel readiness are surfaced via a minimal plaintext fallback overlay (`#earlyBootErrorFallback`).
 
 ---
 
@@ -49,6 +53,8 @@ Notes:
 - Auth overlay flicker: auth state not known before UI initializes.
 - Duplicate Supabase clients: multiple `createClient` calls without a shared inflight lock.
 - Random refresh order: manual module refresh instead of `requestUiRefresh` pipeline.
+- "Touch-Log oeffnen does nothing": fixed by early diagnostics init + fallback renderer in boot error panel.
+- "Diag hidden under milkglass": fixed by boot-error-specific z-index rule (`#diag` above `#bootScreen`).
 
 ---
 
@@ -57,9 +63,11 @@ Notes:
 - `assets/js/boot-auth.js`: initial auth status and login overlay.
 - `app/supabase/index.js`: Supabase API export and readiness signal.
 - `app/supabase/core/client.js`: client creation and session persistence.
-- `app/core/boot-flow.js`: boot diagnostics and error overlay.
+- `app/core/boot-flow.js`: boot stage machine, central boot error reporting, fallback log rendering.
 - `app/core/diag.js`: boot logging and diagnostics.
-- `index.html`: script order is part of the boot contract.
+- `app/styles/base.css`: boot overlay and boot error fallback log styling.
+- `app/styles/auth.css`: diagnostics panel layering/scroll behavior in boot error mode.
+- `index.html`: script order and boot error panel markup are part of the boot contract.
 
 ---
 

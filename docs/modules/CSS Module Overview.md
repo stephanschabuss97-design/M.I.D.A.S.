@@ -150,6 +150,7 @@ Nur modul-spezifische Komponenten:
 - **`capture.css`**: Intake-Accordion, Progress, Pills.
 - **`doctor.css`**: Doctor-Ansicht, KPI/Grids, Trends.
 - **`auth.css`**: Login/Unlock/Busy Overlays.
+- **`auth.css`**: Login/Unlock/Busy Overlays sowie Diagnostics-Layering im `boot_error` Zustand.
 - **`chart.css`**: Chart-Visuals in Doctor.
 
 ---
@@ -180,6 +181,8 @@ Nur modul-spezifische Komponenten:
   - Pills/Badges: `.pill`, `.badge`.
   - Tabs: `.tabs` + `.btn.is-active` (global underline).
   - Panels: `.panel`, `.panel-header`, `.panel-body` (Hub/Capture).
+  - Boot error layering: `body[data-boot-stage="boot_error"] #diag` muss ueber `#bootScreen` liegen.
+  - Boot error fallback: `.boot-error-fallback-log` (in `base.css`) muss lesbar und scrollbar bleiben.
   - Hub-Scroll: `.hub-panel-scroll` ist der einzige Scroll-Container im Panel (keine `overflow`-Scrolls auf `.hub-panel-body`).
   - Hub-Scroll (Mobile): Kein `height: 100%` auf `.hub-panel-scroll`; nur `max-height` + `min-height` nutzen, sonst blockiert Scroll in der Arzt-Ansicht.
 
@@ -216,6 +219,8 @@ Nur modul-spezifische Komponenten:
 - Save-Feedback (Flash/Status) nutzt nur `ui.css`.
 - Feature-CSS redefiniert keine globalen Patterns.
 - Keine doppelten Pattern-Definitionen zwischen Feature-Dateien.
+- `boot_error`: Diagnostics-Panel ist ueber dem Bootscreen sichtbar/bedienbar (`#diag` > `#bootScreen`).
+- Boot-Error-Fallback-Log (`.boot-error-fallback-log`) ist im Overlay lesbar und vertikal scrollbar.
 
 ---
 

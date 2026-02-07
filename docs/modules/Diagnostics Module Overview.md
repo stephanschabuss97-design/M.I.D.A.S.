@@ -28,9 +28,9 @@ Related docs:
 | `app/diagnostics/perf.js` | Perf-Sampler (diagnosticsLayer.perf) |
 | `app/diagnostics/monitor.js` | Heartbeat/Monitor (diagnosticsLayer.monitor) |
 | `app/diagnostics/devtools.js` | Dev-Toggles (Push/Sound/Haptik/No-Cache) |
-| `app/core/boot-flow.js` | Boot-Fehleroverlay mit Touch-Log | 
+| `app/core/boot-flow.js` | Boot-Fehleroverlay + Fallback-Log + zentrale Error-Route |
 | `index.html` | Touch-Log Panel + Script-Reihenfolge |
-| `app/styles/utilities.css` | Touch-Log Styling |
+| `app/styles/base.css` | Bootscreen + Boot-Error-Fallback-Log Styling |
 | `app/styles/auth.css` | Diagnostics Panel Layout + Toggles |
 
 ---
@@ -38,7 +38,8 @@ Related docs:
 ## 3. Datenmodell / Storage
 
 - Ringbuffer im Logger (max Entries) + Perf-Samples im RAM.
-- Keine persistente Speicherung.
+- Keine persistente Speicherung im Diagnostics-Layer selbst.
+- Bootflow speichert zusaetzlich die letzten 3 Boot-Fehler in `localStorage` (separate Boot-Historie).
 
 ---
 
@@ -48,10 +49,13 @@ Related docs:
 - `diag.js` prueft `DIAGNOSTICS_ENABLED`.
 - Wenn deaktiviert: Stub-API.
 - Wenn aktiv: diag + diagnosticsLayer (logger/perf/monitor) werden gebunden.
+- `diag.init()` ist idempotent ausgelegt (kein mehrfaches Close-Handler-Binding).
+- `diag.show()` versucht lazy `init()`, falls das Panel noch nicht gebunden ist.
 
 ### 4.2 User-Trigger
 - Oeffnen/Schliessen des Touch-Log Panels.
-- Boot-Error Panel oeffnet diag bei Fehlern.
+- Boot-Error Panel versucht zuerst `diag.show()`.
+- Falls `diag` nicht verfuegbar/oeffnbar ist, zeigt Bootflow einen Fallback-Log direkt im Error-Panel.
 
 ### 4.3 Verarbeitung
 - `diag.add` schreibt UI-Log + forwarded an diagnosticsLayer.logger.
@@ -83,6 +87,9 @@ Related docs:
 - `diag.add` + `uiError` bei Fehlern.
 - Guarded Fallbacks wenn Diagnostics deaktiviert sind.
 - Unhandled Rejections werden gemeldet.
+- Boot-Fehler laufen zentral ueber `bootFlow.reportError(...)` mit normalisiertem Payload (`message`, `detail`, `phase`, `stack`, `timestamp`).
+- Duplicate-Guard im Bootflow reduziert Mehrfach-Fehler-Spam mit identischer Signatur.
+- Sehr fruehe Fehler (vor normaler Panel-Verfuegbarkeit) koennen ueber ein minimales Plaintext-Overlay (`#earlyBootErrorFallback`) sichtbar gemacht werden.
 
 ---
 
@@ -94,7 +101,10 @@ Related docs:
 - Constraints: `DIAGNOSTICS_ENABLED` kann Stub-API erzwingen.
 - `diag.add` wird von allen Modulen genutzt.
 - `recordPerfStat` wird von Charts/Capture genutzt.
-- Boot-Flow ruft `diag.show()` bei Fehlerzustand.
+- Boot-Flow nutzt `bootFlow.reportError(...)` als zentralen Fehler-Entry-Point.
+- Boot-Flow ruft `diag.show()` bei Fehlerzustand und hat einen UI-Fallback, falls das nicht greift.
+- Boot-Flow stellt `bootFlow.getErrorHistory()` und `bootFlow.clearErrorHistory()` fuer persistente Fehlerhistorie bereit.
+- Boot-Flow hat einen Early-Fallback fuer Fehler vor regularem Boot-Error-Panel (`#earlyBootErrorFallback`).
 
 ---
 
@@ -129,7 +139,8 @@ Related docs:
 - `DIAGNOSTICS_ENABLED=false` -> Stub-API.
 - Touch-Log zeigt neue Entries.
 - Perf-Samples sind abrufbar.
-- Boot-Error Panel oeffnet Touch-Log.
+- Boot-Error Panel: `Touch-Log oeffnen` oeffnet `#diag` oder zeigt Fallback-Log.
+- Im Zustand `boot_error` liegt `#diag` visuell ueber `#bootScreen` und bleibt bedienbar.
 
 ---
 

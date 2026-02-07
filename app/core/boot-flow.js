@@ -22,6 +22,9 @@
   const STAGES = ['BOOT', 'AUTH_CHECK', 'INIT_CORE', 'INIT_MODULES', 'INIT_UI', 'IDLE'];
   const FALLBACK_STAGE_ERROR = 'BOOT_ERROR';
   const STAGE_HANG_TIMEOUT_MS = 15000;
+  const BOOT_ERROR_HISTORY_KEY = 'midas.bootErrorHistory.v1';
+  const BOOT_ERROR_HISTORY_LIMIT = 3;
+  const EARLY_BOOT_ERROR_FALLBACK_ID = 'earlyBootErrorFallback';
   const stageLabels = {
     BOOT: 'BOOT',
     AUTH_CHECK: 'AUTH CHECK',
@@ -33,12 +36,239 @@
   };
   const bootErrorState = {
     message: '',
-    detail: ''
+    detail: '',
+    phase: '',
+    stack: '',
+    timestamp: '',
+    signature: ''
+  };
+  let bootErrorHistory = [];
+  let pendingEarlyFallbackText = '';
+  const getStorageSafe = () => {
+    try {
+      return global.localStorage || null;
+    } catch (_) {
+      return null;
+    }
+  };
+  const sanitizeHistoryEntry = (entry) => {
+    if (!entry || typeof entry !== 'object') return null;
+    const message = typeof entry.message === 'string' ? entry.message : '';
+    const detail = typeof entry.detail === 'string' ? entry.detail : '';
+    const phase = typeof entry.phase === 'string' ? entry.phase : '';
+    const stack = typeof entry.stack === 'string' ? entry.stack : '';
+    const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : '';
+    const signature = typeof entry.signature === 'string' ? entry.signature : '';
+    const recordedAt = typeof entry.recordedAt === 'string' ? entry.recordedAt : '';
+    if (!message && !detail) return null;
+    return {
+      message,
+      detail,
+      phase,
+      stack,
+      timestamp,
+      signature,
+      recordedAt
+    };
+  };
+  const saveBootErrorHistory = () => {
+    const storage = getStorageSafe();
+    if (!storage) return;
+    try {
+      if (!bootErrorHistory.length) {
+        storage.removeItem(BOOT_ERROR_HISTORY_KEY);
+        return;
+      }
+      storage.setItem(BOOT_ERROR_HISTORY_KEY, JSON.stringify(bootErrorHistory));
+    } catch (_) {
+      /* ignore storage errors */
+    }
+  };
+  const loadBootErrorHistory = () => {
+    const storage = getStorageSafe();
+    if (!storage) return [];
+    try {
+      const raw = storage.getItem(BOOT_ERROR_HISTORY_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map(sanitizeHistoryEntry)
+        .filter(Boolean)
+        .slice(0, BOOT_ERROR_HISTORY_LIMIT);
+    } catch (_) {
+      return [];
+    }
+  };
+  const pushBootErrorHistory = (payload) => {
+    const entry = sanitizeHistoryEntry({
+      ...payload,
+      recordedAt: new Date().toISOString()
+    });
+    if (!entry) return;
+    const head = bootErrorHistory[0];
+    if (head?.signature && entry.signature && head.signature === entry.signature) {
+      bootErrorHistory[0] = entry;
+    } else {
+      bootErrorHistory.unshift(entry);
+      bootErrorHistory = bootErrorHistory.slice(0, BOOT_ERROR_HISTORY_LIMIT);
+    }
+    saveBootErrorHistory();
   };
   const getBootErrorPanel = () => doc?.getElementById('bootErrorPanel');
   const getBootErrorMessageEl = () => doc?.getElementById('bootErrorMessage');
   const getBootErrorDetailEl = () => doc?.getElementById('bootErrorDetail');
   const getBootErrorDiagBtn = () => doc?.getElementById('bootErrorDiagBtn');
+  const getBootErrorFallbackLogEl = () => doc?.getElementById('bootErrorFallbackLog');
+  const getEarlyBootFallbackEl = () => doc?.getElementById(EARLY_BOOT_ERROR_FALLBACK_ID);
+  const applyEarlyFallbackStyle = (el) => {
+    if (!el?.style) return;
+    el.style.position = 'fixed';
+    el.style.left = '8px';
+    el.style.right = '8px';
+    el.style.top = '8px';
+    el.style.padding = '10px 12px';
+    el.style.margin = '0';
+    el.style.maxHeight = '45vh';
+    el.style.overflow = 'auto';
+    el.style.whiteSpace = 'pre-wrap';
+    el.style.background = '#0f1116';
+    el.style.color = '#f3f4f6';
+    el.style.border = '1px solid #ef4444';
+    el.style.borderRadius = '8px';
+    el.style.zIndex = '2147483647';
+    el.style.font = '12px/1.4 monospace';
+  };
+  const getDiagPanel = () =>
+    global.AppModules?.diag ||
+    global.diag ||
+    global.AppModules?.diagnostics?.diag ||
+    null;
+  const hideBootErrorFallbackLog = () => {
+    const el = getBootErrorFallbackLogEl();
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+  };
+  const hideEarlyBootFallback = () => {
+    const el = getEarlyBootFallbackEl();
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+  };
+  const buildEarlyFallbackText = (payload) => {
+    const lines = [];
+    lines.push('[MIDAS] Frueher Bootfehler');
+    lines.push(`Message: ${payload?.message || 'Boot fehlgeschlagen.'}`);
+    if (payload?.phase) lines.push(`Phase: ${payload.phase}`);
+    if (payload?.timestamp) lines.push(`Timestamp: ${payload.timestamp}`);
+    if (payload?.detail) lines.push(`Detail: ${payload.detail}`);
+    const stackLine = String(payload?.stack || '').split('\n')[0] || '';
+    if (stackLine) lines.push(`Stack: ${stackLine}`);
+    return lines.join('\n');
+  };
+  const renderEarlyBootFallback = (payload) => {
+    if (!doc) return false;
+    const text = buildEarlyFallbackText(payload);
+    const host = doc.body || doc.documentElement;
+    if (!host) {
+      pendingEarlyFallbackText = text;
+      return false;
+    }
+    let el = getEarlyBootFallbackEl();
+    if (!el) {
+      el = doc.createElement('pre');
+      el.id = EARLY_BOOT_ERROR_FALLBACK_ID;
+      applyEarlyFallbackStyle(el);
+      host.appendChild(el);
+    }
+    el.textContent = text;
+    el.hidden = false;
+    pendingEarlyFallbackText = '';
+    return true;
+  };
+  const flushEarlyBootFallbackIfPending = () => {
+    if (!pendingEarlyFallbackText || !doc) return;
+    const host = doc.body || doc.documentElement;
+    if (!host) return;
+    let el = getEarlyBootFallbackEl();
+    if (!el) {
+      el = doc.createElement('pre');
+      el.id = EARLY_BOOT_ERROR_FALLBACK_ID;
+      applyEarlyFallbackStyle(el);
+      host.appendChild(el);
+    }
+    el.textContent = pendingEarlyFallbackText;
+    el.hidden = false;
+    pendingEarlyFallbackText = '';
+  };
+  const collectFallbackLines = (reason = '') => {
+    const lines = [];
+    lines.push(`Message: ${bootErrorState.message || 'Boot fehlgeschlagen.'}`);
+    if (bootErrorState.phase) {
+      lines.push(`Phase: ${bootErrorState.phase}`);
+    }
+    if (bootErrorState.timestamp) {
+      lines.push(`Timestamp: ${bootErrorState.timestamp}`);
+    }
+    if (bootErrorState.detail) {
+      lines.push(`Detail: ${bootErrorState.detail}`);
+    }
+    if (reason) {
+      lines.push(`Reason: ${reason}`);
+    }
+    if (bootErrorState.stack) {
+      const stackLine = String(bootErrorState.stack).split('\n')[0] || '';
+      if (stackLine) lines.push(`Stack: ${stackLine}`);
+    }
+    const diagPanel = getDiagPanel();
+    const diagLines = Array.isArray(diagPanel?.lines) ? diagPanel.lines : [];
+    if (diagLines.length) {
+      lines.push('');
+      lines.push('Touch-Log (latest):');
+      diagLines.slice(0, 10).forEach((entry) => {
+        const render = typeof entry?.render === 'string' ? entry.render : String(entry ?? '');
+        if (render) lines.push(render);
+      });
+    }
+    return lines;
+  };
+  const renderBootErrorFallbackLog = (reason = '') => {
+    const panel = getBootErrorPanel();
+    if (!panel || !doc) return false;
+    let logEl = getBootErrorFallbackLogEl();
+    if (!logEl) {
+      logEl = doc.createElement('pre');
+      logEl.id = 'bootErrorFallbackLog';
+      logEl.className = 'boot-error-fallback-log';
+      panel.appendChild(logEl);
+    }
+    const lines = collectFallbackLines(reason);
+    logEl.textContent = lines.join('\n');
+    logEl.hidden = false;
+    const detailEl = getBootErrorDetailEl();
+    if (detailEl) {
+      detailEl.textContent = 'Fallback-Log aktiv (Touch-Log nicht verfuegbar).';
+    }
+    diag.add?.('[boot] fallback log rendered');
+    return true;
+  };
+  const tryOpenDiagPanel = () => {
+    try {
+      const diagPanel = getDiagPanel();
+      diagPanel?.show?.();
+      const visible =
+        !!diagPanel?.el &&
+        (diagPanel.el.style.display === 'block' || !diagPanel.el.hidden);
+      if (visible) {
+        hideBootErrorFallbackLog();
+        return true;
+      }
+    } catch (_) {
+      /* noop */
+    }
+    return false;
+  };
   let bootErrorDiagBound = false;
   const ensureBootErrorDiagBinding = () => {
     if (bootErrorDiagBound) return;
@@ -47,24 +277,70 @@
     bootErrorDiagBound = true;
     btn.addEventListener('click', (event) => {
       event?.preventDefault();
-      try {
-        const diagPanel =
-          global.AppModules?.diag ||
-          global.diag ||
-          global.AppModules?.diagnostics?.diag;
-        diagPanel?.show?.();
-      } catch (_) {
-        /* noop */
+      if (!tryOpenDiagPanel()) {
+        renderBootErrorFallbackLog('diag-open-failed');
       }
     });
   };
-  const setBootErrorState = (message, detail) => {
-    bootErrorState.message = message || 'Boot fehlgeschlagen.';
-    bootErrorState.detail = detail || '';
+  const normalizeErrorText = (value, fallback = '') => {
+    const text = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+    return text || fallback;
+  };
+  const normalizeErrorPayload = (errorInput, options = {}) => {
+    const input = errorInput ?? {};
+    const err = input instanceof Error ? input : null;
+    const source = err
+      ? { message: err.message, stack: err.stack }
+      : (typeof input === 'object' ? input : { message: input });
+    const message = normalizeErrorText(source.message, 'Boot fehlgeschlagen.');
+    const phase = normalizeStage(options.phase || source.phase || currentStage || 'BOOT');
+    const timestamp = normalizeErrorText(
+      source.timestamp || options.timestamp,
+      new Date().toISOString()
+    );
+    const stack = normalizeErrorText(source.stack, '').slice(0, 4000);
+    const detail =
+      normalizeErrorText(options.detail || source.detail, '') ||
+      `Phase ${phase} @ ${timestamp}`;
+    const signature = `${phase}|${message}|${stack.split('\n')[0] || ''}`;
+    return { message, detail, phase, stack, timestamp, signature };
+  };
+  const applyBootErrorState = (payload) => {
+    bootErrorState.message = payload.message;
+    bootErrorState.detail = payload.detail;
+    bootErrorState.phase = payload.phase;
+    bootErrorState.stack = payload.stack;
+    bootErrorState.timestamp = payload.timestamp;
+    bootErrorState.signature = payload.signature;
+  };
+  const reportBootError = (errorInput, options = {}) => {
+    const payload = normalizeErrorPayload(errorInput, options);
+    if (payload.signature && payload.signature === bootErrorState.signature) {
+      diag.add?.('[boot] duplicate boot error suppressed');
+      if (currentStage === FALLBACK_STAGE_ERROR) {
+        updateDom();
+        return currentStage;
+      }
+    }
+    applyBootErrorState(payload);
+    pushBootErrorHistory(payload);
+    if (!getBootErrorPanel()) {
+      renderEarlyBootFallback(payload);
+    }
+    setConfigStatusSafe(payload.message, options.tone || 'error');
+    diag.add?.(
+      `[boot] error reported phase=${payload.phase} reason=${options.reason || 'manual'}`
+    );
+    if (currentStage === FALLBACK_STAGE_ERROR) {
+      updateDom();
+      return currentStage;
+    }
+    return commitStage(FALLBACK_STAGE_ERROR, { reason: options.reason || 'manual-fail' });
   };
   const syncBootErrorPanel = () => {
     const panel = getBootErrorPanel();
     if (!panel) return;
+    hideEarlyBootFallback();
     ensureBootErrorDiagBinding();
     const isError = currentStage === FALLBACK_STAGE_ERROR;
     panel.hidden = !isError;
@@ -79,6 +355,7 @@
       detailEl.textContent =
         bootErrorState.detail || 'Weitere Details im Touch-Log sehen.';
     }
+    hideBootErrorFallbackLog();
   };
 
   /** SUBMODULE: Config-Status Buffer **/
@@ -183,9 +460,14 @@
     hangTimer = setTimeout(() => {
       diag.add?.(`[boot] stage timeout @ ${hangOrigin}`);
       const timeoutMessage = 'Boot hängt, bitte neu laden.';
-      setBootErrorState(timeoutMessage, `Phase ${hangOrigin} reagiert nicht.`);
-      setConfigStatusSafe(timeoutMessage, 'error');
-      commitStage(FALLBACK_STAGE_ERROR, { reason: 'timeout' });
+      reportBootError(
+        {
+          message: timeoutMessage,
+          phase: hangOrigin,
+          detail: `Phase ${hangOrigin} reagiert nicht.`
+        },
+        { reason: 'timeout' }
+      );
     }, STAGE_HANG_TIMEOUT_MS);
   };
 
@@ -196,7 +478,9 @@
     const reasonStr = options.reason ? ` (${options.reason})` : '';
     currentStage = normalized;
     if (normalized === FALLBACK_STAGE_ERROR && !bootErrorState.message) {
-      setBootErrorState('Boot fehlgeschlagen.', '');
+      applyBootErrorState(
+        normalizeErrorPayload('Boot fehlgeschlagen.', { phase: prevStage || 'BOOT' })
+      );
     }
     diag.add?.(`[boot] stage ${prevStage} -> ${normalized}${reasonStr}`);
     updateDom();
@@ -244,10 +528,17 @@
     isStageAtLeast: (stage) => stageOrder(currentStage) >= stageOrder(stage),
     report: setConfigStatusSafe,
     getLastError: () => ({ ...bootErrorState }),
+    getErrorHistory: () => bootErrorHistory.map((entry) => ({ ...entry })),
+    clearErrorHistory: () => {
+      bootErrorHistory = [];
+      saveBootErrorHistory();
+    },
+    reportError: reportBootError,
     markFailed: (message = 'Boot fehlgeschlagen.', detail = '') => {
-      setBootErrorState(message, detail);
-      setConfigStatusSafe(message, 'error');
-      return commitStage(FALLBACK_STAGE_ERROR, { reason: 'manual-fail' });
+      return reportBootError(
+        { message, detail, phase: currentStage },
+        { reason: 'manual-fail' }
+      );
     }
   };
 
@@ -256,12 +547,14 @@
 
   /** SUBMODULE: Init **/
   const initialize = () => {
+    bootErrorHistory = loadBootErrorHistory();
     updateDom();
     startHangTimer(currentStage);
     if (doc?.readyState === 'loading') {
       doc.addEventListener(
         'DOMContentLoaded',
         () => {
+          flushEarlyBootFallbackIfPending();
           updateDom();
           flushPendingConfigStatus();
         },

@@ -42,11 +42,22 @@ const setBootStage = (stage) => {
     /* ignore */
   }
 };
-const failBootStage = (message) => {
+const failBootStage = (errorInput, options = {}) => {
+  const bootFlow = getBootFlow();
+  if (!bootFlow) return false;
   try {
-    getBootFlow()?.markFailed?.(message);
+    if (typeof bootFlow.reportError === 'function') {
+      bootFlow.reportError(errorInput, options);
+      return true;
+    }
+    const fallbackMessage =
+      typeof errorInput === 'string'
+        ? errorInput
+        : (errorInput?.message || 'Boot fehlgeschlagen.');
+    bootFlow.markFailed?.(fallbackMessage, options.detail || '');
+    return true;
   } catch (_) {
-    /* ignore */
+    return false;
   }
 };
 const logBootDiag = (message, err) => {
@@ -321,6 +332,17 @@ const waitForDomReady = () => {
     document.addEventListener('DOMContentLoaded', resolve, { once: true });
   });
 };
+const ensureDiagReady = async ({ waitForDom = false } = {}) => {
+  if (waitForDom) {
+    await waitForDomReady();
+  }
+  try {
+    diag.init?.();
+  } catch (_) {
+    /* diag not ready */
+  }
+  return !!diag?.el;
+};
 
 const setInputValue = (selector, value) => {
   const el = document.querySelector(selector);
@@ -337,11 +359,11 @@ async function runBootPhase() {
   logBootPhaseSummary('BOOT', 'start');
   try {
     await waitForDomReady();
+    await ensureDiagReady();
     const modulesReady = await ensureModulesReady();
     if (!modulesReady) {
       throw new Error('required modules missing');
     }
-    diag.init();
     helpPanel?.init?.();
     logBootPhaseSummary('BOOT', 'done');
   } catch (err) {
@@ -1790,6 +1812,7 @@ const startBootProcess = () => {
   window.__bootDone = true;
   logBootPhaseSummary('BOOTSTRAP', 'start');
   (async () => {
+    await ensureDiagReady({ waitForDom: true });
     try {
       await waitForSupabaseApi({ timeout: 8000 });
     } catch (err) {
@@ -1803,8 +1826,18 @@ const startBootProcess = () => {
     .catch((err) => {
       const message = err?.message || 'Boot fehlgeschlagen.';
       window.__bootFailed = true;
-      failBootStage(message);
-      showBootErrorBanner(message);
+      const reported = failBootStage(
+        {
+          message,
+          detail: 'Fataler Fehler im Bootstrap.',
+          phase: 'BOOTSTRAP',
+          stack: err?.stack || ''
+        },
+        { reason: 'bootstrap-catch', phase: 'BOOTSTRAP' }
+      );
+      if (!reported) {
+        showBootErrorBanner(message);
+      }
       logBootDiag('fatal', err || message);
       logBootPhaseSummary('BOOTSTRAP', 'failed', message, 'error');
     });

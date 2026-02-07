@@ -25,6 +25,18 @@
   display: none;
   z-index: 9998;
 }
+
+body[data-boot-stage="boot_error"] #diag {
+  z-index: 100001;
+  pointer-events: auto;
+  max-height: min(88vh, calc(100vh - 16px));
+}
+
+body[data-boot-stage="boot_error"] #diag .diag-log,
+body[data-boot-stage="boot_error"] #diag pre {
+  max-height: min(60vh, calc(100vh - 180px));
+  overflow: auto;
+}
 .panel header {
   display: flex;
   gap: 6px;
@@ -223,5 +235,11 @@ body[data-boot-stage]:not([data-boot-stage="idle"]) #busy {
   }
   #diag .diag-controls {
     flex: 1 1 auto;
+  }
+  body[data-boot-stage="boot_error"] #diag {
+    width: calc(100vw - 16px);
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
   }
 }
