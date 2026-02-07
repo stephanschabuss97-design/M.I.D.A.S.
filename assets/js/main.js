@@ -708,7 +708,8 @@ function setDoctorAccess(enabled){
     chartBtn.disabled = !enabled;
     chartBtn.title = enabled ? 'Werte als Grafik' : 'Bitte zuerst anmelden';
   }
-  /** END MODULE */
+}
+/** END MODULE */
   
 /** MODULE: UTILITIES
  * intent: generische DOM/Format Helper fuer das Monolith-Skript
