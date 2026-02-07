@@ -12,6 +12,7 @@
   const installBanner = global.document?.getElementById('installBanner');
   const installBtn = global.document?.getElementById('installBtn');
   let deferredInstallPrompt = null;
+  let didApplyControllerReload = false;
   const showUpdateBanner = () => {
     if (!updateBanner) return;
     updateBanner.hidden = false;
@@ -69,9 +70,39 @@
     hideInstallBanner();
   });
 
-  global.navigator.serviceWorker.addEventListener('controllerchange', () => {
+  const applyControllerReload = () => {
+    if (didApplyControllerReload) return;
+    didApplyControllerReload = true;
     hideUpdateBanner();
     global.location.reload();
+  };
+  const scheduleControllerReload = () => {
+    const bootFlow = global.AppModules?.bootFlow || null;
+    if (!bootFlow?.whenStage || !bootFlow?.getStage) {
+      applyControllerReload();
+      return;
+    }
+    const currentStage = String(bootFlow.getStage() || '');
+    if (currentStage === 'IDLE' || currentStage === 'BOOT_ERROR') {
+      applyControllerReload();
+      return;
+    }
+    let settled = false;
+    const timer = global.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe?.();
+      applyControllerReload();
+    }, 2000);
+    const unsubscribe = bootFlow.whenStage('IDLE', () => {
+      if (settled) return;
+      settled = true;
+      global.clearTimeout(timer);
+      applyControllerReload();
+    });
+  };
+  global.navigator.serviceWorker.addEventListener('controllerchange', () => {
+    scheduleControllerReload();
   });
 
   global.addEventListener('load', () => {

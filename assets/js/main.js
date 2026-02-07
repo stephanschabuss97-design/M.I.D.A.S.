@@ -60,6 +60,29 @@ const failBootStage = (errorInput, options = {}) => {
     return false;
   }
 };
+
+const buildDeterministicBootFallback = (err) => {
+  const code = String(err?.code || '').trim().toUpperCase();
+  const message = err?.message || 'Boot fehlgeschlagen.';
+  const stack = err?.stack || '';
+  if (code === 'SUPABASE_READY_TIMEOUT') {
+    return {
+      message: 'Supabase Readiness Timeout',
+      detail: 'Supabase API war in AUTH_CHECK nicht rechtzeitig bereit.',
+      reason: 'auth-check-supabase-timeout',
+      phase: 'AUTH_CHECK',
+      stack: stack || message
+    };
+  }
+  return {
+    message,
+    detail: 'Fataler Fehler im Bootstrap.',
+    reason: 'bootstrap-catch',
+    phase: 'BOOTSTRAP',
+    stack
+  };
+};
+
 const logBootDiag = (message, err) => {
   const suffix = err ? ` (${err?.message || err})` : '';
   try {
@@ -332,6 +355,50 @@ const waitForDomReady = () => {
     document.addEventListener('DOMContentLoaded', resolve, { once: true });
   });
 };
+
+const waitForAuthDecisionSoft = async ({ timeoutMs = 1200 } = {}) => {
+  if (!hasSupabaseFn('waitForAuthDecision')) return 'missing';
+  if (isAuthDecisionKnown()) return 'known';
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve('timeout'), Math.max(0, Number(timeoutMs) || 0));
+  });
+  try {
+    const result = await Promise.race([
+      Promise.resolve()
+        .then(() => waitForAuthDecisionFn())
+        .then(() => 'resolved')
+        .catch((err) => {
+          diag.add?.('[boot] waitForAuthDecision failed: ' + (err?.message || err));
+          return 'error';
+        }),
+      timeoutPromise
+    ]);
+    return result || 'resolved';
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const isSupabaseReadyTimeoutError = (err) =>
+  /SupabaseAPI not ready within timeout/i.test(String(err?.message || err || ''));
+
+const ensureSupabaseReadyForAuth = async ({ timeoutMs = 6000 } = {}) => {
+  if (getSupabaseApi({ silent: true })) return 'ready';
+  try {
+    await waitForSupabaseApi({ timeout: timeoutMs });
+    return 'waited';
+  } catch (err) {
+    if (isSupabaseReadyTimeoutError(err)) {
+      const wrapped = new Error('Supabase readiness timeout during AUTH_CHECK');
+      wrapped.code = 'SUPABASE_READY_TIMEOUT';
+      wrapped.cause = err;
+      throw wrapped;
+    }
+    throw err;
+  }
+};
+
 const ensureDiagReady = async ({ waitForDom = false } = {}) => {
   if (waitForDom) {
     await waitForDomReady();
@@ -364,7 +431,6 @@ async function runBootPhase() {
     if (!modulesReady) {
       throw new Error('required modules missing');
     }
-    helpPanel?.init?.();
     logBootPhaseSummary('BOOT', 'done');
   } catch (err) {
     logBootPhaseSummary('BOOT', 'failed', err?.message || err, 'error');
@@ -372,20 +438,35 @@ async function runBootPhase() {
   }
 }
 
+let postIdleWarmupsStarted = false;
+const runPostIdleWarmups = async () => {
+  if (postIdleWarmupsStarted) return;
+  postIdleWarmupsStarted = true;
+  try {
+    helpPanel?.init?.();
+  } catch (_) {
+    /* help panel warmup optional */
+  }
+  try {
+    if (hasSupabaseFn('cleanupOldIntake') && await isLoggedInFast()) {
+      await cleanupOldIntake();
+    }
+  } catch (err) {
+    diag.add?.('[boot] post-idle cleanup failed: ' + (err?.message || err));
+  }
+};
+
 async function runAuthCheckPhase(context) {
   setBootStage('AUTH_CHECK');
   logBootPhaseSummary('AUTH_CHECK', 'start');
   try {
-    await waitForSupabaseApi();
+    await ensureSupabaseReadyForAuth({ timeoutMs: 6000 });
     await initDB();
     await ensureSupabaseClient();
     context.hasSession = await requireSession();
-    if (hasSupabaseFn('waitForAuthDecision')) {
-      try {
-        await waitForAuthDecisionFn();
-      } catch (err) {
-        diag.add?.('[boot] waitForAuthDecision failed: ' + (err?.message || err));
-      }
+    const authDecisionState = await waitForAuthDecisionSoft({ timeoutMs: 1200 });
+    if (authDecisionState === 'timeout') {
+      diag.add?.('[boot] waitForAuthDecision timeout (continue)');
     }
     if (context.hasSession) {
       await afterLoginBoot();
@@ -393,6 +474,9 @@ async function runAuthCheckPhase(context) {
     }
     logBootPhaseSummary('AUTH_CHECK', 'done', context.hasSession ? 'session active' : 'unauthenticated');
   } catch (err) {
+    if (err?.code === 'SUPABASE_READY_TIMEOUT') {
+      diag.add?.('[boot] auth-check Supabase readiness timeout');
+    }
     logBootPhaseSummary('AUTH_CHECK', 'failed', err?.message || err, 'error');
     throw err;
   }
@@ -429,16 +513,24 @@ async function initModulesPhase() {
   bindAuthButtons();
   if (getSupabaseState()?.sbClient) watchAuthState();
   try { window.AppModules.capture?.addCapturePanelKeys?.(); } catch(_){ }
+  // S2.1 candidate (non-critical before first interaction):
+  // full day-change refresh can be deferred after first interactive state.
   await maybeRefreshForTodayChange({ force: true, source: 'boot' });
   try {
+    // S2.1 candidate (non-critical before first interaction):
+    // eager capture refresh is useful but not required to unlock initial UI.
     await window.AppModules.capture?.refreshCaptureIntake?.('tab:capture');
   } catch(_) {}
   AppModules.captureGlobals.setLastKnownToday(todayStr());
+  // S2.1 candidate (non-critical before first interaction):
+  // scheduler setup can run after initial unlock without user-visible risk.
   scheduleMidnightRefresh();
   scheduleNoonSwitch();
   maybeAutoApplyBpContext({ source: 'boot-post-refresh' });
   bindAppLockButtons();
 
+  // S2.1 candidate (non-critical before first interaction):
+  // config diagnostics readout is informational and can be moved later.
   const savedUrl = await getConf('webhookUrl');
   const savedKey = await getConf('webhookKey');
   diag.add?.('Config URL: ' + (savedUrl || '(none)'));
@@ -449,6 +541,8 @@ async function initModulesPhase() {
     setTab('capture');
   }
 
+  // S2.1 candidate (non-critical before first interaction):
+  // non-critical input listeners can be attached post-IDLE.
   ['#captureAmount', '#diaM', '#bpCommentM', '#sysA', '#diaA', '#bpCommentA'].forEach((sel) => {
     const el = $(sel);
     if (!el) return;
@@ -469,24 +563,39 @@ async function initModulesPhase() {
   }
 
   window.AppModules.capture?.bindIntakeCapture?.();
-  try {
-    if (hasSupabaseFn('cleanupOldIntake') && await isLoggedInFast()) {
-      await cleanupOldIntake();
-    }
-  } catch (_) {}
   logBootPhaseSummary('INIT_MODULES', 'done');
 }
 
 async function initUiAndLiftLockPhase() {
   setBootStage('INIT_UI');
   logBootPhaseSummary('INIT_UI', 'start');
-  await requestUiRefresh({ reason: 'boot:initial' });
   $$('#appMain input, #appMain select, #appMain textarea, #appMain button, nav.tabs button').forEach((el) => {
     el.disabled = false;
   });
   document.body.classList.remove('auth-locked');
   setBootStage('IDLE');
   logBootPhaseSummary('INIT_UI', 'done');
+
+  // S2.3: keep boot-error flow deterministic.
+  // Post-IDLE refresh must never re-enter boot error routing.
+  const schedulePostIdleRefresh = () => {
+    if (window.__bootFailed) return;
+    const bootFlow = getBootFlow();
+    const stage = bootFlow?.getStage?.();
+    if (stage && stage !== 'IDLE') return;
+    return requestUiRefresh({ reason: 'boot:initial' });
+  };
+
+  // S2.2: free first interaction before heavy doctor/chart refresh.
+  // Keep the refresh, but run it immediately after IDLE in background.
+  Promise.resolve()
+    .then(async () => {
+      await schedulePostIdleRefresh();
+      await runPostIdleWarmups();
+    })
+    .catch((err) => {
+      diag.add?.('[boot] post-idle refresh failed: ' + (err?.message || err));
+    });
 
   window.addEventListener('online', async () => {
     try {
@@ -1813,27 +1922,25 @@ const startBootProcess = () => {
   logBootPhaseSummary('BOOTSTRAP', 'start');
   (async () => {
     await ensureDiagReady({ waitForDom: true });
-    try {
-      await waitForSupabaseApi({ timeout: 8000 });
-    } catch (err) {
-      diag.add?.('[boot] Supabase API not ready before boot, continuing...');
-    }
+    // S3.1: avoid duplicate Supabase readiness waits in bootstrap.
+    // Readiness is already handled in runBootPhase/ensureModulesReady and AUTH_CHECK.
     return main();
   })()
     .then(() => {
       logBootPhaseSummary('BOOTSTRAP', 'done');
     })
     .catch((err) => {
-      const message = err?.message || 'Boot fehlgeschlagen.';
+      const fallback = buildDeterministicBootFallback(err);
+      const message = fallback.message || err?.message || 'Boot fehlgeschlagen.';
       window.__bootFailed = true;
       const reported = failBootStage(
         {
           message,
-          detail: 'Fataler Fehler im Bootstrap.',
-          phase: 'BOOTSTRAP',
-          stack: err?.stack || ''
+          detail: fallback.detail,
+          phase: fallback.phase || 'BOOTSTRAP',
+          stack: fallback.stack || ''
         },
-        { reason: 'bootstrap-catch', phase: 'BOOTSTRAP' }
+        { reason: fallback.reason || 'bootstrap-catch', phase: fallback.phase || 'BOOTSTRAP' }
       );
       if (!reported) {
         showBootErrorBanner(message);

@@ -102,6 +102,8 @@ const GET_USER_TIMEOUT_MS = globalWindow?.GET_USER_TIMEOUT_MS ?? 2000;
 const defaultSetupRealtime = async () => undefined;
 const defaultResumeFromBackground = async () => undefined;
 const noopRealtime = () => undefined;
+const isIndexedDbPendingError = (err) =>
+  /IndexedDB not initialized/i.test(String(err?.message || err || ''));
 
 // SUBMODULE: fallbackUserId @internal - Rückfall bei Fehlern/Timeouts
 const fallbackUserId = (variant) => {
@@ -467,6 +469,14 @@ export async function getUserId() {
   const LOG_KEY = 'auth:getUserId';
   try {
     logDiagStart(LOG_KEY, '[auth] getUserId start');
+    const bootStage = getBootFlow()?.getStage?.();
+    const preInitCoreStage =
+      !bootStage || bootStage === 'BOOT' || bootStage === 'AUTH_CHECK';
+    if (!supabaseState.sbClient && preInitCoreStage) {
+      // S4.1: avoid IndexedDB-backed client bootstrap before initDB/INIT_CORE.
+      logDiagEnd(LOG_KEY, '[auth] getUserId done null (boot-pending)');
+      return null;
+    }
     const supa = await ensureSupabaseClient();
     if (!supa) {
       const fallback = fallbackUserId('noClient');
@@ -516,6 +526,10 @@ export async function getUserId() {
     logDiagEnd(LOG_KEY, '[auth] getUserId done null');
     return null;
   } catch (e) {
+    if (isIndexedDbPendingError(e)) {
+      logDiagEnd(LOG_KEY, '[auth] getUserId done null (db-init-pending)');
+      return null;
+    }
     diag.add?.('[auth] getUserId error: ' + (e?.message || e));
     const fallbackError = fallbackUserId('error');
     if (fallbackError) {

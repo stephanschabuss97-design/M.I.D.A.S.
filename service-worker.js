@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 
@@ -14,7 +14,19 @@ const CORE_ASSETS = [
   toUrl('app/core/boot-flow.js'),
   toUrl('app/core/config.js'),
   toUrl('app/core/diag.js'),
+  toUrl('app/core/feedback.js'),
   toUrl('app/core/pwa.js'),
+  toUrl('app/core/utils.js'),
+  toUrl('app/core/capture-globals.js'),
+  toUrl('assets/js/ui.js'),
+  toUrl('assets/js/ui-layout.js'),
+  toUrl('assets/js/ui-errors.js'),
+  toUrl('assets/js/format.js'),
+  toUrl('assets/js/data-local.js'),
+  toUrl('assets/js/ui-tabs.js'),
+  toUrl('app/supabase/index.js'),
+  toUrl('assets/js/boot-auth.js'),
+  toUrl('assets/js/main.js'),
   toUrl('public/manifest.json'),
   toUrl('public/img/icons/icon-192.png'),
   toUrl('public/img/icons/icon-512.png'),
@@ -30,6 +42,15 @@ const isStaticAsset = (request) => {
     return ['style', 'script', 'image', 'font'].includes(request.destination);
   }
   return /\.(css|js|png|jpe?g|webp|svg|avif|ico|json|woff2?)$/i.test(request.url);
+};
+const getNavigateFallbackResponse = async (request) => {
+  const direct = await caches.match(request);
+  if (direct) return direct;
+  const shellIndex = await caches.match(toUrl('index.html'));
+  if (shellIndex) return shellIndex;
+  const shellRoot = await caches.match(toUrl('./'));
+  if (shellRoot) return shellRoot;
+  return caches.match(toUrl('offline.html'));
 };
 
 self.addEventListener('install', (event) => {
@@ -73,9 +94,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() =>
-          caches.match(request).then((cached) => cached || caches.match(toUrl('offline.html')))
-        )
+        .catch(() => getNavigateFallbackResponse(request))
     );
     return;
   }
