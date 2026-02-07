@@ -5,17 +5,23 @@ Added:
 - Trendpilot flow refresh: Capture header shows live severity pills, the Doctor Trendpilot block supports Plan/Done/Reset actions, and Supabase exposes fetchSystemCommentsRange + setSystemCommentDoctorStatus for chart overlays and pills.
 - Repository documentation sweep: every file under docs/modules/*.md was rewritten from the Module Update Plan, and docs/Supabase Proxy Refactor Plan.md tracks the upcoming proxy removal.
 - Boot error history persistence: last 3 normalized boot errors are now stored in `localStorage` and exposed via `bootFlow.getErrorHistory()` / `bootFlow.clearErrorHistory()`.
+- Bootflow optimization roadmap (`S1`-`S8`) completed with deterministic validation artifacts (stage, PWA, diagnostics, regression).
 
 Changed:
 - Doctor unlock flow: the first tap that triggers biometrics now opens the panel immediately after requireDoctorUnlock() resolves; subsequent clicks still reuse the guard state.
 - Hub overlay polish: body/backdrop locking uses smooth transitions, Milky glass dimming is driven by :has(.hub-panel.is-visible), and aura/halo boosts now use CSS variables so hover/touch feedback works regardless of DOM order.
 - QA and knowledge base: docs/QA_CHECKS.md begins with a Phase 4 checklist covering MIDAS Orbit, Trendpilot severity handling, diagnostics flagging and guard/resume; CHANGELOG formatting was normalised (UTF-8 dashes, no stray control chars).
 - Boot error handling: diagnostics are initialized earlier in bootstrap, and boot failures now route through a single `bootFlow.reportError(...)` path with normalized payload + duplicate guard.
+- Boot critical path: non-critical warmups and the heavy initial doctor/chart refresh now run post-`IDLE`, reducing pre-interaction blocking without changing auth/guard semantics.
+- Auth/readiness flow: redundant Supabase preflight waits in bootstrap removed; `AUTH_CHECK` keeps deterministic `requireSession` gating with opportunistic auth-decision wait.
+- PWA update flow: `controllerchange` reload is now boot-aware (prefer reload at `IDLE`, timeout fallback remains).
+- Service worker navigate fallback: app-shell-first strategy (`request -> index -> ./ -> offline`) keeps boot UI consistent in offline navigation.
 
 Fixed:
 - Boot error "Touch-Log oeffnen" is now reliable: if `diag.show()` is unavailable, a fallback log is rendered directly in the boot error panel.
 - Diagnostics panel visibility during `boot_error`: `#diag` is forced above `#bootScreen` and remains scrollable/clickable on desktop and mobile.
 - Very-early boot failures (before normal panel availability) now show a minimal plaintext fallback overlay (`#earlyBootErrorFallback`) until the standard boot error UI is available.
+- Early-boot auth/data race: `getUserId` no longer throws noisy IndexedDB-init errors during boot startup; deterministic null-return guards prevent premature storage access.
 
 Removed:
 - Legacy duplicates and experiment files (temp_snippet, index_normalized.html, *.bak/*.txt leftovers) to keep the tree clean before the Supabase proxy refactor.
@@ -23,6 +29,8 @@ Removed:
 Docs:
 - docs/Module Update Plan.md tracks the refresh, docs/Supabase Proxy Refactor Plan.md defines the rewrite -> test -> remove workflow, and every module overview now reflects the current app/ layout.
 - docs/QA_CHECKS.md now includes `Phase F3 - Boot Error Browser Smoke` with a copy/paste console script for manual verification of boot error panel, fallback behavior, and persisted error history.
+- docs/QA_CHECKS.md now includes `Phase F4 - Bootflow Optimization Regression` for Cold/Warm/PWA and update/offline checks.
+- docs/modules/bootflow overview.md and docs/modules/Diagnostics Module Overview.md synced to the final bootflow/pwa/diagnostics architecture.
 ## v1.8.2 – Phase 2 Step 4-6 (App CSS/JS Switch)
 
 Added:

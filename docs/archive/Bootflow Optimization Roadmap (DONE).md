@@ -79,9 +79,9 @@ Forbidden:
 | S3 | Supabase/Auth Readiness-Handshake optimieren | DONE | S3.1-S3.4 abgeschlossen: redundante Waits reduziert, Auth-Wait opportunistisch, Timeout-/Slow-API-Pfade gehaertet, deterministischer Bootstrap-Fallback dokumentiert. |
 | S4 | UI-Initialisierung und erste Interaktion optimieren | DONE | S4.1-S4.4 abgeschlossen: Race gefixt, Warmups post-IDLE, Hub/Open-Flow und Mobile/PWA-Sanity ohne regressiven Befund. |
 | S5 | PWA/SW Einfluss auf Boot kontrollieren | DONE | S5.1-S5.4 abgeschlossen: Boot-Assets gecacht, `controllerchange` boot-sicher, Navigate-Fallback app-shell-first, Update-Flows ohne regressiven Befund. |
-| S6 | Diagnostics-/Boot-Error-Verhalten gegenpruefen | TODO | |
-| S7 | Vollstaendige Smoke/Regression ausfuehren | TODO | |
-| S8 | Abschluss, Doku-Sync, Changelog | TODO | |
+| S6 | Diagnostics-/Boot-Error-Verhalten gegenpruefen | DONE | S6.1-S6.4 via Node-Mock-Smokes verifiziert (Touch-Log/Fallbacks/History/Duplicate-Guard), alle Checks gruen. |
+| S7 | Vollstaendige Smoke/Regression ausfuehren | DONE | Automatisierbare S7-Smokes/Guards ausgefuehrt (Boot no-error/forced-error, PWA Update/Install, Auth/Doctor/Realtime/Hub statisch), alle Checks gruen; Endgeraete-E2E bleibt als Rest-Risiko. |
+| S8 | Abschluss, Doku-Sync, Changelog | DONE | Status finalisiert; Bootflow-/Diagnostics-Dokus, QA_CHECKS (F4) und CHANGELOG auf finalen Ist-Zustand synchronisiert. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -228,7 +228,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S3.3 Fehlerszenarien (langsame API, timeout) pruefen.
 - S3.4 Deterministischen Fallback dokumentieren.
 
-#### S3 Ergebnisprotokoll (in progress)
+#### S3 Ergebnisprotokoll (abgeschlossen)
 - S3.1 Befund (abgeschlossen):
 - Vorher lag ein redundanter Wait-Pfad vor:
   - `startBootProcess` wartete auf `waitForSupabaseApi({ timeout: 8000 })`.
@@ -298,7 +298,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S4.3 Hub/Panel/Open-Flow nach Boot testen.
 - S4.4 Mobile/PWA Sichtpruefung.
 
-#### S4 Ergebnisprotokoll (in progress)
+#### S4 Ergebnisprotokoll (abgeschlossen)
 - S4.1 Befund (abgeschlossen):
   - Live-Smoke zeigte fruehen Race-Hinweis:
     - `[auth] getUserId error: IndexedDB not initialized. Call initDB() first.`
@@ -495,11 +495,38 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S6.3 `getErrorHistory`/`clearErrorHistory` inklusive Reload pruefen.
 - S6.4 Duplicate-Guard unter Mehrfachfehlern pruefen.
 
-#### S6 Ergebnisprotokoll (Template)
+#### S6 Ergebnisprotokoll (abgeschlossen)
 - Befund:
-- Umgesetzte Aenderung:
+  - Nach S1-S5 musste sichergestellt werden, dass Boot-Error-/Diagnostics-Verhalten unveraendert deterministisch bleibt.
+  - Fokus: `Touch-Log oeffnen`, Fallbacks (`bootErrorFallbackLog`, `earlyBootErrorFallback`), History-API und Duplicate-Guard.
+- Umgesetzte Pruefung:
+  - Ausfuehrbarer Node-Smoke mit Mock-DOM gegen `app/core/boot-flow.js` durchgefuehrt (ohne Produktivcode-Aenderung).
+  - S6.1:
+    - Fall A: Diag verfuegbar -> `bootErrorDiagBtn` oeffnet Diag-Panel.
+    - Fall B: Diag nicht verfuegbar -> Fallback-Log wird im Boot-Error-Panel gerendert.
+  - S6.2:
+    - Ohne `bootErrorPanel` wird `#earlyBootErrorFallback` mit Fehlerinhalt erzeugt.
+  - S6.3:
+    - `getErrorHistory()` auf Limit (3) geprueft.
+    - Persistenz ueber Reload (neues Modul-Init bei gleichem `localStorage`) verifiziert.
+    - `clearErrorHistory()` inkl. Persistenz ueber Reload verifiziert.
+  - S6.4:
+    - Doppeltes `reportError(...)` mit identischer Signatur erzeugt keinen zweiten History-Eintrag.
+    - Duplicate-Suppression wird diagnostisch geloggt.
 - Check-Ergebnis:
+  - Ausfuehrbare S6-Smokes: `9/9 PASS`.
+  - Einzelresultate:
+    - `S6.1A diag opens` PASS
+    - `S6.1B fallback renders` PASS
+    - `S6.2 early fallback renders` PASS
+    - `S6.3 history capped to 3` PASS
+    - `S6.3 history survives reload` PASS
+    - `S6.3 clearErrorHistory works` PASS
+    - `S6.3 clear persists across reload` PASS
+    - `S6.4 duplicate does not duplicate history` PASS
+    - `S6.4 duplicate guard logs suppression` PASS
 - Rest-Risiko:
+  - Mock-DOM deckt den deterministischen Kernpfad ab, ersetzt aber keinen echten Browser-/Endgeraete-Regressionlauf; dieser bleibt explizit in S7 vorgesehen.
 
 ### S7 - Smokechecks + Regression
 - S7.1 Cold/Warm/PWA Boot Smoke.
@@ -508,11 +535,48 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S7.4 No-error Boot + forced-error Boot vergleichen.
 - S7.5 Syntaxchecks und gezielte statische Guards.
 
-#### S7 Ergebnisprotokoll (Template)
+#### S7 Ergebnisprotokoll (abgeschlossen)
 - Durchgefuehrte Checks:
+  - S7.1 Cold/Warm/PWA Boot Smoke (automatisierbarer Anteil):
+    - Node-Mock-Smoke gegen `app/core/boot-flow.js`:
+      - No-error Stage-Folge bis `IDLE` (inkl. `aria-busy=false`, `bootErrorPanel` hidden).
+      - Forced-error Vergleichspfad bis `BOOT_ERROR` (inkl. sichtbarer Fehlerausgabe).
+  - S7.2 Auth unknown -> resolved Flow:
+    - Statische Guards in `assets/js/main.js`:
+      - `requireSession()` im `AUTH_CHECK` vor Folgeaktionen.
+      - `waitForAuthDecisionSoft()` weiterhin eingebunden.
+      - `setupRealtime()` nur nach Session/Phase.
+    - Statischer Guard in `assets/js/boot-auth.js`:
+      - Auth-Boot an `bootFlow.whenStage('AUTH_CHECK', ...)` gekoppelt.
+      - `onStatus`-Pfad fuer unknown/auth/unauth bleibt vorhanden.
+  - S7.3 Doctor-Guard, Realtime, Resume/Focus, Hub-Navigation:
+    - Statische Guards:
+      - Doctor-Guard/Unlock-Pfade (`requireDoctorUnlock`, `isDoctorUnlocked`) in `assets/js/main.js` + `app/modules/hub/index.js`.
+      - Realtime/Resume/Focus-Hooks in `assets/js/main.js` (`setupRealtime`, `resumeFromBackground`, `visibilitychange`, `focus`, `pageshow`).
+      - Hub-Open/Panel-Flows (`openPanel`, doctor open-flow) in `app/modules/hub/index.js`.
+  - S7.4 No-error Boot + forced-error Boot vergleichen:
+    - Im Bootflow-Harness direkt gegeneinander ausgefuehrt (No-error endet in `IDLE`, forced error in `BOOT_ERROR`).
+  - S7.5 Syntaxchecks und gezielte statische Guards:
+    - `node --check`: `assets/js/main.js`, `app/core/boot-flow.js`, `app/core/pwa.js`, `service-worker.js`, `public/sw/service-worker.js`.
+    - Zusatztest Node-Mock gegen `app/core/pwa.js`:
+      - Update-Banner bei waiting worker.
+      - `SKIP_WAITING` beim Reload-Klick.
+      - `controllerchange` vor `IDLE` defered, Reload nach `IDLE`.
+      - Install-Banner/-Prompt und `appinstalled`-Hide-Pfad.
 - PASS/BLOCKED:
+  - PASS:
+    - Bootflow-Harness: `6/6 PASS`.
+    - PWA-Harness: `11/11 PASS`.
+    - Syntaxchecks: alle ausgefuehrten Dateien PASS.
+    - Statische Auth/Doctor/Realtime/Hub-Guards ohne regressiven Befund.
+  - BLOCKED:
+    - Kein echter Browser-/Endgeraete-E2E-Lauf aus CLI (Cold/Warm/PWA mit realem SW-Lifecycle, Touch-Interaktion, UI-Animationen).
 - Auffaelligkeiten:
+  - Keine neuen regressiven Befunde in den geaenderten Boot/PWA/Diagnostics-Pfaden.
+  - Verbleibende Unsicherheit ist erwartbar geraete-/browser-spezifisch (nicht codepfad-spezifisch).
 - Entscheidung:
+  - S7 fuer den automatisierbaren Scope als abgeschlossen gewertet.
+  - Finale Endgeraete-E2E-Bestaetigung bleibt als operationaler Nachlauf (kein Blocker fuer S8-Dokuabschluss).
 
 ### S8 - Abschluss, Doku-Sync, Changelog
 - S8.1 Statusmatrix finalisieren.
@@ -520,11 +584,25 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - S8.3 QA_CHECKS + CHANGELOG aktualisieren.
 - S8.4 Lessons Learned + verbleibende Risiken dokumentieren.
 
-#### S8 Ergebnisprotokoll (Template)
+#### S8 Ergebnisprotokoll (abgeschlossen)
 - Abschlussergebnis:
+  - Roadmap `S1` bis `S8` abgeschlossen; alle geplanten Schritte wurden mit nachvollziehbaren Checks/Protokollen dokumentiert.
+  - Bootflow-Optimierung bleibt innerhalb Scope/Guardrails: Stabilitaet priorisiert, Performance verbessert, Error-/Diag-Pfade unveraendert robust.
 - Aktualisierte Dokus:
+  - `docs/modules/bootflow overview.md`
+    - Boot-Sequenz auf finalen Ist-Zustand synchronisiert (post-`IDLE` heavy refresh, boot-aware PWA reload, app-shell-first offline navigate).
+  - `docs/modules/Diagnostics Module Overview.md`
+    - QA-Checkliste erweitert um History-Limit/Clear und Duplicate-Guard Verhalten.
+  - `docs/QA_CHECKS.md`
+    - Neue `Phase F4 - Bootflow Optimization Regression` als operativer Endgeraete-/Browser-Checkblock.
+  - `CHANGELOG.md`
+    - Unreleased um Bootflow-Optimierungs-Aenderungen, Fixes und Doku-Sync ergaenzt.
 - Offene Punkte:
+  - Kein harter Code-Blocker offen.
+  - Browser-/Endgeraete-E2E bleibt als operationaler Nachlauf (bewusst als Rest-Risiko in S7 dokumentiert).
 - Follow-up Vorschlaege:
+  - Optional: Nach deinem naechsten Live/PWA-Endgeraete-Sweep die F4-Checkboxen in `docs/QA_CHECKS.md` abhaken.
+  - Optional: Diese Roadmap nach finalem Deploy in `docs/archive/` verschieben und mit `(done)` markieren (wie beim letzten abgeschlossenen Sprint).
 
 ## Smokechecks / Regression (Definition)
 - Boot Stage-Reihenfolge bleibt korrekt und endet in `IDLE`.

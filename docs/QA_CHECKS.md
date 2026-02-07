@@ -1,4 +1,33 @@
-﻿## Phase F3 - Boot Error Browser Smoke (2026-02-07)
+﻿## Phase F4 - Bootflow Optimization Regression (2026-02-07)
+
+**Scope:** Finaler Regression-Sweep nach Bootflow-Optimierung (S1-S7), inkl. PWA-Update/Offline-Verhalten.
+
+**Boot smoke (live browser/PWA)**
+- [x] Cold Start (Hard Reload): Boot endet ohne Fehler in normaler UI; Touch-Log zeigt keine fruehen IndexedDB-init Fehler.
+- [x] Warm Start (Reload): Boot bleibt stabil, gefuehlte First-Interactive vor schwerem Doctor/Chart-Refresh.
+- [x] PWA Start (Standalone): App startet konsistent schnell, keine stuck Boot-Overlays.
+
+**Auth / Stage guards**
+- [x] Bei `authState=unknown` bleibt Guard aktiv bis Session-Entscheid; keine geschuetzten Aktionen vor Auth-Resolve.
+- [x] Doctor/Chart Guard funktioniert unveraendert (`requireDoctorUnlock`).
+- [x] Realtime/Resume Hooks (`visibility`, `pageshow`, `focus`) laufen ohne regressiven Fehler.
+
+**Boot error / diagnostics**
+- [x] `Touch-Log oeffnen` bleibt in Fehlerfaellen deterministisch (diag oder Fallback-Log).
+- [x] `earlyBootErrorFallback` erscheint nur bei sehr fruehen Fehlern und verschwindet im Normalfall.
+- [x] Duplicate Bootfehler erzeugen keinen mehrfachen History-Spam.
+
+**PWA update / offline**
+- [x] Update-Banner erscheint bei waiting worker; Reload-Button sendet `SKIP_WAITING`.
+- [x] `controllerchange` unterbricht den Boot nicht unnoetig (Reload spaetestens bei `IDLE`).
+- [x] Offline Navigate nutzt app-shell-first (`index.html`/`./`), `offline.html` nur als letzter Fallback.
+
+**Regression**
+- [x] Hub-Navigation (inkl. Doctor/Open-Flow), Capture-Saves, Doctor-Panel, Charts, Trendpilot bleiben funktional.
+- [x] Keine neuen UI-Locks, keine dauerhaften Error-Zustaende nach Reload.
+
+---
+## Phase F3 - Boot Error Browser Smoke (2026-02-07)
 
 **Scope:** Manueller Browser-Smoke fuer Boot-Error-Resilience (diag, fallback, early-fallback, history APIs).
 

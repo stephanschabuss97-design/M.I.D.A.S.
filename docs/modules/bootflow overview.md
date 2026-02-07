@@ -14,10 +14,10 @@ Purpose: single source of truth for how MIDAS boots, in which order modules are 
 2) `app/core/boot-flow.js` starts boot tracking and error overlay hooks.
 3) `app/supabase/index.js` exposes `window.AppModules.supabase` and emits `supabase:ready`.
 4) `assets/js/boot-auth.js` sets initial auth state and UI overlay.
-5) `assets/js/main.js` ensures diagnostics are ready early (`ensureDiagReady`) and then waits for Supabase API readiness.
-6) Each module `init()` runs: cache DOM refs, bind events, and set safe defaults.
-7) Auth state resolves; `afterLoginBoot` triggers the first refresh cycle.
-8) The UI refresh pipeline runs (capture, doctor, charts, trendpilot) in a controlled order.
+5) `assets/js/main.js` starts the deterministic stage pipeline (`BOOT -> AUTH_CHECK -> INIT_CORE -> INIT_MODULES -> INIT_UI -> IDLE`) and ensures diagnostics are ready early.
+6) `AUTH_CHECK` resolves session + realtime readiness; module init remains deterministic and idempotent.
+7) `IDLE` is reached before heavy non-critical warmups; first interaction is released as early as safely possible.
+8) The initial heavy UI refresh (doctor/chart) runs post-`IDLE` in a guarded path so boot errors and lock state remain authoritative.
 
 Notes:
 - The boot order is about readiness, not speed. Modules may render placeholders until data is ready.
@@ -34,6 +34,8 @@ Notes:
 - Boot error diagnostics remain visible even if the diagnostics panel cannot be opened (fallback log in boot error panel).
 - Boot error history keeps the last 3 normalized entries in `localStorage` for post-crash inspection (`bootFlow.getErrorHistory()`).
 - Very-early boot errors before panel readiness are surfaced via a minimal plaintext fallback overlay (`#earlyBootErrorFallback`).
+- Post-`IDLE` warmups are non-fatal by design: refresh failures are logged but do not re-enter boot failure state.
+- PWA controller updates do not hard-interrupt early boot anymore; reload is deferred to `IDLE` with timeout fallback.
 
 ---
 
@@ -55,6 +57,8 @@ Notes:
 - Random refresh order: manual module refresh instead of `requestUiRefresh` pipeline.
 - "Touch-Log oeffnen does nothing": fixed by early diagnostics init + fallback renderer in boot error panel.
 - "Diag hidden under milkglass": fixed by boot-error-specific z-index rule (`#diag` above `#bootScreen`).
+- "IndexedDB not initialized" during early boot: mitigated by early `getUserId` guards and deterministic null-return on init-pending paths.
+- "PWA reload interrupts boot": mitigated by boot-aware `controllerchange` handling (wait for `IDLE` first).
 
 ---
 
@@ -65,8 +69,10 @@ Notes:
 - `app/supabase/core/client.js`: client creation and session persistence.
 - `app/core/boot-flow.js`: boot stage machine, central boot error reporting, fallback log rendering.
 - `app/core/diag.js`: boot logging and diagnostics.
+- `app/core/pwa.js`: update/install banner flow and boot-aware `controllerchange` reload strategy.
 - `app/styles/base.css`: boot overlay and boot error fallback log styling.
 - `app/styles/auth.css`: diagnostics panel layering/scroll behavior in boot error mode.
+- `service-worker.js`: active PWA SW (cache versioning, app-shell-first navigate fallback, `SKIP_WAITING` flow).
 - `index.html`: script order and boot error panel markup are part of the boot contract.
 
 ---

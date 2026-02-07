@@ -141,6 +141,8 @@ Related docs:
 - Perf-Samples sind abrufbar.
 - Boot-Error Panel: `Touch-Log oeffnen` oeffnet `#diag` oder zeigt Fallback-Log.
 - Im Zustand `boot_error` liegt `#diag` visuell ueber `#bootScreen` und bleibt bedienbar.
+- `bootFlow.getErrorHistory()` ist auf 3 Eintraege begrenzt; `bootFlow.clearErrorHistory()` leert die Historie persistiert.
+- Duplicate-Bootfehler mit identischer Signatur werden unterdrueckt und verursachen keinen History-Spam.
 
 ---
 
