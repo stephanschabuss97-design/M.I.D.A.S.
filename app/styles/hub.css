@@ -1789,6 +1789,12 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   .hub-panel .capture-card-actions .btn {
     width: 100%;
   }
+
+  .assistant-copy-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
 }
 
 /* HUB Form helpers */
@@ -2404,6 +2410,42 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.assistant-copy-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.assistant-copy-btn:hover,
+.assistant-copy-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
+}
+
+.assistant-copy-btn[data-copy-state="success"] {
+  background: rgba(44, 198, 120, 0.28);
+}
+
+.assistant-copy-btn[data-copy-state="error"] {
+  background: rgba(255, 120, 120, 0.28);
+}
+
+.assistant-copy-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+  transform: none;
 }
 
 .assistant-panel-actions .btn.small {

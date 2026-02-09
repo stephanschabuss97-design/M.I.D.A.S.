@@ -229,6 +229,7 @@
     aura3dApi.triggerTouchPulse(normX, normY);
   };
   let assistantChatCtrl = null;
+  let assistantCopyFeedbackTimer = null;
   let assistantProfileSnapshot = appModules.profile?.getData?.() || null;
   let supabaseFunctionHeadersPromise = null;
   const panelPerfQuery = global.matchMedia?.('(max-width: 1024px)') || null;
@@ -1310,49 +1311,14 @@
   const renderAssistantContextExpandable = (snapshot, profile) => {
     const refs = assistantChatCtrl?.contextExpandable;
     if (!refs?.container) return;
-    const totals = snapshot?.totals || {};
-    const fmt = getCaptureFormatFn();
-    const saltLimit = Number.isFinite(Number(profile?.salt_limit_g))
-      ? Number(profile.salt_limit_g)
-      : Number.isFinite(Number(profile?.salt_target_g))
-        ? Number(profile.salt_target_g)
-        : Number.isFinite(Number(profile?.salt_target))
-          ? Number(profile.salt_target)
-          : null;
-    const proteinTarget = Number.isFinite(Number(profile?.protein_target_max))
-      ? Number(profile.protein_target_max)
-      : Number.isFinite(Number(profile?.protein_target))
-        ? Number(profile.protein_target)
-        : Number.isFinite(Number(profile?.protein_target_min))
-          ? Number(profile.protein_target_min)
-          : null;
-    const remainingParts = [];
-    let saltRemaining = null;
-    let proteinRemaining = null;
-    const saltTotal = Number(totals.salt_g) || 0;
-    const proteinTotal = Number(totals.protein_g) || 0;
-    if (saltLimit != null) {
-      saltRemaining = saltLimit - saltTotal;
-      remainingParts.push(`Salz ${fmt(saltRemaining, 1)} g`);
-    }
-    if (proteinTarget != null) {
-      proteinRemaining = proteinTarget - proteinTotal;
-      remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
-    }
     const isMissingProfile = !profile;
     const keepVisible = isAssistantDesktop() || isMissingProfile;
-    const remainingText = remainingParts.length ? remainingParts.join(', ') : null;
+    const remainingText = formatAssistantRemainingText(snapshot, profile);
     const hasRemaining = updateContextItem(refs.remaining, remainingText, {
       keepVisible,
       placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
     });
-    let warningText = null;
-    if (saltRemaining != null && saltRemaining < 0) {
-      warningText = 'Salz über Limit';
-    }
-    if (proteinRemaining != null && proteinRemaining < 0) {
-      warningText = warningText ? `${warningText}, Protein über Limit` : 'Protein über Limit';
-    }
+    const warningText = formatAssistantWarningText(snapshot, profile);
     const hasWarning = updateContextItem(refs.warning, warningText);
     refs.container.hidden = !(hasRemaining || hasWarning);
   };
@@ -1405,6 +1371,15 @@
     hour: '2-digit',
     minute: '2-digit'
   });
+  const ASSISTANT_COPY_DATE_FORMAT = new Intl.DateTimeFormat('de-AT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const ASSISTANT_COPY_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const formatAppointmentDateTime = (value, { includeTime = true } = {}) => {
     if (!value) return '';
@@ -1414,6 +1389,57 @@
     if (!includeTime) return dayLabel;
     const timeLabel = APPOINTMENT_TIME_FORMAT.format(date);
     return `${dayLabel} - ${timeLabel}`;
+  };
+
+  const buildAssistantRemainingMetrics = (snapshot, profile) => {
+    const totals = snapshot?.totals || {};
+    const saltLimit = Number.isFinite(Number(profile?.salt_limit_g))
+      ? Number(profile.salt_limit_g)
+      : Number.isFinite(Number(profile?.salt_target_g))
+        ? Number(profile.salt_target_g)
+        : Number.isFinite(Number(profile?.salt_target))
+          ? Number(profile.salt_target)
+          : null;
+    const proteinTarget = Number.isFinite(Number(profile?.protein_target_max))
+      ? Number(profile.protein_target_max)
+      : Number.isFinite(Number(profile?.protein_target))
+        ? Number(profile.protein_target)
+        : Number.isFinite(Number(profile?.protein_target_min))
+          ? Number(profile.protein_target_min)
+          : null;
+    const saltTotal = Number(totals.salt_g) || 0;
+    const proteinTotal = Number(totals.protein_g) || 0;
+    const saltRemaining = saltLimit != null ? saltLimit - saltTotal : null;
+    const proteinRemaining = proteinTarget != null ? proteinTarget - proteinTotal : null;
+    return {
+      saltRemaining,
+      proteinRemaining,
+    };
+  };
+
+  const formatAssistantRemainingText = (snapshot, profile) => {
+    const fmt = getCaptureFormatFn();
+    const { saltRemaining, proteinRemaining } = buildAssistantRemainingMetrics(snapshot, profile);
+    const remainingParts = [];
+    if (saltRemaining != null) {
+      remainingParts.push(`Salz ${fmt(saltRemaining, 1)} g`);
+    }
+    if (proteinRemaining != null) {
+      remainingParts.push(`Protein ${fmt(proteinRemaining, 1)} g`);
+    }
+    return remainingParts.length ? remainingParts.join(', ') : null;
+  };
+
+  const formatAssistantWarningText = (snapshot, profile) => {
+    const { saltRemaining, proteinRemaining } = buildAssistantRemainingMetrics(snapshot, profile);
+    let warningText = null;
+    if (saltRemaining != null && saltRemaining < 0) {
+      warningText = 'Salz über Limit';
+    }
+    if (proteinRemaining != null && proteinRemaining < 0) {
+      warningText = warningText ? `${warningText}, Protein über Limit` : 'Protein über Limit';
+    }
+    return warningText;
   };
 
   const normalizeAppointmentItems = (items, limit = 2) => {
@@ -1621,6 +1647,8 @@
     const sendBtn = panel.querySelector('#assistantSendBtn');
     const cameraBtn = panel.querySelector('#assistantCameraBtn');
     const clearBtn = panel.querySelector('#assistantClearChat');
+    const copyBtn = panel.querySelector('#assistantCopySnapshot');
+    const copyBtnIcon = copyBtn?.querySelector('[data-copy-icon]') || null;
     const messageTemplate = panel.querySelector('#assistantMessageTemplate');
     const photoTemplate = panel.querySelector('#assistantPhotoTemplate');
     const contextSection = panel.querySelector('.assistant-context');
@@ -1703,6 +1731,8 @@
       sendBtn,
       cameraBtn,
       clearBtn,
+      copyBtn,
+      copyBtnIcon,
       photoInput,
       photoDraft: null,
       photoDraftUi,
@@ -1742,6 +1772,8 @@
           profile: getAssistantProfileSnapshot(),
         },
       };
+
+    setAssistantCopyButtonState('idle');
 
     const setAssistantContextExpanded = (expanded) => {
       if (!assistantChatCtrl?.contextSection) return;
@@ -1787,6 +1819,7 @@
     chatEl?.addEventListener('click', handleAssistantChatClick);
     form?.addEventListener('submit', handleAssistantChatSubmit);
     clearBtn?.addEventListener('click', () => resetAssistantChat(true));
+    copyBtn?.addEventListener('click', handleAssistantSnapshotCopy);
     photoInput.addEventListener('change', handleAssistantPhotoSelected, false);
     bindAssistantCameraButton(cameraBtn, photoInput);
     resetAssistantChat();
@@ -2288,6 +2321,120 @@
     setAssistantSending(false);
     if (focusInput) {
       assistantChatCtrl.input?.focus();
+    }
+  };
+
+  const setAssistantCopyButtonState = (state = 'idle') => {
+    const btn = assistantChatCtrl?.copyBtn;
+    const icon = assistantChatCtrl?.copyBtnIcon;
+    if (!btn) return;
+    if (assistantCopyFeedbackTimer) {
+      global.clearTimeout(assistantCopyFeedbackTimer);
+      assistantCopyFeedbackTimer = null;
+    }
+    if (state === 'success') {
+      btn.dataset.copyState = 'success';
+      btn.setAttribute('title', 'Kopiert');
+      if (icon) icon.textContent = '✓';
+      assistantCopyFeedbackTimer = global.setTimeout(() => {
+        setAssistantCopyButtonState('idle');
+      }, 1400);
+      return;
+    }
+    if (state === 'error') {
+      btn.dataset.copyState = 'error';
+      btn.setAttribute('title', 'Kopieren fehlgeschlagen');
+      if (icon) icon.textContent = '!';
+      assistantCopyFeedbackTimer = global.setTimeout(() => {
+        setAssistantCopyButtonState('idle');
+      }, 1800);
+      return;
+    }
+    delete btn.dataset.copyState;
+    btn.setAttribute('title', 'Snapshot kopieren');
+    if (icon) icon.textContent = '⧉';
+  };
+
+  const writeTextToClipboard = async (text) => {
+    const value = String(text || '');
+    if (!value) return false;
+    const nav = global.navigator;
+    if (global.isSecureContext && nav?.clipboard?.writeText) {
+      await nav.clipboard.writeText(value);
+      return true;
+    }
+    if (!doc?.body) {
+      throw new Error('clipboard-unavailable');
+    }
+    const fallback = doc.createElement('textarea');
+    fallback.value = value;
+    fallback.setAttribute('readonly', 'readonly');
+    fallback.style.position = 'fixed';
+    fallback.style.top = '-9999px';
+    fallback.style.left = '-9999px';
+    doc.body.appendChild(fallback);
+    fallback.focus();
+    fallback.select();
+    const copied = doc.execCommand && doc.execCommand('copy');
+    doc.body.removeChild(fallback);
+    if (!copied) {
+      throw new Error('clipboard-copy-failed');
+    }
+    return true;
+  };
+
+  const buildAssistantContextSnapshotText = () => {
+    const fmt = getCaptureFormatFn();
+    const now = new Date();
+    const context = assistantChatCtrl?.context || {};
+    const intake = context.intake || {};
+    const totals = intake.totals || {};
+    const profile = context.profile || {};
+    const appointments = Array.isArray(context.appointments) ? context.appointments : [];
+    const hasIntake = !!intake.logged;
+    const water = hasIntake ? `${Math.round(Number(totals.water_ml) || 0)} ml` : '-- ml';
+    const salt = hasIntake ? `${fmt(totals.salt_g, 1)} g` : '-- g';
+    const protein = hasIntake ? `${fmt(totals.protein_g, 1)} g` : '-- g';
+    const proteinTarget =
+      formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
+      formatTargetRange(profile?.protein_target, null, 'g') ||
+      '-- g';
+    const ckdStage = typeof profile?.ckd_stage === 'string' && profile.ckd_stage.trim()
+      ? profile.ckd_stage.trim()
+      : '--';
+    const remainingText = formatAssistantRemainingText(intake, profile) || '--';
+    const appointmentLines = appointments.length
+      ? appointments.flatMap((item) => [item?.label || 'Termin', item?.detail || '--'])
+      : ['Keine Termine'];
+    return [
+      `Datum: ${ASSISTANT_COPY_DATE_FORMAT.format(now)}`,
+      `Zeit: ${ASSISTANT_COPY_TIME_FORMAT.format(now)}`,
+      `Wasser: ${water}`,
+      `Salz: ${salt}`,
+      `Protein: ${protein}`,
+      `Protein-Ziel: ${proteinTarget}`,
+      `CKD: ${ckdStage}`,
+      'Termine:',
+      ...appointmentLines,
+      `Restbudget: ${remainingText}`,
+    ].join('\n');
+  };
+
+  const handleAssistantSnapshotCopy = async (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const btn = assistantChatCtrl?.copyBtn;
+    if (!btn) return;
+    btn.setAttribute('disabled', 'disabled');
+    try {
+      const text = buildAssistantContextSnapshotText();
+      await writeTextToClipboard(text);
+      setAssistantCopyButtonState('success');
+    } catch (err) {
+      diag.add?.(`[assistant-copy] snapshot copy failed: ${err?.message || err}`);
+      setAssistantCopyButtonState('error');
+    } finally {
+      btn.removeAttribute('disabled');
     }
   };
 

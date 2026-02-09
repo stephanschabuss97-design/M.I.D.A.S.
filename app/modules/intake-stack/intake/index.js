@@ -127,22 +127,39 @@
     }
   };
 
-  const buildLowStockMailHref = (doctorInfo, med) => {
+  const buildLowStockMailHref = (doctorInfo, med, meds = []) => {
     if (!doctorInfo?.email || !med) return null;
-    const medName = med.name || 'Medikation';
-    const dayIso = medicationDailyState.dayIso || todayStr();
-    const subject = `Low-Stock Hinweis: ${medName}`;
+    const medNames = Array.isArray(meds)
+      ? meds
+          .map((entry) => {
+            const name = String(entry?.name || '').trim();
+            const strength = String(entry?.strength || '').trim();
+            if (!name) return '';
+            return strength ? `${name} ${strength}` : name;
+          })
+          .filter(Boolean)
+      : [];
+    const uniqueNames = Array.from(new Set(medNames));
+    const fallbackName = String(med.name || 'Medikation').trim();
+    if (!uniqueNames.length && fallbackName) uniqueNames.push(fallbackName);
+    const subject =
+      uniqueNames.length === 1
+        ? `Bitte um neues Rezept: ${uniqueNames[0]}`
+        : `Bitte um neue Rezepte: ${uniqueNames.join(', ')}`;
+    const medicationBulletList = uniqueNames.map((name) => `- ${name}`);
     const bodyLines = [
       'Hallo,',
       '',
-      `mein Medikament ${medName} ist fast aufgebraucht.`,
-      `Bestand: ${med.stock_count ?? '?'} Stück (${med.days_left ?? '?'} Tage).`,
-      `Dosis pro Tag: ${med.dose_per_day ?? '?'} Stück`,
-      `Tag: ${dayIso}`,
+      'mein aktueller Vorrat folgender Medikamente ist bald aufgebraucht:',
       '',
-      'Bitte um neues Rezept bzw. Rückmeldung.',
+      ...medicationBulletList,
       '',
-      'Vielen Dank.'
+      'Ich bitte um Ausstellung eines neuen Rezepts auf der e-Card.',
+      'Sollten noch Fragen offen sein, bitte ich um kurze Rückmeldung.',
+      'Bisher wurden standardmäßig zwei Packungen je Medikament verordnet.',
+      '',
+      'Vielen Dank und freundliche Grüße',
+      'Stephan'
     ];
     const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
     return `mailto:${encodeURIComponent(doctorInfo.email)}?${query}`;
@@ -221,7 +238,7 @@
         ui.actions.hidden = !hasOpen;
       }
       if (ui.confirmBtn) {
-        ui.confirmBtn.textContent = `Auswahl bestaetigen (${selectedCount})`;
+        ui.confirmBtn.textContent = `Auswahl bestätigen (${selectedCount})`;
         ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
       }
       if (!activeRows.length) {
@@ -349,7 +366,7 @@
       : '<p class="medication-low-stock-contact small muted">Keine Arzt-Mail im Profil hinterlegt.</p>';
     const listHtml = meds
       .map((med) => {
-        const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, med) : null;
+        const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, med, meds) : null;
         const mailAction = mailHref
           ? `<a class="btn ghost small" href="${escapeAttr(mailHref)}" target="_blank" rel="noopener" data-med-mail="${escapeAttr(
               med.id || ''
@@ -429,7 +446,7 @@
                   class="medication-card-status-slot status-glow ${isTaken ? 'ok' : 'neutral'}"
                   data-med-status-slot
                   data-med-status-id="${escapeAttr(medId)}"
-                  aria-label="${escapeAttr(isTaken ? 'Einnahme zuruecknehmen' : 'Einnahme bestaetigen')}"
+                  aria-label="${escapeAttr(isTaken ? 'Einnahme zurücknehmen' : 'Einnahme bestätigen')}"
                 >
                   <svg class="medication-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -531,11 +548,11 @@
     if (!btn || medicationDailyState.busy) return;
     const medModule = getMedicationModule();
     if (!medModule) {
-      uiError('Medikationsmodul nicht verfuegbar.');
+      uiError('Medikationsmodul nicht verfügbar.');
       return;
     }
     if (!captureIntakeState.logged) {
-      uiError('Bitte anmelden, um Medikamente zu bestaetigen.');
+      uiError('Bitte anmelden, um Medikamente zu bestätigen.');
       return;
     }
     const medId = btn.getAttribute('data-med-status-id');
@@ -547,11 +564,11 @@
     try {
       if (isTaken) {
         await medModule.undoMedication(medId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme zurueckgenommen.');
+        uiInfo('Einnahme zurückgenommen.');
         feedbackApi?.feedback?.('medication:undo', { intent: true, source: 'user' });
       } else {
         await medModule.confirmMedication(medId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme bestaetigt.');
+        uiInfo('Einnahme bestätigt.');
         feedbackApi?.feedback?.('medication:confirm', { intent: true, source: 'user' });
       }
       if (typeof medModule.invalidateMedicationCache === 'function') {
