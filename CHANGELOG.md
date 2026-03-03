@@ -6,6 +6,8 @@ Added:
 - Repository documentation sweep: every file under docs/modules/*.md was rewritten from the Module Update Plan, and docs/Supabase Proxy Refactor Plan.md tracks the upcoming proxy removal.
 - Boot error history persistence: last 3 normalized boot errors are now stored in `localStorage` and exposed via `bootFlow.getErrorHistory()` / `bootFlow.clearErrorHistory()`.
 - Bootflow optimization roadmap (`S1`-`S8`) completed with deterministic validation artifacts (stage, PWA, diagnostics, regression).
+- Breath Timer im Vitals/BP-Panel: neuer Start-Button (`Atemtimer starten`) fuer beide BP-Kontexte, Fullscreen-Breath-Overlay und ruhiger Hero-Farbstil (Blau/Magenta).
+- Breath-Timer Engine: `3`/`5` Minuten Presets, fixer Atemrhythmus `3s Einatmen / 4s Ausatmen`, driftarme Zeitbasis und DOM-Sync (`breath:state`).
 
 Changed:
 - Doctor unlock flow: the first tap that triggers biometrics now opens the panel immediately after requireDoctorUnlock() resolves; subsequent clicks still reuse the guard state.
@@ -22,6 +24,8 @@ Fixed:
 - Diagnostics panel visibility during `boot_error`: `#diag` is forced above `#bootScreen` and remains scrollable/clickable on desktop and mobile.
 - Very-early boot failures (before normal panel availability) now show a minimal plaintext fallback overlay (`#earlyBootErrorFallback`) until the standard boot error UI is available.
 - Early-boot auth/data race: `getUserId` no longer throws noisy IndexedDB-init errors during boot startup; deterministic null-return guards prevent premature storage access.
+- Breath-Timer UX-Flow: 2-Step-Abbruch (`Nochmal tippen zum Abbrechen`), Statusmeldungen fuer Ende/Abbruch und sanfter Fade-out zurueck in den BP-Screen.
+- Breath-Timer Regression-Guards: BP-Save, Kontextwechsel und Vitals-Tab-Wechsel werden waehrend aktivem Breath-Overlay blockiert; Panel-Close fuehrt Hard-Reset ohne Timer-Orphans aus.
 
 Removed:
 - Legacy duplicates and experiment files (temp_snippet, index_normalized.html, *.bak/*.txt leftovers) to keep the tree clean before the Supabase proxy refactor.

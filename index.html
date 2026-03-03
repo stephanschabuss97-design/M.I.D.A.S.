@@ -1233,6 +1233,9 @@
                   <button class="btn primary save-bp-panel-btn" data-context="M" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
+                  <button class="btn primary start-breath-timer-btn" data-context="M" type="button">
+                    Atemtimer starten
+                  </button>
                 </div>
               </div>
               <div class="bp-pane" data-context="A">
@@ -1276,8 +1279,37 @@
                   <button class="btn primary save-bp-panel-btn" data-context="A" type="button">
                     &#x1F4BE; Blutdruck speichern
                   </button>
+                  <button class="btn primary start-breath-timer-btn" data-context="A" type="button">
+                    Atemtimer starten
+                  </button>
                 </div>
               </div>
+              </div>
+              <div
+                class="bp-breath-overlay"
+                data-breath-overlay
+                role="dialog"
+                aria-modal="true"
+                aria-label="Atemvorbereitung"
+                aria-hidden="true"
+                hidden
+              >
+                <div class="bp-breath-preset" data-breath-preset>
+                  <h3 class="bp-breath-preset-title">Atemvorbereitung</h3>
+                  <p class="bp-breath-preset-subtitle">Waehle 3 oder 5 Minuten.</p>
+                  <div class="bp-breath-preset-actions" role="group" aria-label="Atemtimer Auswahl">
+                    <button class="btn primary bp-breath-preset-btn" data-breath-preset-minutes="3" type="button">3 Minuten</button>
+                    <button class="btn primary bp-breath-preset-btn" data-breath-preset-minutes="5" type="button">5 Minuten</button>
+                  </div>
+                </div>
+                <div class="bp-breath-stage">
+                  <div class="bp-breath-time" data-breath-time>03:00</div>
+                  <div class="bp-breath-orb-wrap">
+                    <div class="bp-breath-orb" data-breath-orb aria-hidden="true"></div>
+                  </div>
+                  <div class="bp-breath-phase" data-breath-phase-label>Einatmen</div>
+                  <div class="bp-breath-feedback" data-breath-feedback aria-live="polite"></div>
+                </div>
               </div>
               </div>
               </div>
@@ -1592,6 +1624,8 @@
   <script src="app/modules/intake-stack/intake/index.js"></script>
   <!-- Shared capture helpers -->
   <script src="app/modules/vitals-stack/vitals/entry.js"></script>
+    <!-- Breath timer engine (S4) -->
+    <script src="app/modules/vitals-stack/vitals/breath-timer.js"></script>
     <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/bp.js -->
     <script src="app/modules/vitals-stack/vitals/bp.js"></script>
     <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/body.js -->

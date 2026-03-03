@@ -1377,3 +1377,35 @@ Regression
 
 ---
 
+
+## Phase F5 - Breath Timer Regression (2026-03-03)
+
+**Scope:** BP-Breath-Overlay (3/5 Min, 3s/4s Rhythmus, 2-Step-Cancel, Fade-out, Guard-Integration).
+
+**Smoke**
+- [ ] BP-Panel: Button `Atemtimer starten` ist in beiden Kontexten (`M`, `A`) sichtbar.
+- [ ] Start ohne `data-breath-minutes` nutzt Default `3 Minuten`; mit `data-breath-minutes="5"` startet `5 Minuten`.
+- [ ] Running-Overlay zeigt nur Kerninhalte: Restzeit, Atem-Orb, Atemphase.
+- [ ] Atemphase wechselt zwischen `Einatmen` (3s) und `Ausatmen` (4s) ohne harte Spruenge.
+
+**Cancel / Completion**
+- [ ] Erster Tap waehrend Running zeigt `Nochmal tippen zum Abbrechen` (Confirm-Fenster aktiv).
+- [ ] Zweiter Tap innerhalb Confirm-Fenster fuehrt zu `Vorbereitung beendet` und anschliessendem Fade-out.
+- [ ] Ohne zweiten Tap kehrt Overlay nach Confirm-Timeout in Running zurueck.
+- [ ] Bei natuerlichem Ablauf erscheint `Vorbereitung abgeschlossen` und anschliessend derselbe Fade-out.
+
+**Guards / Regression**
+- [ ] Waehrend aktivem Breath-UI ist BP-Save blockiert (kein paralleler Save-Flow).
+- [ ] `#bpContextSel` bleibt waehrend aktivem Breath-UI stabil (kein Kontext-Switch).
+- [ ] Vitals-Tab-Wechsel ist waehrend aktivem Breath-UI blockiert.
+- [ ] Vitals-Panel-Close raeumt aktiven Breath-Timer vollstaendig auf (kein Orphan-Overlay/Timer).
+
+**Sanity**
+- [ ] `node --check app/modules/vitals-stack/vitals/breath-timer.js` ist gruen.
+- [ ] `node --check assets/js/main.js` ist gruen.
+- [ ] Optionaler Harness-Lauf liefert `S7-BREATH-HARNESS: PASS`.
+
+**Visual Device Check (manual)**
+- [ ] Desktop: Atemtimer-Button neben `Blutdruck speichern`, Overlay wirkt ruhig und klar.
+- [ ] Mobile: Atemtimer-Button unter `Blutdruck speichern`, Overlay bleibt lesbar und ohne horizontales Scrollen.
+- [ ] Fruehe Tagesnutzung (dunkle Umgebung): Restzeit/Phase bleiben gut lesbar.

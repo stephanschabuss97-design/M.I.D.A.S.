@@ -556,10 +556,18 @@ async function initModulesPhase() {
     applyBpContext(bpContextSel.value || 'M');
     maybeAutoApplyBpContext({ force: true, source: 'boot' });
     bpContextSel.addEventListener('change', (e) => {
+      if (window.AppModules?.breathTimer?.isUiBlocking?.()) {
+        e.preventDefault?.();
+        const fallback = e.target?.dataset?.prevValue || 'M';
+        e.target.value = fallback;
+        return;
+      }
+      e.target.dataset.prevValue = e.target.value;
       AppModules.captureGlobals.setBpUserOverride(true);
       applyBpContext(e.target.value);
       window.AppModules.bp.updateBpCommentWarnings?.();
     });
+    bpContextSel.dataset.prevValue = bpContextSel.value || 'M';
   }
 
   window.AppModules.capture?.bindIntakeCapture?.();
@@ -1536,6 +1544,10 @@ const handleBpPanelSave = async (e) => {
   if (!btn) {
     diag.add?.('[panel] bp save aborted: missing event target');
     saveFeedback?.error({ message: 'Interner Fehler beim Speichern.' });
+    return;
+  }
+  if (window.AppModules?.breathTimer?.isUiBlocking?.()) {
+    saveFeedback?.error({ button: btn, message: 'Atemvorbereitung aktiv. Bitte warte kurz.' });
     return;
   }
   try {

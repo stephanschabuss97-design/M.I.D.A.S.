@@ -77,6 +77,7 @@ Related docs:
 - Hub Vitals-Panel mit Tabs: BP, Body, Lab, Training.
 - Datumsfeld oben als Single Source of Truth fuer Tagesdaten.
 - Buttons und Pills im Capture-Panel (inkl. Trendpilot/Statusindikatoren).
+- BP-Bereich enthaelt zusaetzlich einen Breath-Timer-Startpunkt (Vorbereitung vor Messung) mit Fullscreen-Overlay.
 
 ---
 
