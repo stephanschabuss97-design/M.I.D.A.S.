@@ -66,7 +66,6 @@ body:has(.hub-panel.is-visible) .hub::after {
 
 /* Body-Scroll locken, solange Panel aktiv ist */
 body:has(.hub-panel.is-visible) {
-  overflow: hidden;
 }
 
 /* Orbit dimmen + leichtes Zusammenziehen, wenn Panel aktiv ist */
@@ -130,7 +129,6 @@ body:has(.hub-panel.is-visible) .hub-icon {
   left: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  overflow: hidden;
   position: relative;
 }
 
@@ -898,9 +896,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   text-align: left;
   display: none;
   opacity: 0;
-  transform-origin: center center;
   transform: translate(-50%, -50%) scaleX(0.8) scaleY(0.4);
-  overflow: hidden;
   z-index: 40;
   --hub-panel-max: 2000px;
   backdrop-filter: blur(18px);
@@ -1382,37 +1378,134 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 }
 
 .bp-breath-orb-wrap {
-  width: clamp(170px, 24vw, 250px);
+  width: clamp(188px, 27vw, 282px);
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
 }
 
 .bp-breath-orb {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   height: 100%;
   border-radius: 50%;
   transform: scale(var(--breath-orb-scale, 1));
-  transition: transform 120ms linear;
+  transition:
+    transform 120ms linear,
+    box-shadow 3000ms ease-in-out,
+    filter 3000ms ease-in-out;
   background:
-    radial-gradient(circle at 36% 32%, rgba(170, 236, 255, 0.92), rgba(88, 190, 255, 0.45) 42%, rgba(12, 18, 38, 0.08) 65%),
+    radial-gradient(circle at 34% 28%, rgba(244, 251, 255, 0.94) 0%, rgba(190, 238, 255, 0.88) 16%, rgba(102, 198, 255, 0.58) 34%, rgba(28, 54, 112, 0.24) 56%, rgba(8, 12, 28, 0.06) 76%),
+    radial-gradient(circle at 64% 70%, rgba(218, 132, 255, 0.28) 0%, rgba(218, 132, 255, 0.12) 24%, transparent 50%),
+    radial-gradient(circle at 48% 52%, rgba(68, 158, 255, 0.12), transparent 62%),
     conic-gradient(
-      from -38deg,
+      from -18deg,
       rgba(88, 190, 255, 0.1) 0deg,
-      rgba(88, 190, 255, 0.62) 70deg,
-      rgba(88, 190, 255, 0.14) 140deg,
-      rgba(220, 130, 255, 0.1) 180deg,
-      rgba(220, 130, 255, 0.62) 255deg,
-      rgba(220, 130, 255, 0.14) 320deg,
+      rgba(88, 190, 255, 0.46) 86deg,
+      rgba(132, 214, 255, 0.16) 152deg,
+      rgba(220, 130, 255, 0.12) 196deg,
+      rgba(220, 130, 255, 0.44) 274deg,
       rgba(88, 190, 255, 0.1) 360deg
     );
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.16) inset,
-    0 0 36px rgba(88, 190, 255, 0.4),
-    0 0 44px rgba(220, 130, 255, 0.28);
-  animation: breathOrbDrift 28s linear infinite;
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+    inset 0 -10px 22px rgba(12, 20, 46, 0.18),
+    0 0 48px rgba(88, 190, 255, 0.46),
+    0 0 62px rgba(220, 130, 255, 0.34);
+  animation: breathOrbFloat 46s ease-in-out infinite;
 }
 
+.bp-breath-orb::before,
+.bp-breath-orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: opacity 3000ms ease-in-out;
+}
+
+.bp-breath-orb::before {
+  background:
+    radial-gradient(circle at 33% 27%, rgba(246, 252, 255, 0.97) 0%, rgba(196, 241, 255, 0.9) 15%, rgba(108, 204, 255, 0.62) 33%, rgba(26, 52, 112, 0.22) 55%, rgba(8, 12, 28, 0.05) 75%),
+    radial-gradient(circle at 64% 70%, rgba(220, 134, 255, 0.3) 0%, rgba(220, 134, 255, 0.14) 24%, transparent 50%),
+    radial-gradient(circle at 48% 52%, rgba(72, 166, 255, 0.14), transparent 60%),
+    conic-gradient(
+      from -18deg,
+      rgba(88, 190, 255, 0.12) 0deg,
+      rgba(88, 190, 255, 0.5) 86deg,
+      rgba(138, 218, 255, 0.18) 152deg,
+      rgba(220, 130, 255, 0.13) 196deg,
+      rgba(220, 130, 255, 0.48) 274deg,
+      rgba(88, 190, 255, 0.12) 360deg
+    );
+  opacity: 0;
+}
+
+.bp-breath-orb::after {
+  background:
+    radial-gradient(circle at 35% 29%, rgba(238, 248, 255, 0.9) 0%, rgba(184, 232, 252, 0.82) 17%, rgba(96, 190, 246, 0.5) 35%, rgba(30, 56, 108, 0.28) 58%, rgba(8, 12, 28, 0.08) 78%),
+    radial-gradient(circle at 64% 70%, rgba(214, 128, 246, 0.24) 0%, rgba(214, 128, 246, 0.1) 24%, transparent 52%),
+    radial-gradient(circle at 48% 52%, rgba(62, 150, 238, 0.09), transparent 64%),
+    conic-gradient(
+      from -18deg,
+      rgba(88, 190, 255, 0.08) 0deg,
+      rgba(88, 190, 255, 0.42) 86deg,
+      rgba(128, 208, 248, 0.14) 152deg,
+      rgba(220, 130, 255, 0.11) 196deg,
+      rgba(220, 130, 255, 0.4) 274deg,
+      rgba(88, 190, 255, 0.08) 360deg
+    );
+  opacity: 0;
+}
+
+
+.bp-breath-overlay[data-breath-phase="inhale"] .bp-breath-orb {
+  transition-duration: 120ms, 3000ms, 3000ms;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16) inset,
+    inset 0 -10px 22px rgba(12, 20, 46, 0.16),
+    0 0 58px rgba(88, 190, 255, 0.52),
+    0 0 76px rgba(220, 130, 255, 0.4);
+  filter: saturate(1.05) brightness(1.035);
+}
+
+.bp-breath-overlay[data-breath-phase="inhale"] .bp-breath-orb::before,
+.bp-breath-overlay[data-breath-phase="inhale"] .bp-breath-orb::after {
+  transition-duration: 3000ms;
+}
+
+.bp-breath-overlay[data-breath-phase="inhale"] .bp-breath-orb::before {
+  opacity: 1;
+}
+
+.bp-breath-overlay[data-breath-phase="inhale"] .bp-breath-orb::after {
+  opacity: 0;
+}
+
+.bp-breath-overlay[data-breath-phase="exhale"] .bp-breath-orb {
+  transition-duration: 120ms, 4000ms, 4000ms;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    inset 0 -10px 22px rgba(12, 20, 46, 0.22),
+    0 0 42px rgba(88, 190, 255, 0.4),
+    0 0 56px rgba(220, 130, 255, 0.28);
+  filter: saturate(0.97) brightness(0.98);
+}
+
+.bp-breath-overlay[data-breath-phase="exhale"] .bp-breath-orb::before,
+.bp-breath-overlay[data-breath-phase="exhale"] .bp-breath-orb::after {
+  transition-duration: 4000ms;
+}
+
+.bp-breath-overlay[data-breath-phase="exhale"] .bp-breath-orb::before {
+  opacity: 0;
+}
+
+.bp-breath-overlay[data-breath-phase="exhale"] .bp-breath-orb::after {
+  opacity: 1;
+}
 .bp-breath-phase {
   margin-top: 2px;
   font-size: clamp(1.1rem, 3.2vw, 1.38rem);
@@ -1437,11 +1530,17 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   color: rgba(150, 255, 190, 0.95);
 }
 
-@keyframes breathOrbDrift {
-  0% { transform: scale(var(--breath-orb-scale, 1)) rotate(0deg); }
-  100% { transform: scale(var(--breath-orb-scale, 1)) rotate(360deg); }
+@keyframes breathOrbFloat {
+  0% { transform: scale(var(--breath-orb-scale, 1)) translate3d(0, 0, 0) rotate(0deg); }
+  22% { transform: scale(var(--breath-orb-scale, 1)) translate3d(-1.2%, 1.1%, 0) rotate(72deg); }
+  48% { transform: scale(var(--breath-orb-scale, 1)) translate3d(1.4%, -0.9%, 0) rotate(174deg); }
+  74% { transform: scale(var(--breath-orb-scale, 1)) translate3d(-0.6%, -1.3%, 0) rotate(282deg); }
+  100% { transform: scale(var(--breath-orb-scale, 1)) translate3d(0.5%, 0.4%, 0) rotate(360deg); }
 }
 
+  50% { transform: translate3d(1.1%, -0.7%, 0) scale(0.988) rotate(-5deg); filter: blur(0.2px); }
+  100% { transform: translate3d(-0.8%, 0.9%, 0) scale(1.015) rotate(-9deg); filter: blur(0px); }
+}
 .hub-vitals-body {
   margin-top: 8px;
 }
@@ -2404,7 +2503,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     background: var(--surface-elevated);
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
 }
 
 .assistant-photo-draft img {
@@ -2428,7 +2526,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
 
@@ -2934,3 +3031,33 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .bp-breath-overlay[data-breath-ui-mode="preset_select"] .bp-breath-stage {
   display: none;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

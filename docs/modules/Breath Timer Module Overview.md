@@ -135,6 +135,5 @@ Related docs:
 
 ## 10. Erweiterungspunkte / Zukunft
 
-- Preset-Auswahl direkt im Overlay (`3`/`5` Minuten als UI-Option).
 - Feinere Motion-Polish-Pfade (Text-Crossfade, Orb-Easing).
 - Optionale medizinische Hinweise (rein UI), ohne Messlogik zu veraendern.
