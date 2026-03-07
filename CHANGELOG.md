@@ -8,6 +8,7 @@ Added:
 - Bootflow optimization roadmap (`S1`-`S8`) completed with deterministic validation artifacts (stage, PWA, diagnostics, regression).
 - Breath Timer im Vitals/BP-Panel: neuer Start-Button (`Atemtimer starten`) fuer beide BP-Kontexte, Fullscreen-Breath-Overlay und ruhiger Hero-Farbstil (Blau/Magenta).
 - Breath-Timer Engine: `3`/`5` Minuten Presets, fixer Atemrhythmus `3s Einatmen / 4s Ausatmen`, driftarme Zeitbasis und DOM-Sync (`breath:state`).
+- Intent Engine V1 groundwork: lokaler Parser-Kern (`normalizers`, `rules`, `validators`, `context`, `parser`) plus Adapter-Surface fuer `text`/spaeter `voice`/`device`.
 
 Changed:
 - Doctor unlock flow: the first tap that triggers biometrics now opens the panel immediately after requireDoctorUnlock() resolves; subsequent clicks still reuse the guard state.
@@ -18,6 +19,9 @@ Changed:
 - Auth/readiness flow: redundant Supabase preflight waits in bootstrap removed; `AUTH_CHECK` keeps deterministic `requireSession` gating with opportunistic auth-decision wait.
 - PWA update flow: `controllerchange` reload is now boot-aware (prefer reload at `IDLE`, timeout fallback remains).
 - Service worker navigate fallback: app-shell-first strategy (`request -> index -> ./ -> offline`) keeps boot UI consistent in offline navigation.
+- Assistant text flow: vor dem `midas-assistant`-Roundtrip laeuft jetzt ein lokaler Intent-Preflight mit direktem Dispatch fuer die heute freigegebenen Allowed-Actions (`intake_save`, `open_module`), explizitem Fallback-Routing und `LLM bypass`-Nachweis.
+- Suggestion-Confirm-Flow: `ja/nein/speichern/abbrechen` sind jetzt fuer suggestion-basierte Pending Contexts lokal verdrahtet; Re-Entrancy-/Dedupe-Guards verhindern Doppel-Saves, ohne Retry-Pfade bei Save-Fehlern zu verbrennen.
+- Voice stack (geparkt): Transcript-Preflight nutzt bereits dieselbe Intent Engine; lokaler TTS-Rueckkanal und Voice-Fassade sind vorbereitet, aber bewusst noch nicht live reaktiviert.
 
 Fixed:
 - Boot error "Touch-Log oeffnen" is now reliable: if `diag.show()` is unavailable, a fallback log is rendered directly in the boot error panel.

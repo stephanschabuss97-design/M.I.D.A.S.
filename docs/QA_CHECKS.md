@@ -1409,3 +1409,50 @@ Regression
 - [ ] Desktop: Atemtimer-Button neben `Blutdruck speichern`, Overlay wirkt ruhig und klar.
 - [ ] Mobile: Atemtimer-Button unter `Blutdruck speichern`, Overlay bleibt lesbar und ohne horizontales Scrollen.
 - [ ] Fruehe Tagesnutzung (dunkle Umgebung): Restzeit/Phase bleiben gut lesbar.
+
+---
+
+## Phase F6 - Intent Engine Regression (2026-03-07)
+
+**Scope:** Lokaler Intent-Fast-Path im Assistant-Hub, suggestion-basierte Confirm-/Context-Freigaben, vorbereiteter Voice-Transcript-Preflight.
+
+**Smoke**
+- [ ] `Wasser 300 ml` -> lokaler `direct_match`, `intake_save`, kein unnoetiger `midas-assistant`-Call.
+- [ ] `Trage mir 300 ml Fluessigkeit ein` -> lokaler `direct_match`, `intake_save`, kein unnoetiger `midas-assistant`-Call.
+- [ ] `Blutdruck 128 zu 82` -> lokaler Match im Intent-Preflight; aktuell kontrollierter Assistant-Fallback, kein lokaler Vital-Write.
+- [ ] `Gewicht 78,4` -> lokaler Match im Intent-Preflight; aktuell kontrollierter Assistant-Fallback, kein lokaler Vital-Write.
+
+**Fallback**
+- [ ] `Heute habe ich zu wenig getrunken` -> `fallback`, kein direkter Write.
+- [ ] `Mein Blutdruck war so um die 130` -> `fallback`, kein direkter Write.
+- [ ] `Ist das bedenklich?` -> `fallback` an Assistant.
+- [ ] `Was soll ich heute essen?` -> `fallback` an Assistant.
+- [ ] Mehrdeutige Navigation wie `Zeig mir Blutdruck` -> kein lokaler Match.
+
+**Confirm / Guards**
+- [ ] `ja/nein/speichern/abbrechen` ohne Pending Context bleiben inert und zeigen die lokale Rueckmeldung `Es gibt aktuell nichts zu bestaetigen.`
+- [ ] Mit aktivem Suggestion-Context bestaetigen `ja/speichern` denselben `confirm_intake`-Pfad wie die Suggestion-UI.
+- [ ] Mit aktivem Suggestion-Context verwerfen `nein/abbrechen` denselben Suggestion-Kontext lokal.
+- [ ] Re-Entrancy-/Dedupe-Guards blockieren Wiederholung desselben Pending Contexts nach `consume`.
+- [ ] Fehlgeschlagene Saves verbrennen den Pending Context nicht; Retry bleibt moeglich.
+
+**Voice / Adapter**
+- [ ] Hub und Voice nutzen denselben Adapter-Eingangspunkt `parseAdapterInput(...)`.
+- [ ] Geparktes Voice meldet `reason = voice-parked` ueber die Hub-Fassade.
+- [ ] Optional vorbereitete lokale TTS-Bestaetigung ist vorhanden, aber nicht automatisch im Live-Flow verdrahtet.
+- [ ] `device`-Quellen koennen ueber `createAdapterInput(..., { source: 'device' })` denselben Decision-Contract nutzen.
+
+**Sanity**
+- [ ] `node --check` ist gruen fuer:
+  - `app/modules/assistant-stack/intent/normalizers.js`
+  - `app/modules/assistant-stack/intent/rules.js`
+  - `app/modules/assistant-stack/intent/validators.js`
+  - `app/modules/assistant-stack/intent/context.js`
+  - `app/modules/assistant-stack/intent/parser.js`
+  - `app/modules/assistant-stack/intent/index.js`
+  - `app/modules/hub/index.js`
+  - `app/modules/assistant-stack/voice/index.js`
+
+**Regression**
+- [ ] `DIRECT_INTENT_ACTIONS` bleibt eng auf `intake_save` und `open_module`.
+- [ ] Keine offensichtliche statische Drift zwischen Intent-Kern, Hub und vorbereitetem Voice-Pfad.

@@ -97,6 +97,53 @@
   };
 
   const getDiag = () => deps.diag || fallbackDiag;
+  const getIntentEngine = () =>
+    appModules.intentEngine ||
+    global.AppModules?.intentEngine ||
+    null;
+  const recordIntentTelemetry = (event = {}) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.recordTelemetry !== 'function') {
+      return null;
+    }
+    try {
+      return intentApi.recordTelemetry(event);
+    } catch (err) {
+      getDiag().add?.(`[midas-voice][intent] telemetry error: ${err?.message || err}`);
+      return null;
+    }
+  };
+
+  const runAllowedVoiceAction = async (type, payload = {}, { source } = {}) => {
+    const allowedActions = global.AppModules?.assistantAllowedActions;
+    const executeAction = allowedActions?.executeAllowedAction;
+    if (typeof executeAction !== 'function') {
+      getDiag().add?.('[midas-voice][intent] allowed helper missing');
+      return false;
+    }
+    const ok = await executeAction(type, payload, {
+      getSupabaseApi: () => appModules.supabase,
+      notify: (msg, level) =>
+        getDiag().add?.(`[midas-voice][assistant-actions][${level || 'info'}] ${msg}`),
+      source: source || 'voice',
+    });
+    if (!ok) {
+      getDiag().add?.(
+        `[midas-voice][assistant-actions] action failed type=${type} source=${source || 'voice'}`,
+      );
+      return false;
+    }
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:action-success', {
+          detail: { type, payload, source: source || 'voice' },
+        }),
+      );
+    } catch (_) {
+      // ignore
+    }
+    return true;
+  };
 
   const isBootReady = () => {
     if (typeof deps.isBootReady === 'function') {
@@ -528,15 +575,245 @@
         return;
       }
       getDiag().add?.(`[midas-voice] Transcript: ${transcript}`);
+      const intentResult = preflightVoiceIntent(transcript);
+      recordVoiceIntentRoute(intentResult, transcript);
       if (
         voiceCtrl?.conversationMode &&
         shouldEndConversationFromTranscript(transcript)
       ) {
         voiceCtrl.conversationEndPending = true;
       }
+      const localDispatch = await dispatchVoiceIntentDirectMatch(intentResult, transcript);
+      if (localDispatch.handled) {
+        await finalizeVoiceIntentBypass(intentResult, transcript);
+        return;
+      }
       await handleAssistantRoundtrip(transcript);
     } catch {
       setVoiceState('idle');
+    }
+  };
+
+  const preflightVoiceIntent = (transcript) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.parseAdapterInput !== 'function') {
+      return null;
+    }
+    try {
+      const result = intentApi.parseAdapterInput({
+        raw_text: transcript,
+        source: 'voice',
+        ui_context: {
+          module: 'assistant-voice',
+          panel: 'assistant-text',
+        },
+      });
+      if (voiceCtrl) {
+        voiceCtrl.lastIntentResult = result;
+      }
+      recordIntentTelemetry({
+        source_type: 'voice',
+        decision: result?.decision || 'unknown',
+        reason: result?.reason || 'none',
+        intent_key: result?.intent_key || null,
+        target_action: result?.target_action || null,
+        route: 'voice-preflight',
+      });
+      getDiag().add?.(
+        `[midas-voice][intent] preflight decision=${result?.decision || 'unknown'} reason=${result?.reason || 'ok'}`,
+      );
+      return result;
+    } catch (err) {
+      getDiag().add?.(`[midas-voice][intent] preflight error: ${err?.message || err}`);
+      return null;
+    }
+  };
+
+  const resolveVoiceIntentRoute = (intentResult) => {
+    if (!intentResult) return 'voice-intent-no-result';
+    if (intentResult.decision === 'direct_match') return 'voice-intent-direct-match';
+    if (intentResult.decision === 'needs_confirmation') {
+      return 'voice-intent-needs-confirmation';
+    }
+    return 'voice-intent-fallback';
+  };
+
+  const recordVoiceIntentRoute = (intentResult, transcript) => {
+    if (!voiceCtrl) return;
+    const route = resolveVoiceIntentRoute(intentResult);
+    voiceCtrl.lastIntentRoute = {
+      route,
+      decision: intentResult?.decision || null,
+      intent: intentResult?.intent_key || null,
+      targetAction: intentResult?.target_action || null,
+      transcript: transcript || '',
+      at: Date.now(),
+    };
+    getDiag().add?.(
+      `[midas-voice][intent] route=${route} decision=${intentResult?.decision || 'none'} intent=${intentResult?.intent_key || 'none'}`,
+    );
+    recordIntentTelemetry({
+      source_type: 'voice',
+      decision: intentResult?.decision || 'unknown',
+      reason: intentResult?.reason || 'none',
+      intent_key: intentResult?.intent_key || null,
+      target_action: intentResult?.target_action || null,
+      route,
+    });
+  };
+
+  const buildVoiceLocalIntentReply = (intentResult) => {
+    const targetAction = `${intentResult?.target_action || ''}`.trim();
+    const payload = intentResult?.payload || {};
+    if (targetAction === 'intake_save') {
+      if (Number.isFinite(payload.water_ml)) {
+        return `${Math.round(Number(payload.water_ml))} Milliliter Wasser wurden eingetragen.`;
+      }
+      if (Number.isFinite(payload.protein_g)) {
+        return `${Number(payload.protein_g)} Gramm Protein wurden eingetragen.`;
+      }
+      if (Number.isFinite(payload.salt_g)) {
+        return `${Number(payload.salt_g)} Gramm Salz wurden eingetragen.`;
+      }
+      return 'Der Eintrag wurde gespeichert.';
+    }
+    if (targetAction === 'open_module') {
+      const target = `${payload.target || payload.module || ''}`.trim().toLowerCase();
+      if (target === 'vitals') {
+        return 'Ich habe die Vitaldaten geoeffnet.';
+      }
+      if (target === 'medikamente' || target === 'intake') {
+        return 'Ich habe die Tageserfassung geoeffnet.';
+      }
+      return 'Ich habe das gewuenschte Modul geoeffnet.';
+    }
+    if (targetAction === 'vitals_log_bp') {
+      const context = `${payload.context || ''}`.trim();
+      if (context === 'M') {
+        return 'Ich habe den Blutdruck fuer morgens gespeichert.';
+      }
+      if (context === 'A') {
+        return 'Ich habe den Blutdruck fuer abends gespeichert.';
+      }
+      return 'Ich habe den Blutdruck gespeichert.';
+    }
+    if (targetAction === 'vitals_log_weight') {
+      if (Number.isFinite(payload.weight_kg)) {
+        return `${Number(payload.weight_kg)} Kilogramm Gewicht wurden gespeichert.`;
+      }
+      return 'Ich habe das Gewicht gespeichert.';
+    }
+    return 'Befehl lokal ausgefuehrt.';
+  };
+
+  const recordVoiceIntentBypass = (intentResult, transcript, replyText = '') => {
+    if (!voiceCtrl || !intentResult) return;
+    voiceCtrl.lastIntentBypass = {
+      source: 'voice',
+      decision: intentResult.decision || null,
+      intent: intentResult.intent_key || null,
+      targetAction: intentResult.target_action || null,
+      transcript: transcript || '',
+      replyText: replyText || '',
+      at: Date.now(),
+    };
+    getDiag().add?.(
+      `[midas-voice][intent] llm bypass decision=${intentResult.decision || 'unknown'} intent=${intentResult.intent_key || 'unknown'} action=${intentResult.target_action || 'unknown'}`,
+    );
+    recordIntentTelemetry({
+      source_type: 'voice',
+      decision: intentResult.decision || 'unknown',
+      reason: intentResult.reason || 'none',
+      intent_key: intentResult.intent_key || null,
+      target_action: intentResult.target_action || null,
+      route: 'voice-llm-bypass',
+    });
+  };
+
+  const dispatchVoiceIntentDirectMatch = async (intentResult, transcript) => {
+    if (!intentResult || intentResult.decision !== 'direct_match') {
+      return { handled: false, reason: 'not-direct-match' };
+    }
+    const targetAction = `${intentResult.target_action || ''}`.trim();
+    const payload = intentResult.payload || {};
+    if (targetAction === 'intake_save' || targetAction === 'open_module') {
+      const ok = await runAllowedVoiceAction(targetAction, payload, {
+        source: 'intent-engine:voice',
+      });
+      if (!ok) {
+        return { handled: false, reason: 'voice-local-dispatch-failed' };
+      }
+      return { handled: true, reason: null };
+    }
+    if (targetAction === 'vitals_log_bp') {
+      const saveIntentMeasurement = global.AppModules?.bp?.saveIntentMeasurement;
+      if (typeof saveIntentMeasurement !== 'function') {
+        return { handled: false, reason: 'bp-intent-helper-missing' };
+      }
+      const context = `${payload.context || ''}`.trim();
+      if (!context) {
+        return { handled: false, reason: 'bp-context-missing' };
+      }
+      const result = await saveIntentMeasurement({
+        context,
+        systolic: payload.systolic,
+        diastolic: payload.diastolic,
+        pulse: payload.pulse,
+        source: 'assistant-intent',
+      });
+      if (!result?.ok) {
+        return { handled: false, reason: result?.reason || 'bp-save-failed' };
+      }
+      global.requestUiRefresh?.({ reason: 'intent:voice-bp' })?.catch?.((err) => {
+        getDiag().add?.('[midas-voice][intent] ui refresh err: ' + (err?.message || err));
+      });
+      if (typeof global.maybeRunTrendpilotAfterBpSave === 'function') {
+        try {
+          await global.maybeRunTrendpilotAfterBpSave(context);
+        } catch (err) {
+          getDiag().add?.('[midas-voice][intent] trendpilot after bp save err: ' + (err?.message || err));
+        }
+      }
+      return { handled: true, reason: null };
+    }
+    if (targetAction === 'vitals_log_weight') {
+      const saveIntentWeight = global.AppModules?.body?.saveIntentWeight;
+      if (typeof saveIntentWeight !== 'function') {
+        return { handled: false, reason: 'body-intent-helper-missing' };
+      }
+      const result = await saveIntentWeight({
+        weight_kg: payload.weight_kg,
+        source: 'assistant-intent',
+      });
+      if (!result?.ok) {
+        return { handled: false, reason: result?.reason || 'body-save-failed' };
+      }
+      global.requestUiRefresh?.({ reason: 'intent:voice-body' })?.catch?.((err) => {
+        getDiag().add?.('[midas-voice][intent] ui refresh err: ' + (err?.message || err));
+      });
+      return { handled: true, reason: null };
+    }
+    if (targetAction === 'vitals_log_pulse') {
+      return { handled: false, reason: 'pulse-local-dispatch-unsupported' };
+    }
+    return { handled: false, reason: 'voice-local-dispatch-unsupported' };
+  };
+
+  const finalizeVoiceIntentBypass = async (intentResult, transcript) => {
+    const replyText = buildVoiceLocalIntentReply(intentResult);
+    recordVoiceIntentBypass(intentResult, transcript, replyText);
+    const spoken = await speakLocalIntentConfirmation(replyText, {
+      source: 'intent-local',
+      interrupt: true,
+    });
+    if (!spoken?.ok) {
+      setVoiceState('idle');
+    }
+    const allowResume = voiceCtrl?.conversationMode && !voiceCtrl?.conversationEndPending;
+    if (allowResume) {
+      scheduleConversationResume();
+    } else {
+      endConversationSession();
     }
   };
 
@@ -747,6 +1024,60 @@
     }
   };
 
+  const canSpeakLocalIntentConfirmation = () =>
+    !!deps.endpoints?.tts && typeof deps.buildFunctionJsonHeaders === 'function';
+
+  const speakLocalIntentConfirmation = async (text, options = {}) => {
+    const normalizedText = typeof text === 'string' ? text.trim() : '';
+    if (!normalizedText) {
+      return {
+        ok: false,
+        reason: 'empty-text',
+      };
+    }
+    if (!canSpeakLocalIntentConfirmation()) {
+      return {
+        ok: false,
+        reason: 'tts-not-available',
+      };
+    }
+    if (options.interrupt === true) {
+      stopVoicePlayback();
+    }
+    try {
+      const audioUrl = await requestTtsAudio(normalizedText);
+      if (!audioUrl) {
+        return {
+          ok: false,
+          reason: 'tts-audio-missing',
+        };
+      }
+      if (voiceCtrl) {
+        voiceCtrl.lastLocalConfirmation = {
+          text: normalizedText,
+          source: options.source || 'intent-local',
+          requestedAt: Date.now(),
+        };
+      }
+      getDiag().add?.(
+        `[midas-voice][intent] local confirmation prepared source=${options.source || 'intent-local'}`,
+      );
+      await playVoiceAudio(audioUrl);
+      return {
+        ok: true,
+        reason: null,
+      };
+    } catch (err) {
+      getDiag().add?.(
+        `[midas-voice][intent] local confirmation failed: ${err?.message || err}`,
+      );
+      return {
+        ok: false,
+        reason: err?.message || 'tts-failed',
+      };
+    }
+  };
+
   const requestTtsAudio = async (text) => {
     if (!deps.endpoints?.tts) {
       throw new Error('voice-endpoints-missing');
@@ -881,6 +1212,19 @@
     return () => voiceGateListeners.delete(callback);
   };
   const isConversationMode = () => !!voiceCtrl?.conversationMode;
+  const getLastIntentState = () =>
+    voiceCtrl
+      ? {
+          result: voiceCtrl.lastIntentResult || null,
+          route: voiceCtrl.lastIntentRoute || null,
+          bypass: voiceCtrl.lastIntentBypass || null,
+        }
+      : { result: null, route: null, bypass: null };
+  const preflightTranscriptIntent = (transcript) => {
+    const result = preflightVoiceIntent(transcript);
+    recordVoiceIntentRoute(result, transcript);
+    return result;
+  };
 
   appModules.voice = Object.assign(appModules.voice || {}, {
     init,
@@ -889,5 +1233,9 @@
     isReady,
     onGateChange,
     isConversationMode,
+    preflightTranscriptIntent,
+    getLastIntentState,
+    canSpeakLocalIntentConfirmation,
+    speakLocalIntentConfirmation,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -37,6 +37,55 @@
     });
   const BODY_WARN_ON_COLLISION = Boolean(global?.BP_DEBUG_COLLISIONS);
 
+  const isFiniteBodyNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+  const recomputeProteinTargetsFromWeight = async (entry, trigger = 'body_save') => {
+    try {
+      const proteinModule = global.AppModules?.protein;
+      if (proteinModule && typeof proteinModule.recomputeTargets === 'function' && entry.weight != null) {
+        await proteinModule.recomputeTargets({
+          weight_kg: Number(entry.weight),
+          dayIso: entry.date,
+          trigger,
+          force: false
+        });
+        global.AppModules?.profile?.syncProfile?.({ reason: 'protein-recompute' });
+      }
+    } catch (err) {
+      diag.add?.(`[protein] recompute failed: ${err?.message || err}`);
+    }
+  };
+
+  async function saveIntentWeight(options = {}) {
+    const weight = Number(options.weight_kg ?? options.weight);
+    if (!isFiniteBodyNumber(weight) || weight < 20 || weight > 400) {
+      return { ok: false, reason: 'body-weight-out-of-range' };
+    }
+
+    const date = $("#date")?.value || todayStr();
+    const time = typeof options.time === 'string' && options.time ? options.time : '12:00';
+    const entry = createBaseEntry(date, time, 'Tag');
+    entry.notes = '';
+    entry.weight = weight;
+    entry.waist_cm = null;
+    entry.fat_pct = null;
+    entry.muscle_pct = null;
+
+    const localId = await addEntry(entry);
+    await syncWebhook(entry, localId);
+    feedbackApi?.feedback?.('vitals:save', {
+      intent: true,
+      source: options.source || 'assistant-intent',
+      dedupeKey: 'vitals:save:body'
+    });
+    await recomputeProteinTargetsFromWeight(entry, options.trigger || 'assistant_intent_weight');
+    return {
+      ok: true,
+      localId,
+      entry
+    };
+  }
+
   // SUBMODULE: resetBodyPanel @internal - leert Body-Eingaben und stellt optional den Fokus wieder her
   function resetBodyPanel(opts = {}) {
     const { focus = true } = opts;
@@ -138,20 +187,7 @@
       source: 'user',
       dedupeKey: 'vitals:save:body'
     });
-    try {
-      const proteinModule = global.AppModules?.protein;
-      if (proteinModule && typeof proteinModule.recomputeTargets === 'function' && entry.weight != null) {
-        await proteinModule.recomputeTargets({
-          weight_kg: Number(entry.weight),
-          dayIso: entry.date,
-          trigger: 'body_save',
-          force: false
-        });
-        global.AppModules?.profile?.syncProfile?.({ reason: 'protein-recompute' });
-      }
-    } catch (err) {
-      diag.add?.(`[protein] recompute failed: ${err?.message || err}`);
-    }
+    await recomputeProteinTargetsFromWeight(entry, 'body_save');
   }
 
   return saved;
@@ -200,7 +236,8 @@
   const bodyApi = {
     resetBodyPanel: resetBodyPanel,
     saveDaySummary: saveDaySummary,
-    prefillBodyInputs: prefillBodyInputs
+    prefillBodyInputs: prefillBodyInputs,
+    saveIntentWeight: saveIntentWeight
   };
   appModules.body = Object.assign(appModules.body || {}, bodyApi);
   global.AppModules.body = appModules.body;

@@ -294,7 +294,38 @@
     appModules.assistantSuggestStore ||
     global.AppModules?.assistantSuggestStore ||
     null;
+  const getIntentEngine = () =>
+    appModules.intentEngine ||
+    global.AppModules?.intentEngine ||
+    null;
+  const recordIntentTelemetry = (event = {}) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.recordTelemetry !== 'function') {
+      return null;
+    }
+    try {
+      return intentApi.recordTelemetry(event);
+    } catch (err) {
+      diag.add?.(`[intent] telemetry error: ${err?.message || err}`);
+      return null;
+    }
+  };
   const getVoiceModule = () => appModules.voice || global.AppModules?.voice || null;
+  const getVoiceFacade = () => {
+    const voiceApi = getVoiceModule();
+    if (voiceApi) return voiceApi;
+    if (VOICE_PARKED) {
+      return {
+        getGateStatus: () => ({ allowed: false, reason: 'voice-parked' }),
+        isReady: () => false,
+        onGateChange: () => () => {},
+        preflightTranscriptIntent: () => null,
+        getLastIntentState: () => ({ result: null, route: null, bypass: null }),
+        canSpeakLocalIntentConfirmation: () => false,
+      };
+    }
+    return null;
+  };
   const initVoiceModule = (hub) => {
     const voiceApi = getVoiceModule();
     if (typeof voiceApi?.init !== 'function') return false;
@@ -311,7 +342,7 @@
       isBootReady,
     });
   };
-  const isVoiceConversationMode = () => !!getVoiceModule()?.isConversationMode?.();
+  const isVoiceConversationMode = () => !!getVoiceFacade()?.isConversationMode?.();
 
   const syncButtonState = (target) => {
     hubButtons.forEach((btn) => {
@@ -1766,6 +1797,12 @@
         messages: [],
         sessionId: null,
         sending: false,
+        pendingIntentContext: null,
+        pendingIntentMeta: null,
+        pendingIntentLocks: {
+          inFlight: new Set(),
+          consumed: new Map(),
+        },
         context: {
           intake: null,
           appointments: [],
@@ -1870,10 +1907,10 @@
       let suggestionConfirmInFlight = false;
 
       const handleSuggestionConfirmRequest = async (suggestion) => {
-        if (!suggestion) return;
+        if (!suggestion) return { ok: false, reason: 'missing-suggestion' };
         if (suggestionConfirmInFlight) {
           diag.add?.('[assistant-suggest] confirm ignored (busy)');
-          return;
+          return { ok: false, reason: 'busy' };
         }
         suggestionConfirmInFlight = true;
         try {
@@ -1905,7 +1942,7 @@
                 detail: { suggestionId: suggestion.id },
               }),
             );
-            return;
+            return { ok: false, reason: 'save-failed' };
           }
           const store = getAssistantSuggestStore();
           store?.dismissCurrent?.({ reason: 'confirm-success' });
@@ -1931,6 +1968,12 @@
             followupKey,
             savedAt,
           });
+          return {
+            ok: true,
+            reason: null,
+            savedAt,
+            followupKey,
+          };
         } finally {
           suggestionConfirmInFlight = false;
         }
@@ -2149,6 +2192,12 @@
         if (event?.detail?.accepted) return;
         diag.add?.('[assistant-suggest] user dismissed suggestion');
       });
+      global.addEventListener('assistant:suggest-updated', () => {
+        syncAssistantPendingIntentFromSuggestion();
+      });
+      global.addEventListener('assistant:suggest-dismissed', () => {
+        clearAssistantPendingIntentContext('suggestion-dismissed');
+      });
       global.addEventListener('assistant:action-request', (event) => {
         const type = event?.detail?.type;
         if (!type) return;
@@ -2179,6 +2228,7 @@
           });
         }, 0);
       });
+      syncAssistantPendingIntentFromSuggestion();
     };
 
   const bindAssistantCameraButton = (btn, input) => {
@@ -2446,6 +2496,601 @@
     }
   };
 
+  const setAssistantPendingIntentContext = (context, meta = {}) => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.pendingIntentContext = context || null;
+    assistantChatCtrl.pendingIntentMeta = context
+      ? {
+          source: meta.source || null,
+          reason: meta.reason || 'set',
+          setAt: Date.now(),
+          ...meta,
+        }
+      : null;
+  };
+
+  const clearAssistantPendingIntentContext = (reason = 'clear') => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.pendingIntentContext = null;
+    assistantChatCtrl.pendingIntentMeta = {
+      source: assistantChatCtrl.pendingIntentMeta?.source || null,
+      reason,
+      clearedAt: Date.now(),
+    };
+  };
+
+  const getAssistantPendingIntentLockState = () =>
+    assistantChatCtrl?.pendingIntentLocks || { inFlight: new Set(), consumed: new Map() };
+
+  const getPendingIntentGuardKey = (context) => {
+    if (!context || typeof context !== 'object') return null;
+    return context.dedupe_key || context.pending_intent_id || null;
+  };
+
+  const isPendingIntentGuardLocked = (context) => {
+    const key = getPendingIntentGuardKey(context);
+    if (!key) return { locked: false, reason: null, key: null };
+    const locks = getAssistantPendingIntentLockState();
+    if (locks.inFlight.has(key)) {
+      return { locked: true, reason: 'pending-intent-in-flight', key };
+    }
+    if (locks.consumed.has(key)) {
+      return { locked: true, reason: 'pending-intent-consumed', key };
+    }
+    return { locked: false, reason: null, key };
+  };
+
+  const markPendingIntentInFlight = (context) => {
+    const key = getPendingIntentGuardKey(context);
+    if (!key || !assistantChatCtrl) return null;
+    assistantChatCtrl.pendingIntentLocks.inFlight.add(key);
+    return key;
+  };
+
+  const releasePendingIntentInFlight = (key) => {
+    if (!key || !assistantChatCtrl) return;
+    assistantChatCtrl.pendingIntentLocks.inFlight.delete(key);
+  };
+
+  const markPendingIntentConsumed = (context, reason = 'consumed') => {
+    const key = getPendingIntentGuardKey(context);
+    if (!key || !assistantChatCtrl) return;
+    assistantChatCtrl.pendingIntentLocks.inFlight.delete(key);
+    assistantChatCtrl.pendingIntentLocks.consumed.set(key, {
+      reason,
+      at: Date.now(),
+    });
+  };
+
+  const syncAssistantPendingIntentFromSuggestion = () => {
+    if (!assistantChatCtrl) return;
+    const store = getAssistantSuggestStore();
+    const suggestion = store?.getActiveSuggestion?.() || null;
+    if (!suggestion) {
+      clearAssistantPendingIntentContext('suggestion-missing');
+      return;
+    }
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.createPendingIntentContext !== 'function') {
+      return;
+    }
+    const context = intentApi.createPendingIntentContext(
+      'confirm_reject',
+      'confirm_intake',
+      {
+        suggestion_id: suggestion.id || null,
+        suggestion_source: suggestion.source || 'suggestion-card',
+      },
+      {
+        dedupe_key: `suggestion-confirm:${suggestion.id || 'unknown'}`,
+        source: 'text',
+        ui_origin: 'assistant-suggestion-inline',
+      },
+    );
+    setAssistantPendingIntentContext(context, {
+      source: 'assistant-suggestion',
+      reason: 'suggestion-active',
+    });
+  };
+
+  const ASSISTANT_CONFIRM_ALLOWED_TARGET_ACTIONS = new Set([
+    'intake_save',
+    'open_module',
+  ]);
+
+  const createAssistantActionPendingContext = (action, { replyText, rawText } = {}) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.createPendingIntentContext !== 'function') {
+      return { ok: false, reason: 'intent-api-missing' };
+    }
+    if (!action || action.type !== 'ask_confirmation') {
+      return { ok: false, reason: 'unsupported-action' };
+    }
+    const payload = action.payload && typeof action.payload === 'object' ? action.payload : {};
+    const targetAction = `${payload.target_action || ''}`.trim();
+    if (!targetAction) {
+      return { ok: false, reason: 'confirm-target-missing' };
+    }
+    if (!ASSISTANT_CONFIRM_ALLOWED_TARGET_ACTIONS.has(targetAction)) {
+      return { ok: false, reason: 'confirm-target-not-allowed' };
+    }
+    const payloadSnapshot =
+      payload.payload_snapshot && typeof payload.payload_snapshot === 'object' && !Array.isArray(payload.payload_snapshot)
+        ? { ...payload.payload_snapshot }
+        : null;
+    if (!payloadSnapshot) {
+      return { ok: false, reason: 'confirm-payload-snapshot-missing' };
+    }
+    const context = intentApi.createPendingIntentContext(
+      'confirm_reject',
+      targetAction,
+      payloadSnapshot,
+      {
+        dedupe_key:
+          `${payload.dedupe_key || ''}`.trim() ||
+          `assistant-confirm:${targetAction}:${assistantChatCtrl?.sessionId || 'text'}:${Date.now()}`,
+        ttl_ms: Number.isFinite(payload.ttl_ms) ? payload.ttl_ms : undefined,
+        expires_at: Number.isFinite(payload.expires_at) ? payload.expires_at : undefined,
+        source: 'text',
+        ui_origin: 'assistant-action',
+      },
+    );
+    return {
+      ok: true,
+      context,
+      meta: {
+        source: 'assistant-action',
+        reason: 'ask-confirmation',
+        targetAction,
+        rawText: rawText || '',
+        replyText: replyText || '',
+        confirmAcceptReply: `${payload.confirm_accept_reply || ''}`.trim() || null,
+        confirmRejectReply: `${payload.confirm_reject_reply || ''}`.trim() || null,
+      },
+    };
+  };
+
+  const processAssistantResponseActions = async (responseData, options = {}) => {
+    const actions = Array.isArray(responseData?.actions) ? responseData.actions : [];
+    if (!actions.length) {
+      return { handled: 0, ignored: 0 };
+    }
+    let handled = 0;
+    let ignored = 0;
+    for (let i = 0; i < actions.length; i += 1) {
+      const action = actions[i] || {};
+      if (action.type === 'ask_confirmation') {
+        const created = createAssistantActionPendingContext(action, options);
+        if (created.ok && created.context) {
+          setAssistantPendingIntentContext(created.context, created.meta || {});
+          diag.add?.(
+            `[assistant-actions] ask_confirmation armed target=${created.meta?.targetAction || 'unknown'}`,
+          );
+          handled += 1;
+          continue;
+        }
+        diag.add?.(
+          `[assistant-actions] ask_confirmation ignored reason=${created.reason || 'unknown'}`,
+        );
+        ignored += 1;
+        continue;
+      }
+      diag.add?.(
+        `[assistant-actions] backend action ignored type=${action.type || 'unknown'} reason=not-wired-in-hub`,
+      );
+      ignored += 1;
+    }
+    return { handled, ignored };
+  };
+
+  const preflightAssistantIntent = (text) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.parseAdapterInput !== 'function') {
+      return null;
+    }
+    try {
+      const result = intentApi.parseAdapterInput({
+        raw_text: text,
+        source: 'text',
+        pending_context: assistantChatCtrl?.pendingIntentContext || null,
+        ui_context: {
+          module: 'assistant-text',
+          panel: 'assistant-text',
+        },
+      });
+      if (assistantChatCtrl) {
+        assistantChatCtrl.lastIntentResult = result;
+      }
+      recordIntentTelemetry({
+        source_type: 'text',
+        decision: result?.decision || 'unknown',
+        reason: result?.reason || 'none',
+        intent_key: result?.intent_key || null,
+        target_action: result?.target_action || null,
+        route: 'text-preflight',
+      });
+      diag.add?.(
+        `[intent] preflight decision=${result?.decision || 'unknown'} reason=${result?.reason || 'ok'}`,
+      );
+      return result;
+    } catch (err) {
+      diag.add?.(`[intent] preflight error: ${err?.message || err}`);
+      return null;
+    }
+  };
+
+  const DIRECT_INTENT_ACTIONS = new Set(['intake_save', 'open_module']);
+
+  const recordAssistantIntentDispatchSuccess = (intentResult, rawText) => {
+    const targetAction = `${intentResult?.target_action || ''}`.trim();
+    if (assistantChatCtrl) {
+      assistantChatCtrl.lastIntentDispatch = {
+        handled: true,
+        action: targetAction,
+        intent: intentResult?.intent_key || null,
+        rawText: rawText || '',
+        at: Date.now(),
+      };
+    }
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:intent-direct-match', {
+          detail: {
+            source: 'text',
+            action: targetAction,
+            intent_key: intentResult?.intent_key || null,
+            payload: intentResult?.payload || {},
+          },
+        }),
+      );
+    } catch (_) {
+      // ignore
+    }
+    diag.add?.(
+      `[intent] direct dispatch success action=${targetAction} intent=${intentResult?.intent_key || 'unknown'}`,
+    );
+  };
+
+  const dispatchAssistantIntentVitalsMatch = async (intentResult, rawText) => {
+    if (!intentResult || intentResult.decision !== 'direct_match') {
+      return { handled: false, reason: 'not-direct-match' };
+    }
+    const targetAction = `${intentResult.target_action || ''}`.trim();
+    const payload = intentResult.payload || {};
+    if (targetAction === 'vitals_log_bp') {
+      const saveIntentMeasurement = global.AppModules?.bp?.saveIntentMeasurement;
+      if (typeof saveIntentMeasurement !== 'function') {
+        return { handled: false, reason: 'bp-intent-helper-missing' };
+      }
+      const context = `${payload.context || ''}`.trim();
+      if (!context) {
+        diag.add?.('[intent] bp direct match blocked (context missing)');
+        return { handled: false, reason: 'bp-context-missing' };
+      }
+      const result = await saveIntentMeasurement({
+        context,
+        systolic: payload.systolic,
+        diastolic: payload.diastolic,
+        pulse: payload.pulse,
+        source: 'assistant-intent',
+      });
+      if (!result?.ok) {
+        diag.add?.(`[intent] bp direct match failed reason=${result?.reason || 'unknown'}`);
+        return { handled: false, reason: result?.reason || 'bp-save-failed' };
+      }
+      global.requestUiRefresh?.({ reason: 'intent:bp' })?.catch?.((err) => {
+        diag.add?.('ui refresh err: ' + (err?.message || err));
+      });
+      if (typeof global.maybeRunTrendpilotAfterBpSave === 'function') {
+        try {
+          await global.maybeRunTrendpilotAfterBpSave(context);
+        } catch (err) {
+          diag.add?.('[intent] trendpilot after bp save err: ' + (err?.message || err));
+        }
+      }
+      recordAssistantIntentDispatchSuccess(intentResult, rawText);
+      return { handled: true, reason: null };
+    }
+    if (targetAction === 'vitals_log_weight') {
+      const saveIntentWeight = global.AppModules?.body?.saveIntentWeight;
+      if (typeof saveIntentWeight !== 'function') {
+        return { handled: false, reason: 'body-intent-helper-missing' };
+      }
+      const result = await saveIntentWeight({
+        weight_kg: payload.weight_kg,
+        source: 'assistant-intent',
+      });
+      if (!result?.ok) {
+        diag.add?.(`[intent] weight direct match failed reason=${result?.reason || 'unknown'}`);
+        return { handled: false, reason: result?.reason || 'body-save-failed' };
+      }
+      global.requestUiRefresh?.({ reason: 'intent:body' })?.catch?.((err) => {
+        diag.add?.('ui refresh err: ' + (err?.message || err));
+      });
+      recordAssistantIntentDispatchSuccess(intentResult, rawText);
+      return { handled: true, reason: null };
+    }
+    if (targetAction === 'vitals_log_pulse') {
+      diag.add?.('[intent] pulse direct match blocked (no guarded save path)');
+      return { handled: false, reason: 'pulse-local-dispatch-unsupported' };
+    }
+    return { handled: false, reason: 'not-vitals-direct-match' };
+  };
+
+  const dispatchAssistantIntentDirectMatch = async (intentResult, rawText) => {
+    if (!intentResult || intentResult.decision !== 'direct_match') {
+      return { handled: false, reason: 'not-direct-match' };
+    }
+    const targetAction = `${intentResult.target_action || ''}`.trim();
+    if (targetAction.startsWith('vitals_log_')) {
+      return dispatchAssistantIntentVitalsMatch(intentResult, rawText);
+    }
+    if (!DIRECT_INTENT_ACTIONS.has(targetAction)) {
+      diag.add?.(
+        `[intent] direct match not locally dispatchable action=${targetAction || 'unknown'}`,
+      );
+      return { handled: false, reason: 'local-dispatch-unsupported' };
+    }
+    const ok = await runAllowedAction(targetAction, intentResult.payload || {}, {
+      source: 'intent-engine:text',
+    });
+    if (!ok) {
+      return { handled: false, reason: 'local-dispatch-failed' };
+    }
+    recordAssistantIntentDispatchSuccess(intentResult, rawText);
+    return { handled: true, reason: null };
+  };
+
+  const buildAssistantLocalIntentReply = (intentResult) => {
+    const targetAction = `${intentResult?.target_action || ''}`.trim();
+    const payload = intentResult?.payload || {};
+    if (targetAction === 'intake_save') {
+      if (Number.isFinite(payload.water_ml)) {
+        return `${Math.round(Number(payload.water_ml))} ml Wasser wurden eingetragen.`;
+      }
+      if (Number.isFinite(payload.protein_g)) {
+        return `${Number(payload.protein_g)} g Protein wurden eingetragen.`;
+      }
+      if (Number.isFinite(payload.salt_g)) {
+        return `${Number(payload.salt_g)} g Salz wurden eingetragen.`;
+      }
+      return 'Der Eintrag wurde gespeichert.';
+    }
+    if (targetAction === 'open_module') {
+      const target = `${payload.target || payload.module || ''}`.trim().toLowerCase();
+      if (target === 'vitals') {
+        return 'Ich habe die Vitaldaten geöffnet.';
+      }
+      if (target === 'medikamente' || target === 'intake') {
+        return 'Ich habe die Tageserfassung geöffnet.';
+      }
+      return 'Ich habe das gewünschte Modul geöffnet.';
+    }
+    return 'Befehl lokal ausgeführt.';
+  };
+
+  const resolveAssistantConfirmIntent = async (intentResult) => {
+    if (!intentResult || intentResult.intent_key !== 'confirm_reject') {
+      return { handled: false, reason: 'not-confirm-intent' };
+    }
+    const confirmValue = `${intentResult.payload?.value || ''}`.trim().toLowerCase();
+    const pendingContext = assistantChatCtrl?.pendingIntentContext || null;
+    const contextState = intentResult.context_state || null;
+    if (!contextState?.usable || !pendingContext) {
+      appendAssistantMessage('assistant', 'Es gibt aktuell nichts zu bestaetigen.');
+      diag.add?.('[intent] confirm intent ignored (no usable pending context)');
+      return { handled: true, reason: 'pending-context-missing' };
+    }
+    const guardState = isPendingIntentGuardLocked(pendingContext);
+    if (guardState.locked) {
+      if (guardState.reason === 'pending-intent-in-flight') {
+        appendAssistantMessage('assistant', 'Die Bestaetigung wird bereits verarbeitet.');
+      } else {
+        appendAssistantMessage('assistant', 'Diese Bestaetigung wurde bereits verarbeitet.');
+      }
+      diag.add?.(`[intent] confirm intent ignored (${guardState.reason})`);
+      return { handled: true, reason: guardState.reason };
+    }
+    if (pendingContext.target_action === 'confirm_intake') {
+      const store = getAssistantSuggestStore();
+      const activeSuggestion = store?.getActiveSuggestion?.() || null;
+      const expectedSuggestionId = pendingContext.payload_snapshot?.suggestion_id || null;
+      if (!activeSuggestion || (expectedSuggestionId && activeSuggestion.id !== expectedSuggestionId)) {
+        clearAssistantPendingIntentContext('pending-suggestion-mismatch');
+        appendAssistantMessage('assistant', 'Die vorherige Bestaetigung ist nicht mehr aktiv.');
+        diag.add?.('[intent] confirm intent ignored (pending suggestion mismatch)');
+        return { handled: true, reason: 'pending-suggestion-mismatch' };
+      }
+      if (confirmValue === 'yes' || confirmValue === 'save') {
+        const lockKey = markPendingIntentInFlight(pendingContext);
+        try {
+          const result = await handleSuggestionConfirmRequest(activeSuggestion);
+          if (!result?.ok) {
+            return { handled: true, reason: result?.reason || 'confirm-intake-failed' };
+          }
+          const intentApi = getIntentEngine();
+          const consumed =
+            typeof intentApi?.consumePendingIntentContext === 'function'
+              ? intentApi.consumePendingIntentContext(pendingContext)
+              : { ok: true, context: { ...pendingContext, consumed_at: Date.now() } };
+          if (consumed?.ok) {
+            markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-intake-accepted');
+          }
+          clearAssistantPendingIntentContext('confirm-intake-accepted');
+          return { handled: true, reason: 'confirm-intake-accepted' };
+        } finally {
+          releasePendingIntentInFlight(lockKey);
+        }
+      }
+      if (confirmValue === 'no' || confirmValue === 'cancel') {
+        const intentApi = getIntentEngine();
+        const consumed =
+          typeof intentApi?.consumePendingIntentContext === 'function'
+            ? intentApi.consumePendingIntentContext(pendingContext)
+            : { ok: true, context: { ...pendingContext, consumed_at: Date.now() } };
+        if (consumed?.ok) {
+          markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-intake-rejected');
+        }
+        clearAssistantPendingIntentContext('confirm-intake-rejected');
+        store?.dismissCurrent?.({ reason: 'intent-reject' });
+        appendAssistantMessage('assistant', 'Alles klar, ich speichere das nicht.');
+        diag.add?.('[intent] confirm intake rejected');
+        return { handled: true, reason: 'confirm-intake-rejected' };
+      }
+    }
+    const genericTargetAction = `${pendingContext.target_action || ''}`.trim();
+    if (genericTargetAction) {
+      if (confirmValue === 'yes' || confirmValue === 'save') {
+        const lockKey = markPendingIntentInFlight(pendingContext);
+        const confirmAcceptReply =
+          assistantChatCtrl?.pendingIntentMeta?.confirmAcceptReply || 'Alles klar, ich fuehre das jetzt aus.';
+        try {
+          const ok = await runAllowedAction(genericTargetAction, pendingContext.payload_snapshot || {}, {
+            source: 'intent-confirm:text',
+          });
+          if (!ok) {
+            return { handled: true, reason: 'confirm-target-failed' };
+          }
+          const intentApi = getIntentEngine();
+          const consumed =
+            typeof intentApi?.consumePendingIntentContext === 'function'
+              ? intentApi.consumePendingIntentContext(pendingContext)
+              : { ok: true, context: { ...pendingContext, consumed_at: Date.now() } };
+          if (consumed?.ok) {
+            markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-target-accepted');
+          }
+          clearAssistantPendingIntentContext('confirm-target-accepted');
+          appendAssistantMessage('assistant', confirmAcceptReply);
+          return { handled: true, reason: 'confirm-target-accepted' };
+        } finally {
+          releasePendingIntentInFlight(lockKey);
+        }
+      }
+      if (confirmValue === 'no' || confirmValue === 'cancel') {
+        const confirmRejectReply =
+          assistantChatCtrl?.pendingIntentMeta?.confirmRejectReply || 'Alles klar, ich mache das nicht.';
+        const intentApi = getIntentEngine();
+        const consumed =
+          typeof intentApi?.consumePendingIntentContext === 'function'
+            ? intentApi.consumePendingIntentContext(pendingContext)
+            : { ok: true, context: { ...pendingContext, consumed_at: Date.now() } };
+        if (consumed?.ok) {
+          markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-target-rejected');
+        }
+        clearAssistantPendingIntentContext('confirm-target-rejected');
+        appendAssistantMessage('assistant', confirmRejectReply);
+        return { handled: true, reason: 'confirm-target-rejected' };
+      }
+    }
+    return { handled: false, reason: 'confirm-target-unsupported' };
+  };
+
+  const resolveAssistantIntentFallbackRoute = (intentResult, localDispatch = null) => {
+    if (!intentResult) {
+      return {
+        shouldCallAssistant: true,
+        route: 'no-intent-result',
+      };
+    }
+    if (intentResult.decision === 'fallback') {
+      return {
+        shouldCallAssistant: true,
+        route: 'intent-fallback',
+      };
+    }
+    if (intentResult.decision === 'needs_confirmation') {
+      return {
+        shouldCallAssistant: true,
+        route: 'intent-needs-confirmation',
+      };
+    }
+    if (intentResult.decision === 'direct_match' && localDispatch?.handled !== true) {
+      return {
+        shouldCallAssistant: true,
+        route: localDispatch?.reason || 'direct-match-assistant-fallback',
+      };
+    }
+    return {
+      shouldCallAssistant: true,
+      route: 'assistant-default',
+    };
+  };
+
+  const recordAssistantIntentFallback = (intentResult, fallbackRoute, rawText) => {
+    if (!assistantChatCtrl || !fallbackRoute?.shouldCallAssistant) return;
+    assistantChatCtrl.lastIntentFallback = {
+      route: fallbackRoute.route || 'assistant-default',
+      decision: intentResult?.decision || null,
+      intent: intentResult?.intent_key || null,
+      targetAction: intentResult?.target_action || null,
+      rawText: rawText || '',
+      at: Date.now(),
+    };
+    diag.add?.(
+      `[intent] assistant fallback route=${fallbackRoute.route || 'assistant-default'} decision=${intentResult?.decision || 'none'} intent=${intentResult?.intent_key || 'none'}`,
+    );
+    recordIntentTelemetry({
+      source_type: 'text',
+      decision: intentResult?.decision || 'unknown',
+      reason: intentResult?.reason || 'none',
+      intent_key: intentResult?.intent_key || null,
+      target_action: intentResult?.target_action || null,
+      route: fallbackRoute.route || 'assistant-default',
+    });
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:intent-fallback', {
+          detail: {
+            source: 'text',
+            route: fallbackRoute.route || 'assistant-default',
+            decision: intentResult?.decision || null,
+            intent_key: intentResult?.intent_key || null,
+            target_action: intentResult?.target_action || null,
+          },
+        }),
+      );
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  const recordAssistantIntentLlmBypass = (intentResult, rawText) => {
+    if (!assistantChatCtrl || !intentResult) return;
+    assistantChatCtrl.lastIntentBypass = {
+      source: 'text',
+      decision: intentResult.decision || null,
+      intent: intentResult.intent_key || null,
+      targetAction: intentResult.target_action || null,
+      rawText: rawText || '',
+      at: Date.now(),
+    };
+    diag.add?.(
+      `[intent] llm bypass decision=${intentResult.decision || 'unknown'} intent=${intentResult.intent_key || 'unknown'} action=${intentResult.target_action || 'unknown'}`,
+    );
+    recordIntentTelemetry({
+      source_type: 'text',
+      decision: intentResult.decision || 'unknown',
+      reason: intentResult.reason || 'none',
+      intent_key: intentResult.intent_key || null,
+      target_action: intentResult.target_action || null,
+      route: 'text-llm-bypass',
+    });
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:intent-llm-bypass', {
+          detail: {
+            source: 'text',
+            decision: intentResult.decision || null,
+            intent_key: intentResult.intent_key || null,
+            target_action: intentResult.target_action || null,
+          },
+        }),
+      );
+    } catch (_) {
+      // ignore
+    }
+  };
+
   const handleAssistantChatSubmit = (event) => {
     event.preventDefault();
     if (!assistantChatCtrl) return;
@@ -2473,18 +3118,62 @@
     if (!assistantChatCtrl || assistantChatCtrl.sending) return;
     debugLog('assistant-chat send start');
     ensureAssistantSession();
+    const intentResult = preflightAssistantIntent(text);
     appendAssistantMessage('user', text);
     if (assistantChatCtrl.input) {
       assistantChatCtrl.input.value = '';
     }
     setAssistantSending(true);
     try {
-      const reply = await fetchAssistantTextReply(text);
+      if (intentResult && intentResult.decision !== 'fallback') {
+        debugLog('assistant-chat intent preflight hit', {
+          decision: intentResult.decision,
+          intent: intentResult.intent_key,
+          reason: intentResult.reason || null,
+        });
+      }
+      const localConfirm = await resolveAssistantConfirmIntent(intentResult);
+      if (localConfirm.handled) {
+        recordAssistantIntentLlmBypass(intentResult, text);
+        debugLog('assistant-chat local confirm intent handled', {
+          intent: intentResult?.intent_key || null,
+          reason: localConfirm.reason || null,
+        });
+        return;
+      }
+      const localDispatch = await dispatchAssistantIntentDirectMatch(intentResult, text);
+      if (localDispatch.handled) {
+        recordAssistantIntentLlmBypass(intentResult, text);
+        appendAssistantMessage(
+          'assistant',
+          buildAssistantLocalIntentReply(intentResult),
+          {
+            meta: {
+              source: 'intent-local',
+              intent_key: intentResult?.intent_key || null,
+              action: intentResult?.target_action || null,
+            },
+          },
+        );
+        debugLog('assistant-chat local direct match handled', {
+          intent: intentResult?.intent_key || null,
+          action: intentResult?.target_action || null,
+        });
+        return;
+      }
+      const fallbackRoute = resolveAssistantIntentFallbackRoute(intentResult, localDispatch);
+      recordAssistantIntentFallback(intentResult, fallbackRoute, text);
+      const assistantResponse = await fetchAssistantTextReply(text);
+      const reply = assistantResponse?.reply || '';
       if (reply) {
         appendAssistantMessage('assistant', reply);
       } else {
         appendAssistantMessage('assistant', 'Ich habe nichts empfangen.');
       }
+      await processAssistantResponseActions(assistantResponse, {
+        rawText: text,
+        replyText: reply,
+      });
     } catch (err) {
       console.error('[assistant-chat] request failed', err);
       if (err?.message === 'supabase-headers-missing') {
@@ -2877,8 +3566,11 @@
       throw new Error(errText || 'assistant failed');
     }
     const data = await response.json().catch(() => ({}));
-    const reply = (data?.reply || '').trim();
-    return reply;
+    return {
+      reply: `${data?.reply || ''}`.trim(),
+      actions: Array.isArray(data?.actions) ? data.actions : [],
+      meta: data?.meta || null,
+    };
   };
 
   const sendAssistantPhotoMessage = async (
@@ -3174,11 +3866,11 @@
     },
     forceClosePanel: (panelName, opts) => forceClosePanelByName(panelName, opts),
     getVoiceGateStatus: () =>
-      getVoiceModule()?.getGateStatus?.() || { allowed: false, reason: 'voice-module-missing' },
-    isVoiceReady: () => !!getVoiceModule()?.isReady?.(),
+      getVoiceFacade()?.getGateStatus?.() || { allowed: false, reason: 'voice-module-missing' },
+    isVoiceReady: () => !!getVoiceFacade()?.isReady?.(),
     onVoiceGateChange: (callback) => {
       if (typeof callback !== 'function') return () => {};
-      const voiceApi = getVoiceModule();
+      const voiceApi = getVoiceFacade();
       if (typeof voiceApi?.onGateChange === 'function') {
         return voiceApi.onGateChange(callback);
       }

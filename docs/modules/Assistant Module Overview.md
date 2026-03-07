@@ -2,11 +2,12 @@
 
 Kurze Einordnung:
 - Zweck: Text-Assistant fuer Capture-Hilfe, Aktionen und Kontext-Feedback (Voice ist geparkt).
-- Rolle innerhalb von MIDAS: orchestriert Assistant-UI und Aktionen im Hub; Voice-Logik liegt separat als Legacy-Modul.
+- Rolle innerhalb von MIDAS: orchestriert Assistant-UI und Aktionen im Hub; vor dem LLM liegt jetzt ein lokaler Intent-Fast-Path fuer einfache strukturierte Befehle.
 - Abgrenzung: keine eigenen medizinischen Diagnosen, kein Persistieren von Daten (nur Actions triggern Speichern in anderen Modulen).
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Intent Engine Module Overview](Intent Engine Module Overview.md)
 
 ---
 
@@ -22,8 +23,9 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/hub/index.js` | Assistant-Panel, Endpunkte, Kontext-Sync, Voice-Adapter (geparkt) |
+| `app/modules/hub/index.js` | Assistant-Panel, Kontext-Sync, Intent-Preflight, Assistant-Fallback, Voice-Fassade (geparkt) |
 | `app/modules/assistant-stack/assistant/index.js` | Assistant UI-Helpers + Session-Factory |
+| `app/modules/assistant-stack/intent/index.js` | Lokaler Intent-Fast-Path fuer deterministische Text-/spaetere Voice-Befehle. |
 | `app/modules/assistant-stack/assistant/session-agent.js` | Session-Logik (Messages, API-Call, Actions) |
 | `app/modules/assistant-stack/assistant/actions.js` | Action-Dispatcher (open_module, intake_save, etc.) |
 | `app/modules/assistant-stack/assistant/allowed-actions.js` | Guard/Whitelist fuer Actions (Stage/Auth) |
@@ -60,7 +62,10 @@ Related docs:
 - Photo-Button im Panel fuer Vision-Flow.
 
 ### 4.3 Verarbeitung
-- Text: `session-agent` sendet Messages an `/api/midas-assistant`.
+- Text:
+  - Hub prueft zuerst den lokalen Intent-Fast-Path.
+  - `direct_match`-Faelle werden fuer heute unterstuetzte Allowed-Actions lokal behandelt.
+  - `fallback` / `needs_confirmation` / nicht lokal dispatchbare Treffer gehen weiter an `/api/midas-assistant`.
 - Voice (geparkt): Transcribe (`/api/midas-transcribe`) -> Assistant -> TTS (`/api/midas-tts`).
 - Vision: Foto bleibt Draft bis "Senden"; Upload -> `/api/midas-vision` -> Ergebnis im Chat.
 - Actions laufen ueber `allowed-actions` und `assistant/actions`.
@@ -103,6 +108,10 @@ Related docs:
 - Source of Truth: Session-State im Hub + Suggest-Store Snapshot (Intake/Termine/Profil).
 - Side Effects: emittiert `assistant:*` Events, kann Module via Actions triggern.
 - Constraints: Voice-Gate (authState unknown) blockt Voice, Actions nur via Allowed-Actions.
+- Intent Engine Integration:
+  - `assistant:intent-direct-match`
+  - `assistant:intent-fallback`
+  - `assistant:intent-llm-bypass`
 - `assistant:action-request` und `assistant:action-success` fuer Actions.
 - `assistant:suggest-confirm` / `assistant:suggest-answer` fuer Confirm-Flow.
 - `assistant:meal-followup-request` fuer die Meal-Idea Anfrage.
@@ -127,7 +136,7 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (Text), Voice geparkt.
+- Status: aktiv (Text), Intent-Fast-Path produktiv, Voice geparkt.
 - Dependencies (hard): Hub-Panel, `assistant/*` Session/Actions, VAD, Backend-APIs `/api/midas-*`.
 - Dependencies (soft): Vision-Flow/Photo, Appointments/Profile Kontext.
 - Known issues / risks: Netz/Latenz, Actions nur whitelisted, Voice-Gate blockt bei Auth/Boot.

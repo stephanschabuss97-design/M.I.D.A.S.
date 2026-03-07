@@ -54,7 +54,12 @@ Related docs:
 - Atemphase alterniert deterministisch:
   - `Einatmen` fuer `3000ms`
   - `Ausatmen` fuer `4000ms`
-- Orb-Animation wird ueber CSS-Variablen synchronisiert.
+- Orb-Animation wird ueber CSS-Variablen und phase-basierte Styles synchronisiert.
+- Der Orb verwendet einen `fluessig` abgestimmten Material-Look mit:
+  - vergroesserter Grundflaeche
+  - langsamer `360deg` Rotation
+  - phase-gekoppelter Glow-Atmung
+  - sanftem Material-Crossfade zwischen `Einatmen` und `Ausatmen`
 
 ### 4.3 Abbruch
 - 1. Tap auf Overlay: `Nochmal tippen zum Abbrechen` (Confirm-Fenster `2500ms`).
@@ -93,6 +98,12 @@ Related docs:
   - `data-breath-orb`
   - `data-breath-phase-label`
   - `data-breath-feedback`
+- Orb-Visual-Contract:
+  - Basis-Orb in `app/styles/hub.css`
+  - `::before` und `::after` als weiche Material-Layer fuer inhale/exhale
+  - `data-breath-phase="inhale"` blendet den inhale-Layer ueber `3000ms` ein
+  - `data-breath-phase="exhale"` blendet den exhale-Layer ueber `4000ms` ein
+  - Glow und Material reagieren pro Phase gemeinsam, ohne harten Style-Swap
 - Event/Binding:
   - `bindDom(...)` fuer DOM-Zuordnung.
   - `breath:state` als CustomEvent fuer externe Beobachter.
@@ -129,11 +140,12 @@ Related docs:
 - Manuelle Checks:
   - Mobile/Desktop Positionierung des Startbuttons.
   - Lesbarkeit/Flow bei realem Geraet und frueher Tagesumgebung.
-  - Visuelles Motion-Polish (Atemphase/Fade-Gefuehl).
+  - Orb-Motion/Rotation auf sichtbaren Loop oder zu harte Materialwechsel pruefen.
+  - Phasenkopplung von Glow und Material (`3s` inhale / `4s` exhale) visuell gegenpruefen.
 
 ---
 
 ## 10. Erweiterungspunkte / Zukunft
 
-- Feinere Motion-Polish-Pfade (Text-Crossfade, Orb-Easing).
+- Weitere Orb-Polish-Schritte nur vorsichtig und inkrementell (z. B. Intensitaets-Tuning statt neue Effekt-Layer).
 - Optionale medizinische Hinweise (rein UI), ohne Messlogik zu veraendern.

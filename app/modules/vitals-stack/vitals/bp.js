@@ -24,6 +24,12 @@
   const CONTEXT_LABELS = Object.freeze({ M: 'Morgen', A: 'Abend' });
   const BP_SYS_THRESHOLD = 130;
   const BP_DIA_THRESHOLD = 90;
+  const BP_SYS_MIN = 60;
+  const BP_SYS_MAX = 260;
+  const BP_DIA_MIN = 40;
+  const BP_DIA_MAX = 160;
+  const BP_PULSE_MIN = 25;
+  const BP_PULSE_MAX = 240;
   const BP_WARN_ON_COLLISION = Boolean(global?.BP_DEBUG_COLLISIONS);
 
   const createBaseEntry =
@@ -158,6 +164,104 @@ const getCommentElementUnsafe = (normalizedCtx) => {
     return CONTEXT_LABELS[ctx] || null;
   };
 
+  const isFiniteBpNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+  const inBpRange = (value, min, max) => isFiniteBpNumber(value) && value >= min && value <= max;
+
+  async function persistBpEntry({
+    context,
+    systolic,
+    diastolic,
+    pulse = null,
+    date,
+    time,
+    contextLabel,
+    bpComment = '',
+    source = 'user'
+  } = {}) {
+    let ctx;
+    try {
+      ctx = normalizeContext(context);
+    } catch (err) {
+      return { ok: false, reason: 'bp-context-invalid', error: err };
+    }
+
+    const sys = Number(systolic);
+    const dia = Number(diastolic);
+    const bpm = pulse == null ? null : Number(pulse);
+    if (!inBpRange(sys, BP_SYS_MIN, BP_SYS_MAX)) {
+      return { ok: false, reason: 'bp-systolic-out-of-range' };
+    }
+    if (!inBpRange(dia, BP_DIA_MIN, BP_DIA_MAX)) {
+      return { ok: false, reason: 'bp-diastolic-out-of-range' };
+    }
+    if (sys <= dia) {
+      return { ok: false, reason: 'bp-order-invalid' };
+    }
+    if (bpm != null && !inBpRange(bpm, BP_PULSE_MIN, BP_PULSE_MAX)) {
+      return { ok: false, reason: 'bp-pulse-out-of-range' };
+    }
+
+    const resolvedDate = typeof date === 'string' && date ? date : $("#date")?.value || todayStr();
+    const resolvedTime = typeof time === 'string' && time ? time : (ctx === 'M' ? '07:00' : '22:00');
+    const resolvedContextLabel = resolveContextLabel(ctx, contextLabel);
+    if (!resolvedContextLabel) {
+      return { ok: false, reason: 'bp-context-label-missing' };
+    }
+
+    const entry = createBaseEntry(resolvedDate, resolvedTime, resolvedContextLabel);
+    entry.sys = sys;
+    entry.dia = dia;
+    entry.pulse = bpm;
+    entry.map = calcMAP(sys, dia);
+    entry.notes = '';
+    entry.bp_comment = `${bpComment || ''}`.trim();
+
+    const localId = await addEntry(entry);
+    await syncWebhook(entry, localId);
+    if (doc) {
+      try {
+        doc.dispatchEvent(new CustomEvent('bp:changed', {
+          detail: {
+            context: ctx,
+            contextLabel: resolvedContextLabel,
+            dayIso: resolvedDate,
+            date: resolvedDate,
+            source
+          }
+        }));
+      } catch (_) {
+        // ignore
+      }
+    }
+    feedbackApi?.feedback?.('vitals:save', {
+      intent: true,
+      source,
+      dedupeKey: `vitals:save:bp:${ctx}`
+    });
+    return {
+      ok: true,
+      context: ctx,
+      date: resolvedDate,
+      localId,
+      entry
+    };
+  }
+
+  async function saveIntentMeasurement(options = {}) {
+    return persistBpEntry({
+      context: options.context || options.which,
+      systolic: options.systolic,
+      diastolic: options.diastolic,
+      pulse: options.pulse,
+      date: options.date,
+      time: options.time,
+      contextLabel: options.contextLabel,
+      bpComment: options.bpComment,
+      source: options.source || 'assistant-intent'
+    });
+  }
+
   async function saveBlock(contextLabelInput, which, includeWeight=false, force=false){
   let ctx;
   try {
@@ -231,36 +335,21 @@ const getCommentElementUnsafe = (normalizedCtx) => {
       return null;
     }
 
-    const entry = createBaseEntry(date, time, contextLabel);
-    entry.sys = sys;
-    entry.dia = dia;
-    entry.pulse = pulse;
-    entry.map = (sys!=null && dia!=null) ? calcMAP(sys, dia) : null;
-    entry.notes = '';
-    entry.bp_comment = comment;
-
-    const localId = await addEntry(entry);
-    await syncWebhook(entry, localId);
-    if (doc) {
-      try {
-        doc.dispatchEvent(new CustomEvent('bp:changed', {
-          detail: {
-            context: ctx,
-            contextLabel,
-            dayIso: date,
-            date,
-            source: 'bp-save'
-          }
-        }));
-      } catch (_) {
-        // ignore
-      }
-    }
-    feedbackApi?.feedback?.('vitals:save', {
-      intent: true,
-      source: 'user',
-      dedupeKey: `vitals:save:bp:${ctx}`
+    const persisted = await persistBpEntry({
+      context: ctx,
+      systolic: sys,
+      diastolic: dia,
+      pulse,
+      date,
+      time,
+      contextLabel,
+      bpComment: comment,
+      source: 'user'
     });
+    if (!persisted?.ok) {
+      uiError?.('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+      return false;
+    }
   }
 
   if (hasComment){
@@ -302,7 +391,8 @@ const getCommentElementUnsafe = (normalizedCtx) => {
     updateBpCommentWarnings,
     resetBpPanel,
     blockHasData,
-    saveBlock
+    saveBlock,
+    saveIntentMeasurement
   };
   appModules.bp = Object.assign(appModules.bp || {}, bpApi);
   global.AppModules.bp = appModules.bp;
