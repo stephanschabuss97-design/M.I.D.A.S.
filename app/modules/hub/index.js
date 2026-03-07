@@ -1904,6 +1904,37 @@
         return ok;
       };
 
+      const runUiSafeAction = async (type, payload = {}, { source } = {}) => {
+        const allowedActions = global.AppModules?.assistantAllowedActions;
+        const executeAction = allowedActions?.executeUiSafeAllowedAction;
+        if (typeof executeAction !== 'function') {
+          diag.add?.('[assistant-actions] ui-safe helper missing');
+          return false;
+        }
+        const ok = await executeAction(type, payload, {
+          notify: (msg, level) =>
+            diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
+          source: source || 'hub',
+        });
+        if (!ok) {
+          diag.add?.(
+            `[assistant-actions] ui-safe action failed type=${type} source=${source || 'unknown'}`,
+          );
+        } else {
+          if (appModules.touchlog?.add) {
+            appModules.touchlog.add(
+              `[assistant-actions] success action=${type} source=${source || 'hub'} mode=ui-safe`,
+            );
+          }
+          global.dispatchEvent(
+            new CustomEvent('assistant:action-success', {
+              detail: { type, payload, source: source || 'hub' },
+            }),
+          );
+        }
+        return ok;
+      };
+
       let suggestionConfirmInFlight = false;
 
       const handleSuggestionConfirmRequest = async (suggestion) => {
@@ -2704,6 +2735,7 @@
       recordIntentTelemetry({
         source_type: 'text',
         decision: result?.decision || 'unknown',
+        outcome: result?.decision === 'direct_match' ? 'pending-local-execution' : 'none',
         reason: result?.reason || 'none',
         intent_key: result?.intent_key || null,
         target_action: result?.target_action || null,
@@ -2760,12 +2792,12 @@
     if (targetAction === 'vitals_log_bp') {
       const saveIntentMeasurement = global.AppModules?.bp?.saveIntentMeasurement;
       if (typeof saveIntentMeasurement !== 'function') {
-        return { handled: false, reason: 'bp-intent-helper-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'bp-intent-helper-missing' };
       }
       const context = `${payload.context || ''}`.trim();
       if (!context) {
         diag.add?.('[intent] bp direct match blocked (context missing)');
-        return { handled: false, reason: 'bp-context-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'bp-context-missing' };
       }
       const result = await saveIntentMeasurement({
         context,
@@ -2776,7 +2808,11 @@
       });
       if (!result?.ok) {
         diag.add?.(`[intent] bp direct match failed reason=${result?.reason || 'unknown'}`);
-        return { handled: false, reason: result?.reason || 'bp-save-failed' };
+        return {
+          handled: false,
+          outcome: 'blocked_local',
+          reason: result?.reason || 'bp-save-failed',
+        };
       }
       global.requestUiRefresh?.({ reason: 'intent:bp' })?.catch?.((err) => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
@@ -2789,12 +2825,12 @@
         }
       }
       recordAssistantIntentDispatchSuccess(intentResult, rawText);
-      return { handled: true, reason: null };
+      return { handled: true, outcome: 'handled', reason: null };
     }
     if (targetAction === 'vitals_log_weight') {
       const saveIntentWeight = global.AppModules?.body?.saveIntentWeight;
       if (typeof saveIntentWeight !== 'function') {
-        return { handled: false, reason: 'body-intent-helper-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'body-intent-helper-missing' };
       }
       const result = await saveIntentWeight({
         weight_kg: payload.weight_kg,
@@ -2802,24 +2838,28 @@
       });
       if (!result?.ok) {
         diag.add?.(`[intent] weight direct match failed reason=${result?.reason || 'unknown'}`);
-        return { handled: false, reason: result?.reason || 'body-save-failed' };
+        return {
+          handled: false,
+          outcome: 'blocked_local',
+          reason: result?.reason || 'body-save-failed',
+        };
       }
       global.requestUiRefresh?.({ reason: 'intent:body' })?.catch?.((err) => {
         diag.add?.('ui refresh err: ' + (err?.message || err));
       });
       recordAssistantIntentDispatchSuccess(intentResult, rawText);
-      return { handled: true, reason: null };
+      return { handled: true, outcome: 'handled', reason: null };
     }
     if (targetAction === 'vitals_log_pulse') {
       diag.add?.('[intent] pulse direct match blocked (no guarded save path)');
-      return { handled: false, reason: 'pulse-local-dispatch-unsupported' };
+      return { handled: false, outcome: 'unsupported_local', reason: 'pulse-local-dispatch-unsupported' };
     }
-    return { handled: false, reason: 'not-vitals-direct-match' };
+    return { handled: false, outcome: 'unsupported_local', reason: 'not-vitals-direct-match' };
   };
 
   const dispatchAssistantIntentDirectMatch = async (intentResult, rawText) => {
     if (!intentResult || intentResult.decision !== 'direct_match') {
-      return { handled: false, reason: 'not-direct-match' };
+      return { handled: false, outcome: 'fallback_semantic', reason: 'not-direct-match' };
     }
     const targetAction = `${intentResult.target_action || ''}`.trim();
     if (targetAction.startsWith('vitals_log_')) {
@@ -2829,16 +2869,20 @@
       diag.add?.(
         `[intent] direct match not locally dispatchable action=${targetAction || 'unknown'}`,
       );
-      return { handled: false, reason: 'local-dispatch-unsupported' };
+      return { handled: false, outcome: 'unsupported_local', reason: 'local-dispatch-unsupported' };
     }
-    const ok = await runAllowedAction(targetAction, intentResult.payload || {}, {
+    const executor =
+      targetAction === 'open_module'
+        ? runUiSafeAction
+        : runAllowedAction;
+    const ok = await executor(targetAction, intentResult.payload || {}, {
       source: 'intent-engine:text',
     });
     if (!ok) {
-      return { handled: false, reason: 'local-dispatch-failed' };
+      return { handled: false, outcome: 'blocked_local', reason: 'local-dispatch-failed' };
     }
     recordAssistantIntentDispatchSuccess(intentResult, rawText);
-    return { handled: true, reason: null };
+    return { handled: true, outcome: 'handled', reason: null };
   };
 
   const buildAssistantLocalIntentReply = (intentResult) => {
@@ -2867,6 +2911,30 @@
       return 'Ich habe das gewünschte Modul geöffnet.';
     }
     return 'Befehl lokal ausgeführt.';
+  };
+
+  const buildAssistantLocalIntentBlockedReply = (intentResult, localDispatch = null) => {
+    const targetAction = `${intentResult?.target_action || ''}`.trim();
+    const reason = `${localDispatch?.reason || ''}`.trim();
+    if (targetAction === 'open_module') {
+      return 'Ich habe den Befehl erkannt, aber das Modul ist gerade noch nicht bereit.';
+    }
+    if (targetAction === 'intake_save') {
+      return 'Ich habe den Befehl erkannt, aber ich kann den Eintrag gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_weight') {
+      return 'Ich habe den Befehl erkannt, aber ich kann das Gewicht gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_bp') {
+      if (reason === 'bp-context-missing') {
+        return 'Ich habe den Befehl erkannt. Bitte sage beim Blutdruck noch morgens oder abends dazu.';
+      }
+      return 'Ich habe den Befehl erkannt, aber ich kann den Blutdruck gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_pulse') {
+      return 'Ich habe den Befehl erkannt. Puls kann ich lokal im Moment nur zusammen mit Blutdruck verarbeiten.';
+    }
+    return 'Ich habe den Befehl erkannt, kann ihn aber gerade noch nicht lokal ausfuehren.';
   };
 
   const resolveAssistantConfirmIntent = async (intentResult) => {
@@ -3004,11 +3072,31 @@
         route: 'intent-needs-confirmation',
       };
     }
-    if (intentResult.decision === 'direct_match' && localDispatch?.handled !== true) {
-      return {
-        shouldCallAssistant: true,
-        route: localDispatch?.reason || 'direct-match-assistant-fallback',
-      };
+    if (intentResult.decision === 'direct_match') {
+      if (localDispatch?.handled === true) {
+        return {
+          shouldCallAssistant: false,
+          route: 'direct-match-handled',
+        };
+      }
+      if (localDispatch?.outcome === 'blocked_local') {
+        return {
+          shouldCallAssistant: false,
+          route: localDispatch?.reason || 'direct-match-blocked-local',
+        };
+      }
+      if (localDispatch?.outcome === 'unsupported_local') {
+        return {
+          shouldCallAssistant: false,
+          route: localDispatch?.reason || 'direct-match-unsupported-local',
+        };
+      }
+      if (localDispatch?.outcome === 'fallback_semantic') {
+        return {
+          shouldCallAssistant: true,
+          route: localDispatch?.reason || 'direct-match-semantic-fallback',
+        };
+      }
     }
     return {
       shouldCallAssistant: true,
@@ -3032,6 +3120,7 @@
     recordIntentTelemetry({
       source_type: 'text',
       decision: intentResult?.decision || 'unknown',
+      outcome: 'fallback_semantic',
       reason: intentResult?.reason || 'none',
       intent_key: intentResult?.intent_key || null,
       target_action: intentResult?.target_action || null,
@@ -3070,6 +3159,7 @@
     recordIntentTelemetry({
       source_type: 'text',
       decision: intentResult.decision || 'unknown',
+      outcome: 'handled',
       reason: intentResult.reason || 'none',
       intent_key: intentResult.intent_key || null,
       target_action: intentResult.target_action || null,
@@ -3162,6 +3252,51 @@
         return;
       }
       const fallbackRoute = resolveAssistantIntentFallbackRoute(intentResult, localDispatch);
+      if (!fallbackRoute.shouldCallAssistant && intentResult?.decision === 'direct_match') {
+        if (assistantChatCtrl) {
+          assistantChatCtrl.lastIntentFallback = {
+            route: fallbackRoute.route || 'direct-match-local',
+            decision: intentResult?.decision || null,
+            intent: intentResult?.intent_key || null,
+            targetAction: intentResult?.target_action || null,
+            outcome: localDispatch?.outcome || null,
+            rawText: text || '',
+            at: Date.now(),
+          };
+        }
+        diag.add?.(
+          `[intent] local direct match outcome=${localDispatch?.outcome || 'unknown'} reason=${localDispatch?.reason || 'none'} intent=${intentResult?.intent_key || 'none'}`,
+        );
+        recordIntentTelemetry({
+          source_type: 'text',
+          decision: intentResult?.decision || 'unknown',
+          outcome: localDispatch?.outcome || 'none',
+          reason: localDispatch?.reason || intentResult?.reason || 'none',
+          intent_key: intentResult?.intent_key || null,
+          target_action: intentResult?.target_action || null,
+          route: fallbackRoute.route || 'direct-match-local',
+        });
+        appendAssistantMessage(
+          'assistant',
+          buildAssistantLocalIntentBlockedReply(intentResult, localDispatch),
+          {
+            meta: {
+              source: 'intent-local-blocked',
+              intent_key: intentResult?.intent_key || null,
+              action: intentResult?.target_action || null,
+              outcome: localDispatch?.outcome || null,
+              reason: localDispatch?.reason || null,
+            },
+          },
+        );
+        debugLog('assistant-chat local direct match blocked', {
+          intent: intentResult?.intent_key || null,
+          action: intentResult?.target_action || null,
+          outcome: localDispatch?.outcome || null,
+          reason: localDispatch?.reason || null,
+        });
+        return;
+      }
       recordAssistantIntentFallback(intentResult, fallbackRoute, text);
       const assistantResponse = await fetchAssistantTextReply(text);
       const reply = assistantResponse?.reply || '';
@@ -3882,4 +4017,5 @@
     closeQuickbar: () => closeQuickbar(),
   });
 })(typeof window !== 'undefined' ? window : globalThis);
+
 

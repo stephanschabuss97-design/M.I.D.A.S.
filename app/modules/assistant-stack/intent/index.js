@@ -14,6 +14,7 @@ const telemetryState = {
   },
   by_source: Object.create(null),
   by_decision: Object.create(null),
+  by_outcome: Object.create(null),
   by_reason: Object.create(null),
   by_intent: Object.create(null),
   by_route: Object.create(null),
@@ -80,6 +81,8 @@ export function recordTelemetry(event = {}) {
   const sourceType = normalizeAdapterSource(event.source_type || event.source);
   const decision =
     typeof event.decision === 'string' && event.decision.trim() ? event.decision.trim() : 'unknown';
+  const outcome =
+    typeof event.outcome === 'string' && event.outcome.trim() ? event.outcome.trim() : 'none';
   const reason =
     typeof event.reason === 'string' && event.reason.trim() ? event.reason.trim() : 'none';
   const intentKey =
@@ -92,6 +95,7 @@ export function recordTelemetry(event = {}) {
   telemetryState.totals.all += 1;
   incrementCounter(telemetryState.by_source, sourceType);
   incrementCounter(telemetryState.by_decision, decision);
+  incrementCounter(telemetryState.by_outcome, outcome);
   incrementCounter(telemetryState.by_reason, reason);
   incrementCounter(telemetryState.by_intent, intentKey);
   if (route) {
@@ -102,6 +106,7 @@ export function recordTelemetry(event = {}) {
     at: Date.now(),
     source_type: sourceType,
     decision,
+    outcome,
     reason,
     intent_key: intentKey,
     target_action:
@@ -125,6 +130,7 @@ export function getTelemetrySnapshot() {
     totals: { ...telemetryState.totals },
     by_source: cloneBucket(telemetryState.by_source),
     by_decision: cloneBucket(telemetryState.by_decision),
+    by_outcome: cloneBucket(telemetryState.by_outcome),
     by_reason: cloneBucket(telemetryState.by_reason),
     by_intent: cloneBucket(telemetryState.by_intent),
     by_route: cloneBucket(telemetryState.by_route),
@@ -136,6 +142,7 @@ export function resetTelemetry() {
   telemetryState.totals.all = 0;
   telemetryState.by_source = Object.create(null);
   telemetryState.by_decision = Object.create(null);
+  telemetryState.by_outcome = Object.create(null);
   telemetryState.by_reason = Object.create(null);
   telemetryState.by_intent = Object.create(null);
   telemetryState.by_route = Object.create(null);

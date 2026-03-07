@@ -1,5 +1,7 @@
 'use strict';
 
+import { dispatchUiSafeAssistantAction } from './actions.js';
+
 /**
  * MODULE: assistant/allowed-actions.js
  * Zentraler Helper für KI-Actions (Whitelist + Guard Rails + Touchlog).
@@ -42,6 +44,8 @@ const WHITELIST = new Set([
   'suggest_intake',
   'confirm_intake',
 ]);
+
+const UI_SAFE_WHITELIST = new Set(['open_module']);
 
 export async function executeAllowedAction(type, payload = {}, options = {}) {
   const mergedOptions = {
@@ -93,6 +97,44 @@ export async function executeAllowedAction(type, payload = {}, options = {}) {
   }
 }
 
+export async function executeUiSafeAllowedAction(type, payload = {}, options = {}) {
+  const mergedOptions = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+  const diag = mergedOptions.diag?.();
+  const source = options.source || mergedOptions.source || 'unknown';
+  if (!UI_SAFE_WHITELIST.has(type)) {
+    diag?.add?.(`[assistant-allowed] blocked non-ui-safe action ${type}`);
+    logTouch('blocked', type, 'not-ui-safe', mergedOptions, source);
+    return false;
+  }
+  if (!isStageReady()) {
+    diag?.add?.(`[assistant-allowed] blocked stage not ready action=${type}`);
+    logTouch('blocked', type, 'stage-not-ready', mergedOptions, source);
+    return false;
+  }
+  logTouch('start', type, 'ui-safe', mergedOptions, source);
+  try {
+    const ok = await dispatchUiSafeAssistantAction(
+      { type, payload },
+      {
+        notify: mergedOptions.notify,
+      },
+    );
+    if (!ok) {
+      logTouch('error', type, 'ui-safe-dispatch-failed', mergedOptions, source);
+      return false;
+    }
+    logTouch('success', type, 'ui-safe', mergedOptions, source);
+    return true;
+  } catch (err) {
+    diag?.add?.(`[assistant-allowed] failed ui-safe action=${type} err=${err?.message || err}`);
+    logTouch('error', type, err?.message || 'ui-safe-unknown', mergedOptions, source);
+    return false;
+  }
+}
+
 const isStageReady = () => {
   if (typeof document === 'undefined') return true;
   const bootFlow = getBootFlow();
@@ -124,6 +166,7 @@ if (typeof window !== 'undefined') {
   window.AppModules = window.AppModules || {};
   window.AppModules.assistantAllowedActions = {
     executeAllowedAction,
+    executeUiSafeAllowedAction,
   };
 }
 

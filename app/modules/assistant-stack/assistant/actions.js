@@ -57,6 +57,24 @@ export async function dispatchAssistantActions(actions, options = {}) {
   }
 }
 
+export async function dispatchUiSafeAssistantAction(action, options = {}) {
+  if (!action || typeof action.type !== 'string') {
+    logWarn('Invalid ui-safe action payload');
+    return false;
+  }
+
+  const notify = options.notify || defaultNotify;
+  const payload = action.payload || {};
+
+  switch (action.type) {
+    case 'open_module':
+      return handleOpenModule(payload, null, notify);
+    default:
+      logWarn(`Unknown ui-safe action type: ${action.type}`);
+      return false;
+  }
+}
+
 /**
  * Handles a single action.
  *
@@ -280,7 +298,7 @@ async function handleOpenModule(payload, _sb, notify) {
   const normalized = normalizeModuleTarget(payload);
   if (!normalized) {
     logWarn('open_module - missing target');
-    return;
+    return false;
   }
 
   logInfo(`OpenModule requested (${normalized.debug})`);
@@ -293,8 +311,10 @@ async function handleOpenModule(payload, _sb, notify) {
         ? 'Starte Sprachaufnahme.'
         : `Ich öffne ${normalized.label}.`);
     notify(message, 'info');
+    return true;
   } else {
     notify('Ich konnte das gewünschte Panel nicht öffnen.', 'warning');
+    return false;
   }
 }
 
@@ -728,3 +748,4 @@ if (typeof window !== 'undefined') {
   namespace.dispatchAssistantActions = dispatchAssistantActions;
   window.AppModules.assistantActions = namespace;
 }
+

@@ -145,6 +145,36 @@
     return true;
   };
 
+  const runUiSafeVoiceAction = async (type, payload = {}, { source } = {}) => {
+    const allowedActions = global.AppModules?.assistantAllowedActions;
+    const executeAction = allowedActions?.executeUiSafeAllowedAction;
+    if (typeof executeAction !== 'function') {
+      getDiag().add?.('[midas-voice][intent] ui-safe helper missing');
+      return false;
+    }
+    const ok = await executeAction(type, payload, {
+      notify: (msg, level) =>
+        getDiag().add?.(`[midas-voice][assistant-actions][${level || 'info'}] ${msg}`),
+      source: source || 'voice',
+    });
+    if (!ok) {
+      getDiag().add?.(
+        `[midas-voice][assistant-actions] ui-safe action failed type=${type} source=${source || 'voice'}`,
+      );
+      return false;
+    }
+    try {
+      global.dispatchEvent(
+        new CustomEvent('assistant:action-success', {
+          detail: { type, payload, source: source || 'voice' },
+        }),
+      );
+    } catch (_) {
+      // ignore
+    }
+    return true;
+  };
+
   const isBootReady = () => {
     if (typeof deps.isBootReady === 'function') {
       return deps.isBootReady();
@@ -576,7 +606,6 @@
       }
       getDiag().add?.(`[midas-voice] Transcript: ${transcript}`);
       const intentResult = preflightVoiceIntent(transcript);
-      recordVoiceIntentRoute(intentResult, transcript);
       if (
         voiceCtrl?.conversationMode &&
         shouldEndConversationFromTranscript(transcript)
@@ -584,8 +613,14 @@
         voiceCtrl.conversationEndPending = true;
       }
       const localDispatch = await dispatchVoiceIntentDirectMatch(intentResult, transcript);
+      recordVoiceIntentRoute(intentResult, transcript, localDispatch);
       if (localDispatch.handled) {
         await finalizeVoiceIntentBypass(intentResult, transcript);
+        return;
+      }
+      const fallbackRoute = resolveVoiceIntentRoute(intentResult, localDispatch);
+      if (!fallbackRoute.shouldCallAssistant && intentResult?.decision === 'direct_match') {
+        await finalizeVoiceIntentBlocked(intentResult, transcript, localDispatch);
         return;
       }
       await handleAssistantRoundtrip(transcript);
@@ -614,6 +649,7 @@
       recordIntentTelemetry({
         source_type: 'voice',
         decision: result?.decision || 'unknown',
+        outcome: result?.decision === 'direct_match' ? 'pending-local-execution' : 'none',
         reason: result?.reason || 'none',
         intent_key: result?.intent_key || null,
         target_action: result?.target_action || null,
@@ -629,36 +665,58 @@
     }
   };
 
-  const resolveVoiceIntentRoute = (intentResult) => {
-    if (!intentResult) return 'voice-intent-no-result';
-    if (intentResult.decision === 'direct_match') return 'voice-intent-direct-match';
-    if (intentResult.decision === 'needs_confirmation') {
-      return 'voice-intent-needs-confirmation';
+  const resolveVoiceIntentRoute = (intentResult, localDispatch = null) => {
+    if (!intentResult) {
+      return { shouldCallAssistant: true, route: 'voice-intent-no-result' };
     }
-    return 'voice-intent-fallback';
+    if (intentResult.decision === 'fallback') {
+      return { shouldCallAssistant: true, route: 'voice-intent-fallback' };
+    }
+    if (intentResult.decision === 'needs_confirmation') {
+      return { shouldCallAssistant: true, route: 'voice-intent-needs-confirmation' };
+    }
+    if (intentResult.decision === 'direct_match') {
+      if (localDispatch?.handled === true) {
+        return { shouldCallAssistant: false, route: 'voice-intent-direct-match-handled' };
+      }
+      if (localDispatch?.outcome === 'blocked_local') {
+        return { shouldCallAssistant: false, route: localDispatch?.reason || 'voice-intent-blocked-local' };
+      }
+      if (localDispatch?.outcome === 'unsupported_local') {
+        return { shouldCallAssistant: false, route: localDispatch?.reason || 'voice-intent-unsupported-local' };
+      }
+      if (localDispatch?.outcome === 'fallback_semantic') {
+        return { shouldCallAssistant: true, route: localDispatch?.reason || 'voice-intent-semantic-fallback' };
+      }
+      return { shouldCallAssistant: true, route: 'voice-intent-direct-match' };
+    }
+    return { shouldCallAssistant: true, route: 'voice-intent-fallback' };
   };
 
-  const recordVoiceIntentRoute = (intentResult, transcript) => {
+  const recordVoiceIntentRoute = (intentResult, transcript, localDispatch = null) => {
     if (!voiceCtrl) return;
-    const route = resolveVoiceIntentRoute(intentResult);
+    const route = resolveVoiceIntentRoute(intentResult, localDispatch);
     voiceCtrl.lastIntentRoute = {
-      route,
+      route: route.route,
       decision: intentResult?.decision || null,
       intent: intentResult?.intent_key || null,
       targetAction: intentResult?.target_action || null,
+      outcome: localDispatch?.outcome || null,
+      reason: localDispatch?.reason || intentResult?.reason || null,
       transcript: transcript || '',
       at: Date.now(),
     };
     getDiag().add?.(
-      `[midas-voice][intent] route=${route} decision=${intentResult?.decision || 'none'} intent=${intentResult?.intent_key || 'none'}`,
+      `[midas-voice][intent] route=${route.route} decision=${intentResult?.decision || 'none'} intent=${intentResult?.intent_key || 'none'}`,
     );
     recordIntentTelemetry({
       source_type: 'voice',
       decision: intentResult?.decision || 'unknown',
-      reason: intentResult?.reason || 'none',
+      outcome: localDispatch?.outcome || 'none',
+      reason: localDispatch?.reason || intentResult?.reason || 'none',
       intent_key: intentResult?.intent_key || null,
       target_action: intentResult?.target_action || null,
-      route,
+      route: route.route,
     });
   };
 
@@ -706,6 +764,30 @@
     return 'Befehl lokal ausgefuehrt.';
   };
 
+  const buildVoiceLocalIntentBlockedReply = (intentResult, localDispatch = null) => {
+    const targetAction = `${intentResult?.target_action || ''}`.trim();
+    const reason = `${localDispatch?.reason || ''}`.trim();
+    if (targetAction === 'open_module') {
+      return 'Ich habe den Befehl erkannt, aber das Modul ist gerade noch nicht bereit.';
+    }
+    if (targetAction === 'intake_save') {
+      return 'Ich habe den Befehl erkannt, aber ich kann den Eintrag gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_weight') {
+      return 'Ich habe den Befehl erkannt, aber ich kann das Gewicht gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_bp') {
+      if (reason === 'bp-context-missing') {
+        return 'Ich habe den Befehl erkannt. Bitte sage beim Blutdruck noch morgens oder abends dazu.';
+      }
+      return 'Ich habe den Befehl erkannt, aber ich kann den Blutdruck gerade noch nicht speichern.';
+    }
+    if (targetAction === 'vitals_log_pulse') {
+      return 'Ich habe den Befehl erkannt. Puls kann ich lokal im Moment nur zusammen mit Blutdruck verarbeiten.';
+    }
+    return 'Ich habe den Befehl erkannt, kann ihn aber gerade noch nicht lokal ausfuehren.';
+  };
+
   const recordVoiceIntentBypass = (intentResult, transcript, replyText = '') => {
     if (!voiceCtrl || !intentResult) return;
     voiceCtrl.lastIntentBypass = {
@@ -723,6 +805,7 @@
     recordIntentTelemetry({
       source_type: 'voice',
       decision: intentResult.decision || 'unknown',
+      outcome: 'handled',
       reason: intentResult.reason || 'none',
       intent_key: intentResult.intent_key || null,
       target_action: intentResult.target_action || null,
@@ -732,27 +815,28 @@
 
   const dispatchVoiceIntentDirectMatch = async (intentResult, transcript) => {
     if (!intentResult || intentResult.decision !== 'direct_match') {
-      return { handled: false, reason: 'not-direct-match' };
+      return { handled: false, outcome: 'fallback_semantic', reason: 'not-direct-match' };
     }
     const targetAction = `${intentResult.target_action || ''}`.trim();
     const payload = intentResult.payload || {};
     if (targetAction === 'intake_save' || targetAction === 'open_module') {
-      const ok = await runAllowedVoiceAction(targetAction, payload, {
+      const executor = targetAction === 'open_module' ? runUiSafeVoiceAction : runAllowedVoiceAction;
+      const ok = await executor(targetAction, payload, {
         source: 'intent-engine:voice',
       });
       if (!ok) {
-        return { handled: false, reason: 'voice-local-dispatch-failed' };
+        return { handled: false, outcome: 'blocked_local', reason: 'voice-local-dispatch-failed' };
       }
-      return { handled: true, reason: null };
+      return { handled: true, outcome: 'handled', reason: null };
     }
     if (targetAction === 'vitals_log_bp') {
       const saveIntentMeasurement = global.AppModules?.bp?.saveIntentMeasurement;
       if (typeof saveIntentMeasurement !== 'function') {
-        return { handled: false, reason: 'bp-intent-helper-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'bp-intent-helper-missing' };
       }
       const context = `${payload.context || ''}`.trim();
       if (!context) {
-        return { handled: false, reason: 'bp-context-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'bp-context-missing' };
       }
       const result = await saveIntentMeasurement({
         context,
@@ -762,7 +846,7 @@
         source: 'assistant-intent',
       });
       if (!result?.ok) {
-        return { handled: false, reason: result?.reason || 'bp-save-failed' };
+        return { handled: false, outcome: 'blocked_local', reason: result?.reason || 'bp-save-failed' };
       }
       global.requestUiRefresh?.({ reason: 'intent:voice-bp' })?.catch?.((err) => {
         getDiag().add?.('[midas-voice][intent] ui refresh err: ' + (err?.message || err));
@@ -774,29 +858,29 @@
           getDiag().add?.('[midas-voice][intent] trendpilot after bp save err: ' + (err?.message || err));
         }
       }
-      return { handled: true, reason: null };
+      return { handled: true, outcome: 'handled', reason: null };
     }
     if (targetAction === 'vitals_log_weight') {
       const saveIntentWeight = global.AppModules?.body?.saveIntentWeight;
       if (typeof saveIntentWeight !== 'function') {
-        return { handled: false, reason: 'body-intent-helper-missing' };
+        return { handled: false, outcome: 'blocked_local', reason: 'body-intent-helper-missing' };
       }
       const result = await saveIntentWeight({
         weight_kg: payload.weight_kg,
         source: 'assistant-intent',
       });
       if (!result?.ok) {
-        return { handled: false, reason: result?.reason || 'body-save-failed' };
+        return { handled: false, outcome: 'blocked_local', reason: result?.reason || 'body-save-failed' };
       }
       global.requestUiRefresh?.({ reason: 'intent:voice-body' })?.catch?.((err) => {
         getDiag().add?.('[midas-voice][intent] ui refresh err: ' + (err?.message || err));
       });
-      return { handled: true, reason: null };
+      return { handled: true, outcome: 'handled', reason: null };
     }
     if (targetAction === 'vitals_log_pulse') {
-      return { handled: false, reason: 'pulse-local-dispatch-unsupported' };
+      return { handled: false, outcome: 'unsupported_local', reason: 'pulse-local-dispatch-unsupported' };
     }
-    return { handled: false, reason: 'voice-local-dispatch-unsupported' };
+    return { handled: false, outcome: 'unsupported_local', reason: 'voice-local-dispatch-unsupported' };
   };
 
   const finalizeVoiceIntentBypass = async (intentResult, transcript) => {
@@ -804,6 +888,37 @@
     recordVoiceIntentBypass(intentResult, transcript, replyText);
     const spoken = await speakLocalIntentConfirmation(replyText, {
       source: 'intent-local',
+      interrupt: true,
+    });
+    if (!spoken?.ok) {
+      setVoiceState('idle');
+    }
+    const allowResume = voiceCtrl?.conversationMode && !voiceCtrl?.conversationEndPending;
+    if (allowResume) {
+      scheduleConversationResume();
+    } else {
+      endConversationSession();
+    }
+  };
+
+  const finalizeVoiceIntentBlocked = async (intentResult, transcript, localDispatch = null) => {
+    const replyText = buildVoiceLocalIntentBlockedReply(intentResult, localDispatch);
+    if (voiceCtrl) {
+      voiceCtrl.lastIntentBypass = {
+        source: 'voice',
+        decision: intentResult?.decision || null,
+        intent: intentResult?.intent_key || null,
+        targetAction: intentResult?.target_action || null,
+        transcript: transcript || '',
+        replyText,
+        blocked: true,
+        outcome: localDispatch?.outcome || null,
+        reason: localDispatch?.reason || null,
+        at: Date.now(),
+      };
+    }
+    const spoken = await speakLocalIntentConfirmation(replyText, {
+      source: 'intent-local-blocked',
       interrupt: true,
     });
     if (!spoken?.ok) {
