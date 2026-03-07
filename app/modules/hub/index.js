@@ -2767,6 +2767,69 @@
 
   const DIRECT_INTENT_ACTIONS = new Set(['intake_save', 'open_module']);
 
+  const runAllowedAction = async (type, payload = {}, { source } = {}) => {
+    const allowedActions = global.AppModules?.assistantAllowedActions;
+    const executeAction = allowedActions?.executeAllowedAction;
+    if (typeof executeAction !== 'function') {
+      diag.add?.('[assistant-actions] allowed helper missing');
+      return false;
+    }
+    const ok = await executeAction(type, payload, {
+      getSupabaseApi: () => appModules.supabase,
+      notify: (msg, level) =>
+        diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
+      source: source || 'hub',
+    });
+    if (!ok) {
+      diag.add?.(
+        `[assistant-actions] action failed type=${type} source=${source || 'unknown'}`,
+      );
+    } else {
+      if (appModules.touchlog?.add) {
+        appModules.touchlog.add(
+          `[assistant-actions] success action=${type} source=${source || 'hub'}`,
+        );
+      }
+      global.dispatchEvent(
+        new CustomEvent('assistant:action-success', {
+          detail: { type, payload, source: source || 'hub' },
+        }),
+      );
+    }
+    return ok;
+  };
+
+  const runUiSafeAction = async (type, payload = {}, { source } = {}) => {
+    const allowedActions = global.AppModules?.assistantAllowedActions;
+    const executeAction = allowedActions?.executeUiSafeAllowedAction;
+    if (typeof executeAction !== 'function') {
+      diag.add?.('[assistant-actions] ui-safe helper missing');
+      return false;
+    }
+    const ok = await executeAction(type, payload, {
+      notify: (msg, level) =>
+        diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
+      source: source || 'hub',
+    });
+    if (!ok) {
+      diag.add?.(
+        `[assistant-actions] ui-safe action failed type=${type} source=${source || 'unknown'}`,
+      );
+    } else {
+      if (appModules.touchlog?.add) {
+        appModules.touchlog.add(
+          `[assistant-actions] success action=${type} source=${source || 'hub'} mode=ui-safe`,
+        );
+      }
+      global.dispatchEvent(
+        new CustomEvent('assistant:action-success', {
+          detail: { type, payload, source: source || 'hub' },
+        }),
+      );
+    }
+    return ok;
+  };
+
   const recordAssistantIntentDispatchSuccess = (intentResult, rawText) => {
     const targetAction = `${intentResult?.target_action || ''}`.trim();
     if (assistantChatCtrl) {

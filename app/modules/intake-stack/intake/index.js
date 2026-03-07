@@ -715,6 +715,7 @@
   const updateCaptureIntakeStatus = (typeof debounce === 'function' ? debounce : (fn) => fn)(function(){
     const startedAt = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : null;
     try {
+      const statusEl = document.getElementById('cap-intake-status');
       let statusTop = document.getElementById('cap-intake-status-top');
       const slotWater = document.querySelector('[data-pill-kind="water"]');
       const slotSalt = document.querySelector('[data-pill-kind="salt"]');
