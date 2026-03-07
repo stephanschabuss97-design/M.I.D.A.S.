@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // Rule discipline:
 // - keep this file limited to intent matching and minimal payload mapping
@@ -37,7 +37,8 @@ const CONFIRM_REJECT_RULES = [
 const INTAKE_RULES = [
   {
     intent_key: 'intake_quick_add',
-    pattern: /^(?:wasser (?<amount_a>\d+(?:\.\d+)?) (?<unit_a>ml|l)|(?:trage mir )?(?<amount_b>\d+(?:\.\d+)?) (?<unit_b>ml|l) wasser(?: ein)?)$/,
+    pattern:
+      /^(?:wasser (?<amount_a>\d+(?:\.\d+)?) (?<unit_a>ml|l)|(?:trage(?: mir)? )?(?<amount_b>\d+(?:\.\d+)?) (?<unit_b>ml|l) wasser(?: ein)?)$/,
     buildPayload(match) {
       const amount = Number(match.groups.amount_a || match.groups.amount_b);
       const unit = match.groups.unit_a || match.groups.unit_b;

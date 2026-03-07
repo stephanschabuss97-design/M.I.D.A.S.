@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const DEFAULT_SOURCE = 'text';
 const ALLOWED_SOURCES = new Set(['text', 'voice', 'device']);
@@ -11,6 +11,10 @@ const UMLAUT_MAP = [
   [/ä/g, 'ae'],
   [/ö/g, 'oe'],
   [/ü/g, 'ue'],
+  [/ÃŸ/g, 'ss'],
+  [/Ã¤/g, 'ae'],
+  [/Ã¶/g, 'oe'],
+  [/Ã¼/g, 'ue'],
 ];
 
 const PHRASE_NORMALIZERS = [
@@ -44,6 +48,10 @@ function normalizeUmlauts(value) {
 
 function normalizeDecimalCommas(value) {
   return value.replace(/(\d),(\d)/g, '$1.$2');
+}
+
+function normalizeJoinedUnits(value) {
+  return value.replace(/(\d(?:\.\d+)?)(ml|l|g|kg)\b/g, '$1 $2');
 }
 
 function normalizePunctuation(value) {
@@ -85,6 +93,7 @@ export function normalizeIntentText(rawText) {
   let next = trimmed.toLowerCase();
   next = normalizeUmlauts(next);
   next = normalizeDecimalCommas(next);
+  next = normalizeJoinedUnits(next);
   next = normalizePhrases(next);
   next = normalizePunctuation(next);
 
