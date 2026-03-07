@@ -2244,6 +2244,20 @@
         if (detailSource === 'suggestion-card') return;
         const payload = event?.detail?.payload || {};
         const savedAt = payload.saved_at || payload.savedAt || Date.now();
+        global.AppModules?.capture?.refreshCaptureIntake?.({
+          reason: `assistant:${detailSource}:intake-save`,
+          forceRefresh: true,
+        })?.catch?.((err) => {
+          diag.add?.('[assistant-actions] intake refresh err: ' + (err?.message || err));
+        });
+        global.setTimeout(() => {
+          refreshAssistantContext({
+            reason: `assistant:${detailSource}:intake-save`,
+            forceRefresh: true,
+          })?.catch?.((err) => {
+            diag.add?.('[assistant-actions] assistant context refresh err: ' + (err?.message || err));
+          });
+        }, 0);
         const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
         const followupKey = buildMealFollowupKey({
           payload,
@@ -3215,87 +3229,120 @@
     }
     setAssistantSending(true);
     try {
-      if (intentResult && intentResult.decision !== 'fallback') {
-        debugLog('assistant-chat intent preflight hit', {
-          decision: intentResult.decision,
-          intent: intentResult.intent_key,
-          reason: intentResult.reason || null,
-        });
-      }
-      const localConfirm = await resolveAssistantConfirmIntent(intentResult);
-      if (localConfirm.handled) {
-        recordAssistantIntentLlmBypass(intentResult, text);
-        debugLog('assistant-chat local confirm intent handled', {
-          intent: intentResult?.intent_key || null,
-          reason: localConfirm.reason || null,
-        });
-        return;
-      }
-      const localDispatch = await dispatchAssistantIntentDirectMatch(intentResult, text);
-      if (localDispatch.handled) {
-        recordAssistantIntentLlmBypass(intentResult, text);
-        appendAssistantMessage(
-          'assistant',
-          buildAssistantLocalIntentReply(intentResult),
-          {
-            meta: {
-              source: 'intent-local',
-              intent_key: intentResult?.intent_key || null,
-              action: intentResult?.target_action || null,
-            },
-          },
-        );
-        debugLog('assistant-chat local direct match handled', {
-          intent: intentResult?.intent_key || null,
-          action: intentResult?.target_action || null,
-        });
-        return;
-      }
-      const fallbackRoute = resolveAssistantIntentFallbackRoute(intentResult, localDispatch);
-      if (!fallbackRoute.shouldCallAssistant && intentResult?.decision === 'direct_match') {
-        if (assistantChatCtrl) {
-          assistantChatCtrl.lastIntentFallback = {
-            route: fallbackRoute.route || 'direct-match-local',
-            decision: intentResult?.decision || null,
-            intent: intentResult?.intent_key || null,
-            targetAction: intentResult?.target_action || null,
-            outcome: localDispatch?.outcome || null,
-            rawText: text || '',
-            at: Date.now(),
-          };
+      let fallbackRoute = null;
+      try {
+        if (intentResult && intentResult.decision !== 'fallback') {
+          debugLog('assistant-chat intent preflight hit', {
+            decision: intentResult.decision,
+            intent: intentResult.intent_key,
+            reason: intentResult.reason || null,
+          });
         }
-        diag.add?.(
-          `[intent] local direct match outcome=${localDispatch?.outcome || 'unknown'} reason=${localDispatch?.reason || 'none'} intent=${intentResult?.intent_key || 'none'}`,
-        );
-        recordIntentTelemetry({
-          source_type: 'text',
-          decision: intentResult?.decision || 'unknown',
-          outcome: localDispatch?.outcome || 'none',
-          reason: localDispatch?.reason || intentResult?.reason || 'none',
-          intent_key: intentResult?.intent_key || null,
-          target_action: intentResult?.target_action || null,
-          route: fallbackRoute.route || 'direct-match-local',
-        });
-        appendAssistantMessage(
-          'assistant',
-          buildAssistantLocalIntentBlockedReply(intentResult, localDispatch),
-          {
-            meta: {
-              source: 'intent-local-blocked',
-              intent_key: intentResult?.intent_key || null,
-              action: intentResult?.target_action || null,
-              outcome: localDispatch?.outcome || null,
-              reason: localDispatch?.reason || null,
+        const localConfirm = await resolveAssistantConfirmIntent(intentResult);
+        if (localConfirm.handled) {
+          recordAssistantIntentLlmBypass(intentResult, text);
+          debugLog('assistant-chat local confirm intent handled', {
+            intent: intentResult?.intent_key || null,
+            reason: localConfirm.reason || null,
+          });
+          return;
+        }
+        const localDispatch = await dispatchAssistantIntentDirectMatch(intentResult, text);
+        if (localDispatch.handled) {
+          recordAssistantIntentLlmBypass(intentResult, text);
+          appendAssistantMessage(
+            'assistant',
+            buildAssistantLocalIntentReply(intentResult),
+            {
+              meta: {
+                source: 'intent-local',
+                intent_key: intentResult?.intent_key || null,
+                action: intentResult?.target_action || null,
+              },
             },
-          },
+          );
+          debugLog('assistant-chat local direct match handled', {
+            intent: intentResult?.intent_key || null,
+            action: intentResult?.target_action || null,
+          });
+          return;
+        }
+        fallbackRoute = resolveAssistantIntentFallbackRoute(intentResult, localDispatch);
+        if (!fallbackRoute.shouldCallAssistant && intentResult?.decision === 'direct_match') {
+          if (assistantChatCtrl) {
+            assistantChatCtrl.lastIntentFallback = {
+              route: fallbackRoute.route || 'direct-match-local',
+              decision: intentResult?.decision || null,
+              intent: intentResult?.intent_key || null,
+              targetAction: intentResult?.target_action || null,
+              outcome: localDispatch?.outcome || null,
+              rawText: text || '',
+              at: Date.now(),
+            };
+          }
+          diag.add?.(
+            `[intent] local direct match outcome=${localDispatch?.outcome || 'unknown'} reason=${localDispatch?.reason || 'none'} intent=${intentResult?.intent_key || 'none'}`,
+          );
+          recordIntentTelemetry({
+            source_type: 'text',
+            decision: intentResult?.decision || 'unknown',
+            outcome: localDispatch?.outcome || 'none',
+            reason: localDispatch?.reason || intentResult?.reason || 'none',
+            intent_key: intentResult?.intent_key || null,
+            target_action: intentResult?.target_action || null,
+            route: fallbackRoute.route || 'direct-match-local',
+          });
+          appendAssistantMessage(
+            'assistant',
+            buildAssistantLocalIntentBlockedReply(intentResult, localDispatch),
+            {
+              meta: {
+                source: 'intent-local-blocked',
+                intent_key: intentResult?.intent_key || null,
+                action: intentResult?.target_action || null,
+                outcome: localDispatch?.outcome || null,
+                reason: localDispatch?.reason || null,
+              },
+            },
+          );
+          debugLog('assistant-chat local direct match blocked', {
+            intent: intentResult?.intent_key || null,
+            action: intentResult?.target_action || null,
+            outcome: localDispatch?.outcome || null,
+            reason: localDispatch?.reason || null,
+          });
+          return;
+        }
+      } catch (localErr) {
+        diag.add?.(
+          `[intent] local execution error action=${intentResult?.target_action || 'unknown'} err=${localErr?.message || localErr}`,
         );
-        debugLog('assistant-chat local direct match blocked', {
-          intent: intentResult?.intent_key || null,
-          action: intentResult?.target_action || null,
-          outcome: localDispatch?.outcome || null,
-          reason: localDispatch?.reason || null,
-        });
-        return;
+        if (intentResult?.decision === 'direct_match') {
+          recordIntentTelemetry({
+            source_type: 'text',
+            decision: intentResult?.decision || 'unknown',
+            outcome: 'blocked_local',
+            reason: 'local-execution-error',
+            intent_key: intentResult?.intent_key || null,
+            target_action: intentResult?.target_action || null,
+            route: 'direct-match-local-exception',
+          });
+          appendAssistantMessage(
+            'assistant',
+            'Ich habe den Befehl erkannt, aber lokal ist ein Fehler aufgetreten.',
+            {
+              meta: {
+                source: 'intent-local-error',
+                intent_key: intentResult?.intent_key || null,
+                action: intentResult?.target_action || null,
+                outcome: 'blocked_local',
+                reason: 'local-execution-error',
+              },
+            },
+          );
+          return;
+        }
+        throw localErr;
       }
       recordAssistantIntentFallback(intentResult, fallbackRoute, text);
       const assistantResponse = await fetchAssistantTextReply(text);
