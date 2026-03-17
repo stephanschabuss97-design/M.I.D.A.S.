@@ -61,6 +61,7 @@ Related docs:
 - `diag.add` schreibt UI-Log + forwarded an diagnosticsLayer.logger.
 - `recordPerfStat` schreibt in diagnosticsLayer.perf.
 - `monitor.heartbeat` wird bei Log-Events getriggert.
+- Der produktive Voice-Adapter nutzt denselben Perf-Sampler jetzt auch fuer kleine Latenzsegmente innerhalb des Push-to-talk-Flows.
 
 ### 4.4 Persistenz
 - Keine Persistenz.
@@ -113,6 +114,12 @@ Related docs:
 - Remote-Upload fuer Logger/Perf.
 - Overlay fuer Monitor-Status.
 - Konfigurierbare Perf-Keys.
+- Bei Bedarf spaeter verdichtete Voice-Perf-Auswertung fuer:
+  - `voice_tap_to_listening`
+  - `voice_first_speech_to_stop`
+  - `voice_stop_to_transcribe_response`
+  - `voice_transcribe_to_reply_ready`
+  - `voice_reply_ready_to_tts_complete`
 
 ---
 

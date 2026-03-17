@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 /**
  * MODULE: hub/index.js
  * Description: Aktiviert das neue MIDAS Hub Layout, sobald `CAPTURE_HUB_V2` gesetzt ist.
@@ -14,7 +14,12 @@
   const feedbackApi = appModules.feedback || global.AppModules?.feedback || null;
   const MIDAS_ENDPOINTS = (() => {
     const base = `${SUPABASE_PROJECT_URL}/functions/v1`;
-    if (global.location?.hostname?.includes('github.io')) {
+    const hostname = `${global.location?.hostname || ''}`.trim().toLowerCase();
+    const isDirectFunctionHost =
+      hostname.includes('github.io') ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1';
+    if (isDirectFunctionHost) {
       return {
         assistant: `${base}/midas-assistant`,
         transcribe: `${base}/midas-transcribe`,
@@ -44,12 +49,11 @@
     nw: { angle: -135, radiusScale: 0.88 },
     core: { angle: 0, radiusScale: 0 },
   };
-  const VOICE_PARKED = true;
   const CAROUSEL_MODULES = [
+    { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
     { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
     { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
     { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
-    { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
     { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
     { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
     { id: 'profile', selector: '[data-carousel-id="profile"]', panel: 'profile' },
@@ -84,6 +88,7 @@
     prefersReducedMotion: global.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false,
   };
   let carouselKeyListenerBound = false;
+  let voiceGateUnsubscribe = null;
   const quickbarState = {
     el: null,
     handle: null,
@@ -311,20 +316,54 @@
     }
   };
   const getVoiceModule = () => appModules.voice || global.AppModules?.voice || null;
+  const getVoiceGateLabel = (status = {}) => {
+    const reason = String(status?.reason || '').trim();
+    switch (reason) {
+      case 'voice-parked':
+        return 'Voice ist noch geparkt';
+      case 'booting':
+        return 'Voice startet noch';
+      case 'auth-check':
+        return 'Voice wartet auf Anmeldung';
+      case 'voice-module-missing':
+        return 'Voice-Modul fehlt';
+      default:
+        return status?.allowed ? 'Voice bereit' : 'Voice aktuell gesperrt';
+    }
+  };
   const getVoiceFacade = () => {
     const voiceApi = getVoiceModule();
     if (voiceApi) return voiceApi;
-    if (VOICE_PARKED) {
-      return {
-        getGateStatus: () => ({ allowed: false, reason: 'voice-parked' }),
-        isReady: () => false,
-        onGateChange: () => () => {},
-        preflightTranscriptIntent: () => null,
-        getLastIntentState: () => ({ result: null, route: null, bypass: null }),
-        canSpeakLocalIntentConfirmation: () => false,
-      };
-    }
     return null;
+  };
+  const syncVoiceEntryGateState = (hub, status = null) => {
+    const button = hub?.querySelector?.('[data-carousel-id="assistant-voice"]');
+    if (!button) return;
+    const resolved = status || getVoiceFacade()?.getGateStatus?.() || { allowed: false, reason: 'voice-module-missing' };
+    const locked = !resolved.allowed;
+    if (!button.dataset.voiceState) {
+      button.dataset.voiceState = 'idle';
+    }
+    button.classList.toggle('is-voice-locked', locked);
+    button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    button.dataset.voiceGateReason = String(resolved.reason || '');
+    button.dataset.voiceLabel = locked ? getVoiceGateLabel(resolved) : (button.dataset.voiceLabel || 'Bereit');
+    button.setAttribute('aria-label', `MIDAS Voice â€“ ${button.dataset.voiceLabel}`);
+    button.title = getVoiceGateLabel(resolved);
+  };
+  const setupVoiceGateState = (hub) => {
+    if (!hub) return;
+    try {
+      voiceGateUnsubscribe?.();
+    } catch (_) {}
+    voiceGateUnsubscribe = null;
+    syncVoiceEntryGateState(hub);
+    const voiceApi = getVoiceFacade();
+    if (typeof voiceApi?.onGateChange === 'function') {
+      voiceGateUnsubscribe = voiceApi.onGateChange((status) => {
+        syncVoiceEntryGateState(hub, status);
+      });
+    }
   };
   const initVoiceModule = (hub) => {
     const voiceApi = getVoiceModule();
@@ -637,7 +676,12 @@
       button.setAttribute('aria-hidden', 'true');
       return { ...entry, button };
     }).filter(Boolean);
-    setCarouselIdle();
+    const defaultVoiceIndex = carouselState.items.findIndex((item) => item.id === 'assistant-voice');
+    if (defaultVoiceIndex >= 0) {
+      setCarouselActiveIndex(defaultVoiceIndex, { direction: 0 });
+    } else {
+      setCarouselIdle();
+    }
     setupCarouselGestures(orbit);
     if (!carouselKeyListenerBound) {
       carouselKeyListenerBound = true;
@@ -1003,9 +1047,7 @@
       global.console?.debug?.('[hub] #captureHub element not found', { config });
       return;
     }
-    if (!VOICE_PARKED) {
-      initVoiceModule(hub);
-    }
+    initVoiceModule(hub);
     setupAssistantChat(hub);
     setupIconBar(hub);
     setupOrbitHotspots(hub);
@@ -1014,6 +1056,7 @@
     moveIntakePillsToHub();
     setupSpriteState(hub);
     setupCarouselController(hub);
+    setupVoiceGateState(hub);
     setupQuickbar(hub);
     updateTickerBar({ reason: 'hub-init' });
     if (!trendpilotAuraBound) {
@@ -1465,10 +1508,10 @@
     const { saltRemaining, proteinRemaining } = buildAssistantRemainingMetrics(snapshot, profile);
     let warningText = null;
     if (saltRemaining != null && saltRemaining < 0) {
-      warningText = 'Salz über Limit';
+      warningText = 'Salz Ã¼ber Limit';
     }
     if (proteinRemaining != null && proteinRemaining < 0) {
-      warningText = warningText ? `${warningText}, Protein über Limit` : 'Protein über Limit';
+      warningText = warningText ? `${warningText}, Protein Ã¼ber Limit` : 'Protein Ã¼ber Limit';
     }
     return warningText;
   };
@@ -1722,7 +1765,7 @@
       wrap.hidden = true;
 
       const thumb = doc.createElement('img');
-      thumb.alt = 'Ausgewähltes Foto';
+      thumb.alt = 'AusgewÃ¤hltes Foto';
       thumb.loading = 'lazy';
 
       const meta = doc.createElement('div');
@@ -2022,7 +2065,7 @@
           parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
         }
         const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar - ich habe ${list} für heute vorgemerkt.`;
+        return `Alles klar - ich habe ${list} fÃ¼r heute vorgemerkt.`;
       };
 
       const renderSuggestionFollowupAdvice = (suggestion) => {
@@ -2101,7 +2144,7 @@
           source: source || 'intake-save',
         });
         const promptText =
-          'Soll ich dir basierend auf deinen heutigen Werten und dem nächsten Termin einen Essensvorschlag machen?';
+          'Soll ich dir basierend auf deinen heutigen Werten und dem nÃ¤chsten Termin einen Essensvorschlag machen?';
         const message = appendAssistantMessage('assistant', promptText, {
           type: 'followup',
           meta: {
@@ -2139,13 +2182,13 @@
         };
         const payloadJson = JSON.stringify(payload);
         return [
-          'System: Du bist ein hilfreicher Ernährungsassistent fuer kurze Essensideen.',
+          'System: Du bist ein hilfreicher ErnÃ¤hrungsassistent fuer kurze Essensideen.',
           'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
           'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
           'Constraints:',
-          '- 1-2 kurze Vorschläge, insgesamt 2-4 Saetze.',
+          '- 1-2 kurze VorschlÃ¤ge, insgesamt 2-4 Saetze.',
           '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
-          '- Berücksichtige appointment_type und time_slot wenn vorhanden.',
+          '- BerÃ¼cksichtige appointment_type und time_slot wenn vorhanden.',
           '- Ton: praktisch, freundlich, knapp.',
           '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
           'Follow-up payload:',
@@ -2389,9 +2432,9 @@
     if (file.size > MAX_ASSISTANT_PHOTO_BYTES) {
       const maxMb = (MAX_ASSISTANT_PHOTO_BYTES / (1024 * 1024)).toFixed(1);
       diag.add?.(
-        `[assistant-vision] foto zu groß: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        `[assistant-vision] foto zu groÃŸ: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       );
-      appendAssistantMessage('system', `Das Foto ist zu groß (max. ca. ${maxMb} MB).`);
+      appendAssistantMessage('system', `Das Foto ist zu groÃŸ (max. ca. ${maxMb} MB).`);
       if (event?.target) event.target.value = '';
       return;
     }
@@ -2430,7 +2473,7 @@
     if (state === 'success') {
       btn.dataset.copyState = 'success';
       btn.setAttribute('title', 'Kopiert');
-      if (icon) icon.textContent = '✓';
+      if (icon) icon.textContent = 'âœ“';
       assistantCopyFeedbackTimer = global.setTimeout(() => {
         setAssistantCopyButtonState('idle');
       }, 1400);
@@ -2447,7 +2490,7 @@
     }
     delete btn.dataset.copyState;
     btn.setAttribute('title', 'Snapshot kopieren');
-    if (icon) icon.textContent = '⧉';
+    if (icon) icon.textContent = 'â§‰';
   };
 
   const writeTextToClipboard = async (text) => {
@@ -2543,6 +2586,12 @@
 
   const setAssistantPendingIntentContext = (context, meta = {}) => {
     if (!assistantChatCtrl) return;
+    prunePendingIntentLocks();
+    const key = getPendingIntentGuardKey(context);
+    if (key) {
+      assistantChatCtrl.pendingIntentLocks?.inFlight?.delete?.(key);
+      assistantChatCtrl.pendingIntentLocks?.consumed?.delete?.(key);
+    }
     assistantChatCtrl.pendingIntentContext = context || null;
     assistantChatCtrl.pendingIntentMeta = context
       ? {
@@ -2556,6 +2605,10 @@
 
   const clearAssistantPendingIntentContext = (reason = 'clear') => {
     if (!assistantChatCtrl) return;
+    const currentKey = getPendingIntentGuardKey(assistantChatCtrl.pendingIntentContext);
+    if (currentKey) {
+      assistantChatCtrl.pendingIntentLocks?.inFlight?.delete?.(currentKey);
+    }
     assistantChatCtrl.pendingIntentContext = null;
     assistantChatCtrl.pendingIntentMeta = {
       source: assistantChatCtrl.pendingIntentMeta?.source || null,
@@ -2567,12 +2620,61 @@
   const getAssistantPendingIntentLockState = () =>
     assistantChatCtrl?.pendingIntentLocks || { inFlight: new Set(), consumed: new Map() };
 
+  const PENDING_INTENT_CONSUMED_RETENTION_MS = 5 * 60 * 1000;
+
   const getPendingIntentGuardKey = (context) => {
     if (!context || typeof context !== 'object') return null;
     return context.dedupe_key || context.pending_intent_id || null;
   };
 
+  const prunePendingIntentLocks = () => {
+    const locks = getAssistantPendingIntentLockState();
+    const consumed = locks?.consumed;
+    if (!(consumed instanceof Map) || !consumed.size) {
+      return;
+    }
+    const now = Date.now();
+    for (const [key, value] of consumed.entries()) {
+      const at = Number.isFinite(value?.at) ? value.at : 0;
+      if (!at || now - at > PENDING_INTENT_CONSUMED_RETENTION_MS) {
+        consumed.delete(key);
+      }
+    }
+  };
+
+  const getPendingIntentStateForAssistant = (context) => {
+    const intentApi = getIntentEngine();
+    if (typeof intentApi?.getPendingContextState === 'function') {
+      return intentApi.getPendingContextState(context);
+    }
+    if (!context || typeof context !== 'object') {
+      return { usable: false, reason: 'pending-context-missing' };
+    }
+    if (Number.isFinite(context.consumed_at)) {
+      return { usable: false, reason: 'pending-context-consumed' };
+    }
+    if (Number.isFinite(context.expires_at) && context.expires_at <= Date.now()) {
+      return { usable: false, reason: 'pending-context-expired' };
+    }
+    return { usable: true, reason: null, context };
+  };
+
+  const getUsableAssistantPendingIntentContext = () => {
+    const context = assistantChatCtrl?.pendingIntentContext || null;
+    if (!context) {
+      return null;
+    }
+    prunePendingIntentLocks();
+    const state = getPendingIntentStateForAssistant(context);
+    if (state?.usable) {
+      return context;
+    }
+    clearAssistantPendingIntentContext(state?.reason || 'pending-context-invalid');
+    return null;
+  };
+
   const isPendingIntentGuardLocked = (context) => {
+    prunePendingIntentLocks();
     const key = getPendingIntentGuardKey(context);
     if (!key) return { locked: false, reason: null, key: null };
     const locks = getAssistantPendingIntentLockState();
@@ -2737,7 +2839,7 @@
       const result = intentApi.parseAdapterInput({
         raw_text: text,
         source: 'text',
-        pending_context: assistantChatCtrl?.pendingIntentContext || null,
+        pending_context: getUsableAssistantPendingIntentContext(),
         ui_context: {
           module: 'assistant-text',
           panel: 'assistant-text',
@@ -2765,7 +2867,18 @@
     }
   };
 
-  const DIRECT_INTENT_ACTIONS = new Set(['intake_save', 'open_module']);
+  const DIRECT_INTENT_ACTIONS = new Set([
+    'intake_save',
+    'open_module',
+    'medication_confirm_all',
+    'start_breath_timer',
+  ]);
+  const getLocalTodayIso = () =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const waitForAssistantUiTick = () =>
+    new Promise((resolve) => {
+      global.requestAnimationFrame?.(() => resolve()) || global.setTimeout(resolve, 0);
+    });
 
   const runAllowedAction = async (type, payload = {}, { source } = {}) => {
     const allowedActions = global.AppModules?.assistantAllowedActions;
@@ -2948,6 +3061,78 @@
       );
       return { handled: false, outcome: 'unsupported_local', reason: 'local-dispatch-unsupported' };
     }
+    if (targetAction === 'medication_confirm_all') {
+      const medicationModule = global.AppModules?.medication;
+      const loadMedicationForDay = medicationModule?.loadMedicationForDay;
+      const confirmMedication = medicationModule?.confirmMedication;
+      if (typeof loadMedicationForDay !== 'function' || typeof confirmMedication !== 'function') {
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-module-missing' };
+      }
+      const dayIso = getLocalTodayIso();
+      let snapshot = null;
+      try {
+        snapshot = await loadMedicationForDay(dayIso, { reason: 'text:intent-medication-confirm-all' });
+      } catch (_) {
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-load-failed' };
+      }
+      const openMedicationIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
+        .filter((med) => med && med.id && med.active !== false && !med.taken)
+        .map((med) => med.id);
+      if (!openMedicationIds.length) {
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-none-open' };
+      }
+      try {
+        await Promise.all(
+          openMedicationIds.map((medId) =>
+            confirmMedication(medId, {
+              dayIso,
+              reason: 'text:intent-confirm-all',
+            })),
+        );
+      } catch (_) {
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-confirm-failed' };
+      }
+      recordAssistantIntentDispatchSuccess(intentResult, rawText);
+      return { handled: true, outcome: 'handled', reason: null };
+    }
+    if (targetAction === 'start_breath_timer') {
+      const minutes = Number(intentResult?.payload?.minutes) === 5 ? 5 : 3;
+      const captureModule = global.AppModules?.capture;
+      const breathTimer = global.AppModules?.breathTimer;
+      if (typeof breathTimer?.startIntentPreset !== 'function') {
+        return { handled: false, outcome: 'blocked_local', reason: 'breath-timer-helper-missing' };
+      }
+      const opened = await runUiSafeAction(
+        'open_module',
+        { module: 'vitals', target: 'vitals' },
+        { source: 'intent-engine:text' },
+      );
+      if (!opened) {
+        return { handled: false, outcome: 'blocked_local', reason: 'breath-open-module-failed' };
+      }
+      await waitForAssistantUiTick();
+      const prepareResult =
+        typeof captureModule?.prepareBreathTimerIntentEntry === 'function'
+          ? captureModule.prepareBreathTimerIntentEntry({})
+          : { ok: true };
+      if (prepareResult?.ok === false) {
+        return {
+          handled: false,
+          outcome: 'blocked_local',
+          reason: prepareResult.reason || 'breath-prepare-failed',
+        };
+      }
+      const startResult = breathTimer.startIntentPreset(minutes);
+      if (!startResult?.ok) {
+        return {
+          handled: false,
+          outcome: 'blocked_local',
+          reason: startResult?.reason || 'breath-start-failed',
+        };
+      }
+      recordAssistantIntentDispatchSuccess(intentResult, rawText);
+      return { handled: true, outcome: 'handled', reason: null };
+    }
     const executor =
       targetAction === 'open_module'
         ? runUiSafeAction
@@ -2965,6 +3150,13 @@
   const buildAssistantLocalIntentReply = (intentResult) => {
     const targetAction = `${intentResult?.target_action || ''}`.trim();
     const payload = intentResult?.payload || {};
+    if (targetAction === 'medication_confirm_all') {
+      return 'Medikation bestaetigt.';
+    }
+    if (targetAction === 'start_breath_timer') {
+      const minutes = Number(payload.minutes) === 5 ? 5 : 3;
+      return `Ich habe den ${minutes}-Minuten-Atemtimer gestartet.`;
+    }
     if (targetAction === 'intake_save') {
       if (Number.isFinite(payload.water_ml)) {
         return `${Math.round(Number(payload.water_ml))} ml Wasser wurden eingetragen.`;
@@ -2980,19 +3172,28 @@
     if (targetAction === 'open_module') {
       const target = `${payload.target || payload.module || ''}`.trim().toLowerCase();
       if (target === 'vitals') {
-        return 'Ich habe die Vitaldaten geöffnet.';
+        return 'Die Vitaldaten sind offen.';
       }
       if (target === 'medikamente' || target === 'intake') {
-        return 'Ich habe die Tageserfassung geöffnet.';
+        return 'Die Tageserfassung ist offen.';
       }
-      return 'Ich habe das gewünschte Modul geöffnet.';
+      return 'Das Modul ist offen.';
     }
-    return 'Befehl lokal ausgeführt.';
+    return 'Befehl lokal ausgefÃ¼hrt.';
   };
 
   const buildAssistantLocalIntentBlockedReply = (intentResult, localDispatch = null) => {
     const targetAction = `${intentResult?.target_action || ''}`.trim();
     const reason = `${localDispatch?.reason || ''}`.trim();
+    if (targetAction === 'medication_confirm_all') {
+      if (reason === 'medication-none-open') {
+        return 'Es gibt heute keine offene Medikation.';
+      }
+      return 'Ich habe den Befehl erkannt, aber ich kann die Medikation gerade nicht bestaetigen.';
+    }
+    if (targetAction === 'start_breath_timer') {
+      return 'Ich habe den Befehl erkannt, aber ich kann den Atemtimer gerade nicht starten.';
+    }
     if (targetAction === 'open_module') {
       return 'Ich habe den Befehl erkannt, aber das Modul ist gerade noch nicht bereit.';
     }
@@ -3014,27 +3215,40 @@
     return 'Ich habe den Befehl erkannt, kann ihn aber gerade noch nicht lokal ausfuehren.';
   };
 
-  const resolveAssistantConfirmIntent = async (intentResult) => {
+  const resolveAssistantConfirmIntent = async (intentResult, options = {}) => {
     if (!intentResult || intentResult.intent_key !== 'confirm_reject') {
       return { handled: false, reason: 'not-confirm-intent' };
     }
+    const channel = `${options.channel || 'text'}`.trim().toLowerCase();
+    const respond =
+      typeof options.respond === 'function'
+        ? options.respond
+        : channel === 'voice'
+          ? null
+          : (message) => appendAssistantMessage('assistant', message);
+    const emitReply = (message) => {
+      const replyText = `${message || ''}`.trim();
+      if (replyText && respond) {
+        respond(replyText);
+      }
+      return replyText;
+    };
     const confirmValue = `${intentResult.payload?.value || ''}`.trim().toLowerCase();
-    const pendingContext = assistantChatCtrl?.pendingIntentContext || null;
+    const pendingContext = getUsableAssistantPendingIntentContext();
     const contextState = intentResult.context_state || null;
     if (!contextState?.usable || !pendingContext) {
-      appendAssistantMessage('assistant', 'Es gibt aktuell nichts zu bestaetigen.');
+      const replyText = emitReply('Es gibt aktuell nichts zu bestaetigen.');
       diag.add?.('[intent] confirm intent ignored (no usable pending context)');
-      return { handled: true, reason: 'pending-context-missing' };
+      return { handled: true, outcome: 'handled', reason: 'pending-context-missing', replyText };
     }
     const guardState = isPendingIntentGuardLocked(pendingContext);
     if (guardState.locked) {
-      if (guardState.reason === 'pending-intent-in-flight') {
-        appendAssistantMessage('assistant', 'Die Bestaetigung wird bereits verarbeitet.');
-      } else {
-        appendAssistantMessage('assistant', 'Diese Bestaetigung wurde bereits verarbeitet.');
-      }
+      const replyText =
+        guardState.reason === 'pending-intent-in-flight'
+          ? emitReply('Die Bestaetigung wird bereits verarbeitet.')
+          : emitReply('Diese Bestaetigung wurde bereits verarbeitet.');
       diag.add?.(`[intent] confirm intent ignored (${guardState.reason})`);
-      return { handled: true, reason: guardState.reason };
+      return { handled: true, outcome: 'handled', reason: guardState.reason, replyText };
     }
     if (pendingContext.target_action === 'confirm_intake') {
       const store = getAssistantSuggestStore();
@@ -3042,16 +3256,22 @@
       const expectedSuggestionId = pendingContext.payload_snapshot?.suggestion_id || null;
       if (!activeSuggestion || (expectedSuggestionId && activeSuggestion.id !== expectedSuggestionId)) {
         clearAssistantPendingIntentContext('pending-suggestion-mismatch');
-        appendAssistantMessage('assistant', 'Die vorherige Bestaetigung ist nicht mehr aktiv.');
+        const replyText = emitReply('Die vorherige Bestaetigung ist nicht mehr aktiv.');
         diag.add?.('[intent] confirm intent ignored (pending suggestion mismatch)');
-        return { handled: true, reason: 'pending-suggestion-mismatch' };
+        return { handled: true, outcome: 'handled', reason: 'pending-suggestion-mismatch', replyText };
       }
       if (confirmValue === 'yes' || confirmValue === 'save') {
         const lockKey = markPendingIntentInFlight(pendingContext);
         try {
           const result = await handleSuggestionConfirmRequest(activeSuggestion);
           if (!result?.ok) {
-            return { handled: true, reason: result?.reason || 'confirm-intake-failed' };
+            const replyText = emitReply('Ich konnte das gerade nicht bestaetigen.');
+            return {
+              handled: true,
+              outcome: 'blocked_local',
+              reason: result?.reason || 'confirm-intake-failed',
+              replyText,
+            };
           }
           const intentApi = getIntentEngine();
           const consumed =
@@ -3062,7 +3282,15 @@
             markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-intake-accepted');
           }
           clearAssistantPendingIntentContext('confirm-intake-accepted');
-          return { handled: true, reason: 'confirm-intake-accepted' };
+          return {
+            handled: true,
+            outcome: 'handled',
+            reason: 'confirm-intake-accepted',
+            replyText:
+              channel === 'voice'
+                ? 'Alles klar, ich habe den Vorschlag gespeichert.'
+                : '',
+          };
         } finally {
           releasePendingIntentInFlight(lockKey);
         }
@@ -3078,9 +3306,9 @@
         }
         clearAssistantPendingIntentContext('confirm-intake-rejected');
         store?.dismissCurrent?.({ reason: 'intent-reject' });
-        appendAssistantMessage('assistant', 'Alles klar, ich speichere das nicht.');
+        const replyText = emitReply('Alles klar, ich speichere das nicht.');
         diag.add?.('[intent] confirm intake rejected');
-        return { handled: true, reason: 'confirm-intake-rejected' };
+        return { handled: true, outcome: 'handled', reason: 'confirm-intake-rejected', replyText };
       }
     }
     const genericTargetAction = `${pendingContext.target_action || ''}`.trim();
@@ -3091,10 +3319,16 @@
           assistantChatCtrl?.pendingIntentMeta?.confirmAcceptReply || 'Alles klar, ich fuehre das jetzt aus.';
         try {
           const ok = await runAllowedAction(genericTargetAction, pendingContext.payload_snapshot || {}, {
-            source: 'intent-confirm:text',
+            source: `intent-confirm:${channel || 'text'}`,
           });
           if (!ok) {
-            return { handled: true, reason: 'confirm-target-failed' };
+            const replyText = emitReply('Ich konnte das gerade nicht bestaetigen.');
+            return {
+              handled: true,
+              outcome: 'blocked_local',
+              reason: 'confirm-target-failed',
+              replyText,
+            };
           }
           const intentApi = getIntentEngine();
           const consumed =
@@ -3105,8 +3339,8 @@
             markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-target-accepted');
           }
           clearAssistantPendingIntentContext('confirm-target-accepted');
-          appendAssistantMessage('assistant', confirmAcceptReply);
-          return { handled: true, reason: 'confirm-target-accepted' };
+          const replyText = emitReply(confirmAcceptReply);
+          return { handled: true, outcome: 'handled', reason: 'confirm-target-accepted', replyText };
         } finally {
           releasePendingIntentInFlight(lockKey);
         }
@@ -3123,8 +3357,8 @@
           markPendingIntentConsumed(consumed.context || pendingContext, 'confirm-target-rejected');
         }
         clearAssistantPendingIntentContext('confirm-target-rejected');
-        appendAssistantMessage('assistant', confirmRejectReply);
-        return { handled: true, reason: 'confirm-target-rejected' };
+        const replyText = emitReply(confirmRejectReply);
+        return { handled: true, outcome: 'handled', reason: 'confirm-target-rejected', replyText };
       }
     }
     return { handled: false, reason: 'confirm-target-unsupported' };
@@ -3660,13 +3894,13 @@
               ? 'Analyse fehlgeschlagen.'
               : message.status === 'done'
                 ? 'Analyse abgeschlossen.'
-                : 'Analyse läuft ';
+                : 'Analyse lÃ¤uft ';
           statusEl.textContent = statusText;
         }
         const resultEl = bubble.querySelector('.assistant-photo-result');
         if (resultEl) {
           resultEl.textContent =
-            message.resultText || (message.status === 'done' ? 'Keine Details verfügbar.' : 'Noch kein Ergebnis.');
+            message.resultText || (message.status === 'done' ? 'Keine Details verfÃ¼gbar.' : 'Noch kein Ergebnis.');
           if (message.status === 'error') {
             resultEl.classList.remove('muted');
           } else {
@@ -3850,7 +4084,7 @@
       existingMessage || appendAssistantMessage('user', trimmedText, basePayload);
     if (!targetMessage) return;
     targetMessage.status = 'processing';
-    targetMessage.resultText = 'Analyse läuft ';
+    targetMessage.resultText = 'Analyse lÃ¤uft ';
     targetMessage.retryable = false;
     targetMessage.retryPayload =
       targetMessage.retryPayload || { base64: resolvedDataUrl, fileName: file?.name || targetMessage.meta?.fileName || '' };
@@ -4121,11 +4355,18 @@
       }
       return () => {};
     },
+    getAssistantPendingIntentContext: () => {
+      const context = getUsableAssistantPendingIntentContext();
+      return context ? { ...context } : null;
+    },
+    resolveAssistantConfirmIntent: (intentResult, options = {}) =>
+      resolveAssistantConfirmIntent(intentResult, options),
     setCarouselModule: (id) => setCarouselActiveById(id),
     shiftCarousel: (delta) => shiftCarousel(delta),
     openQuickbar: () => openQuickbar(),
     closeQuickbar: () => closeQuickbar(),
   });
 })(typeof window !== 'undefined' ? window : globalThis);
+
 
 

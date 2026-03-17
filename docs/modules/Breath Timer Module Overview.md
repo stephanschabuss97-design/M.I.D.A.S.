@@ -69,6 +69,10 @@ Related docs:
 ### 4.4 Ende
 - Bei Restzeit `<= 0`: Status `Vorbereitung abgeschlossen`.
 - Kurze Status-Haltezeit, dann sanfter Fade-out und Rueckkehr auf `idle`.
+- Danach bleibt der Nutzer im vorbereiteten BP-Mess-Flow:
+  - Rueckkehr in den BP-Tab
+  - zuvor aktiver Messkontext (`M` / `A`) bleibt erhalten
+  - kein erzwungener Auto-Fokus
 
 ---
 
@@ -120,6 +124,40 @@ Related docs:
   - Panel-Close fuehrt Hard-Reset aus (kein Timer-Orphan).
 - Keine Audio/Haptik.
 - Kein Auto-Fokus/kein Pflicht-CTA nach Abschluss.
+
+---
+
+## Intent / Voice Integration
+
+- Status:
+  - Produktiver lokaler Fast Path fuer `start_breath_timer`.
+  - Der Fast Path oeffnet den Vitals-/BP-Kontext und startet den Atemtimer direkt ohne Preset-Umweg.
+- Unterstuetzte Intents:
+  - `start_breath_timer`
+- Voice Entry Points:
+  - Hero Hub Push-to-talk ueber den produktiven `assistant-voice`-Pfad.
+  - Der Voice-Einstieg ist nur ein Zugang zum bestehenden `start_breath_timer`-Contract, kein eigener zweiter Fachpfad.
+- Allowed Actions:
+  - Keine generische neue Allowed Action; der Start bleibt ein enger lokaler Spezialpfad.
+- Vorbefuellbare Parameter:
+  - `minutes = 3 | 5`
+  - Fehlt der Parameter, startet produktiv der `3`-Minuten-Timer als Default.
+- Nicht erlaubte Operationen:
+  - Keine freien Timerdauern ausserhalb von `3` oder `5` Minuten.
+  - Kein vager oder impliziter Timerstart ausserhalb des klaren `start_breath_timer`-Mappings.
+  - Kein versteckter BP-Kontextwechsel oder verdeckter Timerstart ausserhalb des Vitals-/BP-Flows.
+  - Keine freie Vitals-/BP-Sprachsteuerung ueber das Modul.
+- Hinweise / offene Punkte:
+  - Produktiv gilt: `starte timer` startet direkt `3 Minuten`; nur explizite `5 Minuten` starten das `5`-Minuten-Preset.
+  - Produktiv akzeptiert der gleiche Contract auch enge hoefliche Oberflaechenformen wie `bitte starte den timer` oder `kannst du mir den 5 minuten timer starten`.
+  - Pflegehinweis fuer spaetere Satz-Ergaenzungen:
+    - Beispiele und Betriebsueberblick: `docs/Voice Command Semantics.md`
+    - produktive Match-Regeln liegen in `app/modules/assistant-stack/intent/rules.js`
+    - robuste Transkript-/Oberflaechen-Normalisierung liegt in `app/modules/assistant-stack/intent/normalizers.js`
+  - Der lokale Fast Path nutzt denselben fachlichen Intent-Surface fuer Text und Voice.
+  - Nach Abschluss oder Abbruch fuehrt der Timer kontrolliert in denselben vorbereiteten BP-Kontext zurueck, ohne versteckten Tab- oder Kontextdrift.
+  - Produktiv ist der enge Intent-Fast-Path `start_breath_timer`; weitere Breath-Timer-Sprache, PWA-Sonderstarts oder freiere Voice-Varianten sind derzeit kein Contract.
+  - Future Hook: weitere Breath-Timer-Sprache nur nach separater Guardrail-Pruefung, nicht als freie Timer-Steuerung.
 
 ---
 

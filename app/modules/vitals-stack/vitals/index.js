@@ -270,9 +270,60 @@
     }
   }
 
+  function prepareBreathTimerIntentEntry({ context } = {}) {
+    if (!isHandlerStageReady()) {
+      return { ok: false, reason: 'vitals-stage-not-ready' };
+    }
+    const bpTabBtn = document.querySelector('[data-vitals-tab="bp"]');
+    bpTabBtn?.click?.();
+
+    const normalizedContext = context === 'A' ? 'A' : context === 'M' ? 'M' : null;
+    const ctxSel = document.getElementById('bpContextSel');
+    if (
+      normalizedContext &&
+      ctxSel &&
+      !global.AppModules?.breathTimer?.isUiBlocking?.()
+    ) {
+      if (ctxSel.value !== normalizedContext) {
+        ctxSel.value = normalizedContext;
+        ctxSel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    return {
+      ok: true,
+      context: ctxSel?.value || normalizedContext || null,
+    };
+  }
+
+  function restoreBreathTimerReturn({ context, focus = false } = {}) {
+    if (!isHandlerStageReady()) {
+      return { ok: false, reason: 'vitals-stage-not-ready' };
+    }
+    const bpTabBtn = document.querySelector('[data-vitals-tab="bp"]');
+    bpTabBtn?.click?.();
+
+    const ctxSel = document.getElementById('bpContextSel');
+    const fallbackContext = `${ctxSel?.value || 'M'}`.trim().toUpperCase() === 'A' ? 'A' : 'M';
+    const normalizedContext = context === 'A' ? 'A' : context === 'M' ? 'M' : fallbackContext;
+    if (ctxSel && ctxSel.value !== normalizedContext) {
+      ctxSel.value = normalizedContext;
+      ctxSel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (focus) {
+      const targetField =
+        normalizedContext === 'A'
+          ? document.getElementById('sysA')
+          : document.getElementById('captureAmount');
+      targetField?.focus?.();
+    }
+    return { ok: true, context: normalizedContext };
+  }
+
   const captureApi = {
     resetCapturePanels,
-    addCapturePanelKeys
+    addCapturePanelKeys,
+    prepareBreathTimerIntentEntry,
+    restoreBreathTimerReturn
   };
   appModules.capture = appModules.capture || {};
   Object.assign(appModules.capture, captureApi);

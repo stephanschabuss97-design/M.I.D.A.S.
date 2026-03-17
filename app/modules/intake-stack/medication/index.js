@@ -224,6 +224,88 @@
     };
   };
 
+  const MEDICATION_REORDER_GUARD_REASONS = Object.freeze({
+    medMissing: 'medication-reorder-med-missing',
+    medIdMissing: 'medication-reorder-id-missing',
+    notLowStock: 'medication-reorder-not-low-stock',
+    doctorEmailMissing: 'medication-reorder-doctor-email-missing',
+    mailtoUnavailable: 'medication-reorder-mailto-unavailable'
+  });
+
+  function buildMedicationReorderMailHref(doctorInfo, med, meds = []) {
+    if (!doctorInfo?.email || !med) return null;
+    const medNames = Array.isArray(meds)
+      ? meds
+          .map((entry) => {
+            const name = String(entry?.name || '').trim();
+            const strength = String(entry?.strength || '').trim();
+            if (!name) return '';
+            return strength ? `${name} ${strength}` : name;
+          })
+          .filter(Boolean)
+      : [];
+    const uniqueNames = Array.from(new Set(medNames));
+    const fallbackName = String(med.name || 'Medikation').trim();
+    if (!uniqueNames.length && fallbackName) uniqueNames.push(fallbackName);
+    const subject =
+      uniqueNames.length === 1
+        ? `Bitte um neues Rezept: ${uniqueNames[0]}`
+        : `Bitte um neue Rezepte: ${uniqueNames.join(', ')}`;
+    const medicationBulletList = uniqueNames.map((name) => `- ${name}`);
+    const bodyLines = [
+      'Hallo,',
+      '',
+      'mein aktueller Vorrat folgender Medikamente ist bald aufgebraucht:',
+      '',
+      ...medicationBulletList,
+      '',
+      'Ich bitte um Ausstellung eines neuen Rezepts auf der e-Card.',
+      'Sollten noch Fragen offen sein, bitte ich um kurze Rueckmeldung.',
+      'Bisher wurden standardmaessig zwei Packungen je Medikament verordnet.',
+      '',
+      'Vielen Dank und freundliche Gruesse',
+      'Stephan'
+    ];
+    const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    return `mailto:${encodeURIComponent(doctorInfo.email)}?${query}`;
+  }
+
+  function getMedicationReorderStartContract(med, options = {}) {
+    if (!med || typeof med !== 'object') {
+      return { ok: false, reason: MEDICATION_REORDER_GUARD_REASONS.medMissing };
+    }
+    const medId = `${med.id || ''}`.trim();
+    if (!medId) {
+      return { ok: false, reason: MEDICATION_REORDER_GUARD_REASONS.medIdMissing };
+    }
+    if (!med.low_stock) {
+      return { ok: false, reason: MEDICATION_REORDER_GUARD_REASONS.notLowStock, medId };
+    }
+    const doctorInfo =
+      options.doctorInfo && typeof options.doctorInfo === 'object' ? { ...options.doctorInfo } : null;
+    if (!doctorInfo?.email) {
+      return { ok: false, reason: MEDICATION_REORDER_GUARD_REASONS.doctorEmailMissing, medId };
+    }
+    const dayIso = typeof options.dayIso === 'string' && options.dayIso.trim() ? normalizeDayIso(options.dayIso) : null;
+    const meds = Array.isArray(options.meds) ? options.meds : [med];
+    const href = buildMedicationReorderMailHref(doctorInfo, med, meds);
+    if (!href) {
+      return { ok: false, reason: MEDICATION_REORDER_GUARD_REASONS.mailtoUnavailable, medId };
+    }
+    return {
+      ok: true,
+      reason: '',
+      type: 'medication_reorder_start',
+      state: 'reorder_prompted',
+      channel: 'mailto',
+      requires_user_action: true,
+      medId,
+      dayIso,
+      doctorEmail: doctorInfo.email,
+      href
+    };
+  }
+
   async function loadMedicationForDay(dayIsoInput, options = {}) {
     const reason = typeof options.reason === 'string' ? options.reason : 'manual';
     const normalizedDay = normalizeDayIso(dayIsoInput);
@@ -809,6 +891,9 @@
     loadMedicationForDay,
     invalidateMedicationCache,
     getCachedMedicationDay,
+    MEDICATION_REORDER_GUARD_REASONS,
+    buildMedicationReorderMailHref,
+    getMedicationReorderStartContract,
     confirmMedication,
     undoMedication,
     upsertMedication,

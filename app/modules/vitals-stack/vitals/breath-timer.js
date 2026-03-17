@@ -63,6 +63,7 @@
     confirmTimerId: null,
     statusTimerId: null,
     fadeTimerId: null,
+    returnContext: 'M',
     unsubscribeEngine: null,
     isBound: false
   };
@@ -196,6 +197,14 @@
     }
   };
 
+  const resolveReturnContext = (preferredContext = null) => {
+    if (preferredContext === 'A' || preferredContext === 'M') {
+      return preferredContext;
+    }
+    const ctxSel = doc?.getElementById?.('bpContextSel');
+    return `${ctxSel?.value || 'M'}`.trim().toUpperCase() === 'A' ? 'A' : 'M';
+  };
+
   const computePhaseData = (elapsedMs) => {
     const cyclePos = elapsedMs % CYCLE_MS;
     if (cyclePos < PHASE_MS.inhale) {
@@ -292,6 +301,21 @@
     return start();
   };
 
+  const startIntentPreset = (minutes = 3) => {
+    bindUi();
+    if (isUiBlocking()) {
+      return { ok: false, reason: 'breath-ui-blocking', snapshot: getSnapshot() };
+    }
+    const preset = Number(minutes) === 5 ? 5 : 3;
+    ui.returnContext = resolveReturnContext();
+    setOverlayVisible(true);
+    setBackgroundLocked(true);
+    setFeedback('');
+    setUiMode('running');
+    const snapshot = startPreset(preset);
+    return { ok: true, reason: null, minutes: preset, snapshot };
+  };
+
   const stop = (reason) => {
     if (engine.status !== 'running') return getSnapshot();
     clearSchedulers();
@@ -343,6 +367,10 @@
       setOverlayVisible(false);
       setFeedback('');
       setBackgroundLocked(false);
+      global.AppModules?.capture?.restoreBreathTimerReturn?.({
+        context: ui.returnContext,
+        focus: false,
+      });
       reset();
       setUiMode('idle');
     }, FADE_OUT_MS);
@@ -395,6 +423,7 @@
   const openPresetSelection = (defaultMinutes = 3) => {
     if (isUiBlocking()) return;
     const minutes = defaultMinutes === 5 ? 5 : 3;
+    ui.returnContext = resolveReturnContext();
     selectPreset(minutes);
     setOverlayVisible(true);
     setBackgroundLocked(true);
@@ -410,6 +439,7 @@
   };
 
   const startFromButton = (button) => {
+    ui.returnContext = resolveReturnContext(button?.getAttribute?.('data-context') || null);
     const minutes = parseButtonPresetMinutes(button);
     openPresetSelection(minutes);
   };
@@ -420,6 +450,7 @@
     setOverlayVisible(false);
     setFeedback('');
     setBackgroundLocked(false);
+    ui.returnContext = resolveReturnContext(ui.returnContext);
     reset();
     setUiMode('idle');
   };
@@ -503,6 +534,7 @@
     selectPreset,
     start,
     startPreset,
+    startIntentPreset,
     stop,
     reset,
     bindDom,

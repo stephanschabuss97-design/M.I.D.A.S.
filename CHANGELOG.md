@@ -9,8 +9,16 @@ Added:
 - Breath Timer im Vitals/BP-Panel: neuer Start-Button (`Atemtimer starten`) fuer beide BP-Kontexte, Fullscreen-Breath-Overlay und ruhiger Hero-Farbstil (Blau/Magenta).
 - Breath-Timer Engine: `3`/`5` Minuten Presets, fixer Atemrhythmus `3s Einatmen / 4s Ausatmen`, driftarme Zeitbasis und DOM-Sync (`breath:state`).
 - Intent Engine V1 groundwork: lokaler Parser-Kern (`normalizers`, `rules`, `validators`, `context`, `parser`) plus Adapter-Surface fuer `text`/spaeter `voice`/`device`.
+- Post-Voice Follow-up abgeschlossen: Medication-Low-Stock-Voice-Follow-up, Breath-Timer-Fast-Path, Voice-Latenz-Boxenstopp und der zusammenhaengende Fast-Path-QA-Sweep sind jetzt produktiv dokumentiert und abgesichert.
 
 Changed:
+- Voice reactivation roadmap (`S1`-`S7`) ist produktiv umgesetzt: Hero-Hub `assistant-voice` ist wieder der zentrale Push-to-talk-Einstieg, der Voice-V1-Pfad ist command-first, und der normale Assistant-/LLM-Roundtrip wurde aus dem produktiven Voice-Normalpfad entfernt.
+- Voice V1 verarbeitet jetzt lokale Intake-Commands, Compound-Morning-Commands und die taegliche Medikations-Sammelbestaetigung deterministisch ueber denselben Intent-Surface wie Text.
+- Pending-Context-/Confirm-Verhalten ist fuer Voice und Text vereinheitlicht; `ja/nein/speichern/abbrechen` laufen jetzt guard-railed ueber denselben Resolver statt ueber Sonderlogik.
+- VAD-Rolle und Voice-Rueckkanal wurden fuer den Alltagsflow geschaerft: dynamischer Auto-Stop fuer laengere Morning-Saetze, kurze Spoken-Replies fuer Erfolg/Blocker/Fallback und ein separater operativer Error-Surface fuer Mic-/STT-/Netzwerkfehler.
+- Voice-Performance und Spoken-Surface wurden fuer den Alltag weiter nachgeschnitten: lokale Perf-Segmente messen jetzt die produktive Latenzkette, kurze Commands stoppen frueher, `proteine`/`proteinen` bleiben im Compound-Fall stabil, und lokale TTS-Kurzantworten wurden auf natuerlichere deutsche Formen gezogen.
+- Medication-Reorder bleibt als enger lokaler Spezialfall geschnitten: der Voice-Low-Stock-Follow-up fuehrt nur bei realem `low_stock` und nur ueber `ja` / `nein` in denselben bestehenden Mailto-Startvertrag; Lock/Cooldown und Guard-Reasons bleiben wirksam.
+- Modul- und QA-Dokumentation sind auf dem finalen Follow-up-Stand: Assistant/Hub/Intent Engine/VAD/Diagnostics, `QA_CHECKS` und die Follow-up-Roadmap beschreiben jetzt denselben produktiven Fast-Path- und Future-Hook-Vertrag.
 - Doctor unlock flow: the first tap that triggers biometrics now opens the panel immediately after requireDoctorUnlock() resolves; subsequent clicks still reuse the guard state.
 - Hub overlay polish: body/backdrop locking uses smooth transitions, Milky glass dimming is driven by :has(.hub-panel.is-visible), and aura/halo boosts now use CSS variables so hover/touch feedback works regardless of DOM order.
 - QA and knowledge base: docs/QA_CHECKS.md begins with a Phase 4 checklist covering MIDAS Orbit, Trendpilot severity handling, diagnostics flagging and guard/resume; CHANGELOG formatting was normalised (UTF-8 dashes, no stray control chars).
@@ -21,7 +29,7 @@ Changed:
 - Service worker navigate fallback: app-shell-first strategy (`request -> index -> ./ -> offline`) keeps boot UI consistent in offline navigation.
 - Assistant text flow: vor dem `midas-assistant`-Roundtrip laeuft jetzt ein lokaler Intent-Preflight mit direktem Dispatch fuer die heute freigegebenen Allowed-Actions (`intake_save`, `open_module`), explizitem Fallback-Routing und `LLM bypass`-Nachweis.
 - Suggestion-Confirm-Flow: `ja/nein/speichern/abbrechen` sind jetzt fuer suggestion-basierte Pending Contexts lokal verdrahtet; Re-Entrancy-/Dedupe-Guards verhindern Doppel-Saves, ohne Retry-Pfade bei Save-Fehlern zu verbrennen.
-- Voice stack (geparkt): Transcript-Preflight nutzt bereits dieselbe Intent Engine; lokaler TTS-Rueckkanal und Voice-Fassade sind vorbereitet, aber bewusst noch nicht live reaktiviert.
+- Intent Engine execution reliability roadmap abgeschlossen: lokaler Execution-Contract (`handled` / `blocked_local` / `unsupported_local` / `fallback_semantic`) ist jetzt fuer Text verifiziert und im Voice-Kern gespiegelt.
 
 Fixed:
 - Boot error "Touch-Log oeffnen" is now reliable: if `diag.show()` is unavailable, a fallback log is rendered directly in the boot error panel.
@@ -30,11 +38,16 @@ Fixed:
 - Early-boot auth/data race: `getUserId` no longer throws noisy IndexedDB-init errors during boot startup; deterministic null-return guards prevent premature storage access.
 - Breath-Timer UX-Flow: 2-Step-Abbruch (`Nochmal tippen zum Abbrechen`), Statusmeldungen fuer Ende/Abbruch und sanfter Fade-out zurueck in den BP-Screen.
 - Breath-Timer Regression-Guards: BP-Save, Kontextwechsel und Vitals-Tab-Wechsel werden waehrend aktivem Breath-Overlay blockiert; Panel-Close fuehrt Hard-Reset ohne Timer-Orphans aus.
+- Intent Engine parsing robustness: natuerliche Wasser-Formen wie `Trage 300ml Wasser ein` / `Trage 300 ml Wasser ein` sowie `Öffne Vitals` werden jetzt lokal robust normalisiert und erkannt.
+- Intent Engine local runtime path: lokale `open_module`-Ausfuehrung nutzt jetzt einen UI-safe Pfad; lokale Ausfuehrungsfehler werden nicht mehr als `Assistant nicht erreichbar.` maskiert.
+- Assistant intake header refresh: nach lokalem `intake_save` ziehen Assistant-Kontext und Intake-Wasserwert sichtbar nach; ein `statusEl`-ReferenceError im Intake-Refresh-Pfad ist behoben.
 
 Removed:
 - Legacy duplicates and experiment files (temp_snippet, index_normalized.html, *.bak/*.txt leftovers) to keep the tree clean before the Supabase proxy refactor.
 
 Docs:
+- Voice documentation sync abgeschlossen: `docs/modules/Assistant Module Overview.md`, `docs/modules/Hub Module Overview.md`, `docs/modules/VAD Module Overview.md` und `docs/modules/Intent Engine Module Overview.md` spiegeln jetzt den produktiven Voice-V1-Zuschnitt.
+- `docs/QA_CHECKS.md` enthaelt jetzt `Phase F8 - Voice Command Reactivation Regression` fuer positive/negative Voice-Commands, VAD-Auto-Stop und Pending-Context-Confirms.
 - docs/Module Update Plan.md tracks the refresh, docs/Supabase Proxy Refactor Plan.md defines the rewrite -> test -> remove workflow, and every module overview now reflects the current app/ layout.
 - docs/QA_CHECKS.md now includes `Phase F3 - Boot Error Browser Smoke` with a copy/paste console script for manual verification of boot error panel, fallback behavior, and persisted error history.
 - docs/QA_CHECKS.md now includes `Phase F4 - Bootflow Optimization Regression` for Cold/Warm/PWA and update/offline checks.

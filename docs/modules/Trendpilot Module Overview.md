@@ -165,6 +165,28 @@ Prioritaet (max. 1 Satz):
 
 ---
 
+## Intent / Voice Integration
+
+- Status:
+  - Kein produktiver Intent-/Voice-Fast-Path.
+  - Das Modul ist derzeit read-/ack-orientiert und kein Kandidat fuer offene Eingabe-Fast-Paths.
+- Unterstuetzte Intents:
+  - keine
+- Voice Entry Points:
+  - Derzeit keine produktiven Voice Entry Points.
+- Allowed Actions:
+  - keine
+- Vorbefuellbare Parameter:
+  - keine
+- Nicht erlaubte Operationen:
+  - Keine Trendpilot-Erzeugung, Ack-Entscheidung oder Trendsteuerung per Voice-Fast-Path.
+  - Kein offener Assistant-/LLM-Pfad als Ersatz fuer deterministische Trendpilot-Logik.
+  - Keine kuenstliche Fast-Path-Erweiterung nur wegen vorhandener read-/popup-naher Integrationen.
+- Hinweise / offene Punkte:
+  - Bestehende Integrationen bleiben auf `trendpilot:latest`, Popup-/Ack-UI, Doctor-Block und Chart-Bands begrenzt.
+
+---
+
 ## 9. Erweiterungspunkte / Zukunft
 
 - Weitere Metriken (Body/Weight).

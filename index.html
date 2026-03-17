@@ -258,6 +258,21 @@
               <button
                 type="button"
                 class="hub-icon"
+                data-hub-module="assistant-voice"
+                data-carousel-id="assistant-voice"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Idle_state.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">MIDAS Voice</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
                 data-hub-module="intake"
                 data-carousel-id="intake"
                 aria-pressed="false"
@@ -315,24 +330,6 @@
               >
               <span class="sr-only">Assistant Text Chat</span>
             </button>
-            <!-- Voice parked (legacy): assistant-voice button -->
-            <!--
-              <button
-                type="button"
-                class="hub-icon"
-                data-hub-module="assistant-voice"
-                data-carousel-id="assistant-voice"
-                aria-pressed="false"
-              >
-              <img
-                class="hub-icon-img"
-                src="assets/img/Voice_chat_v2.png"
-                alt=""
-                aria-hidden="true"
-              >
-              <span class="sr-only">Voice Chat</span>
-            </button>
-            -->
               <button
                 type="button"
                 class="hub-icon"
@@ -1589,9 +1586,8 @@
   <script src="app/diagnostics/perf.js"></script>
   <script src="app/diagnostics/monitor.js"></script>
   <script src="app/diagnostics/devtools.js"></script>
-  <!-- Voice parked (legacy): VAD + voice module disabled -->
-  <!-- <script src="app/modules/assistant-stack/vad/vad.js"></script> -->
-  <!-- <script src="app/modules/assistant-stack/voice/index.js"></script> -->
+  <script src="app/modules/assistant-stack/vad/vad.js"></script>
+  <script src="app/modules/assistant-stack/voice/index.js"></script>
   <script src="app/modules/hub/hub-aura3d.js"></script>
   <script src="app/modules/appointments/index.js"></script>
   <script src="app/modules/profile/index.js"></script>

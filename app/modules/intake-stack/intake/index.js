@@ -29,6 +29,8 @@
   const MAX_WATER_ML = 6000;
   const MAX_SALT_G = 30;
   const MAX_PROTEIN_G = 300;
+  const MEDICATION_REORDER_LAUNCH_LOCK_MS = 4000;
+  const MEDICATION_REORDER_REOPEN_COOLDOWN_MS = 12000;
   const roundValue = (key, value) => {
     if (key === 'water_ml') {
       return Math.round(value);
@@ -50,6 +52,9 @@
     authRetryTimer: null,
     doctorWarnedMissing: false,
     lastLowStockCount: null,
+    reorderConfirming: new Map(),
+    reorderLaunchLocks: new Map(),
+    reorderPrompted: new Map(),
     cardOrder: [],
     selection: new Set(),
     selectionDirty: false,
@@ -127,78 +132,69 @@
     }
   };
 
-  const buildLowStockMailHref = (doctorInfo, med, meds = []) => {
-    if (!doctorInfo?.email || !med) return null;
-    const medNames = Array.isArray(meds)
-      ? meds
-          .map((entry) => {
-            const name = String(entry?.name || '').trim();
-            const strength = String(entry?.strength || '').trim();
-            if (!name) return '';
-            return strength ? `${name} ${strength}` : name;
-          })
-          .filter(Boolean)
-      : [];
-    const uniqueNames = Array.from(new Set(medNames));
-    const fallbackName = String(med.name || 'Medikation').trim();
-    if (!uniqueNames.length && fallbackName) uniqueNames.push(fallbackName);
-    const subject =
-      uniqueNames.length === 1
-        ? `Bitte um neues Rezept: ${uniqueNames[0]}`
-        : `Bitte um neue Rezepte: ${uniqueNames.join(', ')}`;
-    const medicationBulletList = uniqueNames.map((name) => `- ${name}`);
-    const bodyLines = [
-      'Hallo,',
-      '',
-      'mein aktueller Vorrat folgender Medikamente ist bald aufgebraucht:',
-      '',
-      ...medicationBulletList,
-      '',
-      'Ich bitte um Ausstellung eines neuen Rezepts auf der e-Card.',
-      'Sollten noch Fragen offen sein, bitte ich um kurze Rückmeldung.',
-      'Bisher wurden standardmäßig zwei Packungen je Medikament verordnet.',
-      '',
-      'Vielen Dank und freundliche Grüße',
-      'Stephan'
-    ];
-    const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-    return `mailto:${encodeURIComponent(doctorInfo.email)}?${query}`;
+  const getMedicationReorderUiState = (medId) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return null;
+    return medicationDailyState.reorderPrompted.get(key) || null;
   };
 
-  const syncCardOrder = (order, items) => {
-    const ids = items.map((item) => item?.id).filter(Boolean);
-    const next = order.filter((id) => ids.includes(id));
-    ids.forEach((id) => {
-      if (!next.includes(id)) next.push(id);
+  const isMedicationReorderRecentlyPrompted = (medId) => {
+    const entry = getMedicationReorderUiState(medId);
+    if (!entry?.at) return false;
+    return Date.now() - entry.at < MEDICATION_REORDER_REOPEN_COOLDOWN_MS;
+  };
+
+  const isMedicationReorderConfirming = (medId) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return false;
+    return medicationDailyState.reorderConfirming.has(key);
+  };
+
+  const markMedicationReorderConfirming = (medId, contract) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return;
+    medicationDailyState.reorderConfirming.set(key, {
+      href: contract?.href || '',
+      dayIso: contract?.dayIso || medicationDailyState.dayIso || todayStr(),
+      at: Date.now()
     });
-    return next;
   };
 
-  const sortByCardOrder = (items, order) => {
-    const rank = new Map(order.map((id, index) => [id, index]));
-    return items
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => {
-        const aRank = rank.get(a.item?.id);
-        const bRank = rank.get(b.item?.id);
-        const aValue = Number.isFinite(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
-        const bValue = Number.isFinite(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
-        if (aValue !== bValue) return aValue - bValue;
-        return a.index - b.index;
-      })
-      .map((entry) => entry.item);
+  const clearMedicationReorderConfirming = (medId) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return;
+    medicationDailyState.reorderConfirming.delete(key);
   };
 
-  const getActiveMedicationRows = (data) =>
-    Array.isArray(data?.medications)
-      ? data.medications.filter((med) => med && med.active !== false)
-      : [];
+  const isMedicationReorderLaunchLocked = (medId) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return false;
+    const startedAt = medicationDailyState.reorderLaunchLocks.get(key);
+    if (!startedAt) return false;
+    if (Date.now() - startedAt >= MEDICATION_REORDER_LAUNCH_LOCK_MS) {
+      medicationDailyState.reorderLaunchLocks.delete(key);
+      return false;
+    }
+    return true;
+  };
 
-  const getOpenMedicationRows = (data) =>
-    getActiveMedicationRows(data).filter((med) => !med.taken);
+  const lockMedicationReorderLaunch = (medId) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return;
+    medicationDailyState.reorderLaunchLocks.set(key, Date.now());
+  };
 
-  const getOpenMedicationIds = (data) =>
-    getOpenMedicationRows(data).map((med) => med.id).filter(Boolean);
+  const markMedicationReorderPrompted = (medId, contract) => {
+    const key = `${medId || ''}`.trim();
+    if (!key) return;
+    medicationDailyState.reorderConfirming.delete(key);
+    medicationDailyState.reorderPrompted.set(key, {
+      state: contract?.state || 'reorder_prompted',
+      href: contract?.href || '',
+      dayIso: contract?.dayIso || medicationDailyState.dayIso || todayStr(),
+      at: Date.now()
+    });
+  };
 
   const syncMedicationSelection = (data, { reset = false } = {}) => {
     const openIds = getOpenMedicationIds(data);
@@ -282,6 +278,21 @@
     });
 
     medicationDailyState.lowStockEl?.addEventListener('click', (event) => {
+      const mailLink = event.target.closest('[data-med-mail]');
+      if (mailLink) {
+        handleMedicationReorderStart(mailLink, event);
+        return;
+      }
+      const confirmLink = event.target.closest('[data-med-mail-confirm]');
+      if (confirmLink) {
+        handleMedicationReorderConfirm(confirmLink, event);
+        return;
+      }
+      const cancelBtn = event.target.closest('[data-med-mail-cancel]');
+      if (cancelBtn) {
+        handleMedicationReorderCancel(cancelBtn, event);
+        return;
+      }
       const btn = event.target.closest('[data-med-ack]');
       if (!btn) return;
       event.preventDefault();
@@ -341,6 +352,9 @@
         diag.add?.(`[capture:med] low-stock cleared day=${medicationDailyState.dayIso || 'n/a'}`);
       }
       medicationDailyState.lastLowStockCount = 0;
+      medicationDailyState.reorderConfirming.clear();
+      medicationDailyState.reorderLaunchLocks.clear();
+      medicationDailyState.reorderPrompted.clear();
       box.hidden = true;
       box.innerHTML = '';
       return;
@@ -366,23 +380,60 @@
       : '<p class="medication-low-stock-contact small muted">Keine Arzt-Mail im Profil hinterlegt.</p>';
     const listHtml = meds
       .map((med) => {
-        const mailHref = doctorInfo?.email ? buildLowStockMailHref(doctorInfo, med, meds) : null;
-        const mailAction = mailHref
-          ? `<a class="btn ghost small" href="${escapeAttr(mailHref)}" target="_blank" rel="noopener" data-med-mail="${escapeAttr(
+        const reorderContract =
+          typeof getMedicationModule()?.getMedicationReorderStartContract === 'function'
+            ? getMedicationModule().getMedicationReorderStartContract(med, {
+                doctorInfo,
+                meds,
+                dayIso: medicationDailyState.dayIso || todayStr()
+              })
+            : { ok: false, reason: 'medication-reorder-contract-missing' };
+        const reorderUi = getMedicationReorderUiState(med.id);
+        const isConfirming = isMedicationReorderConfirming(med.id);
+        const reorderState = reorderUi?.state || (isConfirming ? 'confirming' : reorderContract?.ok ? 'ready' : 'unavailable');
+        const reorderHint =
+          reorderState === 'reorder_prompted'
+            ? 'Rezeptkontakt angestoßen'
+            : reorderContract?.ok
+              ? 'Lokaler Rezeptkontakt möglich'
+              : 'Rezeptkontakt nicht verfügbar';
+        const mailAction = reorderContract?.ok
+          ? `<a class="btn ghost small" href="${escapeAttr(
+              reorderContract.href || ''
+            )}" target="_blank" rel="noopener" data-med-mail="${escapeAttr(
               med.id || ''
-            )}">Arzt-Mail</a>`
+            )}" data-med-reorder-state="${escapeAttr(reorderContract.state || '')}">Arzt-Mail</a>`
           : '<small class="muted small">Mailkontakt fehlt</small>';
+        const effectiveReorderHint =
+          reorderState === 'confirming'
+            ? 'Mailstart bitte lokal bestaetigen'
+            : reorderState === 'reorder_prompted'
+              ? 'Rezeptkontakt angestossen'
+              : reorderContract?.ok
+                ? 'Lokaler Rezeptkontakt moeglich'
+                : 'Rezeptkontakt nicht verfuegbar';
+        const effectiveMailAction = isConfirming
+          ? `<a class="btn small" href="${escapeAttr(
+              reorderContract?.href || ''
+            )}" data-med-mail-confirm="${escapeAttr(med.id || '')}">Mail jetzt oeffnen</a>
+             <button type="button" class="btn ghost small" data-med-mail-cancel="${escapeAttr(
+               med.id || ''
+             )}">Abbrechen</button>`
+          : mailAction;
         const ackBtn = `<button type="button" class="btn ghost small" data-med-ack="${escapeAttr(
           med.id || ''
         )}" data-med-stock="${escapeAttr(String(med.stock_count ?? 0))}">Erledigt</button>`;
         return `
-        <div class="low-stock-item">
+        <div class="low-stock-item" data-med-reorder-ui-state="${escapeAttr(reorderState)}">
           <div>
             <div>${escapeHtml(med.name || 'Medikation')}</div>
             <small>Noch ${med.stock_count ?? 0} Stk. (${med.days_left ?? '?'} Tage)</small>
+            <small class="medication-low-stock-state" data-med-reorder-label="${escapeAttr(
+              med.id || ''
+            )}">${escapeHtml(effectiveReorderHint)}</small>
           </div>
           <div class="medication-low-stock-actions">
-            ${mailAction}
+            ${effectiveMailAction}
             ${ackBtn}
           </div>
         </div>`;
@@ -613,6 +664,218 @@
     }
   }
 
+  function handleMedicationReorderStart(link, event) {
+    if (!link) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      uiError('Medikationsmodul nicht verfügbar.');
+      return;
+    }
+    if (!captureIntakeState.logged) {
+      uiError('Bitte anmelden, um einen Rezeptkontakt zu starten.');
+      return;
+    }
+    const medId = `${link.getAttribute('data-med-mail') || ''}`.trim();
+    if (!medId) return;
+    const data = medicationDailyState.data;
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med?.low_stock) : [];
+    const med = meds.find((entry) => `${entry?.id || ''}`.trim() === medId);
+    const contract =
+      typeof medModule.getMedicationReorderStartContract === 'function'
+        ? medModule.getMedicationReorderStartContract(med, {
+            doctorInfo: getPrimaryDoctorInfo(),
+            meds,
+            dayIso: medicationDailyState.dayIso || todayStr()
+          })
+        : { ok: false, reason: 'medication-reorder-contract-missing' };
+    if (!contract?.ok) {
+      event?.preventDefault?.();
+      diag.add?.(
+        `[capture:med] reorder start blocked med=${medId} reason=${contract?.reason || 'unknown'}`
+      );
+      uiError('Rezeptkontakt ist gerade nicht verfügbar.');
+      return;
+    }
+    if (isMedicationReorderLaunchLocked(medId)) {
+      event?.preventDefault?.();
+      diag.add?.(`[capture:med] reorder start blocked med=${medId} reason=reorder-launch-locked`);
+      uiInfo('Rezeptkontakt wurde gerade bereits angestossen.');
+      return;
+    }
+    if (isMedicationReorderRecentlyPrompted(medId)) {
+      event?.preventDefault?.();
+      diag.add?.(`[capture:med] reorder start blocked med=${medId} reason=reorder-reopen-cooldown`);
+      uiInfo('Rezeptkontakt wurde gerade bereits geoeffnet.');
+      return;
+    }
+    event?.preventDefault?.();
+    markMedicationReorderConfirming(medId, contract);
+    diag.add?.(
+      `[capture:med] reorder confirm armed med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
+    );
+    uiInfo('Rezeptkontakt lokal bestaetigen, um die Mail-App zu oeffnen.');
+    renderMedicationLowStock(medicationDailyState.data);
+    return;
+  }
+
+  function handleMedicationReorderConfirm(link, event) {
+    event?.preventDefault?.();
+    if (!link) return;
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      uiError('Medikationsmodul nicht verfÃ¼gbar.');
+      return;
+    }
+    const medId = `${link.getAttribute('data-med-mail-confirm') || ''}`.trim();
+    if (!medId) return;
+    const data = medicationDailyState.data;
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med?.low_stock) : [];
+    const med = meds.find((entry) => `${entry?.id || ''}`.trim() === medId);
+    const contract =
+      typeof medModule.getMedicationReorderStartContract === 'function'
+        ? medModule.getMedicationReorderStartContract(med, {
+            doctorInfo: getPrimaryDoctorInfo(),
+            meds,
+            dayIso: medicationDailyState.dayIso || todayStr()
+          })
+        : { ok: false, reason: 'medication-reorder-contract-missing' };
+    if (!contract?.ok) {
+      clearMedicationReorderConfirming(medId);
+      diag.add?.(
+        `[capture:med] reorder confirm blocked med=${medId} reason=${contract?.reason || 'unknown'}`
+      );
+      uiError('Rezeptkontakt ist gerade nicht verfuegbar.');
+      renderMedicationLowStock(medicationDailyState.data);
+      return;
+    }
+    if (isMedicationReorderLaunchLocked(medId)) {
+      clearMedicationReorderConfirming(medId);
+      diag.add?.(`[capture:med] reorder confirm blocked med=${medId} reason=reorder-launch-locked`);
+      uiInfo('Rezeptkontakt wurde gerade bereits geoeffnet.');
+      renderMedicationLowStock(medicationDailyState.data);
+      return;
+    }
+    markMedicationReorderPrompted(medId, contract);
+    lockMedicationReorderLaunch(medId);
+    diag.add?.(
+      `[capture:med] reorder prompted med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
+    );
+    uiInfo('Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.');
+    renderMedicationLowStock(medicationDailyState.data);
+    if (global?.location) {
+      global.location.href = contract.href;
+    }
+  }
+
+  function handleMedicationReorderCancel(btn, event) {
+    event?.preventDefault?.();
+    const medId = `${btn?.getAttribute('data-med-mail-cancel') || ''}`.trim();
+    if (!medId) return;
+    clearMedicationReorderConfirming(medId);
+    diag.add?.(`[capture:med] reorder confirm cancelled med=${medId}`);
+    renderMedicationLowStock(medicationDailyState.data);
+  }
+
+  async function startMedicationLowStockReorder(options = {}) {
+    const medModule = getMedicationModule();
+    if (!medModule) {
+      return {
+        ok: false,
+        reason: 'medication-module-missing',
+        replyText: 'Medikationsmodul nicht verfuegbar.'
+      };
+    }
+    if (!captureIntakeState.logged) {
+      return {
+        ok: false,
+        reason: 'medication-not-authenticated',
+        replyText: 'Bitte anmelden, um einen Rezeptkontakt zu starten.'
+      };
+    }
+    const dayIso =
+      typeof options.dayIso === 'string' && options.dayIso.trim()
+        ? options.dayIso.trim()
+        : todayStr();
+    let data = null;
+    try {
+      data = await medModule.loadMedicationForDay(dayIso, {
+        force: true,
+        reason: options.reason || 'voice:medication-low-stock-followup'
+      });
+    } catch (err) {
+      diag.add?.(`[capture:med] reorder follow-up load failed day=${dayIso} reason=${err?.message || err}`);
+      return {
+        ok: false,
+        reason: 'medication-load-failed',
+        replyText: 'Rezeptkontakt ist gerade nicht verfuegbar.'
+      };
+    }
+    const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med?.low_stock) : [];
+    const requestedMedIds = Array.isArray(options.medIds)
+      ? options.medIds.map((value) => `${value || ''}`.trim()).filter(Boolean)
+      : [];
+    const med =
+      (requestedMedIds.length
+        ? meds.find((entry) => requestedMedIds.includes(`${entry?.id || ''}`.trim()))
+        : null) ||
+      meds[0] ||
+      null;
+    const contract =
+      typeof medModule.getMedicationReorderStartContract === 'function'
+        ? medModule.getMedicationReorderStartContract(med, {
+            doctorInfo: getPrimaryDoctorInfo(),
+            meds,
+            dayIso
+          })
+        : { ok: false, reason: 'medication-reorder-contract-missing' };
+    if (!contract?.ok) {
+      diag.add?.(
+        `[capture:med] reorder follow-up blocked med=${contract?.medId || med?.id || 'n/a'} reason=${contract?.reason || 'unknown'}`
+      );
+      return {
+        ok: false,
+        reason: contract?.reason || 'medication-reorder-contract-missing',
+        replyText: 'Rezeptkontakt ist gerade nicht verfuegbar.'
+      };
+    }
+    if (isMedicationReorderLaunchLocked(contract.medId)) {
+      diag.add?.(`[capture:med] reorder follow-up blocked med=${contract.medId} reason=reorder-launch-locked`);
+      return {
+        ok: false,
+        reason: 'reorder-launch-locked',
+        replyText: 'Rezeptkontakt wurde gerade bereits geoeffnet.'
+      };
+    }
+    if (isMedicationReorderRecentlyPrompted(contract.medId)) {
+      diag.add?.(`[capture:med] reorder follow-up blocked med=${contract.medId} reason=reorder-reopen-cooldown`);
+      return {
+        ok: false,
+        reason: 'reorder-reopen-cooldown',
+        replyText: 'Rezeptkontakt wurde gerade bereits geoeffnet.'
+      };
+    }
+    markMedicationReorderPrompted(contract.medId, contract);
+    lockMedicationReorderLaunch(contract.medId);
+    medicationDailyState.data = data;
+    if ((medicationDailyState.dayIso || '') === dayIso) {
+      renderMedicationLowStock(medicationDailyState.data);
+    }
+    diag.add?.(
+      `[capture:med] reorder prompted med=${contract.medId} day=${contract.dayIso || dayIso} source=${options.source || 'unknown'}`
+    );
+    uiInfo('Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.');
+    if (global?.location) {
+      global.location.href = contract.href;
+    }
+    return {
+      ok: true,
+      reason: null,
+      medId: contract.medId,
+      dayIso: contract.dayIso || dayIso,
+      replyText: 'Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.'
+    };
+  }
+
   async function refreshMedicationDaily({ dayIso, reason = 'auto', force = false } = {}) {
     if (!isHandlerStageReady()) return;
     initMedicationDailyUi();
@@ -628,6 +891,9 @@
     medicationDailyState.dayIso = nextDayIso;
     if (dayChanged) {
       medicationDailyState.selectionDirty = false;
+      medicationDailyState.reorderConfirming.clear();
+      medicationDailyState.reorderLaunchLocks.clear();
+      medicationDailyState.reorderPrompted.clear();
     }
     if (!captureIntakeState.logged) {
       renderMedicationDailyPlaceholder('Bitte anmelden, um Medikamente zu verwalten.');
@@ -1383,7 +1649,8 @@ function initTrendpilotCaptureHook() {
     scheduleNoonSwitch: scheduleNoonSwitch,
     maybeRefreshForTodayChange: maybeRefreshForTodayChange,
     bindIntakeCapture: bindIntakeCapture,
-    fmtDE: fmtDE
+    fmtDE: fmtDE,
+    startMedicationLowStockReorder: startMedicationLowStockReorder
   };
   appModules.capture = appModules.capture || {};
   Object.assign(appModules.capture, captureApi);

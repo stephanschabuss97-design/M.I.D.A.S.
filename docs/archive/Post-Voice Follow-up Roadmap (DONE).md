@@ -1,0 +1,5215 @@
+# Post-Voice Follow-up Roadmap
+
+## Ziel (klar und pruefbar)
+Nach Abschluss der Voice Command Reactivation Roadmap soll MIDAS fuer die naechste Ausbauphase vorbereitet und selektiv erweitert werden, ohne die Rolle des Produkts zu verwischen.
+
+Der Fokus liegt nicht auf genereller Voice-Ausweitung oder offenem Assistant-Verhalten, sondern auf klar geschnittenen, deterministischen Fast Paths mit realem Alltagsnutzen:
+- standardisierte `Intent / Voice Integration`-Entry-Points in den Module Overviews
+- modulweise identifizierte neue Fast Paths mit echter Reibungsreduktion
+- deterministische Spezialfaelle wie Medication Reorder und Breath Timer
+- eine pflegeleichtere, deterministische Voice-Semantik auf Basis von Normalisierung, Slots und Pattern-Regeln statt wachsender Satzbibliotheken
+- eng begrenzte Voice-Follow-ups nur dort, wo sie auf bestehenden lokalen Spezialfaellen aufsetzen
+- kontrollierte Erweiterung von Action Surface und Workflow-Guards
+- spaetere Komfort-Shortcuts wie ein PWA-Icon Voice Fast Path nur, wenn sie den bestehenden Voice-Flow sauber beschleunigen
+
+Pruefbare Zieldefinition:
+- Bestehende Module Overviews haben einen standardisierten Abschnitt `Intent / Voice Integration`.
+- Neue Fast Paths werden nur aus echten, dokumentierten Reibungspunkten abgeleitet.
+- Medication Reorder ist als deterministische Workflow-Kette mit Guards und klaren Zustaenden modelliert.
+- Breath Timer ist als klarer Intent-/Action-Fast-Path modelliert oder bewusst begruendet ausgeschlossen.
+- Die produktive Voice-Semantik ist ueber klar getrennte Schichten fuer Oberflaechen-Normalisierung, semantische Kategorien/Slots und deterministische Pattern-Regeln modelliert.
+- Weitere Module mit hohem Reibungsprofil sind systematisch geprueft und priorisiert statt ad hoc erweitert.
+- `allowed-actions` und `actions.js` werden kontrolliert statt reaktiv erweitert.
+- Ein moeglicher PWA-Icon Voice Fast Path ist technisch und UX-seitig sauber eingeordnet.
+
+## Scope
+- Bulk-Update der Module Overviews um einen standardisierten Abschnitt `Intent / Voice Integration`.
+- Modulweise Pruefung bestehender Module auf sinnvolle neue Intent Fast Paths.
+- Definition und Umsetzung gezielter Workflow-Erweiterungen nach realem Alltagsnutzen.
+- Refactor der Voice-Semantik weg von satznahem Nachpatchen hin zu pflegeleichten semantischen Kategorien, Slots und Pattern-Regeln.
+- Ausbau bestehender deterministischer Flows statt Einfuehrung offener LLM-/Agentenlogik.
+- Vorbereitung spaeterer Wearable-/Node-Hooks nur dort, wo ein klarer Nutzen sichtbar ist.
+- Pruefung eines schnelleren Voice-Starts direkt ueber das MIDAS-PWA-Icon.
+- QA-Smokes fuer neue Fast Paths, Workflow-Guards und Shortcut-Einstiege.
+
+## Not in Scope
+- Genereller Ausbau zu einem conversational assistant.
+- Globale Voice-Steuerung ohne modulare Einzelpruefung.
+- Freie LLM-Dialoge als Standard-Fallback fuer neue Flows.
+- Unkontrollierte Agenten-Automationen.
+- Destruktive Datenoperationen per Voice.
+- Grossflaechige Refactors ohne konkreten Use Case.
+- Homescreen-Widgets als Teil dieser Follow-up-Phase.
+- Native Shell-/Android-/iOS-Sonderroadmaps.
+
+## Relevante Referenzen (Code)
+- `app/modules/assistant-stack/assistant/actions.js`
+- `app/modules/assistant-stack/assistant/allowed-actions.js`
+- `app/modules/assistant-stack/intent/index.js`
+- `app/modules/assistant-stack/intent/parser.js`
+- `app/modules/assistant-stack/intent/rules.js`
+- `app/modules/assistant-stack/voice/index.js`
+- `app/modules/hub/index.js`
+- `app/modules/intake-stack/medication/index.js`
+- `app/modules/vitals-stack/vitals/index.js`
+- `app/modules/vitals-stack/vitals/bp.js`
+- `app/modules/vitals-stack/vitals/breath-timer.js`
+- `app/modules/appointments/index.js`
+- `app/modules/vitals-stack/activity/index.js`
+- `app/modules/vitals-stack/trendpilot/index.js`
+- `index.html`
+- `app/styles/hub.css`
+
+## Relevante Referenzen (Doku)
+- `docs/Voice Reactivation Roadmap.md`
+- `docs/modules/Assistant Module Overview.md`
+- `docs/modules/Hub Module Overview.md`
+- `docs/modules/Intent Engine Module Overview.md`
+- `docs/modules/VAD Module Overview.md`
+- `docs/modules/Medication Module Overview.md`
+- `docs/modules/Breath Timer Module Overview.md`
+- `docs/modules/Appointments Module Overview.md`
+- `docs/modules/Activity Module Overview.md`
+- `docs/modules/Trendpilot Module Overview.md`
+- `docs/QA_CHECKS.md`
+- `docs/Voice Command Semantics.md`
+- `CHANGELOG.md`
+
+## Guardrails
+- MIDAS bleibt ein Tracker mit deterministischen Fast Paths, kein offener Sprachassistent.
+- Neue Fast Paths werden nur bei realem Alltagsnutzen und dokumentierter Reibungsreduktion geschnitten.
+- Kein Modul bekommt automatisch einen Voice-Einstieg, nur weil Voice existiert.
+- Neue Flows duerfen keine versteckte Scope-Drift in Richtung `Voice fuer alles` erzeugen.
+- Destruktive, strukturelle oder historisch editierende Operationen bleiben ausserhalb von Voice-Fast-Paths.
+- Neue Workflow-Automationen brauchen explizite Zustandsmodelle, Logging und Guardrails.
+- Medication Reorder darf nie allein durch einen Low-Status still in einen Sendepfad kippen; ein klarer Guard- und Confirm-Vertrag ist Pflicht.
+- Breath Timer darf nicht ueber vage Sprache, implizite Moduswahl oder verdeckte BP-Kontext-Annahmen gestartet werden.
+- Medication-Low-Stock-Voice-Follow-ups duerfen nur auf bestehender Medikationsbestaetigung aufsetzen und keinen Versand-/Bestellstatus behaupten.
+- Die neue Voice-Semantik in `F8` muss deterministisch, lokal, testbar und schichtklar bleiben; kein probabilistischer Live-Resolver und kein verdecktes Selbstlernen.
+- Die Pflegeeinheit fuer Sprachvarianten soll in `F8` auf Kategorien, Slots, Pattern und Normalisierung verschoben werden, nicht auf immer mehr exakte Beispielsatze.
+- Die Modulpruefung in `F10` muss ausdruecklich auch das Ergebnis `kein Fast Path sinnvoll` zulaessen.
+- `allowed-actions` und `actions.js` duerfen nicht ad hoc aufgeblaeht werden.
+- Wearable-/Node-Ideen bleiben Future Hooks, solange App-first nicht sauber begrenzt ist.
+- Ein PWA-Icon Voice Fast Path ist nur Komfort-Shortcut fuer den bestehenden Voice-Flow, kein Einstieg in eine Widget- oder Native-Shell-Roadmap.
+- Ein PWA-Shortcut darf keine Auto-Aufnahme oder Hidden-Mic-Initialisierung umgehen; wenn User-Gesture-/Browser-Grenzen greifen, ist ein vorbereiteter Push-to-talk-Landepunkt die korrekte Obergrenze.
+- Jeder Schritt muss vor dem naechsten Schritt auf Scope-Drift, toten Code, Doku-Drift und offene Cleanup-Reste geprueft werden.
+
+## Architektur-Constraints
+- Text und Voice bleiben auf demselben fachlichen Intent-Surface, auch wenn neue Module eigene Fast Paths bekommen.
+- Modulbezogene Erweiterungen muessen ueber klar dokumentierte Action Contracts laufen, nicht ueber implizite Sonderpfade.
+- Workflow-Guards und Pending-/Confirm-Vertraege bleiben zentral nachvollziehbar; keine verdeckten Parallel-Resolver.
+- Neue Fast Paths duerfen bestehende Guard-/Auth-/Stage-Vertraege nicht still lockern.
+- UI-Vorbelegungen, vorbereitete Masken oder Spezial-Entry-Points muessen explizit modelliert sein.
+- Medication Reorder ist als deterministische Workflow-Kette zu behandeln, nicht als Agentenfall.
+- Breath Timer ist ein Intent-/Action-Kandidat fuer Reibungsreduktion, nicht fuer conversation behavior.
+- PWA-Shortcut-Fast-Paths duerfen nur in bestehende produktive Einstiege springen, nicht neue parallele Runtime-Stacks oeffnen.
+
+## Tool Permissions
+Allowed:
+- Bestehende Modul-, Intent-, Assistant-, Voice- und Hub-Dateien lesen und innerhalb Scope aendern.
+- Doku-, QA- und Changelog-Eintraege in bestehenden Ordnern erstellen oder aktualisieren.
+- Lokale Smokechecks, Syntaxchecks und gezielte Harness-Checks ausfuehren.
+- Bestehende Modul-Overviews gegen den realen Ist-Stand abgleichen.
+
+Forbidden:
+- Neue Dependencies fuer Voice-/Widget-/Native-Shell-Experimente einfuehren.
+- Offene Agenten- oder Workflow-Logik ins Backend verschieben, nur um neue Fast Paths schnell zu ermoeglichen.
+- Unverwandte Module grossflaechig refactoren.
+- Homescreen-Widgets oder Always-on-Voice implizit in diese Roadmap hineinziehen.
+
+## Execution Mode
+- Sequenziell arbeiten (`F1` bis `F15`).
+- Keine Schritte ueberspringen ohne dokumentierte Begruendung.
+- Nach jedem Schritt Statusmatrix aktualisieren.
+- Nach jedem Schritt mindestens ein Check (Smoke/Sanity/Syntax/Review).
+- Der letzte Subschritt eines Themenblocks bleibt immer der explizite Abschlusscheck:
+  - tote Codepfade / Altlasten
+  - Richtigkeit der Umsetzung
+  - notwendiger Doku-/QA-Nachzug
+- Modul- und Workflow-Erweiterungen erst nach dokumentierter Priorisierung angehen.
+- Jeder Schritt endet mit einem expliziten Abschlusscheck auf:
+  - funktionale Konsistenz / Scope
+  - toten Code / Altlasten
+  - sinnvolle Sofort-Nachsynchronisierung der Doku
+  - notwendige lokale Syntax-/Smoke-/Harness-Pruefungen
+
+## Statusmatrix
+| ID | Schritt | Status | Ergebnis/Notiz |
+|---|---|---|---|
+| F1 | Follow-up-Ist-Analyse und Modul-Inventar schneiden | DONE | Modul-Inventar, implizite Integrationspunkte, Action-Surface-Luecken und Scope-Risiken gegen den realen Codezustand gemappt |
+| F2 | Standardisierten `Intent / Voice Integration`-Vertrag fuer Module Overviews definieren | DONE | F2.1-F2.5 abgeschlossen; Abschnittsvertrag, Placeholder-/Future-Hook-Regeln und Bulk-Nachzieh-Scope fuer F3 stehen |
+| F3 | Module Overviews bulkweise um den neuen Integrations-Entry-Point erweitern | DONE | F3.1-F3.5 abgeschlossen; Ziel-Overviews tragen den neuen Integrationsvertrag, direkte Doku-Drift ist bereinigt und die relevante Modul-Shortlist fuer F4 steht |
+| F4 | Bestehende Module auf reale Fast-Path-Kandidaten pruefen und priorisieren | DONE | F4.1-F4.5 abgeschlossen; Priorisierung basiert auf dokumentierter Reibung, `skip` ist explizit festgehalten und nur `Medication Reorder` sowie `start_breath_timer` werden weitergetragen |
+| F5 | Medication Reorder gegen den Ist-Stand mappen und als Workflow-Vertrag schneiden | DONE | F5.1-F5.6 abgeschlossen; Low-Stock-/Mailto-/Ack-Ist-Stand, enger Reorder-Zustandsvertrag, UI-confirmed-Leitplanke und Nicht-Ziele sind festgezogen |
+| F6 | Medication Reorder produktiv als deterministischen Spezialfall modellieren | DONE | F6.1-F6.6 abgeschlossen; lokaler Reorder-Spezialfall mit UI-Confirm, Guard-Reasons, lokalem Lock/Cooldown und dokumentiertem Future Hook steht |
+| F7 | Breath Timer Intent-/Action-Workflow definieren und schneiden | DONE | F7.1-F7.6 abgeschlossen; `start_breath_timer` ist produktiv eng geschnitten, QA/Doku sind synchronisiert und nur der echte Live-Smoke fuer den Voice-Pfad bleibt noch offen |
+| F8 | Voice-Semantik auf deterministische Slot-/Pattern-Architektur modernisieren | DONE | F8.1-F8.12 abgeschlossen; Zielarchitektur, Pflegevertrag und erster produktiver Implementierungsschnitt fuer Surface/Semantic/Slots/Hybrid-Regeln stehen, offene Restpunkte sind explizit dokumentiert |
+| F9 | Medication Voice Low-Stock Follow-up als engen Spezialfall pruefen und schneiden | DONE | F9.1-F9.7 abgeschlossen; enger Voice-Follow-up ist produktiv angebunden, Altlasten bereinigt und Doku-/QA-Nachzug ist auf dem neuen Vertragsstand |
+| F10 | Appointments, Activity und weitere friction-heavy Module gezielt pruefen | DONE | Appointment-Fall fachlich geprueft; moeglicher spaeterer `appointment_create`-Fast-Path dokumentiert, aber bewusst in eine eigene spaetere Roadmap verschoben |
+| F11 | Erweiterte Action Surface / Allowed Actions kontrolliert strukturieren | DONE | Keine neuen globalen Assistant-Actions oder Pflicht-Refactors noetig; nur der bekannte `open_module`-Konsolidierungspunkt bleibt dokumentiert |
+| F12 | PWA-Icon Voice Fast Path technisch und UX-seitig pruefen | DONE | F12.1-F12.2 abgeschlossen; PWA-Shortcut ist nur begrenzt machbar und bringt im aktuellen Produkt geringen Mehrwert, echter Outside-the-app-Voice-Start bleibt Future-Scope fuer Wrapper/Widget/Native |
+| F13 | Voice-Latenz, STT-Betriebsmodell und semantische Pflege nachschneiden | DONE | F13.1-F13.11 abgeschlossen; Voice-Latenzkette instrumentiert, VAD fuer Kurzbefehle enger geschnitten, Compound-Stabilitaet und Spoken-Surface nachgezogen, Modul-Doku synchronisiert |
+| F14 | QA-Smokes, Regressionen und Prioritaets-Follow-ups absichern | DONE | F14.1-F14.8 abgeschlossen; QA_CHECKS deckt Fast Paths, sichtbare Semantikkette, Breath Timer, Medication-Low-Stock-Follow-up und PWA-Grenzen jetzt als zusammenhaengenden Regression-Block ab |
+| F15 | Doku-Sync, QA_CHECKS, CHANGELOG und Future Hooks finalisieren | DONE | F15.1-F15.6 abgeschlossen; Statusmatrix, Modul-Doku, QA_CHECKS, CHANGELOG und Future-Hook-Linie sind jetzt auf demselben produktiven Follow-up-Stand |
+
+Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
+
+## Schritte + Subschritte
+
+### F1 - Follow-up-Ist-Analyse und Modul-Inventar schneiden
+- F1.1 Bestehende Module Overviews inventarisieren und nach Reibungsprofil gruppieren.
+- F1.2 Pruefen, welche Module heute bereits implizite Intent-/Voice-Anschlussstellen haben.
+- F1.3 Aktuelle Action-Surface (`actions.js`, `allowed-actions.js`) gegen die geplanten Follow-up-Richtungen mappen.
+- F1.4 Bestehende Medication-, Breath-Timer-, Appointments- und Activity-Flows gegen den realen Ist-Stand lesen.
+- F1.5 Offene Scope-Risiken markieren:
+  - Voice fuer alles
+  - ad hoc Action-Wachstum
+  - Workflow-Drift ohne Guards
+- F1.6 Abschlusscheck vor F2:
+  - Pruefen, ob das Inventar keine versteckten Produktzusagen enthaelt.
+  - Doppelte oder veraltete Overview-Aussagen markieren.
+  - Dokumentieren, welche Doku sofort nachgezogen werden sollte und was bewusst bis spaeter warten darf.
+
+#### F1 Ergebnisprotokoll
+- `F1.1` Modul-Inventar und Reibungsprofil gegen die aktuellen Overviews geschnitten:
+  - `System-/Integrationskern`:
+    - `Assistant`
+    - `Hub`
+    - `Intent Engine`
+    - `VAD`
+    - diese Dokus beschreiben bereits den produktiven Voice-V1-Kern und dienen fuer den Follow-up eher als Guardrail- und Vertragsreferenz als als Quelle neuer Fast Paths
+  - `high-friction / deterministisch gut modellierbar`:
+    - `Medication`
+    - `Breath Timer`
+    - beide Module haben bereits klare Runtime-/UI-Zustaende und liegen nah an realer Alltagsreibung
+  - `medium-friction / erst pruefen, nicht versprechen`:
+    - `Appointments`
+    - `Activity`
+    - beide Module haben produktive Eingabeflaechen, aber noch keinen sauberen Intent-/Action-Vertrag fuer vorbereitete Schnellpfade
+  - `read-heavy / eher explizit kein Fast Path bis Gegenevidenz`:
+    - `Trendpilot`
+    - hier ueberwiegt heute die Lese-/Hinweisfunktion; ein produktiver Voice-/Intent-Fast-Path waere eher Ausnahme als Default
+- `F1.2` Bereits vorhandene implizite Intent-/Voice-Anschlussstellen gegen den realen Codezustand gemappt:
+  - `Assistant`, `Hub`, `Intent Engine` und `VAD` sind bereits sauber auf dem produktiven Voice-V1-Zuschnitt dokumentiert
+  - `Medication` hat bereits einen produktiven lokalen Voice-Anschluss ueber `medication_confirm_all`
+    - Voice nutzt dafuer `loadMedicationForDay(...)` und `confirmMedication(...)`
+    - der Modul-Overview spiegelt diesen Anschlussstand derzeit noch nicht
+  - `Breath Timer` hat noch keinen Intent-/Voice-Contract, aber bereits einen engen, deterministischen UI-Entry-Point:
+    - `openPresetSelection(...)`
+    - `startFromPresetSelection(...)`
+    - `startPreset(...)`
+  - `Appointments` haengt heute nur indirekt am Assistant-Kontext:
+    - `getUpcoming(...)` versorgt den Assistant-Header
+    - kein produktiver Intent-/Action-/Prefill-Vertrag fuer Erfassung oder Toggle dokumentiert
+  - `Activity` exponiert einen klaren Write-Pfad ueber `addActivity(...)`, aber keinen vorbereiteten Intent-/Voice-Einstieg
+  - `Trendpilot` hat heute keinen sinnvollen Write-/Fast-Path-Anschluss; der aktuelle Surface ist read-/ack-orientiert
+- `F1.3` Aktuelle Action-Surface gegen die Follow-up-Richtungen gemappt:
+  - `assistant/actions.js` implementiert eine breitere Action-Flaeche als im produktiven lokalen Fast-Path wirklich freigegeben ist
+  - `assistant/allowed-actions.js` whitelisted aktuell nur:
+    - `intake_save`
+    - `open_module`
+    - `show_status`
+    - `highlight`
+    - `ask_confirmation`
+    - `close_conversation`
+    - `transition_to_photo_mode`
+    - `transition_to_text_chat`
+    - `suggest_intake`
+    - `confirm_intake`
+  - `UI-safe` bleibt bewusst auf `open_module` begrenzt
+  - die Intent Engine kennt fachlich bereits mehr als der produktive Voice-V1-Pfad aktuell ausfuehren darf:
+    - `medication_confirm_all`
+    - `vitals_log_bp`
+    - `vitals_log_pulse`
+    - `vitals_log_weight`
+    - `open_module`
+  - der produktive Voice-V1-Dispatch bleibt bewusst enger und laesst aktuell nur zu:
+    - `intake_save`
+    - `open_module`
+    - `medication_confirm_all`
+  - `open_module` ist im produktiven Voice-V1-Pfad zusaetzlich auf `intake` / `medikamente` begrenzt
+  - wichtige Follow-up-Einordnung:
+    - `medication_confirm_all` ist heute ein bewusst lokaler Spezialpfad ausserhalb der generischen Allowed-Actions-Schicht
+    - fuer neue Fast Paths darf daraus kein Muster fuer unkontrolliertes Sonderfallwachstum werden
+    - fuer `Breath Timer`, `Appointments`, `Activity` und spaeter `Medication Reorder` existieren heute noch keine produktiven Action Contracts
+- `F1.4` Bestehende Medication-, Breath-Timer-, Appointments- und Activity-Flows gegen den realen Ist-Stand gelesen:
+  - `Medication`
+    - produktiv vorhanden:
+      - `confirmMedication(...)`
+      - `undoMedication(...)`
+      - `adjustStock(...)`
+      - `setStock(...)`
+      - `ackLowStock(...)`
+      - `setMedicationActive(...)`
+      - `deleteMedication(...)`
+    - im Intake-Flow existieren:
+      - Daily-Batch-Confirm
+      - Low-Stock-Box
+      - `mailto:`-Kontakt zum Arzt
+      - Ack fuer Low-Stock-Hinweis
+    - Schlussfolgerung:
+      - es gibt bereits reale Reorder-Vorstufen
+      - es gibt aber noch keinen deterministischen Reorder-Zustandsvertrag und keinen guard-railed Sendepfad
+  - `Breath Timer`
+    - produktiv vorhanden:
+      - Preset-Auswahl `3` / `5` Minuten
+      - klare Engine-/UI-States
+      - Guardrails fuer BP-Save, Kontextwechsel, Tab-Wechsel und Panel-Close
+    - Schlussfolgerung:
+      - der Timer ist bereits sauber genug fuer einen spaeteren engen Intent-/Action-Vertrag
+      - heute existiert jedoch noch kein produktiver Parser-/Action-Anschluss
+  - `Appointments`
+    - produktiv vorhanden:
+      - Panel-CRUD
+      - `sync(...)`
+      - `getUpcoming(...)`
+      - `getAll()`
+      - Toggle `scheduled` / `done`
+    - Schlussfolgerung:
+      - das Modul ist funktional produktiv
+      - es fehlt aber ein enger, guard-railed Fast-Path-Vertrag fuer vorbereitete Masken, Prefills oder enge Status-Aktionen
+  - `Activity`
+    - produktiv vorhanden:
+      - `addActivity(...)`
+      - `loadActivities(...)`
+      - `deleteActivity(...)`
+      - enge Validierung fuer `activity` und `duration_min`
+    - Schlussfolgerung:
+      - es gibt einen klaren deterministischen Save-Pfad
+      - die UI-/Datumskopplung lebt aber noch im Vitals-Flow, nicht in einem separaten Intent-/Action-Contract
+- `F1.5` Offene Scope-Risiken fuer den Follow-up markiert:
+  - `Voice fuer alles`
+    - Risiko ist real, weil der Intent-Kern bereits Targets kennt, die der produktive Voice-V1-Pfad bewusst noch blockt
+    - F2/F4 muessen klar zwischen `parserseitig denkbar` und `produktiv erlaubt` unterscheiden
+  - `ad hoc Action-Wachstum`
+    - Risiko ist real, weil neue Fast Paths sonst leicht als weitere lokale Sonderfaelle oder Alias-Aktionen in `actions.js` / `allowed-actions.js` landen
+    - Medication Reorder, Breath Timer und moegliche Prefill-Flows brauchen deshalb erst einen klaren Contract, bevor neue Actions entstehen
+  - `Workflow-Drift ohne Guards`
+    - hoechstes Risiko bei:
+      - `Medication Reorder`
+      - Appointments-Erfassung oder Statuswechsel per Schnellpfad
+      - jeder BP-/Breath-Kopplung mit implizitem Kontext
+    - der Follow-up darf keine impliziten Sendepfade, versteckten Prefills oder unausgesprochenen Confirm-Lockerungen einfuehren
+- `F1.6` Abschlusscheck vor `F2`:
+  - das Inventar enthaelt bewusst keine versteckten Produktzusagen:
+    - `Medication Reorder` und `Breath Timer` sind klare Kandidaten fuer den naechsten Detailzuschnitt
+    - `Appointments` und `Activity` bleiben Analysekandidaten, nicht automatisch zugesagte Fast Paths
+    - `Trendpilot` ist vorlaeufig eher ein expliziter `kein Fast Path sinnvoll`-Kandidat
+  - markierte Doku-Drift / veraltete Aussagen:
+    - kein gepruefter Modul-Overview enthaelt heute bereits den standardisierten Abschnitt `Intent / Voice Integration`
+    - damit besteht vor `F2/F3` noch eine strukturelle Doku-Luecke
+    - der `Medication Module Overview` ist am deutlichsten vor dem aktuellen Produktzuschnitt:
+      - kein Hinweis auf den produktiven Voice-V1-Medikationspfad
+      - kein sauberer Nachvollzug der Low-Stock-/Kontakt-/Reorder-Vorstufe
+      - Legacy-Encoding-Reste im Text
+    - `Breath Timer`, `Appointments`, `Activity` und `Trendpilot` beschreiben ihre Runtime, aber nicht explizit:
+      - erlaubte Intents
+      - erlaubte Actions
+      - vorbefuellbare Parameter
+      - bewusst ausgeschlossene Operationen
+  - dokumentierter Nachziehplan:
+    - `sofort nach F2-Vertrag definieren und in F3 bulkweise nachziehen`:
+      - `docs/modules/Medication Module Overview.md`
+      - `docs/modules/Breath Timer Module Overview.md`
+      - `docs/modules/Appointments Module Overview.md`
+      - `docs/modules/Activity Module Overview.md`
+      - `docs/modules/Trendpilot Module Overview.md`
+    - `in F2 explizit klaeren`:
+      - ob auch die bereits synchronisierten Kern-Dokus (`Assistant`, `Hub`, `Intent Engine`, `VAD`) einen minimalen `Intent / Voice Integration`-Abschnitt bekommen muessen, damit Zieldefinition und F3-Scope nicht auseinanderlaufen
+    - `bewusst spaeter`:
+      - `docs/QA_CHECKS.md`
+      - `CHANGELOG.md`
+      - diese beiden Dateien sollten erst nach produktiven Contract-Entscheidungen und nicht schon aus Analysegrunden nachgezogen werden
+  - spaetere Einordnung:
+    - die damals markierte Overview-Drift ist in den Folgeblocks inzwischen nachgezogen:
+      - Standardabschnitt ueber `F3`
+      - Medication-/Reorder-/Voice-Nachzug ueber `F6`, `F8` und `F9`
+  - durchgefuehrte Checks:
+    - Review-/Repo-Scan ueber Modul-Overviews sowie `actions.js`, `allowed-actions.js`, Intent-, Voice-, Medication-, Breath-Timer-, Appointments-, Activity- und Trendpilot-Module
+    - `rg -n "Intent / Voice Integration" docs/modules` bestaetigt: der standardisierte Abschnitt existiert heute noch nicht produktiv im Doku-Bestand
+
+### F2 - Standardisierten `Intent / Voice Integration`-Vertrag fuer Module Overviews definieren
+- F2.1 Zielstruktur fuer den neuen Overview-Abschnitt festziehen:
+  - Status
+  - unterstuetzte Intents
+  - Voice Entry Points
+  - Allowed Actions
+  - vorbefuellbare Parameter
+  - nicht erlaubte Operationen
+  - Hinweise / offene Punkte
+- F2.2 Definieren, was ein Placeholder ist und was erst bei produktiver Integration dokumentiert werden darf.
+- F2.3 Klarziehen, wie Future Hooks gekennzeichnet werden, ohne sie wie fertige Features wirken zu lassen.
+- F2.4 Festziehen, wie Modul-Overviews kuenftig neue Fast Paths einheitlich dokumentieren sollen.
+- F2.5 Abschlusscheck vor F3:
+  - Pruefen, ob der neue Overview-Vertrag nicht zu breit oder produktversprechend formuliert ist.
+  - Auf doppelte Abschnittslogik oder tote Alt-Sektionen in bestehenden Overviews achten.
+  - Festziehen, welche Doku sofort bulkweise nachgezogen werden kann.
+
+#### F2.1 Ergebnisprotokoll
+- Die Zielstruktur fuer den neuen Modul-Overview-Abschnitt ist als ein einziger standardisierter Abschnitt festgezogen:
+  - Abschnittsname:
+    - `Intent / Voice Integration`
+  - feste Feldreihenfolge:
+    - `Status`
+    - `Unterstuetzte Intents`
+    - `Voice Entry Points`
+    - `Allowed Actions`
+    - `Vorbefuellbare Parameter`
+    - `Nicht erlaubte Operationen`
+    - `Hinweise / offene Punkte`
+- Wichtige Strukturentscheidung:
+  - der neue Vertrag wird nicht als zweiter grosser Unterkapitelbaum modelliert
+  - stattdessen bekommt jedes Modul genau einen kompakten Abschnitt mit flachen Bullet-Feldern
+  - Grund:
+    - viele Overviews haben bereits eigene Kapitel wie `Status / Dependencies / Risks`
+    - ein weiterer tiefer Unterbau wuerde doppelte Abschnittslogik und spaetere Drift beguenstigen
+- Ziel des Abschnitts:
+  - kompakter, modulbezogener Integrationsvertrag
+  - kein Ersatz fuer die Gesamt-Architektur-Doku aus `Assistant`, `Hub`, `Intent Engine` oder `VAD`
+  - keine versteckte Produkt-Roadmap innerhalb eines Modul-Overviews
+- Festgezogene Bedeutung der einzelnen Felder:
+  - `Status`
+    - beschreibt in einer knappen Zeile den realen Integrationsstand des Moduls
+    - Beispiele fuer die Art von Aussagen:
+      - kein produktiver Intent-/Voice-Anschluss
+      - produktiver Intent-Anschluss ohne eigenen Voice-Entry-Point
+      - produktiver Fast-Path vorhanden
+      - vorbereiteter, aber noch nicht produktiver Entry-Point
+  - `Unterstuetzte Intents`
+    - listet nur konkrete fachliche Intent-Namen oder bewusst `keine`
+    - keine natuerlichsprachigen Wunschbeispiele, wenn dafuer noch kein produktiver Vertrag existiert
+  - `Voice Entry Points`
+    - beschreibt nur reale oder klar vorbereitete Voice-Landepunkte
+    - dokumentiert den Einstiegspfad, nicht die gesamte Sprachverarbeitung
+    - keine impliziten Annahmen wie `spaeter koennte man auch einfach per Voice ...`
+  - `Allowed Actions`
+    - listet nur reale Action Contracts oder bewusst `keine`
+    - falls ein Modul derzeit ueber einen engen lokalen Spezialpfad angebunden ist, muss das hier explizit als solcher benannt werden statt wie eine generische Action zu wirken
+  - `Vorbefuellbare Parameter`
+    - listet nur explizit modellierte Prefills oder Startparameter
+    - keine implizit erratbaren oder hypothetischen Felder
+  - `Nicht erlaubte Operationen`
+    - haelt die Guardrail-Seite des Moduls explizit fest
+    - hier gehoeren vor allem destruktive, historische, strukturelle, zu freie oder guard-unklare Operationen hinein
+  - `Hinweise / offene Punkte`
+    - sammelt knappe Resthinweise, Guard-Abhaengigkeiten und sauber markierte offene Entscheidungen
+    - keine versteckten Future-Zusagen
+- Kanonische Zielstruktur fuer `F3`:
+```md
+## Intent / Voice Integration
+
+- Status:
+- Unterstuetzte Intents:
+- Voice Entry Points:
+- Allowed Actions:
+- Vorbefuellbare Parameter:
+- Nicht erlaubte Operationen:
+- Hinweise / offene Punkte:
+```
+- Zusaetzliche Redaktionsregeln fuer den neuen Abschnitt:
+  - der Abschnitt dokumentiert immer nur den modulbezogenen Vertrag, nicht die komplette Text-/Voice-/Hub-Architektur erneut
+  - Feldinhalte muessen knapp, testbar und guard-railed formulierbar sein
+  - wenn ein Modul aktuell keinen produktiven Fast Path hat, ist eine explizite `keine`-/`nicht vorhanden`-Aussage besser als ein vager Zukunftssatz
+  - produktive Intents, Actions und Entry Points duerfen nur genannt werden, wenn sie im Code oder in einer bereits festgezogenen Vertragsentscheidung real existieren
+- Durchgefuehrter F2.1-Check:
+  - Review gegen die bestehenden Modul-Overviews bestaetigt:
+    - ein kompakter Ein-Abschnitt-Vertrag reduziert das Risiko doppelter Kapitelstrukturen
+    - die Feldliste deckt sowohl produktive Fast Paths als auch explizite Nicht-Zustaende ab
+    - die Zielstruktur ist eng genug, um in `F3` zuerst auf `Medication`, `Breath Timer`, `Appointments`, `Activity` und `Trendpilot` ausgerollt zu werden, ohne bereits neue Produktzusagen zu erzeugen
+
+#### F2.2 Ergebnisprotokoll
+- Placeholder und produktive Dokumentation sind fuer den neuen Abschnitt jetzt klar getrennt.
+- Grundsatz:
+  - ein Placeholder dokumentiert nur einen bewusst begrenzten Nicht-Produktivzustand oder einen bereits erkennbaren, aber noch nicht freigegebenen Anschlussrahmen
+  - ein Placeholder darf keine Fast-Path-Zusage, keine implizite Freigabe und keinen versteckten Scope-Druck erzeugen
+- Ein Eintrag im Abschnitt gilt nur dann als `produktiv dokumentierbar`, wenn mindestens eine der folgenden Bedingungen erfuellt ist:
+  - der Intent-/Action-/Entry-Point existiert bereits im produktiven Codepfad
+  - der Vertrag ist in der laufenden Roadmap bereits fachlich festgezogen und steht nicht mehr unter offener Produktpruefung
+  - die Integration ist bereits guard-railed, benannt und im Modul- oder Integrationscode nachvollziehbar verankert
+- Ein Eintrag muss als `Placeholder` oder bewusster Nicht-Zustand behandelt werden, wenn:
+  - der Fast Path erst noch in `F4+` priorisiert oder bewertet werden muss
+  - nur eine technische Naehe besteht, aber noch kein freigegebener Contract
+  - nur UI-Bausteine oder APIs vorhanden sind, aus denen man spaeter etwas bauen koennte
+  - Guardrails, Zustandsmodell oder Allowed-Actions-Schnitt noch nicht entschieden sind
+  - die Idee nur als moeglicher Future Hook existiert
+- Kanonische Placeholder-Regeln pro Feld:
+  - `Status`
+    - erlaubt:
+      - `kein produktiver Intent-/Voice-Anschluss`
+      - `noch kein produktiver Fast Path`
+      - `vorbereiteter UI-Entry-Point ohne produktiven Intent-Contract`
+    - nicht erlaubt:
+      - `Fast Path geplant`
+      - `wird spaeter per Voice steuerbar`
+      - jede Formulierung, die wie ein stilles Commit klingt
+  - `Unterstuetzte Intents`
+    - erlaubt:
+      - reale Intent-Namen
+      - `keine`
+      - `noch keine produktiven Modul-Intents`
+    - nicht erlaubt:
+      - hypothetische Intent-Namen fuer noch nicht entschiedene Kandidaten
+      - natuerliche Beispielphrasen als Ersatz fuer fehlende Intent-Contracts
+  - `Voice Entry Points`
+    - erlaubt:
+      - reale produktive Voice-Landepunkte
+      - vorbereitete Push-to-talk-Landepunkte, wenn sie schon technisch existieren, aber explizit als nicht-produktiv markiert sind
+      - `keine`
+    - nicht erlaubt:
+      - vage Aussagen wie `koennte direkt per Voice gestartet werden`
+      - jede Formulierung, die Browser-/Gesture-/Gate-Grenzen ueberdeckt
+  - `Allowed Actions`
+    - erlaubt:
+      - reale Action Contracts
+      - explizite enge lokale Spezialpfade, wenn sie schon produktiv existieren
+      - `keine`
+    - nicht erlaubt:
+      - hypothetische Actions
+      - Sammelbegriffe wie `modulspezifische Actions spaeter moeglich`
+  - `Vorbefuellbare Parameter`
+    - erlaubt:
+      - nur explizit modellierte Prefills oder Startparameter
+      - `keine`
+    - nicht erlaubt:
+      - erratbare Felder aus bestehender UI
+      - moegliche spaetere Parameterlisten
+  - `Nicht erlaubte Operationen`
+    - soll auch bei Placeholder-Abschnitten konkret sein
+    - erlaubt:
+      - klare Guardrail-Aussagen wie `keine destruktiven Operationen`
+      - `kein freier Write per Voice`
+      - `kein historisches Editieren`
+    - nicht erlaubt:
+      - leere oder rein formale Platzhalter ohne inhaltliche Begrenzung
+  - `Hinweise / offene Punkte`
+    - erlaubt:
+      - enge, sachliche Hinweise auf noch offene Vertragsentscheidungen
+      - Referenzen auf Guard-/Workflow-Klaerungsbedarf
+    - nicht erlaubt:
+      - Wunschlisten
+      - Roadmap-Marketing
+      - halbfertige Produktversprechen
+- Sprachregel fuer Placeholder im Bulk-Update `F3`:
+  - bevorzugte Form:
+    - `derzeit keine`
+    - `noch kein produktiver ...`
+    - `nur ueber bestehenden ...-Pfad`
+    - `erst nach separater Guard-/Workflow-Klaerung`
+  - zu vermeiden:
+    - `bald`
+    - `spaeter`
+    - `geplant`
+    - `wird`
+    - `kann dann`
+    - sofern diese Woerter nicht klar als offener, nicht-produktiver Punkt im letzten Feld eingehegt werden
+- Aus `F1` abgeleitete konkrete Einordnung fuer `F3`:
+  - `Medication`
+    - produktiv dokumentierbar:
+      - bestehender Voice-Spezialpfad `medication_confirm_all`
+    - Placeholder:
+      - Medication Reorder
+      - jeder weitere Voice-/Confirm-Hook ausserhalb des bestehenden Tages-Confirm-Pfads
+  - `Breath Timer`
+    - produktiv dokumentierbar:
+      - bestehende UI-Entry-Points und Startparameter `3` / `5` Minuten als Runtime-Fakten
+    - Placeholder:
+      - jeder Intent-/Action-Fast-Path, solange `F7` nicht geschnitten ist
+  - `Appointments`
+    - produktiv dokumentierbar:
+      - kein produktiver Intent-/Voice-Fast-Path
+      - bestehende Kontextnutzung ueber `getUpcoming(...)`
+    - Placeholder:
+      - vorbereitete Masken, Prefills oder Status-Fast-Paths
+  - `Activity`
+    - produktiv dokumentierbar:
+      - deterministischer UI-Save-Pfad
+      - noch kein produktiver Intent-/Voice-Anschluss
+    - Placeholder:
+      - jeder Fast Path fuer Tracker-Start oder Vorbelegung
+  - `Trendpilot`
+    - produktiv dokumentierbar:
+      - kein produktiver Intent-/Voice-Fast-Path
+    - Placeholder:
+      - sollte nur verwendet werden, wenn wirklich ein enger Integrationsrahmen benoetigt ist; sonst ist ein explizites `keine` die bessere Dokumentation
+- Entscheidungsregel fuer `F3`:
+  - wenn zwischen `produktiver Eintrag` und `Placeholder` Unsicherheit besteht, gewinnt der konservativere Placeholder oder explizite Nicht-Zustand
+  - Modul-Overviews duerfen im Zweifel zu wenig versprechen, aber nicht zu viel
+- Durchgefuehrter F2.2-Check:
+  - die Placeholder-Regeln sind eng genug, um im Bulk-Update neue Abschnittsstruktur einzufuehren, ohne Priorisierung aus `F4` vorwegzunehmen
+  - besonders fuer `Appointments`, `Activity` und `Trendpilot` verhindert der Vertrag, dass bestehende UI-APIs oder Datenzugriffe versehentlich als fertige Fast Paths erscheinen
+
+#### F2.3 Ergebnisprotokoll
+- Future Hooks sind fuer den neuen Abschnitt jetzt als eigene Dokumentationsklasse sauber eingegrenzt.
+- Grundsatz:
+  - ein Future Hook ist weder ein produktiver Contract noch ein normaler Placeholder fuer einen baldigen Fast Path
+  - ein Future Hook beschreibt nur eine bewusst benannte Anschlussmoeglichkeit, die fuer die Architektur wichtig sein kann, aber aktuell ausdruecklich nicht Teil des produktiven Modulvertrags ist
+- Future Hooks duerfen im neuen Abschnitt nur an genau einer Stelle auftauchen:
+  - `Hinweise / offene Punkte`
+- Future Hooks duerfen nicht in folgenden Feldern stehen:
+  - `Unterstuetzte Intents`
+  - `Voice Entry Points`
+  - `Allowed Actions`
+  - `Vorbefuellbare Parameter`
+  - Grund:
+    - sonst wirken sie wie teilweise freigegebene Features oder halbe Contracts
+- Kanonische Kennzeichnung fuer Future Hooks:
+  - bevorzugte Form:
+    - `Future Hook: ...`
+    - `Nur als Future Hook vorgemerkt: ...`
+    - `Derzeit kein produktiver Contract; als Future Hook denkbar: ...`
+  - Pflichtbestandteile:
+    - klare Nicht-Produktivmarkierung
+    - enger Gegenstand
+    - falls relevant: warum der Hook heute noch nicht freigegeben ist
+- Nicht erlaubt fuer Future Hooks:
+  - roadmap-artige Formulierungen wie:
+    - `kommt spaeter`
+    - `ist geplant`
+    - `folgt noch`
+    - `wird kuenftig ...`
+  - weiche Marketing-Saetze wie:
+    - `perspektivisch sehr spannend`
+    - `koennte viele neue Moeglichkeiten eroeffnen`
+  - konkrete Contract-Sprache ohne reale Freigabe:
+    - Intent-Namen
+    - Action-Namen
+    - Parameterlisten
+    - Startpfade
+    - sofern diese Dinge noch nicht wirklich festgezogen sind
+- Entscheidungsregel zur Abgrenzung:
+  - `Produktiver Eintrag`
+    - existiert bereits real oder ist fachlich final festgezogen
+  - `Placeholder`
+    - dokumentiert den aktuellen Nicht-Zustand innerhalb eines moeglichen Integrationsfeldes
+  - `Future Hook`
+    - dokumentiert nur eine bewusst nicht-produktive Anschlussidee, die fuer spaetere Architekturanschluesse relevant sein kann
+- Redaktionsregel fuer `F3`:
+  - pro Modul nur so viele Future Hooks wie noetig
+  - Default ist:
+    - kein Future Hook
+  - wenn ein Modul ohne Future Hook sauber beschrieben ist, wird keiner kuenstlich ergaenzt
+- Aus dem Follow-up-Scope abgeleitete kanonische Future-Hook-Klassen:
+  - enger Confirm-Loop fuer klar definierte Spezialfaelle
+  - PWA-Shortcut als beschleunigter Einstieg in bestehenden Voice-Flow
+  - Wearable-/Node-Anschluss nur als spaetere App-first-Erweiterung
+  - modulbezogene Prefill-/Entry-Ideen erst nach separater Guard- und Workflow-Klaerung
+- Kanonische Beispiele fuer saubere Future-Hook-Formulierungen:
+  - `Future Hook: enger Confirm-Loop fuer Medication Reorder erst nach separater Guard- und Zustandsklaerung.`
+  - `Future Hook: vorbereiteter Voice-Landepunkt nur relevant, falls ein spaeterer Fast Path fuer dieses Modul produktseitig priorisiert wird.`
+  - `Future Hook: PWA-Shortcut nur als schneller Einstieg in den bestehenden Push-to-talk-Kontext, nicht als eigener Runtime-Stack.`
+- Beispiele, die bewusst nicht verwendet werden sollen:
+  - `Spaeter per Voice startbar.`
+  - `Intent geplant.`
+  - `Action wird nachgereicht.`
+  - `Kann kuenftig direkt gestartet werden.`
+- Aus `F1` abgeleitete konkrete Einordnung:
+  - `Medication`
+    - moeglicher Future Hook:
+      - enger Confirm-Loop fuer Reorder
+    - nicht als Future Hook aufblasen:
+      - allgemeine Voice-Steuerung fuer Medikationsverwaltung
+  - `Breath Timer`
+    - moeglicher Future Hook:
+      - Voice-Landepunkt erst nach sauberem Intent-/Action-Vertrag
+    - nicht als Future Hook aufblasen:
+      - freie BP-/Vitals-Sprachsteuerung
+  - `Appointments`
+    - moeglicher Future Hook:
+      - vorbereitete Maske oder enger Status-Pfad nach spaeterer Priorisierung
+    - nicht als Future Hook aufblasen:
+      - freie Terminverwaltung per Voice
+  - `Activity`
+    - moeglicher Future Hook:
+      - vorbereiteter Tracker-Start oder kleine Vorbelegung
+    - nicht als Future Hook aufblasen:
+      - offene Trainingssprache oder adaptive Workout-Logik
+  - `Trendpilot`
+    - im Regelfall kein Future Hook noetig
+    - wenn ueberhaupt, dann nur fuer enge read-/ack-nahe Integrationen und nicht fuer offene Assistant-Funktionen
+- Kanonische Abschlussregel fuer `F3` und spaetere Doku-Syncs:
+  - ein Future Hook darf niemals der einzige Inhalt eines Integrationsabschnitts sein
+  - zuerst muss der reale Ist-Stand des Moduls sauber dokumentiert sein
+  - erst danach darf ein enger Future Hook als Restnotiz genannt werden
+- Durchgefuehrter F2.3-Check:
+  - die Kennzeichnung trennt Future Hooks sauber von produktiven Eintraegen und von normalen Placeholders
+  - damit koennen in `F3` spaetere Anschlussideen sichtbar bleiben, ohne die Modul-Overviews wie Wunschlisten oder halbfertige Features wirken zu lassen
+
+#### F2.4 Ergebnisprotokoll
+- Es ist jetzt festgezogen, wie neue Fast Paths kuenftig einheitlich in den Modul-Overviews dokumentiert werden muessen.
+- Grundsatz:
+  - ein neuer Fast Path gilt dokumentarisch erst dann als sauber eingefuehrt, wenn sein Modul-Overview-Abschnitt `Intent / Voice Integration` synchron nachgezogen wurde
+  - die Modul-Overview dokumentiert dabei den stabilen Modulvertrag, nicht die Schritt-fuer-Schritt-Herleitung aus der Roadmap
+- Rollentrennung der Doku-Artefakte:
+  - `Roadmap`
+    - dokumentiert Analyse, Priorisierung, offene Entscheidungen, Umsetzungsschritte und Abschlusschecks
+  - `Modul-Overview`
+    - dokumentiert den aktuellen, knappen Modulvertrag fuer Intent-/Voice-Integration
+  - `QA_CHECKS`
+    - dokumentiert pruefbare Regressionen und Smokes
+  - `CHANGELOG`
+    - dokumentiert nur den relevanten Nutzer-/Produkt-Outcome
+- Einheitliche Update-Regel pro neuem Fast Path:
+  - sobald ein Fast Path fachlich freigegeben oder produktiv implementiert ist, muessen im betroffenen Modul-Overview mindestens diese Felder synchronisiert werden:
+    - `Status`
+    - `Unterstuetzte Intents`
+    - `Voice Entry Points`
+    - `Allowed Actions`
+    - `Vorbefuellbare Parameter`
+    - `Nicht erlaubte Operationen`
+    - `Hinweise / offene Punkte`
+  - es darf kein neuer produktiver Fast Path entstehen, der nur in Roadmap oder Code sichtbar ist, aber nicht im Modul-Overview
+- Feldbezogene Pflege-Regel fuer neue Fast Paths:
+  - `Status`
+    - muss den Integrationsstand sofort von `kein produktiver ...` auf den echten neuen Zustand umstellen
+  - `Unterstuetzte Intents`
+    - wird nur dann erweitert, wenn der Intent-Name fachlich wirklich Teil des Modulvertrags ist
+  - `Voice Entry Points`
+    - wird nur erweitert, wenn ein realer Voice-Landepunkt freigegeben ist, nicht schon bei einem reinen Text- oder UI-Fast-Path
+  - `Allowed Actions`
+    - muss den realen Contract spiegeln:
+      - generische Action
+      - enger lokaler Spezialpfad
+      - oder bewusst `keine`
+  - `Vorbefuellbare Parameter`
+    - wird nur erweitert, wenn Prefills explizit modelliert und stabil sind
+  - `Nicht erlaubte Operationen`
+    - muss bei jedem neuen Fast Path aktiv nachgeschaerft werden, damit Scope-Grenzen sichtbar bleiben
+  - `Hinweise / offene Punkte`
+    - darf offene Restfragen halten, aber nicht den Hauptvertrag aus anderen Feldern ersetzen
+- Dokumentationsreihenfolge bei neuen Integrationsaenderungen:
+  - 1. fachlichen Contract / Guardrails schneiden
+  - 2. produktive Implementierung oder belastbare Vertragsentscheidung festziehen
+  - 3. betroffenen Modul-Overview-Abschnitt sofort angleichen
+  - 4. falls noetig `QA_CHECKS` und `CHANGELOG` nachziehen
+- Einheitliche Schreibregel fuer neue Fast Paths:
+  - pro Feld bevorzugt:
+    - konkrete Nomen statt freie Beschreibungen
+    - echte Contract-Namen statt Marketing-Sprache
+    - explizite Nicht-Zustaende statt stiller Auslassung
+  - zu vermeiden:
+    - dieselbe Information in mehreren Feldern leicht unterschiedlich wiederholen
+    - gemischte Sprache aus Intent-Beispiel, UX-Text und Architekturbegriff in einem Feld
+    - offene Detaildiskussionen im Modul-Overview
+- Konsistenzregel zwischen Modulen:
+  - gleiche Integrationsarten sollen in allen Overviews gleich benannt werden
+  - insbesondere:
+    - `keine`
+    - `noch kein produktiver ...`
+    - `Future Hook: ...`
+    - Benennung realer Intent- und Action-Namen
+  - dadurch sollen spaetere Vergleiche zwischen `Medication`, `Breath Timer`, `Appointments`, `Activity` und `Trendpilot` ohne Interpretationsarbeit moeglich bleiben
+- Guardrail-Regel fuer neue Fast Paths im Doku-Sync:
+  - wenn ein neuer Fast Path eine neue Action, einen neuen Confirm-Schritt, neue Prefills oder einen eigenen Voice-Landepunkt braucht, muss der Abschnitt auch explizit sagen, was weiterhin nicht erlaubt bleibt
+  - ein Fast Path ohne sichtbare Nicht-Zustaende gilt dokumentarisch als unvollstaendig
+- Regel fuer Spezialfaelle:
+  - wenn ein Modul nicht ueber generische Allowed Actions, sondern ueber einen engen lokalen Spezialpfad integriert ist, soll genau das dokumentiert werden
+  - der Modul-Overview darf solche Faelle nicht nachtraeglich wie normale generische Actions glatttziehen
+  - das ist besonders relevant fuer bestehende oder kommende Spezialfaelle wie:
+    - `medication_confirm_all`
+    - spaetere deterministische Reorder-Ketten
+    - moegliche Breath-Timer-Startpfade
+- Regel fuer Module ohne sinnvollen Fast Path:
+  - auch ein explizites `kein produktiver Fast Path sinnvoll` ist ein gueltiger, pflegbarer Dokumentationszustand
+  - Overviews muessen nicht kuenstlich mit Hooks oder Kandidaten aufgefuellt werden
+- Kanonischer Pflegeausloeser fuer spaetere Schritte:
+  - `F3`:
+    - Bulk-Einfuehrung der neuen Abschnittsstruktur
+  - `F5-F12`:
+    - immer dann erneute Synchronisierung, wenn ein Modul durch neue Contracts real veraendert wird
+  - `F15`:
+    - finaler Drift-Check ueber alle betroffenen Overviews
+- Durchgefuehrter F2.4-Check:
+  - die Pflege-Regeln schliessen die Luecke zwischen einmaligem Bulk-Update und spaeteren Implementierungsschritten
+  - sie sind eng genug, um Produktzusagen klein zu halten, aber konkret genug, damit Modul-Overviews nach `F3` nicht wieder auseinanderlaufen
+
+#### F2.5 Ergebnisprotokoll
+- Abschlusscheck vor `F3` durchgefuehrt.
+- Pruefung: ist der neue Overview-Vertrag zu breit oder produktversprechend formuliert?
+  - Ergebnis:
+    - nein, der Vertrag bleibt eng genug fuer MIDAS als deterministischen Tracker
+    - produktive Aussagen sind auf reale Intents, Actions, Entry Points und klar markierte Spezialpfade begrenzt
+    - nicht-produktive Inhalte sind jetzt sauber getrennt in:
+      - explizite Nicht-Zustaende
+      - Placeholder
+      - Future Hooks
+  - wichtige Einordnung:
+    - `F2` erzeugt keinen neuen Produkt-Scope
+    - `F2` schafft nur einen disziplinierten Doku-Vertrag fuer spaetere Modul-Syncs
+- Pruefung auf doppelte Abschnittslogik oder tote Alt-Sektionen in bestehenden Overviews:
+  - Ergebnis:
+    - die neue Struktur ist als kompakter Einzelabschnitt brauchbar und sollte keine zweite Voll-Doku erzeugen
+    - bestehende Kapitel wie:
+      - `Status / Dependencies / Risks`
+      - `QA-Checkliste`
+      - `Definition of Done`
+      bleiben fachlich sinnvoll und muessen nicht ersetzt werden
+    - der neue Abschnitt muss in `F3` bewusst als Integrationsvertrag eingefuegt werden, nicht als Ersatz fuer Runtime-, UI- oder Storage-Kapitel
+  - markierte Drift-Risiken fuer `F3`:
+    - keine Informationen doppelt als `Status` im neuen Abschnitt und gleichzeitig widerspruechlich in generischen Status-Kapiteln formulieren
+    - keine offenen Roadmap-Diskussionen in die Modul-Overviews ziehen
+    - Spezialfaelle nicht in generische Action-Sprache umweichzeichnen
+- Festgezogener Bulk-Nachzieh-Scope fuer `F3`:
+  - sofort bulkweise nachziehen:
+    - `docs/modules/Medication Module Overview.md`
+    - `docs/modules/Breath Timer Module Overview.md`
+    - `docs/modules/Appointments Module Overview.md`
+    - `docs/modules/Activity Module Overview.md`
+    - `docs/modules/Trendpilot Module Overview.md`
+  - bewusst vorerst Referenz-/Kernstatus behalten:
+    - `docs/modules/Assistant Module Overview.md`
+    - `docs/modules/Hub Module Overview.md`
+    - `docs/modules/Intent Engine Module Overview.md`
+    - `docs/modules/VAD Module Overview.md`
+  - Begruendung:
+    - die zweite Gruppe dient in diesem Follow-up primaer als Architektur- und Guardrail-Referenz
+    - `F3` soll zuerst die friction-heavy bzw. fast-path-relevanten Modul-Overviews auf den neuen Vertrag heben
+- Festgezogene Regel fuer `F3`-Clean-up:
+  - wenn beim Bulk-Update alte Passagen den neuen Integrationsabschnitt fachlich doppeln oder ihm widersprechen, werden sie in `F3` direkt bereinigt statt als bekannte Drift mitzuschleppen
+  - wenn ein Modul aktuell sauber mit `keine` oder `noch kein produktiver ...` beschrieben ist, wird kein kuenstlicher Hook oder Kandidat ergaenzt
+- Test-/Review-Check fuer `F2`:
+  - Roadmap-Review ueber `F2.1-F2.4` auf innere Konsistenz, Scope-Enge und anschlussfaehigen `F3`-Scope durchgefuehrt
+  - `rg -n "Intent / Voice Integration" docs/modules` aus `F1` bleibt gueltiger Ausgangspunkt:
+    - der Abschnitt existiert im Modulbestand noch nicht produktiv
+    - `F3` ist damit weiterhin der korrekte Bulk-Einfuehrungsschritt
+- Abschlussbewertung:
+  - `F2` ist abgeschlossen
+  - der Vertrag ist eng genug, um `F3` ohne Scope-Drift zu starten
+  - die Doku-Nachzuege fuer `F3` sind klar begrenzt und sofort umsetzbar
+
+### F3 - Module Overviews bulkweise um den neuen Integrations-Entry-Point erweitern
+- F3.1 Relevante Overviews identifizieren:
+  - Medication
+  - Breath Timer
+  - Appointments
+  - Activity
+  - Trendpilot
+  - weitere friction-heavy Module nach F1
+- F3.2 Standardisierten Placeholder-Abschnitt in diesen Overviews ergaenzen.
+- F3.3 Bestehende produktive Fast Paths oder explizite Nicht-Zustaende sauber eintragen.
+- F3.4 Sicherstellen, dass die Overviews dadurch nicht versehentlich produktive Voice-Zusagen machen.
+- F3.5 Abschlusscheck vor F4:
+  - Konsistenz der neuen Placeholder-Abschnitte pruefen.
+  - Doku-Drift, widerspruechliche Aussagen und tote Altpassagen in den Overviews bereinigen.
+  - Dokumentieren, welche Module nach dem Bulk-Update weiter wirklich relevant bleiben.
+
+#### F3.1 Ergebnisprotokoll
+- Die relevante Bulk-Update-Arbeitsmenge fuer den neuen Abschnitt `Intent / Voice Integration` ist formal festgezogen.
+- Primare Ziel-Overviews fuer den Bulk-Update:
+  - `docs/modules/Medication Module Overview.md`
+  - `docs/modules/Breath Timer Module Overview.md`
+  - `docs/modules/Appointments Module Overview.md`
+  - `docs/modules/Activity Module Overview.md`
+  - `docs/modules/Trendpilot Module Overview.md`
+- Begruendung fuer diese Auswahl:
+  - diese Module tragen im Follow-up die eigentliche Reibungs- und Fast-Path-Pruefung
+  - sie brauchen den neuen Integrationsvertrag direkt am Modul, damit spaetere Priorisierung und Implementierung nicht nur in Roadmap oder Code sichtbar sind
+  - sie unterscheiden sich zugleich deutlich genug, um den Vertrag gegen:
+    - produktiven Spezialpfad
+    - noch keinen Fast Path
+    - read-/ack-orientiertes Modul
+    - moegliche Future Hooks
+    robust abzubilden
+- Bewusst nicht Teil des initialen F3-Bulk-Updates:
+  - `docs/modules/Assistant Module Overview.md`
+  - `docs/modules/Hub Module Overview.md`
+  - `docs/modules/Intent Engine Module Overview.md`
+  - `docs/modules/VAD Module Overview.md`
+- Begruendung:
+  - diese Overviews bilden im Follow-up primaer Architektur-, Voice-V1- und Guardrail-Referenz
+  - sie sind nicht die erste Arbeitsflaeche fuer neue modulbezogene Fast Paths
+  - ein vorschnelles Nachziehen wuerde die F3-Arbeitsmenge verbreitern, ohne den Follow-up-Nutzen zu erhoehen
+- Abgleich mit dem bereits vorgezogenen Doku-Sync:
+  - die identifizierten Ziel-Overviews tragen den neuen Abschnitt bereits
+  - damit ist die Arbeitsmenge nicht nur geplant, sondern als Doku-Bestand bereits konsistent vorbereitet
+  - der formale F3-Start bleibt trotzdem sinnvoll, weil die Statusmatrix und die restlichen F3-Substeps jetzt auf den realen Nachzieh-Scope referenzieren koennen
+- Guardrail fuer die naechsten F3-Substeps:
+  - weitere Module kommen erst dann in die Arbeitsmenge, wenn `F1/F4` dafuer einen echten Reibungs- oder Fast-Path-Bedarf zeigen
+  - `F3` ist kein genereller Rundumschlag ueber alle Modul-Overviews
+
+#### F3.2 Ergebnisprotokoll
+- Der standardisierte Placeholder-/Integrationsabschnitt ist in den fuer `F3` relevanten Modul-Overviews vorhanden.
+- Gegen den in `F2` festgezogenen Vertrag gepruefte Ziel-Overviews:
+  - `docs/modules/Medication Module Overview.md`
+  - `docs/modules/Breath Timer Module Overview.md`
+  - `docs/modules/Appointments Module Overview.md`
+  - `docs/modules/Activity Module Overview.md`
+  - `docs/modules/Trendpilot Module Overview.md`
+- Ergebnis des Vertragsabgleichs:
+  - alle fuenf Overviews enthalten den Abschnitt `Intent / Voice Integration`
+  - alle fuenf Overviews verwenden die feste Feldreihenfolge:
+    - `Status`
+    - `Unterstuetzte Intents`
+    - `Voice Entry Points`
+    - `Allowed Actions`
+    - `Vorbefuellbare Parameter`
+    - `Nicht erlaubte Operationen`
+    - `Hinweise / offene Punkte`
+  - die Formulierungen bleiben konsistent mit `F2`:
+    - reale produktive Contracts werden nur dort genannt, wo sie bereits existieren
+    - Nicht-Zustaende werden explizit dokumentiert
+    - Future Hooks stehen nur in `Hinweise / offene Punkte`
+- Wichtige Einordnung pro Modul:
+  - `Medication`
+    - dokumentiert den realen Spezialpfad `medication_confirm_all`
+    - dokumentiert Reorder weiterhin nur als nicht-produktiven offenen Punkt
+  - `Breath Timer`
+    - dokumentiert den bestehenden UI-Entry-Point, aber bewusst keinen produktiven Intent-/Voice-Contract
+  - `Appointments`
+    - dokumentiert Kontextnutzung ueber `getUpcoming(...)`, aber keinen Fast Path
+  - `Activity`
+    - dokumentiert den deterministischen UI-Save-Pfad, aber keinen Intent-/Voice-Fast-Path
+  - `Trendpilot`
+    - dokumentiert bewusst `kein produktiver Intent-/Voice-Fast-Path`
+- Gefundene und bewusst akzeptierte Reststruktur:
+  - die Overviews haben weiterhin ihre bestehenden generischen Kapitel zu:
+    - Status
+    - Dependencies / Risks
+    - QA
+    - Definition of Done
+  - das ist fuer `F3.2` akzeptabel, solange der neue Integrationsabschnitt keine widerspruechlichen Produktzusagen erzeugt
+  - eine weitergehende Straffung oder Umstrukturierung waere eigener Clean-up und nicht Teil dieses Bulk-Einstiegs
+- Durchgefuehrte Checks:
+  - strukturbezogener `rg`-Check auf Abschnittsname und Pflichtfelder in allen fuenf Ziel-Overviews
+  - Sichtpruefung an Stichproben fuer:
+    - `Medication`
+    - `Trendpilot`
+  - Ergebnis:
+    - der Standardabschnitt ist vorhanden und vertragskonform ausgerollt
+
+#### F3.3 Ergebnisprotokoll
+- Bestehende produktive Fast Paths und explizite Nicht-Zustaende sind in den bereits nachgezogenen Ziel-Overviews gegen den realen Ist-Stand abgeglichen.
+- Ergebnisbild ueber die fuenf Ziel-Module:
+  - `Medication`
+    - enthaelt den einzigen heute produktiven modulbezogenen Spezialpfad in dieser Arbeitsmenge:
+      - `medication_confirm_all`
+    - der Eintrag bleibt bewusst eng:
+      - kein generischer Medication-Voice-Surface
+      - kein Reorder-Contract
+      - keine Bestands- oder Verwaltungsaktionen per Fast Path
+  - `Breath Timer`
+    - dokumentiert bewusst keinen produktiven Intent-/Voice-Fast-Path
+    - dokumentiert stattdessen korrekt:
+      - vorhandenen UI-Entry-Point
+      - feste Presets `3 Minuten` / `5 Minuten`
+      - weiterhin nicht freigegebene Sprach-/Action-Seite
+  - `Appointments`
+    - dokumentiert bewusst keinen produktiven Intent-/Voice-Fast-Path
+    - die bestehende Assistant-Kontextnutzung ueber `getUpcoming(...)` ist als Kontextanschluss sichtbar, aber nicht als Fast Path aufgeblasen
+  - `Activity`
+    - dokumentiert bewusst keinen produktiven Intent-/Voice-Fast-Path
+    - der deterministische UI-Save-Pfad ueber `addActivity(...)` bleibt sichtbar, ohne daraus schon einen Intent-Vertrag zu machen
+  - `Trendpilot`
+    - dokumentiert explizit `kein produktiver Intent-/Voice-Fast-Path`
+    - read-/ack-nahe Integrationen bleiben sichtbar, aber ohne kuenstliche Fast-Path-Erweiterung
+- Konsistenzbewertung:
+  - die produktive Seite ist dort eingetragen, wo heute real etwas existiert
+  - alle vier Module ohne produktiven Fast Path bleiben bewusst bei expliziten Nicht-Zustaenden
+  - damit entstehen im Bulk-Update keine versteckten Produktzusagen fuer spaetere `F4+`-Pruefungen
+- Wichtige Guardrail-Bestaetigung:
+  - `F3.3` fuehrt keine Wunschlisten-Sprache in die Overviews ein
+  - vorhandene UI-APIs, Kontextdaten oder Runtime-Bausteine werden nicht als freigegebene Intents oder Allowed Actions missdeutet
+  - die Modul-Doku bleibt damit kompatibel mit der engen MIDAS-Rolle:
+    - deterministische Fast Paths
+    - keine globale Voice-Ausweitung
+    - keine offene Assistant-Drift
+- Durchgefuehrte Checks:
+  - textueller Abgleich der fuenf Ziel-Overviews gegen den in `F1` dokumentierten Ist-Stand
+  - `rg`-Check auf:
+    - `medication_confirm_all`
+    - explizite Nicht-Zustaende fuer die vier weiteren Module
+    - bestehende Runtime-Anker wie `getUpcoming(...)`, `addActivity(...)`, `3 Minuten` / `5 Minuten`
+  - Ergebnis:
+    - produktive Fast Paths und bewusste Nicht-Zustaende sind in den Ziel-Overviews konsistent eingetragen
+
+#### F3.4 Ergebnisprotokoll
+- Geprueft wurde, ob die aktualisierten Ziel-Overviews durch den Bulk-Sync versehentlich produktive Voice- oder Fast-Path-Zusagen erzeugen.
+- Ergebnis:
+  - im neuen Abschnitt `Intent / Voice Integration` gibt es aktuell keine Formulierungen, die einen nicht vorhandenen produktiven Voice-Einstieg als freigegeben wirken lassen
+  - die Overviews bleiben konsistent bei:
+    - expliziten Nicht-Zustaenden
+    - engen produktiven Spezialpfaden
+    - klar eingehegten Future Hooks
+- Guardrail-Bewertung pro Zielmodul:
+  - `Medication`
+    - der Abschnitt bleibt auf den realen Spezialpfad `medication_confirm_all` begrenzt
+    - Reorder wird nicht als fertiger Fast Path dargestellt
+  - `Breath Timer`
+    - vorhandene Presets und UI-Entry-Points werden nicht in einen produktiven Voice-Start uminterpretiert
+  - `Appointments`
+    - bestehender Assistant-Kontext ueber `getUpcoming(...)` wird nicht wie ein Termin-Fast-Path beschrieben
+  - `Activity`
+    - der UI-Save-Pfad wird nicht als freigegebener Intent-/Voice-Vertrag verkauft
+  - `Trendpilot`
+    - read-/ack-nahe Integrationen bleiben klar ausserhalb eines Fast-Path-Versprechens
+- Bewusst akzeptierte Restlage:
+  - einzelne bestehende Kapitel ausserhalb des neuen Integrationsabschnitts enthalten weiterhin allgemeine Zukunfts- oder Produkttexte wie:
+    - `spaeter`
+    - `geplante`
+    - `koennte`
+  - diese Stellen liegen derzeit nicht im neuen Integrationsvertrag selbst und erzeugen dort keine direkte produktive Voice-Zusage
+  - eine breitere sprachliche Straffung der Gesamt-Overviews waere eigener Doku-Clean-up, nicht Kern von `F3.4`
+- Durchgefuehrte Checks:
+  - `rg`-Review auf risikobehaftete Formulierungen (`spaeter`, `geplant`, `wird`, `koennte`) sowie auf die Integrationsfelder in allen fuenf Ziel-Overviews
+  - Sichtpruefung des Integrationsabschnitts fuer:
+    - `Breath Timer`
+    - `Appointments`
+  - Ergebnis:
+    - der Bulk-Sync fuehrt aktuell zu keinen versehentlichen produktiven Voice-Zusagen in den Integrationsabschnitten
+
+#### F3.5 Ergebnisprotokoll
+- Abschlusscheck fuer den Bulk-Doku-Schritt durchgefuehrt.
+- Direkter Clean-up / Doku-Nachzug:
+  - offensichtliche Doku-Drift im `Medication Module Overview` bereinigt:
+    - Event-Shape `medication:changed { reason, dayIso, datass }` -> `medication:changed { reason, dayIso, data }`
+  - weitere kleine Reststruktur ohne direkte Vertragswirkung bleibt bewusst ausserhalb dieses Schritts
+- Konsistenz der neuen Placeholder-/Integrationsabschnitte:
+  - die fuenf Ziel-Overviews nutzen jetzt denselben Abschnittsnamen und dieselbe Feldlogik
+  - produktive Eintraege, Nicht-Zustaende und Future Hooks sind konsistent getrennt
+  - keine der Ziel-Overviews braucht fuer den neuen Abschnitt einen sofortigen Nachzieher mehr
+- Doku-Drift / widerspruechliche Aussagen:
+  - im neuen Integrationsabschnitt liegen aktuell keine direkten Widersprueche zum realen Ist-Stand
+  - bestehende generische Modulkapitel ausserhalb des Integrationsabschnitts bleiben erhalten, solange sie den neuen Vertrag nicht unterlaufen
+  - breitere sprachliche oder encoding-bezogene Altlasten sind damit nicht automatisch erledigt und bleiben separater Doku-Clean-up
+- Welche Module nach dem Bulk-Update weiter wirklich relevant bleiben:
+  - `Medication`
+    - hoch relevant, weil hier bereits ein produktiver Spezialpfad existiert und `F5/F6` direkt anschliessen
+  - `Breath Timer`
+    - hoch relevant, weil `F7` direkt auf dem jetzt dokumentierten Nicht-Zustand und UI-Entry-Point aufbaut
+  - `Appointments`
+    - relevant fuer `F10`, aber weiterhin nur als Pruefkandidat, nicht als zugesagter Fast Path
+  - `Activity`
+    - relevant fuer `F9`, ebenfalls als Pruefkandidat mit engem Tracker-Fokus
+  - `Trendpilot`
+    - nach dem Bulk-Update eher Referenz fuer bewusstes `skip` oder engen read-/ack-nahen Restbedarf, nicht primaere Fast-Path-Arbeitsflaeche
+- Abschlussbewertung:
+  - `F3` ist abgeschlossen
+  - der neue Abschnitt `Intent / Voice Integration` ist in der vorgesehenen Arbeitsmenge ausgerollt, gegen den Ist-Stand gespiegelt und guard-railed
+  - `F4` kann jetzt auf einer sauberen und vergleichbaren Modulbasis starten
+
+### F4 - Bestehende Module auf reale Fast-Path-Kandidaten pruefen und priorisieren
+- F4.1 Bewertungsmatrix definieren:
+  - Reibung heute
+  - Nutzungshaeufigkeit
+  - Deterministisch modellierbar
+  - Guardrail-Risiko
+  - Voice-Nutzen ja/nein
+- F4.2 Modul fuer Modul reale Alltags-Reibung analysieren.
+- F4.3 Kandidaten in Klassen schneiden:
+  - `high-value`
+  - `maybe-later`
+  - `skip`
+- F4.4 Nur Kandidaten weitertragen, die klaren Alltagsnutzen und saubere Modellierbarkeit zeigen.
+- F4.5 Abschlusscheck vor F5:
+  - Pruefen, ob die Priorisierung auf dokumentierter Reibung statt Bauchgefuehl beruht.
+  - `skip`-Entscheidungen explizit festhalten, damit spaeter keine Wunschlisten-Leichen entstehen.
+  - Keine Kandidaten mit unklaren Guards oder Voice-Drift in die Implementierung uebernehmen.
+
+#### F4.1 Ergebnisprotokoll
+- Die Bewertungsmatrix fuer neue Fast-Path-Kandidaten ist festgezogen.
+- Zweck der Matrix:
+  - Kandidaten nicht nach technischer Machbarkeit allein, sondern nach echtem Alltagsnutzen unter MIDAS-Guardrails bewerten
+  - `high-value`, `maybe-later` und `skip` in `F4.3` auf explizite Kriterien statt Bauchgefuehl stuetzen
+- Bewerteteinheit:
+  - bewertet wird jeweils ein enger Fast-Path-Kandidat pro Modul
+  - nicht das Modul als Ganzes
+  - Beispiel:
+    - `Medication Reorder`
+    - `start_breath_timer`
+    - vorbereitete Terminmaske
+    - Activity-Quick-Start
+- Bewertungsformat:
+  - jedes Kriterium bekommt einen Wert auf einer 3er-Skala:
+    - `0 = niedrig / nicht gegeben / problematisch`
+    - `1 = mittel / teilweise gegeben / unklar`
+    - `2 = hoch / klar gegeben / gut modellierbar`
+  - zusaetzlich gibt es harte Ausschlussmarker, die einen Kandidaten direkt in `skip` oder mindestens `blocked-until-clarified` druecken koennen
+- Kernkriterien:
+  - `Reibung heute`
+    - misst, wie stark der aktuelle Flow im Alltag unnötige Klicks, Kontextwechsel oder Unterbrechungen erzeugt
+    - `0`:
+      - kaum Reibung
+      - bestehende UI ist bereits kurz und klar
+    - `1`:
+      - spuerbare, aber nicht taeglich schmerzhafte Reibung
+    - `2`:
+      - klarer alltagsnaher Reibungspunkt mit engem Nutzen fuer einen Fast Path
+  - `Nutzungshaeufigkeit`
+    - misst, wie oft der Kandidat realistisch im Alltag vorkommt
+    - `0`:
+      - selten / Sonderfall
+    - `1`:
+      - regelmaessig, aber nicht taeglich oder nicht fuer viele Tage relevant
+    - `2`:
+      - haeufig / taeglich / klar wiederkehrend
+  - `Deterministisch modellierbar`
+    - misst, ob der Kandidat mit engem Contract, klaren Parametern und ohne offene Interpretation modelliert werden kann
+    - `0`:
+      - vage, kontextlastig oder nur mit freier Sprache belastbar
+    - `1`:
+      - teilweise modellierbar, aber noch mit offenen Vertragsstellen
+    - `2`:
+      - klar in Intent, Action, Parameter und Guard-Verhalten schneidbar
+  - `Guardrail-Risiko`
+    - misst das Risiko, dass der Kandidat Scope-Drift, ungeguardete Writes oder versteckte Workflow-Lockerungen erzeugt
+    - Wertung bewusst invers lesen:
+      - `0` = hohes Risiko
+      - `1` = mittleres Risiko
+      - `2` = niedriges Risiko
+    - `0`:
+      - hoher Druck in Richtung offener Assistant-/Agentenlogik, Destruktivitaet, History-Edit oder versteckter Confirm-Lockerung
+    - `1`:
+      - guard-railed denkbar, aber mit offenem Klaerungsbedarf
+    - `2`:
+      - sauber innerhalb der bestehenden Guardrails modellierbar
+  - `Voice-Nutzen`
+    - misst nicht, ob etwas "auch per Voice ginge", sondern ob Voice oder ein enger Voice-naher Einstieg real Reibung reduziert
+    - `0`:
+      - kaum oder kein Zusatznutzen gegenueber UI/Prefill
+    - `1`:
+      - begrenzter Nutzen, eventuell eher als vorbereitete Maske als als Voice-Fast-Path
+    - `2`:
+      - klarer, enger alltagsnaher Nutzen fuer Voice oder Voice-nahen Schnellstart
+- Harte Ausschlussmarker:
+  - wenn einer dieser Punkte zutrifft, darf der Kandidat nicht einfach wegen guter Teilwerte in `high-value` rutschen:
+    - braucht offene Agenten- oder Assistant-Logik als Kern
+    - erfordert destruktive oder strukturelle Operationen per Voice
+    - lockert bestaetigte Guard-/Auth-/Stage-Vertraege still
+    - braucht ungeklaerten Sendepfad, offene Idempotenz oder unklare Confirm-Semantik
+    - ist primar Feature-Expansion ohne klaren dokumentierten Reibungspunkt
+- Bewertungsregel fuer spaetere Klassifizierung in `F4.3`:
+  - `high-value`
+    - hohe Reibung
+    - hohe oder zumindest solide Nutzungshaeufigkeit
+    - gute deterministische Modellierbarkeit
+    - niedriges Guardrail-Risiko
+    - Voice-Nutzen nur dann relevant, wenn wirklich Voice oder ein Voice-naher Einstieg betrachtet wird
+  - `maybe-later`
+    - realer Nutzen erkennbar, aber mindestens ein Kriterium ist noch nur mittel oder unklar
+    - oder ein UI-/Prefill-Ansatz ist plausibler als ein direkter Voice-Fast-Path
+  - `skip`
+    - geringer Alltagsnutzen
+    - zu selten
+    - nicht sauber deterministisch modellierbar
+    - oder durch Guardrail-Risiko / Scope-Drift fachlich unpassend
+- Entscheidungsregel fuer die Praxis:
+  - ein Kandidat wird nicht durch einen hohen `Voice-Nutzen` gerettet, wenn `Deterministisch modellierbar` oder `Guardrail-Risiko` schlecht sind
+  - ein Kandidat kann auch ohne echten Voice-Nutzen relevant bleiben, wenn eine vorbereitete UI-/Prefill-Loesung reale Reibung reduziert
+- Kanonische Bewertungsnotiz fuer `F4.2/F4.3`:
+  - pro Kandidat dokumentieren:
+    - Modul
+    - enger Kandidat
+    - Scores pro Kriterium
+    - kurze Begruendung
+    - Ergebnis `high-value` / `maybe-later` / `skip`
+    - falls `skip`: expliziter Hauptgrund
+- Durchgefuehrter F4.1-Check:
+  - die Matrix ist eng genug fuer MIDAS als Tracker mit deterministischen Fast Paths
+  - sie verhindert, dass theoretisch moegliche, aber guard-unklare Voice-Ideen automatisch nach oben priorisiert werden
+  - sie ist zugleich breit genug, um auch nicht-voice-zentrierte Schnellpfade wie vorbereitete Masken oder UI-Prefills fair zu bewerten
+
+#### F4.2 Ergebnisprotokoll
+- Die reale Alltagsreibung ist modulweise gegen die `F4.1`-Matrix analysiert.
+- Bewertete Kandidaten fuer die naechste Priorisierung:
+  - `Medication Reorder`
+  - `start_breath_timer`
+  - vorbereitete Terminmaske / enger Termin-Status-Pfad
+  - Activity-Quick-Start / kleine Vorbelegung
+  - Trendpilot read-/ack-naher Schnellpfad
+
+- `Medication` -> Kandidat: `Medication Reorder`
+  - Reibung heute: `2`
+    - Low-Stock-Situation, Arztkontakt und Reorder-Vorstufen existieren bereits, aber der eigentliche Ablauf ist noch nicht als enger Workflow geschnitten
+    - dadurch entsteht reale Reibung genau an dem Punkt, an dem der Nutzer von bloßer Warnung in eine konkrete Anschlussaktion wechseln will
+  - Nutzungshaeufigkeit: `2`
+    - nicht taeglich wie Intake, aber fuer aktive Medikation ein klar wiederkehrender und alltagsrelevanter Sonderfall
+  - Deterministisch modellierbar: `2`
+    - der Ablauf laesst sich eng ueber Statuskette, Guards, Confirm und Idempotenz modellieren
+  - Guardrail-Risiko: `1`
+    - beherrschbar, aber nur mit sauberem Sendepfad, Confirm-Vertrag und Idempotenz
+  - Voice-Nutzen: `1`
+    - der Kernnutzen liegt zuerst im deterministischen Workflow, nicht primaer in Voice
+    - Voice kann spaeter enger Confirm-Hook sein, ist aber nicht der Hauptwert des Kandidaten
+  - Zwischenfazit:
+    - klarer, realer Reibungspunkt mit hoher Produktrelevanz
+    - Guardrails muessen zuerst sauber geschnitten werden
+
+- `Breath Timer` -> Kandidat: `start_breath_timer`
+  - Reibung heute: `2`
+    - der Timer liegt direkt am BP-Vorbereitungsfluss und ist klar wiederkehrend
+    - die Reibung besteht weniger in komplexen Datenfeldern als im Einstieg in einen eng definierten Messvorbereitungsablauf
+  - Nutzungshaeufigkeit: `2`
+    - fuer Nutzer mit BP-Flow potenziell haeufig und alltagsnah
+  - Deterministisch modellierbar: `2`
+    - feste Presets `3` / `5` Minuten, klarer Startpunkt, klare Rueckkehrlogik
+  - Guardrail-Risiko: `1`
+    - grundsaetzlich gut begrenzbar, aber nur wenn BP-Kontext, Timerstart und Rueckkehrfluss explizit bleiben
+  - Voice-Nutzen: `2`
+    - der Kandidat hat echten Nutzen fuer einen engen Voice- oder Schnellstart-Einstieg, weil der Nutzer hier keine offene Sprachlogik braucht
+  - Zwischenfazit:
+    - sehr guter Spezialfall-Kandidat fuer Reibungsreduktion
+    - darf aber nicht in freie Vitals-/BP-Sprachsteuerung kippen
+
+- `Appointments` -> Kandidat: vorbereitete Terminmaske / enger Termin-Status-Pfad
+  - Reibung heute: `1`
+    - das Panel ist produktiv und klar, aber Erfassung und Statuswechsel brauchen mehrere manuelle Schritte
+  - Nutzungshaeufigkeit: `1`
+    - relevant, aber typischerweise nicht hochfrequent wie Intake oder taegliche Medikation
+  - Deterministisch modellierbar: `1`
+    - vorbereitete Maske oder enger Statuspfad waeren modellierbar
+    - freie Terminerfassung per Voice waere dagegen zu offen
+  - Guardrail-Risiko: `1`
+    - begrenzbar fuer enge Prefill- oder Statusfaelle
+    - deutlich schlechter fuer freie CRUD-Voice
+  - Voice-Nutzen: `0`
+    - ein direkter Voice-Fast-Path wirkt hier aktuell deutlich schwächer als vorbereitete UI-/Prefill-Hilfe
+  - Zwischenfazit:
+    - reale, aber nicht dringliche Reibung
+    - eher Kandidat fuer spaetere enge UI-Hilfen als fuer unmittelbaren Voice-Ausbau
+
+- `Activity` -> Kandidat: Activity-Quick-Start / kleine Vorbelegung
+  - Reibung heute: `1`
+    - der bestehende Save-Pfad ist schon relativ klein, aber ein kleiner Schnellstart oder Vorbelegung koennte den Vitals-Kontext entschlacken
+  - Nutzungshaeufigkeit: `1`
+    - regelmaessig moeglich, aber nicht fuer alle Nutzer oder Tage gleich relevant
+  - Deterministisch modellierbar: `1`
+    - enge Vorbelegung ist modellierbar
+    - freie Trainingssprache waere zu offen
+  - Guardrail-Risiko: `2`
+    - ein enger UI-/Prefill-Ansatz ist vergleichsweise risikoarm
+  - Voice-Nutzen: `0`
+    - aktuell kein starker Voice-Vorteil gegenueber UI-Vorbelegung
+  - Zwischenfazit:
+    - moeglicher kleiner Komfortpfad
+    - kein primaerer Voice- oder Follow-up-Kandidat fuer die naechsten Umsetzungsstufen
+
+- `Trendpilot` -> Kandidat: read-/ack-naher Schnellpfad
+  - Reibung heute: `0`
+    - die bestehende Reibung liegt nicht in fehlender Schnellsteuerung, sondern eher in fachlicher Einordnung und Datenlage
+  - Nutzungshaeufigkeit: `1`
+    - die Hinweise koennen relevant sein, aber nicht als enger taeglicher Startpfad
+  - Deterministisch modellierbar: `1`
+    - read-/ack-nahe Hilfen waeren eng modellierbar
+    - weitergehende Assistant-/Voice-Ideen waeren schnell zu offen
+  - Guardrail-Risiko: `1`
+    - beherrschbar fuer sehr enge Lesepfade, aber mit hoher Drift-Gefahr sobald es beratungsnah wird
+  - Voice-Nutzen: `0`
+    - kein klarer Voice-Mehrwert fuer den aktuellen Modulcharakter
+  - Zwischenfazit:
+    - aktuell kein echter Fast-Path-Treiber
+    - eher Referenz fuer bewusstes `skip` oder sehr spaeten Restbedarf
+
+- Uebergreifende Auswertung aus `F4.2`:
+  - staerkste reale Reibungs- und Nutzenkandidaten:
+    - `Medication Reorder`
+    - `start_breath_timer`
+  - mittlere, aber klar schwächere Kandidaten:
+    - vorbereitete Terminmaske / enger Termin-Status-Pfad
+    - Activity-Quick-Start / kleine Vorbelegung
+  - aktuell klar schwächster Kandidat:
+    - Trendpilot read-/ack-naher Schnellpfad
+- Wichtige Guardrail-Einordnung:
+  - hoher `Voice-Nutzen` zeigt sich aktuell nur dort sauber, wo der Ablauf ohnehin eng und deterministisch ist
+  - `Appointments` und `Activity` sprechen eher fuer spaetere UI-/Prefill-Komfortpfade als fuer unmittelbare Voice-Erweiterung
+  - `Trendpilot` bestaetigt die Guardrail, dass nicht jedes friction-heavy oder sichtbare Modul einen Fast Path braucht
+- Durchgefuehrter F4.2-Check:
+  - modulweise Reibungsanalyse auf Basis der in `F1` gemappten Runtime- und Doku-Staende durchgefuehrt
+  - die Analyse ist anschlussfaehig fuer `F4.3`, ohne bereits Kandidaten vorschnell als Produktzusage festzuschreiben
+
+#### F4.3 Ergebnisprotokoll
+- Die analysierten Kandidaten sind jetzt explizit in die drei Prioritaetsklassen geschnitten.
+
+- `high-value`
+  - `Medication Reorder`
+    - Grund:
+      - klarer dokumentierter Reibungspunkt
+      - wiederkehrender alltagsrelevanter Nutzen
+      - eng deterministisch modellierbar
+      - trotz Guardrail-Bedarf fachlich sauber schneidbar
+    - Einordnung:
+      - hoher Produktwert auch ohne sofortige Voice-Zentrierung
+      - direkter Kandidat fuer die naechsten Umsetzungsschritte `F5/F6`
+  - `start_breath_timer`
+    - Grund:
+      - enger und haeufiger Spezialfall
+      - klare Presets und Ablaufkette
+      - echter Nutzen fuer einen engen Voice- oder Schnellstart-Einstieg
+    - Einordnung:
+      - direkter Kandidat fuer `F7`
+      - nur tragfaehig, solange BP-Kontext und Rueckkehrfluss explizit guard-railed bleiben
+
+- `maybe-later`
+  - vorbereitete Terminmaske / enger Termin-Status-Pfad
+    - Grund:
+      - reale Reibung vorhanden, aber nicht stark genug fuer unmittelbare Umsetzung vor den beiden `high-value`-Kandidaten
+      - Nutzen wirkt aktuell staerker fuer enge UI-/Prefill-Hilfe als fuer Voice
+    - Einordnung:
+      - sinnvoll fuer spaetere modulare Pruefung in `F10`
+      - kein frueher Voice-Ausbau
+  - Activity-Quick-Start / kleine Vorbelegung
+    - Grund:
+      - kleiner Komfortnutzen vorhanden
+      - niedrigeres Guardrail-Risiko bei engem UI-/Prefill-Ansatz
+      - aber keine starke Reibung und kein klarer Voice-Mehrwert
+    - Einordnung:
+      - moeglicher spaeterer Komfortpfad in `F10`
+      - derzeit klar hinter `Medication Reorder` und `start_breath_timer`
+
+- `skip`
+  - Trendpilot read-/ack-naher Schnellpfad
+    - Grund:
+      - kein klarer Fast-Path-Treiber im Alltag
+      - Voice-Nutzen fehlt
+      - hohes Risiko, in offene Assistant-/Einordnungslogik zu driften, sobald mehr als enger Read-/Ack-Komfort betrachtet wird
+    - Einordnung:
+      - bewusst kein priorisierter Follow-up-Kandidat fuer die naechsten Umsetzungsstufen
+      - nur bei spaeterem, sehr engem Restbedarf erneut pruefen
+
+- Ergebnis-Shortlist aus `F4.3`:
+  - produktiv weiterzutragen:
+    - `Medication Reorder`
+    - `start_breath_timer`
+  - spaeter modular zu pruefen:
+    - vorbereitete Terminmaske / enger Termin-Status-Pfad
+    - Activity-Quick-Start / kleine Vorbelegung
+  - bewusst vorerst auszusparen:
+    - Trendpilot read-/ack-naher Schnellpfad
+
+- Wichtige Einordnung:
+  - `F4.3` priorisiert keine generelle Voice-Ausweitung
+  - die Shortlist bestaetigt stattdessen:
+    - zuerst deterministische Spezialfaelle mit realer Reibung
+    - danach moegliche UI-/Prefill-Komfortpfade
+    - keine kuenstliche Fast-Path-Suche in read-heavy Modulen
+- Durchgefuehrter F4.3-Check:
+  - Klassifizierung folgt den in `F4.1` festgezogenen Kriterien und den in `F4.2` dokumentierten Bewertungsnotizen
+  - `skip` ist explizit dokumentiert, damit spaeter keine Wunschlisten-Leiche wieder still auftaucht
+
+#### F4.4 Ergebnisprotokoll
+- Es werden nur Kandidaten weitergetragen, die klaren Alltagsnutzen und saubere Modellierbarkeit zeigen.
+- Konkreter Weitertragsentscheid:
+  - weiterzutragen in die naechsten Umsetzungsschritte:
+    - `Medication Reorder`
+    - `start_breath_timer`
+  - bewusst nicht in die unmittelbaren Umsetzungsschritte uebernehmen:
+    - vorbereitete Terminmaske / enger Termin-Status-Pfad
+    - Activity-Quick-Start / kleine Vorbelegung
+    - Trendpilot read-/ack-naher Schnellpfad
+- Begruendung fuer die weitergetragenen Kandidaten:
+  - `Medication Reorder`
+    - reale Reibung ist dokumentiert
+    - der Spezialfall ist fuer MIDAS fachlich plausibel und eng guard-railed modellierbar
+    - die naechsten Roadmap-Schritte `F5/F6` sind bereits exakt auf diesen Kandidaten zugeschnitten
+  - `start_breath_timer`
+    - der Kandidat reduziert Reibung in einem klar geschnittenen, wiederkehrenden Messvorbereitungsablauf
+    - `F7` ist bereits als enger Spezialfall dafuer vorgesehen
+- Begruendung fuer die bewusst nicht weitergetragenen Kandidaten:
+  - vorbereitete Terminmaske / enger Termin-Status-Pfad
+    - Nutzen ist real, aber gegenueber den beiden `high-value`-Kandidaten nachrangig
+    - der wahrscheinlich bessere Pfad ist spaeter ein enger UI-/Prefill-Komfortpfad statt frueher Voice-Ausbau
+  - Activity-Quick-Start / kleine Vorbelegung
+    - Komfortnutzen vorhanden, aber aktuell kein hinreichend starker Treiber fuer die unmittelbare Follow-up-Phase
+  - Trendpilot read-/ack-naher Schnellpfad
+    - aktuell kein tragfaehiger Fast-Path-Kandidat
+    - bewusster `skip`, kein stiller Backlog-Eintrag
+- Harte Weitertragsregel fuer die Folgeschritte:
+  - `F5-F7` arbeiten nur mit den jetzt weitergetragenen Kandidaten
+  - `maybe-later`-Kandidaten werden nicht implizit in Action-Surface, Allowed Actions, Intent-Regeln oder Voice-Einstiege hineingezogen
+  - `skip`-Kandidaten bleiben draussen, bis ein spaeterer Schritt sie mit neuer dokumentierter Reibung wieder oeffnet
+- Doku- und Scope-Regel aus `F4.4`:
+  - die Modul-Overviews behalten fuer `maybe-later` und `skip` ihre konservativen Nicht-Zustaende
+  - es gibt keinen vorgezogenen Produktvertrag nur deshalb, weil ein Kandidat als interessant markiert wurde
+- Durchgefuehrter F4.4-Check:
+  - der Weitertragsentscheid ist konsistent mit:
+    - `F4.1` Bewertungsmatrix
+    - `F4.2` Reibungsanalyse
+    - `F4.3` Shortlist
+  - damit bleibt die Follow-up-Phase eng auf die zwei wirklich tragfaehigen Spezialfaelle begrenzt
+
+#### F4.5 Ergebnisprotokoll
+- Abschlusscheck vor `F5` durchgefuehrt.
+- Pruefung: basiert die Priorisierung auf dokumentierter Reibung statt auf Bauchgefuehl?
+  - Ergebnis:
+    - ja
+    - die Bewertung ist ueber `F4.1` explizit kriteriell gerahmt
+    - die modulweise Analyse in `F4.2` bezieht sich auf dokumentierte Runtime- und Doku-Staende aus `F1/F3`
+    - die Klassifizierung in `F4.3` und der Weitertragsentscheid in `F4.4` folgen daraus nachvollziehbar
+- Pruefung: sind `skip`-Entscheidungen explizit festgehalten?
+  - Ergebnis:
+    - ja
+    - `Trendpilot` ist als bewusster `skip` dokumentiert
+    - `maybe-later`-Kandidaten sind ebenfalls bewusst vom unmittelbaren Weitertrag getrennt und nicht als stiller Backlog markiert
+  - wichtige Einordnung:
+    - dadurch bleiben keine Wunschlisten-Leichen fuer die naechsten Umsetzungsschritte zurueck
+- Pruefung: werden Kandidaten mit unklaren Guards oder Voice-Drift in die Implementierung uebernommen?
+  - Ergebnis:
+    - nein
+    - nur zwei Kandidaten werden weitergetragen:
+      - `Medication Reorder`
+      - `start_breath_timer`
+    - beide sind als enge Spezialfaelle dokumentiert und passen zu den bereits vorgesehenen Folgeschritten `F5-F7`
+    - Kandidaten mit schwachem Voice-Nutzen oder staerkerem Drift-Risiko bleiben bewusst ausserhalb der unmittelbaren Umsetzungsstrecke
+- Abschlussbewertung fuer `F4`:
+  - die Priorisierung ist belastbar genug, um jetzt in die konkrete Vertragsarbeit fuer `Medication Reorder` und danach `Breath Timer` zu gehen
+  - `Appointments`, `Activity` und `Trendpilot` bleiben bewusst dokumentiert, aber nicht implizit teil der naechsten Implementierungsphase
+  - `F4` ist abgeschlossen
+
+### F5 - Medication Reorder gegen den Ist-Stand mappen und als Workflow-Vertrag schneiden
+- F5.1 Bestehenden Low-Medication-Flow gegen den realen Ist-Stand in Code und UI mappen.
+- F5.2 Bestehende Mail-/Template-/Empfaenger-/Guard-Pfade inventarisieren.
+- F5.3 Reorder als deterministische Workflow-Kette modellieren:
+  - `low`
+  - `reorder_prompted`
+  - `reorder_sent`
+  - `awaiting_restock`
+- F5.4 Klarziehen, ob der Flow rein UI-confirmed bleibt oder spaeter einen engen Confirm-Hook bekommen darf.
+- F5.5 Nicht-Ziele festziehen:
+  - kein offener Agentenfall
+  - kein stilles Auto-Senden
+- F5.6 Abschlusscheck vor F6:
+  - Pruefen, ob Zustandsmodell, Guardrails und Confirm-Schnitt vollstaendig und widerspruchsfrei sind.
+  - Keine impliziten Sendepfade oder ungeguardeten Reorder-Aktionen offenlassen.
+  - Begriffe, Statusnamen und Guard-Reasons sofort dokumentarisch angleichen, wenn sie sich verfestigt haben.
+
+#### F5.1 Ergebnisprotokoll
+- Bestehenden Low-Medication-Flow gegen den realen Ist-Stand in Code und UI gemappt.
+- Datenquelle und Ist-Signale:
+  - die taegliche Medication-Liste kommt aus `med_list` und wird in `app/modules/intake-stack/medication/index.js` auf UI-taugliche Felder gemappt
+  - fuer den Low-Stock-Kontext sind dort bereits relevante Felder vorhanden:
+    - `stock_count`
+    - `low_stock_days`
+    - `days_left`
+    - `runout_day`
+    - `low_stock`
+    - `low_stock_ack_day`
+    - `low_stock_ack_stock`
+  - der aktuelle Low-Status ist damit bereits ein reales Laufzeit-Signal, aber noch kein eigener Reorder-Workflow-Vertrag
+- Sichtbarer UI-Pfad heute:
+  - im Intake-/Capture-Flow rendert `renderMedicationLowStock(...)` eine eigene Low-Stock-Box fuer Medikationseintraege mit `low_stock`
+  - pro Eintrag werden mindestens angezeigt:
+    - Name
+    - verbleibender Bestand
+    - `days_left`
+  - falls eine Arzt-Mail vorhanden ist, wird ein `Arzt-Mail`-Link angeboten
+  - unabhaengig davon gibt es einen `Erledigt`-Pfad zum Wegklicken bzw. Bestaetigen des Low-Stock-Hinweises
+- Reale Reorder-nahe Aktion heute:
+  - der einzige direkte Reorder-nahe Ausgang aus dem Low-Stock-UI ist aktuell ein `mailto:`-Link
+  - `buildLowStockMailHref(...)` baut Betreff und Mailtext lokal aus dem konkreten Medikament bzw. der Low-Stock-Liste
+  - dieser Pfad ist rein clientseitig, oeffnet den lokalen Mail-Client und sendet nichts automatisch
+  - ohne hinterlegte Arzt-Mail gibt es bewusst keinen Sendepfad, sondern nur den Hinweis `Mailkontakt fehlt`
+- Reale Mutation-/Ack-Pfade heute:
+  - `Erledigt` im Low-Stock-Block ruft `ackLowStock(...)` auf
+  - `ackLowStock(...)` fuehrt die RPC `med_ack_low_stock` mit `dayIso`, `stockSnapshot` und `reason` aus
+  - daneben existieren bereits allgemeine Medication-Mutationen fuer den Bestand bzw. Tagesstatus:
+    - `confirmMedication(...)`
+    - `undoMedication(...)`
+    - `adjustStock(...)`
+    - `setStock(...)`
+    - `setMedicationActive(...)`
+    - `deleteMedication(...)`
+  - diese Mutationen sind produktiv, aber nicht als Reorder-Kette modelliert
+- Guardrail-Befund fuer den Ist-Stand:
+  - es gibt aktuell keinen expliziten Reorder-Statusautomaten
+  - es gibt keinen produktiven Zustand wie `reorder_prompted`, `reorder_sent` oder `awaiting_restock`
+  - es gibt keinen Auto-Sendepfad
+  - es gibt keinen Voice- oder Intent-Spezialfall fuer Reorder
+  - es gibt keinen bestaetigten Confirm-Vertrag fuer `Medication Reorder`; der heutige Flow ist UI-/mailto-getrieben und lokal begrenzt
+- Einordnung fuer die Folgeschritte:
+  - `F5.2` muss deshalb nicht bei einer theoretischen Reorder-Architektur starten, sondern bei den bereits vorhandenen Bausteinen:
+    - Mailtemplate
+    - Empfaengerverfuegbarkeit
+    - Ack-Semantik
+    - Bestands-/Statusmutationen
+  - fuer `F5.3/F5.4` ist entscheidend, dass ein spaeterer Reorder-Vertrag auf dem vorhandenen Low-Stock-Signal aufsetzt, aber keine zweite freie Kommunikations- oder Agentenlogik erfindet
+
+#### F5.2 Ergebnisprotokoll
+- Bestehende Mail-/Template-/Empfaenger-/Guard-Pfade inventarisiert.
+- Empfaengerpfad heute:
+  - der aktuelle Reorder-nahe Kontaktpfad nutzt ausschliesslich `getPrimaryDoctorInfo(...)` im Intake-Modul
+  - die Empfaengerdaten kommen aus dem Profilmodul, konkret aus:
+    - `primary_doctor_email` bzw. `primaryDoctorEmail`
+    - `primary_doctor_name` bzw. `primaryDoctorName`
+  - ohne Profilmodul, ohne `getData()` oder ohne hinterlegte Arzt-Mail entsteht kein sendefaehiger Kontaktpfad
+  - der aktuelle Pfad ist damit bewusst auf genau einen bekannten Kontaktpunkt begrenzt und hat keine freie Empfaengerwahl
+- Templatepfad heute:
+  - `buildLowStockMailHref(...)` erzeugt Betreff und Body lokal im Client
+  - das Template ist heute hart im Code hinterlegt und wird nicht aus einer Config, einem CMS oder einer serverseitigen Vorlage geladen
+  - Betrefflogik:
+    - einzelnes Medikament: `Bitte um neues Rezept: ...`
+    - mehrere Medikamente: `Bitte um neue Rezepte: ...`
+  - Bodylogik:
+    - listet die betroffenen Medikamente als Bullet-Liste
+    - bittet um ein neues Rezept auf der e-Card
+    - enthaelt derzeit feste Standardsaetze, unter anderem zur Rueckmeldung und zum bisherigen Zwei-Packungen-Muster
+  - die Medikationsliste fuer das Template wird aus den aktuellen Low-Stock-Eintraegen lokal zusammengesetzt; eine gesonderte Reorder-Auswahl gibt es noch nicht
+- Sendepfad heute:
+  - der technische Ausgang ist ausschliesslich ein `mailto:`-Link
+  - dieser Link oeffnet den lokalen Mail-Client; Versand, Speicherung eines Versandstatus oder serverseitige Nachverfolgung finden nicht statt
+  - daraus folgt:
+    - kein idempotenter Send-Contract
+    - kein belastbarer `reorder_sent`-Nachweis
+    - kein sicherer Rueckschluss, dass der Nutzer die Mail wirklich abgeschickt hat
+- Guard- und Schutzpfade heute:
+  - Guard vor dem Mailpfad:
+    - ohne `doctorInfo.email` liefert `buildLowStockMailHref(...)` `null`
+    - die UI zeigt dann `Mailkontakt fehlt` statt einer ausfuehrbaren Aktion
+    - zusaetzlich wird der fehlende Kontakt einmalig diagnostisch geloggt und bei spaeterer Wiederherstellung ebenfalls protokolliert
+  - Guard im Ack-Pfad:
+    - `ackLowStock(...)` verlangt `medId`
+    - `ackLowStock(...)` verlangt ein numerisches `stockSnapshot`
+    - `dayIso` wird normalisiert; danach erfolgt `med_ack_low_stock` plus Reload des Tageszustands
+  - es gibt heute keinen separaten Guard dafuer, ob eine Reorder-Mail schon vorbereitet, geoeffnet oder abgeschickt wurde
+  - es gibt auch keinen Schutz gegen wiederholtes Oeffnen desselben `mailto:`-Links
+- Relevante Abgrenzung fuer den spaeteren Reorder-Vertrag:
+  - der heutige Mailpfad ist eine Komfortfunktion ueber dem Low-Stock-Hinweis, aber noch kein transaktionaler Workflow
+  - die heutige Ack-Semantik bestaetigt nur den Low-Stock-Hinweis und darf nicht still als `reorder_sent` oder `awaiting_restock` umgedeutet werden
+  - ein spaeterer deterministischer Reorder-Vertrag muss deshalb explizit klaeren:
+    - wann nur `low` vorliegt
+    - wann lediglich ein Reorder-Prompt bzw. Mail-Start stattgefunden hat
+    - und ob ueberhaupt ein belastbarer Schritt oberhalb des heutigen `mailto:` modelliert werden darf
+- Ergebnis fuer die Folgeschritte:
+  - `F5.3` startet auf einem bewusst engen Fundament:
+    - Low-Stock-Signal vorhanden
+    - ein lokaler Mail-Startpfad vorhanden
+    - ein separater Ack-Pfad vorhanden
+    - aber kein bestaetigter Sendestatus und kein serverseitiger Reorder-Contract
+  - `F5.4` muss deshalb besonders sauber zwischen reinem UI-confirmed Flow und einem spaeter eventuell zulaessigen engen Confirm-Hook unterscheiden
+
+#### F5.3 Ergebnisprotokoll
+- Reorder als deterministische Workflow-Kette modelliert, bewusst eng aus dem heutigen Ist-Stand heraus.
+- Ziel des Zustandsmodells:
+  - den Low-Stock-Hinweis, den Mail-Start und einen spaeter moeglichen Restock-Bezug sprachlich und technisch sauber trennen
+  - keinen pseudo-transaktionalen Reorder-Flow aus dem heutigen `mailto:`-Komfortpfad ableiten
+  - fuer `F6` eine kleine, implementierbare Zustandsflaeche vorbereiten statt eines offenen Kommunikationsworkflows
+- Geschnittene Zustandskette:
+  - `low`
+    - Bedeutung:
+      - Medikament ist laut Tagessnapshot im Low-Stock-Bereich
+      - Grundlage ist das bestehende Laufzeit-Signal `low_stock` aus `med_list`
+    - Eintritt:
+      - automatisch ueber den bestehenden Medication-Snapshot
+    - Austritt:
+      - wenn der Low-Stock-Zustand im naechsten Snapshot nicht mehr vorliegt, typischerweise nach Bestandsaenderung oder Restock
+    - Ist-Stand:
+      - heute bereits real und produktiv vorhanden
+  - `reorder_prompted`
+    - Bedeutung:
+      - der Nutzer wurde aus dem Low-Stock-Kontext aktiv in den Reorder-Pfad geschoben bzw. hat den lokalen Mail-Start bewusst ausgeloest
+      - das ist ein Prompt-/Start-Zustand, kein Versandnachweis
+    - erlaubte Grundlage:
+      - enger Bezug auf den lokalen `mailto:`-Start oder einen spaeteren expliziten UI-Confirm vor dem Mail-Start
+    - ausdruecklich nicht gemeint:
+      - reines Anzeigen der Low-Stock-Box
+      - `ackLowStock(...)`
+      - ein vermuteter Versand
+    - Ist-Stand:
+      - als Begriff modellierbar, aber heute noch nicht als persistierter Produktzustand vorhanden
+  - `reorder_sent`
+    - Bedeutung:
+      - ein belastbarer Schritt oberhalb des blossen Mail-Starts, der fuer MIDAS als "Reorder wurde wirklich abgeschickt" gelten darf
+    - Guardrail:
+      - dieser Zustand darf nicht aus `mailto:`-Oeffnung, UI-Klick oder Low-Stock-Ack abgeleitet werden
+    - Ist-Stand:
+      - heute bewusst nicht belegbar
+      - bleibt bis zu einem expliziten Confirm-/Nachweisvertrag gesperrt
+  - `awaiting_restock`
+    - Bedeutung:
+      - nach einem bewusst bestaetigten Reorder-Schritt wartet das Medikament noch auf Bestandsauffuellung
+    - Guardrail:
+      - darf nur oberhalb eines explizit erlaubten `reorder_sent`-Schritts entstehen
+      - darf nicht direkt aus `low` oder `ackLowStock(...)` folgen
+    - Austritt:
+      - wenn der Bestand spaeter erhoeht wurde und der Low-Stock-Snapshot nicht mehr greift
+    - Ist-Stand:
+      - heute ebenfalls noch nicht produktiv belegbar
+- Deterministische Uebergaenge im Vertragsmodell:
+  - `low -> reorder_prompted`
+    - nur ueber einen expliziten Reorder-Start aus dem Low-Stock-Kontext
+    - nicht ueber blosses Rendering und nicht ueber passives Vorhandensein einer Arzt-Mail
+  - `reorder_prompted -> reorder_sent`
+    - aktuell noch nicht freigegeben
+    - setzt einen eigenen, spaeter explizit erlaubten Confirm-/Nachweis-Schritt voraus
+  - `reorder_sent -> awaiting_restock`
+    - logisch zulaessig, aber erst sinnvoll, wenn `reorder_sent` ueberhaupt belastbar modelliert werden darf
+  - `awaiting_restock -> low` oder Abschluss ausserhalb der Kette
+    - Rueckfall bzw. Ende erfolgt nur ueber reale Bestandsentwicklung im Snapshot
+  - direkter Kurzschluss `low -> reorder_sent`:
+    - nicht erlaubt
+  - direkter Kurzschluss `ackLowStock -> reorder_prompted|reorder_sent|awaiting_restock`:
+    - nicht erlaubt
+- Produktive Minimalflaeche, die sich aus dem Modell heute wirklich tragen laesst:
+  - sicher produktiv tragfaehig ist aktuell nur:
+    - `low`
+  - modellierbar, aber noch nicht produktiv nachgewiesen:
+    - `reorder_prompted`
+  - bewusst gesperrt bis `F5.4/F6`:
+    - `reorder_sent`
+    - `awaiting_restock`
+- Abgrenzung gegen Scope-Drift:
+  - das Modell fuehrt keine freie Kommunikationslogik, keine Empfaengerwahl und keine offene Reorder-Konversation ein
+  - es wird kein serverseitiger Versand, kein E-Mail-Tracking und kein "smartes" Ableiten eines Versandstatus unterstellt
+  - `Medication Reorder` bleibt damit ein enger Spezialfall ueber dem bestehenden Low-Stock-Signal
+- Ergebnis fuer die Folgeschritte:
+  - `F5.4` kann jetzt sauber entscheiden, ob MIDAS maximal bei einem UI-confirmed `reorder_prompted` bleibt oder ob spaeter ein enger, explizit bestaetigter Schritt in Richtung `reorder_sent` zulaessig ist
+  - `F6` darf nur die Teile produktiv schneiden, die mit diesem Zustandsmodell ohne Schein-Sicherheit umsetzbar sind
+
+#### F5.4 Ergebnisprotokoll
+- Geklaert, ob `Medication Reorder` rein UI-confirmed bleibt oder spaeter einen engen Confirm-Hook bekommen darf.
+- Entscheidung fuer den aktuellen Produktschnitt:
+  - `Medication Reorder` bleibt vorerst rein UI-confirmed
+  - der heute zulaessige produktnahe Schritt endet bei einem lokalen Reorder-Start aus dem Low-Stock-Kontext
+  - ein generischer Pending-Context-/`confirm_reject`-Hook fuer den bestehenden `mailto:`-Pfad wird aktuell nicht freigegeben
+- Begruendung fuer die Entscheidung:
+  - der bestehende Confirm-Stack in Intent Engine, Hub und Voice ist fuer belastbar ausfuehrbare Zielaktionen gebaut
+  - produktiv bestaetigte Zielaktionen muessen lokal guard-railed und nach dem Confirm deterministisch ausfuehrbar sein
+  - der aktuelle Reorder-nahe Pfad ist aber nur ein lokaler `mailto:`-Start ohne Versandnachweis, ohne Idempotenz und ohne belastbaren `reorder_sent`-Beleg
+  - ein Confirm ueber dem heutigen Mailto-Pfad wuerde deshalb leicht mehr Verbindlichkeit vorspiegeln, als MIDAS technisch tatsaechlich halten kann
+- Was `UI-confirmed` in diesem Kontext konkret heisst:
+  - der Nutzer startet Reorder bewusst ueber eine enge UI-Aktion im Low-Stock-Kontext
+  - MIDAS darf diesen Schritt hoechstens als lokalen Prompt-/Start-Moment interpretieren
+  - danach bleibt die eigentliche Kommunikation ausserhalb des deterministischen Produktkerns
+  - `ackLowStock(...)` bleibt davon getrennt und ist weiterhin nur Hinweis-Bestaetigung
+- Was aktuell ausdruecklich nicht erlaubt ist:
+  - kein Pending Context mit `target_action = medication_reorder` auf Basis des heutigen `mailto:`-Pfads
+  - kein Voice-/Text-Confirm, der einen Versand oder `reorder_sent` semantisch bestaetigt
+  - kein Rueckschluss von `confirm_reject`, `ask_confirmation` oder aehnlichen Confirm-Schichten auf einen real erfolgten Rezeptkontakt
+  - keine Aufblaehung von `allowed-actions.js` oder `actions.js`, nur um den Mailto-Start kuenstlich in den generischen Action-Stack zu pressen
+- Enger Zukunftsrahmen, unter dem spaeter ein Confirm-Hook ueberhaupt zulaessig waere:
+  - nur wenn ein klar begrenzter, lokal nachvollziehbarer Zielschritt existiert, der mehr ist als "Mail-App oeffnen"
+  - nur wenn Confirm semantisch genau diesen Schritt bestaetigt und nicht still einen Versand behauptet
+  - nur wenn Guard, Dedupe und Outcome im bestehenden Pending-Context-Vertrag sauber ausdrueckbar sind
+  - nur als enger Spezialfall, nicht als generische Kommunikations-Action
+- Praktische Folgerung fuer `F6`:
+  - `F6` darf hoechstens einen deterministischen lokalen Reorder-Start bzw. `reorder_prompted`-artigen Spezialfall schneiden
+  - `reorder_sent` und `awaiting_restock` bleiben ohne neuen Nachweis-/Confirm-Vertrag weiterhin gesperrt
+  - bestehende Confirm-Infrastruktur wird respektiert, nicht fuer einen unbelegbaren Mailversand umfunktioniert
+
+#### F5.5 Ergebnisprotokoll
+- Nicht-Ziele fuer `Medication Reorder` explizit festgezogen.
+- Kein offener Agentenfall:
+  - `Medication Reorder` wird nicht als freie Kommunikations- oder Erledigungsaufgabe modelliert
+  - MIDAS plant, formuliert, eskaliert oder verfolgt keine offene Rezeptanfrage autonom weiter
+  - es gibt keinen Reorder-Agenten, keine Hintergrundlogik fuer Nachfassen und keinen offenen Aufgaben-Thread rund um Arztkontakt
+- Kein stilles Auto-Senden:
+  - MIDAS sendet keine Reorder-Nachricht still oder implizit im Hintergrund
+  - weder Low-Stock-Erkennung noch `ackLowStock(...)` noch ein spaeterer lokaler Prompt duerfen einen Versand automatisch ausloesen
+  - ohne explizite Nutzerhandlung darf kein Mail-, Nachricht- oder sonstiger Kontaktpfad gestartet werden
+- Kein generischer Kommunikations-Stack:
+  - `Medication Reorder` fuehrt keine freie Empfaengerwahl, kein editierbares Multi-Channel-Messaging und keinen generischen "Nachricht senden"-Pfad ein
+  - der bestehende enge Arztkontakt ueber Profil + `mailto:` bleibt ein lokaler Spezialfall und wird nicht zu einer allgemeinen Kommunikationsschicht ausgebaut
+- Kein kuenstlicher Versandstatus:
+  - `mailto:`-Oeffnung, UI-Klicks oder lokale Start-Events werden nicht als real gesendete Rezeptanfrage verbucht
+  - es gibt keinen stillen Aufstieg von `reorder_prompted` zu `reorder_sent`
+  - `awaiting_restock` wird nicht heuristisch gesetzt, solange kein explizit erlaubter Schritt oberhalb des Mail-Starts existiert
+- Kein Confirm-Missbrauch:
+  - bestehende Pending-Context-, `confirm_reject`- und `ask_confirmation`-Mechaniken werden nicht verwendet, um einen unbelegbaren Versand semantisch aufzuwerten
+  - Reorder bekommt keinen Confirm-Shortcut nur deshalb, weil es sich gut in die vorhandene Confirm-Infrastruktur einhaengen liesse
+- Keine Action-Surface-Expansion ohne echten Bedarf:
+  - `actions.js` und `allowed-actions.js` werden nicht fuer eine generische Reorder-Kommunikationsaktion aufgeblasen
+  - wenn `F6` produktive neue Contracts einfuehrt, dann nur als enger Spezialfall mit klarer Guard-Begruendung
+- Keine Voice-Drift:
+  - `Medication Reorder` wird in diesem Block nicht still zu einem neuen produktiven Voice-Standardfall
+  - ein spaeterer Voice-Einstieg waere hoechstens ein Komfortpfad auf einem bereits sauberen lokalen Spezialfall, nicht dessen Begruendung
+- Harte Leitplanke fuer `F6`:
+  - erlaubt ist nur ein enger, deterministischer Ausbau oberhalb des bestehenden Low-Stock-Signals
+  - nicht erlaubt ist jede Erweiterung, die MIDAS in Richtung offener Assistent, Agent oder Kommunikationszentrale verschiebt
+
+#### F5.6 Ergebnisprotokoll
+- Abschlusscheck vor `F6` durchgefuehrt.
+- Pruefung: sind Zustandsmodell, Guardrails und Confirm-Schnitt vollstaendig und widerspruchsfrei?
+  - Ergebnis:
+    - ja
+    - `F5.3` trennt sauber zwischen real belegbarem `low`, modellierbarem `reorder_prompted` und weiterhin gesperrten Zustaenden `reorder_sent` / `awaiting_restock`
+    - `F5.4` legt verbindlich fest, dass `Medication Reorder` vorerst rein UI-confirmed bleibt
+    - bestehende Pending-Context-/Confirm-Infrastruktur wird bewusst nicht auf den heutigen `mailto:`-Pfad gelegt
+- Pruefung: bleiben implizite Sendepfade oder ungeguardete Reorder-Aktionen offen?
+  - Ergebnis:
+    - nein
+    - `mailto:` bleibt ein lokaler Startpfad ohne Versandnachweis
+    - `ackLowStock(...)` bleibt strikt von Reorder-Statusschritten getrennt
+    - es wurde kein generischer Reorder-Action-Pfad in `actions.js` oder `allowed-actions.js` vorgezogen
+- Durchgefuehrter Clean-up:
+  - Medication-Doku auf den jetzt festgezogenen Reorder-Rahmen nachgezogen
+  - kein Runtime-Code geaendert
+  - kein weiterer QA-/CHANGELOG-Nachzug noetig, weil in `F5` noch kein produktiver Contract und kein Laufzeitverhalten erweitert wurde
+- Abschlussbewertung fuer `F5`:
+  - der Medication-Reorder-Rahmen ist jetzt eng genug fuer eine kontrollierte produktive Umsetzung in `F6`
+  - Scope-Drift in Richtung Agent, Auto-Senden, generische Kommunikationsaktion oder Voice-Standardpfad ist fuer diesen Block dokumentarisch abgeschnitten
+  - `F5` ist abgeschlossen
+
+### F6 - Medication Reorder produktiv als deterministischen Spezialfall modellieren
+- F6.1 Notwendige Action Contracts und Guard-Reasons definieren.
+- F6.2 UI-Zustaende und Sichtbarkeit fuer Reorder-Status schneiden.
+- F6.3 Optionalen Confirm-Schritt vor Ausfuehrung sauber modellieren.
+- F6.4 Logging, Idempotenz und Schutz gegen Doppel-Senden definieren.
+- F6.5 Klaren Future Hook fuer spaeteren Voice-/Node-Confirm nur dokumentieren, nicht implizit mitbauen.
+- F6.6 Abschlusscheck vor F7:
+  - Syntax-/Smoke-/Harness-Checks fuer den Reorder-Flow durchfuehren.
+  - Toten Reorder-/Mail-/Guard-Altcode pruefen und bereinigen.
+  - Relevante Modul-Doku sofort nachziehen, wenn neue produktive Zustaende oder Actions eingefuehrt wurden.
+
+#### F6.1 Ergebnisprotokoll
+- Notwendige Action Contracts und Guard-Reasons als enger lokaler Medication-Spezialfall definiert.
+- Runtime-Schnitt heute:
+  - der Reorder-Start-Contract liegt jetzt im Medication-Modul statt implizit nur im Intake-Renderer
+  - eingefuehrt wurden:
+    - `MEDICATION_REORDER_GUARD_REASONS`
+    - `buildMedicationReorderMailHref(...)`
+    - `getMedicationReorderStartContract(...)`
+- Geschnittener Contract:
+  - Typ:
+    - `medication_reorder_start`
+  - Semantik:
+    - lokaler, nutzerinitiierter Start des bestehenden Mailto-Pfads
+    - entspricht fachlich hoechstens dem in `F5` erlaubten Schritt `reorder_prompted`
+    - kein Versand- oder Confirm-Nachweis
+  - Rueckgabe bei Erfolg:
+    - `ok`
+    - `type`
+    - `state`
+    - `channel`
+    - `requires_user_action`
+    - `medId`
+    - `dayIso`
+    - `doctorEmail`
+    - `href`
+- Eingefuehrte Guard-Reasons:
+  - `medication-reorder-med-missing`
+  - `medication-reorder-id-missing`
+  - `medication-reorder-not-low-stock`
+  - `medication-reorder-doctor-email-missing`
+  - `medication-reorder-mailto-unavailable`
+- Architekturentscheidung in `F6.1`:
+  - keine Erweiterung von `actions.js` oder `allowed-actions.js`
+  - keine Pending-Context- oder `confirm_reject`-Integration
+  - der Reorder-Start bleibt lokal am Medication-/Intake-Surface und wird nur ueber den neuen Contract aufgeloest
+- Bereits durchgezogener Runtime-Nachzug:
+  - das Low-Stock-Rendering nutzt den neuen Reorder-Start-Contract bereits fuer den `Arzt-Mail`-Pfad
+  - dadurch werden Mailto-Erzeugung und Guard-Entscheidung nicht mehr lose im Markup zusammengesetzt
+- Einordnung fuer `F6.2`:
+  - die UI kann jetzt auf einem klaren lokalen Contract aufsetzen
+  - Sichtbarkeit und Reorder-Status sollen im naechsten Schritt auf diesem Contract statt auf nackten `href`-Annahmen aufbauen
+
+#### F6.2 Ergebnisprotokoll
+- UI-Zustaende und Sichtbarkeit fuer den lokalen Reorder-Start auf den neuen Contract umgestellt.
+- Geschnittener UI-Status im Low-Stock-Block:
+  - `ready`
+    - Rezeptkontakt ist lokal verfuegbar
+    - die UI zeigt den `Arzt-Mail`-Pfad plus den Statushinweis `Lokaler Rezeptkontakt moeglich`
+  - `reorder_prompted`
+    - Nutzer hat den lokalen Mail-Start bereits bewusst ausgeloest
+    - die UI bleibt im Low-Stock-Kontext, markiert den Eintrag aber sichtbar als bereits angestossen
+    - semantisch weiterhin kein Versandnachweis
+  - `unavailable`
+    - Guard verhindert den lokalen Reorder-Start, aktuell typischerweise wegen fehlender Arzt-Mail
+    - die UI zeigt keinen aktiven Reorder-Pfad und macht die Nicht-Verfuegbarkeit explizit sichtbar
+- Durchgezogene Runtime-Umsetzung:
+  - Low-Stock-Rendering leitet den sichtbaren Reorder-Status jetzt aus Contract + lokalem UI-State ab
+  - Klick auf `Arzt-Mail` markiert den betroffenen Eintrag lokal als `reorder_prompted` und loggt den Start
+  - Tageswechsel oder komplett verschwundene Low-Stock-Eintraege loeschen den lokalen Prompt-State wieder
+- Guardrail-Einhaltung:
+  - `reorder_prompted` bleibt rein lokaler UI-Status
+  - kein Upgrade zu `reorder_sent`
+  - keine Pending-Context-, Voice- oder Allowed-Action-Integration
+  - `ackLowStock(...)` bleibt ein getrennter Hint-/Ack-Pfad
+- UI-/UX-Ziel erreicht:
+  - der Nutzer sieht jetzt, ob Rezeptkontakt lokal moeglich, bereits angestossen oder aktuell nicht verfuegbar ist
+  - gleichzeitig bleibt MIDAS klar unterhalb eines behaupteten Kommunikations- oder Versandworkflows
+
+#### F6.3 Ergebnisprotokoll
+- Optionalen Confirm-Schritt vor dem lokalen Mail-Start als engen Zwei-Schritt im Low-Stock-UI modelliert.
+- Geschnittener Confirm-Flow:
+  - erster Tap auf `Arzt-Mail`
+    - oeffnet noch keine Mail-App
+    - armt lokal den Reorder-Confirm fuer genau dieses Medikament
+    - setzt den sichtbaren UI-Status auf `confirming`
+  - zweiter Tap auf `Mail jetzt oeffnen`
+    - revalidiert den lokalen Reorder-Start-Contract
+    - markiert erst dann `reorder_prompted`
+    - oeffnet anschliessend die Mail-App lokal ueber `mailto:`
+  - `Abbrechen`
+    - loest nur den lokalen Confirm-Arm wieder auf
+- Guardrail-Einhaltung:
+  - der Confirm bleibt rein lokal im Intake-/Low-Stock-Block
+  - keine Pending-Context-, `confirm_reject`-, Voice- oder Allowed-Action-Integration
+  - auch nach Confirm entsteht kein `reorder_sent`, sondern weiterhin nur der lokal angestossene Zustand `reorder_prompted`
+- State-Hygiene:
+  - Confirm-Arm wird bei Low-Stock-Clear und Tageswechsel geloescht
+  - Guard-Fehler beim zweiten Tap brechen sauber lokal ab und loesen den Confirm-Zwischenzustand wieder auf
+- Produktentscheidung in Code gegossen:
+  - `Medication Reorder` bleibt UI-confirmed, aber jetzt mit explizitem lokalen Vorab-Confirm statt direktem Mail-App-Start
+
+#### F6.4 Ergebnisprotokoll
+- Logging, Idempotenz und Schutz gegen Doppel-Oeffnen fuer den lokalen Reorder-Start nachgezogen.
+- Durchgezogene lokale Schutzmechanik:
+  - kurzer `launch lock` direkt um den Mail-App-Start
+  - kurzer `reopen cooldown` nach bereits angestossenem `reorder_prompted`
+  - beide Guards gelten nur lokal pro Medikament und Tag
+- Sichtbarer Effekt:
+  - schnelles Doppeltippen auf `Arzt-Mail` oder `Mail jetzt oeffnen` fuehrt nicht zu mehrfachen unmittelbaren `mailto:`-Starts
+  - der Nutzer bekommt stattdessen eine kurze lokale Rueckmeldung, dass der Rezeptkontakt gerade bereits angestossen bzw. geoeffnet wurde
+- Logging:
+  - Blockaden aus Lock/Cooldown werden als eigene lokale Diag-Reasons protokolliert
+  - bestaetigter lokaler Mail-Start bleibt weiterhin als `reorder prompted` geloggt
+- Guardrail-Einhaltung:
+  - keine Versand- oder Delivery-Semantik
+  - kein serverseitiger Status
+  - nur lokaler Schutz gegen Doppelstarts desselben Mailto-Pfads
+
+#### F6.5 Ergebnisprotokoll
+- Klaren Future Hook fuer spaeteren Voice-/Node-Confirm nur dokumentiert, nicht implizit mitgebaut.
+- Zulassiger Zukunftsrahmen:
+  - ein spaeterer Voice-/Node-Confirm fuer `Medication Reorder` waere nur als enger Spezialfall ueber dem bereits bestehenden lokalen Reorder-Start denkbar
+  - Voraussetzung waere ein explizit eigener Zielschritt, der semantisch mehr ist als "Mail-App oeffnen", aber weiterhin keinen Versand behauptet, den MIDAS nicht belegen kann
+  - ein solcher Hook duerfte nur auf dem bestehenden Guard-/Zustandsvertrag aufsetzen und muesste Pending-Context-, Dedupe- und Consume-Regeln ausdruecklich respektieren
+- Was bewusst nicht dokumentiert wird:
+  - kein neuer produktiver Intent
+  - keine neue Allowed Action
+  - kein vorbereiteter Pending Context fuer Reorder
+  - kein Voice-Einstieg fuer den aktuellen Mailto-Zwei-Schritt
+- Produktgrenze bleibt:
+  - solange MIDAS nur den lokalen UI-confirmed Mailto-Start traegt, bleibt jeder spaetere Voice-/Node-Confirm ein reiner Future Hook und keine versteckte Roadmap-Zusage
+
+#### F6.6 Ergebnisprotokoll
+- Abschlusscheck vor `F7` durchgefuehrt.
+- Syntax-/Smoke-/Harness-Checks:
+  - `node --check app/modules/intake-stack/intake/index.js`
+  - `node --check app/modules/intake-stack/medication/index.js`
+  - Ergebnis:
+    - beide Checks laufen sauber
+- Reorder-Flow-Abschlussbewertung:
+  - lokaler Reorder-Start ist jetzt als enger Medication-Spezialfall produktiv geschnitten
+  - UI-Confirm, Guard-Reasons, lokaler Launch-Lock und Reopen-Cooldown greifen ohne Pending-Context-, Allowed-Action- oder Voice-Ausbau
+  - Medication-Doku ist auf den produktiven Stand nachgezogen
+- Toter Altcode-/Cleanup-Check:
+  - relevanter Reorder-Altcode wurde geprueft
+  - Einordnung:
+    - kein funktionaler Widerspruch im aktuellen Verhalten
+    - der damals noch sichtbare unerreichbare Altpfad in `handleMedicationReorderStart(...)` wurde spaeter in `F9.7` entfernt
+    - der damals noch sichtbare Legacy-Helper `buildLowStockMailHref(...)` wurde spaeter vor `F10` als toter Rest entfernt
+- Abschlussbewertung fuer `F6`:
+  - der Medication-Reorder-Spezialfall ist fuer MIDAS jetzt bewusst eng, lokal und deterministisch genug umgesetzt
+  - kein Scope-Drift in Richtung Versandtracking, Agentenlogik oder Voice-Standardpfad
+  - `F6` ist abgeschlossen
+
+### F7 - Breath Timer Intent-/Action-Workflow definieren und schneiden
+- F7.1 Breath Timer als klaren Intent-/Action-Kandidaten festziehen:
+  - `start_breath_timer`
+- F7.2 Parameter-Vertrag schneiden:
+  - `3 min`
+  - `5 min`
+- F7.3 Oeffnung des passenden BP-Kontexts und Timerstart ueber einen klaren Action-Pfad modellieren.
+- F7.4 Rueckkehr in den vorbereiteten Mess-Flow sauber spezifizieren.
+- F7.5 Klar trennen, was Intent-Fast-Path ist und was optional spaeter Voice-Einstieg werden darf.
+- F7.6 Abschlusscheck vor F8:
+  - Pruefen, ob Timerstart, Parameter und BP-Kontext ohne implizite Annahmen funktionieren.
+  - Alte Trigger, doppelte Timer-Einstiege oder tote Spezialpfade bereinigen.
+  - Breath-Timer-Doku und relevante Action-/Intent-Doku sofort angleichen, falls produktive Contracts entstehen.
+
+#### F7.1 Ergebnisprotokoll
+- `start_breath_timer` als klaren Intent-/Action-Kandidaten gegen den realen Runtime-Stand festgezogen.
+- Technische Grundlage im Ist-Stand:
+  - Breath Timer ist bereits eine deterministische In-App-Engine mit festem Presetmodell (`3` / `5` Minuten)
+  - Start und Ablauf sind lokal, ohne Backend-Write und ohne offenen Dialogbedarf
+  - die Engine hat eine klare State Machine:
+    - `idle`
+    - `preset_select`
+    - `running`
+    - `cancel_confirm`
+    - `completed`
+    - `aborted`
+    - `fading_out`
+  - waehrend aktivem Breath-UI greifen bereits BP-/Vitals-Guards gegen Save, Kontextwechsel und Tab-Drift
+- Warum `start_breath_timer` ein guter Kandidat ist:
+  - realer Reibungspunkt vor BP-Messung vorhanden
+  - Startziel klar geschnitten
+  - nur zwei feste, alltagstaugliche Presets statt freier Parameterflaeche
+  - keine History-Edit-, Delete- oder Agentenlogik
+  - kein Bedarf an offenem Assistant-Verhalten
+- Fachliche Abgrenzung:
+  - der Kandidat ist nicht `vitals_log_bp`
+  - der Kandidat ist auch nicht allgemeine Vitals-/BP-Sprachsteuerung
+  - produktiv geprueft wird nur der enge Spezialfall "Atemtimer im vorbereiteten BP-Kontext starten"
+- Guardrail fuer die Folgeschritte:
+  - `start_breath_timer` darf nur freigegeben werden, wenn Presetwahl und BP-Kontext explizit modelliert bleiben
+  - kein impliziter Timerstart aus vager Sprache wie "ich will kurz runterkommen"
+  - kein versteckter Kontextwechsel ausserhalb des BP-Flows
+- Ergebnis fuer `F7.2+`:
+  - der Kandidat ist belastbar genug fuer den naechsten Schritt
+  - jetzt geht es nicht mehr um "ob", sondern um den exakten Parameter- und Kontextvertrag fuer `3 min` / `5 min`
+
+#### F7.2 Ergebnisprotokoll
+- Parameter-Vertrag fuer `start_breath_timer` gegen den realen Runtime- und UI-Stand geschnitten.
+- Produktiv zulaessige Parameter:
+  - `3 min`
+  - `5 min`
+- Herleitung aus dem Ist-Stand:
+  - die Engine akzeptiert in `selectPreset(minutes)` und `startPreset(minutes)` ausschliesslich `3` oder `5`
+  - jeder andere Wert fuehrt technisch bereits in einen expliziten Fehler (`Invalid preset minutes. Allowed values are 3 or 5.`)
+  - auch die UI bietet im BP-Overlay ausschliesslich die beiden Presets `3 Minuten` und `5 Minuten`
+- Vertragsregel fuer die Folgeschritte:
+  - `start_breath_timer` bekommt genau einen optionalen Parameter `minutes`
+  - erlaubte Werte sind nur `3` und `5`
+  - fehlt der Parameter, muss `F7.3` explizit klaeren, ob der Flow:
+    - kontrolliert in die bestehende Preset-Auswahl landet
+    - oder einen bewusst gesetzten Default verwendet
+  - ein implizites Akzeptieren anderer Dauern ist nicht erlaubt
+- Explizit nicht Teil des Vertrags:
+  - keine freie Dauer wie `2`, `4`, `7` oder `10` Minuten
+  - keine natuerlichsprachige Dauerstreuung ohne sauberes Mapping auf `3` oder `5`
+  - keine verdeckte spaetere Erweiterung auf weitere Presets ohne neuen dokumentierten Schritt
+- Guardrail-Einordnung:
+  - der enge Parametervertrag schuetzt vor scheinbar komfortabler, aber nicht real getragener Voice-Flexibilitaet
+  - damit bleibt `start_breath_timer` ein deterministischer Spezialfall statt eines halbfreien Timer-Interfaces
+
+#### F7.3 Ergebnisprotokoll
+- Oeffnung des passenden BP-Kontexts und direkter Timerstart ueber einen klaren lokalen Action-Pfad produktiv umgesetzt.
+- Produktives Zielverhalten:
+  - `starte timer` startet direkt aus dem Hero Hub den `3`-Minuten-Atemtimer
+  - nur explizite `5 Minuten` starten das `5`-Minuten-Preset
+  - kein Zwischenstopp in einer Preset-Auswahl
+- Runtime-Schnitt:
+  - `start_breath_timer` ist jetzt im gemeinsamen Intent-Surface fuer Text und Voice verdrahtet
+  - Voice darf den lokalen Spezialpfad direkt dispatchen
+  - der lokale Dispatch oeffnet zuerst `Vitals`, bereitet den BP-Landepunkt vor und startet dann lokal das Preset
+  - Default ohne Parameter ist bewusst `3 Minuten`
+- Guardrails:
+  - keine freien Timerdauern ausserhalb von `3` oder `5`
+  - kein allgemeiner Vitals-/BP-Voice-Control-Pfad
+  - kein neuer Allowed-Action-Contract; der Start bleibt ein enger lokaler Spezialfall
+- Doku-Sync:
+  - `docs/modules/Breath Timer Module Overview.md` auf produktiven Fast-Path-Stand nachgezogen
+- Verifikation:
+  - `node --check` fuer die geaenderten Intent-, Voice-, Vitals- und Hub-Dateien laeuft sauber
+
+#### F7.4 Ergebnisprotokoll
+- Rueckkehr in den vorbereiteten Mess-Flow explizit auf den lokalen Breath-Timer-Runtimevertrag gezogen.
+- Produktiver Rueckkehrvertrag:
+  - nach `completed` oder `aborted` bleibt der Nutzer im Vitals-/BP-Flow
+  - der zuvor aktive BP-Messkontext (`M` / `A`) wird explizit wiederhergestellt
+  - kein versteckter Tab-Drift in andere Vitals-Bereiche
+  - kein erzwungener Auto-Fokus auf Eingabefelder
+- Runtime-Schnitt:
+  - der Breath Timer merkt sich vor Start den Rueckkehrkontext
+  - nach Fade-out wird der BP-Tab erneut aktiviert und der Messkontext ueber einen lokalen Helper restauriert
+  - der Ruecksprung gilt sowohl fuer den produktiven Intent-Start als auch fuer den bestehenden UI-Startpfad
+- Guardrails:
+  - Rueckkehr bleibt rein lokal im bestehenden BP-Flow
+  - kein automatisches Speichern, kein versteckter Mess-Submit, kein weiterer Assistant-Schritt
+- Doku-Sync:
+  - `docs/modules/Breath Timer Module Overview.md` um den expliziten Rueckkehrvertrag ergaenzt
+- Verifikation:
+  - `node --check` fuer `app/modules/vitals-stack/vitals/index.js` und `app/modules/vitals-stack/vitals/breath-timer.js` laeuft sauber
+
+#### F7.5 Ergebnisprotokoll
+- Intent-Fast-Path und optionaler spaeterer Voice-Einstieg fuer den Breath Timer sauber voneinander getrennt.
+- Produktiver Contract:
+  - fachlicher Kern ist ausschliesslich `start_breath_timer`
+  - `assistant-voice` ist nur ein produktiver Zugang zu genau diesem bestehenden Contract
+  - Text und Voice teilen sich denselben Intent-Surface; es gibt keinen zweiten Breath-Timer-Parserkern
+- Explizit nicht Teil des aktuellen produktiven Contracts:
+  - freie weitere Breath-Timer-Formulierungen ausserhalb des dokumentierten Mappings
+  - PWA-Sonderstart oder eigener Breath-Timer-Entry-Point ausserhalb des bestehenden Hero-Hub-/Voice-Flows
+  - allgemeine Vitals-/BP-Sprachsteuerung rund um den Timer
+  - neue generische Allowed Actions fuer Breath Timer
+- Future-Hook-Schnitt:
+  - weitere Breath-Timer-Voice-Varianten bleiben nur als Future Hook dokumentierbar
+  - ein spaeterer Ausbau muesste ueber denselben engen Intent-Contract laufen oder neu dokumentiert und guard-railed werden
+- Doku-Sync:
+  - `docs/modules/Breath Timer Module Overview.md` explizit auf diese Trennung nachgezogen
+- Ergebnis fuer `F7.6`:
+  - der produktive Breath-Timer-Contract ist jetzt klar genug fuer den Abschlusscheck, ohne Voice- oder PWA-Scope-Drift
+
+#### F7.6 Ergebnisprotokoll
+- Abschlusscheck fuer den produktiven Breath-Timer-Fast-Path gegen Runtime, Altpfade und Doku-Sync durchgefuehrt.
+- Gepruefter Produktzustand:
+  - `start_breath_timer` bleibt eng auf `3` / `5` Minuten begrenzt
+  - Hero-Hub-Voice/Text starten direkt den lokalen Spezialpfad ohne Preset-Umweg
+  - der bestehende UI-Startpfad mit Preset-Auswahl bleibt bewusst parallel bestehen und ist kein Drift
+  - nach `completed` oder `aborted` fuehrt der Flow kontrolliert in denselben BP-Kontext zurueck
+- Altpfad-/Cleanup-Befund:
+  - kein toter zweiter Breath-Timer-Parserkern gefunden
+  - kein zusaetzlicher generischer Allowed-Action-Pfad entstanden
+  - der UI-Button-Pfad `openPresetSelection(...)` bleibt absichtlich erhalten, weil er der manuelle Start fuer den BP-Flow ist
+- Doku-/QA-Sync:
+  - `docs/QA_CHECKS.md` um den produktiven Hero-Hub-Fast-Path und den Rueckkehrvertrag erweitert
+  - Breath-Timer-Overview und Roadmap sind auf demselben Contract-Stand
+- Verifikation:
+  - struktureller Repo-Check per `rg` auf Startpfade und Runtime-Hooks
+  - vorhandene `node --check`-Laeufe fuer Intent-, Voice-, Hub- und Vitals-Dateien bleiben gruen
+- Offener Rest:
+  - ein dedizierter Browser-/Live-Server-Smoke fuer den produktiven Breath-Timer-Voice-Pfad bleibt weiter sinnvoll
+  - spaetere Voice-Live-Pruefungen in `F8/F9` haben zwar generelle Client-/Cache-Probleme fuer den neuen Parserstand sichtbar gemacht und danach ausgeraeumt, sie ersetzen aber keinen gezielten Breath-Timer-Live-Smoke
+
+### F8 - Voice-Semantik auf deterministische Slot-/Pattern-Architektur modernisieren
+- F8.1 Bestehenden Voice-Stack gegen die neue Zielarchitektur mappen:
+  - Oberflaechen-/STT-Normalisierung
+  - intent-nahe Normalisierung
+  - aktuelle Match-Regeln
+  - bestehende Failure-Reports
+- F8.2 Zielarchitektur als schmale lokale Pipeline festziehen:
+  - `surface normalization`
+  - `semantic normalization`
+  - `slot / category extraction`
+  - `pattern / intent rules`
+  - `failure review`
+- F8.3 Pflegeeinheit neu definieren:
+  - nicht mehr `Satz nachpatchen`
+  - stattdessen Kategorien, Synonyme, Verbklassen, Units, Filler, STT-Korrekturen und Slot-Kombinationen
+- F8.4 Kanonische produktive Semantik-Familien schneiden:
+  - `MEDICATION_TERM`
+  - `TAKEN_VERB`
+  - `WATER_TERM`
+  - `SALT_TERM`
+  - `PROTEIN_TERM`
+  - `AMOUNT`
+  - `UNIT`
+  - `FILLER`
+  - optional enge `MORNING_COMPOUND`-Marker
+- F8.5 Deterministischen Parservertrag festziehen:
+  - Rohtranskript bleibt sichtbar
+  - Normalisierung reduziert Oberflaechenvarianz
+  - Slots werden lokal und endlich gemappt
+  - Intents entstehen aus Slot-/Pattern-Kombinationen statt aus exakten Beispielsatzen
+- F8.6 Failure-Reports als semantische Lueckenanalyse modellieren:
+  - fehlendes Synonym
+  - fehlende Verbklasse
+  - fehlende Unit / Mengen-Normalisierung
+  - fehlendes Compound-Pattern
+  - zu enger Matcher
+- F8.7 Inkrementellen Umbaupfad fuer den Live-Stack schneiden:
+  - bestehende produktive Pfade stabil halten
+  - zuerst Intake / Medikation / Morning-Compound / Breath Timer migrieren
+  - keinen Big-Bang-Parserwechsel bauen
+- F8.8 Zielstruktur fuer Datenhaltung und Pflegeorte festziehen:
+  - `semantics/entities`
+  - `semantics/verbs`
+  - `semantics/units`
+  - `semantics/fillers`
+  - `semantics/stt-corrections`
+  - `semantics/patterns`
+  - oder eine bewusst kleinere, gleichwertige Struktur, wenn sie fuer MIDAS wartbarer ist
+- F8.9 Test-, Diagnose- und Review-Vertrag definieren:
+  - kleine produktive Beispiellisten pro Intent
+  - Failure-Report-Clustering statt Einzelsatz-Patching
+  - keine unkontrollierte Parser-Spaghetti
+- F8.10 Doku- und Pflegevertrag festziehen:
+  - `docs/Voice Command Semantics.md` als Pflege-/Betriebsdoku
+  - Modul-Overviews nur als knapper Produktvertrag
+  - keine zweite versteckte Parserlogik in Doku-Dateien
+- F8.11 Implementierungsblock fuer den Semantik-Refactor einziehen und zuschneiden:
+  - Dateistruktur schrittweise anlegen, ohne bestehende Entrypoints zu brechen
+  - `surface normalization`, `semantic normalization` und erste `slot extraction` fuer den produktiven Kern real umsetzen
+  - bestehende Intake-, Medication- und Breath-Timer-Regeln als Hybridpfad auf die neuen Semantikbausteine ziehen
+  - Debug-/Failure-Ausgaben auf die neuen Zwischenstufen erweitern
+  - Regressionen gegen den heutigen Produktvertrag lokal absichern
+- F8.12 Abschlusscheck vor F9:
+  - Pruefen, ob die neue Semantikarchitektur MIDAS enger und pflegeleichter macht statt ihn in Richtung freies NLP zu ziehen.
+  - Keine LLM-Live-Semantik, keine Satzbibliotheks-Explosion und kein stilles Selbstlernen einfuehren.
+  - Nur Schichten, Datenstrukturen und Migrationsschritte freigeben, die lokal, deterministisch und testbar bleiben.
+
+#### F8.1 Ergebnisprotokoll
+- Der aktuelle produktive Stack bildet die angestrebte Zielrichtung bereits teilweise ab, trennt die kuenftigen Semantik-Schichten aber noch nicht sauber:
+  - `STT / Transcript Surface`:
+    - `midas-transcribe` liefert `raw_text` und `normalized_text`
+    - dort liegen heute bereits enge Oberflaechen-Normalisierungen fuer:
+      - Lowercasing / Umlaut-Reste
+      - Units wie `milliliter -> ml`, `gramm -> g`
+      - Bindestriche
+      - Dezimal-Komma
+      - Zahlwort-zu-Ziffern vor produktiven Ziel-Units
+    - Einordnung:
+      - das ist heute eine produktive `surface normalization`
+      - zugleich sitzt dort bereits erste fachnahe Semantik, obwohl `midas-transcribe` konzeptionell nur STT sein sollte
+  - `Intent-nahe Normalisierung`:
+    - `app/modules/assistant-stack/intent/normalizers.js`
+    - `normalizeIntentText(...)` uebernimmt heute gemischt:
+      - Oberflaechen-Sauberziehen
+      - Phrase-Korrekturen
+      - Unit-Alias-Normalisierung
+      - deutschsprachige Zahlwort-Reduktion fuer produktive Units
+    - Einordnung:
+      - diese Datei ist aktuell ein Mischbereich aus `surface normalization` und frueher `semantic normalization`
+      - eine eigene Slot-/Kategorieschicht existiert dort noch nicht
+  - `Pattern / Intent Rules`:
+    - `app/modules/assistant-stack/intent/rules.js`
+    - heutige Erkennung bleibt regelbasiert und deterministisch, ist aber noch klar satz-/regex-nah:
+      - Intake-Regeln matchen vor allem auf normalisierte Satzformen mit eingebauten Verbvarianten
+      - Medikation nutzt einen engen Formulierungsraum fuer `medication_confirm_all`
+      - Breath Timer nutzt bereits etwas freiere, aber immer noch direkt textnahe Muster
+    - Einordnung:
+      - kein offener Resolver
+      - aber auch noch keine echte Slot-/Pattern-Architektur mit wiederverwendbaren semantischen Kategorien
+- Bestehende Failure-/Diagnose-Ebene gegen die neue Zielarchitektur gemappt:
+  - `app/modules/assistant-stack/voice/index.js` fuehrt heute bereits eine brauchbare operative Diagnosekette:
+    - Touch-Log mit `Transcript` und `Normalized Transcript`
+    - `commandPlan`-Modi
+    - lokale Fallback-Entscheidungen
+    - automatischer JSON-Export bei echten `no-rule-match`-Faellen
+  - Inhalt der Reports ist diagnostisch schon nah an `failure review`, aber noch nicht semantisch klassifiziert:
+    - es wird noch nicht explizit zwischen
+      - fehlendem Synonym
+      - fehlender Verbklasse
+      - fehlender Unit-Normalisierung
+      - fehlendem Compound-Muster
+      - zu engem Pattern
+      unterschieden
+- Reale Pflegeorte des aktuellen Systems festgehalten:
+  - `midas-transcribe`:
+    - Transcript-Oberflaeche und enge Mengen-/Timer-Normalisierung
+  - `intent/normalizers.js`:
+    - lokale Text-Normalisierung vor dem Matcher
+  - `intent/rules.js`:
+    - produktive Matcher und Payload-Mapping
+  - `voice/index.js`:
+    - Failure-Reports, Touch-Log, operativer Fallback
+  - `docs/Voice Command Semantics.md`:
+    - Betriebs-/Pflegedoku, aber keine produktive Parserquelle
+- Wichtigster Architektur-Befund aus `F8.1`:
+  - MIDAS hat bereits genug deterministische Bausteine fuer die angedachte Modernisierung
+  - die eigentliche Luecke ist nicht `fehlende KI`, sondern:
+    - fehlende explizite Trennung von
+      - Oberflaechen-Normalisierung
+      - semantischer Kategorien-/Slot-Bildung
+      - Pattern-Regeln
+      - Failure-Lueckenanalyse
+  - genau diese Trennung wird damit zum Kern von `F8.2-F8.8`
+- Risiko- und Scope-Befund:
+  - ein Big-Bang-Ersatz des laufenden Parsers waere unnoetig riskant
+  - sinnvoll ist nur ein inkrementeller Umbau oberhalb des bestehenden produktiven Stacks
+  - `docs/Voice Command Semantics.md` darf als Pflegehilfe bleiben, aber nicht zu einer zweiten versteckten Semantikquelle neben dem Code werden
+- Durchgefuehrter F8.1-Check:
+  - Repo-Review ueber:
+    - `app/modules/assistant-stack/intent/normalizers.js`
+    - `app/modules/assistant-stack/intent/rules.js`
+    - `app/modules/assistant-stack/voice/index.js`
+    - `app/modules/assistant-stack/intent/index.js`
+    - `app/modules/assistant-stack/intent/parser.js`
+    - `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-transcribe/index.ts`
+  - bestaetigt:
+    - Voice bleibt heute lokal und deterministisch genug fuer den geplanten Umbau
+    - die Zielarchitektur muss auf vorhandene Bausteine aufsetzen, nicht einen zweiten Parserkern erfinden
+
+#### F8.2 Ergebnisprotokoll
+- Die Zielarchitektur ist als schmale lokale Fuenf-Schicht-Pipeline festgezogen:
+  - `surface normalization`
+  - `semantic normalization`
+  - `slot / category extraction`
+  - `pattern / intent rules`
+  - `failure review`
+- Bedeutung und harte Zustaendigkeit der einzelnen Schichten:
+  - `surface normalization`
+    - Zweck:
+      - rohe Transcript-Oberflaeche fuer den produktiven Parser vereinheitlichen
+    - erlaubt:
+      - Lowercasing
+      - Umlaut-/Encoding-Bereinigung
+      - Interpunktions-/Bindestrich-Bereinigung
+      - Unit-Schreibweisen wie `milliliter -> ml`, `gramm -> g`
+      - enge Zahlwort-/Dezimal-Normalisierung fuer produktive Mengen- und Zeit-Units
+    - nicht erlaubt:
+      - Intent-Entscheidungen
+      - Produktbegriffe deuten
+      - fachliche Freigaben ableiten
+    - Einordnung:
+      - liegt heute teilweise in `midas-transcribe` und teilweise in `intent/normalizers.js`
+  - `semantic normalization`
+    - Zweck:
+      - alltagssprachliche, aber klar begrenzte Oberflaechenvarianten auf semantisch gleiche Produktbegriffe ziehen
+    - erlaubt:
+      - enge Alias-Familien wie:
+        - `tabletten -> medikamente`
+        - `fluessigkeit -> wasser`
+      - Filler-Reduktion
+      - enge Verb-/Begriffsvereinheitlichung fuer produktive Bereiche
+    - nicht erlaubt:
+      - bereits ganze Intents erraten
+      - offene Bedeutungsdeutung oder probabilistische Schlussfolgerung
+    - Ziel:
+      - weniger Satzvarianz, bevor Slots und Pattern greifen
+  - `slot / category extraction`
+    - Zweck:
+      - normalisierte Tokens in endlich definierte semantische Kategorien mappen
+    - erlaubt:
+      - z. B. `MEDICATION_TERM`, `TAKEN_VERB`, `WATER_TERM`, `AMOUNT`, `UNIT`
+      - mehrere Slots pro Utterance
+      - enge Marker fuer Compound-Separatoren
+    - nicht erlaubt:
+      - Seiteneffekte
+      - Dispatch
+      - offene Mehrdeutigkeitsauflosung
+    - Ziel:
+      - produktive Regeln arbeiten nicht mehr primaer auf ganzen Saetzen, sondern auf endlichen Signalfamilien
+  - `pattern / intent rules`
+    - Zweck:
+      - finale, deterministische Intent- und Payload-Bildung
+    - erlaubt:
+      - Slot-Kombinationen
+      - geordnete Pattern-Regeln
+      - begrenzte Rest-Regeln auf normalisiertem Text, wenn sie fuer Stabilitaet weiter noetig sind
+    - nicht erlaubt:
+      - eine zweite Normalisierungsschicht mit verdeckten Alias-Listen
+      - freie Sprache oder fuzzy Matching
+    - Ziel:
+      - `intake_quick_add`, `medication_confirm_all`, `start_breath_timer`, `compound_morning_command` aus klaren Signal-Kombinationen ableiten
+  - `failure review`
+    - Zweck:
+      - nicht erkannte Befehle nicht als Einzelsatzproblem, sondern als semantische Luecke bewerten
+    - erlaubt:
+      - Reports clustern nach Slot-/Pattern-/Normalization-Luecken
+      - Vorschlaege fuer Pflege an der richtigen Schicht ableiten
+    - nicht erlaubt:
+      - produktive Laufzeitentscheidung veraendern
+      - selbsttaetiges Nachlernen
+- Harter Architekturvertrag fuer den kuenftigen Umbau:
+  - jede Regel und jede Pflegeaenderung muss genau einer Schicht zuordenbar sein
+  - `midas-transcribe` darf nur `surface normalization` tragen, keine fachlichen Slot- oder Intent-Entscheidungen
+  - die kuenftige Semantikschicht bleibt lokal und endlich; keine offene NLP-/LLM-Ebene
+  - `pattern / intent rules` bleiben die einzige Schicht, die produktive Intents freigibt
+  - Failure-Reports bleiben Diagnosematerial und werden nicht zum verdeckten Online-Lernsystem
+- Praktische Einordnung fuer den bestehenden Stack:
+  - `midas-transcribe`
+    - kuenftig nur `surface normalization`
+  - `intent/normalizers.js`
+    - kuenftig aufteilen in:
+      - Rest-`surface normalization`, falls lokal noetig
+      - `semantic normalization`
+      - `slot extraction`
+  - `intent/rules.js`
+    - bleibt Heimat von `pattern / intent rules`, aber auf Slots statt auf satznahe Regex zuschneiden
+  - `voice/index.js`
+    - bleibt Heimat von `failure review`, Touch-Log und operativer Diagnose
+- Scope-Schutz explizit festgezogen:
+  - keine neue Schicht fuer probabilistische Scores
+  - kein semantischer Live-Fallback ueber ein LLM
+  - keine globale Sprachabdeckung ausserhalb produktiver MIDAS-Fast-Paths
+  - keine zweite fachliche Parserroute nur fuer Voice
+- Durchgefuehrter F8.2-Check:
+  - Review gegen `F8.1` bestaetigt:
+    - die Zielpipeline ist eng genug fuer MIDAS
+    - sie reduziert Satzpflege, ohne in allgemeines NLP zu kippen
+    - sie laesst inkrementellen Umbau auf dem bestehenden produktiven Stack zu
+
+#### F8.3 Ergebnisprotokoll
+- Die kuenftige Pflegeeinheit ist fuer MIDAS explizit neu definiert:
+  - nicht mehr:
+    - einzelner Beispielsatz
+    - einzelner Prompt-Case
+    - freie umgangssprachliche Komplettformulierung
+  - stattdessen:
+    - semantische Kategorie
+    - Synonym-/Alias-Familie
+    - Verbklasse
+    - Unit-/Mengenfamilie
+    - Filler-/Stoppwort-Familie
+    - STT-Korrekturregel
+    - Slot-Kombination
+    - Pattern-Regel auf Slots
+- Pflegeeinheiten mit harter Zustaendigkeit:
+  - `STT-Korrekturregel`
+    - fuer rohe Oberflaechenprobleme wie:
+      - Bindestriche
+      - Dezimal-Komma
+      - Zahlwort-zu-Ziffern vor Ziel-Units
+      - Unit-Schreibweisen
+    - Heimat:
+      - primaer `surface normalization`
+  - `Synonym-/Alias-Familie`
+    - fuer semantisch gleiche Produktbegriffe wie:
+      - `tabletten`, `medikamente`
+      - `fluessigkeit`, `wasser`
+    - Heimat:
+      - `semantic normalization`
+  - `Verbklasse`
+    - fuer produktive Aktionsverben wie:
+      - `genommen`
+      - `getrunken`
+      - `eintragen`
+      - `starten`
+    - Heimat:
+      - `semantic normalization` und spaeter `slot / category extraction`
+  - `Unit-/Mengenfamilie`
+    - fuer `ml`, `l`, `g`, `kg`, `minuten` plus enge Zahl-/Mess-Reduktion
+    - Heimat:
+      - `surface normalization`
+      - danach als `AMOUNT`/`UNIT` in der Slot-Schicht
+  - `Filler-/Stoppwort-Familie`
+    - fuer alltagssprachliche, semantisch irrelevante Teile wie:
+      - `bitte`
+      - `mir`
+      - `ich habe`
+      - `kannst du`
+    - Heimat:
+      - `semantic normalization`
+    - Regel:
+      - nur entfernen oder neutralisieren, wenn dadurch keine produktive Mehrdeutigkeit entsteht
+  - `Slot-Kombination`
+    - fuer wiederkehrende fachliche Signalmuster wie:
+      - `AMOUNT + UNIT + WATER_TERM`
+      - `MEDICATION_TERM + TAKEN_VERB`
+      - `START_VERB + TIMER_TERM + DURATION`
+    - Heimat:
+      - `slot / category extraction` als Vorstufe fuer Pattern-Regeln
+  - `Pattern-Regel`
+    - fuer die finale, deterministische Intent-Freigabe
+    - Heimat:
+      - `pattern / intent rules`
+- Langfristig wichtigste Pflegeeinheit fuer MIDAS:
+  - `Synonym-/Verb-/Slot-Familie` statt `Satz`
+  - Begruendung:
+    - alltaegliche Sprachvarianz aendert meist Wortwahl, Satzstellung und Filler
+    - die fachlichen Signale bleiben aber klein und stabil
+    - Pflege auf Familienebene deckt dadurch viele reale Varianten mit einer Aenderung ab
+- Konkrete Konsequenz fuer den spaeteren Betrieb:
+  - wenn ein neuer echter Sprachfall auftaucht, lautet die erste Frage nicht:
+    - `welchen Satz muessen wir hinzufuegen?`
+  - sondern:
+    - fehlt eine Alias-Familie?
+    - fehlt eine Verbklasse?
+    - fehlt eine Mengen-/Unit-Normalisierung?
+    - fehlt eine Slot-Kombination?
+    - oder ist nur die Pattern-Regel zu eng?
+- Bewusst ausgeschlossene Pflegeformen:
+  - keine wachsende Liste kompletter Lieblingssaetze
+  - keine modulweise Satzbibliotheken in Doku-Dateien
+  - keine doppelte Pflege derselben Semantik in:
+    - Backend
+    - Frontend-Normalizer
+    - Rules
+    - Docs
+  - keine heuristische `wenn Satz klingt aehnlich dann wohl Intent X`-Logik
+- Auswirkungen auf den kuenftigen Refactor:
+  - `docs/Voice Command Semantics.md` bleibt Beispiel- und Betriebsdoku
+  - produktive Pflege wandert in definierte Schichten:
+    - STT-/Surface-Regeln
+    - semantische Alias-/Verb-/Filler-Familien
+    - Slot-Definitionen
+    - Pattern-Regeln
+  - dadurch wird Failure-Review spaeter direkt auf die richtige Pflegeeinheit routbar
+- Durchgefuehrter F8.3-Check:
+  - Review gegen die bisherigen Realfaelle bestaetigt:
+    - Intake, Medikation, Breath Timer und Morning-Compound profitieren alle eher von Familien-/Slot-Pflege als von Satzsammlung
+    - die neue Pflegeeinheit bleibt klein genug fuer MIDAS und vermeidet Parser-Spaghetti besser als weiterer Regex-Ausbau auf Vollsaetzen
+
+#### F8.4 Ergebnisprotokoll
+- Die kanonischen produktiven Semantik-Familien sind fuer den aktuellen MIDAS-Scope explizit geschnitten:
+  - `MEDICATION_TERM`
+    - Zweck:
+      - taegliche Medikations-Sammelbestaetigung
+    - produktive Kernformen heute:
+      - `medikamente`
+      - `tabletten`
+    - bewusst nicht enthalten:
+      - offene Arznei-/Praeparate-Familien
+      - einzelne Medikamentnamen
+  - `TAKEN_VERB`
+    - Zweck:
+      - positive, abgeschlossene Einnahme-/Bestaetigungssignale
+    - produktive Kernformen heute:
+      - `genommen`
+    - enge Nachbarformen fuer spaetere Pflege denkbar:
+      - `eingenommen`
+    - bewusst nicht enthalten:
+      - negative oder hypothetische Verben
+  - `WATER_TERM`
+    - Zweck:
+      - Wasser-/Fluessigkeits-Intake im engen MIDAS-Sinn
+    - produktive Kernformen heute:
+      - `wasser`
+    - enge Alias-Formen heute bereits naheliegend:
+      - `fluessigkeit`
+    - bewusst nicht enthalten:
+      - Getraenke-Kategorien wie Kaffee, Tee, Saft
+  - `SALT_TERM`
+    - Zweck:
+      - Salz-Intake
+    - produktive Kernform heute:
+      - `salz`
+  - `PROTEIN_TERM`
+    - Zweck:
+      - Protein-Intake
+    - produktive Kernform heute:
+      - `protein`
+  - `AMOUNT`
+    - Zweck:
+      - normierte numerische Menge fuer Intake und Timer
+    - Quelle:
+      - Ziffern
+      - enge Zahlwort-Normalisierung
+      - Dezimalwerte
+    - Regel:
+      - `AMOUNT` bleibt fachlich neutral, bis er mit `UNIT` und einem Produktslot gekoppelt wird
+  - `UNIT`
+    - Zweck:
+      - normierte Mengeneinheiten
+    - produktive Kernwerte heute:
+      - `ml`
+      - `l`
+      - `g`
+      - `kg`
+      - `minuten`
+    - Hinweis:
+      - `minuten` ist nur fuer den Breath-Timer relevant, nicht fuer generische Vitals-Sprache
+  - `FILLER`
+    - Zweck:
+      - semantisch irrelevante, aber haeufige Umgangssprache
+    - produktive Kandidaten heute:
+      - `bitte`
+      - `mir`
+      - `ich habe`
+      - `kannst du`
+      - `den`
+    - Regel:
+      - nur als neutrale Hilfsklasse behandeln, nie als Intent-Signal
+  - `MORNING_COMPOUND_MARKER`
+    - Zweck:
+      - mehrere produktive Units in einem Satz verknuepfen
+    - produktive Kernmarker heute:
+      - `und`
+      - kurze Kommasegmente
+    - Einordnung:
+      - kein eigener Intent
+      - nur Strukturhilfe fuer Compound-Segmentierung
+- Zusaetzlich benoetigte enge Hilfsfamilien fuer den produktiven Kern:
+  - `START_VERB`
+    - fuer Breath Timer:
+      - `starte`
+      - `start`
+      - spaeter ggf. `starten`
+  - `TIMER_TERM`
+    - fuer Breath Timer:
+      - `timer`
+      - `atemtimer`
+  - `INTAKE_LOG_VERB`
+    - fuer Wasser / Salz / Protein:
+      - `getrunken`
+      - `gegessen`
+      - `eintragen`
+      - `eingetragen`
+      - `ein`
+- Kanonische produktive Slot-Kombinationen, die aus diesen Familien spaeter ableitbar sein muessen:
+  - `MEDICATION_TERM + TAKEN_VERB`
+    - Ziel:
+      - `medication_confirm_all`
+  - `AMOUNT + UNIT + WATER_TERM`
+    - Ziel:
+      - Wasser-Intake
+  - `AMOUNT + UNIT + SALT_TERM`
+    - Ziel:
+      - Salz-Intake
+  - `AMOUNT + UNIT + PROTEIN_TERM`
+    - Ziel:
+      - Protein-Intake
+  - `START_VERB + TIMER_TERM (+ AMOUNT + UNIT[minuten])`
+    - Ziel:
+      - `start_breath_timer`
+  - mehrere der obigen Bausteine plus `MORNING_COMPOUND_MARKER`
+    - Ziel:
+      - Compound-Morning-Command
+- Wichtigste Scope-Grenze fuer diese Familien:
+  - Familien sind absichtlich klein und produktzentriert
+  - es wird kein allgemeines Health-Lexikon gebaut
+  - keine globalen Ernaehrungs-, Medikamenten- oder Wellness-Kategorien
+  - jede neue Familie braucht einen realen produktiven Intent-Bezug
+- Architektur-Folgerung aus `F8.4`:
+  - die kuenftige Slot-Schicht muss nicht "alles verstehen"
+  - sie muss nur diese kleinen, stabilen Signalfamilien reproduzierbar erkennen
+  - dadurch bleibt MIDAS deterministisch und die Pflege schlank
+- Durchgefuehrter F8.4-Check:
+  - Abgleich gegen den aktuellen Produktvertrag in:
+    - `docs/Voice Command Semantics.md`
+    - `app/modules/assistant-stack/intent/rules.js`
+    - `app/modules/assistant-stack/intent/normalizers.js`
+  - bestaetigt:
+    - die Familien decken den realen produktiven Kern ab
+    - sie bleiben eng genug, um keine neue Scope-Drift in Richtung offenes Sprachsystem auszulosen
+
+#### F8.5 Ergebnisprotokoll
+- Der kuenftige deterministische Parservertrag ist als feste Kette aus sichtbaren Zwischenstufen definiert:
+  1. `raw transcript`
+  2. `surface-normalized transcript`
+  3. `semantic-normalized transcript`
+  4. `slots / categories`
+  5. `intent rule match`
+  6. `validated intent result`
+- Harte Bedeutung der einzelnen Parserstufen:
+  - `raw transcript`
+    - bleibt fuer Debug, Touch-Log und Failure-Review sichtbar
+    - ist nie allein Grundlage fuer produktiven Dispatch
+  - `surface-normalized transcript`
+    - behebt nur Oberflaechenvarianz
+    - bleibt textnah und reproduzierbar
+  - `semantic-normalized transcript`
+    - reduziert enge alltagssprachliche Varianten auf denselben produktiven Bedeutungsraum
+    - bleibt weiterhin als Textform sichtbar und debugbar
+  - `slots / categories`
+    - sind die erste explizit semantische, aber immer noch endliche Zwischenform
+    - Beispiel:
+      - `bitte trage mir 500 ml wasser ein`
+      - fuehrt nicht direkt zu einem Intent
+      - sondern erst zu Slots wie `AMOUNT`, `UNIT`, `WATER_TERM`, optional `INTAKE_LOG_VERB`
+  - `intent rule match`
+    - ist die erste Schicht, die aus Slots oder eng definierten Restmustern einen produktiven Intent ableitet
+  - `validated intent result`
+    - ist die einzige Form, die an Dispatch, Allowed Actions oder lokale Spezialpfade weitergereicht werden darf
+- Alleiniger produktiver Freigabepunkt:
+  - nur `pattern / intent rules` duerfen einen fachlichen Intent erzeugen
+  - `surface normalization`
+  - `semantic normalization`
+  - `slot extraction`
+  duerfen nie implizit bereits `intake_quick_add`, `medication_confirm_all` oder `start_breath_timer` entscheiden
+- Parservertrag fuer Compound-Befehle:
+  - Compound-Segmentierung bleibt vor oder parallel zur Intent-Regel-Auswertung erlaubt
+  - aber auch dort gilt:
+    - Segmente duerfen nur in dieselbe lokale Semantikkette laufen
+    - kein zweiter Compound-Spezialparser mit eigener Fachlogik
+  - `MORNING_COMPOUND_MARKER` ist nur Strukturhilfe, kein eigener Intent-Freigeber
+- Erlaubte Restform fuer Textmuster:
+  - der Umbau verlangt nicht, dass jede Regel sofort ausschliesslich auf Slots arbeitet
+  - waehrend der Migration sind enge Rest-Pattern auf `semantic-normalized transcript` erlaubt, wenn:
+    - sie produktiv bereits stabil sind
+    - sie spaeter sauber auf Slots ueberfuehrt werden koennen
+    - sie keine zweite Alias- oder Normalisierungsschicht verstecken
+- Verbindlicher Output pro Stufe fuer Debug und Review:
+  - Touch-Log / Diagnose soll kuenftig trennbar sichtbar machen:
+    - `Transcript`
+    - `Surface Normalized`
+    - `Semantic Normalized`
+    - `Slots`
+    - `Decision / Intent / Reason`
+  - nicht alles muss dauerhaft im UI sichtbar sein, aber die Architektur muss diese Sichtbarkeit zulaassen
+- Vertrag gegen Mehrdeutigkeit:
+  - wenn Slots oder Pattern keinen eindeutigen produktiven Intent ergeben, ist das Ergebnis:
+    - `fallback`
+    - oder ein bereits definierter bestaetigungsbeduerftiger Spezialfall
+  - nicht erlaubt:
+    - best guess
+    - probabilistisches Raten
+    - impliziter Intent aus aehnlicher Formulierung
+- Vertrag gegen Parser-Spaghetti:
+  - jede neue Sprachvariante muss einer dieser Aenderungsarten zuordenbar sein:
+    - Surface-Regel
+    - semantische Alias-/Verb-/Filler-Regel
+    - Slot-Mapping
+    - Pattern-Regel
+    - Validation-/Guard-Regel
+  - wenn eine Aenderung in mehr als einer dieser Ebenen gleichzeitig noetig scheint, ist zuerst die Schichtgrenze zu pruefen statt ad hoc Logik zu stapeln
+- Praktische Einordnung gegen den aktuellen Stack:
+  - `parseIntent(...)` und `matchIntentRule(...)` bleiben der produktive Intent-Cut
+  - davor muss der kuenftige Umbau sichtbare Zwischenformen aufbauen, statt immer mehr implizite Regex-Magie in `rules.js` oder `normalizers.js` zu verstecken
+  - `validateIntentMatch(...)` bleibt nachgelagerter Guard-/Payload-Check und nicht Teil der Semantikbildung
+- Durchgefuehrter F8.5-Check:
+  - Review gegen:
+    - `app/modules/assistant-stack/intent/parser.js`
+    - `app/modules/assistant-stack/intent/index.js`
+    - `app/modules/assistant-stack/voice/index.js`
+  - bestaetigt:
+    - der bestehende Intent-Cut ist bereits eng genug, um den neuen Parservertrag inkrementell darunter aufzubauen
+    - es ist kein neuer fachlicher Parallelparser noetig
+
+#### F8.6 Ergebnisprotokoll
+- Die bestehenden JSON-Failure-Reports werden kuenftig nicht als Satzarchiv, sondern als semantische Lueckenanalyse behandelt.
+- Mindestzweck eines Reports:
+  - zeigen, an welcher Parserstufe ein realer Alltagsfall scheitert
+  - und welche Pflegeeinheit deshalb angepasst werden muss
+- Kuenftige kanonische Failure-Klassen:
+  - `surface_normalization_gap`
+    - Beispiel:
+      - Bindestrich- oder Dezimalproblem
+      - Zahlwort wurde nicht sauber reduziert
+      - Unit-Schreibweise wurde nicht vereinheitlicht
+    - primaere Pflegestelle:
+      - `surface normalization`
+  - `semantic_alias_gap`
+    - Beispiel:
+      - neuer alltagssprachlicher Produktbegriff fehlt
+      - `tabletten`/`medikamente`-nahe Variante nicht abgedeckt
+      - neue Wasser-/Fluessigkeits-Umschreibung fehlt
+    - primaere Pflegestelle:
+      - `semantic normalization`
+  - `verb_class_gap`
+    - Beispiel:
+      - ein reales, positives Aktionsverb wie `eingenommen` oder `eingeloggt`-nahe Form fehlt
+    - primaere Pflegestelle:
+      - `semantic normalization` oder spaeter Slot-Familie
+  - `filler_handling_gap`
+    - Beispiel:
+      - harmlose Umgangssprache stoert den Match, obwohl die fachlichen Signale klar da sind
+    - primaere Pflegestelle:
+      - `semantic normalization`
+  - `slot_extraction_gap`
+    - Beispiel:
+      - Menge, Unit oder Produktsignal ist im normalisierten Text sichtbar, wird aber noch nicht als Slot erkannt
+    - primaere Pflegestelle:
+      - `slot / category extraction`
+  - `compound_segmentation_gap`
+    - Beispiel:
+      - Morning-/Mehrfachsatz wird nicht sauber in produktive Einheiten getrennt
+    - primaere Pflegestelle:
+      - Compound-Segmentierung innerhalb derselben Semantikkette
+  - `pattern_rule_gap`
+    - Beispiel:
+      - Slots liegen vor, aber die finale Intent-Regel ist zu eng
+    - primaere Pflegestelle:
+      - `pattern / intent rules`
+  - `validation_or_guard_block`
+    - Beispiel:
+      - Semantik erkannt, aber Validation oder Workflow-Guard blockt
+    - primaere Pflegestelle:
+      - Validatoren / Workflow-Guards
+    - Einordnung:
+      - kein Semantikproblem im engeren Sinn
+- Review-Regel fuer neue Reports:
+  - erste Frage ist nicht:
+    - `welcher Satz fehlt?`
+  - sondern:
+    - an welcher Schicht ist der Fall gekippt?
+    - welche Failure-Klasse passt?
+    - welche kleinste Pflegeaenderung deckt denselben Typ kuenftig stabil ab?
+- Kuenftiger Minimalinhalt fuer semantisch brauchbare Reports:
+  - `raw_transcript`
+  - `surface_normalized_transcript`
+  - `semantic_normalized_transcript`
+  - `slots`
+  - `decision`
+  - `intent_key`
+  - `reason`
+  - `command_plan_mode`
+  - `failure_class`
+  - `review_hint`
+- Einordnung des heutigen Stands:
+  - `voice/index.js` exportiert heute bereits nuetzliche operative Daten:
+    - `raw_transcript`
+    - `normalized_transcript`
+    - `reason`
+    - `command_plan_mode`
+    - `intent_result`
+    - `local_dispatch`
+  - fuer die Zielarchitektur fehlt noch:
+    - explizite Trennung von `surface` und `semantic normalized`
+    - Slot-Sichtbarkeit
+    - Failure-Klassifikation
+    - knapper `review_hint`
+- Kuenftiger Umgang mit mehreren Reports:
+  - nicht einzeln wegpatchen
+  - sondern zusammenfassen nach:
+    - gleicher Failure-Klasse
+    - gleichem Produktslot
+    - gleicher Unit-/Mengenart
+    - gleichem Verb-/Alias-Typ
+  - Ziel:
+    - ein Cluster fuehrt idealerweise zu einer kleinen semantischen Familienaenderung statt zu vielen Satz-Patches
+- Harte Guardrails fuer Failure-Review:
+  - Reports duerfen keine automatische Regel-Erzeugung ausloesen
+  - Reports duerfen keine produktive Laufzeitheuristik erweitern
+  - Android-/Mobile-Downloads bleiben nur Betriebs-/Review-Hilfe
+  - personenbezogene oder sensible Zusatzdaten duerfen nicht ohne echten Bedarf in den Report wachsen
+- Architektur-Folgerung aus `F8.6`:
+  - Failure-Reports werden zu Input fuer kontrollierte semantische Wartung
+  - nicht fuer `Voice lernt selbst`
+  - und nicht fuer eine wachsende Sammlung kompletter Alltagssaetze
+- Durchgefuehrter F8.6-Check:
+  - Review gegen den aktuellen Auto-Export in `app/modules/assistant-stack/voice/index.js` bestaetigt:
+    - das bestehende Report-Format ist schon ein brauchbarer Startpunkt
+    - fuer die neue Zielarchitektur muss es spaeter semantisch angereichert, aber nicht in ein Telemetrie-Monster ausgebaut werden
+
+#### F8.7 Ergebnisprotokoll
+- Der Live-Umbaupfad wird explizit inkrementell geschnitten; kein Big-Bang-Parserersatz.
+- Feste Migrationsreihenfolge fuer den produktiven Stack:
+  1. `surface normalization` sauber isolieren
+  2. `semantic normalization` aus `intent/normalizers.js` heraus explizit machen
+  3. erste `slot / category extraction` fuer den heutigen Kern einfuehren
+  4. `pattern / intent rules` schrittweise von satznahen Regex auf Slot-Kombinationen ziehen
+  5. Failure-Reports und Debug-Sichtbarkeit auf die neuen Zwischenstufen erweitern
+- Bewusst unangetastet im ersten Umbauabschnitt:
+  - `parseIntent(...)` als produktiver Intent-Cut
+  - `validateIntentMatch(...)` als nachgelagerter Guard-/Payload-Check
+  - Voice-Dispatch und lokale Spezialpfade in `voice/index.js`
+  - bestehende Allowed-Action-/Workflow-Guards
+  - bestehende produktive Reorder- und Breath-Timer-Lokalpfade
+- Erster produktiver Zielraum fuer die Migration:
+  - Wasser-Intake
+  - Salz-Intake
+  - Protein-Intake
+  - `medication_confirm_all`
+  - `start_breath_timer`
+  - Compound-Morning-Command nur auf Basis derselben Kernbausteine
+- Warum genau diese Reihenfolge:
+  - sie deckt den realen Voice-Alltag von MIDAS bereits heute ab
+  - sie nutzt bestehende deterministische Regeln
+  - sie erlaubt Vergleich alt vs. neu ohne Aenderung des fachlichen Dispatch-Surfaces
+  - sie vermeidet, dass Appointments, Activity oder andere spaetere Kandidaten die Semantikmigration verunreinigen
+- Konkrete Refactor-Phasen fuer den Code:
+  - `Phase A | Surface sauber herausziehen`
+    - Ziel:
+      - alles rein transcript-nahe in eine klar abgegrenzte Surface-Schicht ziehen
+    - betrifft primaer:
+      - `midas-transcribe`
+      - Rest-Teile aus `intent/normalizers.js`
+    - Ergebnis:
+      - `raw transcript`
+      - `surface-normalized transcript`
+  - `Phase B | Semantic-Normalization explizit machen`
+    - Ziel:
+      - Alias-, Verb- und Filler-Familien als eigene semantische Vorstufe modellieren
+    - betrifft primaer:
+      - heutigen Phrase-/Alias-Teil in `intent/normalizers.js`
+    - Ergebnis:
+      - `semantic-normalized transcript`
+  - `Phase C | Slot-Extraction fuer den Kern einfuehren`
+    - Ziel:
+      - aus dem semantisch normalisierten Text explizite Slots bilden
+    - Start nur fuer:
+      - `AMOUNT`
+      - `UNIT`
+      - `WATER_TERM`
+      - `SALT_TERM`
+      - `PROTEIN_TERM`
+      - `MEDICATION_TERM`
+      - `TAKEN_VERB`
+      - `START_VERB`
+      - `TIMER_TERM`
+      - `MORNING_COMPOUND_MARKER`
+  - `Phase D | Hybrid-Regeln waehrend der Migration`
+    - Ziel:
+      - produktive Regeln koennen uebergangsweise sowohl Slots als auch enge Rest-Textmuster nutzen
+    - Regel:
+      - neue Semantik bevorzugt Slots
+      - alte stabile Regex duerfen nur uebergangsweise stehenbleiben
+      - keine neue inoffizielle Alias-Logik direkt in `rules.js`
+  - `Phase E | Failure-/Debug-Ausbau`
+    - Ziel:
+      - Reports und Touch-Log an die neuen Zwischenstufen anpassen
+    - Ergebnis:
+      - Review kann Schichtfehler direkt sehen
+- Migrationsprinzip fuer jede einzelne Intent-Familie:
+  - erst Vergleichbarkeit herstellen:
+    - alter Match
+    - neuer Slot-/Pattern-Match
+  - dann Produktverhalten gleich lassen
+  - erst danach alten satznahen Match entfernen
+- Explizit kein Teil von `F8.7`:
+  - kein Umbau von:
+    - Appointments
+    - Activity
+    - Trendpilot
+    - PWA-Shortcut
+  - kein Eingriff in Backend-/Frontend-Dispatch-Guards
+  - keine neue Assistant-/LLM-Stufe
+- Praktische Folge fuer die naechsten Schritte:
+  - `F8.8` muss die Datenstruktur so schneiden, dass diese Phasen in echten Dateien/Orten landbar werden
+  - danach ist der Weg frei fuer einen spaeteren dedizierten Implementierungsblock, ohne die laufende Roadmap semantisch wieder aufzusprengen
+- Durchgefuehrter F8.7-Check:
+  - Review gegen:
+    - `app/modules/assistant-stack/intent/normalizers.js`
+    - `app/modules/assistant-stack/intent/rules.js`
+    - `app/modules/assistant-stack/intent/parser.js`
+    - `app/modules/assistant-stack/voice/index.js`
+  - bestaetigt:
+    - der aktuelle Stack laesst die Migration schrittweise zu
+    - ein refactorierbarer Kern ist vorhanden
+    - die groesste Gefahr waere nicht technische Machbarkeit, sondern vorschnelles Mischen alter und neuer Semantik ohne klare Phasen
+
+#### F8.8 Ergebnisprotokoll
+- Die Zielstruktur fuer Datenhaltung und Pflegeorte ist bewusst klein und refactorierbar geschnitten, nicht als grosses neues NLP-Unterverzeichnis.
+- Empfohlene Zielstruktur im bestehenden Intent-Modul:
+  - `app/modules/assistant-stack/intent/normalizers/`
+    - `surface.js`
+    - `semantic.js`
+    - optional gemeinsamer Export-Entry
+  - `app/modules/assistant-stack/intent/semantics/`
+    - `entities.js`
+    - `verbs.js`
+    - `units.js`
+    - `fillers.js`
+    - `compound.js`
+  - `app/modules/assistant-stack/intent/slots/`
+    - `extract.js`
+    - optional kleine domaeennahe Helper
+  - `app/modules/assistant-stack/intent/rules/`
+    - `intake.js`
+    - `medication.js`
+    - `breath-timer.js`
+    - `confirm-reject.js`
+    - `navigation.js`
+    - gemeinsamer `index.js`
+- Minimalistische Alternative, falls der erste Schritt kleiner bleiben soll:
+  - `normalizers.js` bleibt als Einstieg bestehen, delegiert aber intern an:
+    - `normalizers/surface.js`
+    - `normalizers/semantic.js`
+  - `rules.js` bleibt als Einstieg bestehen, delegiert aber intern an kleine Regel-Module
+  - Slot-Extraction kann zunaechst in:
+    - `intent/slots.js`
+    - oder `intent/semantics/slots.js`
+    landen
+- Bewusste Strukturentscheidung:
+  - nicht sofort alles auf einmal in viele Dateien aufspalten
+  - aber die kuenftigen Pflegeeinheiten muessen klar dateilich verortet werden
+  - deshalb gilt:
+    - kleine Einstiegsmodule duerfen bleiben
+    - die eigentliche fachliche Pflege soll in schmale Unterdateien wandern
+- Harte Zustaendigkeiten pro Zielort:
+  - `midas-transcribe`
+    - nur `surface normalization`, soweit STT-nah und backendseitig sinnvoll
+    - keine fachlichen Alias-Familien
+    - keine Slot-/Intent-Logik
+  - `intent/normalizers/surface.js`
+    - frontendseitige Rest-Surface-Normalisierung
+    - nur dort, wo sie lokal fuer Parserstabilitaet gebraucht wird
+  - `intent/normalizers/semantic.js`
+    - semantische Alias-, Verb- und Filler-Familien
+  - `intent/semantics/entities.js`
+    - Produktbegriffe wie Wasser, Salz, Protein, Medikamente, Timer
+  - `intent/semantics/verbs.js`
+    - Verbfamilien wie `genommen`, `getrunken`, `starten`
+  - `intent/semantics/units.js`
+    - Unit-Familien und normierte Unit-Klassen
+  - `intent/semantics/fillers.js`
+    - Filler-/Stoppwort-Familien
+  - `intent/semantics/compound.js`
+    - Marker fuer Compound-/Morning-Segmentierung
+  - `intent/slots/extract.js`
+    - explizite Slot-Bildung aus semantisch normalisiertem Text
+  - `intent/rules/*.js`
+    - finale produktive Pattern-/Intent-Regeln auf Slot- oder Hybridbasis
+  - `intent/parser.js`
+    - Orchestrierung der Stufen
+  - `intent/index.js`
+    - Public API / Envelope / Telemetry
+  - `voice/index.js`
+    - Failure-Review, Touch-Log, Export, operative Nutzung der Parser-Ausgaben
+  - `docs/Voice Command Semantics.md`
+    - Pflege- und Betriebsdoku, nie produktive Parserquelle
+- Datenstruktur-Grundsatz fuer die Semantikdateien:
+  - kein Freitext-Register
+  - sondern endliche, explizite Familien
+  - bevorzugt in einfacher Objekt-/Array-Form, z. B.:
+    - kanonischer Name
+    - erlaubte Alias-Tokens
+    - optionale Guard-Hinweise
+  - keine Logik-Explosion in den Semantikdateien selbst
+- Wichtigste Refactor-Regel fuer die Dateistruktur:
+  - neue Dateien duerfen die Verantwortung entflechten
+  - aber nicht den Debugpfad verschleiern
+  - `parser.js` muss weiterhin nachvollziehbar zeigen:
+    - welche Stufe wann laeuft
+    - welcher Output weitergereicht wird
+    - wo `fallback` entsteht
+- Klares Nein zu folgenden Strukturvarianten:
+  - keine zweite Semantikquelle in `docs/`
+  - kein riesiges generisches `nlp/`-Unterverzeichnis
+  - keine gemischten Dateien, die gleichzeitig:
+    - Alias-Pflege
+    - Slot-Logik
+    - Pattern-Matching
+    - Validation
+    - Routing
+    enthalten
+- Praktische Folge aus `F8.8`:
+  - ein spaeterer Implementierungsblock kann jetzt konkret sagen:
+    - welche neuen Dateien angelegt werden
+    - welche bestehenden Dateien nur zu Fassade/Entrypoints werden
+    - welche Semantikfamilien zuerst wirklich aus `rules.js` und `normalizers.js` herausgezogen werden
+- Durchgefuehrter F8.8-Check:
+  - Review gegen die heutigen Pflegeorte bestaetigt:
+    - die Struktur ist klein genug fuer MIDAS
+    - sie respektiert die bestehende Intent-API
+    - sie erlaubt echten Refactor, ohne sofort das gesamte Modul zu zerlegen
+
+#### F8.9 Ergebnisprotokoll
+- Der kuenftige Test-, Diagnose- und Review-Vertrag fuer die neue Voice-Semantik ist festgezogen.
+- Testarten, die die neue Architektur zwingend abdecken muss:
+  - `surface normalization checks`
+    - Zahlen
+    - Dezimal-Komma
+    - Bindestriche
+    - Unit-Schreibweisen
+  - `semantic normalization checks`
+    - Alias-Familien
+    - Verbklassen
+    - Filler-Neutralisierung
+  - `slot extraction checks`
+    - korrekte Slot-Bildung fuer den produktiven Kern
+  - `pattern / intent checks`
+    - korrekte Intent-Freigabe aus Slots
+  - `failure review checks`
+    - sinnvolle Klassifikation und sichtbarer Diagnosepfad
+- Kuenftige produktive Beispielsets pro Intent-Familie:
+  - `intake_quick_add | water`
+    - knappe Form
+    - Form mit Filler
+    - Form mit Log-Verb
+    - Form mit ausgeschriebenem Zahlwort
+    - Form mit Dezimalwert
+  - `intake_quick_add | salt`
+    - dieselben Typen in kleiner Menge
+  - `intake_quick_add | protein`
+    - dieselben Typen in kleiner Menge
+  - `medication_confirm_all`
+    - Kernform
+    - Alias ueber `tabletten`
+    - Form mit Filler / Besitzanzeige
+  - `start_breath_timer`
+    - Default `3`
+    - explizite `5`
+    - höfliche Alltagsvariante
+    - Zahlwort-Variante
+  - `compound_morning_command`
+    - `und`
+    - Komma
+    - gemischte Reihenfolge innerhalb des erlaubten Scopes
+- Minimaler Review-Output fuer jede neue Parserstufe:
+  - Eingabe
+  - `raw transcript`
+  - `surface-normalized transcript`
+  - `semantic-normalized transcript`
+  - `slots`
+  - `intent result`
+  - `reason` bei `fallback`
+- Kuenftige Review-Regel fuer reale Betriebsfaelle:
+  - ein neuer Fehlfall wird erst gegen diese Reihenfolge geprueft:
+    1. Surface-Problem?
+    2. semantische Alias-/Verb-/Filler-Luecke?
+    3. Slot-Luecke?
+    4. Pattern-Luecke?
+    5. Validation-/Guard-Block?
+  - erst danach wird ueber Codeaenderung entschieden
+- Guardrail fuer Parser-Reviews:
+  - keine Aenderung gilt als `gut`, nur weil ein einzelner neuer Satz funktioniert
+  - jede Aenderung muss zeigen, dass sie:
+    - mindestens einen Typ echter Sprachvarianz abdeckt
+    - keine bestehende Kernform regressiert
+    - in genau einer primaeren Pflegeeinheit landet
+- Kuenftiger QA-Schnitt:
+  - `docs/QA_CHECKS.md` soll spaeter nicht nur End-to-End-Saetze enthalten
+  - zusaetzlich braucht es dort oder in engem Begleitdoku-Format:
+    - kleine Semantik-Regressionen fuer
+      - Surface
+      - Semantic
+      - Slots
+      - Patterns
+  - MIDAS braucht dafuer keine grosse Testmatrix, aber reproduzierbare Kernfaelle
+- Review-Vertrag fuer Failure-Report-Cluster:
+  - Cluster werden nicht nach identischem Satz, sondern nach Fehlerart verglichen
+  - ein guter Fix schliesst idealerweise:
+    - mehrere Reports
+    - derselben Failure-Klasse
+    - mit einer Aenderung an einer Familie oder Pattern-Regel
+- Explizite Folge fuer den weiteren Roadmap-Verlauf:
+  - nach `F8.10` reicht reine Architekturarbeit nicht mehr
+  - vor dem Sprung in `F9` braucht `F8` einen echten Implementierungsblock fuer den Semantik-Refactor
+  - Grund:
+    - sonst bleibt `F8` nur Theorie und die neue Architektur wird nicht in den produktiven Parser ueberfuehrt
+- Durchgefuehrter F8.9-Check:
+  - Abgleich gegen:
+    - `docs/QA_CHECKS.md`
+    - `docs/Voice Command Semantics.md`
+    - bestehende Voice-/Intent-Diagnose in `app/modules/assistant-stack/voice/index.js`
+  - bestaetigt:
+    - ein schlanker, reproduzierbarer Semantik-Review-Vertrag ist fuer MIDAS realistisch
+    - der naechste sinnvolle Schritt nach Abschluss von `F8` muss tatsaechlich in Richtung Implementierung gehen
+
+#### F8.10 Ergebnisprotokoll
+- Der Doku- und Pflegevertrag fuer die neue Voice-Semantik ist jetzt explizit geschnitten.
+- Harte Rollen der betroffenen Doku-Orte:
+  - `docs/Voice Command Semantics.md`
+    - Zweck:
+      - Betriebs- und Pflegeueberblick fuer reale produktive Sprachbefehle
+    - erlaubt:
+      - heutiger Produktvertrag
+      - knappe Beispiele
+      - Review-/Pflegehinweise
+      - Verweise auf die echten Codeorte
+    - nicht erlaubt:
+      - zweite Parserlogik
+      - Vollstaendigkeitssuggestion fuer alle moeglichen Alltagssaetze
+      - implizite Produktzusagen vor echter Runtime-Integration
+  - Modul-Overviews
+    - Zweck:
+      - knapper Integrationsvertrag pro Modul
+    - erlaubt:
+      - unterstuetzte Intents
+      - Voice Entry Points
+      - Allowed Actions / Spezialpfade
+      - Guardrails / Nicht-Zustaende
+      - knapper Pflegehinweis auf `Voice Command Semantics.md` und die Codeorte
+    - nicht erlaubt:
+      - Satzsammlungen
+      - Parserdetails
+      - wachsende Alias-/Verb-/Unit-Listen
+  - `docs/QA_CHECKS.md`
+    - Zweck:
+      - Regressionen und reproduzierbare Kernfaelle
+    - erlaubt:
+      - Beispiel-Cases fuer Surface / Semantic / Slots / Pattern / End-to-End
+    - nicht erlaubt:
+      - Betriebsdoku fuer Sprache
+  - `CHANGELOG.md`
+    - Zweck:
+      - Outcome-Doku
+    - nicht erlaubt:
+      - Implementierungsdetails der Semantikarchitektur
+- Harte Rollen der produktiven Codeorte:
+  - `midas-transcribe`
+    - STT und enge Surface-Normalisierung
+  - `intent/normalizers/*`
+    - Surface-/Semantic-Normalisierung
+  - `intent/semantics/*`
+    - endliche Familien fuer Entities, Verbs, Units, Fillers, Compound-Marker
+  - `intent/slots/*`
+    - Slot-Bildung
+  - `intent/rules/*`
+    - finale produktive Pattern-/Intent-Regeln
+  - `intent/parser.js`
+    - Stufenorchestrierung
+  - `voice/index.js`
+    - Diagnose, Export, Touch-Log-Nutzung der Parserausgaben
+- Kuenftige Pflege-Regel fuer neue Sprachvarianten:
+  - zuerst Code:
+    - `surface`
+    - `semantic`
+    - `slots`
+    - `rules`
+  - danach Doku:
+    - `Voice Command Semantics.md`
+    - nur wenn sich der produktive Vertrag sichtbar geaendert hat, zusaetzlich Modul-Overview oder `QA_CHECKS`
+- Kuenftige Pflege-Regel fuer reale Fehlfaelle:
+  - Touch-Log / Report pruefen
+  - semantische Failure-Klasse bestimmen
+  - richtigen Codeort aendern
+  - nur dann Doku nachziehen, wenn der produktive Sprachvertrag oder die Review-Anleitung sich sichtbar geaendert hat
+- Bewusst ausgeschlossene Doku-Anti-Pattern:
+  - keine Beispiele in Modul-Overviews vervielfachen
+  - keine neuen Alias-Listen in Markdown-Dateien pflegen
+  - keine Satzlisten parallel in `Voice Command Semantics.md`, `QA_CHECKS` und Overviews halten
+  - keine Doku als Ersatz fuer fehlende Tests oder fehlende Parserstruktur benutzen
+- Praktische Konsequenz fuer den laufenden Betrieb:
+  - `Voice Command Semantics.md` bleibt dein menschlich lesbarer Einstiegspunkt
+  - die echte Produktwahrheit liegt aber in den kuenftigen Semantik- und Regeldateien
+  - damit bleibt es fuer dich pflegbar, ohne dass die Doku selbst zum zweiten System wird
+- Explizite Folge fuer den naechsten Schritt:
+  - `F8.11` wird jetzt bewusst der Implementierungsblock
+  - `F8.12` zieht danach den Abschlusscheck, bevor `F9` gestartet wird
+- Durchgefuehrter F8.10-Check:
+  - Review gegen:
+    - `docs/Voice Command Semantics.md`
+    - `docs/modules/Medication Module Overview.md`
+    - `docs/modules/Breath Timer Module Overview.md`
+    - `docs/QA_CHECKS.md`
+  - bestaetigt:
+    - die Doku-Rollen lassen sich sauber trennen
+    - ohne diesen Vertrag wuerde die neue Semantikarchitektur schnell wieder in Doku-Drift oder doppelter Pflege enden
+
+#### F8.11 Ergebnisprotokoll
+- Der erste echte Implementierungsschnitt fuer den Semantik-Refactor ist im bestehenden Intent-Kern umgesetzt, ohne den produktiven Dispatch-Cut zu brechen.
+- Umgesetzt im Code:
+  - neue Surface-Schicht:
+    - `app/modules/assistant-stack/intent/normalizers/surface.js`
+  - neue Semantic-Schicht:
+    - `app/modules/assistant-stack/intent/normalizers/semantic.js`
+  - neue semantische Familien:
+    - `app/modules/assistant-stack/intent/semantics/entities.js`
+    - `app/modules/assistant-stack/intent/semantics/verbs.js`
+    - `app/modules/assistant-stack/intent/semantics/units.js`
+    - `app/modules/assistant-stack/intent/semantics/fillers.js`
+    - `app/modules/assistant-stack/intent/semantics/compound.js`
+  - neue Slot-Extraction:
+    - `app/modules/assistant-stack/intent/slots/extract.js`
+  - modulare Regeldateien:
+    - `app/modules/assistant-stack/intent/rules/index.js`
+    - `app/modules/assistant-stack/intent/rules/intake.js`
+    - `app/modules/assistant-stack/intent/rules/medication.js`
+    - `app/modules/assistant-stack/intent/rules/breath-timer.js`
+    - `app/modules/assistant-stack/intent/rules/confirm-reject.js`
+    - `app/modules/assistant-stack/intent/rules/navigation.js`
+    - `app/modules/assistant-stack/intent/rules/vitals.js`
+- Bestehende Einstiegspunkte bleiben bewusst stabil:
+  - `app/modules/assistant-stack/intent/normalizers.js`
+    - ist jetzt Fassade fuer Surface + Semantic + Slots
+  - `app/modules/assistant-stack/intent/rules.js`
+    - ist jetzt Fassade fuer die modulare Regelaggregation
+  - `app/modules/assistant-stack/intent/parser.js`
+    - bleibt der produktive Intent-Cut
+- Produktiver Scope des ersten Refactors:
+  - Wasser / Salz / Protein werden jetzt ueber Slots plus Hybrid-Regeln erkannt
+  - `medication_confirm_all` nutzt die neue semantische Reduktion `tabletten -> medikamente`
+  - `start_breath_timer` nutzt jetzt Slot-Signale fuer `START_VERB`, `TIMER_TERM` und optionale Dauer
+  - bestehende Vitals-, Navigation- und Confirm-/Reject-Vertraege bleiben kompatibel
+- Diagnose-/Failure-Ausbau mitgezogen:
+  - Voice-Preflight loggt jetzt zusaetzlich:
+    - `Surface Normalized`
+    - `Semantic Normalized`
+    - `Slots`
+  - Fallback-Reports tragen jetzt auch:
+    - `surface_normalized_transcript`
+    - `semantic_normalized_transcript`
+    - `slots`
+- Wichtige Guardrail-Entscheidungen im Implementierungsschnitt:
+  - kein neuer Parallelparser
+  - kein Umbau von Validation, Dispatch oder Workflow-Guards
+  - kein Sprung in Appointments / Activity / PWA
+  - `rules.js` bleibt weiterhin frei von Routing-/Persistenzlogik
+- Verifikation:
+  - `node --check` gruen fuer:
+    - `app/modules/assistant-stack/intent/normalizers.js`
+    - `app/modules/assistant-stack/intent/rules.js`
+    - `app/modules/assistant-stack/intent/parser.js`
+    - `app/modules/assistant-stack/intent/index.js`
+    - `app/modules/assistant-stack/intent/slots/extract.js`
+    - `app/modules/assistant-stack/voice/index.js`
+  - gezielte Parser-Smokes per `node --input-type=module` bestaetigen:
+    - `Trage mir 500 ml Wasser ein`
+    - `Ich habe 0.4 g Salz genommen`
+    - `Protein 32 g`
+    - `Meine Tabletten genommen`
+    - `Bitte starte den Timer`
+    - `Kannst du mir den 5 Minuten Timer starten`
+    werden weiter korrekt auf die produktiven Intents gemappt
+- Offene Restpunkte vor `F8.12`:
+  - `midas-transcribe` bleibt noch enger am alten `normalized_text`-Contract und ist noch nicht auf die neue Frontend-Schichttrennung umgezogen
+  - `docs/QA_CHECKS.md` ist fuer die neue Semantik-Regressionssicht noch nicht nachgezogen
+
+#### F8.12 Ergebnisprotokoll
+- Abschlusscheck fuer `F8` durchgefuehrt.
+- Funktionale Konsistenz / Scope:
+  - die neue Semantikarchitektur ist jetzt nicht mehr nur Doku, sondern produktiv im Intent-Kern verankert
+  - der Refactor bleibt eng auf:
+    - Wasser
+    - Salz
+    - Protein
+    - `medication_confirm_all`
+    - `start_breath_timer`
+    - produktive Compound-Bausteine
+  - es ist kein offener Sprachraum, kein probabilistischer Resolver und kein zweiter fachlicher Parser entstanden
+- Altlasten / tote Pfade:
+  - `normalizers.js` und `rules.js` bleiben bewusst als Fassade erhalten und sind damit keine toten Kompatibilitaetsreste
+  - keine neue verdeckte Alias- oder Routinglogik in `rules.js`
+  - offene Restpunkte bleiben bewusst sichtbar statt halb migriert:
+    - Backend-`midas-transcribe` noch nicht auf die neue Schichttrennung nachgezogen
+    - `docs/QA_CHECKS.md` noch nicht auf die neue Semantik-Regression erweitert
+- Doku-Drift:
+  - Roadmap und `docs/Voice Command Semantics.md` sind auf dem neuen Pflege-/Codezustand
+  - Modul-Overviews bleiben bewusst beim knappen Produktvertrag; kein weiterer Nachzug noetig fuer diesen `F8`-Block
+- Verifikation:
+  - `node --check` gruen fuer:
+    - `app/modules/assistant-stack/intent/normalizers.js`
+    - `app/modules/assistant-stack/intent/rules.js`
+    - `app/modules/assistant-stack/intent/parser.js`
+    - `app/modules/assistant-stack/intent/index.js`
+    - `app/modules/assistant-stack/intent/slots/extract.js`
+    - `app/modules/assistant-stack/voice/index.js`
+  - zuvor gelaufene Parser-Smokes fuer Kernfaelle bleiben der relevante Sanity-Beleg fuer den ersten Refactor-Schnitt
+- Explizite Einordnung der offenen Restpunkte:
+  - `midas-transcribe`-Nachzug ist sinnvoll, aber kein Blocker fuer `F9`
+  - `QA_CHECKS`-Nachzug gehoert spaeter in den QA-/Doku-Block und muss nicht den Modul-Follow-up aufhalten
+  - die neue Semantikarchitektur ist fuer den aktuellen Scope belastbar genug, um danach wieder in die produktive Roadmap zu wechseln
+- Abschlussentscheid:
+  - `F8` ist damit `DONE`
+  - `F9` kann jetzt sauber gestartet werden, ohne dass die Semantikarbeit als offene Theoriespur liegenbleibt
+
+### F9 - Medication Voice Low-Stock Follow-up als engen Spezialfall pruefen und schneiden
+- F9.1 Bestehende Voice-Einstiegspunkte gegen Medication-Low-Stock-Follow-up mappen:
+  - `medication_confirm_all`
+  - Morning-Compound-Commands
+  - produktive Single-Confirm-Pfade fuer Medikation
+- F9.2 Engen Trigger-Vertrag schneiden:
+  - nur nach erfolgreicher Medication-Bestaetigung
+  - nur bei realem `low_stock`
+  - keine generische Voice-Reorder-Session
+- F9.3 Reply-/Prompt-Vertrag schneiden:
+  - kurze Low-Stock-Ansage
+  - optionaler lokaler Follow-up-Confirm `ja` / `nein`
+  - keine Behauptung von Versand oder Bestellung
+- F9.4 Ausfuehrung bei `ja` konservativ modellieren:
+  - nur lokaler Reorder-Start auf Basis des bestehenden Medication-Reorder-Spezialfalls
+  - kein neuer Agenten- oder Kommunikationspfad
+  - `nein` fuehrt sauber zurueck in den normalen Abschluss
+- F9.5 Kaltstart-/PWA-/Landepunkt-Randbedingungen explizit pruefen:
+  - Follow-up darf nicht von einem speziellen PWA-Entry-Point abhaengen
+  - ein spaeterer PWA-Shortcut darf hoechstens denselben bestehenden Voice-Flow schneller erreichen
+- F9.6 Implementierungsblock fuer den Medication-Low-Stock-Follow-up einziehen und zuschneiden:
+  - enger Follow-up-Trigger nur nach erfolgreichem `medication_confirm_all` real umsetzen
+  - kurzen Reply-/Prompt-Nachsatz mit lokalem `ja` / `nein` produktiv anbinden
+  - `ja` ausschliesslich auf den bestehenden lokalen Reorder-Startvertrag ziehen
+  - keine neue Versand-, Bestell- oder Pending-Session-Semantik einfuehren
+  - Debug-/Guard-Ausgaben fuer Trigger, Prompt und lokalen Reorder-Start nachziehen
+- F9.7 Abschlusscheck vor F10:
+  - Pruefen, ob der Follow-up-Flow eng genug bleibt und keinen offenen Voice-/Assistant-Reorder draus macht.
+  - Keine neue Versand- oder Bestellsemantik implizit einfuehren.
+  - Fruehe Doku-/Future-Hook-Nachzuege sofort angleichen, wenn sich ein belastbarer Kandidat abzeichnet.
+
+#### F9.1 Ergebnisprotokoll
+- Bestehende produktive Voice-Einstiegspunkte gegen den moeglichen Medication-Low-Stock-Follow-up gemappt:
+  - `medication_confirm_all`
+    - produktiv vorhanden als enger lokaler Spezialpfad im gemeinsamen Intent-Surface
+    - Runtime-Anker:
+      - `app/modules/assistant-stack/intent/rules/medication.js`
+      - `app/modules/assistant-stack/voice/index.js`
+      - `app/modules/hub/index.js`
+    - Verhalten heute:
+      - Voice erkennt nur die taegliche Sammelbestaetigung offener Medikation
+      - lokal werden alle offenen Medikament-IDs des Tages geladen und bestaetigt
+      - wenn keine offene Medikation existiert, endet der Pfad bereits mit engem lokalen Block-Grund
+    - Einordnung fuer den Follow-up:
+      - das ist der primaere belastbare Voice-Einstiegspunkt fuer einen spaeteren Low-Stock-Follow-up
+      - nur hier liegt heute ein sauberer, erfolgreicher Voice-Medikationsabschluss mit lokalem Runtime-Wissen ueber die Tagesliste vor
+  - Morning-Compound-Commands
+    - produktiv vorhanden als Mehrfachbefehl ueber denselben Intent-/Voice-Stack
+    - `medication_confirm_all` kann dort als eine Compound-Unit neben Wasser / Salz / Protein auftreten
+    - Runtime-Anker:
+      - `app/modules/assistant-stack/voice/index.js`
+      - gemeinsamer Compound-Reply-/Dispatch-Pfad
+    - Verhalten heute:
+      - Medikation wird innerhalb des Compound-Plans wie ein normaler lokaler Spezialfall behandelt
+      - danach gibt es bisher keinen zweiten Voice-Schritt nur fuer Reorder oder Low-Stock
+    - Einordnung fuer den Follow-up:
+      - ein spaeterer Low-Stock-Follow-up darf den Compound-Fall nur dann betreffen, wenn die Medikations-Unit erfolgreich war
+      - der Compound-Pfad erzeugt damit keinen eigenen Reorder-Einstieg, sondern hoechstens denselben engen Nachsatz nach erfolgreicher Medikation
+  - produktive Single-Confirm-Pfade fuer Medikation
+    - im engeren Voice-Sinn existiert heute kein separater per-Medikament-Confirm-Pfad
+    - produktiv vorhanden ist nur:
+      - die Sammelbestaetigung `medication_confirm_all`
+    - im UI existieren zwar Checkbox-/Card- und Undo-Pfade, aber:
+      - kein eigener Voice-Contract fuer einzelne Medikamente
+      - kein Voice-Confirm fuer `ackLowStock(...)`
+      - kein Voice-Confirm fuer `getMedicationReorderStartContract(...)`
+    - Einordnung fuer den Follow-up:
+      - `F9` darf nicht auf einem nicht existierenden Single-Medication-Voice-Pfad aufbauen
+      - wenn der Spezialfall kommt, muss er auf `medication_confirm_all` und denselben lokalen Tageskontext aufsetzen
+- Bestehende Reorder-nahe Runtime-Bausteine gegen den moeglichen Follow-up gespiegelt:
+  - im Medication-/Intake-Stack existiert bereits ein enger lokaler Reorder-Startvertrag:
+    - `getMedicationReorderStartContract(...)`
+    - lokaler Zwei-Schritt-Confirm im Low-Stock-UI
+    - `mailto:`-Start per `global.location.href = contract.href`
+    - Guard-Reasons wie:
+      - `medication-reorder-not-low-stock`
+      - `medication-reorder-doctor-email-missing`
+      - `medication-reorder-mailto-unavailable`
+  - Einordnung:
+    - diese Bausteine sind belastbar genug als moeglicher Zielpunkt fuer einen Voice-Follow-up
+    - sie sind aber heute rein UI-/lokal getrieben und nicht Teil eines produktiven Voice-Pending-Contexts
+- Wichtigster Mapping-Befund aus `F9.1`:
+  - es gibt genau einen belastbaren produktiven Voice-Medikationsabschluss, auf den ein spaeterer Low-Stock-Follow-up sauber aufsetzen koennte:
+    - erfolgreiche `medication_confirm_all`-Verarbeitung
+  - es gibt keinen produktiven separaten Voice-Reorder-Pfad, keine generische Medication-Voice-Session und keinen per-Medikament-Voice-Confirm, an den `F9` anschliessen duerfte
+  - der moegliche Follow-up muss deshalb:
+    - eng an den lokalen Erfolg von `medication_confirm_all` gekoppelt bleiben
+    - denselben Tages-/Low-Stock-Kontext nutzen
+    - auf den bestehenden lokalen Reorder-Startvertrag zeigen
+    - aber keinen neuen offenen Medication-/Reorder-Sprachraum erzeugen
+- Explizite Nicht-Zustaende fuer die weitere Arbeit:
+  - kein Follow-up nach beliebigen Medication-UI-Aktionen
+  - kein Follow-up nach blossem Low-Stock-Render ohne vorherigen Voice-Medikationsabschluss
+  - kein eigener Voice-Einstieg fuer `ackLowStock(...)`
+  - kein Voice-Trigger direkt auf `mailto:`-Links oder UI-Reorder-Buttons
+  - kein Pending-Context, der unabhaengig vom erfolgreichen Medikations-Voice-Pfad bestehen bleibt
+- Durchgefuehrter F9.1-Check:
+  - Runtime-Review ueber:
+    - `app/modules/assistant-stack/intent/rules/medication.js`
+    - `app/modules/assistant-stack/voice/index.js`
+    - `app/modules/hub/index.js`
+    - `app/modules/intake-stack/medication/index.js`
+    - `app/modules/intake-stack/intake/index.js`
+    - `docs/modules/Medication Module Overview.md`
+  - bestaetigt:
+    - der moegliche Follow-up kann auf vorhandene lokale Medication- und Reorder-Bausteine aufsetzen
+    - der Produktvertrag bleibt nur dann sauber, wenn `F9.2` den Trigger strikt auf erfolgreiche Voice-Medikationsbestaetigung plus reales `low_stock` begrenzt
+
+#### F9.2 Ergebnisprotokoll
+- Der Trigger-Vertrag fuer den moeglichen Medication-Low-Stock-Follow-up ist hart auf den bestehenden lokalen Medication-Voice-Erfolg begrenzt.
+- Positiver Trigger nur unter diesen kumulativen Bedingungen:
+  - erfolgreicher lokaler Abschluss von `medication_confirm_all`
+    - also kein `fallback`
+    - kein `unsupported_local`
+    - kein `blocked_local`
+    - konkret nur nach einem echten `handled`-Resultat des bestehenden Spezialpfads
+  - derselbe tagesbezogene Medication-Kontext ist weiterhin lokal verfuegbar
+    - `dayIso` des aktuellen Voice-/Text-Laufs
+    - Medication-Snapshot fuer genau diesen Tag
+  - nach erfolgreicher Bestaetigung existiert mindestens ein reales `low_stock` im geladenen Tageszustand
+    - nicht nur historisch
+    - nicht nur UI-seitig sichtbar aus einem alten Render
+    - nicht nur theoretisch aus Profil-/Doctor-Daten abgeleitet
+- Explizit nicht ausreichend als Trigger:
+  - blosser Match auf `medication_confirm_all` vor dem lokalen Dispatch
+  - Compound-Plan enthaelt eine Medikations-Unit, die aber nicht erfolgreich verarbeitet wurde
+  - `voice-medication-none-open`
+  - `voice-medication-load-failed`
+  - `voice-medication-confirm-failed`
+  - Low-Stock-UI ist offen oder wurde vorher irgendwann gerendert
+  - Medication-Changed-Event ohne direkten Bezug zu einem gerade erfolgreichen Voice-Medikationsabschluss
+- Trigger-Schnitt fuer Single- und Compound-Faelle:
+  - Single-Command:
+    - nur nach erfolgreichem lokalen `medication_confirm_all`-Dispatch darf geprueft werden, ob der frisch geladene Tageszustand noch `low_stock` enthaelt
+  - Compound-Command:
+    - nur dann, wenn die Medikations-Unit innerhalb des Compound-Plans erfolgreich `handled` wurde
+    - der Follow-up darf anschliessend hoechstens einmal fuer denselben Gesamtbefehl entstehen
+    - kein Follow-up, wenn im Compound nur Intake-Units erfolgreich waren oder die Medikations-Unit geblockt/fallback war
+- Explizite Grenze gegen generische Reorder-Session:
+  - der Trigger erzeugt keinen offenen Medication-Modus
+  - der Trigger erzeugt keinen laenger lebenden Pending-Context fuer spaetere freie Sprache
+  - der Trigger ist nur ein enger unmittelbarer Nachsatz auf denselben erfolgreichen Medikationsabschluss
+  - ohne diesen unmittelbaren Erfolg gibt es keinen spaeteren Voice-Reorder-Einstieg
+- Trigger-Schnitt gegen UI- und Text-Pfade:
+  - der Spezialfall darf spaeter auf denselben lokalen Medication-/Reorder-Bausteinen beruhen wie der bestehende UI-Pfad
+  - aber:
+    - UI-Klicks auf Low-Stock-Elemente loesen den Voice-Follow-up nicht aus
+    - Text-/Hub-Pfad und Voice-Pfad duerfen denselben Erfolgs-/Low-Stock-Vertrag teilen
+    - es entsteht trotzdem keine allgemeine `reorder_pending`-Semantik ausserhalb des engen lokalen Nachsatzes
+- Praktische Runtime-Folgerung fuer den spaeteren Bau:
+  - nach erfolgreichem `medication_confirm_all` muss ein frischer Snapshot oder ein bereits sicher aktueller Mutation-Stand ausgewertet werden
+  - der Follow-up darf nur auf `med.low_stock === true` reagieren
+  - der Trigger darf nicht auf:
+    - `low_stock_days`
+    - Arzt-Mail vorhanden
+    - bestehende `mailto:`-Moeglichkeit
+    allein feuern
+  - diese Dinge gehoeren erst spaeter in den Reorder-Start-/Guard-Vertrag, nicht in den Trigger selbst
+- Wichtigster Trigger-Befund aus `F9.2`:
+  - der einzig saubere Trigger ist:
+    - `medication_confirm_all` lokal erfolgreich abgeschlossen
+    - danach im selben Tageskontext reales `low_stock` vorhanden
+  - alles andere wuerde `F9` in Richtung generischer Medication-/Reorder-Session oder UI-getriebener Reaktivitaet aufweichen
+- Durchgefuehrter F9.2-Check:
+  - Runtime-Review gegen:
+    - `app/modules/assistant-stack/voice/index.js`
+    - `app/modules/hub/index.js`
+    - `app/modules/intake-stack/medication/index.js`
+    - `app/modules/intake-stack/intake/index.js`
+  - bestaetigt:
+    - erfolgreicher lokaler Medikationsabschluss, Tages-Snapshot und reales `med.low_stock` sind im bestehenden Stack die einzigen belastbaren Trigger-Signale
+    - `F9.3` darf deshalb nur einen unmittelbaren, engen Reply-/Prompt-Nachsatz auf genau diesen Trigger modellieren
+
+#### F9.3 Ergebnisprotokoll
+- Der Reply-/Prompt-Vertrag fuer den moeglichen Medication-Low-Stock-Follow-up ist jetzt bewusst knapp, lokal und semantisch defensiv geschnitten.
+- Zweck des Nachsatzes:
+  - nach erfolgreicher Medikationsbestaetigung und realem `low_stock` nur kurz darauf hinweisen, dass ein lokaler Rezeptkontakt moeglich ist
+  - danach optional einen engen lokalen Confirm `ja` / `nein` anbieten
+  - kein offenes Gespraech ueber Bestellung, Versand, Arztworkflow oder Status erzeugen
+- Inhaltlicher Kern des Follow-up-Prompts:
+  - bestaetigt zuerst den bereits erledigten Medikationsschritt
+  - fuegt dann nur den knappen Low-Stock-Hinweis an
+  - fragt unmittelbar und eng nach dem lokalen Reorder-Start
+- Produktiv erlaubte Bedeutungsbausteine im Prompt:
+  - Medikation ist bestaetigt
+  - fuer mindestens ein Medikament besteht Low-Stock
+  - ein lokaler Rezeptkontakt / lokaler Reorder-Start ist moeglich
+  - `ja` startet den bestehenden lokalen Spezialfall
+  - `nein` beendet den Nachsatz sauber
+- Produktiv verbotene Bedeutungsbausteine:
+  - keine Aussage, dass bereits bestellt wurde
+  - keine Aussage, dass bereits etwas versendet wurde
+  - keine Aussage, dass ein Rezept angefordert oder bestaetigt sei
+  - keine Aussage, dass eine Nachricht den Arzt bereits erreicht hat
+  - keine Behauptung ueber spaeteren Status wie `unterwegs`, `in Arbeit`, `bestellt`, `nachbestellt`
+- Empfohlener enger Prompt-Schnitt:
+  - lange/visuelle Form:
+    - `Medikation bestaetigt. Mindestens ein Medikament ist knapp. Soll ich den lokalen Rezeptkontakt starten?`
+  - kurze/gesprochene Form:
+    - `Medikation bestaetigt. Medikament ist knapp. Lokalen Rezeptkontakt starten?`
+  - Einordnung:
+    - `Medikament ist knapp` oder `mindestens ein Medikament ist knapp` ist semantisch sauberer als jede Form von Bestell-/Versandnahe
+    - `lokaler Rezeptkontakt` schliesst direkt an den bestehenden UI-/Mailto-Vertrag an
+- Erlaubter Confirm-Raum fuer den Nachsatz:
+  - positiv:
+    - `ja`
+  - negativ:
+    - `nein`
+  - bewusst nicht Teil dieses Schritts:
+    - freie Varianten wie:
+      - `ja bitte`
+      - `mach das`
+      - `nein danke`
+      - `später`
+    - diese koennen spaeter nur dann erweitert werden, wenn sie den engen Confirm-Raum nicht aufweichen
+- Verhalten bei `nein`:
+  - kein weiterer Nachsatz
+  - normaler Abschluss des Voice-Laufs
+  - keine bleibende Pending-Reorder-Session
+- Verhalten bei ausbleibender oder unklarer Antwort:
+  - der Prompt darf nicht in offene Nachfrageketten kippen
+  - kein generisches `wie meinst du das?`
+  - spaetestens dann sauberer Abschluss statt offener Reorder-Konversation
+- Sprachliche Anbindung an bestehende Runtime-Texte:
+  - bestehender Bestand nutzt bereits knappe Formulierungen wie:
+    - `Medikation bestaetigt.`
+    - `Rezeptkontakt lokal bestaetigen, um die Mail-App zu oeffnen.`
+    - `Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.`
+  - der neue Follow-up-Prompt muss genau auf diesem Ton bleiben:
+    - kurz
+    - sachlich
+    - lokal
+    - ohne neue Bestellsemantik
+- Wichtigster Reply-/Prompt-Befund aus `F9.3`:
+  - der Follow-up darf nur ein enger Nachsatz sein:
+    - `Medikation bestaetigt`
+    - `Low-Stock-Hinweis`
+    - `lokalen Rezeptkontakt starten?`
+  - alles darueber hinaus wuerde den bestehenden lokalen Mailto-Spezialfall semantisch zu einer offenen Voice-Reorder-Session aufblasen
+- Durchgefuehrter F9.3-Check:
+  - Review gegen:
+    - bestehende Medication-Reply-Texte in `app/modules/assistant-stack/voice/index.js`
+    - bestehende Text-/Hub-Reply-Texte in `app/modules/hub/index.js`
+    - lokale Reorder-UI-Texte in `app/modules/intake-stack/intake/index.js`
+  - bestaetigt:
+    - ein kurzer Low-Stock-Nachsatz mit `ja` / `nein` laesst sich sprachlich konsistent in den heutigen Bestand einfuegen
+    - der Wortlaut muss explizit lokal und nicht-versprechend bleiben, damit `F9.4` nur den bestehenden Reorder-Spezialfall startet
+
+#### F9.4 Ergebnisprotokoll
+- Die Ausfuehrung bei `ja` ist bewusst konservativ auf den bestehenden lokalen Medication-Reorder-Spezialfall begrenzt.
+- Positiver Pfad bei `ja`:
+  - es wird kein neuer Reorder-Workflow erfunden
+  - es wird kein Assistant-/Agentenpfad gestartet
+  - es wird ausschliesslich der bereits vorhandene lokale Reorder-Startvertrag genutzt:
+    - `getMedicationReorderStartContract(...)`
+    - Guard-Reasons bleiben unveraendert
+    - Ziel ist weiter nur der lokale `mailto:`-Start
+- Konkrete beabsichtigte Wirkung bei `ja`:
+  - den passenden Low-Stock-Medikationskontext fuer denselben Tag lokal bestimmen
+  - daraus den bestehenden Reorder-Start-Contract bilden
+  - wenn der Contract gueltig ist:
+    - denselben lokalen Startpfad ausloesen, der heute ueber das Low-Stock-UI in Richtung Mail-App fuehrt
+  - wenn der Contract blockiert:
+    - sauber lokal blocken
+    - keine Ersatzlogik und keinen weiteren offenen Reorder-Dialog beginnen
+- Was `ja` ausdruecklich nicht tun darf:
+  - keine Mail selbst versenden
+  - keinen Arztkontakt als bereits erfolgt behaupten
+  - keinen Server-/Backend-Auftrag anlegen
+  - keine neue Pending-Order-/Rezept-Session speichern
+  - keinen zweiten generischen Confirm-Loop fuer freie Folgekommandos eroeffnen
+- Beziehung zum bestehenden UI-Zwei-Schritt-Confirm:
+  - die Voice-Ausfuehrung darf denselben lokalen Sicherheitsgedanken respektieren
+  - produktiv relevant ist aber nur die konservative Obergrenze:
+    - Ergebnis bleibt `lokaler Reorder-Start`
+    - nicht `Bestellung ausgefuehrt`
+  - ob der Voice-Follow-up intern direkt den bestehenden lokalen Start ausloest oder noch in denselben lokalen Confirm-Status fuehrt, ist Implementierungsdetail
+  - fachlich darf in keinem Fall mehr passieren als heute im UI:
+    - `Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.`
+- Auswahl-Schnitt fuer den Low-Stock-Zielkontext:
+  - der Voice-Follow-up ist kein freier Auswahl-Dialog zwischen mehreren Medikamenten
+  - wenn mehrere `low_stock`-Medikamente vorhanden sind, darf der Spezialfall nur den bereits bestehenden lokalen Reorder-Contract fuer den aktuellen Tageskontext nutzen
+  - keine neue sprachliche Medikamentauswahl in diesem Schritt
+  - falls Mehrdeutigkeit spaeter relevant wird, waere das ein eigener Scope-Entscheid, nicht Teil dieses Follow-ups
+- Verhalten bei `nein`:
+  - sofortiger sauberer Abschluss
+  - keine Mail-App
+  - kein versteckter `reorder_prompted`-Status
+  - keine spaetere Voice-Fortsetzung aus demselben Nachsatz heraus
+- Verhalten bei Guard-Block nach `ja`:
+  - nur lokale Fehl-/Block-Rueckmeldung im Stil des bestehenden Medication-/Voice-Bestands
+  - Beispiele fuer zulassige Blockursachen:
+    - `notLowStock`
+    - `doctorEmailMissing`
+    - `mailtoUnavailable`
+  - kein heuristischer Fallback auf andere Kontakt- oder Bestellwege
+- Wichtigster Ausfuehrungsbefund aus `F9.4`:
+  - `ja` darf nur den bestehenden lokalen Rezeptkontakt anstossen
+  - die maximale Semantik bleibt:
+    - Mail-App wird geoeffnet
+    - Rezeptkontakt bleibt lokal
+  - genau diese Grenze ist die zentrale Guardrail gegen versehentliche Versand-, Bestell- oder Agentenlogik
+- Durchgefuehrter F9.4-Check:
+  - Runtime-Review gegen:
+    - `app/modules/intake-stack/medication/index.js`
+    - `app/modules/intake-stack/intake/index.js`
+    - `docs/modules/Medication Module Overview.md`
+  - bestaetigt:
+    - der bestehende Reorder-Spezialfall ist konservativ genug als Zielpunkt fuer `ja`
+    - `F9.5` muss deshalb nur noch pruefen, ob dieser enge Follow-up nicht von besonderen Entry-Points oder PWA-Randbedingungen abhaengt
+
+#### F9.5 Ergebnisprotokoll
+- Die Kaltstart-/PWA-/Landepunkt-Randbedingungen fuer den moeglichen Medication-Low-Stock-Follow-up sind explizit geprueft.
+- Wichtigster Befund:
+  - der Follow-up haengt fachlich nicht von einem speziellen PWA- oder Sonder-Entry-Point ab
+  - er kann nur innerhalb desselben bestehenden Voice-Laufs nach erfolgreicher `medication_confirm_all`-Verarbeitung entstehen
+  - damit bleibt er automatisch an den normalen Hero-Hub-/Push-to-talk-Flow gebunden
+- Kaltstart-Grenze:
+  - der bestehende Voice-Adapter ist weiter an Boot- und Auth-Gates gebunden:
+    - `computeVoiceGateStatus()`
+    - `isBootReady()`
+    - kein produktiver Start bei `booting` oder `auth-check`
+  - Einordnung fuer den Follow-up:
+    - nach echtem Kaltstart kann kein Low-Stock-Follow-up einfach isoliert erscheinen
+    - zuerst muss der normale Voice-Lauf produktiv offen sein
+    - dann erst kann der enge Nachsatz innerhalb derselben Session auftreten
+- Resume-/Background-Grenze:
+  - die fruehere conversation-/resume-first Altlogik ist fuer Voice V1 bereits entfernt oder neutralisiert
+  - es gibt keinen vorgesehenen Mechanismus, einen Low-Stock-Follow-up nach App-Resume, PageShow oder Focus wieder aufzunehmen
+  - Einordnung:
+    - der moegliche Follow-up ist kein persistenter Dialogzustand
+    - Hintergrundwechsel, Resume oder Relaunch duerfen ihn nicht spaeter erneut anbieten
+- PWA-Grenze:
+  - die App ist als PWA installierbar, aber ein eigener PWA-Voice-Sonderstart ist erst spaeter in `F12` Thema
+  - fuer `F9` gilt daher:
+    - kein eigener Manifest-/Shortcut-/Start-URL-Vertrag
+    - kein direkter Deep-Link in einen Medication-Reorder-Follow-up
+    - kein eigener Standalone-Sonderpfad fuer `ja` / `nein`
+  - Einordnung:
+    - ein spaeterer PWA-Shortcut darf hoechstens den bestehenden Voice-Flow schneller oeffnen
+    - der Medication-Low-Stock-Follow-up bleibt trotzdem an denselben produktiven Session-Erfolg gebunden
+- Landepunkt-Grenze im UI:
+  - der Follow-up darf nicht verlangen, dass das Medication-/Intake-Panel bereits sichtbar ist
+  - er darf aber auf denselben lokalen Medication-/Reorder-Vertrag zielen, der spaeter die Mail-App anstoesst
+  - damit bleibt der Landepunkt:
+    - bestehender Voice-Lauf
+    - bestehender lokaler Medication-Kontext
+    - kein spezieller PWA- oder Panel-Entry-Point
+- Explizite Nicht-Zustaende:
+  - kein Follow-up bei App-Start nur wegen vorhandenen `low_stock`
+  - kein Follow-up bei PWA-Standalone-Start ohne unmittelbar vorausgehende Voice-Medikationsbestaetigung
+  - kein Resume eines alten `ja` / `nein`-Prompts nach Reload, Resume oder Hintergrundwechsel
+  - kein separater Shortcut direkt fuer Medication-Reorder oder Low-Stock-Voice
+- Praktische Architektur-Folgerung:
+  - der spaetere Follow-up muss rein ephemer bleiben
+  - er darf nur im unmittelbaren Output-/Confirm-Raum des aktuellen Voice-Laufs existieren
+  - sobald dieser Lauf endet oder unterbrochen wird, ist der Nachsatz verfallen
+  - dadurch entsteht keine neue Start- oder Resume-Komplexitaet fuer Boot, PWA oder Router
+- Wichtigster Randbedingungs-Befund aus `F9.5`:
+  - der moegliche Medication-Low-Stock-Follow-up ist ein enger Inline-Nachsatz im bestehenden Voice-Flow
+  - gerade deshalb braucht er keinen und darf keinen eigenen Kaltstart-, PWA- oder Landepunkt-Vertrag bekommen
+- Durchgefuehrter F9.5-Check:
+  - Review gegen:
+    - `app/modules/assistant-stack/voice/index.js`
+    - `index.html`
+    - `docs/Voice Reactivation Roadmap.md`
+    - Guardrails in dieser Follow-up-Roadmap
+  - bestaetigt:
+    - Boot-/Auth-Gates, Push-to-talk-Zentralisierung und die spaetere PWA-Shortcut-Grenze sind mit dem engen Follow-up kompatibel
+    - fuer `F9.6` ist damit der enge Implementierungsblock sauber vorbereitet
+
+#### F9.6 Ergebnisprotokoll
+- Der enge Medication-Low-Stock-Follow-up ist jetzt produktiv im bestehenden Voice-Stack angebunden, ohne einen neuen offenen Reorder- oder Assistant-Pfad einzufuehren.
+- Umgesetzt im Code:
+  - `app/modules/assistant-stack/voice/index.js`
+    - lokaler ephemerer Pending-Context fuer den engen `ja` / `nein`-Nachsatz nach erfolgreicher Medikationsbestaetigung
+    - enger Ziel-Action-Marker:
+      - `medication_low_stock_reorder_start`
+    - lokaler Resolver fuer den Follow-up-Confirm:
+      - `ja` startet ausschliesslich den lokalen Reorder-Start
+      - `nein` beendet den Nachsatz sauber
+    - `runVoiceMedicationConfirmAll()` laedt nach erfolgreicher Sammelbestaetigung einen frischen Tages-Snapshot und prueft nur dort auf reales `low_stock`
+    - Single- und Compound-Pfad fuegen den kurzen Low-Stock-/Rezeptkontakt-Nachsatz nur dann an, wenn die Medikationsverarbeitung wirklich `handled` war
+  - `app/modules/intake-stack/intake/index.js`
+    - neuer lokaler Helper:
+      - `startMedicationLowStockReorder(options = {})`
+    - der Helper nutzt den bestehenden Medication-Reorder-Startvertrag:
+      - frischen Tages-Snapshot laden
+      - Low-Stock-Medikation fuer denselben Tag bestimmen
+      - `getMedicationReorderStartContract(...)` verwenden
+      - bestehende Lock-/Cooldown-Grenzen respektieren
+      - bei Erfolg weiter nur:
+        - `Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.`
+    - der Helper ist bewusst ueber `appModules.capture` exponiert und fuehrt keine neue Versand-/Bestelllogik ein
+- Produktiv umgesetzter Trigger-Vertrag:
+  - nur nach erfolgreichem lokalem `medication_confirm_all`
+  - nur nach frischer Nachladung desselben Tages
+  - nur wenn dort mindestens ein echtes `med.low_stock === true` vorhanden ist
+  - kein Follow-up bei:
+    - `voice-medication-none-open`
+    - Lade-/Confirm-Fehlern
+    - blossem UI-Low-Stock-Render
+    - generischen Medication-Aenderungen ohne erfolgreichen Voice-Medikationsabschluss
+- Produktiv umgesetzter Prompt-/Antwortvertrag:
+  - gesprochene Form bleibt knapp und lokal:
+    - `Medikation bestaetigt. Medikament ist knapp. Lokalen Rezeptkontakt starten?`
+  - im Compound-Fall wird derselbe enge Nachsatz ohne neue Session-Semantik an die Sammelantwort angehaengt
+  - `ja` fuehrt nur zum bestehenden lokalen Reorder-Start
+  - `nein` fuehrt nur zu:
+    - `Alles klar.`
+- Guardrail-Entscheidungen im Implementierungsschnitt:
+  - kein neuer Hub-/Assistant-Pending-Resolver fuer generischen Reorder
+  - kein neuer Medication-Voice-Modus
+  - keine freie Medikamentauswahl per Sprache
+  - keine Versand-, Bestell- oder Rezept-Erfolgssemantik
+  - kein eigener Kaltstart-, Resume- oder PWA-Sonderpfad
+- Debug-/Diagnose-Ausbau:
+  - lokales Arming/Clearing des Pending-Contexts wird im Voice-Diag mit eigener Ziel-Action geloggt
+  - erfolgreicher Low-Stock-Follow-up-Trigger wird nach der Medikationsbestaetigung explizit geloggt
+  - lokaler Reorder-Start und Guard-Blocker werden im Capture-/Medication-Diag fuer den Voice-Follow-up mit eigener Quelle protokolliert
+- Verifikation:
+  - `node --check` gruen fuer:
+    - `app/modules/assistant-stack/voice/index.js`
+    - `app/modules/intake-stack/intake/index.js`
+- Offene Restpunkte vor `F9.7`:
+  - expliziter Review auf:
+    - tote oder doppelte Pending-Pfade
+    - moegliche Semantik-Drift zwischen Voice- und UI-Reorder-Texten
+    - notwendige Doku-Nachzuege in Medication-/Voice-Doku und spaeteren QA-Checks
+  - Live-Smoke des neuen `ja` / `nein`-Nachsatzes im Browser ist nach dem Syntaxcheck noch nicht erneut dokumentiert
+
+#### F9.7 Ergebnisprotokoll
+- Abschlusscheck fuer den Medication-Voice-Low-Stock-Follow-up durchgefuehrt.
+- Funktionale Konsistenz / Scope:
+  - der neue Follow-up bleibt auf den engen Spezialfall begrenzt:
+    - erfolgreicher lokaler `medication_confirm_all`
+    - frischer Tages-Snapshot
+    - reales `low_stock`
+    - kurzer `ja` / `nein`-Nachsatz
+  - es ist kein generischer Medication-Reorder-Dialog, kein neuer Assistant-Pfad und keine Versand-/Bestellsemantik entstanden
+- Tote Codepfade / Altlasten:
+  - klare Altlast im lokalen Low-Stock-UI-Reorder-Startpfad entfernt:
+    - tote Zeilen nach einem fruehen `return` in `handleMedicationReorderStart(...)`
+  - kein zusaetzlicher doppelter Pending-Resolver fuer Reorder eingefuehrt; der Voice-Follow-up bleibt lokal und ephemer
+- Doku-/QA-Nachzug:
+  - `docs/modules/Medication Module Overview.md`
+    - auf den neuen engen Voice-Follow-up und denselben lokalen Reorder-Startvertrag nachgezogen
+  - `docs/Voice Command Semantics.md`
+    - um den produktiven Low-Stock-Nachsatz nach Medikationsbestaetigung erweitert
+  - `docs/QA_CHECKS.md`
+    - um einen expliziten Check fuer den neuen `ja` / `nein`-Follow-up ergaenzt
+- Verifikation:
+  - `node --check` erneut gruen fuer:
+    - `app/modules/assistant-stack/voice/index.js`
+    - `app/modules/intake-stack/intake/index.js`
+- Explizite Restgrenze nach `F9`:
+  - echter Browser-/Device-Live-Smoke fuer den neuen Follow-up bleibt weiter sinnvoll, ist aber kein Blocker fuer den Roadmap-Abschluss dieses Blocks
+  - weitergehende Reorder-/Shortcut-/Node-Ideen bleiben bewusst ausserhalb von `F9`
+- Abschlussentscheid:
+  - `F9` ist damit `DONE`
+  - `F10` kann auf dem bereinigten und dokumentierten Spezialfall aufsetzen, ohne halboffene Reorder- oder Pending-Altlasten mitzuschleppen
+
+### F10 - Appointments, Activity und weitere friction-heavy Module gezielt pruefen
+- F10.1 Appointments-Modul auf sinnvolle, enge Fast Paths pruefen:
+  - immer gegen den neuen Slot-/Pattern- und Guard-Vertrag lesen
+  - keine Rueckkehr zu satznahen Sonderregeln pro Modul
+- F10.2 Activity und weitere Tracker-Starts auf realen Reibungsnutzen pruefen:
+  - nur dort weitertragen, wo der neue Semantik-Kern mit kleinen endlichen Signal-Familien ausreicht
+  - keine Kandidaten weiterziehen, die nur ueber freie Formulierungsvielfalt attraktiv wirken
+- F10.3 Vorbereitete Masken / UI-Vorbelegungen als Alternative zu vollwertigen Voice-Steuerungen pruefen:
+  - bevorzugen, wenn sie denselben Intent-/Action-Contract mit weniger Semantikaufwand erreichbar machen
+  - keine zweite halbsprachliche Nebenroute aufbauen
+- F10.4 Module mit geringem Nutzen bewusst aussparen und dokumentiert auf `skip` setzen.
+- F10.5 Ergebnis als priorisierte Shortlist statt als Sammelwunschliste festhalten.
+- F10.6 Abschlusscheck vor F11:
+  - Pruefen, ob die Shortlist weiter echte Reibung abbildet und keine Scope-Drift enthaelt.
+  - Pruefen, ob weitergetragene Kandidaten den neuen `surface -> semantic -> slots -> pattern`-Vertrag respektieren.
+  - Tote Kandidaten, ueberholte Ideen und Wackelkandidaten explizit streichen statt mitschleppen.
+  - Nur fuer produktiv weitergetragene Module fruehe Doku-Updates oder Placeholder-Nachzuege vorsehen.
+
+#### F10.1 Ergebnisprotokoll
+- Das Appointments-Modul wurde gegen den aktuellen produktiven Intent-/Voice-Stand und den neuen Semantik-Vertrag gelesen.
+- Produktiver Ist-Zustand:
+  - `app/modules/appointments/index.js`
+    - traegt heute UI, CRUD, Sync und `getUpcoming(...)`
+    - liefert Assistant-/Header-Kontext, aber keinen eigenen produktiven Intent- oder Voice-Fast-Path
+  - `docs/modules/Appointments Module Overview.md`
+    - ist konsistent dazu:
+      - noch kein freigegebener Intent-/Voice-Fast-Path
+      - keine produktiven Prefills
+      - keine Voice-Operationen fuer Save / Toggle / Delete
+  - `app/modules/assistant-stack/intent/rules/navigation.js`
+    - kennt heute nur engen generischen Modulwechsel fuer:
+      - `vitals`
+      - `medikamente`
+    - `appointments` / `termine` ist dort bewusst noch nicht freigegeben
+  - `app/modules/assistant-stack/intent/validators.js`
+    - guardet `simple_navigation` derzeit ebenfalls nur auf:
+      - `vitals`
+      - `intake`
+  - `app/modules/assistant-stack/voice/index.js`
+    - Voice V1 erlaubt `open_module` heute nur fuer:
+      - `vitals`
+      - `medikamente` / `intake`
+    - damit existiert produktiv noch nicht einmal ein enger Voice-Open-Pfad fuer Appointments
+- Wichtigster Semantik-Befund fuer `F10.1`:
+  - Appointments ist kein guter Kandidat fuer freie Voice-Terminverwaltung.
+  - Ein echter Voice-CRUD-Pfad fuer Termine wuerde heute neue Semantikfamilien brauchen:
+    - Termin-/Kalender-Entitaeten
+    - Datums-/Zeit-Slots
+    - Status-/Editier-Slots
+    - deutlich mehr Guard- und Workflow-Logik
+  - Das waere fuer den aktuellen Voice-V1-Schnitt zu breit und wuerde den neuen `surface -> semantic -> slots -> pattern`-Vertrag schnell in Richtung offener Satzvielfalt druecken.
+- Enger belastbarer Kandidat:
+  - ein reiner `open_module`-Fast-Path fuer Appointments
+  - Beispielziel:
+    - `oeffne termine`
+    - `oeffne appointments`
+  - Einordnung:
+    - passt in den bestehenden Action-Contract `open_module`
+    - bleibt UI-safe
+    - braucht keine neue Schreib- oder Pending-Semantik
+    - ist nur dann sinnvoll, wenn der reale Reibungsnutzen gegenueber normalem Hub-Tap hoch genug ist
+- Moegliche Alternative mit besserem Scope-Profil:
+  - vorbereitete Appointment-Maske / Vorbelegung statt vollwertiger Voice-Steuerung
+  - fachlich interessant nur dann, wenn spaeter ein enger, endlicher Prefill-Vertrag moeglich ist, z. B.:
+    - Panel direkt auf `Neu`
+    - einzelne sichere Vorfelder statt freier Terminformulierung
+  - aktueller Befund:
+    - heute existiert noch kein solcher produktiver Prefill-Contract im Modul
+    - das bleibt deshalb vorerst ein spaeterer `F10.3`-Pruefpunkt, nicht schon ein Kandidat fuer unmittelbare Umsetzung
+- Explizit ausgeschlossene Appointment-Fast-Paths im aktuellen Schnitt:
+  - kein freies Anlegen von Terminen per Voice
+  - kein Voice-Statuswechsel `scheduled` / `done`
+  - kein Voice-Loeschen von Terminen
+  - kein halbsprachlicher Editierdialog fuer Titel, Datum, Uhrzeit, Ort oder Notizen
+  - kein Fast Path, der Datums-/Zeitverstaendnis nur ueber freie Formulierungsvielfalt rechtfertigt
+- Praktische Folgerung fuer die Shortlist nach `F10.1`:
+  - `appointments_open_module`
+    - bleibt als moeglicher enger Kandidat auf der Shortlist
+    - aber nur als UI-safe Moduloeffnung, nicht als Termin-CRUD
+  - Appointment-Prefills / vorbereitete Maske
+    - bleiben moeglicher spaeterer Kandidat fuer `F10.3`
+    - nur bei klar endlichem Vorbelegungs-Vertrag
+  - freie Appointment-Voice-Verwaltung
+    - fuer den aktuellen Scope explizit `skip`
+- Wichtigster Abschlussbefund aus `F10.1`:
+  - fuer Appointments ist im aktuellen Stand hoechstens ein enger Open-/Entry-Fast-Path belastbar
+  - echter Voice-Mehrwert darf hier nur weitergetragen werden, wenn er ohne neue Datums-/Zeit- und Editier-Semantik auskommt
+  - alles andere waere aktuell Scope-Drift statt sinnvoller Reibungsabbau
+- Explizite Ruhe-/Verschiebeentscheidung fuer den Appointment-Create-Fall:
+  - ein enger spaeterer `appointment_create`-Fast-Path bleibt fachlich interessant und technisch grundsaetzlich machbar
+  - der Fall wird fuer den aktuellen Follow-up-Scope aber bewusst nicht weitergezogen
+  - Grund:
+    - Datums-/Zeit-Semantik
+    - neue Slot-Familien
+    - Guard- und Ambiguitaetslogik
+    - eigener lokaler Create-Workflow
+    wuerden den aktuellen Ausbau deutlich verteuern
+  - die Frage, ob dieser Aufwand realen Alltagsertrag bringt, soll zuerst ueber echte Nutzungserfahrung weiter reifen
+  - wenn das Thema spaeter wieder aufgenommen wird, dann:
+    - als eigene kleine Roadmap
+    - nicht als Nebenbei-Erweiterung innerhalb von `F10`
+
+#### F10 Abschlussnotiz
+- `F10` wird fuer den aktuellen Stand als `DONE` gefuehrt:
+  - der Appointment-Fall wurde fachlich sauber geprueft
+  - der moegliche spaetere `appointment_create`-Fast-Path wurde dokumentiert
+  - die Weiterarbeit daran ist bewusst in eine spaetere eigene Roadmap verschoben
+- `F10` ist damit nicht `abgebrochen`, sondern abgeschlossen mit klarer Scope-Entscheidung:
+  - technisch machbar
+  - aktuell zu teuer
+  - derzeit ruhend
+- Folge fuer die weitere Arbeit:
+  - kein weiterer Appointment-Voice-Ausbau innerhalb dieser Follow-up-Roadmap
+  - spaetere Wiederaufnahme nur bei real belegtem Reibungsdruck und als eigener Planungsblock
+
+### F11 - Erweiterte Action Surface / Allowed Actions kontrolliert strukturieren
+- F11.1 Pruefen, welche neuen Actions aus den priorisierten Fast Paths wirklich noetig sind.
+- F11.2 Namenslogik, Modulzuordnung und Guard-Schnitt fuer neue Actions festziehen.
+- F11.3 `actions.js`, `allowed-actions.js` und Workflow-Guards klar gegeneinander abgrenzen.
+- F11.4 Pruefen, ob mittelfristig eine staerkere Trennung zwischen:
+  - Action Contracts
+  - Allowed Actions
+  - Workflow Guards
+  sinnvoll wird, ohne jetzt fruehzeitig umzubauen.
+- F11.5 Action-Surface explizit gegen den neuen Semantik-Stand schneiden:
+  - neue Actions entstehen aus klaren Intent-/Slot-/Pattern-Ergebnissen
+  - keine Action-Einfuehrung, nur um semantische Unschaerfe oder fehlende Pattern-Regeln zu kaschieren
+- F11.6 Abschlusscheck vor F12:
+  - Pruefen, ob neue Action-Namen konsistent, guard-railed und modulsauber zugeordnet sind.
+  - Pruefen, ob keine Parser- oder Semantikverantwortung in `actions.js` / `allowed-actions.js` hineinrutscht.
+  - Unreachable Guards, doppelte Actions oder tote Alias-Pfade bereinigen.
+  - Actions-/Allowed-Actions-Doku sofort mitziehen, wenn der produktive Contract sich aendert.
+
+#### F11.1 Ergebnisprotokoll
+- Die aktuelle Action Surface wurde gegen den bereinigten Stand nach `F8-F10` gelesen.
+- Gepruefte produktive Runtime-Anker:
+  - `app/modules/assistant-stack/assistant/actions.js`
+  - `app/modules/assistant-stack/assistant/allowed-actions.js`
+  - `app/modules/assistant-stack/intent/validators.js`
+  - `app/modules/assistant-stack/voice/index.js`
+- Wichtigster Befund:
+  - aus der aktuell weitergetragenen Shortlist entsteht im Moment kein zwingender neuer globaler Assistant-Action-Typ
+  - der groesste potentielle Kandidat waere ein spaeterer Appointment-Create-Fall
+  - genau dieser Fall ist aber bewusst in einen ruhenden, separaten Spaeter-Scope verschoben worden
+- Bestehende produktiv relevante Action-Vertraege reichen aktuell fuer den tragenden Bestand:
+  - `intake_save`
+  - `open_module`
+  - bereits lokal geschnittene Spezialfaelle wie:
+    - `medication_confirm_all`
+    - `start_breath_timer`
+    - lokaler Medication-Low-Stock-Follow-up auf Ziel-Action-Marker
+      - `medication_low_stock_reorder_start`
+- Einordnung der heutigen Action-Lage:
+  - `open_module`
+    - existiert bereits
+    - bleibt der einzige produktive UI-safe Modulpfad
+    - neue Moduloeffnungen brauchen derzeit eher Guard-/Whitelist-/Target-Anpassungen als einen neuen Action-Typ
+  - `intake_save`
+    - deckt den bestehenden engen Schreibfall fuer Intake weiter ab
+  - `medication_confirm_all`
+    - ist bereits als enger lokaler Spezialfall etabliert
+  - `start_breath_timer`
+    - ist bereits als enger lokaler Spezialfall etabliert
+- Daraus folgt fuer `F11.1`:
+  - kein Bedarf fuer eine neue allgemeine Appointment-, Activity- oder Tracker-Action im jetzigen Scope
+  - kein Bedarf fuer eine neue generische `create_*`, `track_*` oder `module_prefill_*`-Familie nur auf Vorrat
+  - kein Bedarf, `allowed-actions.js` heute breiter zu machen als der reale produktive Bestand es verlangt
+- Explizit nicht tun:
+  - keine neue Action einfuehren, nur um einen spaeter vielleicht moeglichen Voice-Fall vorwegzunehmen
+  - keine Action-Namen als Platzhalter fuer noch nicht geschnittene Datums-/Zeit-/Prefill-Logik anlegen
+  - keine semantische Unschaerfe in neue Action-Typen verschieben
+- Vorlaeufige Action-Entscheidung nach `F11.1`:
+  - `Action Surface bleibt vorerst unveraendert`
+  - der naechste Pruefschritt in `F11.2` ist deshalb nicht:
+    - neue Action-Namen erfinden
+  - sondern:
+    - bestaetigen, ob bestehende Actions/Targets/Guards sauber genug getrennt sind
+    - und ob nur enge Erweiterungen an vorhandenen Contracts noetig waeren
+
+#### F11.2 Ergebnisprotokoll
+- Namenslogik, Modulzuordnung und Guard-Schnitt wurden gegen den aktuellen produktiven Bestand gelesen.
+- Gepruefte Runtime-Stellen:
+  - `app/modules/assistant-stack/assistant/actions.js`
+  - `app/modules/assistant-stack/assistant/allowed-actions.js`
+  - `app/modules/assistant-stack/intent/validators.js`
+  - `app/modules/assistant-stack/intent/rules/navigation.js`
+  - `app/modules/assistant-stack/voice/index.js`
+- Positiver Hauptbefund:
+  - die grobe Trennung funktioniert bereits:
+    - `actions.js`
+      - kennt ausfuehrbare Action-Typen und Modulalias-Zuordnung
+    - `allowed-actions.js`
+      - whitelisted und stage-/auth-guardet die Assistant-Action-Ausfuehrung
+    - `validators.js`
+      - validiert Intent-Matches inkl. Safety-Class
+    - `voice/index.js`
+      - zieht eine zusaetzliche enge Voice-V1-Ausfuehrungsgrenze
+- Saubere Namenslogik im heutigen Bestand:
+  - schreibende oder workflow-nahe Spezialfaelle haben enge, klare Namen:
+    - `intake_save`
+    - `medication_confirm_all`
+    - `start_breath_timer`
+  - UI-Wechsel bleibt generisch, aber nachvollziehbar:
+    - `open_module`
+  - der Medication-Low-Stock-Follow-up nutzt bewusst keinen neuen globalen Assistant-Action-Typ, sondern nur einen lokalen Ziel-Marker:
+    - `medication_low_stock_reorder_start`
+  - Einordnung:
+    - das ist fuer den aktuellen Scope sauberer als ein neuer globaler `reorder_*`-Action-Typ
+- Wichtiger Struktur-Befund:
+  - die Modulzuordnung fuer `open_module` sitzt heute an mehreren Stellen:
+    - Alias-Aufloesung in `actions.js`
+    - Navigation-Pattern in `rules/navigation.js`
+    - Validierung in `validators.js`
+    - zusaetzliche Voice-V1-Begrenzung in `voice/index.js`
+  - das ist im aktuellen kleinen Bestand noch beherrschbar
+  - erzeugt aber sichtbare Vierfach-Grenzen fuer denselben Open-Contract
+- Konkrete Einordnung dieser Vierfach-Grenze:
+  - fachlich kein akuter Bug
+  - aber ein Pflegepunkt:
+    - wenn spaeter ein weiterer enger `open_module`-Kandidat produktiv freigegeben wird,
+    - muss dieselbe Freigabe konsistent ueber:
+      - Pattern
+      - Validator
+      - Alias-Aufloesung
+      - Voice-V1-Allowlist
+      nachgezogen werden
+- Guard-Schnitt heute:
+  - `allowed-actions.js`
+    - guardet Ausfuehrung gegen Stage/Auth und Whitelist
+  - `validators.js`
+    - guardet Intent-Match-Struktur und Payload
+  - `voice/index.js`
+    - guardet Voice-V1 zusaetzlich enger als den allgemeinen Intent-/Action-Vertrag
+  - Einordnung:
+    - das ist fachlich legitim
+    - wichtig ist nur, dass diese zusaetzliche Voice-Enge nicht versehentlich als allgemeiner Action-Contract missverstanden wird
+- Explizite Entscheidung aus `F11.2`:
+  - keine Umbenennung der bestehenden Action-Typen noetig
+  - keine neue Modul-Action-Familie noetig
+  - kein frueher Umbau der Guard-Struktur noetig
+  - aber:
+    - die Mehrfachstellen fuer `open_module` sind als bewusster Pflegepunkt dokumentiert
+- Wichtigster Abschlussbefund aus `F11.2`:
+  - Namenslogik und Modulzuordnung sind fuer den aktuellen Umfang ausreichend sauber
+  - der einzige sichtbare Nachteil liegt in der verteilten Pflege des engen `open_module`-Vertrags
+  - das ist derzeit eher ein dokumentierter Konsolidierungspunkt als ein Umbaugrund
+
+#### F11.3 Ergebnisprotokoll
+- Die Abgrenzung zwischen `actions.js`, `allowed-actions.js` und Workflow-Guards wurde gegen den produktiven Stand explizit geschnitten.
+- Schicht 1: `actions.js`
+  - Aufgabe:
+    - fuehrt bekannte Action-Typen aus
+    - mappt Modulalias und UI-Ziele
+    - ist der Ausfuehrungsort fuer konkrete Dispatcher wie:
+      - `open_module`
+      - `intake_save`
+      - weitere bestehende Assistant-Action-Typen
+  - Soll ausdruecklich nicht leisten:
+    - keine Intent-Semantik
+    - keine Pattern-Entscheidung
+    - keine fachliche Slot-Aufloesung
+    - keine groessere Workflow-Orchestrierung
+- Schicht 2: `allowed-actions.js`
+  - Aufgabe:
+    - whitelistet erlaubte Action-Typen
+    - trennt `UI-safe` von allgemeiner Action-Ausfuehrung
+    - guardet gegen:
+      - Stage nicht bereit
+      - Auth unbekannt
+      - fehlende Dispatcher-/Supabase-Verfuegbarkeit
+  - Soll ausdruecklich nicht leisten:
+    - keine Payload-Semantik pruefen
+    - keine Intent-Regeln ersetzen
+    - keine modulfachlichen Sonderguards abbilden
+- Schicht 3: Workflow-Guards
+  - sitzen heute produktiv an mehreren fachlich richtigen Stellen:
+    - `intent/validators.js`
+      - prueft Match-Struktur, Target-Action und enge Payload-Regeln
+    - `voice/index.js`
+      - zieht zusaetzliche Voice-V1-Grenzen fuer lokal erlaubte Intent-Ausfuehrung
+      - z. B. Action-/Target-Whitelists, lokale Spezialdispatcher, Boot-/Auth-Gates
+    - Modul-/Feature-Code
+      - traegt fachliche Laufzeitguards
+      - z. B. Medication-Reorder-Vertrag, Breath-Timer-Start, lokale Capture-/Medication-Helfer
+- Wichtigster Struktur-Befund aus `F11.3`:
+  - die aktuelle Architektur ist im Kern bereits schichtklar genug
+  - problematisch waere erst dann etwas, wenn:
+    - `actions.js` anfinge, Intent-Bedeutungen zu erraten
+    - `allowed-actions.js` fachliche Payload- oder Modulregeln uebernehmen wuerde
+    - Workflow-Guards in globale Whitelists verflacht wuerden
+- Sichtbare aktuelle Grenze:
+  - der produktive Bestand nutzt fuer lokale Voice-Spezialfaelle teils keine globalen Assistant-Actions, sondern direkte lokale Dispatcher
+  - Einordnung:
+    - fuer enge Spezialfaelle wie:
+      - `medication_confirm_all`
+      - `start_breath_timer`
+      - Medication-Low-Stock-Follow-up
+    - ist das heute gewollt und sauberer als eine kuenstliche Globalisierung ueber `assistant/actions.js`
+- Daraus folgt fuer `F11.3`:
+  - `actions.js` bleibt Ausfuehrungsort fuer globale Action-Contracts
+  - `allowed-actions.js` bleibt Whitelist-/Runtime-Gate
+  - fachliche Workflow-Guards bleiben in:
+    - Intent-Validatoren
+    - Voice-Laufzeit
+    - Modulen selbst
+  - kein frueher Zentralisierungsumbau noetig
+- Wichtigster Abschlussbefund aus `F11.3`:
+  - die drei Ebenen sind fuer den aktuellen Scope ausreichend sauber getrennt
+  - die richtige Schutzmassnahme ist jetzt eher Disziplin in dieser Trennung als neue Infrastruktur
+
+#### F11.4 Ergebnisprotokoll
+- Es wurde geprueft, ob mittelfristig eine staerkere Trennung zwischen:
+  - Action Contracts
+  - Allowed Actions
+  - Workflow Guards
+  sinnvoll waere, ohne jetzt fruehzeitig umzubauen.
+- Mittelfristig sichtbarer Architekturgewinn:
+  - ja, eine noch staerkere Trennung waere spaeter sinnvoll, wenn:
+    - mehr produktive Fast Paths dazukommen
+    - mehr Modulziele ueber `open_module` freigegeben werden
+    - neue globale Assistant-Action-Typen wirklich entstehen
+  - dann koennte es helfen, die heute teils impliziten Schnittstellen noch expliziter zu machen:
+    - Action Contracts als reine ausfuehrbare Typen
+    - Allowed Actions als reine Freigabe-/Runtime-Gates
+    - Workflow Guards als ausschliesslich fachliche Laufzeitregeln
+- Heutiger Realitaetsbefund:
+  - der Bestand ist dafuer noch zu klein
+  - ein frueher Umbau wuerde aktuell eher Struktur auf Vorrat schaffen als reale Reibung reduzieren
+  - die vorhandene Trennung ist schon gut genug, solange:
+    - keine neue semantische Verantwortung in `actions.js` wandert
+    - `allowed-actions.js` nicht zu einem zweiten Validator wird
+    - Voice-/Modul-Spezialfaelle nicht kuenstlich in globale Assistant-Actions gepresst werden
+- Konkrete Gruende gegen einen Umbau jetzt:
+  - keine echte Action-Explosion im aktuellen Scope
+  - nur ein kleiner Satz produktiver Voice-/Intent-Spezialfaelle
+  - der groesste potenzielle Erweiterungsfall `appointment_create` ist bewusst ruhend gestellt
+  - der aktuell sichtbare Pflegepunkt `open_module` ist dokumentiert, aber noch kein harter Architekturbruch
+- Was heute stattdessen reicht:
+  - die aktuelle Trennung dokumentiert halten
+  - neue Kandidaten nur dann zulassen, wenn sie sich klar in eine bestehende Schicht einordnen
+  - bei jedem neuen Fast Path aktiv pruefen:
+    - ist das ein neuer Action Contract?
+    - nur eine neue Freigabe?
+    - oder nur ein Workflow-Guard im bestehenden Modul?
+- Explizite Entscheidung aus `F11.4`:
+  - mittelfristig:
+    - `ja`, staerkere Trennung kann spaeter sinnvoll werden
+  - aktuell:
+    - `kein Umbau`
+    - `keine neue Zwischenabstraktion`
+    - `keine Refactor-Roadmap nur fuer Schichtreinheit`
+- Wichtigster Abschlussbefund aus `F11.4`:
+  - die Architektur soll im aktuellen Stand diszipliniert weitergefuehrt werden
+  - ein staerkerer struktureller Umbau bleibt ein spaeterer Optionspunkt, falls die Action Surface real waechst
+  - fuer den jetzigen Scope ist dokumentierte Schichtklarheit wertvoller als fruehe Reorganisation
+
+#### F11.5 Ergebnisprotokoll
+- Die Action Surface wurde explizit gegen den neuen Semantik-Stand gelesen:
+  - neue Actions duerfen nur aus klaren Intent-/Slot-/Pattern-Ergebnissen entstehen
+  - keine Action-Einfuehrung nur als Pflaster fuer semantische Unschaerfe
+- Gepruefte produktive Intent-Regeln:
+  - `app/modules/assistant-stack/intent/rules/intake.js`
+  - `app/modules/assistant-stack/intent/rules/medication.js`
+  - `app/modules/assistant-stack/intent/rules/breath-timer.js`
+  - `app/modules/assistant-stack/intent/rules/vitals.js`
+- Positiver Hauptbefund:
+  - der bestehende produktive Bestand erfuellt diese Leitplanke bereits ueberwiegend sauber
+  - `intake_quick_add`
+    - fuehrt nicht zu neuen Action-Typen pro Lebensmittel
+    - sondern nutzt klare Entity- und Amount-/Unit-Slots und landet gesammelt auf:
+      - `intake_save`
+  - `medication_confirm_all`
+    - entsteht aus klarer Kombination von:
+      - `MEDICATION_TERM`
+      - `TAKEN_VERB`
+    - nicht aus loser Satzbibliothek
+  - `start_breath_timer`
+    - entsteht aus:
+      - `START_VERB`
+      - `TIMER_TERM`
+      - optionalem `DURATION`-Slot
+    - nicht aus einem vagen Wellness-/Vitals-Sammelintent
+  - `vitals_quick_log`
+    - bleibt ein enger Pattern-getriebener Spezialfall
+    - die Ziel-Action ergibt sich direkt aus einem klaren Match:
+      - Blutdruck
+      - Puls
+      - Gewicht
+- Wichtige Einordnung fuer die Action Surface:
+  - Action-Typen im heutigen Bestand spiegeln konkrete fachliche Ausfuehrungen
+  - sie werden nicht verwendet, um fehlende Semantik zu kaschieren
+  - genau das ist der richtige Zuschnitt nach `F8`
+- Explizit nicht tun:
+  - keine neue Action einfuehren, nur weil ein Modul fachlich attraktiv klingt
+  - keine neue Action einfuehren, wenn eigentlich:
+    - neue Slots fehlen
+    - Semantikfamilien fehlen
+    - Pattern noch nicht sauber genug geschnitten sind
+  - keine globale Action-Familie als Ersatz fuer unklare Parser-/Semantikarbeit
+- Rueckspiegelung auf den ruhenden Appointment-Fall:
+  - der geparkte `appointment_create`-Gedanke bestaetigt diese Guardrail sogar besonders klar
+  - dort fehlt heute nicht primär eine Action
+  - dort fehlen zuerst:
+    - Datums-/Zeit-Semantik
+    - Target-Slots
+    - Guardlogik gegen Mehrdeutigkeit
+  - deshalb waere eine neue `appointment_create`-Action heute gerade ein Beispiel fuer die falsche Reihenfolge
+- Wichtigster Abschlussbefund aus `F11.5`:
+  - die produktive Action Surface ist aktuell semantik-kompatibel genug
+  - neue Actions bleiben nur dann legitim, wenn sie als letzter Schritt auf klar geschnittene Intent-/Slot-/Pattern-Ergebnisse folgen
+  - semantische Arbeit bleibt damit vor Action-Erweiterung priorisiert
+
+#### F11.6 Ergebnisprotokoll
+- Abschlusscheck fuer `F11` durchgefuehrt.
+- Konsistenz der Action-Namen:
+  - bestehende produktive Action-Namen bleiben konsistent und eng:
+    - `intake_save`
+    - `open_module`
+    - `medication_confirm_all`
+    - `start_breath_timer`
+  - kein neuer globaler Assistant-Action-Typ war noetig
+  - der lokale Medication-Low-Stock-Ziel-Marker:
+    - `medication_low_stock_reorder_start`
+    bleibt bewusst lokal und wurde nicht kuenstlich globalisiert
+- Parser-/Semantik-Verantwortung:
+  - es ist kein Befund entstanden, dass `actions.js` oder `allowed-actions.js` heute semantische Verantwortung uebernehmen
+  - die Schichtgrenzen bleiben:
+    - Intent-/Pattern-/Slot-Logik vor der Action Surface
+    - Ausfuehrung und Runtime-Gating innerhalb der bestehenden Action-/Allow-Schichten
+- Doppelte oder tote Action-Pfade:
+  - kein zwingender neuer toter globaler Action-Pfad gefunden
+  - kein neuer unreachable Action-Name eingefuehrt
+  - der bekannte Pflegepunkt bleibt:
+    - verteilte Freigabelogik fuer den engen `open_module`-Vertrag
+  - Einordnung:
+    - dokumentierter Konsolidierungspunkt
+    - aktuell kein Blocker und kein Pflicht-Refactor
+- Doku-Status:
+  - die Roadmap traegt jetzt die zentrale Action-/Allow-/Guard-Entscheidung bereits explizit
+  - kein weiterer Sofort-Nachzug in separate Action-Doku noetig, weil sich der produktive Contract in `F11` nicht erweitert hat
+- Explizite Abschlussentscheidung fuer `F11`:
+  - `F11` ist `DONE`
+  - Ergebnis:
+    - Action Surface bleibt unveraendert
+    - Schichtgrenzen sind dokumentiert
+    - spaeterer Strukturumbau bleibt optional und nur bei real wachsendem Bestand sinnvoll
+- Folge fuer den naechsten Block:
+  - `F12` kann jetzt auf einer bewusst nicht aufgeblasenen Action Surface aufsetzen
+  - Shortcut-/PWA-Pruefung muss deshalb keinen neuen Action-Stack rechtfertigen, sondern nur den bestehenden produktiven Voice-Pfad schneller erreichbar machen
+
+### F12 - PWA-Icon Voice Fast Path technisch und UX-seitig pruefen
+- F12.1 Pruefen, welche PWA-/Manifest-/Shortcut-Mechanismen im aktuellen Setup realistisch sind.
+- F12.2 Zielbild fuer den Shortcut festziehen:
+  - schnellerer Einstieg in den bestehenden Voice-Flow
+  - kein Widget
+  - keine neue native Shell
+- F12.3 Pruefen, ob ein eigener Voice-Entry-Point oder eine bestehende Route sauber nutzbar ist.
+- F12.4 UX und Guardrails definieren:
+  - kein paralleler Voice-Stack
+  - kontrollierter Landepunkt im Push-to-talk-Kontext
+  - keine versteckte Scope-Erweiterung
+- F12.5 Shortcut explizit gegen den neuen Semantik-Stand lesen:
+  - er darf nur denselben produktiven Parser-/Intent-/Guard-Pfad schneller erreichbar machen
+  - kein eigener Shortcut-spezifischer Semantik- oder Pending-Kontext
+- F12.6 Abschlusscheck vor F14:
+  - Pruefen, ob Shortcut-/Manifest-Ideen reale Plattformgrenzen respektieren.
+  - Pruefen, ob kein zweiter Voice-Runtime- oder Diagnosestack neben dem produktiven Semantikpfad entsteht.
+  - Keine toten Manifest-/Route-/Shortcut-Experimente liegenlassen.
+  - Doku sofort angleichen, falls das Ergebnis `machbar`, `nur begrenzt machbar` oder `bewusst verworfen` ist.
+
+#### F12.1 Ergebnisprotokoll
+- Die realistischen PWA-/Manifest-/Shortcut-Mechanismen im aktuellen Setup wurden gegen den produktiven Bestand geprueft.
+- Produktiver PWA-Ist-Zustand:
+  - `index.html`
+    - bindet produktiv `public/manifest.json` ein
+    - CSP erlaubt Manifest- und Worker-Nutzung explizit:
+      - `manifest-src 'self'`
+      - `worker-src 'self'`
+  - `public/manifest.json`
+    - ist produktiv vorhanden
+    - setzt:
+      - `id: /M.I.D.A.S./?source=pwa`
+      - `start_url: /M.I.D.A.S./?source=pwa`
+      - `scope: /M.I.D.A.S./`
+      - `display: standalone`
+    - enthaelt Icons und Screenshots
+    - enthaelt aktuell aber keine:
+      - `shortcuts`
+      - eigene Voice-Start-URL
+      - zweite spezielle Entry-Route fuer Push-to-talk
+  - `app/core/pwa.js`
+    - registriert produktiv den Service Worker
+    - verarbeitet:
+      - `beforeinstallprompt`
+      - `appinstalled`
+      - Update-Banner / `SKIP_WAITING`
+    - zeigt damit:
+      - Installieren als PWA ist heute real
+      - App-Start im Standalone-Modus ist produktiv vorgesehen
+  - `service-worker.js`
+    - ist produktiv aktiv
+    - cached den App-Shell-Bestand inkl.:
+      - `index.html`
+      - `app/core/pwa.js`
+      - `public/manifest.json`
+      - PWA-Icons
+    - nutzt Navigate-Fallback auf:
+      - Shell / `offline.html`
+    - oeffnet bei Notification-Klick bestehende App-Fenster oder startet nur das normale App-Fenster neu
+- Wichtigster Mechanik-Befund aus `F12.1`:
+  - realistisch und heute bereits vorhanden sind:
+    - installierbare PWA
+    - Standalone-Start ueber App-Icon
+    - Service-Worker-gestuetzter Shell-Start
+    - sauberer Install-/Update-Fluss
+  - nicht vorhanden und damit aktuell nur hypothetisch sind:
+    - Manifest-Shortcuts am App-Icon
+    - eigener Voice-Deep-Link
+    - eigener Shortcut-spezifischer Startpfad
+    - eigener Router-/Route-Vertrag nur fuer Voice
+- Befund zu `start_url` und `?source=pwa`:
+  - das Manifest startet die App bereits ueber einen markierten PWA-Landepunkt
+  - im aktuellen produktiven Bestand ist daraus aber noch kein eigener Voice-Shortcut- oder Push-to-talk-Vertrag abgeleitet
+  - damit bleibt `?source=pwa` vorerst nur:
+    - Install-/Landepunkt-Markierung
+    - kein eigener Voice-Einstieg
+- Plattformrealitaet fuer Shortcut-Ideen:
+  - ein spaeterer PWA-App-Icon-Shortcut waere grundsaetzlich nur ueber Manifest-/Plattform-Support denkbar
+  - dieser Support ist plattformabhaengig und nicht als einheitlicher Produktvertrag belastbar
+  - deshalb darf `F12` nicht von App-Icon-Shortcut-Support als Voraussetzung ausgehen
+- Praktische Folgerung fuer die weitere Arbeit:
+  - belastbar ist heute nur:
+    - PWA installieren
+    - MIDAS im Standalone-Fenster starten
+    - von dort in denselben bestehenden Voice-/Push-to-talk-Kontext gehen
+  - alles darueber hinaus braucht erst in `F12.2` ein enges Zielbild:
+    - entweder bestehender Landepunkt reicht
+    - oder ein spaeterer Shortcut bleibt nur optionaler Komfort-Hook
+- Explizite Nicht-Zustaende nach `F12.1`:
+  - kein Beleg fuer einen bereits existierenden Voice-App-Icon-Shortcut
+  - kein Beleg fuer einen eigenen Manifest-Contract nur fuer Voice
+  - kein Beleg fuer eine produktive zweite Voice-Route
+  - kein Grund, jetzt schon einen separaten PWA-Voice-Runtime-Stack anzunehmen
+- Wichtigster Abschlussbefund aus `F12.1`:
+  - das aktuelle Setup ist stark genug fuer:
+    - installierbare Standalone-PWA
+    - spaeter moeglichen Komfort-Einstieg
+  - es enthaelt aber heute noch keinen produktiven Shortcut-Mechanismus, der direkt in einen besonderen Voice-Entry-Point fuehrt
+  - `F12.2` muss deshalb zuerst das Zielbild eng halten und darf keinen Shortcut-Komfort mit einem neuen Runtime-Vertrag verwechseln
+
+#### F12.2 Ergebnisprotokoll
+- Das Zielbild fuer einen moeglichen PWA-Voice-Shortcut wurde gegen den realen Nutzen im heutigen Produkt geschnitten.
+- Urspruengliche Wunschrichtung:
+  - ausserhalb der App schneller in Voice kommen
+  - idealerweise ueber:
+    - Long-Press auf das PWA-Icon
+    - App-Icon-Shortcut
+  - gefuehlter Zielnutzen:
+    - nicht erst MIDAS oeffnen und sich dann zum Voice-Start bewegen
+- Produktiver Ist-Zustand als Gegengewicht:
+  - MIDAS muss auch beim PWA-Start weiterhin den normalen Bootflow durchlaufen
+  - Voice darf weiter nur nach bestehendem Boot-/Auth-/Gate-Vertrag starten
+  - der sichtbare Push-to-talk-Einstieg ist im Hub bereits der erste produktive Voice-Button
+- Wichtigster Nutzungsbefund:
+  - ein PWA-Shortcut wuerde im aktuellen Produkt nur einen marginalen Komfortgewinn bringen
+  - er spart hoechstens:
+    - etwas Orientierung im Hub
+    - eventuell einen kleinen zusaetzlichen Tap
+  - er spart explizit nicht:
+    - den Bootflow
+    - den Aufbau des bestehenden Runtime-Kontexts
+    - die Web-/Browser-Grenzen fuer echten direkten Voice-Start ausserhalb der App
+- Zielbild-Entscheidung fuer `F12`:
+  - wenn `F12` weitergetragen wird, dann nur als:
+    - optionaler Komfort-Landepunkt in denselben bestehenden Voice-/Push-to-talk-Kontext
+  - explizit nicht als:
+    - Widget
+    - nativer Schnellaufnahme-Einstieg
+    - echter Outside-the-app-Voice-Start
+    - eigener Shortcut-spezifischer Runtime- oder Semantikpfad
+- Wichtigster Scope-Befund:
+  - der eigentlich gewuenschte Nutzen liegt nicht in einem PWA-Shortcut
+  - der eigentlich gewuenschte Nutzen waere:
+    - Widget-/OS-naher Einstieg
+    - Wrapper / Native Shell
+    - spaeter eventuell Wearable-/Begleitgeraet-Einstieg
+  - das ist ein anderer Produkt-Scope als `F12`
+- Praktische Folge fuer die weitere Planung:
+  - `F12` bleibt fuer den aktuellen Scope hoechstens:
+    - `nur begrenzt machbar`
+    - `geringer Mehrwert`
+  - die echte Future-Richtung wird deshalb separat markiert als:
+    - Wrapper
+    - Native App / Shell
+    - Widget
+    - spaetere OS-nahe oder Wearable-nahe Entry-Points
+- Explizite Nicht-Zustaende nach `F12.2`:
+  - kein Versuch, PWA-Shortcuts semantisch zu einem Widget-Ersatz umzudeuten
+  - kein eigener Voice-Start ausserhalb des bestehenden Hub-/Boot-/Gate-Vertrags
+  - kein Ausbau von `F12` zu einer versteckten Native-/Wrapper-Roadmap
+- Wichtigster Abschlussbefund aus `F12.2`:
+  - fuer das heutige Produkt ist ein PWA-Voice-Shortcut kein starker Reibungshebel
+  - der reale Outside-the-app-Voice-Wunsch zeigt auf einen spaeteren Wrapper-/Widget-/Native-Scope
+  - `F12` sollte deshalb eng, nuechtern und ohne Erwartungsueberhang weitergefuehrt oder spaeter bewusst klein abgeschlossen werden
+
+#### F12 Abschlussnotiz
+- `F12` wird fuer den aktuellen Stand als `DONE` gefuehrt:
+  - die realistischen PWA-/Manifest-Grenzen wurden sauber geprueft
+  - der konkrete Produktnutzen eines PWA-Voice-Shortcuts wurde gegen den heutigen Hub-/Push-to-talk-Stand eingeordnet
+  - ein direkter produktiver Ausbau wird bewusst nicht weitergezogen
+- `F12` ist damit nicht verworfen, sondern abgeschlossen mit klarer Einordnung:
+  - technisch nur begrenzt machbar
+  - im aktuellen Produkt nur geringer Mehrwert
+  - der eigentliche Outside-the-app-Voice-Wunsch gehoert in einen spaeteren Future-Scope
+- Folgerung fuer spaetere Arbeit:
+  - kein weiterer PWA-Shortcut-Ausbau innerhalb dieser Follow-up-Roadmap
+  - Wiederaufnahme nur, wenn:
+    - sich der Hub-/Voice-Einstieg produktiv deutlich aendert
+    - oder ein eigener Wrapper-/Widget-/Native-Plan konkret verfolgt wird
+
+### F13 - Voice-Latenz, STT-Betriebsmodell und semantische Pflege nachschneiden
+- F13.1 Den aktuellen Voice-Latenzpfad als messbare Kette zerlegen:
+  - `record`
+  - VAD / Auto-Stop
+  - Upload / `transcribe`
+  - lokaler Parse-/Intent-/Dispatch-Pfad
+  - TTS / Rueckkanal
+- F13.2 Pruefen, wo die reale Reibung heute entsteht:
+  - VAD beendet zu spaet
+  - Audiosegmente werden zu lang
+  - Transkript-Request ist zu schwer oder zu langsam
+  - lokaler Parse-/Dispatch ist nach dem Transkript noch vermeidbar traege
+  - TTS / Audio-Rueckgabe blockiert den gefuehlten Abschluss
+- F13.3 Produktive Optimierungshebel fuer `snappier voice` schneiden:
+  - nur Hebel weiterziehen, die:
+    - echte Latenz senken
+    - keine offenen neuen Runtime-Pfade eroeffnen
+    - keine Mehrkosten oder nur klar begrenzte Mehrkosten erzeugen
+  - bevorzugen:
+    - kuerzere / fruehere Segment-Enden
+    - kleinere oder engere STT-Pfade fuer command-first Audio
+    - mehr lokale Verarbeitung nach dem Transkript
+    - fruehere Rueckmeldung an den Nutzer, wo fachlich sauber
+- F13.4 Den STT-/Transkript-Pfad gegen Alternativen lesen:
+  - bestehender Cloud-Transcribe-Pfad
+  - moeglicher lokaler / on-device STT-Pfad
+  - enge Hybrid-Varianten
+  - ausdruecklich pruefen:
+    - was spart Latenz
+    - was spart Kosten
+    - was verschlechtert Robustheit zu stark
+- F13.5 Guardrail fuer den Optimierungsschnitt:
+  - nicht alles reflexhaft ueber LLM-/Cloud-Transcribe laufen lassen, wenn ein engerer oder lokaler Pfad denselben Produktnutzen sauber erreicht
+  - aber auch keinen rein lokalen Pfad erzwingen, wenn dadurch Qualitaet, Robustheit oder Pflegeaufwand kippen
+  - Ziel ist:
+    - `snappier`
+    - `robust`
+    - `kostenbewusst`
+    - nicht `lokal um jeden Preis`
+- F13.6 Semantische Pflegeorte fuer spaetere Performance-/Betriebswechsel dokumentieren:
+  - `app/modules/assistant-stack/intent/normalizers.js`
+  - `app/modules/assistant-stack/intent/semantics/`
+  - `app/modules/assistant-stack/intent/slots/extract.js`
+  - Pattern-/Intent-Regeln
+  - Modul-Overviews weiter nur als knapper Produktvertrag, nicht als zweiter Parserort
+- F13.7 Kleine Messhaken fuer die produktive Voice-Latenzkette einziehen:
+  - `tap -> listening`
+  - `first speech -> stop`
+  - `stop -> transcribe response`
+  - `transcribe response -> reply ready`
+  - `reply ready -> tts complete`
+  - bestehende Perf-/Diag-Helfer bevorzugen statt neue lose Messlogik zu streuen
+- F13.8 VAD-/Segment-Ende fuer kurze Command-First-Utterances konservativ enger schneiden:
+  - kurze Einzelbefehle frueher in `transcribe` ueberfuehren
+  - Compound-/Morning-Befehle weiter ausreichend schuetzen
+  - keine neue Voice-Mode- oder Shortcut-Semantik einfuehren
+- F13.9 Performance-Schnitt gegen reale Sprachfaelle verifizieren:
+  - kurze Einzelbefehle
+  - laengere Morning-/Compound-Befehle
+  - Confirm-/Medication-/Breath-Timer-Pfade
+  - pruefen, ob Latenz sinkt ohne spuerbare Robustheitsregression
+- F13.10 Spoken Reply-/TTS-Denglisch und Wortbild nachschneiden:
+  - Zahlen-/Einheitenaussprache auf natuerlicheres Deutsch pruefen
+  - unnatuerliche Formen wie `ge offnet` oder englisch klingende Zahlwoerter vermeiden
+  - unterscheiden zwischen:
+    - Reply-Text
+    - TTS-Rendering
+    - moeglichem Modell-/Format-Effekt
+- F13.11 Abschlusscheck vor F14:
+  - die groessten Voice-Latenzhebel sind benannt und priorisiert
+  - der erste produktive Performance-Schnitt ist real umgesetzt oder bewusst eng begrenzt verworfen
+  - Compound-/Single-Command-Verhalten ist nach den VAD-Nachschnitten weiter fachlich stabil
+  - Spoken Reply-/TTS-Ausgabe ist fuer die produktiven Kurzantworten ausreichend natuerlich
+  - Kosten- und Betriebsfolgen eines spaeteren STT-Wechsels sind sichtbar
+  - lokale Semantikpflege bleibt schichtklar:
+    - `surface`
+    - `semantic`
+    - `slots`
+    - `pattern`
+  - `F14` kann dadurch echte QA-Faelle gegen die langsamsten oder fragilsten Stellen schneiden statt blind auf dem Gesamtflow zu testen
+
+#### F13.1 Ergebnisprotokoll
+- Der aktuelle Voice-Latenzpfad wurde im produktiven Code als reale Laufkette geoeffnet.
+- Produktive Laufkette heute:
+  - Hub-Trigger / Gate:
+    - Klick auf `assistant-voice`
+    - Gate-Check ueber Boot-/Auth-Status
+  - Recording-Start:
+    - `getUserMedia({ audio: true })`
+    - `MediaRecorder.start()`
+    - paralleler VAD-Start
+  - Segment-Ende:
+    - VAD liefert nur `speech` / `silence`
+    - Auto-Stop bleibt im Voice-Adapter
+    - Recorder-Stop fuehrt zu Blob-Bildung
+  - Transkript:
+    - Audio-Blob wird per `fetch` an `midas-transcribe` gesendet
+    - Rueckgabe liefert:
+      - `rawText`
+      - `normalizedText`
+  - Lokaler Intent-Pfad:
+    - `buildVoiceCommandPlan(...)`
+    - lokaler Parse-/Intent-/Dispatch
+    - kein produktiver LLM-/Assistant-Pfad im normalen Command-First-Kern
+  - Rueckkanal:
+    - lokaler Reply-Text
+    - optional TTS ueber `midas-tts`
+- Produktive Runtime-Anker fuer die Kette:
+  - `app/modules/assistant-stack/voice/index.js`
+    - State-Wechsel:
+      - `listening`
+      - `transcribing`
+      - `parsing`
+      - `executing`
+      - `confirming`
+    - Recorder-/VAD-/Blob-/Transcribe-/TTS-Kette
+  - `app/modules/assistant-stack/vad/vad.js`
+    - Speech/Silence-Detektion
+    - Worklet zuerst, ScriptProcessor-Fallback
+  - `app/modules/hub/index.js`
+    - produktive Endpoint-Aufloesung fuer:
+      - `midas-transcribe`
+      - `midas-tts`
+- Bereits sichtbare Zeit-/Kettenmarker im heutigen Code:
+  - Recording-Start wird explizit markiert ueber:
+    - `recordingStartedAt`
+    - `firstSpeechAt`
+    - `lastSpeechAt`
+  - VAD-/Auto-Stop-Budgets sind hart im Voice-Adapter definiert:
+    - `VAD_SILENCE_MS = 1000`
+    - `VAD_MULTI_COMMAND_SILENCE_MS = 1800`
+    - `VAD_LONG_UTTERANCE_SILENCE_MS = 2200`
+    - `VAD_MIN_SPEECH_BEFORE_AUTOSTOP_MS = 900`
+  - Outcome-/Diag-Snapshots existieren bereits fuer:
+    - Voice-Outcome
+    - Intent-Route
+    - Transcript
+    - TTS
+- Wichtigster Ist-Befund zur gefuehlten Verzoegerung:
+  - die heutige Reibung entsteht nicht nur an einer Stelle, sondern mindestens in drei aufeinanderliegenden Segmenten:
+    - Segment-Ende ueber VAD / Auto-Stop
+    - Netz-/Server-gestuetzter `transcribe`-Request
+    - optionaler TTS-Rueckkanal vor dem gefuehlten Abschluss
+  - der lokale Parse-/Intent-/Dispatch-Pfad kommt erst nach dem Transkript und ist fachlich bereits deutlich enger als ein offener Assistant- oder LLM-Loop
+- Wichtigster Architektur-Befund aus `F13.1`:
+  - im heutigen Voice-V1-Kern ist `transcribe` der zentrale externe Engpass
+  - VAD davor bestimmt, wie frueh dieses Netzsegment ueberhaupt starten kann
+  - der lokale Intent-Kern danach ist bereits deterministisch und nicht der primaere Kosten-/Latenztreiber
+- Praktische Zerlegung in messbare Latenzsegmente fuer die Folgepunkte:
+  - `tap -> listening`
+  - `first speech -> recorder stop`
+  - `recorder stop -> transcribe response`
+  - `transcribe response -> local reply ready`
+  - `reply ready -> tts playback complete`
+- Explizite Nicht-Zustaende aus `F13.1`:
+  - kein Nachweis, dass der lokale Intent-/Action-Pfad heute der groesste Flaschenhals ist
+  - kein Nachweis, dass `midas-assistant` im normalen Voice-V1-Command-Flow der Haupttreiber der Verzoegerung ist
+  - kein Nachweis, dass ein spaeterer Optimierungsschnitt zwingend zuerst bei Semantik oder Allowed Actions ansetzen muss
+- Wichtigster Abschlussbefund aus `F13.1`:
+  - die Voice-Latenz ist heute als echte Kette aus:
+    - VAD / Segment-Ende
+    - `transcribe`
+    - lokalem Parse-/Dispatch
+    - optionalem TTS
+    sichtbar genug, um `F13.2` gezielt auf die realen Reibungssegmente statt auf Bauchgefuehl zu schneiden
+
+#### F13.2 Ergebnisprotokoll
+- Die realen Reibungssegmente im heutigen Voice-Workflow wurden gegen den Produktcode priorisiert.
+- Hoechstwahrscheinlich groesste Reibungssegmente:
+  - `1. VAD / Segment-Ende vor dem Upload`
+    - der `transcribe`-Request startet erst nach Recorder-Stop
+    - Recorder-Stop wiederum haengt an der Silence-Logik
+    - aktuelle Auto-Stop-Budgets:
+      - `1000 ms`
+      - `1800 ms`
+      - `2200 ms`
+      - plus Mindestsprechschutz `900 ms`
+    - Einordnung:
+      - das ist fachlich sicher, aber fuer kurze command-first Aeußerungen spuerbar teuer
+      - hier entsteht Latenz noch bevor ueberhaupt Netz-/STT-Zeit anfaellt
+  - `2. Netz-/Server-Roundtrip fuer `midas-transcribe``
+    - Blob wird erst nach kompletter Segmentierung gebaut und dann per `fetch` an den Transcribe-Endpunkt gesendet
+    - dieser Schritt ist heute der zentrale externe Engpass:
+      - Upload
+      - Serverlaufzeit
+      - Response-Rueckweg
+    - Einordnung:
+      - das ist sehr wahrscheinlich der groesste nicht-lokale Zeitblock im Flow
+  - `3. Optionaler TTS-Rueckkanal`
+    - nach lokaler Antwort wird bei verfuegbarem TTS nochmals ein Netz-/Audio-Pfad gestartet
+    - fuer das Gefuehl `fertig` zaehlt oft nicht nur `reply ready`, sondern `reply gesprochen`
+    - Einordnung:
+      - TTS ist nicht der erste Flaschenhals fuer `command understood`
+      - aber sehr wohl ein echter Flaschenhals fuer `interaction feels done`
+- Nachrangige oder bereits eng geschnittene Segmente:
+  - `lokaler Parse-/Intent-/Dispatch-Pfad`
+    - `buildVoiceCommandPlan(...)`
+    - `preflightVoiceCommandUnit(...)`
+    - `dispatchVoiceIntentDirectMatch(...)`
+    - lokale Spezialfaelle wie:
+      - `intake_save`
+      - `open_module`
+      - `medication_confirm_all`
+      - `start_breath_timer`
+    - Einordnung:
+      - dieser Teil ist im heutigen Produkt deterministisch und vergleichsweise leichtgewichtig
+      - er ist fachlich komplex, aber nach heutigem Codebild nicht der primaere Zeitfresser
+  - `Hub-/Gate-Check vor Start`
+    - vorhanden, aber kurz und notwendig
+    - kein primaerer Performance-Hebel
+- Spezifischer Befund zu `compound` vs. kurzen Einzelbefehlen:
+  - die aktuelle VAD-Policy bevoelkerte bewusst mehrere Sprachbursts und laengere Morning-Saetze
+  - dadurch zahlt der kurze Einzelbefehl tendenziell denselben konservativen Segment-Ende-Preis mit
+  - das macht gerade alltagsnahe Kurzbefehle wie:
+    - `wasser 250`
+    - `medikamente genommen`
+    - `oeffne vitals`
+    spuerbar weniger snappy als sie fachlich sein muessten
+- Priorisierte Reibungsreihenfolge fuer den Boxenstopp:
+  - `P1`:
+    - VAD-/Auto-Stop-Verhalten fuer kurze Command-First-Utterances
+  - `P2`:
+    - `transcribe`-Pfad selbst:
+      - Payload-Groesse
+      - Roundtrip
+      - moeglicher engerer STT-Schnitt
+  - `P3`:
+    - TTS-/Rueckkanal-Strategie fuer das subjektive `fertig`-Gefuehl
+  - `P4`:
+    - lokaler Parse-/Dispatch nur feinpruefen, aber nicht als primaeren Schuldigen behandeln
+- Praktische Folgerung fuer die naechsten Schritte:
+  - `F13` sollte zuerst nicht auf Parser-Refactors oder neue Intent-Logik springen
+  - der erste echte Performance-Hebel liegt davor:
+    - frueher sinnvoll stoppen
+    - frueher sinnvoll transkribieren
+  - der zweite Hebel liegt im Betriebsmodell des Transkripts, nicht in Allowed Actions oder Modul-Dispatch
+- Explizite Nicht-Zustaende aus `F13.2`:
+  - kein Beleg, dass ein weiterer Semantik-Umbau den groessten Latenzgewinn bringen wuerde
+  - kein Beleg, dass mehr freie Assistant-/LLM-Logik das Problem loesen wuerde
+  - kein Grund, TTS und `transcribe` als dasselbe Problem zu behandeln; beide liegen an unterschiedlichen Stellen der Interaktion
+- Wichtigster Abschlussbefund aus `F13.2`:
+  - die reale Reibung sitzt heute zuerst in:
+    - konservativem Segment-Ende
+    - danach im externen `transcribe`
+    - und erst spaeter im optionalen gesprochenen Rueckkanal
+  - `F13.3` muss deshalb produktive Optimierungshebel zuerst an genau diesen drei Segmenten schneiden
+
+#### F13.3 Ergebnisprotokoll
+- Die produktiven Optimierungshebel fuer einen spuerbar snappier Voice-Flow wurden gegen den heutigen Runtime-Schnitt priorisiert.
+- `P1` Hebel: VAD-/Segment-Ende fuer kurze Command-First-Utterances enger schneiden
+  - Ziel:
+    - kurze Einzelbefehle frueher in `transcribe` ueberfuehren
+    - ohne laengere Morning-/Compound-Befehle kaputtzuschneiden
+  - konkrete Hebel im heutigen Code:
+    - `VAD_SILENCE_MS`
+    - `VAD_MULTI_COMMAND_SILENCE_MS`
+    - `VAD_LONG_UTTERANCE_SILENCE_MS`
+    - `VAD_MIN_SPEECH_BEFORE_AUTOSTOP_MS`
+    - VAD-Startparameter:
+      - `threshold`
+      - `minSpeechFrames`
+      - `minSilenceFrames`
+  - bevorzugter Schnitt:
+    - kurze Einzelbefehle frueher beenden
+    - Compound-/Morning-Faelle weiter konservativer behandeln
+    - kein globales aggressives Kurzschneiden fuer alle Sprachlaeufe
+- `P2` Hebel: `transcribe` nur so schwer wie noetig fahren
+  - Ziel:
+    - weniger Latenz und moeglichst keine Mehrkosten
+  - konkrete Hebel:
+    - Audiosegmente kleiner halten, indem `P1` frueher stoppt
+    - `midas-transcribe` als reines STT behandeln und keine neue fachliche Last hineinschieben
+    - spaeter pruefen, ob fuer enge command-first Voice-Pfade ein leichterer oder hybriderer STT-Schnitt moeglich ist
+  - Guardrail:
+    - kein reflexhaftes `alles lokal`
+    - aber auch kein `alles weiter ueber denselben schweren Cloud-Pfad`, wenn kuerzere oder engere Pfade denselben Produktnutzen sauber liefern
+- `P3` Hebel: gefuehltes `fertig` nicht komplett an TTS haengen
+  - Ziel:
+    - der Nutzer soll frueher das Gefuehl haben, dass MIDAS verstanden und ausgefuehrt hat
+  - konkrete Hebel:
+    - klar zwischen:
+      - `reply ready`
+      - `tts playback complete`
+      unterscheiden
+    - kurze lokale Rueckmeldungen bevorzugen
+    - bei bestimmten lokal sicheren Positivfaellen spaeter pruefen, ob UI-/State-Feedback frueher sichtbar werden kann, auch wenn TTS noch laeuft oder ausfaellt
+  - Einordnung:
+    - TTS bleibt wichtig fuer Voice-UX
+    - darf aber nicht der einzige Marker fuer `Interaction done` bleiben
+- `P4` Hebel: Messbarkeit zuerst, bevor tiefere Betriebswechsel diskutiert werden
+  - im Repo existiert bereits ein kleiner Performance-Sampler:
+    - `app/diagnostics/perf.js`
+  - sinnvoller Einsatz fuer `F13`:
+    - deltas fuer:
+      - `tap -> listening`
+      - `first speech -> stop`
+      - `stop -> transcribe response`
+      - `transcribe response -> reply ready`
+      - `reply ready -> tts complete`
+    - kleine lokale Messhaken statt grober Bauchgefuehl-Debatten
+  - Einordnung:
+    - erst messen
+    - dann VAD-/STT-/TTS-Schnitt wirklich beurteilen
+- Hebel, die bewusst nicht `P1` sind:
+  - kein grosser Parser-/Intent-Refactor nur fuer Performance
+  - kein Ausbau von `midas-assistant` als Voice-Normalpfad
+  - kein neuer paralleler Voice-Runtime-Stack
+  - kein TTS-/STT-Wechsel nur aus Prinzip ohne Latenz- oder Kostenbeleg
+- Praktische Optimierungsreihenfolge nach `F13.3`:
+  - `1.` kleine Messhaken fuer die reale Laufkette setzen
+  - `2.` VAD-/Auto-Stop-Budgets fuer kurze Befehle nachschneiden
+  - `3.` danach erst `transcribe`-Betriebsmodell gegen reale Messwerte lesen
+  - `4.` TTS-/Rueckkanal getrennt als gefuehlte Abschlusslatenz behandeln
+- Explizite Nicht-Zustaende aus `F13.3`:
+  - kein Optimierungsplan, der Robustheit fuer Morning-/Compound-Befehle still opfert
+  - kein Cloud-vs.-lokal-Dogma statt produktiver Messung
+  - kein Umbau, der Latenz senkt, aber Scope-Drift in Richtung `Voice fuer alles` erzeugt
+- Wichtigster Abschlussbefund aus `F13.3`:
+  - der schnellste und risikoaermste Performance-Hebel liegt sehr wahrscheinlich zuerst bei:
+    - engerem Segment-Ende
+    - danach sauber gemessenem `transcribe`
+  - `F13.4` muss deshalb die STT-/Betriebsalternativen gegen genau diesen priorisierten Hebelschnitt lesen, nicht als losgeloeste Technologiefrage
+
+#### F13.4 Ergebnisprotokoll
+- Die realistischen STT-/Betriebsalternativen wurden gegen den heutigen Produktpfad und die priorisierten Latenzhebel gelesen.
+- Produktiver Ist-Pfad heute:
+  - `midas-transcribe`
+    - laeuft serverseitig ueber OpenAI Audio Transcriptions
+    - Modell heute:
+      - `gpt-4o-transcribe`
+    - liefert:
+      - `raw_text`
+      - `surface_normalized_text`
+      - `normalized_text`
+    - traegt bereits eine enge Surface-Normalisierung fuer Mengen-/Einheiten-Schreibweisen
+  - `midas-tts`
+    - laeuft serverseitig ueber OpenAI TTS
+    - Modell heute:
+      - `gpt-4o-mini-tts`
+    - ist fuer den Rueckkanal relevant, aber nicht fuer das eigentliche Verstehen des Befehls
+- Variante `A`: bestehender Cloud-STT-Pfad beibehalten und enger fahren
+  - Stärken:
+    - heute produktiv vorhanden
+    - keine neue Client-/Wrapper-/Device-Infrastruktur
+    - Qualitaet und Robustheit fuer freie Sprache bereits belastbar
+  - Schwaechen:
+    - Netz-/Roundtrip bleibt der zentrale externe Engpass
+    - laufende Kosten bleiben an Voice-Nutzung gekoppelt
+  - Einordnung:
+    - das ist die risikoaermste Baseline
+    - lohnt sich vor allem dann weiter, wenn `P1` und Segmentgroesse zuerst gesenkt werden
+- Variante `B`: kompletter lokaler / on-device STT-Pfad
+  - moeglicher Nutzen:
+    - weniger Netzlatenz
+    - spaeter potenziell geringere laufende Kosten
+    - staerkerer Offline-/Wrapper-/Device-Charakter
+  - Schwaechen:
+    - deutlich hoeherer Integrations- und Pflegeaufwand
+    - Browser-/PWA-seitig heute kein enger naechster Schritt
+    - Qualitaets- und Plattformrisiko gerade fuer Deutsch und alltagsnahe Sprachvarianz
+  - Einordnung:
+    - fachlich interessant
+    - fuer den aktuellen Web-/PWA-Scope aber kein schneller Boxenstopp-Hebel
+    - eher spaeterer Wrapper-/Native-/OS-naher Zukunftspfad
+- Variante `C`: enger Hybrid-Schnitt
+  - moeglicher Aufbau:
+    - sehr enge, kurze command-first Faelle bevorzugt behandeln
+    - nur schwierigere / laengere / unklare Faelle weiter im bestehenden Cloud-STT lassen
+  - Stärken:
+    - kann Latenz und Kosten an genau den haeufigen Kurzbefehlen druecken
+    - ohne das gesamte Produkt sofort auf lokalen STT umzustellen
+  - Schwaechen:
+    - braucht einen sehr sauberen Trigger-Vertrag
+    - darf keine zweite chaotische Spracharchitektur erzeugen
+  - Einordnung:
+    - das ist die interessanteste spaetere Zielvariante
+    - aber erst sinnvoll, wenn `F13` reale Messwerte fuer Kurzbefehle liefert
+- Wichtigster Betriebsbefund:
+  - fuer den aktuellen Sprint ist nicht `Cloud vs. lokal` die erste Entscheidung
+  - die erste Entscheidung ist:
+    - bleibt `transcribe` fuer kurze Commands zu teuer/langsam, selbst nachdem VAD enger geschnitten wurde?
+  - erst wenn diese Antwort `ja` bleibt, wird ein enger Hybrid- oder lokaler Pfad wirklich belastbar
+- Beurteilung gegen das Ziel `snappier ohne Mehrkosten`:
+  - kurzfristig am staerksten:
+    - bestehender Cloud-Pfad
+    - aber mit kleinerem Audiosegment und engerem Segment-Ende
+  - mittelfristig interessant:
+    - Hybrid fuer sehr enge command-first Faelle
+  - langfristig / eigener Scope:
+    - lokaler oder wrapper-naher STT-Pfad
+- Explizite Nicht-Zustaende aus `F13.4`:
+  - kein pauschales Urteil, dass lokaler STT im aktuellen Web-Produkt bereits die beste Antwort ist
+  - kein pauschales Festhalten an Cloud-STT, falls Messung spaeter zeigt, dass kurze Commands unverhaeltnismaessig teuer bleiben
+  - kein Vermischen von STT-Betriebsfrage und TTS-Rueckkanalfrage
+- Wichtigster Abschlussbefund aus `F13.4`:
+  - fuer den aktuellen MIDAS-Scope ist die beste naechste Betriebsstrategie:
+    - bestehenden Cloud-STT-Pfad vorerst beibehalten
+    - ihn aber ueber kuerzere Segmente und engere Voice-Optimierung entlasten
+  - ein enger Hybrid bleibt der plausibelste spaetere Kandidat, falls `F13` danach weiter echten Druck auf `transcribe` zeigt
+  - lokaler / on-device STT bleibt dabei ein expliziter Future-Kandidat, aber:
+    - nicht als `P1`-Ersatz vor VAD-/Segment-Optimierung
+    - nicht als sofort bessere Alternative allein aufgrund der heutigen Verzoegerung
+  - `F13.5` sollte deshalb die Guardrail formulieren:
+    - nicht alles ueber Cloud-/LLM-Transcribe laufen lassen, wenn ein engerer Pfad reicht
+    - aber auch keinen lokalen Pfad dogmatisch vorziehen, solange Robustheit und Produktfit das nicht tragen
+
+#### F13.5 Ergebnisprotokoll
+- Die Guardrail fuer den kuenftigen Optimierungsschnitt wurde auf den realen Produktbedarf festgezogen.
+- Grundregel:
+  - Voice soll spuerbar snappier werden
+  - aber nicht ueber einen Technikwechsel um seiner selbst willen
+- Explizit erlaubt fuer spaetere Optimierungen:
+  - bestehende Cloud-STT-Strecke beibehalten, wenn sie nach engerem VAD-/Segment-Schnitt schnell genug ist
+  - engere oder hybride Pfade einfuehren, wenn sie:
+    - fuer haeufige Kurzbefehle real Latenz sparen
+    - keine neue offene Spracharchitektur erzeugen
+    - Kosten nicht unkontrolliert erhoehen
+  - lokalen / on-device STT spaeter pruefen, wenn:
+    - die Messwerte weiter klar gegen `transcribe` sprechen
+    - oder ein spaeterer Wrapper-/Native-Scope ohnehin kommt
+- Explizit nicht erlaubt:
+  - `alles weiter ueber denselben Cloud-/LLM-STT-Pfad`, obwohl engere lokale oder hybride Pfade fuer dieselben Kurzbefehle belastbar waeren
+  - `alles lokal`, nur weil sich das architektonisch sauberer anfuehlt
+  - ein zweiter loser Voice-Pfad nur fuer Performance-Experimente
+  - neue fachliche Semantik im STT-Layer verstecken, nur um spaeteren Parse-Aufwand zu sparen
+- Guardrail gegen Scope-Drift:
+  - STT bleibt Sprach-zu-Text
+  - Surface-Normalisierung darf eng bleiben
+  - Intent-/Slot-/Pattern-Entscheidungen bleiben weiter im lokalen Intent-Kern
+  - Performance-Arbeit darf nicht zu einer stillen Rueckkehr von `Voice fuer alles` fuehren
+- Produktive Bewertungsfrage fuer jeden spaeteren STT-Schnitt:
+  - wird der haeufige Alltagsbefehl dadurch:
+    - schneller
+    - robuster
+    - nicht teurer oder nur klar begrenzt teurer
+    - ohne den Pflegevertrag aufzubrechen
+  - wenn nicht, ist der Schnitt fuer MIDAS nicht gut genug
+- Praktische Entscheidungslinie nach `F13.5`:
+  - zuerst:
+    - VAD-/Segment-Hebel
+    - Messung
+    - bestehender Cloud-Pfad enger fahren
+  - danach:
+    - Hybrid nur fuer enge Kurzbefehle pruefen
+  - erst spaeter:
+    - lokaler STT als eigener staerkerer Scope
+- Wichtigster Abschlussbefund aus `F13.5`:
+  - MIDAS braucht fuer Voice-Performance weder Cloud-Dogma noch Lokal-Dogma
+  - der richtige Vertrag ist:
+    - so lokal wie sinnvoll
+    - so cloudgestuetzt wie noetig
+    - und immer entlang des realen Kurzbefehls-Nutzens statt entlang reiner Technikpraeferenz
+
+#### F13.6 Ergebnisprotokoll
+- Die semantischen Pflegeorte fuer spaetere Performance-, STT- oder Betriebswechsel wurden gegen den heutigen Intent-Kern festgezogen.
+- Produktive Pflegeorte heute:
+  - `app/modules/assistant-stack/intent/normalizers/surface.js`
+    - transcript-nahe Surface-Normalisierung
+    - richtige Stelle fuer:
+      - Schreibvarianten
+      - Einheitenformen
+      - rohe Oberflaechenbereinigung
+  - `app/modules/assistant-stack/intent/normalizers/semantic.js`
+    - semantische Alias-, Verb- und Filler-Normalisierung
+    - richtige Stelle fuer:
+      - robuste Bedeutungsangleichung
+      - nicht fuer produktive Intent-Freigaben
+  - `app/modules/assistant-stack/intent/semantics/*`
+    - endliche Familien fuer:
+      - Entities
+      - Verbs
+      - Units
+      - Fillers
+      - Compound-Marker
+    - richtige Stelle fuer:
+      - kontrollierte Erweiterung des semantischen Wortschatzes
+  - `app/modules/assistant-stack/intent/slots/extract.js`
+    - produktive Slot-Bildung
+    - richtige Stelle fuer:
+      - `AMOUNT`
+      - `UNIT`
+      - `DURATION`
+      - Entity-/Verb-/Marker-Slots
+  - `app/modules/assistant-stack/intent/rules/*.js`
+    - produktive Pattern-/Intent-Regeln
+    - nur hier duerfen daraus konkrete lokale Intents werden
+  - `app/modules/assistant-stack/voice/index.js`
+    - Voice-Orchestrator
+    - zustaendig fuer:
+      - Recording-/VAD-/Segment-Ende
+      - Compound-Split
+      - Transcribe-Aufruf
+      - lokalen Dispatch-/Reply-Fluss
+    - nicht zustaendig fuer einen zweiten semantischen Hauptparser
+- Wichtigster Pflegevertrag fuer spaetere STT-/Performance-Arbeit:
+  - ein Wechsel im STT-Betriebsmodell darf den lokalen Intent-Kern nicht verschieben
+  - egal ob spaeter:
+    - bestehender Cloud-STT
+    - enger Hybrid
+    - lokaler/on-device STT
+  - der Zielvertrag bleibt:
+    - STT liefert Transcript plus hoechstens enge Surface-Normalisierung
+    - lokale Semantik-/Slot-/Pattern-Entscheidungen bleiben im Frontend-Intent-Kern
+- Explizite Grenze gegen Drift:
+  - `midas-transcribe` darf nicht wieder zum versteckten fachlichen Resolver wachsen
+  - neue Sprachformulierungen gehoeren nicht in Modul-Overviews als zweiter Parserort
+  - Voice-Performance-Arbeit darf nicht dazu fuehren, dass `voice/index.js` parallel eigene Intent-Semantik aufbaut
+- Praktische Folge fuer spaetere Pflege:
+  - wenn ein Begriff nur robuster erkannt werden soll:
+    - zuerst `surface` / `semantic` / `semantics/*` pruefen
+  - wenn ein neuer strukturierter Wert erkannt werden soll:
+    - `slots/extract.js`
+  - wenn daraus ein produktiver Fast-Path werden soll:
+    - `rules/*.js` plus Validator-/Dispatch-Vertrag
+  - wenn nur die Laufzeit schneller werden soll:
+    - zuerst `voice/index.js` und STT-/VAD-Schnitt lesen, nicht sofort den semantischen Kern umbauen
+- Modul-Doku-Rolle bleibt eng:
+  - Module Overviews dokumentieren den Produktvertrag
+  - sie benennen nicht den kanonischen Parserort
+  - damit bleiben spaetere Performance-Wechsel dokumentierbar, ohne dass Doku und Code auseinanderlaufen
+- Wichtigster Abschlussbefund aus `F13.6`:
+  - MIDAS hat heute bereits einen ausreichend klaren semantischen Pflegevertrag fuer spaetere Voice-Optimierung
+  - gerade deshalb koennen STT-/VAD-/Performance-Experimente spaeter enger geschnitten werden, ohne die Sprachlogik wieder diffus im System zu verteilen
+
+#### F13.7 Ergebnisprotokoll
+- Kleine Messhaken fuer die produktive Voice-Latenzkette wurden im bestehenden Voice-Adapter eingezogen.
+- Umgesetzt in:
+  - `app/modules/assistant-stack/voice/index.js`
+- Produktiv erfasste Messsegmente:
+  - `voice_tap_to_listening`
+  - `voice_first_speech_to_stop`
+  - `voice_stop_to_transcribe_response`
+  - `voice_transcribe_to_reply_ready`
+  - `voice_reply_ready_to_tts_complete`
+- Implementierungsschnitt:
+  - kein neuer Mess-Stack
+  - Nutzung des bestehenden globalen Perf-Proxys:
+    - `global.perfStats.add(...)`
+  - lokaler ephemerer Trace im Voice-Controller:
+    - `tapStartedAt`
+    - `firstSpeechAt`
+    - `stopRequestedAt`
+    - `transcribeStartedAt`
+    - `transcribeCompletedAt`
+    - `replyReadyAt`
+- Produktive Marker im Ablauf jetzt vorhanden:
+  - Trigger -> `listening`
+  - erste Sprache -> Recorder-Stop
+  - Recorder-Stop -> `transcribe`-Antwort
+  - `transcribe`-Antwort -> Reply bereit
+  - Reply bereit -> TTS komplett abgespielt
+- Guardrail im Messschnitt:
+  - keine neue Diagnose-UI
+  - keine neue Event- oder Telemetry-Infrastruktur
+  - keine fachliche Aenderung am Intent-/Dispatch-Vertrag
+  - Messung bleibt rein begleitend und lokal
+- Verifikation:
+  - `node --check app/modules/assistant-stack/voice/index.js` gruen
+- Wichtigster Abschlussbefund aus `F13.7`:
+  - der Voice-Pfad ist jetzt fein genug instrumentiert, um `F13.8` nicht blind, sondern gegen reale Segmentzeiten zu schneiden
+  - besonders die drei kritischen Uebergaenge:
+    - `tap -> listening`
+    - `first speech -> stop`
+    - `stop -> transcribe response`
+    sind damit erstmals sauber gegeneinander abgrenzbar
+
+#### F13.8 Ergebnisprotokoll
+- Der VAD-/Segment-Ende-Schnitt fuer kurze Command-First-Utterances wurde jetzt konservativ enger gezogen.
+- Umgesetzt im Code:
+  - `app/modules/assistant-stack/voice/index.js`
+    - Silence-Budgets reduziert:
+      - `VAD_SILENCE_MS`
+        - von `1000`
+        - auf `700`
+      - `VAD_MULTI_COMMAND_SILENCE_MS`
+        - von `1800`
+        - auf `1200`
+      - `VAD_LONG_UTTERANCE_SILENCE_MS`
+        - von `2200`
+        - auf `1600`
+      - `VAD_MIN_SPEECH_BEFORE_AUTOSTOP_MS`
+        - von `900`
+        - auf `650`
+    - Umschaltgrenzen fuer laengere / mehrburstige Aufnahmen frueher gesetzt:
+      - `recordingAgeMs >= 2000`
+      - `recordingAgeMs >= 4000`
+    - VAD-Startparameter leicht enger:
+      - `minSilenceFrames`
+        - von `8`
+        - auf `6`
+- Produktiver Zielschnitt:
+  - kurze Einzelbefehle sollen spuerbar frueher in `transcribe` gehen
+  - Compound-/Morning-Befehle behalten weiterhin mehr Toleranz als Kurzbefehle
+  - kein neuer Modus, kein neuer Shortcut- oder Runtime-Vertrag
+- Guardrail im Implementierungsschnitt:
+  - keine aggressive Sofort-Stop-Logik
+  - keine Trennung in getrennte Voice-Modi
+  - keine Veraenderung am lokalen Intent-/Dispatch-Vertrag
+  - nur konservatives engeres Timing innerhalb der bestehenden Auto-Stop-Architektur
+- Verifikation:
+  - `node --check app/modules/assistant-stack/voice/index.js` gruen
+- Erwarteter Produktnutzen:
+  - kuerzere Wartezeit zwischen letzter Sprache und Recorder-Stop
+  - kleinere Audiosegmente fuer `transcribe`
+  - dadurch besserer subjektiver Start in den eigentlichen STT-Schritt
+- Explizite Restgrenze nach `F13.8`:
+  - ob der neue Schnitt Compound-/Morning-Faelle ausreichend stabil laesst, muss `F13.9` ueber reale Sprachfaelle pruefen
+  - ein spaeterer noch engerer Schnitt bleibt moeglich, sollte aber erst nach dem Verifikationsblock folgen
+- Wichtigster Abschlussbefund aus `F13.8`:
+  - der erste echte Performance-Hebel ist jetzt produktiv umgesetzt
+  - `F13.9` muss damit nicht mehr auf Theorie, sondern auf einen real verengten Voice-Schnitt testen
+
+#### F13.9 Ergebnisprotokoll
+- `F13.9` wurde bewusst als Variante `B` umgesetzt:
+  - Live-Verifikation des ersten Schnitts
+  - plus ein kleiner zweiter Nachschnitt fuer kurze Single-Commands
+- Befund aus dem ersten Live-Log nach `F13.8`:
+  - der neue VAD-Schnitt verbessert den Flow bereits klar:
+    - Compound-Fall deutlich kuerzer als zuvor
+    - kurzer Navigationsfall ebenfalls kuerzer
+  - keine erkennbare Regression im Compound-/Morning-Verhalten
+  - aber:
+    - kurze Single-Commands wirkten weiter noch zu traege
+    - besonders `speechBurstCount = 1` war noch nicht auf dem gewuenschten Snappiness-Niveau
+- Daraus produktiv nachgezogen im Code:
+  - `app/modules/assistant-stack/voice/index.js`
+    - neuer eigener kurzer Single-Command-Silence-Schnitt:
+      - `VAD_SINGLE_COMMAND_SILENCE_MS = 450`
+    - Mindestsprechschutz nochmals leicht enger:
+      - `550`
+    - VAD-Start nochmals leicht enger:
+      - `minSilenceFrames = 5`
+    - Single-Command-Branch im Auto-Stop:
+      - `speechBurstCount <= 1 && recordingAgeMs < 1800`
+      - nutzt den engeren Single-Command-Silence-Wert
+- Guardrail dieses zweiten Feinschnitts:
+  - der neue kurze Pfad gilt nur fuer den fruehen Single-Utterance-Fall
+  - Multi-/Compound-/laengere Sprachlaeufe bleiben weiter auf den konservativeren Budgets
+  - kein neuer Voice-Modus und keine neue Semantik
+- Verifikation:
+  - `node --check app/modules/assistant-stack/voice/index.js` gruen
+- Nachgezogener Restfix aus dem weiteren Live-Test:
+  - Compound-Regression bei transkribiertem `Proteine` erkannt:
+    - der Satz konnte als `single_unit` durchrutschen
+    - dadurch wurde nur ein Teil des Compound-Befehls lokal verarbeitet
+  - enger Fix produktiv eingezogen:
+    - `app/modules/assistant-stack/voice/index.js`
+      - Voice-Compound-Split, Cue-Zaehler und Intake-Klassifikation akzeptieren jetzt auch:
+        - `proteine`
+        - `proteinen`
+    - `app/modules/assistant-stack/intent/normalizers/semantic.js`
+      - Alias-Normalisierung:
+        - `proteine -> protein`
+        - `proteinen -> protein`
+    - `app/modules/assistant-stack/intent/semantics/entities.js`
+      - `PROTEIN_TERM` um dieselben Varianten erweitert
+  - Verifikation nach dem Fix:
+    - `node --check` gruen fuer:
+      - `app/modules/assistant-stack/voice/index.js`
+      - `app/modules/assistant-stack/intent/normalizers/semantic.js`
+      - `app/modules/assistant-stack/intent/semantics/entities.js`
+- Nachgezogener Single-Utterance-Feinschnitt:
+  - weiterer Live-Test zeigte:
+    - Compound wieder korrekt
+    - kurze Single-Commands mit `bursts=2` aber weiter zu konservativ
+  - enger Nachschnitt produktiv eingezogen:
+    - `app/modules/assistant-stack/voice/index.js`
+      - neuer Mittel-Bucket:
+        - `VAD_SHORT_UTTERANCE_SILENCE_MS = 550`
+      - frueher Single-/Kurzlauf-Zweig:
+        - `speechBurstCount <= 2 && recordingAgeMs < 2200`
+  - Verifikation:
+    - `node --check app/modules/assistant-stack/voice/index.js` gruen
+- Wichtigster Abschlussbefund aus `F13.9`:
+  - der zweite Feinschnitt ist jetzt produktiv drin
+  - die erkannte `Proteine`-/Compound-Regression ist im Code eng adressiert
+  - fuer den Abschluss von `F13` fehlt nun vor allem noch:
+    - derselbe Live-Messsatz gegen:
+      - den neuen Single-Command-Schnitt
+      - den nachgezogenen Compound-Fix
+    - danach kann `F13.10` sauber entscheiden, ob ein weiterer Optimierungsschritt noetig ist
+
+#### F13.10 Ergebnisprotokoll
+- Das Spoken Reply-/TTS-Denglisch wurde fuer die kurzen lokalen Erfolgsantworten produktiv enger geschnitten.
+- Ausloesender Produktbefund:
+  - im Alltag fiel Denglisch vor allem bei Water-Intake-Antworten auf
+  - typische Problemform:
+    - englisch wirkende Zahlenaussprache in Kombination mit deutschen Einheiten
+  - zusaetzlicher Randbefund:
+    - ASCII-Formen wie `geoeffnet` klingen in TTS unnatuerlich
+- Produktive Entscheidung fuer den Fix:
+  - kein groesserer Backend- oder Modellumbau in `midas-tts`
+  - keine neue zweite TTS-Route
+  - stattdessen:
+    - die gesprochene lokale Erfolgsoberflaeche bewusst kuerzer und deutschsicherer schneiden
+- Umgesetzt im Code:
+  - `app/modules/assistant-stack/voice/index.js`
+    - `buildVoiceLocalIntentSpokenReply(...)`
+      - Intake-Spoken-Replies ohne numerische Mengen:
+        - `Wasser ist eingetragen.`
+        - `Protein ist eingetragen.`
+        - `Salz ist eingetragen.`
+      - generischer Eintrag:
+        - `Eintrag ist gespeichert.`
+      - Open-Module-Spoken-Replies ohne `geoeffnet`:
+        - `Tageserfassung ist offen.`
+        - `Modul ist offen.`
+- Guardrail im Implementierungsschnitt:
+  - nur die gesprochene Kurzoberflaeche wurde geaendert
+  - Diagnose-/Bypass- und Produktlogik bleiben unveraendert detailliert
+  - kein Umbau an:
+    - STT
+    - Intent-Semantik
+    - Allowed Actions
+    - TTS-Backend-Vertrag
+- Produktiver Nutzen:
+  - weniger Denglisch bei kurzen lokalen Erfolgsantworten
+  - natuerlicherer deutscher TTS-Eindruck gerade bei Water-Intake
+  - geringeres Risiko, dass Ziffern-/Einheitenfolgen englisch ausgesprochen werden
+- Verifikation:
+  - `node --check app/modules/assistant-stack/voice/index.js` gruen
+- Explizite Restgrenze nach `F13.10`:
+  - ein spaeterer echter TTS-Backend-Feinschnitt bleibt moeglich, falls im Alltag weitere Denglisch-Faelle auftauchen
+  - fuer den aktuellen Produktbefund reicht der lokale Spoken-Surface-Fix als enger produktiver Schnitt
+- Wichtigster Abschlussbefund aus `F13.10`:
+  - das beobachtete Denglisch wird nicht ueber einen breiten TTS-Umbau, sondern ueber eine bewusst knappere deutsche Spoken-Oberflaeche adressiert
+  - `F13.11` kann damit den Gesamtblock gegen:
+    - Snappiness
+    - Compound-Stabilitaet
+    - und natuerliche lokale Spoken-Replies
+    sauber abschliessen
+
+#### F13.11 Ergebnisprotokoll
+- Der Abschlusscheck fuer den Voice-Performance-/Betriebsmodell-Block wurde gegen Umsetzung, tote Pfade und Doku-Sync durchgefuehrt.
+- Umsetzungsstand:
+  - die produktive Voice-Latenzkette ist jetzt:
+    - gemappt
+    - lokal instrumentiert
+    - fuer kurze Command-First-Utterances enger geschnitten
+  - Compound-/Morning-Verhalten wurde nach dem `Proteine`-Befund nochmals fachlich stabilisiert
+  - Spoken-Replies fuer lokale Kurzantworten wurden auf eine natuerlichere deutsche Oberflaeche nachgezogen
+- Tote oder doppelte Pfade:
+  - kein neuer zweiter Voice-Parser entstanden
+  - kein zweiter Mess- oder Diagnosestack entstanden
+  - kein toter Performance-Sonderpfad fuer lokale oder hybride STT-Experimente liegengeblieben
+  - beim Abschlussreview kein neuer offener Altpfad gefunden, der fuer `F13` noch bereinigt werden muesste
+- Doku-Sync nachgezogen:
+  - `docs/modules/Assistant Module Overview.md`
+    - auf Voice-Latenzkette, Spoken-Surface-Trennung und Perf-Segmente nachgezogen
+  - `docs/modules/Hub Module Overview.md`
+    - auf Voice-Gate-/UI-Rolle ohne zweiten Mess- oder Parserpfad nachgezogen
+  - `docs/modules/Intent Engine Module Overview.md`
+    - auf semantische Stabilitaet, `proteine`-Alias und unveraenderten Intent-Kern nachgezogen
+  - `docs/modules/VAD Module Overview.md`
+    - auf Single-/Kurzlauf-/Mehrburst-Schnitt und den neuen Perf-Blick auf `speech -> stop` nachgezogen
+  - `docs/modules/Diagnostics Module Overview.md`
+    - auf die neuen Voice-Perf-Segmente nachgezogen
+- Wichtigster Abschlussbefund aus `F13.11`:
+  - `F13` ist damit `DONE`
+  - der Boxenstopp hat den groessten realen Voice-Reibungshebel produktiv angegriffen:
+    - Segment-Ende
+    - danach saubere STT-/TTS-Grenzen
+    - ohne den lokalen Intent-Kern aufzuweichen
+  - weitere Optimierung bleibt moeglich, ist ab jetzt aber Future-Tuning statt offener Grundsatzarbeit
+
+### F14 - QA-Smokes, Regressionen und Prioritaets-Follow-ups absichern
+- F14.1 QA-Checks fuer neue Fast Paths definieren.
+- F14.2 Voice-Semantik-Regression fuer Normalisierung, Slots und Pattern-Matches definieren.
+- F14.3 Medication Reorder Guards und Idempotenz pruefen.
+- F14.4 Breath Timer Fast Path gegen BP-Kontext und Rueckkehrfluss pruefen.
+- F14.5 Medication-Voice-Low-Stock-Follow-up gegen Prompt-, Confirm- und Reorder-Guards pruefen.
+- F14.6 Shortcut-/Entry-Point-Pruefung fuer den PWA-Voice-Start dokumentieren.
+- F14.7 Sicherstellen, dass neue Fast Paths keine Regression im bestehenden Voice-V1- oder Text-Intent-Pfad verursachen.
+- F14.8 Abschlusscheck vor F15:
+  - QA-Faelle mit echten Findings zurueck in die Roadmap oder den Code spiegeln.
+  - Sicherstellen, dass `QA_CHECKS` die neue sichtbare Semantikkette abdeckt:
+    - `surface`
+    - `semantic`
+    - `slots`
+    - `pattern`
+  - Temporaere Harnesses, Testhaken oder Diag-Reste aufraeumen.
+  - Dokumentieren, welche Doku sofort nachgezogen werden muss, damit `F15` kein reiner Rettungsschritt wird.
+
+#### F14.1 Ergebnisprotokoll
+- Die QA-Checks fuer die neuen Fast Paths wurden gegen den heutigen Produktvertrag gebuendelt und in `docs/QA_CHECKS.md` nachgezogen.
+- Neuer operativer Block:
+  - `Phase F14 - Fast Path QA & Regression Sweep (2026-03-17)`
+- Schwerpunkt:
+  - Intake-Fast-Paths
+  - `open_module`
+  - `start_breath_timer`
+  - Medication-Low-Stock-Follow-up
+  - Spoken-Surface-Qualitaet
+- Wichtigster Befund:
+  - der groesste Teil der technischen Absicherung war bereits vorhanden
+  - fuer `F14` fehlte vor allem ein zusammenhaengender QA-Block fuer die nachgezogenen Produktpfade aus `F9` bis `F13`
+
+#### F14.2 Ergebnisprotokoll
+- Die Voice-Semantik-Regression wurde bewusst auf die sichtbare Kette festgezogen:
+  - `surface_normalized_transcript`
+  - `semantic_normalized_transcript`
+  - `slots`
+  - `intent_result`
+- Die QA-Definition prueft jetzt ausdruecklich:
+  - Oberflaechenprobleme gegen `surface`
+  - Alias-/Bedeutungsprobleme gegen `semantic` / `semantics/*`
+  - strukturierte Werte gegen `slots`
+  - produktive Freigaben nur ueber `pattern / intent rules`
+- Wichtigster Befund:
+  - `F14` musste keine neue Semantik bauen
+  - sondern sicherstellen, dass kuenftige Regressionsfaelle an der richtigen Schicht landen
+
+#### F14.3 Ergebnisprotokoll
+- Medication-Reorder-Guards und Idempotenz wurden gegen den aktuellen produktiven Stand gelesen.
+- Bestaetigt im Bestand:
+  - Guard-Reasons fuer den Reorder-Startvertrag sind vorhanden:
+    - `notLowStock`
+    - `doctorEmailMissing`
+    - `mailtoUnavailable`
+  - lokaler Launch-Lock und Reopen-Cooldown schuetzen den Mailto-Start gegen unmittelbare Doppeltrigger
+  - der Voice-Follow-up nutzt bewusst denselben lokalen Reorder-Startvertrag statt eines eigenen Reorder-Pfads
+- QA-Nachzug:
+  - entsprechender Guard-/Idempotenz-Check in `docs/QA_CHECKS.md` ergaenzt
+- Wichtigster Befund:
+  - kein neuer Code-Nachzug noetig
+  - die Guardrails waren produktiv vorhanden, mussten aber in `F14` explizit als Regressionserwartung festgehalten werden
+
+#### F14.4 Ergebnisprotokoll
+- Der Breath-Timer-Fast-Path wurde gegen BP-Kontext und Rueckkehrfluss erneut auf den dokumentierten Produktvertrag gespiegelt.
+- Bestaetigt:
+  - lokaler `start_breath_timer`-Fast-Path ist produktiv vorhanden
+  - `3` Minuten bleiben Default, `5` Minuten nur explizit
+  - Save-/Kontext-/Tab-Guards waehrend aktivem Breath-UI bleiben Teil des Regression-Schnitts
+  - Rueckkehr in den vorbereiteten BP-Kontext bleibt kontrolliert und ohne Overlay-/Timer-Orphans
+- QA-Nachzug:
+  - Breath-Timer-Checks in `docs/QA_CHECKS.md` explizit im `F14`-Block gespiegelt
+- Wichtigster Befund:
+  - der Breath-Timer war bereits belastbar geschnitten
+  - `F14` zieht ihn nur als produktiven Spezialfall in denselben Fast-Path-QA-Raum
+
+#### F14.5 Ergebnisprotokoll
+- Der Medication-Voice-Low-Stock-Follow-up wurde nochmals gegen Prompt-, Confirm- und Reorder-Guards gelesen.
+- Bestaetigt:
+  - Trigger bleibt eng:
+    - nur nach erfolgreichem `medication_confirm_all`
+    - nur bei frischem realem `low_stock`
+  - Confirm-Raum bleibt eng:
+    - `ja`
+    - `nein`
+  - `ja` fuehrt nur in den bestehenden lokalen Reorder-Start
+  - kein Versand-/Bestellstatus und kein persistenter Resume-/Pending-Pfad entstehen
+- QA-Nachzug:
+  - der bisher in `Phase F8` offene Nachsatz-Check wurde in `docs/QA_CHECKS.md` auf erledigt gezogen
+  - zusaetzlich im neuen `F14`-Block nochmals als Regressionserwartung gespiegelt
+- Wichtigster Befund:
+  - keine weitere Implementierung noetig
+  - aber der Check musste aus dem alten offenen Restzustand in einen expliziten Regression-Vertrag ueberfuehrt werden
+
+#### F14.6 Ergebnisprotokoll
+- Die Shortcut-/Entry-Point-Pruefung fuer den PWA-Voice-Start wurde nicht neu geoeffnet, sondern bewusst auf den abgeschlossenen `F12`-Befund zurueckgeschnitten.
+- Produktiver QA-Vertrag:
+  - kein Test erwartet einen echten Outside-the-app-Voice-Start ueber PWA
+  - Shortcut-Ideen bleiben auf:
+    - `bestehenden Voice-Kontext schneller erreichen`
+    begrenzt
+  - kein zweiter Runtime-Pfad darf daraus implizit entstehen
+- Wichtigster Befund:
+  - `F14` braucht hier keine neue Technikpruefung
+  - sondern nur eine saubere QA-Grenze gegen falsche Produkterwartungen
+
+#### F14.7 Ergebnisprotokoll
+- Der Regression-Schnitt gegen bestehenden Voice-V1- und Text-Intent-Pfad wurde auf den heute produktiven Contract gelesen.
+- Bestaetigt:
+  - kein zweiter Parserpfad entstanden
+  - kein neuer LLM-Pflichtpfad fuer strukturierte Commands entstanden
+  - keine neue Allowed-Action-Flaeche nur fuer `F14`
+  - Text und Voice bleiben auf demselben fachlichen Intent-Surface
+- Doku-/QA-Nachzug:
+  - `docs/QA_CHECKS.md` spiegelt jetzt dieselbe Fast-Path- und Semantikketten-Sicht
+  - Modul-Overviews aus `F13` tragen bereits den dafuer relevanten Runtime-Stand
+- Wichtigster Befund:
+  - `F14` war damit ueberwiegend Regression-Absicherung, nicht weiterer Scope-Ausbau
+
+#### F14.8 Ergebnisprotokoll
+- Abschlusscheck fuer den QA-/Regression-Block durchgefuehrt.
+- Umsetzungsstand:
+  - `docs/QA_CHECKS.md` deckt jetzt die neuen produktiven Fast Paths als zusammenhaengenden Regression-Block ab
+  - die sichtbare Semantikkette:
+    - `surface`
+    - `semantic`
+    - `slots`
+    - `pattern`
+    ist in QA explizit verankert
+  - Medication-Reorder-, Breath-Timer- und PWA-Entry-Point-Grenzen sind im QA-Schnitt sauber eingeordnet
+- Tote Reste / offene Findings:
+  - keine neuen temporaeren Harnesses oder Diagnose-Sonderpfade fuer `F14` entstanden
+  - kein neuer offener Code-Fix aus dem Review hervorgegangen
+  - Live-/Alltags-Smokes bleiben weiterhin sinnvoll, sind aber kein Blocker fuer den Roadmap-Abschluss dieses Blocks
+- Wichtigster Abschlussbefund:
+  - `F14` ist damit `DONE`
+  - der Block hat den aktuellen Produktvertrag nicht erweitert, sondern die vorhandenen Spezialfaelle belastbar in QA und Regression ueberfuehrt
+
+### F15 - Doku-Sync, QA_CHECKS, CHANGELOG und Future Hooks finalisieren
+- F15.1 Statusmatrix finalisieren.
+- F15.2 Module Overviews auf finalen Implementierungsstand nachziehen.
+- F15.3 `docs/QA_CHECKS.md` um neue Fast-Path-Regression erweitern.
+- F15.4 `CHANGELOG.md` unter `Unreleased` ergaenzen.
+- F15.5 Future Hooks dokumentieren, aber bewusst nicht ueberziehen:
+  - Wearable / Watch Node
+  - enger Confirm-Loop fuer definierte Faelle
+  - spaetere Workflow-Automationen
+- F15.6 Abschlusscheck:
+  - Roadmap, Module Overviews, `QA_CHECKS` und `CHANGELOG` gegeneinander auf Drift pruefen.
+  - Sicherstellen, dass Doku den neuen Semantik-Vertrag beschreibt, aber keine zweite Parserquelle wird.
+  - Toten Code und tote Doku-Verweise aus dem Follow-up entfernen.
+  - Rest-Risiken, bewusst verworfene Ideen und spaetere Hooks klar final einordnen.
+
+#### F15.1 Ergebnisprotokoll
+- Die Statusmatrix wurde auf den tatsaechlichen Abschlussstand der Roadmap gezogen.
+- Nachgezogen:
+  - `F10` -> `DONE`
+  - `F11` -> `DONE`
+  - `F13` -> `DONE`
+  - `F14` war bereits auf `DONE`
+  - `F15` selbst jetzt auf `DONE`
+- Wichtigster Befund:
+  - die Matrix spiegelt jetzt wieder denselben Projektstand wie die Ergebnisprotokolle unterhalb der Schritte
+
+#### F15.2 Ergebnisprotokoll
+- Die relevanten Module Overviews wurden ueber den Verlauf der Roadmap auf den finalen Implementierungsstand nachgezogen.
+- Hauptbetroffene Overviews im Follow-up:
+  - `docs/modules/Assistant Module Overview.md`
+  - `docs/modules/Hub Module Overview.md`
+  - `docs/modules/Intent Engine Module Overview.md`
+  - `docs/modules/VAD Module Overview.md`
+  - `docs/modules/Medication Module Overview.md`
+  - `docs/modules/Breath Timer Module Overview.md`
+  - `docs/modules/Appointments Module Overview.md`
+  - `docs/modules/Diagnostics Module Overview.md`
+- Wichtigster Befund:
+  - die Modul-Dokus tragen jetzt denselben Produktvertrag fuer:
+    - Fast Paths
+    - Spoken-/Voice-Grenzen
+    - Reorder-/Breath-Spezialfaelle
+    - Future Hooks
+
+#### F15.3 Ergebnisprotokoll
+- `docs/QA_CHECKS.md` wurde um die neuen Fast-Path-Regressionen erweitert und auf den finalen Follow-up-Stand gezogen.
+- Produktiv relevant:
+  - `Phase F8 - Voice Command Reactivation Regression`
+    - alter offener Low-Stock-Follow-up-Check auf erledigt gezogen
+  - neue `Phase F14 - Fast Path QA & Regression Sweep`
+    - deckt Fast Paths, sichtbare Semantikkette, Breath Timer, Medication-Low-Stock-Follow-up, Spoken-Surface und PWA-Grenzen ab
+- Wichtigster Befund:
+  - `QA_CHECKS` beschreibt jetzt nicht mehr nur Einzelbausteine, sondern den zusammenhaengenden produktiven Regression-Schnitt der Follow-up-Phase
+
+#### F15.4 Ergebnisprotokoll
+- `CHANGELOG.md` wurde unter `Unreleased` um den finalen Follow-up-Block ergaenzt.
+- Nachgezogen:
+  - Abschluss des Post-Voice Follow-ups
+  - Voice-Latenz-/VAD-/Spoken-Surface-Nachschnitt
+  - enger Medication-Low-Stock-Voice-Follow-up
+  - finaler Doku-/QA-Sync
+- Wichtigster Befund:
+  - der Produktfortschritt aus `F9` bis `F14` ist jetzt nicht nur in Roadmap und Moduldoku, sondern auch im Release-Blick sichtbar
+
+#### F15.5 Ergebnisprotokoll
+- Future Hooks wurden final eingeordnet, aber bewusst nicht ueberzogen.
+- Bestaetigte Future-Hook-Linie:
+  - Wrapper / Native Shell / Widget fuer echten Outside-the-app-Voice-Start
+  - spaetere Wearable-/Begleitgeraet-Pfade
+  - moegliche spaetere enge Voice-Open-Module-Erweiterungen nur bei realem Alltagsnutzen
+  - kein aufgeblasener Appointment-/Activity-/PWA-Nebenscope
+- Wichtigster Befund:
+  - Future Hooks sind jetzt sichtbar genug, um nicht vergessen zu werden
+  - aber eng genug, um nicht wie halbfertige Produktzusagen zu wirken
+
+#### F15.6 Ergebnisprotokoll
+- Abschlusscheck fuer die gesamte Follow-up-Roadmap durchgefuehrt.
+- Drift-Check:
+  - Roadmap, Modul-Overviews, `QA_CHECKS` und `CHANGELOG` sind jetzt auf demselben Follow-up-Stand
+  - die Doku beschreibt den neuen Semantik-Vertrag, ohne eine zweite Parserquelle zu bauen
+- Tote Reste:
+  - im Follow-up selbst wurde kein neuer toter Code- oder Doku-Pfad festgestellt
+  - temporaere Experimentlinien fuer PWA-/Shortcut-/lokalen STT-Ausbau wurden nicht halbproduktiv hinterlassen, sondern sauber als Future Hooks begrenzt
+- Finale Einordnung:
+  - reale Fast Paths wurden nur dort produktiv weitergezogen, wo der Alltagsnutzen belastbar war
+  - bewusst verworfene oder verschobene Ideen bleiben dokumentiert:
+    - Appointment-Create
+    - echter Outside-the-app-Voice-Start
+    - lokaler/on-device STT als spaeterer Kandidat
+- Wichtigster Abschlussbefund:
+  - die Post-Voice Follow-up Roadmap ist damit insgesamt `DONE`
+  - `F15` ist kein Rettungsschritt mehr, sondern der formale Abschluss eines bereits weitgehend produktiv umgesetzten und jetzt vollstaendig synchronisierten Blocks
+
+## Smokechecks / Regression (Definition)
+- Neue Fast Paths entstehen nur aus dokumentierten Reibungspunkten.
+- Kein neuer Fast Path fuehrt zu einem unkontrollierten Assistant-/LLM-Pflichtpfad.
+- Die Voice-Semantik bleibt ueber Schichten, Kategorien, Slots und Pattern-Regeln nachvollziehbar und driftet nicht in eine Satzbibliothek oder offenen Live-Resolver.
+- Neue Actions sind guard-railed und klar dokumentiert.
+- Medication Reorder bleibt deterministisch, bestaetigbar und gegen Doppeltrigger geschuetzt.
+- Breath Timer Fast Path landet kontrolliert im vorbereiteten Mess-Flow.
+- Ein eventueller Medication-Voice-Low-Stock-Follow-up bleibt eng, bestaetigungsbasiert und fuehrt hoechstens in den bestehenden lokalen Reorder-Start.
+- Module mit geringem Nutzen bleiben bewusst ohne Fast Path.
+- Ein PWA-Icon Voice Fast Path, falls sinnvoll, startet nur den bestehenden Voice-Kontext schneller.
+
+## Abnahmekriterien
+- Alle relevanten Module Overviews besitzen einen standardisierten `Intent / Voice Integration`-Abschnitt.
+- Neue Fast Paths wurden systematisch bewertet und priorisiert statt ad hoc hinzugefuegt.
+- Medication Reorder und Breath Timer sind als klare Spezialfaelle geschnitten oder bewusst begruendet ausgeschlossen.
+- Die produktive Voice-Semantik ist in eine deterministische, pflegeleichte Architektur aus Normalisierung, semantischen Kategorien/Slots und Pattern-Regeln ueberfuehrt oder fuer diesen Umbau belastbar vorgeschnitten.
+- Ein moeglicher Medication-Voice-Low-Stock-Follow-up ist nur dann enthalten, wenn er ohne Versandfiktion und ohne Assistant-Drift modelliert werden kann.
+- `allowed-actions` und `actions.js` bleiben kontrolliert und nachvollziehbar.
+- MIDAS reduziert dadurch reale Reibung im Alltag, ohne die Rolle als Tracker zu verlieren.
+- Ein moeglicher direkter Voice-Start ueber das PWA-App-Icon ist technisch und produktseitig sauber eingeordnet.
+
+## Risiken
+- Scope-Drift in Richtung `Voice fuer alles`.
+- Zu viele theoretische Fast Paths ohne echten Alltagsertrag.
+- Action-Surface waechst schneller als Guard-/Doku-/QA-Vertrag.
+- Die Voice-Semantik kippt in Parser-Spaghetti oder Satzbibliothekswachstum statt in eine klar pflegbare Slot-/Pattern-Schicht.
+- Medication Reorder driftet in offenen Automationscharakter statt engen Spezialfall.
+- Breath Timer wird versehentlich als conversation feature statt als einfacher Workflow-Start behandelt.
+- PWA-Shortcut-Ideen erzeugen Druck in Richtung Widget-/Native-Shell-Ausbau.
+- Future Hooks fuer Watch/Node werden zu frueh wie produktive Features behandelt.

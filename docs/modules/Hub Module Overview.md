@@ -1,21 +1,22 @@
-﻿# Hub Module - Functional Overview
+# Hub Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Zentrales Hub-Interface (Orbit, Panels, Quickbar) als Hauptnavigation.
-- Rolle innerhalb von MIDAS: oeffnet Panels, orchestriert UI-Flow, Voice-Gate (via Voice-Modul), Assistant-Flow.
-- Abgrenzung: keine eigenen Datenmodelle, keine Persistenz.
+- Zweck: zentrales MIDAS-Hub-Interface mit Carousel, Panels, Quickbar und produktivem Voice-V1-Einstieg.
+- Rolle innerhalb von MIDAS: orchestriert UI-Navigation, Assistant-Textfluss, Voice-Gate, Voice-State-UI und Pending-Context-Helfer fuer Voice.
+- Abgrenzung: keine eigene Persistenz, keine fachliche Intent-Logik im Kern.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
-- [Push Module Overview](Push Module Overview.md)
+- [Assistant Module Overview](Assistant Module Overview.md)
+- [VAD Module Overview](VAD Module Overview.md)
 
 ---
 
 ## 1. Zielsetzung
 
-- Problem: konsistente Panel-Navigation und zentrale UI fuer Capture/Doctor/Assistant.
-- Nutzer: Patient (Navigation) und System (UI-Flow).
-- Nicht Ziel: Datenverarbeitung oder Supabase-Logik.
+- Problem: ein zentraler, stabiler UI-Einstieg fuer Navigation, Capture und Voice.
+- Nutzer: Patient.
+- Nicht Ziel: fachliche Speicherung oder LLM-/Intent-Entscheidungen im Hub selbst.
 
 ---
 
@@ -23,119 +24,130 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/hub/index.js` | Hub-Controller (Panels, Carousel, Quickbar, Voice-Adapter) |
-| `app/modules/hub/hub-aura3d.js` | Aura-Canvas (3D/Noise) |
-| `app/modules/assistant-stack/voice/index.js` | Voice-Flow (geparkt) |
-| `app/modules/assistant-stack/vad/vad.js` | Voice Activity Detection (Auto-Stop) |
-| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet fuer VAD |
-| `app/styles/hub.css` | Hub-Layout, Panels, Voice-States |
-| `index.html` | Hub-Markup (Orbit, Panels, Quickbar) |
+| `app/modules/hub/index.js` | Carousel, Panels, Quickbar, Assistant-Flow, Voice-Gate, Pending-Context-Resolver |
+| `app/modules/hub/hub-aura3d.js` | Visuelle Aura / Canvas |
+| `app/modules/assistant-stack/voice/index.js` | Produktiver Voice-V1-Adapter |
+| `app/modules/assistant-stack/vad/vad.js` | VAD-Anbindung |
+| `app/styles/hub.css` | Hub-Layout und Voice-State-Visuals |
+| `index.html` | MIDAS-Slot, Panels, Quickbar |
 
 ---
 
-## 3. Datenmodell / Storage
+## 3. Ablauf / Logikfluss
 
-- Kein Storage.
-- Hub nutzt bestehende Module (Capture, Doctor, Assistant) fuer Daten.
+### 3.1 Initialisierung
 
----
+- Hub initialisiert Carousel, Panels, Quickbar und den Voice-Adapter.
+- `assistant-voice` ist wieder permanenter erster Carousel-Slot.
+- Die produktive Voice-Initialisierung laeuft direkt; ein alter `VOICE_PARKED`-Zwischenguard existiert nicht mehr.
+- Voice wird ueber Boot-/Auth-/Gate-Status kontrolliert geoeffnet oder blockiert.
 
-## 4. Ablauf / Logikfluss
+### 3.2 User-Trigger
 
-### 4.1 Initialisierung
-- Hub initialisiert Carousel, Quickbar, Panels und ruft (optional) das Voice-Modul.
-- Panels bleiben im DOM und werden nur ein-/ausgeblendet.
+- Orbit-/Carousel-Buttons oeffnen Panels.
+- `assistant-voice` ist der offizielle Push-to-talk-Einstieg fuer Voice V1.
+- Quickbar bleibt ohne zweiten produktiven Voice-Einstieg.
 
-### 4.2 User-Trigger
-- Orbit-Buttons (`data-hub-module`) oeffnen Panels.
-- Quickbar-Buttons oeffnen Panels oder Aktionen.
-- Voice-Trigger ueber `assistant-voice` Button (geparkt).
+### 3.3 Assistant / Intent
 
-### 4.3 Verarbeitung
-- `setupIconBar` bindet Panel-Buttons und schliesst Panels.
-- `setupCarouselController` verwaltet aktives Hub-Icon.
-- `setupQuickbar` steuert verticale UI-Shift.
-- Voice-Flow (geparkt): Recording -> Transcribe -> Assistant -> TTS.
+- Texteingaben laufen im Hub zuerst ueber den Intent-Preflight.
+- Lokale Direct-Matches werden ueber Allowed-Actions oder UI-safe Actions behandelt.
+- Pending-Contexts fuer Confirm-Flows werden hier gesetzt, gelesen, bereinigt und aufgeloest.
 
-### 4.4 Persistenz
-- Keine Persistenz.
+### 3.4 Voice
 
----
-
-## 5. UI-Integration
-
-- Hub ist zentrales Overlay mit Aura/Orbit und Panels.
-- Panels: Intake, Vitals, Doctor, Profile, Appointments, Assistant.
-- Touch-Log Panel ist im Hub-Kontext erreichbar (Quickbar Action) und enthaelt Dev-Toggles links, Log rechts.
-- Assistant-Panel zeigt Butler-Header: Pills + Kontext-Extras + Termine + Expandable (Restbudget/Warnung) inkl. Mobile-Toggle.
-- Voice-States steuern Visuals (`data-voice-state`).
-
----
-
-## 6. Arzt-Ansicht / Read-Only Views
-
-- Hub oeffnet die Arzt-Ansicht und steuert den Unlock-Flow.
-- Chart-Button oeffnet Chart-Panel im Doctor-Kontext.
+- Der Hub exponiert fuer Voice:
+  - `getVoiceGateStatus()`
+  - `onVoiceGateChange(...)`
+  - `getAssistantPendingIntentContext()`
+  - `resolveAssistantConfirmIntent(...)`
+- Sichtbare Voice-State-UI:
+  - `idle`
+  - `listening`
+  - `transcribing`
+  - `parsing`
+  - `executing`
+  - `confirming`
+  - `error`
+- Der Hub bleibt dabei nur UI-/Gate-Orchestrator:
+  - VAD-/Segment-Ende-Optimierung liegt im Voice-Adapter
+  - die natuerlichere Spoken-Kurzoberflaeche fuer lokale Replies wird ueber die lokalen Reply-Builder zugespielt
 
 ---
 
-## 7. Fehler- & Diagnoseverhalten
+## 4. UI-Integration
 
-- Fehler werden in `diag.add` und Konsole geloggt.
-- Voice-Gate blockt bei Auth/Boot-Status (nur falls Voice reaktiviert wird).
-- Panel-Open/Close schreibt Diagnoselog bei Fehlern.
-
----
-
-## 8. Events & Integration Points
-
-- Public API / Entry Points: `AppModules.hub.openPanel`, `openDoctorPanel`, hub buttons (`data-hub-module`).
-- Source of Truth: Hub DOM state (active panel), voice gate status (proxy).
-- Side Effects: toggles body classes, voice state updates, panel open/close logs.
-- Constraints: Doctor unlock required for doctor panel, voice gate blocks voice (nur wenn Voice aktiv).
-- `requestUiRefresh({ doctor: true })` nach Panel-Aktionen.
-- `assistant:action-*` Events werden im Hub verarbeitet.
-- Voice-Gate API: `getVoiceGateStatus` / `onVoiceGateChange`.
+- `assistant-voice` ist permanenter MIDAS-Slot im Carousel.
+- Der Slot bleibt sichtbar und verschwindet nicht mehr als Intro-/Park-Relikt.
+- Voice-Gate und Voice-State werden direkt am sichtbaren Hub-Einstieg gespiegelt.
+- Panels bleiben im DOM und werden nur geoeffnet/geschlossen.
 
 ---
 
-## 9. Erweiterungspunkte / Zukunft
+## 5. Pending-Context- und Confirm-Rolle
 
-- Reaktivierung von Orbit-Hotspots.
-- Mehr Panel-Module oder Quickbar-Aktionen.
-- Feinere Voice-States/Animationen.
-
----
-
-## 10. Feature-Flags / Konfiguration
-
-- `DEV_ALLOW_DEFAULTS` (Debug/Defaults).
-- Panel-Performance via `body[data-panel-perf]`.
+- Der Hub ist Source of Truth fuer:
+  - aktiven Pending Intent Context
+  - Pending Guard Locks (`inFlight`, `consumed`)
+  - Clear-/Cleanup-Verhalten
+- Der Hub liefert den generischen Confirm-Resolver fuer Text und Voice.
+- Unbrauchbare oder stale Pending Contexts werden beim Zugriff aktiv bereinigt.
+- Neue Pending Contexts loesen alte Guard-Reste fuer denselben Key kontrolliert ab, damit keine Zombie-Locks haengen bleiben.
 
 ---
 
-## 11. Status / Dependencies / Risks
+## 6. Fehler- & Diagnoseverhalten
 
-- Status: aktiv (Voice geparkt).
-- Dependencies (hard): Hub DOM/Styles, Hub-Controller, Auth-Guard fuer Doctor, Assistant fuer Text.
-- Dependencies (soft): zusaetzliche Panels (Future).
-- Known issues / risks: fehlende DOM Hooks; Voice-Gate; UI-State Drift.
-- Backend / SQL / Edge: n/a.
-
----
-
-## 12. QA-Checkliste
-
-- Orbit-Buttons oeffnen/close Panels korrekt.
-- Quickbar oeffnet/schliesst per Swipe.
-- Voice-Gate blockt Voice-Trigger bei `authState=unknown` (nur wenn Voice reaktiviert wird).
-- Doctor-Panel oeffnet nur nach Unlock.
+- Gate-Blocker und Panel-Fehler loggen ueber `diag.add`.
+- Voice-Gate blockt bei Boot/Auth kontrolliert.
+- Confirm-/Pending-Fehler bleiben lokal und kurz.
+- Erfolgreiche Voice-Confirms laufen im Hub kanalbewusst ueber `intent-confirm:voice`.
+- UI-State-Drift wird ueber klare Hub-State-Attribute reduziert.
+- Fuer den Voice-Performance-Review greift der Hub auf denselben globalen Perf-Sampler zu wie der Voice-Adapter; er baut dafuer keinen zweiten Mess-Stack auf.
 
 ---
 
-## 13. Definition of Done
+## 7. Events & Integration Points
 
-- Hub-Navigation stabil ohne Errors.
-- Voice-Flow funktioniert inklusive Auto-Stop (nur wenn Voice reaktiviert ist).
-- Dokumentation aktuell.
+- Public API:
+  - `AppModules.hub.openPanel(...)`
+  - `AppModules.hub.getVoiceGateStatus()`
+  - `AppModules.hub.onVoiceGateChange(...)`
+  - `AppModules.hub.getAssistantPendingIntentContext()`
+  - `AppModules.hub.resolveAssistantConfirmIntent(...)`
+- Relevante Events:
+  - `assistant:action-success`
+  - `assistant:intent-*`
 
+---
+
+## 8. Status / Dependencies / Risks
+
+- Status: aktiv, Voice-V1 produktiv angebunden.
+- Hard dependencies:
+  - Hub DOM / CSS
+  - Voice-Adapter
+  - Intent Engine
+- Known risks:
+  - fehlende DOM-Hooks
+  - Voice-Gate-/Stage-Drift
+  - visuelle State-Drift bei spaeteren Hub-Refactors
+
+---
+
+## 9. QA-Checkliste
+
+- `assistant-voice` ist erster sichtbarer Carousel-Slot.
+- Push-to-talk startet nur bei erlaubtem Gate-Status.
+- Voice-State-Labeling spiegelt den Runtime-Status sichtbar.
+- Pending-Context-Resolver funktioniert fuer Text und Voice.
+- Doctor-/Panel-Navigation bleibt unbeeintraechtigt.
+
+---
+
+## 10. Definition of Done
+
+- Hub ist stabiler zentraler Voice- und Panel-Einstieg.
+- Kein zweiter produktiver Voice-Einstieg ausserhalb des MIDAS-Slots.
+- Pending-Context- und Gate-Helfer sind fuer Text und Voice konsistent.
+- Dokumentation ist auf dem produktiven Hub-Zuschnitt.

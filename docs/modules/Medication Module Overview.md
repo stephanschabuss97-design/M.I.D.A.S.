@@ -92,9 +92,46 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Custom Event `medication:changed { reason, dayIso, datass }`.
+- Custom Event `medication:changed { reason, dayIso, data }`.
 - Intake reagiert (IN), Profil-Änderungen triggen Low-Stock-Kontakt Update.
 - `AppModules.medication` exportiert API für andere Module (z. B. Trendpilot).
+
+---
+
+## Intent / Voice Integration
+
+- Status:
+  - Produktiver lokaler Medikations-Fast-Path ist derzeit auf die taegliche Sammelbestaetigung offener Medikation begrenzt.
+- Unterstuetzte Intents:
+  - `medication_confirm_all`
+- Voice Entry Points:
+  - Produktiv nur ueber den bestehenden Hero-Hub Push-to-talk-Flow und den gemeinsamen Intent-Surface.
+- Allowed Actions:
+  - Keine generische Allowed-Action fuer das Modul.
+  - Produktiv existiert ein enger lokaler Spezialpfad fuer `medication_confirm_all`, der ueber `loadMedicationForDay(...)` und `confirmMedication(...)` aufloest.
+- Vorbefuellbare Parameter:
+  - Derzeit keine produktiven Intent-/Voice-Prefills.
+- Nicht erlaubte Operationen:
+  - Kein freier Medikations-Write per Voice.
+  - Kein Restock, `set_stock`, Aktivieren/Archivieren oder Loeschen per Intent-/Voice-Fast-Path.
+  - Kein Medication-Reorder-Senden ohne separaten Workflow-Vertrag.
+- Hinweise / offene Punkte:
+  - Pflegehinweis fuer spaetere Satz-Ergaenzungen:
+    - Beispiele und Betriebsueberblick: `docs/Voice Command Semantics.md`
+    - produktive Match-Regeln liegen in `app/modules/assistant-stack/intent/rules.js`
+    - robuste Transkript-/Oberflaechen-Normalisierung liegt in `app/modules/assistant-stack/intent/normalizers.js`
+  - Low-Stock-UI, Arztkontakt und Reorder-Vorstufen existieren bereits im Modul und muenden heute in einen engen lokalen Reorder-Startvertrag.
+  - Der derzeitige Reorder-nahe Pfad bleibt lokal und UI-confirmed; `mailto:`-Start, `ackLowStock(...)` und Low-Stock-Hinweis werden nicht als Versandnachweis oder Pending-Context-Confirm modelliert.
+  - Das Modul traegt jetzt einen lokalen Reorder-Start-Contract mit expliziten Guard-Reasons fuer den Mailto-Pfad; er bleibt ausserhalb von `actions.js`, `allowed-actions.js` und Pending-Context-Confirms.
+  - Die Low-Stock-UI unterscheidet jetzt sichtbar zwischen lokal verfuegbarem Reorder-Start, lokal angestossenem `reorder_prompted` und nicht verfuegbarem Kontaktpfad.
+  - Vor dem Mailto-Start gibt es jetzt einen engen lokalen Zwei-Schritt-Confirm im Low-Stock-UI; auch danach bleibt der Zustand unterhalb eines behaupteten Versandnachweises.
+  - Zusaetzlich schuetzt die UI den lokalen Mailto-Start per kurzem Lock/Cooldown gegen unmittelbares Doppel-Oeffnen; das ist nur lokaler Doppelklick-Schutz, kein Versandtracking.
+  - Voice traegt jetzt zusaetzlich einen engen ephemeren Low-Stock-Follow-up nach erfolgreichem `medication_confirm_all`:
+    - nur bei frischem realem `low_stock`
+    - nur `ja` / `nein`
+    - `ja` fuehrt ausschliesslich in denselben lokalen Reorder-Startvertrag
+    - kein freier Reorder-Dialog, kein Versand-/Bestellstatus und kein persistenter Resume-Context
+  - Future Hook: spaeterer Node-/Shortcut-Anschluss hoechstens oberhalb desselben lokalen Reorder-Starts und nur ohne neue offene Reorder-Session.
 
 ---
 

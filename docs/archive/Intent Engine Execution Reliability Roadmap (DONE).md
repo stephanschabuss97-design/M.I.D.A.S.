@@ -1,4 +1,4 @@
-# Intent Engine Execution Reliability Roadmap
+﻿# Intent Engine Execution Reliability Roadmap (DONE)
 
 ## Ziel (klar und pruefbar)
 Der lokale Intent-Fast-Path in Text und Voice soll fuer bereits korrekt erkannte `direct_match`-Intents robust und vorhersagbar ausgefuehrt werden, ohne dass lokale Guard-/Execution-Fehler faelschlich in einen Backend-/LLM-Fallback kippen.
@@ -23,7 +23,7 @@ Pruefbare Zieldefinition:
 - Folge:
   - irrefuehrende Meldungen wie `Assistant nicht erreichbar.`
   - lokale Guard-/Auth-Probleme wirken wie Backend-/Modellprobleme
-  - Text und Voice sind fachlich unnötig fragil
+  - Text und Voice sind fachlich unnÃ¶tig fragil
 
 ## Scope
 - Execution-Pfade fuer lokal erkannte Intents in:
@@ -129,7 +129,7 @@ Forbidden:
 | S5 | Lokale Benutzer-Rueckmeldungen fuer blockierte Intents sauber machen | DONE | Text und Voice nutzen jetzt abgestimmte, nicht-technische lokale Meldungen fuer blockierte bzw. lokal nicht unterstuetzte `direct_match`-Faelle. Die Rueckmeldungen unterscheiden zwischen erkannt, aktuell nicht speicherbar und bewusst nicht lokal freigegeben, ohne Auth-/Systeminterna zu leaken. |
 | S6 | Telemetry/Diag fuer neue Outcome-Klassen nachziehen | DONE | Der Intent-Snapshot fuehrt jetzt `by_outcome` und speichert `outcome` auch in `recent`. Hub und Voice markieren lokale Blocker explizit mit Outcome/Route statt sie in Assistant-Fallback-Diagnose zu verwischen. |
 | S7 | Smokechecks und Guard-Regressionen | DONE | Text, Voice, Confirm-Context, Telemetry und statische Guard-Regressionen gegen den neuen Execution-Contract geprueft; keine offensichtliche Drift zwischen `handled`, `blocked_local`, `unsupported_local` und `fallback_semantic` festgestellt. |
-| S8 | Doku-Sync, QA_CHECKS, CHANGELOG | TODO | Offen |
+| S8 | Doku-Sync, QA_CHECKS, CHANGELOG | DONE | Module-Overview, Assistant-Overview, QA_CHECKS und CHANGELOG spiegeln jetzt den verifizierten Execution-Reliability-Stand inklusive lokaler `open_module`-/Wasser-Ausfuehrung und klarer lokaler Fehlerpfade. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -732,6 +732,59 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - spaeterer Retry-/Queue-Entscheid
   - Voice-Confirm-Pending-Context
 
+#### S8 Ergebnisprotokoll (abgeschlossen)
+- S8.1 Befund (Statusmatrix finalisiert):
+  - `S1` bis `S8` stehen jetzt auf dem tatsaechlich erreichten Execution-Reliability-Stand.
+  - Die Roadmap dokumentiert damit auch die spaeter verifizierten Runtime-Fixes fuer:
+    - lokale `open_module`-Ausfuehrung
+    - lokalen `intake_save`-Refresh im Assistant-Kontext
+    - lokale Fehlerkommunikation statt irrefuehrender Backend-Meldung
+
+- S8.2 Befund (Intent-Engine-Overview nachgezogen):
+  - `docs/modules/Intent Engine Module Overview.md`
+    - fuehrt jetzt den expliziten Execution-Contract mit:
+      - `handled`
+      - `blocked_local`
+      - `unsupported_local`
+      - `fallback_semantic`
+    - dokumentiert den UI-safe Pfad fuer `open_module`
+    - dokumentiert die jetzt verifizierten natuerlichen Intake-Formen:
+      - `Trage 300ml Wasser ein`
+      - `Trage 300 ml Wasser ein`
+      - `Trage mir 300 ml Wasser ein`
+    - dokumentiert, dass `Ã–ffne Vitals` und `Oeffne Vitals` lokal normalisiert werden
+
+- S8.3 Befund (Assistant-Overview nachgezogen):
+  - `docs/modules/Assistant Module Overview.md`
+    - trennt den Assistant-Flow jetzt klarer in:
+      - lokale erfolgreiche Ausfuehrung
+      - lokaler Blocker
+      - semantischer Assistant-Fallback
+    - ergaenzt den UI-safe `open_module`-Pfad und die lokale Fehlerabgrenzung gegenueber `Assistant nicht erreichbar.`
+
+- S8.4 Befund (QA erweitert):
+  - `docs/QA_CHECKS.md`
+    - neue Phase fuer Execution-Reliability-Regression ergaenzt
+    - deckt ab:
+      - `open_module`
+      - natuerliche Wasser-Formen
+      - lokale Blocker statt Backend-Fallback
+      - Telemetry-Outcome-Trennung
+      - `statusEl`-/Refresh-Regression im Intake-Header
+
+- S8.5 Befund (CHANGELOG ergaenzt):
+  - `CHANGELOG.md`
+    - `Changed`/`Fixed` spiegeln jetzt:
+      - UI-safe `open_module`
+      - Outcome-Taxonomie fuer lokale Intent-Ausfuehrung
+      - robuste Normalisierung fuer `Ã–ffne` und zusammengezogene Einheiten wie `300ml`
+      - Fixes fuer Hub-Scope und Intake-Refresh im Assistant
+
+- S8.6 Befund (Rest-Risiken dokumentiert):
+  - offen bleiben weiterhin nur bewusst ausgesparte Themen:
+    - spaetere Retry-/Queue-Entscheidung fuer lokal blockierte Writes
+    - produktiver Pending-Context fuer Voice-Confirms
+
 ## Smokechecks / Regression (Definition)
 - `direct_match` + lokaler Execution-Fehler erzeugt keine irrefuehrende Backend-Fehlermeldung mehr.
 - `open_module` funktioniert lokal auch dann, wenn Auth noch nicht stabil ist, solange UI/Stage bereit ist.
@@ -752,6 +805,6 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 ## Risiken
 - `open_module` zu frueh zu breit aus dem Guard loesen koennte implizit geschuetzte UI-Pfade aufweichen.
 - Zu viele spezielle `reason`-Strings ohne zentrale Taxonomie fuehren wieder zu Drift.
-- Wenn `blocked_local`-Nachrichten zu technisch werden, wird die UX unnötig hart.
+- Wenn `blocked_local`-Nachrichten zu technisch werden, wird die UX unnÃ¶tig hart.
 - Wenn `blocked_local`-Faelle doch noch teilautomatisch ins Backend kippen, bleibt die eigentliche Verwirrung bestehen.
 - Voice kann leicht von Text abdriften, wenn dieselbe Outcome-Taxonomie nicht strikt gespiegelt wird.

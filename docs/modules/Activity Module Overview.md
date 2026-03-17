@@ -108,6 +108,29 @@ Related docs:
 
 ---
 
+## Intent / Voice Integration
+
+- Status:
+  - Noch kein produktiver Intent-/Voice-Fast-Path.
+  - Das Modul hat einen deterministischen UI-Save-Pfad, aber noch keinen freigegebenen Intent-Contract.
+- Unterstuetzte Intents:
+  - keine
+- Voice Entry Points:
+  - Derzeit keine produktiven Voice Entry Points.
+- Allowed Actions:
+  - keine
+- Vorbefuellbare Parameter:
+  - Derzeit keine produktiven Prefills oder Startparameter.
+- Nicht erlaubte Operationen:
+  - Keine freie Trainingssprache per Voice.
+  - Kein Tracker-Start oder Save per Intent-/Voice-Fast-Path ohne separaten Contract.
+  - Kein Umgehen der Tagesbindung oder des `unique (user_id, day, type)`-Vertrags ueber Schnellpfade.
+- Hinweise / offene Punkte:
+  - Produktiv existiert nur der UI-gebundene Save-Pfad ueber `addActivity(...)` im Vitals-Kontext.
+  - Future Hook: vorbereiteter Tracker-Start oder kleine Vorbelegung erst nach separater Priorisierung und Guard-Klaerung.
+
+---
+
 ## 9. Erweiterungspunkte / Zukunft
 
 - Aktivitaetskategorien, Intensitaet, Marker.

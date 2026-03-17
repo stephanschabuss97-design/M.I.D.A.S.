@@ -1,21 +1,22 @@
-﻿# Assistant Module - Functional Overview
+# Assistant Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Text-Assistant fuer Capture-Hilfe, Aktionen und Kontext-Feedback (Voice ist geparkt).
-- Rolle innerhalb von MIDAS: orchestriert Assistant-UI und Aktionen im Hub; vor dem LLM liegt jetzt ein lokaler Intent-Fast-Path fuer einfache strukturierte Befehle.
-- Abgrenzung: keine eigenen medizinischen Diagnosen, kein Persistieren von Daten (nur Actions triggern Speichern in anderen Modulen).
+- Zweck: Text-Assistant fuer Kontext, Aktionen, Confirm-Flows und produktiven Voice-V1-Anschluss.
+- Rolle innerhalb von MIDAS: orchestriert Assistant-UI, lokalen Intent-Fast-Path, Pending-Context-Guards und den LLM-Fallback fuer freie Sprache.
+- Abgrenzung: keine eigene Persistenz, keine medizinische Beratung, kein primaerer Decision-Layer fuer Voice-V1.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Intent Engine Module Overview](Intent Engine Module Overview.md)
+- [Hub Module Overview](Hub Module Overview.md)
 
 ---
 
 ## 1. Zielsetzung
 
-- Problem: schnelle Assistenz fuer Intake, Navigation und Kontextfragen.
-- Nutzer: Patient (UI/Voice), System (Action-Dispatch).
-- Nicht Ziel: eigenstaendige Datenspeicherung oder Analytics.
+- Problem: schnelle Assistenz fuer strukturierte Alltagsaktionen ohne unnoetige LLM-Roundtrips.
+- Nutzer: Patient in Text und indirekt Voice ueber denselben Intent-/Confirm-Vertrag.
+- Nicht Ziel: freie medizinische Beratung oder eigenes Datenspeichern.
 
 ---
 
@@ -23,140 +24,194 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/hub/index.js` | Assistant-Panel, Kontext-Sync, Intent-Preflight, Assistant-Fallback, Voice-Fassade (geparkt) |
+| `app/modules/hub/index.js` | Assistant-Panel, Text-Intent-Preflight, Pending-Context-Guards, Confirm-Resolver, Hub-API fuer Voice |
 | `app/modules/assistant-stack/assistant/index.js` | Assistant UI-Helpers + Session-Factory |
-| `app/modules/assistant-stack/intent/index.js` | Lokaler Intent-Fast-Path fuer deterministische Text-/spaetere Voice-Befehle. |
-| `app/modules/assistant-stack/assistant/session-agent.js` | Session-Logik (Messages, API-Call, Actions) |
-| `app/modules/assistant-stack/assistant/actions.js` | Action-Dispatcher (open_module, intake_save, etc.) |
-| `app/modules/assistant-stack/assistant/allowed-actions.js` | Guard/Whitelist fuer Actions (Stage/Auth) |
-| `app/modules/assistant-stack/assistant/suggest-store.js` | Suggest/Confirm Store (Snapshot + State) |
-| `app/modules/assistant-stack/assistant/suggest-ui.js` | Suggest-UI Rendering + Events |
-| `app/modules/assistant-stack/assistant/day-plan.js` | Follow-up Text (Resttag, Termine) |
-| `app/modules/appointments/index.js` | Termine fuer Butler-Header/Context |
-| `app/modules/profile/index.js` | Profil-Context fuer Butler/Assistant |
-| `app/modules/assistant-stack/voice/index.js` | Voice-Flow (record/transcribe/tts) - geparkt |
-| `app/modules/assistant-stack/vad/vad.js` | Voice Activity Detection (Auto-Stop) |
-| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet fuer VAD |
-| `index.html` | Assistant-Panel Markup (`data-hub-panel="assistant-text"`) |
-| `app/styles/hub.css` | Assistant-Panel Styling (Chat, Pills, Suggest) |
+| `app/modules/assistant-stack/intent/index.js` | Intent Public API inkl. Adapter-Envelope, Pending-Context-Re-Exports und Telemetry |
+| `app/modules/assistant-stack/assistant/session-agent.js` | Session-/Message-Logik fuer LLM-Fallback |
+| `app/modules/assistant-stack/assistant/actions.js` | Allowed Action Targets (`intake_save`, `open_module`, etc.) |
+| `app/modules/assistant-stack/assistant/allowed-actions.js` | Guard-/Whitelist-Schicht fuer Actions |
+| `app/modules/assistant-stack/assistant/suggest-store.js` | Suggest-/Confirm-State fuer suggestion-basierte Intake-Flows |
+| `app/modules/assistant-stack/voice/index.js` | Produktiver Voice-V1-Adapter mit lokalem command-first Flow |
+| `app/modules/assistant-stack/vad/vad.js` | VAD als Segment-Ende-/Auto-Stop-Helfer |
+| `index.html` | Assistant-Panel und Hub-Markup |
+| `app/styles/hub.css` | Assistant-/Hub-/Voice-Styling |
 
 ---
 
 ## 3. Datenmodell / Storage
 
 - Keine eigene Persistenz.
-- Assistenz-Aktionen schreiben ueber bestehende Module (z. B. Intake, Termine, Profil).
-- Session-Status lebt nur im Speicher (siehe `session-agent.js`).
+- Writes laufen ueber bestehende Module und Allowed-Actions.
+- Laufzeit-State lebt im Speicher:
+  - Session-State
+  - Suggest-State
+  - Pending Intent Context
+  - Pending Intent Guard-Status (`inFlight`, `consumed`)
 
 ---
 
 ## 4. Ablauf / Logikfluss
 
-### 4.1 Initialisierung
-- Hub initialisiert Assistant-Panel und bindet Event-Handler.
-- UI-Helper und Action-Dispatcher werden im globalen Namespace registriert.
+### 4.1 Text
 
-### 4.2 User-Trigger
-- Assistant-Panel oeffnen (Orbit-Button `assistant-text`).
-- Voice-Trigger (Orbit-Button `assistant-voice`) ist geparkt und standardmaessig deaktiviert.
-- Photo-Button im Panel fuer Vision-Flow.
+- Hub preflightet Texteingaben zuerst ueber die lokale Intent Engine.
+- `direct_match` wird lokal ausgefuehrt, wenn der Action-Pfad freigegeben ist.
+- `confirm_reject` wird nicht im Parser selbst freigegeben, sondern in der Flow-Schicht gegen den Pending Context aufgeloest.
+- Nur `fallback` oder bewusst weiterzureichende Faelle gehen an `midas-assistant`.
 
-### 4.3 Verarbeitung
-- Text:
-  - Hub prueft zuerst den lokalen Intent-Fast-Path.
-  - `direct_match`-Faelle werden fuer heute unterstuetzte Allowed-Actions lokal behandelt.
-  - `fallback` / `needs_confirmation` / nicht lokal dispatchbare Treffer gehen weiter an `/api/midas-assistant`.
-- Voice (geparkt): Transcribe (`/api/midas-transcribe`) -> Assistant -> TTS (`/api/midas-tts`).
-- Vision: Foto bleibt Draft bis "Senden"; Upload -> `/api/midas-vision` -> Ergebnis im Chat.
-- Actions laufen ueber `allowed-actions` und `assistant/actions`.
-- Follow-up: Nach erfolgreichem `intake_save` fragt der Assistant einmal nach einer Essensidee und ruft bei "Ja" den Text-Endpoint mit einem Follow-up Prompt auf.
-- Profil/Context: Beim Panel-Open wird der Kontext aktualisiert; fehlende Profilwerte werden lazy nachgeladen.
+### 4.2 Voice
 
-### 4.4 Persistenz
-- Keine direkte Persistenz.
-- Aktionen wie `intake_save` delegieren an bestehende Module und Supabase-APIs.
+- Voice ist nicht mehr geparkt.
+- Produktiver Voice-V1-Pfad:
+  - `record -> transcribe -> command orchestrator -> normalized command units -> intent preflight -> local dispatch -> short tts`
+- Voice nutzt denselben fachlichen Intent-Surface wie Text.
+- Voice nutzt nach dem ersten Semantik-Refactor denselben lokalen Intent-Kern jetzt auch ueber sichtbare Zwischenstufen:
+  - `surface normalization`
+  - `semantic normalization`
+  - `slot extraction`
+  - `pattern / intent rules`
+- Voice normalisiert dabei auch natuerliche Morning-Phrasen und Dezimal-Kommas vor dem Unit-Preflight.
+- Gesprochene Antworten sind getrennt geschnitten in:
+  - kurzen Spoken-Surface fuer produktive TTS-Ausgabe
+  - ausfuehrlicheren internen Reply-/Bypass-Surface fuer Diagnose
+  - operativen Error-Surface fuer Mic-/STT-/Netzwerk-/Config-Probleme
+- Seit dem Performance-Nachschnitt in `F13` gilt zusaetzlich:
+  - VAD-/Auto-Stop ist enger auf kurze Command-First-Utterances zugeschnitten
+  - Compound-/Morning-Faelle behalten dabei einen konservativeren Segment-Ende-Schnitt
+  - lokale Erfolgsantworten fuer TTS sind bewusst kuerzer und deutschsicherer geschnitten
+- `midas-assistant` ist nicht Teil des normalen Voice-V1-Kontrollflusses.
+
+### 4.3 Confirm-Flows
+
+- Suggestion-basierte Intake-Confirms und Assistant-`ask_confirmation` nutzen denselben Pending-Context-Vertrag.
+- Voice-Single-Command-Confirms (`ja`, `nein`, `speichern`, `abbrechen`) sind ueber denselben Resolver angebunden.
+- Erfolgreiche Confirm-Ausfuehrungen bleiben channel-aware unterscheidbar (`intent-confirm:text` vs. `intent-confirm:voice`).
+- Guards:
+  - TTL / Expiry
+  - Single-Consume
+  - `inFlight`
+  - `consumed`
+  - Dedupe-Key
 
 ---
 
 ## 5. UI-Integration
 
-- Panel: `data-hub-panel="assistant-text"` in `index.html`.
-- Kontext: Pills (Wasser/Salz/Protein), Kontext-Extras (Protein-Ziel, CKD), Termine, Expandable (Restbudget/Warnung).
-- Mobile: "Mehr/Weniger" Toggle blendet Kontext-Bloecke ein/aus.
-- Suggest-Card (Confirm/Reject) fuer Assistant-Aktionen.
+- Assistant-Panel bleibt der produktive Text-Einstieg.
+- Suggest-Cards bleiben produktiver Confirm-Producer.
+- Der Hub exponiert den Pending-Context- und Confirm-Resolver auch fuer Voice.
+- Voice selbst wird zentral ueber den MIDAS-Slot im Hub getriggert, nicht ueber ein separates Assistant-Panel-Voice-Design.
 
 ---
 
-## 6. Arzt-Ansicht / Read-Only Views
+## 6. Fehler- & Diagnoseverhalten
 
-- Keine direkte Ansicht in der Arzt-Ansicht.
-- Assistant beeinflusst Arzt-Ansicht nur indirekt ueber gespeicherte Daten.
+- Lokale Intent-Ausgaenge bleiben explizit getrennt:
+  - `handled`
+  - `blocked_local`
+  - `unsupported_local`
+  - `fallback_semantic`
+- Voice trennt zusaetzlich zwischen:
+  - kurzem gesprochenem Rueckkanal
+  - ausfuehrlicherem internem Reply-/Bypass-Surface fuer Diagnose
+  - operativen Voice-Fehlern ausserhalb des normalen Intent-Fallbacks
+- Confirm-Fehlpfade antworten lokal und kurz statt als generischer Assistant-Fehler.
+- Stale Pending Contexts werden aktiv bereinigt.
+- Voice fuehrt zusaetzlich einen eigenen `lastOutcome`-Snapshot fuer Runtime-/TTS-/Reply-Outcomes.
+- Failure-Reports fuer echte `no-rule-match`-Faelle koennen jetzt zusaetzlich semantische Zwischenstufen enthalten:
+  - `surface_normalized_transcript`
+  - `semantic_normalized_transcript`
+  - `slots`
+- Telemetry / Diag laufen ueber Intent-Snapshot, Voice-Outcome-Snapshot und `diag.add`.
+- Fuer Voice-Latenz sind im produktiven Adapter jetzt kleine Perf-Segmente vorhanden:
+  - `voice_tap_to_listening`
+  - `voice_first_speech_to_stop`
+  - `voice_stop_to_transcribe_response`
+  - `voice_transcribe_to_reply_ready`
+  - `voice_reply_ready_to_tts_complete`
 
 ---
 
-## 7. Fehler- & Diagnoseverhalten
+## 7. Events & Integration Points
 
-- Fehlerpfade loggen via `diag.add` und `console.warn` (Hub/Assistant).
-- Voice-Gate blockt bei Auth/Boot-Status (nur falls Voice reaktiviert wird).
-- Netzwerkfehler bei Assistant/Transcribe/TTs/Vision -> UI-Feedback.
-
----
-
-## 8. Events & Integration Points
-
-- Public API / Entry Points: `AppModules.assistant.createSession`, `assistantAllowedActions.executeAllowedAction`, Assistant-Panel.
-- Source of Truth: Session-State im Hub + Suggest-Store Snapshot (Intake/Termine/Profil).
-- Side Effects: emittiert `assistant:*` Events, kann Module via Actions triggern.
-- Constraints: Voice-Gate (authState unknown) blockt Voice, Actions nur via Allowed-Actions.
-- Intent Engine Integration:
+- Relevante Public APIs:
+  - `AppModules.intentEngine.*`
+  - `AppModules.hub.getAssistantPendingIntentContext()`
+  - `AppModules.hub.resolveAssistantConfirmIntent()`
+- Relevante Events:
   - `assistant:intent-direct-match`
   - `assistant:intent-fallback`
-  - `assistant:intent-llm-bypass`
-- `assistant:action-request` und `assistant:action-success` fuer Actions.
-- `assistant:suggest-confirm` / `assistant:suggest-answer` fuer Confirm-Flow.
-- `assistant:meal-followup-request` fuer die Meal-Idea Anfrage.
-- Context-Refresh via `appointments:changed` / `profile:changed`.
+  - `assistant:action-success`
+  - `assistant:suggest-*`
 
 ---
 
-## 9. Erweiterungspunkte / Zukunft
+## 8. Status / Dependencies / Risks
 
-- Mehr Actions (z. B. Medication, Symptoms).
-- Patient Letter/Report-Ausgabe aus Chat.
-- Streaming/Realtime Voice (optional).
+- Status:
+  - Text produktiv
+  - Pending-Context-/Confirm-Vertrag produktiv
+  - Voice-V1 produktiv command-first
+- Hard dependencies:
+  - Hub
+  - Intent Engine
+  - Allowed Actions
+  - Suggest Store
+- Known risks:
+  - LLM-Fallback-Drift in spaeteren Assistant-Aenderungen
+  - Confirm-Producer ausserhalb des aktuellen Vertrags
+  - zu breite Allowed-Action-Erweiterungen
+
+### 8.1 Future Hooks / Entry-Point-Grenze
+
+- Der heutige produktive Voice-Einstieg bleibt der bestehende Hub-/Push-to-talk-Kontext.
+- Eine installierte PWA kann diesen Einstieg spaeter hoechstens schneller erreichbar machen.
+- Wichtig:
+  - ein PWA-Shortcut ersetzt keinen echten Outside-the-app-Voice-Start
+  - auch ein PWA-Shortcut bleibt an denselben Boot-/Auth-/Gate-Vertrag gebunden
+  - dadurch entsteht im aktuellen Produkt nur begrenzter Mehrwert, solange der Push-to-talk-Einstieg ohnehin direkt am Hub-Anfang liegt
+- Wenn spaeter echter Voice-Start ausserhalb der sichtbaren App relevant wird, ist das ein eigener Zukunftsscope:
+  - Wrapper / Native Shell
+  - Widget-/OS-naher Einstieg
+  - spaeter eventuell Wearable- oder Begleitgeraet-Pfade
+- Dieser Future-Scope ist:
+  - fachlich interessant
+  - nicht verworfen
+  - aktuell aber bewusst nicht Teil des produktiven Assistant-/Voice-V1-Vertrags
+  - bei Wiederaufnahme eher Kandidat fuer eine eigene Roadmap als fuer einen kleinen Follow-up-Task
+
+### 8.2 Future Hooks / Voice-Open-Module-Schnitt
+
+- Der heutige produktive Voice-Open-Module-Vertrag bleibt absichtlich eng:
+  - `vitals`
+  - `medikamente` als Einstieg in den bestehenden Intake-/Tageserfassungskontext
+- Weitere Moduloeffnungen per Voice bleiben vorerst bewusst ausserhalb des Produktvertrags.
+- Moegliche spaetere Kandidaten koennen sein:
+  - `termine`
+  - weitere klar UI-safe Moduleinstiege
+- Guardrail fuer eine spaetere Erweiterung:
+  - nur echter Reibungsnutzen im Alltag
+  - nur bestehende Module oeffnen, keine neue Workflow- oder Pending-Semantik
+  - keine Rueckkehr zu breiten satznahen Sonderregeln pro Modul
+- Solange der reale Nutzwert dafuer nicht belegt ist, bleibt das ein Future-Hook und kein aktiver Ausbaupunkt.
 
 ---
 
-## 10. Feature-Flags / Konfiguration
+## 9. QA-Checkliste
 
-- `DEV_ALLOW_DEFAULTS` (Debug/Defaults).
-- Endpoint-Routing in `hub/index.js` (`/api/midas-*`).
-
----
-
-## 11. Status / Dependencies / Risks
-
-- Status: aktiv (Text), Intent-Fast-Path produktiv, Voice geparkt.
-- Dependencies (hard): Hub-Panel, `assistant/*` Session/Actions, VAD, Backend-APIs `/api/midas-*`.
-- Dependencies (soft): Vision-Flow/Photo, Appointments/Profile Kontext.
-- Known issues / risks: Netz/Latenz, Actions nur whitelisted, Voice-Gate blockt bei Auth/Boot.
-- Backend / SQL / Edge: `/api/midas-assistant`, `/api/midas-transcribe`, `/api/midas-tts`, `/api/midas-vision` (keine SQL).
+- Text-Direct-Matches laufen ohne unnoetigen Assistant-Roundtrip.
+- Suggest-Confirm und `ask_confirmation` verhalten sich deterministisch.
+- `ja/nein/speichern/abbrechen` reagieren nur mit aktivem Pending Context.
+- Voice-Single-Command-Confirm nutzt denselben Pending-Context-Vertrag.
+- Compound-Morning-Commands fuer Wasser / Salz / Protein / Medikation bleiben lokal, kurz und ohne stillen Teilverlust.
+- Push-to-talk + VAD-Auto-Stop verlassen `listening` kontrolliert und haengen nicht auf kurzer Anfangssprache.
+- Lokale Blocker erscheinen nicht als generische Assistant-Fehler.
 
 ---
 
-## 12. QA-Checkliste
+## 10. Definition of Done
 
-- Assistant-Panel oeffnet und sendet Nachrichten.
-- Voice-Trigger startet/stoppt sauber (VAD Auto-Stop) - nur wenn Voice reaktiviert ist.
-- Suggest-Confirm führt Actions korrekt aus.
-- Kontext (Pills/Termine/Profil) aktualisiert sich nach Änderungen.
-
----
-
-## 13. Definition of Done
-
-- Text-Flow funktioniert ohne Errors; Voice ist geparkt.
-- Actions laufen nur ueber erlaubte Guards.
-- Dokumentation aktuell.
-
-
+- Assistant-Text und Voice nutzen denselben fachlichen Intent-/Confirm-Vertrag.
+- Pending Contexts bleiben guard-railed und stale-frei.
+- LLM bleibt Fallback fuer freie Sprache statt primaerer Pfad fuer strukturierte Commands.
+- Dokumentation ist auf dem realen Runtime-Stand.

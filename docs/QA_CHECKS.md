@@ -1385,6 +1385,8 @@ Regression
 **Smoke**
 - [ ] BP-Panel: Button `Atemtimer starten` ist in beiden Kontexten (`M`, `A`) sichtbar.
 - [ ] Start ohne `data-breath-minutes` nutzt Default `3 Minuten`; mit `data-breath-minutes="5"` startet `5 Minuten`.
+- [ ] Hero Hub Voice/Text: `starte timer` oeffnet `Vitals` direkt und startet ohne Preset-Umweg den `3`-Minuten-Timer.
+- [ ] Hero Hub Voice/Text: nur explizite `5 Minuten` starten den `5`-Minuten-Timer.
 - [ ] Running-Overlay zeigt nur Kerninhalte: Restzeit, Atem-Orb, Atemphase.
 - [ ] Atemphase wechselt zwischen `Einatmen` (3s) und `Ausatmen` (4s) ohne harte Spruenge.
 
@@ -1399,9 +1401,11 @@ Regression
 - [ ] `#bpContextSel` bleibt waehrend aktivem Breath-UI stabil (kein Kontext-Switch).
 - [ ] Vitals-Tab-Wechsel ist waehrend aktivem Breath-UI blockiert.
 - [ ] Vitals-Panel-Close raeumt aktiven Breath-Timer vollstaendig auf (kein Orphan-Overlay/Timer).
+- [ ] Nach `completed` oder `aborted` landet der Nutzer wieder im BP-Flow mit demselben Messkontext (`M` / `A`).
 
 **Sanity**
 - [ ] `node --check app/modules/vitals-stack/vitals/breath-timer.js` ist gruen.
+- [ ] `node --check app/modules/vitals-stack/vitals/index.js` ist gruen.
 - [ ] `node --check assets/js/main.js` ist gruen.
 - [ ] Optionaler Harness-Lauf liefert `S7-BREATH-HARNESS: PASS`.
 
@@ -1456,3 +1460,137 @@ Regression
 **Regression**
 - [ ] `DIRECT_INTENT_ACTIONS` bleibt eng auf `intake_save` und `open_module`.
 - [ ] Keine offensichtliche statische Drift zwischen Intent-Kern, Hub und vorbereitetem Voice-Pfad.
+
+---
+
+## Phase F7 - Intent Engine Execution Reliability (2026-03-07)
+
+**Scope:** Lokale Ausfuehrungsschicht nach dem Intent-Match: UI-safe `open_module`, lokale Blocker statt irrefuehrendem Assistant-Fallback, Telemetry-Outcome-Trennung und sichtbarer Assistant-Header-Refresh nach lokalem `intake_save`.
+
+**Local Execution**
+- [ ] `Oeffne Vitals` -> lokaler `direct_match`, Modul oeffnet ohne Assistant-Roundtrip.
+- [ ] `Öffne Vitals` -> lokaler `direct_match`, Modul oeffnet ebenfalls robust ueber Umlaut-Normalisierung.
+- [ ] `Trage 300ml Wasser ein` -> lokaler `direct_match`, `intake_save`, Wasser-Kachel im Assistant zieht sichtbar nach.
+- [ ] `Trage 300 ml Wasser ein` -> lokaler `direct_match`, `intake_save`, Wasser-Kachel zieht sichtbar nach.
+- [ ] `Trage mir 300 ml Wasser ein` -> lokaler `direct_match`, `intake_save`, Wasser-Kachel zieht sichtbar nach.
+
+**Blocked / Unsupported**
+- [ ] `Blutdruck 128 zu 82` ohne Kontext -> lokaler Match, aber lokaler Hinweis auf `morgens` / `abends`, kein irrefuehrender Assistant-/Backend-Fehler.
+- [ ] `Puls 66` -> lokaler Match, aber lokaler Hinweis auf die bewusst nicht freigegebene `pulse-only`-Grenze.
+- [ ] Lokale Execution-Fehler erscheinen nicht mehr als `Assistant nicht erreichbar.`, sondern als lokaler Intent-Fehlerhinweis.
+
+**Telemetry / Diag**
+- [ ] Intent-Telemetry fuehrt `by_outcome` und unterscheidet mindestens:
+  - `handled`
+  - `blocked_local`
+  - `unsupported_local`
+  - `pending-local-execution`
+- [ ] Hub-/Voice-Diag unterscheiden lokale Blocker von echtem Assistant-Fallback.
+
+**Refresh / Regression**
+- [ ] Kein `ReferenceError: statusEl is not defined` mehr im Intake-Refresh-Pfad.
+- [ ] Nach lokalem `intake_save` aktualisieren sich Assistant-Kontext und Intake-Header ohne manuellen Reload.
+- [ ] `open_module` bleibt UI-safe und fuehrt nicht zu neuen Auth-/Supabase-Abhaengigkeiten fuer reine Navigation.
+
+---
+
+## Phase F8 - Voice Command Reactivation Regression (2026-03-14)
+
+**Scope:** Produktiver Hero-Hub Push-to-talk Voice-V1-Pfad inklusive lokalem Command-Orchestrator, Compound-Morning-Commands, Pending-Context-Confirm, VAD-Auto-Stop und kurzem TTS-Rueckkanal.
+
+**Positive Voice Commands**
+- [x] `Wasser 300 ml` -> lokaler `direct_match`, `intake_save`, kurzer lokaler Spoken-Reply, kein `midas-assistant`-Call.
+- [x] `Protein 24 Gramm` -> lokaler `direct_match`, `intake_save`, kurzer lokaler Spoken-Reply.
+- [x] `Salz 1,2 Gramm` -> lokaler `direct_match`, Dezimal-Komma wird korrekt normalisiert, kurzer lokaler Spoken-Reply.
+- [x] `Ich habe alle meine Medikamente genommen` -> lokaler Medikamentenpfad `medication_confirm_all`, kurze lokale Rueckmeldung.
+- [x] `Ich habe 780 ml Wasser getrunken, 0,4 g Salz, 32 g Protein und alle Medikamente genommen` -> lokaler Compound-Plan, kein stiller Teilverlust, aggregierte lokale Rueckmeldung.
+
+**Negative / Out-of-Scope**
+- [x] `Was soll ich heute essen?` -> `fallback_semantic`, kurze lokale Rueckmeldung, kein Assistant-/LLM-Roundtrip im Voice-V1-Pfad.
+- [x] `Ich habe etwas getrunken` -> kein stiller Write ohne klare Zahl/Einheit.
+- [x] `Oeffne Vitals` -> parserseitig erkennbar, aber im Voice-V1-Scope lokal als `unsupported_local` geblockt.
+- [x] `Gewicht 82` -> kein lokaler Vital-Write im Voice-V1-Pfad.
+- [x] Gemischte Eingaben aus gueltigem Command plus fachfremdem Freitext fuehren nicht zu stiller Teilverarbeitung.
+
+**Push-to-talk / VAD**
+- [x] Hero-Hub Push-to-talk startet nur bei erlaubtem Gate-Status.
+- [x] `assistant-voice` spiegelt die produktiven Voice-States sichtbar im Hub.
+- [x] VAD-Auto-Stop beendet die Session kontrolliert und fuehrt aus `listening` sauber in den weiteren Voice-Flow.
+- [x] Kurze Anfangssprache fuehrt nicht zu haengendem `listening`.
+
+**Confirm / Pending Context**
+- [x] `ja/nein/speichern/abbrechen` bleiben ohne brauchbaren Pending Context inert.
+- [x] Positive Voice-Confirms fuehren den Zielpfad aus und clearen den Pending Context.
+- [x] Negative Voice-Confirms verwerfen den Pending Context deterministisch.
+- [x] `inFlight` und `consumed` blocken Doppeltrigger sauber.
+- [x] Nach erfolgreichem `medication_confirm_all` mit realem `low_stock` folgt nur der enge Nachsatz `Lokalen Rezeptkontakt starten?`; `ja` oeffnet nur den lokalen Mailto-Pfad, `nein` beendet sauber.
+
+**Static / Sanity**
+- [x] `node --check` ist gruen fuer:
+  - `app/modules/assistant-stack/voice/index.js`
+  - `app/modules/hub/index.js`
+  - `app/modules/assistant-stack/intent/index.js`
+  - `app/modules/assistant-stack/intent/parser.js`
+  - `app/modules/assistant-stack/intent/rules.js`
+- [x] Kein normaler Assistant-/LLM-Roundtrip mehr im produktiven Voice-V1-Pfad.
+- [x] Keine conversation-/resume-first Altpfade mehr im produktiven Voice-Adapter.
+- [x] Keine Legacy-Begriffe wie `voice-llm-bypass` mehr im Voice-Runtime-Code.
+
+**Note**
+- [ ] Echte Browser-/Device-Mikrofonlaeufe bleiben zusaetzlich sinnvoll fuer spaetere Live-QA, auch wenn der produktive Runtime-Pfad lokal geharnesst und statisch verifiziert ist.
+
+---
+
+## Phase F14 - Fast Path QA & Regression Sweep (2026-03-17)
+
+**Scope:** Produktive Fast Paths nach Voice- und Performance-Nachschnitt, inklusive sichtbarer Semantikkette, Breath-Timer-Fast-Path, Medication-Low-Stock-Follow-up und begrenzt machbarem PWA-Shortcut-Befund.
+
+**Fast Paths / Positive**
+- [ ] `Wasser 250 ml` -> lokaler `direct_match`, `intake_save`, kurzer deutscher Spoken-Reply ohne Denglisch-Rest.
+- [ ] `Salz 2 g` -> lokaler `direct_match`, kurzer deutscher Spoken-Reply.
+- [ ] `Protein 30 g` und `Proteine 30 g` -> gleicher lokaler `direct_match`; semantische Alias-Normalisierung fuehrt nicht zu Compound-Teilverlust.
+- [ ] `oeffne vitals` -> lokaler `open_module`-Pfad, Spoken-Reply natuerlich (`... ist offen`), kein Assistant-Roundtrip.
+- [ ] `starte timer` -> lokaler `start_breath_timer`-Pfad, `3` Minuten Default, Rueckkehr in den BP-Kontext kontrolliert.
+
+**Semantikkette / Regression**
+- [ ] Touch-/Diag-/Fallback-Review kann bei echten Voice-Faellen die Kette sauber zeigen:
+  - `surface_normalized_transcript`
+  - `semantic_normalized_transcript`
+  - `slots`
+  - `intent_result`
+- [ ] Reale Satzvarianten werden an der richtigen Schicht gepflegt:
+  - Oberflaechenproblem -> `surface`
+  - Alias-/Bedeutungsproblem -> `semantic` / `semantics/*`
+  - strukturierter Wert -> `slots`
+  - produktiver Fast Path -> `pattern / intent rules`
+- [ ] Kein neuer produktiver Satz wird nur ueber Voice-Orchestrator-Sonderlogik statt ueber den gemeinsamen Intent-Kern tragfaehig gemacht.
+
+**Medication / Reorder**
+- [ ] Low-Stock-Follow-up bleibt eng:
+  - nur nach erfolgreichem `medication_confirm_all`
+  - nur bei frischem realem `low_stock`
+  - nur `ja` / `nein`
+- [ ] `ja` fuehrt hoechstens in den bestehenden lokalen Reorder-Start; kein Versand-/Bestellstatus entsteht.
+- [ ] Reorder-Guards bleiben wirksam:
+  - `notLowStock`
+  - `doctorEmailMissing`
+  - `mailtoUnavailable`
+- [ ] Reorder-Lock und Reopen-Cooldown verhindern unmittelbare Doppeltrigger auch beim Voice-Follow-up.
+
+**Breath Timer / BP-Kontext**
+- [ ] Breath-Timer-Fast-Path wechselt kontrolliert in den vorbereiteten Vitals-/BP-Kontext.
+- [ ] Waehren aktivem Breath-UI bleiben Save, Kontextwechsel und Tab-Wechsel blockiert.
+- [ ] Nach Abschluss oder Abbruch bleibt kein Overlay-/Timer-Orphan zurueck.
+
+**Performance / Spoken Surface**
+- [ ] Die produktiven Perf-Segmente werden weiter im bestehenden Perf-Sampler gesammelt:
+  - `voice_tap_to_listening`
+  - `voice_first_speech_to_stop`
+  - `voice_stop_to_transcribe_response`
+  - `voice_transcribe_to_reply_ready`
+  - `voice_reply_ready_to_tts_complete`
+- [ ] Kurze lokale Spoken-Replies bleiben kurz und deutsch klingend; keine offensichtlichen `ge offnet`-/Zahlen-Denglisch-Faelle im Alltagspfad.
+
+**PWA / Entry Point**
+- [ ] Kein QA-Case erwartet einen echten Outside-the-app-Voice-Start ueber PWA.
+- [ ] PWA-/Shortcut-Ideen bleiben auf `bestehenden Voice-Kontext schneller erreichen` begrenzt und erzeugen keinen zweiten Runtime-Pfad.

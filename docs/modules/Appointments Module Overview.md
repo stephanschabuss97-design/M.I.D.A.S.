@@ -92,6 +92,110 @@ Related docs:
 
 ---
 
+## Intent / Voice Integration
+
+- Status:
+  - Noch kein produktiver Intent-/Voice-Fast-Path fuer Terminverwaltung.
+  - Das Modul liefert bereits Kontext fuer den Assistant, aber keinen freigegebenen Eingabe- oder Status-Fast-Path.
+- Unterstuetzte Intents:
+  - keine
+- Voice Entry Points:
+  - Derzeit keine produktiven Voice Entry Points.
+- Allowed Actions:
+  - keine
+- Vorbefuellbare Parameter:
+  - Derzeit keine produktiven Prefills oder vorbereiteten Intent-Parameter.
+- Nicht erlaubte Operationen:
+  - Keine freie Terminerfassung per Voice.
+  - Kein Statuswechsel `scheduled` / `done` per Intent-/Voice-Fast-Path.
+  - Kein Loeschen oder strukturelles Editieren per Voice.
+- Hinweise / offene Punkte:
+  - Bestehende Kontextnutzung laeuft ueber `getUpcoming(...)` fuer den Assistant-Header.
+  - Future Hook: vorbereitete Maske oder enger Status-Pfad erst nach separater Priorisierung, Guard- und Workflow-Klaerung.
+
+### Dokumentierter Future Case: enger Appointment-Create-Fast-Path
+
+- Hintergrund:
+  - Ein spaeterer Voice-Fast-Path fuer `Termin anlegen` kann fuer MIDAS realen Alltagsnutzen haben.
+  - Das gilt besonders fuer ein spaeteres Nutzungsbild mit:
+    - weniger Tippen
+    - mehr Sprache
+    - kleinem mobilen oder Wearable-Einstiegspunkt
+    - z. B. DIY-ESP32-Uhr am Handgelenk
+- Beispiel fuer den gewuenschten Fall:
+  - `Hey MIDAS, trage mir fuer den [Datum] um [Uhrzeit] einen Termin bei [Arzt] ein.`
+  - Konkretes Beispiel:
+    - `Hey MIDAS, trage mir fuer morgen um 9 Uhr einen Termin beim Hausarzt ein.`
+- Wichtige Einordnung:
+  - Das ist nicht nur eine weitere `semantics`-Datei.
+  - Fuer einen belastbaren produktiven Pfad waeren zusaetzlich noetig:
+    - Datums-Semantik
+    - Zeit-Semantik
+    - Slot-Bildung fuer Datum / Uhrzeit / Terminziel
+    - Guardrails fuer unvollstaendige oder mehrdeutige Eingaben
+    - enger lokaler Create-Workflow im Appointments-Modul
+- Warum das nicht einfach in den bestehenden Voice-V1-Schnitt faellt:
+  - Termine sind strukturierte Planung und nicht nur ein kleiner lokaler Spezialbefehl wie:
+    - Wasser eintragen
+    - Medikation bestaetigen
+    - Atemtimer starten
+  - Relative Angaben wie:
+    - `morgen`
+    - `naechsten Dienstag`
+    - `frueh`
+    - `beim Hausarzt`
+    brauchen kontrollierte Aufloesung statt offener Satzvielfalt.
+- Empfohlener enger Loesungsschnitt fuer spaeter:
+  - nur `appointment_create`
+  - keine Edit-/Delete-/Done-Voice-Pfade
+  - Pflichtslots:
+    - `DATE`
+    - `TIME`
+    - `APPOINTMENT_TARGET`
+  - kein offener Dialog
+  - bei fehlenden oder unsicheren Slots:
+    - sauber blocken oder
+    - vorbereitete Maske / Prefill oeffnen
+- Moegliche technische Umsetzung in spaeterem Scope:
+  - neue Semantikfamilien fuer:
+    - Datum
+    - Zeit
+    - Appointment / Termin
+    - Arzt / Ziel
+  - neue Slots fuer:
+    - `DATE`
+    - `TIME`
+    - `APPOINTMENT_TARGET`
+  - enger Rule-/Pattern-Contract fuer:
+    - `appointment_create`
+  - Validatoren fuer:
+    - Pflichtslot-Vollstaendigkeit
+    - Ambiguitaet
+    - zulassige Datums-/Zeitform
+  - lokaler Helper im Appointments-Modul, der nur den sicheren Create-Fall ausfuehrt
+- Produktgrenze fuer diesen Future Case:
+  - kein allgemeines `Voice fuer Termine`
+  - sondern nur ein enger, deterministischer Fast-Path mit hohem Reibungsnutzen
+- Empfehlung fuer spaeter:
+  - als eigene Roadmap oder eigener Unterblock behandeln
+  - nicht nebenbei in `F10` hineinziehen, wenn Datum-/Zeitlogik und Guards nicht explizit mitgeschnitten werden
+- Zweck dieses Abschnitts:
+  - Ein spaeterer Chat soll den Nutzen, den Scope und die technischen Huerden sofort verstehen.
+  - Der Fall bleibt damit dokumentiert, ohne heute schon als produktiver Appointment-Voice-Contract zu gelten.
+- Aktueller Status dieses Future Cases:
+  - ruhend
+  - technisch machbar, aber im aktuellen Produktausbau bewusst zu teuer
+  - nicht verworfen, sondern fuer spaeteren Realitaetscheck und eine eigene Roadmap geparkt
+- Entscheidungsgrund heute:
+  - der aktuelle Reibungsdruck ist noch nicht hoch genug belegt
+  - handische Terminpflege funktioniert bislang ausreichend
+  - der technische Zusatzaufwand fuer einen belastbaren Voice-Create-Pfad ist deutlich hoeher als bei den bisher umgesetzten Fast Paths
+- Wiederaufnahme nur unter klarer Bedingung:
+  - wenn spaetere Nutzung zeigt, dass `Termin anlegen` wirklich ein relevanter Voice-/Wearable-Reibungspunkt wird
+  - dann als eigener Scope mit expliziter Datums-/Zeit-/Guard-Planung neu aufsetzen
+
+---
+
 ## 9. Erweiterungspunkte / Zukunft
 
 - Reminder/Push (PWA).

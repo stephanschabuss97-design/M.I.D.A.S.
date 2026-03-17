@@ -1,20 +1,21 @@
-﻿# VAD Module - Functional Overview
+# VAD Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Voice Activity Detection fuer Sprachaufnahme im Voice-Modul (geparkt).
-- Rolle innerhalb von MIDAS: erkennt Speech/Silence und stoppt Recording bei Stille.
-- Abgrenzung: kein Speech-to-Text, kein Audio-Upload, keine Transkription.
+- Zweck: Voice Activity Detection als Segment-Ende- und Auto-Stop-Helfer fuer Voice V1.
+- Rolle innerhalb von MIDAS: erkennt Speech/Silence und hilft, Push-to-talk-Aufnahmen kontrolliert zu beenden.
+- Abgrenzung: kein Wake-word, kein STT, kein TTS, kein Conversation-Manager.
 
 Related docs:
-- [Bootflow Overview](bootflow overview.md)
+- [Hub Module Overview](Hub Module Overview.md)
+- [Assistant Module Overview](Assistant Module Overview.md)
 
 ---
 
 ## 1. Zielsetzung
 
-- Problem: Aufnahme automatisch stoppen, wenn Nutzer aufhoert zu sprechen.
-- Nutzer: Patient (spricht), System (steuert Recording).
-- Nicht Ziel: Sprachverarbeitung, ASR, Audioanalyse ausserhalb VAD.
+- Problem: Voice-Aufnahmen sollen nach echter Sprechpause enden, ohne lange Morning-Saetze zu frueh abzuschneiden.
+- Nutzer: Patient im Push-to-talk-Flow.
+- Nicht Ziel: Always-on-Listening oder konversationelle Session-Steuerung.
 
 ---
 
@@ -22,109 +23,104 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/assistant-stack/vad/vad.js` | VAD-Controller (Start/Stop, Gate-Check, Fallback) |
-| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet Processor fuer Speech-Detection |
-| `app/modules/assistant-stack/voice/index.js` | Voice-Flow, VAD-Anbindung, Silence-Timer (geparkt) |
+| `app/modules/assistant-stack/vad/vad.js` | VAD-Controller, Gate-Check, Worklet-/Fallback-Start/Stop |
+| `app/modules/assistant-stack/vad/vad-worklet.js` | AudioWorklet fuer Speech-/Silence-Signale |
+| `app/modules/assistant-stack/voice/index.js` | VAD-Anbindung, Silence-Timer, Auto-Stop-Budget |
 
 ---
 
-## 3. Datenmodell / Storage
+## 3. Ablauf / Logikfluss
 
-- Kein Storage.
-- Keine Tabellen, keine Supabase-Events.
+### 3.1 Initialisierung
 
----
+- `MidasVAD.createController()` wird aus dem Voice-Adapter erstellt.
+- AudioContext wird lazy aufgebaut.
+- Voice-Gate wird vor dem Start geprueft.
 
-## 4. Ablauf / Logikfluss
+### 3.2 Verarbeitung
 
-### 4.1 Initialisierung
-- `MidasVAD.createController()` wird aus `assistant-stack/voice/index.js` erstellt (geparkt).
-- AudioContext wird lazy erstellt.
-- Voice-Gate wird geprueft (Auth/Boot-Status).
+- VAD liefert nur `speech` oder `silence`.
+- Das Voice-Modul entscheidet daraus den eigentlichen Auto-Stop.
+- Worklet ist primaerer Pfad, ScriptProcessor ist Fallback.
 
-### 4.2 User-Trigger
-- Start der Sprachaufnahme triggert `vadCtrl.start(stream, onState)`.
-- Stop der Aufnahme triggert `vadCtrl.stop()`.
+### 3.3 Auto-Stop-Policy
 
-### 4.3 Verarbeitung
-- AudioWorklet verarbeitet Frames und sendet `vad-data` Events.
-- Fallback: ScriptProcessor misst RMS und entscheidet Speech/Silence.
-- `handleVadStateChange` im Hub setzt/loescht Silence-Timer.
+- VAD stoppt nicht direkt selbst, sondern triggert die Silence-Logik im Voice-Adapter.
+- Voice V1 nutzt jetzt eine dynamische Stop-Toleranz:
+  - engeren Single-Command-Schnitt fuer sehr kurze Sprache
+  - zusaetzlichen Kurzlauf-Schnitt fuer fruehe `bursts=2`-Utterances
+  - mehr Toleranz bei mehreren Speech-Bursts
+  - mehr Toleranz bei laengeren Sprachlaeufen
+  - Schutz gegen zu fruehen Stop bei sehr kurzer Anfangssprache
+- Der Voice-Adapter haelt dazu zusaetzlich `firstSpeechAt` und einen expliziten Silence-Recheck-Pfad, damit kurze Fruehsprache nicht in `listening` haengen bleibt oder zu frueh abgeschnitten wird.
 
-### 4.4 Persistenz
-- Keine Persistenz.
-
----
-
-## 5. UI-Integration
-
-- Unsichtbar fuer Nutzer; Teil des Voice-Flows im Voice-Modul.
-- Beeinflusst Statuswechsel (Listening -> Idle) durch Auto-Stop.
+Wichtige Architekturentscheidung:
+- VAD ist Segment-Ende-Helfer.
+- VAD ist kein Resume-/Conversation-Baustein.
+- VAD verwirft keine bestaetigten Pending Contexts.
 
 ---
 
-## 6. Arzt-Ansicht / Read-Only Views
+## 4. UI-Integration
 
-- Keine.
-
----
-
-## 7. Fehler- & Diagnoseverhalten
-
-- Logs ueber `diag.add` und `console.warn`.
-- Voice-Gate blockt Start (Error: `voice-not-ready`).
-- Worklet-Fail -> Fallback ScriptProcessor.
+- Keine direkte UI.
+- Indirekte Wirkung:
+  - Ende der Aufnahme
+  - Uebergang von `listening` zu `transcribing`
 
 ---
 
-## 8. Events & Integration Points
+## 5. Fehler- & Diagnoseverhalten
 
-- Public API / Entry Points: `MidasVAD.createController`, `start/stop`.
-- Source of Truth: AudioStream + VAD state in controller.
-- Side Effects: triggers voice auto-stop via silence timer.
-- Constraints: AudioContext required, voice gate must be allowed.
-- Voice-Gate Hooks aus `AppModules.hub` (`getVoiceGateStatus`, `onVoiceGateChange`).
-- VAD-Status ruft Callback `onStateChange('speech' | 'silence')`.
-
----
-
-## 9. Erweiterungspunkte / Zukunft
-
-- WASM-basierter VAD (webrtcvad) als optionaler Upgrade.
-- Konfigurierbare Silence-Timeouts pro UI-Modus.
-- Noise-Gate/Threshold dynamisch anpassen.
+- Gate-Blocker erzeugen `voice-not-ready`.
+- Worklet-Fail fuehrt in den RMS-Fallback.
+- Auto-Stop-Entscheidungen koennen in `diag` sichtbar werden.
+- Fuer Voice-Performance-Review laesst sich der VAD-Anteil jetzt indirekt ueber das Perf-Segment
+  - `voice_first_speech_to_stop`
+  gegen die restliche Voice-Kette abgrenzen.
 
 ---
 
-## 10. Feature-Flags / Konfiguration
+## 6. Events & Integration Points
 
-- Keine dedizierten Flags.
-- Tuning ueber Optionen in `createController` (threshold, minSpeechFrames, minSilenceFrames).
-
----
-
-## 11. Status / Dependencies / Risks
-
-- Status: geparkt (Voice ist deaktiviert).
-- Dependencies (hard): WebAudio + AudioWorklet, Hub Voice-Gate.
-- Dependencies (soft): n/a.
-- Known issues / risks: Browser-Support; Mic-Permission; Worklet-Fail (Fallback).
-- Backend / SQL / Edge: n/a.
+- Public API:
+  - `MidasVAD.createController()`
+  - `start(stream, onStateChange)`
+  - `stop()`
+- Integration:
+  - Hub Voice-Gate API
+  - Voice-Adapter Auto-Stop-Policy
 
 ---
 
-## 12. QA-Checkliste
+## 7. Status / Dependencies / Risks
 
-- Voice-Start -> VAD laeuft, kein Fehler.
-- Stille > Timeout -> Recording stoppt.
-- Worklet-Fail -> Fallback aktiv.
-- Voice-Gate sperrt Start korrekt.
+- Status: aktiv im produktiven Voice-V1-Pfad.
+- Hard dependencies:
+  - WebAudio
+  - AudioWorklet oder ScriptProcessor-Fallback
+  - Hub Voice-Gate
+- Known risks:
+  - Browser-/Mic-Variabilitaet
+  - zu aggressive Thresholds
+  - laute Umgebung / Noise
 
 ---
 
-## 13. Definition of Done
+## 8. QA-Checkliste
 
-- VAD stoppt Aufnahme deterministisch bei Stille.
-- Kein Error-Spam in diag/console.
-- Dokumentation aktuell.
+- Voice-Start -> VAD laeuft ohne Fehler.
+- Stille fuehrt kontrolliert zum Auto-Stop.
+- Laengere Morning-Saetze werden nicht zu frueh segmentiert.
+- Kurze Anfangssprache fuehrt nicht zu einem haengenden `listening`-Zustand.
+- Worklet-Fail aktiviert den Fallback.
+- Voice-Gate blockt den Start korrekt.
 
+---
+
+## 9. Definition of Done
+
+- VAD unterstuetzt Push-to-talk deterministisch.
+- Auto-Stop ist fuer kurze und laengere Sprachlaeufe ausreichend stabil.
+- Keine Conversation-/Resume-Altrolle mehr im Modulverstaendnis.
+- Dokumentation ist auf dem aktuellen Voice-V1-Zuschnitt.

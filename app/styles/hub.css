@@ -16,7 +16,7 @@
    HUB Panel Active State (Milchglas + Lock via :has)
    ========================================================================== */
 
-/* Vollflächiges Milchglas-Overlay über dem Hub, inkl. leichter 3D-Refraction */
+/* Vollflï¿½chiges Milchglas-Overlay ï¿½ber dem Hub, inkl. leichter 3D-Refraction */
 .hub::after {
   content: '';
   position: fixed;
@@ -237,7 +237,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   transform: translate(-50%, 0) scale(1);
 }
 
-/* ­M.I.D.A.S. Aura Blau/Magenta */
+/* ï¿½M.I.D.A.S. Aura Blau/Magenta */
 .midas-aura-flow {
   position: absolute;
   inset: 28%;
@@ -328,7 +328,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   opacity: 1.35;
 }
 
-/* ­Mobile-Boost mehr Glow, größer, intensiver */
+/* ï¿½Mobile-Boost mehr Glow, grï¿½ï¿½er, intensiver */
 @media (max-width: 640px) {
   .midas-aura-flow {
     inset: 16%;
@@ -375,7 +375,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
   }
 }
 
-/* Zusatz-Pulse für Aura, wenn Panel aktiv ist */
+/* Zusatz-Pulse fï¿½r Aura, wenn Panel aktiv ist */
 body:has(.hub-panel.is-visible) .midas-aura-flow {
   animation:
     midasAuraRotate 36s linear infinite,
@@ -395,7 +395,7 @@ body[data-panel-perf="mobile"]:has(.hub-panel.is-visible) .midas-aura-flow {
   transform: scale(1.04);
 }
 
-/* ­Goldener Ring-Glow innen */
+/* ï¿½Goldener Ring-Glow innen */
 .midas-ring-gold {
   position: absolute;
   inset: 17%;
@@ -453,12 +453,22 @@ body[data-panel-perf="mobile"]:has(.hub-panel.is-visible) .midas-aura-flow {
   --voice-ring-scale: 0.065;
 }
 
-.hub-orbit[data-voice-state="thinking"] {
+.hub-orbit[data-voice-state="transcribing"] {
   --voice-base-glow: 0.34;
   --voice-ring-scale: 0.04;
 }
 
-.hub-orbit[data-voice-state="speaking"] {
+.hub-orbit[data-voice-state="parsing"] {
+  --voice-base-glow: 0.31;
+  --voice-ring-scale: 0.03;
+}
+
+.hub-orbit[data-voice-state="executing"] {
+  --voice-base-glow: 0.38;
+  --voice-ring-scale: 0.05;
+}
+
+.hub-orbit[data-voice-state="confirming"] {
   --voice-base-glow: 0.5;
   --voice-ring-scale: 0.035;
 }
@@ -505,18 +515,25 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   animation-duration: 14s;
 }
 
-.hub-orbit[data-voice-state="thinking"] .midas-ring-gold {
+.hub-orbit[data-voice-state="transcribing"] .midas-ring-gold,
+.hub-orbit[data-voice-state="parsing"] .midas-ring-gold {
   animation: midasRingThinking 1.6s ease-in-out infinite;
   box-shadow:
     0 0 18px rgba(120, 190, 255, 0.55),
     0 0 36px rgba(220, 130, 255, 0.45);
 }
 
-.hub-orbit[data-voice-state="speaking"] .midas-ring-gold {
+.hub-orbit[data-voice-state="executing"] .midas-ring-gold {
+  box-shadow:
+    0 0 22px rgba(110, 190, 255, 0.62),
+    0 0 40px rgba(255, 210, 130, 0.32);
+}
+
+.hub-orbit[data-voice-state="confirming"] .midas-ring-gold {
   animation: midasRingSpeak 2.4s ease-in-out infinite;
 }
 
-.hub-orbit[data-voice-state="speaking"] .midas-ring-gold,
+.hub-orbit[data-voice-state="confirming"] .midas-ring-gold,
 .hub-orbit[data-voice-state="listening"] .midas-ring-gold {
   filter: drop-shadow(0 0 6px rgba(255, 215, 160, 0.45));
 }
@@ -629,32 +646,24 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   z-index: 8;
   pointer-events: auto;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
-  box-shadow:
-    inset 0 0 18px rgba(255, 255, 255, 0.08),
-    0 0 22px rgba(120, 170, 255, 0.18);
+  border: none;
+  background: transparent;
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: box-shadow 220ms ease, border-color 220ms ease, background 220ms ease;
+  transition: transform 220ms ease;
   position: relative;
 }
 
 .hub-core-trigger:hover,
 .hub-core-trigger:focus-visible {
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow:
-    inset 0 0 24px rgba(255, 255, 255, 0.16),
-    0 0 30px rgba(120, 170, 255, 0.45);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 70%);
+  background: transparent;
+  box-shadow: none;
 }
 
 .hub-core-trigger:focus-visible {
   outline: none;
-  box-shadow:
-    inset 0 0 28px rgba(255, 255, 255, 0.2),
-    0 0 34px rgba(120, 170, 255, 0.6);
 }
 
 .hub-core-trigger span[aria-hidden="true"] {
@@ -662,24 +671,22 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 }
 
 .hub-core-trigger[data-voice-state="listening"] {
-  border-color: rgba(130, 220, 255, 0.65);
-  background: radial-gradient(circle, rgba(130, 220, 255, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
   animation: hubCorePulse 1200ms ease-in-out infinite;
 }
 
-.hub-core-trigger[data-voice-state="thinking"] {
-  border-color: rgba(255, 214, 130, 0.6);
-  background: radial-gradient(circle, rgba(255, 214, 130, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+.hub-core-trigger[data-voice-state="transcribing"] {
 }
 
-.hub-core-trigger[data-voice-state="speaking"] {
-  border-color: rgba(255, 140, 200, 0.65);
-  background: radial-gradient(circle, rgba(255, 140, 200, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+.hub-core-trigger[data-voice-state="parsing"] {
+}
+
+.hub-core-trigger[data-voice-state="executing"] {
+}
+
+.hub-core-trigger[data-voice-state="confirming"] {
 }
 
 .hub-core-trigger[data-voice-state="error"] {
-  border-color: rgba(255, 120, 120, 0.7);
-  background: radial-gradient(circle, rgba(255, 120, 120, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
 /* Stealth-Touch-Targets: unsichtbare Buttons, Feedback ++ber Aura + Vibration */
@@ -708,7 +715,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   cursor: not-allowed;
 }
 
-/* Kein eigener Hover-Glow, kein Hüpfer visuelles Feedback kommt über Aura */
+/* Kein eigener Hover-Glow, kein Hï¿½pfer visuelles Feedback kommt ï¿½ber Aura */
 .hub-icon:focus-visible,
 .hub-icon:hover {
   box-shadow: none;
@@ -748,6 +755,99 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   opacity: 0.92;
 }
 
+.hub-icon[data-carousel-id='assistant-voice'] .hub-icon-img {
+  width: clamp(332px, 56vw, 664px);
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice']::after {
+  content: attr(data-voice-label);
+  position: absolute;
+  left: 50%;
+  bottom: clamp(-22px, -2vw, -30px);
+  transform: translateX(-50%);
+  min-width: max-content;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 10, 18, 0.78);
+  color: rgba(245, 247, 255, 0.88);
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'].hub-icon-active::after {
+  opacity: 1;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='listening'] .hub-icon-img {
+  transform: scale(1.04);
+  filter: drop-shadow(0 12px 30px rgba(110, 190, 255, 0.6));
+  opacity: 1;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='transcribing'] .hub-icon-img,
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='parsing'] .hub-icon-img {
+  filter:
+    drop-shadow(0 10px 24px rgba(110, 190, 255, 0.42))
+    drop-shadow(0 0 28px rgba(210, 120, 255, 0.22));
+  opacity: 0.98;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='executing'] .hub-icon-img {
+  transform: scale(1.02);
+  filter:
+    drop-shadow(0 11px 26px rgba(110, 190, 255, 0.52))
+    drop-shadow(0 0 18px rgba(255, 210, 130, 0.18));
+  opacity: 1;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='confirming'] .hub-icon-img {
+  transform: scale(1.03);
+  filter: drop-shadow(0 12px 30px rgba(255, 218, 140, 0.62));
+  opacity: 1;
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='error'] .hub-icon-img {
+  filter:
+    grayscale(0.08)
+    drop-shadow(0 12px 28px rgba(255, 88, 88, 0.45));
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='listening']::after {
+  border-color: rgba(110, 190, 255, 0.42);
+  box-shadow: 0 12px 28px rgba(80, 150, 255, 0.24);
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='transcribing']::after,
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='parsing']::after {
+  border-color: rgba(190, 150, 255, 0.34);
+  box-shadow: 0 12px 28px rgba(150, 110, 255, 0.2);
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='executing']::after {
+  border-color: rgba(120, 190, 255, 0.34);
+  box-shadow: 0 12px 28px rgba(80, 150, 255, 0.2);
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='confirming']::after {
+  border-color: rgba(255, 210, 130, 0.42);
+  box-shadow: 0 12px 28px rgba(255, 190, 110, 0.24);
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'][data-voice-state='error']::after {
+  border-color: rgba(255, 110, 110, 0.42);
+  color: rgba(255, 228, 228, 0.94);
+  box-shadow: 0 12px 28px rgba(255, 88, 88, 0.18);
+}
+
 .hub-icon:not([disabled]):hover .hub-icon-img,
 .hub-icon:not([disabled]):focus-visible .hub-icon-img {
   transform: scale(1.08);
@@ -758,6 +858,29 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
 .hub-icon[disabled] .hub-icon-img {
   opacity: 0.4;
   filter: grayscale(0.3) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+}
+
+.hub-icon[data-carousel-id='assistant-voice'].is-voice-locked {
+  cursor: not-allowed;
+}
+
+.hub-icon[data-carousel-id='assistant-voice'].is-voice-locked .hub-icon-img {
+  opacity: 0.72;
+  filter: grayscale(0.08) brightness(0.82) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'].is-voice-locked:hover .hub-icon-img,
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'].is-voice-locked:focus-visible .hub-icon-img {
+  transform: none;
+  opacity: 0.78;
+  filter: grayscale(0.06) brightness(0.88) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.42));
+}
+
+.hub-carousel .hub-icon[data-carousel-id='assistant-voice'].is-voice-locked::after {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.74);
+  background: rgba(10, 12, 18, 0.82);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 /* OPTION C Vibration auf Touch (Mobil, micro-jitter) */
@@ -814,7 +937,7 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   }
 }
 
-/* Strukturunabh+ñngiger Aura-Boost ++ber CSS-Variablen */
+/* Strukturunabh+ï¿½ngiger Aura-Boost ++ber CSS-Variablen */
 .hub-orbit:has(.hub-icon:is(:hover, :focus-visible)) {
   --midas-aura-boost: 0.35;
 }
@@ -946,7 +1069,7 @@ body[data-panel-perf="mobile"] .hub-panel {
 }
 
 /* Etwas cineastischer: langsameres Aufbauen, schnelleres Einrollen
-   + Omni-Gel Glow beim +ûffnen */
+   + Omni-Gel Glow beim +ï¿½ffnen */
 .hub-panel.hub-panel-open {
   animation: hub-panel-zoom-in-desktop 500ms cubic-bezier(0.22, 0.8, 0.25, 1) forwards;
   box-shadow:
@@ -1274,6 +1397,36 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin: 6px 0 10px;
   display: block;
   color: rgba(255, 255, 255, 0.8);
+}
+
+.medication-low-stock-state {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.medication-low-stock .low-stock-item[data-med-reorder-ui-state="reorder_prompted"] {
+  background: rgba(255, 214, 112, 0.06);
+  border-radius: 12px;
+  padding-inline: 10px;
+}
+
+.medication-low-stock .low-stock-item[data-med-reorder-ui-state="reorder_prompted"] .medication-low-stock-state {
+  color: #ffe08a;
+}
+
+.medication-low-stock .low-stock-item[data-med-reorder-ui-state="confirming"] {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding-inline: 10px;
+}
+
+.medication-low-stock .low-stock-item[data-med-reorder-ui-state="confirming"] .medication-low-stock-state {
+  color: #fff0b3;
+}
+
+.medication-low-stock .low-stock-item[data-med-reorder-ui-state="unavailable"] .medication-low-stock-state {
+  color: rgba(255, 255, 255, 0.56);
 }
 
 .hub-vitals {
@@ -2027,7 +2180,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
    Animations Panels
    ========================================================================== */
 
-/* Öffnen: aus der Mitte, erst als dünner Balken, dann volle Höhe */
+/* ï¿½ffnen: aus der Mitte, erst als dï¿½nner Balken, dann volle Hï¿½he */
 @keyframes hub-panel-zoom-in-desktop {
   0% {
     opacity: 0;
@@ -2038,7 +2191,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 0 0 rgba(0, 0, 0, 0);
   }
 
-  /* Stabiler, symmetrischer Start (keine Schiefe möglich) */
+  /* Stabiler, symmetrischer Start (keine Schiefe mï¿½glich) */
   15% {
     opacity: 0.8;
     transform: translate(-50%, -50%) scaleX(0.25) scaleY(0.25);
@@ -2054,7 +2207,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
       0 30px 60px rgba(0, 0, 0, 0.85);
   }
 
-  /* Höhe wächst */
+  /* Hï¿½he wï¿½chst */
   70% {
     opacity: 1;
     transform: translate(-50%, -50%) scaleX(1) scaleY(0.95);
@@ -2075,7 +2228,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 }
 
-/* Schließen: leicht zusammenziehen, dann wieder in den Kern zurückschnappen
+/* Schlieï¿½en: leicht zusammenziehen, dann wieder in den Kern zurï¿½ckschnappen
    + kleines Lichtecho */
 @keyframes hub-panel-zoom-out-desktop {
 
