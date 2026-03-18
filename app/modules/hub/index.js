@@ -633,6 +633,48 @@
     syncDashboardUi();
   };
 
+  const bindVerticalRevealGestures = (element, { onSwipeUp = null, onSwipeDown = null } = {}) => {
+    if (!element) return;
+    let pointerId = null;
+    let startX = null;
+    let startY = null;
+    const SWIPE_THRESHOLD = 42;
+
+    const reset = () => {
+      pointerId = null;
+      startX = null;
+      startY = null;
+    };
+
+    element.addEventListener('pointerdown', (event) => {
+      if (!event.isPrimary) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+    });
+
+    element.addEventListener('pointerup', (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) {
+        reset();
+        return;
+      }
+      const deltaX = startX === null ? 0 : event.clientX - startX;
+      const deltaY = startY === null ? 0 : event.clientY - startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (absY > absX && absY > SWIPE_THRESHOLD) {
+        if (deltaY < -SWIPE_THRESHOLD) {
+          onSwipeUp?.();
+        } else if (deltaY > SWIPE_THRESHOLD) {
+          onSwipeDown?.();
+        }
+      }
+      reset();
+    });
+
+    element.addEventListener('pointercancel', reset);
+  };
+
   const setupCarouselGestures = (orbit) => {
     if (!orbit) return;
     let pointerId = null;
@@ -1009,6 +1051,11 @@
     quickbarState.el = quickbar;
     quickbarState.hubEl = hub;
     syncQuickbarUi();
+    bindVerticalRevealGestures(quickbar, {
+      onSwipeDown: () => {
+        if (quickbarState.open) closeQuickbar();
+      },
+    });
     const handle = hub.querySelector('[data-quickbar-handle]');
     quickbarState.handle = handle || null;
     if (handle) {
@@ -1922,6 +1969,11 @@
       },
     };
     copyBtn?.addEventListener('click', handleAssistantSnapshotCopy);
+    bindVerticalRevealGestures(root, {
+      onSwipeUp: () => {
+        if (dashboardState.open) closeDashboard();
+      },
+    });
     setAssistantCopyButtonState('idle');
   };
 
