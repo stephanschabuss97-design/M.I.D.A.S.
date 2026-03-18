@@ -276,6 +276,12 @@ body:has(.hub-panel.is-visible) .hub-icon {
   margin-bottom: 16px;
 }
 
+.hub-dashboard-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .hub-dashboard-header h2 {
   margin: 0;
   font-size: 0.9rem;
@@ -301,6 +307,28 @@ body:has(.hub-panel.is-visible) .hub-icon {
 
 .hub-dashboard-appointments {
   margin-bottom: 12px;
+}
+
+.hub-dashboard-close {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.hub-dashboard-close:hover,
+.hub-dashboard-close:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
 }
 
 .hub.dashboard-open .hub-dashboard {

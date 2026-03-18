@@ -472,33 +472,44 @@
           <div class="hub-dashboard-card">
             <div class="hub-dashboard-header">
               <h2 id="hubContextDashboardTitle">Dashboard</h2>
-              <button
-                type="button"
-                class="assistant-copy-btn hub-dashboard-copy-btn"
-                id="hubDashboardCopySnapshot"
-                aria-label="Dashboard kopieren"
-                title="Dashboard kopieren"
-              >
-                <span class="assistant-copy-icon" data-copy-icon aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path
-                      d="M9 9.75a2.25 2.25 0 0 1 2.25-2.25h6A2.25 2.25 0 0 1 19.5 9.75v7.5a2.25 2.25 0 0 1-2.25 2.25h-6A2.25 2.25 0 0 1 9 17.25z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M6.75 15.75A2.25 2.25 0 0 1 4.5 13.5V6.75A2.25 2.25 0 0 1 6.75 4.5h6.75"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-              </button>
+              <div class="hub-dashboard-actions">
+                <button
+                  type="button"
+                  class="assistant-copy-btn hub-dashboard-copy-btn"
+                  id="hubDashboardCopySnapshot"
+                  aria-label="Dashboard kopieren"
+                  title="Dashboard kopieren"
+                >
+                  <span class="assistant-copy-icon" data-copy-icon aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path
+                        d="M9 9.75a2.25 2.25 0 0 1 2.25-2.25h6A2.25 2.25 0 0 1 19.5 9.75v7.5a2.25 2.25 0 0 1-2.25 2.25h-6A2.25 2.25 0 0 1 9 17.25z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M6.75 15.75A2.25 2.25 0 0 1 4.5 13.5V6.75A2.25 2.25 0 0 1 6.75 4.5h6.75"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="hub-dashboard-close"
+                  id="hubDashboardClose"
+                  aria-label="Dashboard schliessen"
+                  title="Dashboard schliessen"
+                >
+                  &times;
+                </button>
+              </div>
             </div>
             <div class="assistant-pills hub-dashboard-pills" id="hubDashboardIntakePills">
               <div class="assistant-pill muted" data-pill="water">

@@ -1943,10 +1943,12 @@
     const appointmentsEmpty = appointmentsContainer?.querySelector('[data-appointments-empty]');
     const copyBtn = root.querySelector('#hubDashboardCopySnapshot');
     const copyBtnIcon = copyBtn?.querySelector('[data-copy-icon]') || null;
+    const closeBtn = root.querySelector('#hubDashboardClose');
     hubDashboardCtrl = {
       root,
       copyBtn,
       copyBtnIcon,
+      closeBtn,
       pills: {
         water: buildPillRef(pillsWrap, 'water'),
         salt: buildPillRef(pillsWrap, 'salt'),
@@ -1969,6 +1971,11 @@
       },
     };
     copyBtn?.addEventListener('click', handleAssistantSnapshotCopy);
+    closeBtn?.addEventListener('click', (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      closeDashboard();
+    });
     bindVerticalRevealGestures(root, {
       onSwipeUp: () => {
         if (dashboardState.open) closeDashboard();
