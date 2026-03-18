@@ -37,6 +37,28 @@
     }
     return Math.round(value * 100) / 100;
   };
+  const syncCardOrder = (order, items) => {
+    const ids = items.map((item) => item?.id).filter(Boolean);
+    const next = order.filter((id) => ids.includes(id));
+    ids.forEach((id) => {
+      if (!next.includes(id)) next.push(id);
+    });
+    return next;
+  };
+  const sortByCardOrder = (items, order) => {
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aRank = rank.get(a.item?.id);
+        const bRank = rank.get(b.item?.id);
+        const aValue = Number.isFinite(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+        const bValue = Number.isFinite(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+        if (aValue !== bValue) return aValue - bValue;
+        return a.index - b.index;
+      })
+      .map((entry) => entry.item);
+  };
   const escapeAttr = (value = '') =>
     String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] || ch));
   const TREND_PILOT_SEVERITY_META = {
@@ -183,6 +205,17 @@
     if (!key) return;
     medicationDailyState.reorderLaunchLocks.set(key, Date.now());
   };
+
+  const getActiveMedicationRows = (data) => {
+    if (!Array.isArray(data?.medications)) return [];
+    return data.medications.filter((med) => med && med.active !== false);
+  };
+
+  const getOpenMedicationIds = (data) =>
+    getActiveMedicationRows(data)
+      .filter((med) => !med?.taken)
+      .map((med) => `${med?.id || ''}`.trim())
+      .filter(Boolean);
 
   const markMedicationReorderPrompted = (medId, contract) => {
     const key = `${medId || ''}`.trim();
