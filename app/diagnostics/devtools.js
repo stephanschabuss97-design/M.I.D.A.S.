@@ -15,8 +15,11 @@
     push: '#devTogglePush',
     sound: '#devToggleSound',
     haptic: '#devToggleHaptic',
-    nocache: '#devToggleNoCache'
+    nocache: '#devToggleNoCache',
+    assistant: '#devToggleAssistant'
   };
+  const ASSISTANT_SURFACE_STORAGE_KEY = 'MIDAS_ASSISTANT_SURFACE_ENABLED';
+  const assistantSurfaceListeners = new Set();
 
   const getFeedback = () => global.AppModules?.feedback || null;
   const getProfileApi = () => global.AppModules?.profile || null;
@@ -45,6 +48,56 @@
     if (!el) return;
     el.checked = !!value;
   };
+
+  const readAssistantSurfaceEnabled = () => readFlag(ASSISTANT_SURFACE_STORAGE_KEY, false) === true;
+
+  const applyAssistantSurfaceState = (enabled) => {
+    doc.body?.setAttribute('data-assistant-surface', enabled ? 'on' : 'off');
+  };
+
+  const notifyAssistantSurfaceChanged = (enabled) => {
+    const detail = { enabled: !!enabled };
+    assistantSurfaceListeners.forEach((listener) => {
+      try {
+        listener(detail);
+      } catch (_) {
+        /* ignore */
+      }
+    });
+    try {
+      global.dispatchEvent?.(
+        new CustomEvent('assistant-surface:changed', {
+          detail,
+        }),
+      );
+    } catch (_) {
+      /* ignore */
+    }
+  };
+
+  const setAssistantSurfaceEnabled = (enabled) => {
+    const next = !!enabled;
+    writeFlag(ASSISTANT_SURFACE_STORAGE_KEY, next);
+    applyAssistantSurfaceState(next);
+    notifyAssistantSurfaceChanged(next);
+    return next;
+  };
+
+  global.AppModules = global.AppModules || {};
+  global.AppModules.assistantSurface = Object.assign(global.AppModules.assistantSurface || {}, {
+    isEnabled: readAssistantSurfaceEnabled,
+    getEnabled: readAssistantSurfaceEnabled,
+    setEnabled: setAssistantSurfaceEnabled,
+    subscribe(listener) {
+      if (typeof listener !== 'function') return () => {};
+      assistantSurfaceListeners.add(listener);
+      return () => {
+        assistantSurfaceListeners.delete(listener);
+      };
+    }
+  });
+
+  applyAssistantSurfaceState(readAssistantSurfaceEnabled());
 
   const updatePushToggle = async (el) => {
     if (!el) return;
@@ -82,11 +135,13 @@
     const soundEl = doc.querySelector(selectors.sound);
     const hapticEl = doc.querySelector(selectors.haptic);
     const nocacheEl = doc.querySelector(selectors.nocache);
+    const assistantEl = doc.querySelector(selectors.assistant);
 
     const feedback = getFeedback();
     updateToggle(soundEl, feedback?.isSoundEnabled?.() ?? readFlag('FEEDBACK_SOUND_ENABLED', true));
     updateToggle(hapticEl, feedback?.isHapticEnabled?.() ?? readFlag('FEEDBACK_HAPTIC_ENABLED', true));
     updateToggle(nocacheEl, readFlag('DEV_NOCACHE_ASSETS', false));
+    updateToggle(assistantEl, readAssistantSurfaceEnabled());
     updatePushToggle(pushEl);
 
     soundEl?.addEventListener('change', () => {
@@ -104,6 +159,12 @@
     nocacheEl?.addEventListener('change', () => {
       const on = !!nocacheEl.checked;
       applyNoCacheMode(on);
+    });
+
+    assistantEl?.addEventListener('change', () => {
+      const on = !!assistantEl.checked;
+      setAssistantSurfaceEnabled(on);
+      updateToggle(assistantEl, on);
     });
 
     pushEl?.addEventListener('change', async () => {

@@ -97,10 +97,42 @@ Related docs:
 
 ## 5. UI-Integration
 
-- Assistant-Panel bleibt der produktive Text-Einstieg.
+- Assistant-Panel bleibt der produktive Text-Einstieg, aber seine Sichtbarkeit ist jetzt produktisch togglebar.
 - Suggest-Cards bleiben produktiver Confirm-Producer.
 - Der Hub exponiert den Pending-Context- und Confirm-Resolver auch fuer Voice.
 - Voice selbst wird zentral ueber den MIDAS-Slot im Hub getriggert, nicht ueber ein separates Assistant-Panel-Voice-Design.
+
+### 5.1 Sichtbarkeitsvertrag
+
+- Neuer Produkt-Toggle:
+  - `assistant surface off`
+  - `assistant surface on`
+- `off` bedeutet:
+  - Text-Assistant ist aus Carousel und Quickbar ausgeblendet
+  - die OG-MIDAS-Nadel bleibt nur als passiver Startanker sichtbar
+  - nach der ersten Carousel-Bewegung verschwindet dieser passive Voice-Anker wieder
+- `on` bedeutet:
+  - Text-Assistant ist wieder sichtbar
+  - die MIDAS-Nadel bleibt als produktiver Voice-Slot im Carousel
+- Wichtig:
+  - das ist nur ein Surface-/Sichtbarkeitsvertrag
+  - kein zweiter Assistant-Modus
+  - kein zweiter Parserpfad
+  - keine Deaktivierung der zugrunde liegenden Architektur
+
+### 5.2 Assistant-Kontext vs. Hub-Dashboard
+
+- Der nuetzliche Assistant-Kontext ist nicht mehr nur ans Assistant-Panel gebunden.
+- Ein kompakter Hub-Dashboard-Surface zeigt jetzt auch ausserhalb des Panels:
+  - Wasser
+  - Salz
+  - Protein
+  - Protein-Ziel
+  - CKD
+  - naechste `2` Termine
+  - Restbudget
+- Das Dashboard nutzt denselben bestehenden Kontext-/Snapshot-Vertrag wie der Assistant.
+- Der Copy-Snapshot bleibt inhaltlich derselbe; er ist jetzt nur auch am Hub-Dashboard erreichbar.
 
 ---
 
@@ -194,6 +226,24 @@ Related docs:
   - nur bestehende Module oeffnen, keine neue Workflow- oder Pending-Semantik
   - keine Rueckkehr zu breiten satznahen Sonderregeln pro Modul
 - Solange der reale Nutzwert dafuer nicht belegt ist, bleibt das ein Future-Hook und kein aktiver Ausbaupunkt.
+
+### 8.3 Future Hooks / Voice-Robustheit im Alltag
+
+- Die aktuelle Voice-Basis ist produktiv nutzbar, aber fuer echten Alltagskomfort noch nicht am Ziel.
+- Reale spaetere Follow-up-Themen sind:
+  - leiseres / weniger exaktes Sprechen besser tolerieren
+  - natuerliche Einleitungsphrasen robuster behandeln, z. B.:
+    - `kannst du mir bitte ...`
+  - Compound-Fast-Paths auch unter natuerlicherer Alltagssprache stabil halten
+- Guardrail:
+  - diese Robustheitsarbeit gehoert nicht in den produktiven Surface-/Toggle-Vertrag
+  - sie ist ein eigener spaeterer Verbesserungsblock auf Basis realer Nutzung
+- Wichtig fuer spaetere Wiederaufnahme:
+  - zuerst unterscheiden zwischen
+    - Akustik-/STT-/VAD-Thema
+    - semantischem Filler-/Surface-Thema
+    - Entry-Point-/Wrapper-/TWA-Thema
+  - nicht alle drei Problemklassen in einen einzigen "Voice verbessern"-Task kippen
 
 ---
 

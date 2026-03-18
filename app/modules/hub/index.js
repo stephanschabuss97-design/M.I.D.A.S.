@@ -85,6 +85,7 @@
     transitionDir: 0,
     activeButton: null,
     momentumTimers: [],
+    showPassiveVoiceAnchor: false,
     prefersReducedMotion: global.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false,
   };
   let carouselKeyListenerBound = false;
@@ -92,6 +93,11 @@
   const quickbarState = {
     el: null,
     handle: null,
+    hubEl: null,
+    open: false,
+  };
+  const dashboardState = {
+    el: null,
     hubEl: null,
     open: false,
   };
@@ -104,6 +110,8 @@
   let doctorUnlockWaitCancel = null;
   let openDoctorPanelWithGuard = null;
   let openDoctorInboxPanelWithGuard = null;
+  let assistantSurfaceUnsubscribe = null;
+  let hubDashboardCtrl = null;
   const aura3dApi = global.AppModules?.hubAura3D || null;
   let aura3dCleanup = null;
   const auraState = {
@@ -319,6 +327,8 @@
   const getVoiceGateLabel = (status = {}) => {
     const reason = String(status?.reason || '').trim();
     switch (reason) {
+      case 'assistant-surface-off':
+        return 'Voice ist deaktiviert';
       case 'voice-parked':
         return 'Voice ist noch geparkt';
       case 'booting':
@@ -341,10 +351,13 @@
     if (!button) return;
     const resolved = status || getVoiceFacade()?.getGateStatus?.() || { allowed: false, reason: 'voice-module-missing' };
     const locked = !resolved.allowed;
+    const visualLock = locked && resolved.reason !== 'assistant-surface-off';
+    const showVoiceLabel = resolved.reason !== 'assistant-surface-off';
     if (!button.dataset.voiceState) {
       button.dataset.voiceState = 'idle';
     }
-    button.classList.toggle('is-voice-locked', locked);
+    button.classList.toggle('is-voice-locked', visualLock);
+    button.classList.toggle('is-voice-label-hidden', !showVoiceLabel);
     button.setAttribute('aria-disabled', locked ? 'true' : 'false');
     button.dataset.voiceGateReason = String(resolved.reason || '');
     button.dataset.voiceLabel = locked ? getVoiceGateLabel(resolved) : (button.dataset.voiceLabel || 'Bereit');
@@ -484,6 +497,12 @@
     const length = getCarouselLength();
     if (!length) return;
     const dir = delta > 0 ? 1 : -1;
+    if (!isAssistantSurfaceEnabled() && carouselState.showPassiveVoiceAnchor) {
+      carouselState.showPassiveVoiceAnchor = false;
+      if (quickbarState.hubEl) {
+        refreshCarouselItems(quickbarState.hubEl);
+      }
+    }
     let changed = false;
     if (carouselState.idle) {
       const startIndex = dir > 0 ? 0 : length - 1;
@@ -568,6 +587,7 @@
 
   const openQuickbar = () => {
     if (!quickbarState.el || quickbarState.open) return;
+    closeDashboard();
     quickbarState.open = true;
     syncQuickbarUi();
   };
@@ -582,6 +602,35 @@
     if (!quickbarState.el) return;
     if (quickbarState.open) closeQuickbar();
     else openQuickbar();
+  };
+
+  const syncDashboardUi = () => {
+    if (!dashboardState.el) return;
+    if (dashboardState.open) {
+      dashboardState.el.removeAttribute('hidden');
+      dashboardState.el.removeAttribute('inert');
+      dashboardState.el.setAttribute('aria-hidden', 'false');
+    } else {
+      dashboardState.el.setAttribute('hidden', 'true');
+      dashboardState.el.setAttribute('inert', '');
+      dashboardState.el.setAttribute('aria-hidden', 'true');
+    }
+    if (dashboardState.hubEl) {
+      dashboardState.hubEl.classList.toggle('dashboard-open', dashboardState.open);
+    }
+  };
+
+  const openDashboard = () => {
+    if (!dashboardState.el || dashboardState.open) return;
+    closeQuickbar();
+    dashboardState.open = true;
+    syncDashboardUi();
+  };
+
+  const closeDashboard = () => {
+    if (!dashboardState.el || !dashboardState.open) return;
+    dashboardState.open = false;
+    syncDashboardUi();
   };
 
   const setupCarouselGestures = (orbit) => {
@@ -634,9 +683,17 @@
       const absY = Math.abs(deltaY);
       if (absY > absX && absY > SWIPE_THRESHOLD) {
         if (deltaY < -SWIPE_THRESHOLD) {
-          openQuickbar();
+          if (dashboardState.open) {
+            closeDashboard();
+          } else {
+            openQuickbar();
+          }
         } else if (deltaY > SWIPE_THRESHOLD) {
-          closeQuickbar();
+          if (quickbarState.open) {
+            closeQuickbar();
+          } else {
+            openDashboard();
+          }
         }
         resetSwipe();
         return;
@@ -666,22 +723,7 @@
     const orbit = hub.querySelector('.hub-orbit');
     if (!orbit) return;
     carouselState.orbitEl = orbit;
-    carouselState.items = CAROUSEL_MODULES.map((entry) => {
-      const button = hub.querySelector(entry.selector);
-      if (!button) return null;
-      if (!button.dataset.carouselId) {
-        button.dataset.carouselId = entry.id;
-      }
-      button.setAttribute('tabindex', '-1');
-      button.setAttribute('aria-hidden', 'true');
-      return { ...entry, button };
-    }).filter(Boolean);
-    const defaultVoiceIndex = carouselState.items.findIndex((item) => item.id === 'assistant-voice');
-    if (defaultVoiceIndex >= 0) {
-      setCarouselActiveIndex(defaultVoiceIndex, { direction: 0 });
-    } else {
-      setCarouselIdle();
-    }
+    refreshCarouselItems(hub, { preserveActiveId: false });
     setupCarouselGestures(orbit);
     if (!carouselKeyListenerBound) {
       carouselKeyListenerBound = true;
@@ -696,6 +738,79 @@
   };
 
   const getChartPanel = () => global.AppModules?.charts?.chartPanel;
+  const getAssistantSurfaceApi = () => appModules.assistantSurface || global.AppModules?.assistantSurface || null;
+  const isAssistantSurfaceEnabled = () => getAssistantSurfaceApi()?.isEnabled?.() === true;
+  const shouldShowVoiceAnchor = () =>
+    isAssistantSurfaceEnabled() || carouselState.showPassiveVoiceAnchor;
+
+  const getVisibleCarouselModules = () =>
+    CAROUSEL_MODULES.filter((entry) => {
+      if (entry.id === 'assistant-text') return isAssistantSurfaceEnabled();
+      if (entry.id === 'assistant-voice') return shouldShowVoiceAnchor();
+      return true;
+    });
+
+  const syncAssistantTextSurface = (hub) => {
+    if (!hub) return;
+    const enabled = isAssistantSurfaceEnabled();
+    hub.querySelectorAll('[data-hub-module="assistant-text"]').forEach((btn) => {
+      btn.hidden = !enabled;
+      btn.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+      if (enabled) {
+        btn.removeAttribute('inert');
+      } else {
+        btn.setAttribute('inert', '');
+      }
+    });
+    const carouselBtn = hub.querySelector('[data-carousel-id="assistant-text"]');
+    if (carouselBtn) {
+      carouselBtn.hidden = !enabled;
+      carouselBtn.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+      if (enabled) {
+        carouselBtn.removeAttribute('inert');
+      } else {
+        carouselBtn.setAttribute('inert', '');
+        carouselBtn.classList.remove('hub-icon-active', 'hub-icon-exit');
+        carouselBtn.tabIndex = -1;
+      }
+    }
+    if (!enabled && activePanel?.dataset?.hubPanel === 'assistant-text') {
+      closeActivePanel({ instant: true });
+    }
+    hubButtons = Array.from(hub.querySelectorAll('.hub-icon:not([disabled]):not([hidden])'));
+  };
+
+  const refreshCarouselItems = (hub, { preserveActiveId = true } = {}) => {
+    if (!hub) return;
+    const currentActiveId = preserveActiveId
+      ? carouselState.activeButton?.dataset?.carouselId || null
+      : null;
+    carouselState.items = getVisibleCarouselModules().map((entry) => {
+      const button = hub.querySelector(entry.selector);
+      if (!button) return null;
+      if (!button.dataset.carouselId) {
+        button.dataset.carouselId = entry.id;
+      }
+      button.setAttribute('tabindex', '-1');
+      button.setAttribute('aria-hidden', 'true');
+      return { ...entry, button };
+    }).filter(Boolean);
+    if (!carouselState.items.length) {
+      setCarouselIdle();
+      return;
+    }
+    const nextId =
+      currentActiveId && carouselState.items.some((item) => item.id === currentActiveId)
+        ? currentActiveId
+        : carouselState.items.some((item) => item.id === 'assistant-voice')
+          ? 'assistant-voice'
+          : carouselState.items[0]?.id;
+    if (!nextId) {
+      setCarouselIdle();
+      return;
+    }
+    setCarouselActiveById(nextId, { direction: 0 });
+  };
 
   const closeActivePanel = ({ skipButtonSync = false, instant = false, intent = false } = {}) => {
     if (!activePanel) return;
@@ -1048,6 +1163,9 @@
       return;
     }
     initVoiceModule(hub);
+    carouselState.showPassiveVoiceAnchor = !isAssistantSurfaceEnabled();
+    syncAssistantTextSurface(hub);
+    setupHubDashboard(hub);
     setupAssistantChat(hub);
     setupIconBar(hub);
     setupOrbitHotspots(hub);
@@ -1058,6 +1176,15 @@
     setupCarouselController(hub);
     setupVoiceGateState(hub);
     setupQuickbar(hub);
+    if (typeof assistantSurfaceUnsubscribe === 'function') {
+      try { assistantSurfaceUnsubscribe(); } catch (_) {}
+    }
+    assistantSurfaceUnsubscribe = getAssistantSurfaceApi()?.subscribe?.(({ enabled }) => {
+      diag.add?.(`[hub] assistant surface toggled enabled=${enabled ? 'true' : 'false'}`);
+      carouselState.showPassiveVoiceAnchor = !enabled;
+      syncAssistantTextSurface(hub);
+      refreshCarouselItems(hub);
+    }) || null;
     updateTickerBar({ reason: 'hub-init' });
     if (!trendpilotAuraBound) {
       trendpilotAuraBound = true;
@@ -1321,12 +1448,33 @@
 
   const isAssistantDesktop = () => !panelPerfQuery?.matches;
 
-  const updateAssistantPill = (key, text, isActive) => {
-    const pill = assistantChatCtrl?.pills?.[key];
+  const buildPillRef = (wrap, key) => {
+    const root = wrap?.querySelector?.(`[data-pill="${key}"]`);
+    if (!root) return null;
+    const value = root.querySelector('[data-pill-value]');
+    if (!value) return null;
+    return { root, value };
+  };
+
+  const buildContextValueRef = (wrap, attr, key, valueAttr) => {
+    if (!wrap) return null;
+    const root = wrap.querySelector(`[data-${attr}="${key}"]`);
+    if (!root) return null;
+    const value = root.querySelector(`[data-${valueAttr}]`);
+    if (!value) return null;
+    return { root, value };
+  };
+
+  const updatePillRef = (pill, text, isActive) => {
     if (!pill) return;
     pill.value.textContent = text;
     if (isActive) pill.root.classList.remove('muted');
     else pill.root.classList.add('muted');
+  };
+
+  const updateAssistantPill = (key, text, isActive) => {
+    updatePillRef(assistantChatCtrl?.pills?.[key], text, isActive);
+    updatePillRef(hubDashboardCtrl?.pills?.[key], text, isActive);
   };
 
   const updateContextItem = (ref, text, { placeholder = null, keepVisible = false } = {}) => {
@@ -1356,45 +1504,60 @@
   const ASSISTANT_CONTEXT_LOADING_HINT = 'Aktualisiere...';
 
   const renderAssistantContextExtras = (profile) => {
-    const refs = assistantChatCtrl?.contextExtras;
-    if (!refs?.container) return;
-    const isMissingProfile = !profile;
-    const keepVisible = isAssistantDesktop() || isMissingProfile;
-    let hasAny = false;
     const proteinText =
       formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
       formatTargetRange(profile?.protein_target, null, 'g');
-    if (
-      updateContextItem(refs.proteinTarget, proteinText, {
-        keepVisible,
-        placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '-- g',
-      })
-    )
-      hasAny = true;
     const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
-    if (
-      updateContextItem(refs.ckdStage, ckdStage || null, {
-        keepVisible,
-        placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
-      })
-    )
-      hasAny = true;
-    refs.container.hidden = !hasAny;
+    const renderInto = (refs, { keepVisible = false } = {}) => {
+      if (!refs?.container) return;
+      const isMissingProfile = !profile;
+      let hasAny = false;
+      if (
+        updateContextItem(refs.proteinTarget, proteinText, {
+          keepVisible,
+          placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '-- g',
+        })
+      )
+        hasAny = true;
+      if (
+        updateContextItem(refs.ckdStage, ckdStage || null, {
+          keepVisible,
+          placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
+        })
+      )
+        hasAny = true;
+      refs.container.hidden = !hasAny;
+    };
+    const isMissingProfile = !profile;
+    renderInto(assistantChatCtrl?.contextExtras, {
+      keepVisible: isAssistantDesktop() || isMissingProfile,
+    });
+    renderInto(hubDashboardCtrl?.contextExtras, { keepVisible: true });
   };
 
   const renderAssistantContextExpandable = (snapshot, profile) => {
-    const refs = assistantChatCtrl?.contextExpandable;
-    if (!refs?.container) return;
-    const isMissingProfile = !profile;
-    const keepVisible = isAssistantDesktop() || isMissingProfile;
     const remainingText = formatAssistantRemainingText(snapshot, profile);
-    const hasRemaining = updateContextItem(refs.remaining, remainingText, {
-      keepVisible,
-      placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
-    });
     const warningText = formatAssistantWarningText(snapshot, profile);
-    const hasWarning = updateContextItem(refs.warning, warningText);
-    refs.container.hidden = !(hasRemaining || hasWarning);
+    const renderInto = (refs, { keepVisible = false, includeWarning = true } = {}) => {
+      if (!refs?.container) return;
+      const isMissingProfile = !profile;
+      const hasRemaining = updateContextItem(refs.remaining, remainingText, {
+        keepVisible,
+        placeholder: isMissingProfile ? ASSISTANT_CONTEXT_LOADING_HINT : '--',
+      });
+      const hasWarning =
+        refs.warning && includeWarning ? updateContextItem(refs.warning, warningText) : false;
+      refs.container.hidden = !(hasRemaining || hasWarning);
+    };
+    const isMissingProfile = !profile;
+    renderInto(assistantChatCtrl?.contextExpandable, {
+      keepVisible: isAssistantDesktop() || isMissingProfile,
+      includeWarning: true,
+    });
+    renderInto(hubDashboardCtrl?.contextExpandable, {
+      keepVisible: true,
+      includeWarning: false,
+    });
   };
 
   const renderAssistantIntakeTotals = (snapshot) => {
@@ -1410,30 +1573,33 @@
   };
 
   const renderAssistantAppointments = (items) => {
-    const refs = assistantChatCtrl?.appointments;
-    if (!refs?.container) return;
-    const hasItems = Array.isArray(items) && items.length > 0;
-    if (refs.list) {
-      if (hasItems) {
-        refs.list.hidden = false;
-        refs.list.innerHTML = items
-          .map(
-            (item) =>
-              `<li><span>${item.label || ''}</span><span>${item.detail || ''}</span></li>`,
-          )
-          .join('');
-      } else {
-        refs.list.hidden = true;
-        refs.list.innerHTML = '';
+    const renderInto = (refs) => {
+      if (!refs?.container) return;
+      const hasItems = Array.isArray(items) && items.length > 0;
+      if (refs.list) {
+        if (hasItems) {
+          refs.list.hidden = false;
+          refs.list.innerHTML = items
+            .map(
+              (item) =>
+                `<li><span>${item.label || ''}</span><span>${item.detail || ''}</span></li>`,
+            )
+            .join('');
+        } else {
+          refs.list.hidden = true;
+          refs.list.innerHTML = '';
+        }
       }
-    }
-    if (refs.empty) {
-      if (hasItems) refs.empty.setAttribute('hidden', 'true');
-      else {
-        refs.empty.removeAttribute('hidden');
-        refs.empty.textContent = 'Keine Termine geladen.';
+      if (refs.empty) {
+        if (hasItems) refs.empty.setAttribute('hidden', 'true');
+        else {
+          refs.empty.removeAttribute('hidden');
+          refs.empty.textContent = 'Keine Termine geladen.';
+        }
       }
-    }
+    };
+    renderInto(assistantChatCtrl?.appointments);
+    renderInto(hubDashboardCtrl?.appointments);
   };
 
   const APPOINTMENT_DATE_FORMAT = new Intl.DateTimeFormat('de-AT', {
@@ -1454,6 +1620,24 @@
     hour: '2-digit',
     minute: '2-digit',
   });
+  const ASSISTANT_COPY_ICON_SVG = `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path
+        d="M9 9.75a2.25 2.25 0 0 1 2.25-2.25h6A2.25 2.25 0 0 1 19.5 9.75v7.5a2.25 2.25 0 0 1-2.25 2.25h-6A2.25 2.25 0 0 1 9 17.25z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M6.75 15.75A2.25 2.25 0 0 1 4.5 13.5V6.75A2.25 2.25 0 0 1 6.75 4.5h6.75"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>`;
 
   const formatAppointmentDateTime = (value, { includeTime = true } = {}) => {
     if (!value) return '';
@@ -1655,7 +1839,7 @@
     };
 
     const refreshAssistantContext = async ({ reason, forceRefresh = false } = {}) => {
-      if (!assistantChatCtrl?.panel) return;
+      if (!assistantChatCtrl?.panel && !hubDashboardCtrl?.root) return;
       const profileSnapshot = getAssistantProfileSnapshot({ force: forceRefresh });
       if (!profileSnapshot) {
         requestAssistantProfileSync({ reason: reason || 'assistant:lazy-refresh' });
@@ -1676,6 +1860,9 @@
       if (assistantChatCtrl) {
         assistantChatCtrl.context = contextPayload;
       }
+      if (hubDashboardCtrl) {
+        hubDashboardCtrl.context = contextPayload;
+      }
       const suggestStore = getAssistantSuggestStore();
       suggestStore?.setSnapshot?.(
         {
@@ -1692,6 +1879,50 @@
   const debugLog = (msg, payload) => {
     if (!HUB_DEBUG_ENABLED) return;
     diag.add?.(`[hub:debug] ${msg}` + (payload ? ` ${JSON.stringify(payload)}` : ''));
+  };
+
+  const setupHubDashboard = (hub) => {
+    const root = hub?.querySelector?.('#hubContextDashboard');
+    if (!root) return;
+    if (hubDashboardCtrl?.root === root) return;
+    dashboardState.el = root;
+    dashboardState.hubEl = hub;
+    syncDashboardUi();
+    const pillsWrap = root.querySelector('#hubDashboardIntakePills');
+    const contextExtras = root.querySelector('.hub-dashboard-grid');
+    const contextExpandable = root.querySelector('#hubDashboardExpandable');
+    const appointmentsContainer = root.querySelector('#hubDashboardAppointments');
+    const appointmentsList = root.querySelector('#hubDashboardAppointmentsList');
+    const appointmentsEmpty = appointmentsContainer?.querySelector('[data-appointments-empty]');
+    const copyBtn = root.querySelector('#hubDashboardCopySnapshot');
+    const copyBtnIcon = copyBtn?.querySelector('[data-copy-icon]') || null;
+    hubDashboardCtrl = {
+      root,
+      copyBtn,
+      copyBtnIcon,
+      pills: {
+        water: buildPillRef(pillsWrap, 'water'),
+        salt: buildPillRef(pillsWrap, 'salt'),
+        protein: buildPillRef(pillsWrap, 'protein'),
+      },
+      contextExtras: {
+        container: contextExtras,
+        proteinTarget: buildContextValueRef(contextExtras, 'extra', 'protein-target', 'extra-value'),
+        ckdStage: buildContextValueRef(contextExtras, 'extra', 'ckd-stage', 'extra-value'),
+      },
+      contextExpandable: {
+        container: contextExpandable,
+        remaining: buildContextValueRef(contextExpandable, 'expandable', 'remaining', 'expandable-value'),
+        warning: null,
+      },
+      appointments: {
+        container: appointmentsContainer,
+        list: appointmentsList,
+        empty: appointmentsEmpty,
+      },
+    };
+    copyBtn?.addEventListener('click', handleAssistantSnapshotCopy);
+    setAssistantCopyButtonState('idle');
   };
 
   const setupAssistantChat = (hub) => {
@@ -1728,23 +1959,8 @@
     const contextSection = panel.querySelector('.assistant-context');
     const contextToggle = panel.querySelector('#assistantContextToggle');
     const pillsWrap = panel.querySelector('#assistantIntakePills');
-    const buildPillRef = (key) => {
-      const root = pillsWrap?.querySelector(`[data-pill="${key}"]`);
-      if (!root) return null;
-      const value = root.querySelector('[data-pill-value]');
-      if (!value) return null;
-      return { root, value };
-    };
     const contextExtras = panel.querySelector('#assistantContextExtras');
     const contextExpandable = panel.querySelector('#assistantContextExpandable');
-    const buildContextValueRef = (wrap, attr, key, valueAttr) => {
-      if (!wrap) return null;
-      const root = wrap.querySelector(`[data-${attr}="${key}"]`);
-      if (!root) return null;
-      const value = root.querySelector(`[data-${valueAttr}]`);
-      if (!value) return null;
-      return { root, value };
-    };
     const appointmentsContainer = panel.querySelector('#assistantAppointments');
     const appointmentsList = panel.querySelector('#assistantAppointmentsList');
     const appointmentsEmpty = appointmentsContainer?.querySelector('[data-appointments-empty]');
@@ -1814,9 +2030,9 @@
       contextToggle,
       contextExpanded: false,
       pills: {
-        water: buildPillRef('water'),
-        salt: buildPillRef('salt'),
-        protein: buildPillRef('protein'),
+        water: buildPillRef(pillsWrap, 'water'),
+        salt: buildPillRef(pillsWrap, 'salt'),
+        protein: buildPillRef(pillsWrap, 'protein'),
       },
       contextExtras: {
         container: contextExtras,
@@ -2462,35 +2678,58 @@
     }
   };
 
+  const setAssistantCopyButtonIcon = (state = 'idle') => {
+    const icons = [assistantChatCtrl?.copyBtnIcon, hubDashboardCtrl?.copyBtnIcon].filter(Boolean);
+    icons.forEach((icon) => {
+      if (state === 'success') {
+        icon.textContent = 'OK';
+        return;
+      }
+      if (state === 'error') {
+        icon.textContent = '!';
+        return;
+      }
+      icon.innerHTML = ASSISTANT_COPY_ICON_SVG;
+    });
+  };
+
   const setAssistantCopyButtonState = (state = 'idle') => {
-    const btn = assistantChatCtrl?.copyBtn;
-    const icon = assistantChatCtrl?.copyBtnIcon;
-    if (!btn) return;
+    const buttons = [
+      { btn: assistantChatCtrl?.copyBtn, title: 'Snapshot kopieren' },
+      { btn: hubDashboardCtrl?.copyBtn, title: 'Dashboard kopieren' },
+    ].filter((entry) => !!entry.btn);
+    if (!buttons.length) return;
     if (assistantCopyFeedbackTimer) {
       global.clearTimeout(assistantCopyFeedbackTimer);
       assistantCopyFeedbackTimer = null;
     }
     if (state === 'success') {
-      btn.dataset.copyState = 'success';
-      btn.setAttribute('title', 'Kopiert');
-      if (icon) icon.textContent = 'âœ“';
+      buttons.forEach(({ btn }) => {
+        btn.dataset.copyState = 'success';
+        btn.setAttribute('title', 'Kopiert');
+      });
+      setAssistantCopyButtonIcon('success');
       assistantCopyFeedbackTimer = global.setTimeout(() => {
         setAssistantCopyButtonState('idle');
       }, 1400);
       return;
     }
     if (state === 'error') {
-      btn.dataset.copyState = 'error';
-      btn.setAttribute('title', 'Kopieren fehlgeschlagen');
-      if (icon) icon.textContent = '!';
+      buttons.forEach(({ btn }) => {
+        btn.dataset.copyState = 'error';
+        btn.setAttribute('title', 'Kopieren fehlgeschlagen');
+      });
+      setAssistantCopyButtonIcon('error');
       assistantCopyFeedbackTimer = global.setTimeout(() => {
         setAssistantCopyButtonState('idle');
       }, 1800);
       return;
     }
-    delete btn.dataset.copyState;
-    btn.setAttribute('title', 'Snapshot kopieren');
-    if (icon) icon.textContent = 'â§‰';
+    buttons.forEach(({ btn, title }) => {
+      delete btn.dataset.copyState;
+      btn.setAttribute('title', title);
+    });
+    setAssistantCopyButtonIcon('idle');
   };
 
   const writeTextToClipboard = async (text) => {
@@ -2561,7 +2800,7 @@
   const handleAssistantSnapshotCopy = async (event) => {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    const btn = assistantChatCtrl?.copyBtn;
+    const btn = event?.currentTarget || assistantChatCtrl?.copyBtn || hubDashboardCtrl?.copyBtn;
     if (!btn) return;
     btn.setAttribute('disabled', 'disabled');
     try {

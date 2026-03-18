@@ -27,6 +27,7 @@
 
   let voiceCtrl = null;
   let voiceGateObserver = null;
+  let assistantSurfaceObserverBound = false;
   let lastVoiceGateStatus = { allowed: false, reason: 'booting' };
   const voiceGateListeners = new Set();
   let deps = {
@@ -43,6 +44,8 @@
   };
 
   const getDiag = () => deps.diag || fallbackDiag;
+  const isAssistantSurfaceEnabled = () =>
+    global.AppModules?.assistantSurface?.isEnabled?.() === true;
   const nowMs = () =>
     (typeof global.performance?.now === 'function' ? global.performance.now() : Date.now());
   const getPerfProxy = () => global.perfStats || null;
@@ -186,6 +189,9 @@
   };
 
   const computeVoiceGateStatus = () => {
+    if (!isAssistantSurfaceEnabled()) {
+      return { allowed: false, reason: 'assistant-surface-off' };
+    }
     if (!isBootReady()) {
       return { allowed: false, reason: 'booting' };
     }
@@ -200,9 +206,15 @@
 
   const applyVoiceGateUi = (status) => {
     if (!deps.doc?.body) return;
-    deps.doc.body.classList.toggle('voice-locked', !status.allowed);
+    const globalUiLock =
+      !status.allowed &&
+      status.reason !== 'assistant-surface-off';
+    deps.doc.body.classList.toggle('voice-locked', globalUiLock);
+    const visualButtonLock =
+      !status.allowed &&
+      status.reason !== 'assistant-surface-off';
     if (voiceCtrl?.button) {
-      voiceCtrl.button.classList.toggle('is-voice-locked', !status.allowed);
+      voiceCtrl.button.classList.toggle('is-voice-locked', visualButtonLock);
       voiceCtrl.button.setAttribute('aria-disabled', status.allowed ? 'false' : 'true');
     }
   };
@@ -227,6 +239,14 @@
     voiceGateObserver.observe(deps.doc.body, {
       attributes: true,
       attributeFilter: ['class', 'data-boot-stage'],
+    });
+  };
+
+  const ensureAssistantSurfaceObserver = () => {
+    if (assistantSurfaceObserverBound) return;
+    assistantSurfaceObserverBound = true;
+    global.addEventListener?.('assistant-surface:changed', () => {
+      notifyVoiceGateStatus();
     });
   };
 
@@ -290,6 +310,7 @@
     setVoiceState('idle');
     bindVoiceButton();
     ensureVoiceGateObserver();
+    ensureAssistantSurfaceObserver();
     notifyVoiceGateStatus();
     return true;
   };

@@ -1594,3 +1594,49 @@ Regression
 **PWA / Entry Point**
 - [ ] Kein QA-Case erwartet einen echten Outside-the-app-Voice-Start ueber PWA.
 - [ ] PWA-/Shortcut-Ideen bleiben auf `bestehenden Voice-Kontext schneller erreichen` begrenzt und erzeugen keinen zweiten Runtime-Pfad.
+
+---
+
+## Phase A5 - Assistant Surface Toggle & Hub Dashboard (2026-03-18)
+
+**Scope:** Produktischer Sichtbarkeitsvertrag fuer Assistant/Text/Voice plus oberer Dashboard-Reveal im Hero-Hub.
+
+**Toggle / Surface**
+- [ ] Touch-Log-Toggle `Assistant` ist persistent und startet standardmaessig auf `off`.
+- [ ] `off`:
+  - Text-Assistant ist aus Carousel und Quickbar entfernt.
+  - OG-MIDAS-Nadel ist beim Start sichtbar, aber nicht triggerbar.
+  - kein sichtbares Voice-Statuslabel unter der passiven Nadel.
+- [ ] Nach der ersten Carousel-Bewegung bei `off` verschwindet die passive Nadel wieder.
+- [ ] `on`:
+  - Text-Assistant ist in Carousel und Quickbar wieder sichtbar.
+  - MIDAS-Nadel bleibt als produktiver Voice-Slot im Carousel.
+  - Umschaltung funktioniert live ohne Reload.
+
+**Hub Dashboard / Reveal**
+- [ ] `swipe down` auf dem Hero/Orbit oeffnet das Dashboard oberhalb.
+- [ ] `swipe up` auf dem Hero/Orbit oeffnet die Quicklinks unterhalb.
+- [ ] Hero/Carousel bleibt die neutrale Mittelebene:
+  - oben -> Mitte
+  - Mitte -> unten
+  - unten -> Mitte
+  - Mitte -> oben
+- [ ] Dashboard und Quicklinks sind nie gleichzeitig offen.
+
+**Dashboard Content**
+- [ ] Dashboard zeigt dieselben bestehenden Snapshot-Daten:
+  - Wasser
+  - Salz
+  - Protein
+  - Protein-Ziel
+  - CKD
+  - naechste `2` Termine
+  - Restbudget
+- [ ] Dashboard fuehrt keine neue Fachlogik oder abweichende Berechnung ein.
+- [ ] Copy-Button im Dashboard nutzt denselben Snapshot-String wie der Assistant-Kontext.
+- [ ] Copy-Icon ist als klares Symbol lesbar und nicht mehr als deformiertes Sonderzeichen.
+
+**Regression**
+- [ ] Text-/Voice-/Hub-Flow bei `on` bleibt normal nutzbar.
+- [ ] Bei `off` bleiben keine toten Buttons, keine halbaktiven Needle-Zustaende und kein UI-Drift sichtbar.
+- [ ] Hub-Dashboard und Assistant-Panel zeigen konsistente Werte fuer denselben Snapshot-Zeitpunkt.

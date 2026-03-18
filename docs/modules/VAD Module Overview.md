@@ -105,6 +105,21 @@ Wichtige Architekturentscheidung:
   - zu aggressive Thresholds
   - laute Umgebung / Noise
 
+### 7.1 Future Hooks / Robustheitsgrenze
+
+- Der aktuelle VAD-Schnitt ist auf produktive Kurzbefehle optimiert, aber nicht automatisch das Ende der Voice-Robustheitsarbeit.
+- Spaetere reale Follow-up-Fragen koennen sein:
+  - besseres Verhalten bei leiserem Sprechen
+  - stabilere Segment-Ende-Entscheidungen in realen Umgebungsgeraeschen
+  - feinere Trennung zwischen:
+    - Akustik-/Noise-Problem
+    - STT-/Transcript-Problem
+    - semantischem Filler-/Intent-Problem
+- Guardrail:
+  - VAD ist nur eine Schicht der spaeteren Voice-Robustheit
+  - nicht jeder Alltagsfehler gehoert automatisch in `vad.js`
+  - natuerliche Einleitungsphrasen oder Filler sind primaer kein VAD-, sondern haeufig ein nachgelagerter Surface-/Semantik-Fall
+
 ---
 
 ## 8. QA-Checkliste

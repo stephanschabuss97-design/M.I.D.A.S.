@@ -1,8 +1,8 @@
 # Hub Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: zentrales MIDAS-Hub-Interface mit Carousel, Panels, Quickbar und produktivem Voice-V1-Einstieg.
-- Rolle innerhalb von MIDAS: orchestriert UI-Navigation, Assistant-Textfluss, Voice-Gate, Voice-State-UI und Pending-Context-Helfer fuer Voice.
+- Zweck: zentrales MIDAS-Hub-Interface mit Carousel, Panels, Quickbar, oberem Dashboard-Reveal und produktivem Voice-V1-Einstieg.
+- Rolle innerhalb von MIDAS: orchestriert UI-Navigation, Assistant-Textfluss, Voice-Gate, Voice-State-UI, Reveal-Surfaces und Pending-Context-Helfer fuer Voice.
 - Abgrenzung: keine eigene Persistenz, keine fachliche Intent-Logik im Kern.
 
 Related docs:
@@ -37,15 +37,19 @@ Related docs:
 
 ### 3.1 Initialisierung
 
-- Hub initialisiert Carousel, Panels, Quickbar und den Voice-Adapter.
-- `assistant-voice` ist wieder permanenter erster Carousel-Slot.
+- Hub initialisiert Carousel, Panels, Quickbar, Dashboard-Reveal und den Voice-Adapter.
+- `assistant-voice` ist nicht mehr immer sichtbar, sondern haengt am Assistant-Surface-Vertrag.
 - Die produktive Voice-Initialisierung laeuft direkt; ein alter `VOICE_PARKED`-Zwischenguard existiert nicht mehr.
 - Voice wird ueber Boot-/Auth-/Gate-Status kontrolliert geoeffnet oder blockiert.
 
 ### 3.2 User-Trigger
 
 - Orbit-/Carousel-Buttons oeffnen Panels.
-- `assistant-voice` ist der offizielle Push-to-talk-Einstieg fuer Voice V1.
+- `assistant-voice` ist bei aktivem Assistant-Surface der offizielle Push-to-talk-Einstieg fuer Voice V1.
+- Reveal-Surfaces:
+  - `swipe down` -> oberes Hub-Dashboard
+  - `swipe up` -> untere Quickbar
+  - Hero/Carousel bleibt die neutrale Mittelebene
 - Quickbar bleibt ohne zweiten produktiven Voice-Einstieg.
 
 ### 3.3 Assistant / Intent
@@ -77,9 +81,18 @@ Related docs:
 
 ## 4. UI-Integration
 
-- `assistant-voice` ist permanenter MIDAS-Slot im Carousel.
-- Der Slot bleibt sichtbar und verschwindet nicht mehr als Intro-/Park-Relikt.
+- `assistant-voice` folgt jetzt dem produktiven Assistant-Surface-Vertrag:
+  - `off`:
+    - passive sichtbare Startnadel
+    - nicht triggerbar
+    - verschwindet nach der ersten Carousel-Bewegung
+  - `on`:
+    - produktiver Voice-Slot bleibt sichtbar
 - Voice-Gate und Voice-State werden direkt am sichtbaren Hub-Einstieg gespiegelt.
+- Das Hub-Dashboard ist ein eigener oberer Reveal-Surface und kein Panel:
+  - kompakt
+  - datenorientiert
+  - aus demselben Assistant-Kontext gespeist
 - Panels bleiben im DOM und werden nur geoeffnet/geschlossen.
 
 ---
@@ -137,9 +150,11 @@ Related docs:
 
 ## 9. QA-Checkliste
 
-- `assistant-voice` ist erster sichtbarer Carousel-Slot.
+- `assistant-voice` folgt korrekt dem `off/on`-Surface-Vertrag.
 - Push-to-talk startet nur bei erlaubtem Gate-Status.
 - Voice-State-Labeling spiegelt den Runtime-Status sichtbar.
+- `swipe down` oeffnet nur das Dashboard, `swipe up` nur die Quickbar.
+- Dashboard, Hero und Quickbar bilden drei saubere Ebenen ohne Direkt-Sprung von oben nach unten.
 - Pending-Context-Resolver funktioniert fuer Text und Voice.
 - Doctor-/Panel-Navigation bleibt unbeeintraechtigt.
 
