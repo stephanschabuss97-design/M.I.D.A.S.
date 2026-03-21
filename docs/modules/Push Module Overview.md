@@ -6,7 +6,7 @@ Kurze Einordnung:
 - Abgrenzung: keine Reminder-Ketten, keine Lifestyle-Ziele, keine Termine.
 
 Related docs:
-- [MIDAS Incidents & Push Roadmap](../MIDAS Incidents & Push Roadmap.md)
+- [MIDAS Incidents & Push Roadmap](../archive/MIDAS Incidents & Push Roadmap.md)
 - [Intake Module Overview](Intake Module Overview.md)
 - [Medication Module Overview](Medication Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
@@ -30,7 +30,7 @@ Related docs:
 | `app/modules/vitals-stack/vitals/bp.js` | BP-Save-Event `bp:changed` |
 | `app/core/pwa.js` | PWA/Service Worker Registrierung |
 | `service-worker.js` | Push-Anzeige (Notification API) |
-| `docs/MIDAS Incidents & Push Roadmap.md` | Regeln, Steps, QA |
+| `docs/archive/MIDAS Incidents & Push Roadmap.md` | Regeln, Steps, QA |
 
 ---
 
@@ -143,3 +143,39 @@ Status-Notiz
 - Pushes nur bei echten Incidents.
 - Maximal 1 Push pro Incident/Tag.
 - Dokumentation aktuell.
+
+---
+
+## 15. Incident Alert Tuning Notiz
+
+Ziel
+- Incidents sollen auf dem Handy nicht nur im Notification-Center landen, sondern fuer echte Sicherheitsfaelle besser wahrnehmbar sein.
+- Keine neue Reminder-Logik; nur staerkere Wahrnehmbarkeit fuer bestehende Incident-Pushes.
+
+Kontext
+- Aktuell sind die Incident-Pushes bewusst ruhig ausgelegt.
+- Lokale Incidents setzen im Client `silent: true`.
+- Remote Push uebernimmt `silent` aus dem Payload.
+
+Geplante technische Anpassungen
+- Lokale Incident-Pushes nicht mehr explizit stumm senden (`silent: false` oder Feld weglassen).
+- Remote Incident-Payloads ebenfalls auf hoerbar umstellen.
+- Notification-Option `vibrate` fuer echte Incidents setzen.
+- Optional `requireInteraction` testen, sofern Plattform/Browsersupport vorhanden.
+- Optional `actions` fuer Remote-Push pruefen (z. B. "Jetzt oeffnen"), ohne neue Fachlogik.
+- Titel/Body fuer Incident A/B schaerfer formulieren, damit der Kontext schon im Lockscreen klar ist.
+
+Betroffene Dateien
+- `app/modules/incidents/index.js`
+- `service-worker.js`
+- optional `app/modules/profile/index.js`, falls spaeter ein einfacher Nutzer-Schalter fuer "ruhig" vs. "deutlich" gewuenscht ist
+
+Bewusste Grenzen des aktuellen PWA-Stacks
+- Kein frei waehlbarer eigener Nachrichtenton wie in nativen Apps.
+- Keine Kontrolle ueber Lautstaerke, Fokus-Modi oder Lautlos-Schalter.
+- Verhalten bleibt browser- und plattformabhaengig.
+- Android bietet in der Regel mehr Notification-Spielraum als iPhone.
+
+Pragmatische Produktregel
+- Staerkere Wahrnehmbarkeit nur fuer echte Incidents (Medikation/BP), nicht fuer allgemeine Hinweise.
+- Weiterhin maximal 1 Push pro Incident/Tag; keine Eskalationskette.

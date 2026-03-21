@@ -85,7 +85,8 @@ Related docs:
   - `off`:
     - passive sichtbare Startnadel
     - nicht triggerbar
-    - verschwindet nach der ersten Carousel-Bewegung
+    - liest sich beim ersten Swipe moeglichst wie ein echtes erstes Carousel-Icon
+    - faellt erst nach diesem ersten lesbaren Carousel-Schritt aus der regulaeren Rotation
   - `on`:
     - produktiver Voice-Slot bleibt sichtbar
 - Voice-Gate und Voice-State werden direkt am sichtbaren Hub-Einstieg gespiegelt.
@@ -93,6 +94,7 @@ Related docs:
   - kompakt
   - datenorientiert
   - aus demselben Assistant-Kontext gespeist
+  - zieht nach normalen Intake-Saves direkt mit dem frischen lokalen Snapshot nach
 - Panels bleiben im DOM und werden nur geoeffnet/geschlossen.
 
 ---
@@ -155,6 +157,8 @@ Related docs:
 - Voice-State-Labeling spiegelt den Runtime-Status sichtbar.
 - `swipe down` oeffnet nur das Dashboard, `swipe up` nur die Quickbar.
 - Dashboard, Hero und Quickbar bilden drei saubere Ebenen ohne Direkt-Sprung von oben nach unten.
+- Die passive Nadel bei `off` fuehlt sich beim ersten Swipe wie ein echter erster Carousel-Schritt an und nicht wie ein harter Platzhalter-Sprung.
+- Das obere Dashboard zieht normale Intake-Saves sofort sichtbar nach, ohne Reload.
 - Pending-Context-Resolver funktioniert fuer Text und Voice.
 - Doctor-/Panel-Navigation bleibt unbeeintraechtigt.
 

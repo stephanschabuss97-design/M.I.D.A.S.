@@ -1607,7 +1607,8 @@ Regression
   - Text-Assistant ist aus Carousel und Quickbar entfernt.
   - OG-MIDAS-Nadel ist beim Start sichtbar, aber nicht triggerbar.
   - kein sichtbares Voice-Statuslabel unter der passiven Nadel.
-- [ ] Nach der ersten Carousel-Bewegung bei `off` verschwindet die passive Nadel wieder.
+- [ ] Bei `off` liest sich der erste Swipe mit der passiven Nadel wie ein normaler erster Carousel-Schritt.
+- [ ] Nach diesem ersten lesbaren Carousel-Schritt bei `off` verschwindet die passive Nadel wieder aus der regulaeren Rotation.
 - [ ] `on`:
   - Text-Assistant ist in Carousel und Quickbar wieder sichtbar.
   - MIDAS-Nadel bleibt als produktiver Voice-Slot im Carousel.
@@ -1635,6 +1636,7 @@ Regression
 - [ ] Dashboard fuehrt keine neue Fachlogik oder abweichende Berechnung ein.
 - [ ] Copy-Button im Dashboard nutzt denselben Snapshot-String wie der Assistant-Kontext.
 - [ ] Copy-Icon ist als klares Symbol lesbar und nicht mehr als deformiertes Sonderzeichen.
+- [ ] Normale lokale Intake-Saves ziehen das Dashboard sofort sichtbar mit, ohne Reload.
 
 **Regression**
 - [ ] Text-/Voice-/Hub-Flow bei `on` bleibt normal nutzbar.

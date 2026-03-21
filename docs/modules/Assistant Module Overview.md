@@ -110,7 +110,8 @@ Related docs:
 - `off` bedeutet:
   - Text-Assistant ist aus Carousel und Quickbar ausgeblendet
   - die OG-MIDAS-Nadel bleibt nur als passiver Startanker sichtbar
-  - nach der ersten Carousel-Bewegung verschwindet dieser passive Voice-Anker wieder
+  - sie ist nicht triggerbar, liest sich beim ersten Swipe aber moeglichst wie ein echtes erstes Carousel-Icon
+  - erst nach diesem ersten lesbaren Carousel-Schritt faellt dieser passive Voice-Anker aus der regulaeren Rotation
 - `on` bedeutet:
   - Text-Assistant ist wieder sichtbar
   - die MIDAS-Nadel bleibt als produktiver Voice-Slot im Carousel
@@ -132,6 +133,7 @@ Related docs:
   - naechste `2` Termine
   - Restbudget
 - Das Dashboard nutzt denselben bestehenden Kontext-/Snapshot-Vertrag wie der Assistant.
+- Nach normalen lokalen Intake-Saves zieht das Dashboard den frischen Snapshot jetzt direkt sichtbar nach.
 - Der Copy-Snapshot bleibt inhaltlich derselbe; er ist jetzt nur auch am Hub-Dashboard erreichbar.
 
 ---

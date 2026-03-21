@@ -15,6 +15,13 @@
   const MED_PUSH_HOUR = 10;
   const BP_PUSH_HOUR = 20;
   const CHECK_INTERVAL_MS = 60 * 1000;
+  const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
+  const INCIDENT_ACTIONS = [
+    {
+      action: 'open-incident',
+      title: 'Jetzt oeffnen',
+    },
+  ];
 
   const state = {
     dayIso: null,
@@ -126,18 +133,31 @@
     }
   };
 
-  const notify = async ({ title, body, tag }) => {
-    const payload = {
-      body,
-      tag,
-      silent: true,
-      renotify: false,
-    };
+  const buildNotificationPayload = ({ title, body, tag, type, dayIso }) => ({
+    title,
+    body,
+    tag,
+    data: {
+      type,
+      dayIso,
+      source: 'local',
+    },
+    silent: false,
+    renotify: false,
+    requireInteraction: true,
+    vibrate: INCIDENT_VIBRATE_PATTERN,
+    actions: INCIDENT_ACTIONS,
+    icon: 'public/img/icons/icon-192.png',
+    badge: 'public/img/icons/icon-192.png',
+  });
+
+  const notify = async ({ title, body, tag, type, dayIso }) => {
+    const payload = buildNotificationPayload({ title, body, tag, type, dayIso });
     try {
       if (global.navigator?.serviceWorker?.getRegistration) {
         const reg = await global.navigator.serviceWorker.getRegistration();
         if (reg?.showNotification) {
-          await reg.showNotification(title, payload);
+          await reg.showNotification(payload.title, payload);
           return true;
         }
       }
@@ -146,7 +166,7 @@
     }
     if ('Notification' in global && global.Notification?.permission === 'granted') {
       try {
-        new global.Notification(title, payload);
+        new global.Notification(payload.title, payload);
         return true;
       } catch (_) {
         return false;
@@ -167,10 +187,16 @@
     return now >= getLocalCutoff(BP_PUSH_HOUR);
   };
 
-  const pushOnce = async ({ key, title, body }) => {
+  const pushOnce = async ({ key, type, title, body }) => {
     const day = getDayIso();
     if (state.sent[key] === day) return false;
-    const sent = await notify({ title, body, tag: `midas-${key}-${day}` });
+    const sent = await notify({
+      title,
+      body,
+      type,
+      dayIso: day,
+      tag: `midas-incident-${type}-${day}`,
+    });
     if (sent) {
       state.sent[key] = day;
       return true;
@@ -197,16 +223,18 @@
     if (shouldPushMed()) {
       await pushOnce({
         key: 'med',
-        title: 'Medikation offen',
-        body: 'Bitte Medikation fuer heute bestaetigen.',
+        type: 'medication_morning',
+        title: 'Medikation fuer heute offen',
+        body: 'Bitte die heutige Medikation jetzt bestaetigen.',
       });
     }
 
     if (shouldPushBp()) {
       await pushOnce({
         key: 'bp',
-        title: 'Abend-BP offen',
-        body: 'Bitte Abend-Blutdruck messen.',
+        type: 'bp_evening',
+        title: 'Abend-Blutdruck fehlt',
+        body: 'Bitte den Blutdruck fuer heute Abend jetzt messen.',
       });
     }
 

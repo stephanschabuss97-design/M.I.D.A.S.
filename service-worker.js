@@ -4,6 +4,13 @@
 const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
+const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
+const INCIDENT_ACTIONS = [
+  {
+    action: 'open-incident',
+    title: 'Jetzt oeffnen'
+  }
+];
 
 const toUrl = (path) => new URL(path, self.registration.scope).toString();
 const CORE_ASSETS = [
@@ -51,6 +58,45 @@ const getNavigateFallbackResponse = async (request) => {
   const shellRoot = await caches.match(toUrl('./'));
   if (shellRoot) return shellRoot;
   return caches.match(toUrl('offline.html'));
+};
+const isIncidentNotification = ({ tag = '', data = {} } = {}) => {
+  const normalizedTag = String(tag || '');
+  const type = String(data?.type || '');
+  return normalizedTag.startsWith('midas-incident-') || type === 'medication_morning' || type === 'bp_evening';
+};
+const buildNotificationOptions = (payload = {}, fallback = {}) => {
+  const data = payload.data || fallback.data || {};
+  const tag = payload.tag || fallback.tag;
+  const isIncident = isIncidentNotification({ tag, data });
+  const options = {
+    body: payload.body || fallback.body,
+    tag,
+    data,
+    renotify: payload.renotify == null ? false : !!payload.renotify,
+    icon: payload.icon || 'public/img/icons/icon-192.png',
+    badge: payload.badge || 'public/img/icons/icon-192.png'
+  };
+  if (payload.silent != null) {
+    options.silent = !!payload.silent;
+  } else if (isIncident) {
+    options.silent = false;
+  }
+  if (Array.isArray(payload.vibrate)) {
+    options.vibrate = payload.vibrate;
+  } else if (isIncident) {
+    options.vibrate = INCIDENT_VIBRATE_PATTERN;
+  }
+  if (payload.requireInteraction != null) {
+    options.requireInteraction = !!payload.requireInteraction;
+  } else if (isIncident) {
+    options.requireInteraction = true;
+  }
+  if (Array.isArray(payload.actions) && payload.actions.length) {
+    options.actions = payload.actions;
+  } else if (isIncident) {
+    options.actions = INCIDENT_ACTIONS;
+  }
+  return options;
 };
 
 self.addEventListener('install', (event) => {
@@ -129,20 +175,15 @@ self.addEventListener('push', (event) => {
     payload = {};
   }
   const title = payload.title || fallback.title;
-  const options = {
-    body: payload.body || fallback.body,
-    tag: payload.tag || fallback.tag,
-    data: payload.data || {},
-    silent: !!payload.silent,
-    renotify: !!payload.renotify,
-    icon: 'public/img/icons/icon-192.png',
-    badge: 'public/img/icons/icon-192.png'
-  };
+  const options = buildNotificationOptions(payload, fallback);
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification?.close?.();
+  if (event.action && event.action !== 'open-incident') {
+    return;
+  }
   const data = event.notification?.data || {};
   const params = new URLSearchParams();
   if (data.type) params.set('incident', data.type);
