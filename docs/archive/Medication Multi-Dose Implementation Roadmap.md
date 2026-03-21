@@ -15,7 +15,7 @@ Pruefbare Zieldefinition:
 
 ## Scope
 - Fachlicher Umbau des Medication-Moduls von Tages-Boolean auf Slot-/Schedule-Modell.
-- SQL-Erweiterung fuer Einnahmeplaene, Slot-Events und kompatible Migration bestehender Meds.
+- SQL-Erweiterung fuer Einnahmeplaene, Slot-Events und klaren Reset-/Neustart des bisherigen Medication-Bestands.
 - Neue/angepasste RPCs fuer Read-, Confirm-, Undo- und CRUD-Pfade.
 - IN-Tab-UX fuer Mehrfach-Einnahmen mit kompakter Tagesfortschrittsanzeige.
 - TAB-UX fuer Planbearbeitung (`1x taeglich`, `2x taeglich`, `3x taeglich`, benannte Slots in fester Reihenfolge).
@@ -91,10 +91,11 @@ Forbidden:
 - MIDAS auf generische Multi-User- oder Clinical-Software-Muster umbauen.
 
 ## Execution Mode
-- Sequenziell arbeiten (`S1` bis `S8`).
+- Sequenziell arbeiten (`S1` bis `S9`).
 - Keine Schritte ueberspringen ohne dokumentierte Begruendung.
 - Vor jedem Write-Pfad erst fachlichen Read-/State-Contract fixieren.
 - Vor Push-/Voice-Anpassungen muss der slot-basierte Medication-Kern stabil sein.
+- `S1` bis `S8` definieren den Vertrag; ab `S9` beginnt die volle Umsetzung im Code.
 - Nach jedem Schritt Statusmatrix aktualisieren.
 - Nach jedem Schritt mindestens ein Check (Schema, Smoke, Syntax, Contract-Review).
 - Jeder Hauptschritt endet mit denselben operativen Pflichtpunkten:
@@ -109,15 +110,16 @@ Forbidden:
 | S2 | Produktvertrag + UX-State fuer Multi-Dose finalisieren | DONE | S2.1 bis S2.8 abgeschlossen: Begriffe, V1-Slot-Striktheit, sichtbares Produktziel, Fortschrittslogik, Edge-Cases, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer Multi-Dose definiert. |
 | S3 | Ziel-Datenmodell + Migrationsstrategie festlegen | DONE | S3.1 bis S3.8 abgeschlossen: Zielmodell, Constraints, Reset-Strategie, Planwechsel-Regel, Bestandslogik, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind festgezogen. |
 | S4 | RPC-/Read-Write-Contract auf Slot-Modell umbauen | DONE | S4.1 bis S4.7 abgeschlossen: Tages-Read-Model, slot-basierte Write-RPCs, Uebergangsstrategie, Atomicity-/Idempotenz-Regeln, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer den neuen Kern definiert. |
-| S5 | TAB-Planeditor fuer Mehrfach-Einnahmen umsetzen | TODO | Medication-Verwaltung kann mehrere Einnahme-Slots pro Tag sauber anlegen und aendern. |
-| S6 | IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen | TODO | Intake zeigt slot-based Default-Interaktion und nur explizite Batch-Aktionen. |
-| S7 | Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen | TODO | Bestands- und Incident-Logik folgt echtem Tagesplan mit genau einem aggregierten Tages-Incident. |
-| S8 | Assistant/Voice/Fast-Path auf neues Modell absichern | TODO | Medication-Intents bleiben explizit und bestaetigen nie stillschweigend nur Teilmengen. |
+| S5 | TAB-Planeditor fuer Mehrfach-Einnahmen umsetzen | DONE | S5.1 bis S5.7 abgeschlossen: Form-Contract, TAB-Form-Erweiterung, Slot-Regeln, Kartenlesbarkeit, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer Mehrfach-Einnahmen definiert. |
+| S6 | IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen | DONE | S6.1 bis S6.7 abgeschlossen: Fortschrittskarten, `1x`-Fast-Path, `>1x`-Slotliste, Batch-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer den Daily Flow definiert. |
+| S7 | Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen | DONE | S7.1 bis S7.7 abgeschlossen: Verbrauch, `days_left`/`runout_day`, Low-Stock-Ack, Incident-/Push-Regeln, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Plan-/Progress-Modell gezogen. |
+| S8 | Assistant/Voice/Fast-Path auf neues Modell absichern | DONE | S8.1 bis S8.8 abgeschlossen: `medication_confirm_all`, Voice-Guardrails, erlaubte Voice-Semantik, Low-Stock-Follow-up, Intent-/Validator-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Slot-Modell gezogen. |
+| S9 | Umsetzung des Multi-Dose-Umbaus | TODO | SQL, RPCs, Medication-Client, TAB-Editor, IN-Flow, Push/Incidents, Voice und Doku werden gemaess `S1` bis `S8` schrittweise real umgesetzt. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
 ## Wiederkehrende Abschluss-Substeps pro Hauptschritt
-Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen jeweils als letzte Substeps mitgefuehrt werden.
+Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen jeweils als letzte Substeps mitgefuehrt werden.
 
 - `letzter fachlicher Substep + 1: Schritt-Abnahme`
   - Umsetzung gegen den Ziel-Contract des Schritts pruefen
@@ -2482,6 +2484,537 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
 - Output: Medication-Verwaltung kann stabile Mehrfachplaene anlegen und pflegen.
 - Exit-Kriterium: Antibiotika-artige `mehrmals pro Tag`-Medikamente lassen sich sauber erfassen.
 
+#### S5.1 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S5.1`:
+  - Der TAB-Editor braucht einen klaren Form-Contract, der direkt in den neuen Medication- und Schedule-Vertrag abbildbar ist.
+  - Das Formular darf dabei den `1x taeglich`-Fall nicht unnötig aufblasen, muss aber `2x`, `3x`, `4x` und benannte Slots sauber tragen.
+
+- Form-Bereiche im Editor:
+  - Medication-Stammdaten
+  - Plan/Frequenz
+  - temporaere Gueltigkeit
+  - Zusatzhinweise
+
+- Bereich A - Medication-Stammdaten:
+  - Pflicht:
+    - `name`
+  - Optional:
+    - `ingredient`
+    - `strength`
+    - `leaflet_url`
+  - Operativ:
+    - `stock_count`
+    - `low_stock_days`
+    - `active`
+
+- Bereich B - Plan/Frequenz:
+  - Das Formular braucht eine klare Frequenzsteuerung als Einstieg.
+  - V1-Presets:
+    - `1x taeglich`
+    - `2x taeglich`
+    - `3x taeglich`
+    - `4x taeglich`
+    - `benutzerdefiniert`
+  - Wirkung der Presets:
+    - sie erzeugen eine passende Grundmenge an Slots
+    - danach bleiben Labels und Slot-Mengen editierbar
+
+- Slot-Grundstruktur im Formular:
+  - jeder Slot traegt:
+    - `label`
+    - `qty`
+    - `sort_order`
+  - fuer V1 keine Pflicht im Formular:
+    - Uhrzeit
+    - Reminder
+    - Missed-/Deadline-Semantik
+
+- Empfohlene Default-Labels je Preset:
+  - `1x taeglich`:
+    - `Abend` als neutraler Default ist moeglich, aber nicht verpflichtend
+  - `2x taeglich`:
+    - `Morgen`, `Abend`
+  - `3x taeglich`:
+    - `Morgen`, `Mittag`, `Abend`
+  - `4x taeglich`:
+    - `Morgen`, `Mittag`, `Abend`, `Nacht`
+  - `benutzerdefiniert`:
+    - freie Slot-Liste mit stabiler Reihenfolge
+
+- Editierregeln fuer Slots:
+  - Labels duerfen angepasst werden.
+  - Slot-Mengen duerfen angepasst werden.
+  - Reihenfolge muss stabil und sichtbar bleiben.
+  - V1 braucht keine freie unendliche Slot-Metalogik, aber der Editor darf mehr als nur starre Presets sein.
+
+- Bereich C - temporaere Gueltigkeit:
+  - Felder:
+    - `start_date` optional
+    - `end_date` optional
+  - Zweck:
+    - Antibiotika
+    - temporaere Zusatzmedikation
+    - prospektive Planstarts
+  - Produktregel:
+    - wenn kein Datum gesetzt ist, gilt das Medikament/der Plan ab sofort als laufend
+
+- Bereich D - Zusatzhinweise:
+  - Checkbox/Feld:
+    - `mit Mahlzeit`
+  - V1-Rolle:
+    - Hinweis im Daily- und TAB-Kontext
+    - keine neue Planlogik
+    - keine neue Rechen- oder Reminderlogik
+
+- Form-Contract fuer Speichern:
+  - Der Editor muss fachlich zwei Write-Bloecke erzeugen koennen:
+    - Medication-Stammdaten
+    - Slot-Plan
+  - Das bedeutet:
+    - das UI darf wie ein Formular wirken
+    - intern muss aber klar sein, welche Felder an `med_upsert_v2` gehen
+    - und welche an `med_upsert_schedule_v2`
+
+- Guard gegen Formular-Ueberladung:
+  - Der Default-Userflow fuer `1x taeglich` soll moeglichst kurz bleiben:
+    - Name
+    - Bestand
+    - optional Low-Stock-Tage
+    - Frequenz `1x`
+    - Speichern
+  - Komplexere Slot-Bearbeitung erscheint nur, wenn Frequenz oder Custom-Plan es erfordert.
+
+- Nicht Teil des V1-Form-Contracts:
+  - keine Uhrzeitfelder
+  - keine Wochentage
+  - keine Intervallplaene wie `alle 12h`
+  - keine Mahlzeiten-Engine
+  - keine Voice-Planbearbeitung
+
+- Konsequenz fuer `S5.2`:
+  - Das bestehende TAB-Formular kann jetzt gezielt erweitert werden, ohne in freie Clinical-Planer-Komplexitaet abzurutschen.
+
+- Check-Ergebnis:
+  - Der Form-Contract ist direkt umsetzbar und bleibt nah an deinem Alltag:
+    - einfach fuer `1x taeglich`
+    - stark genug fuer Antibiotika und spaetere komplexere Medikation
+    - ohne das TAB-Panel in einen klinischen Scheduler zu verwandeln.
+
+#### S5.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S5.2`:
+  - Das bestehende TAB-Formular soll auf Multi-Dose erweitert werden, ohne dass der heutige einfache Medikament-anlegen-Flow visuell kippt.
+  - Die Erweiterung muss daher progressiv sein:
+    - kompakt im Default
+    - detailreicher nur bei echtem Bedarf
+
+- Sichtbare Formularstruktur in V1:
+  - Block 1:
+    - Name
+    - Wirkstoff
+    - Staerke
+  - Block 2:
+    - Bestand
+    - Low-Stock-Tage
+    - Aktiv/Inaktiv
+  - Block 3:
+    - Frequenz
+  - Block 4:
+    - Slot-Editor
+  - Block 5:
+    - Startdatum / Enddatum
+    - `mit Mahlzeit`
+
+- Default-Verhalten fuer den Basiscase:
+  - Neues Medikament startet im Formular mit:
+    - `1x taeglich`
+    - genau einem Slot
+    - minimal sichtbarer Slot-Konfiguration
+  - Fuer diesen Basiscase soll der Nutzer nicht das Gefuehl haben, ploetzlich einen Planer bedienen zu muessen.
+
+- Konkrete UI-Regel fuer Frequenz:
+  - Frequenz ist ein zentrales sichtbares Steuerfeld.
+  - Wenn Frequenz geaendert wird:
+    - wird die Slot-Liste deterministisch auf das gewaehlte Preset gesetzt
+    - bestehende ungespeicherte Slot-Werte duerfen kontrolliert ersetzt werden
+  - Custom-Modus:
+    - oeffnet denselben Slot-Editor
+    - aber ohne starre Preset-Annahme
+
+- Konkrete UI-Regel fuer den Slot-Editor:
+  - Bei `1x taeglich`:
+    - genau ein Slot sichtbar
+    - schlanke Darstellung
+  - Bei `2x` bis `4x`:
+    - alle erzeugten Slots direkt sichtbar
+    - pro Slot:
+      - Label
+      - Menge
+      - Reihenfolge bleibt stabil
+  - Bei `benutzerdefiniert`:
+    - Slots koennen hinzugefuegt oder entfernt werden
+    - Reihenfolge bleibt explizit
+
+- Guard gegen Ueberfrachtung:
+  - Keine freie Slot-Karte mit zu vielen Feldern pro Zeile.
+  - Keine zweite Formularwelt fuer "einfach" vs. "erweitert".
+  - Stattdessen:
+    - ein Formular
+    - aber mit kontrollierter Offenlegung je nach Frequenzwahl
+
+- Verhalten von Start-/Enddatum:
+  - Diese Felder sollen sichtbar, aber klar als optional lesbar sein.
+  - Sie duerfen nicht den Eindruck erzeugen, fuer jedes Medikament Pflicht zu sein.
+  - Typischer Alltagspfad:
+    - Dauer-Medikation ohne Enddatum
+    - Antibiotikum mit Start- und ggf. Enddatum
+
+- Verhalten von `mit Mahlzeit`:
+  - Als einfache Checkbox im unteren Formularbereich.
+  - Nicht als Slot-Attribut pro Eintrag.
+  - Nicht als eigener Modus.
+  - Dadurch bleibt die Information sichtbar, ohne die Slot-Bearbeitung zu zerlegen.
+
+- Editierfall vs. Neuerfassung:
+  - Beim Editieren muss das Formular einen bestehenden Plan lesbar vorbefuellen:
+    - aktuelle Frequenz
+    - aktuelle Slots
+    - aktuelle Gueltigkeit
+    - `mit Mahlzeit`
+  - Der Nutzer soll im Edit-Fall nicht erst rekonstruieren muessen, wie das Medikament gerade geplant ist.
+
+- Speichern-/Reset-Verhalten:
+  - Formularspeichern bleibt eine klare Hauptaktion.
+  - Reset/Abbrechen darf den Planeditor wieder in einen sauberen Grundzustand setzen.
+  - Wichtig:
+    - kein versteckter Zustand aus frueherer Frequenzwahl darf im Formular kleben bleiben
+
+- Nicht Teil der V1-Form-Erweiterung:
+  - keine Drag-and-Drop-Reihenfolge
+  - keine Akkordeon-Unterformulare pro Slot
+  - keine Kalender-/Wochenlogik
+  - keine intelligente Arzneimittelvorschlaege
+
+- Umsetzungskritische Designlinie:
+  - Die Form darf in HTML/CSS/JS ohne Build-Step realistisch wartbar bleiben.
+  - Deshalb ist die richtige V1-Richtung:
+    - einfache Formularsektionen
+    - wenige kontrollierte dynamische Bereiche
+    - keine UI-Maschine mit zu vielen interdependenten Sonderpfaden
+
+- Konsequenz fuer `S5.3`:
+  - Die Validierung und Slot-Sortierung kann jetzt gegen eine klar begrenzte Formularform gebaut werden, statt gegen einen offenen Planner.
+
+- Check-Ergebnis:
+  - Die Formularerweiterung bleibt absichtlich pragmatisch:
+    - wenig Reibung fuer Daily-Meds
+    - genug Struktur fuer Mehrfach-Einnahmen
+    - keine visuelle oder technische Explosion des TAB-Panels.
+
+#### S5.3 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S5.3`:
+  - Der Slot-Editor darf nicht nur sichtbar sein, sondern muss auch stabil bearbeitbar bleiben.
+  - Dafuer braucht V1 klare Regeln fuer:
+    - Reihenfolge
+    - Validierung
+    - Editierverhalten
+
+- Sortierungsregel:
+  - Jeder Slot hat eine explizite `sort_order`.
+  - Die sichtbare Reihenfolge im Formular und spaeter im IN-Tab folgt immer dieser Reihenfolge.
+  - Die Reihenfolge ist damit fachlich Teil des Plans, nicht nur ein UI-Zufall.
+
+- V1-Regel fuer Reihenfolgepflege:
+  - Bei Presets wird `sort_order` deterministisch gesetzt.
+  - Bei `benutzerdefiniert` bleibt die Reihenfolge stabil ueber:
+    - Hinzufuegen
+    - Entfernen
+    - Bearbeiten
+  - V1 braucht dafuer keine komplexe Drag-and-Drop-Logik.
+  - Eine einfache kontrollierte Reihenfolge reicht.
+
+- Validierungsregeln fuer Medication-Stammdaten:
+  - `name` ist Pflicht.
+  - `stock_count` muss `>= 0` sein.
+  - `low_stock_days` muss `>= 0` sein.
+  - `start_date <= end_date`, wenn beide gesetzt sind.
+
+- Validierungsregeln fuer Slots:
+  - Mindestens ein Slot muss vorhanden sein.
+  - Jeder Slot braucht:
+    - gueltige `sort_order`
+    - `qty > 0`
+  - Label darf leer oder frei editierbar sein, solange die Reihenfolge stabil bleibt.
+  - V1 braucht kein Label-Pflichtfeld, weil das die Formularlast ohne echten Mehrwert erhoehen wuerde.
+
+- Guard gegen stille Ungueltigkeit:
+  - Ein Formular darf nicht speicherbar sein, wenn:
+    - keine Slots vorhanden sind
+    - eine Slot-Menge `<= 0` ist
+    - Datumslogik widerspruechlich ist
+    - Pflichtfelder fuer Medication fehlen
+  - Damit bleibt der Datenvertrag bereits im UI scharf.
+
+- Verhalten beim Frequenzwechsel:
+  - Wechsel auf ein Preset darf die Slot-Liste kontrolliert neu aufbauen.
+  - Wechsel auf `benutzerdefiniert` darf bestehende Slots uebernehmen und weiter editierbar machen.
+  - Wichtiger Guard:
+    - Der Nutzer darf nicht unsichtbar in einem alten Slot-Zustand haengen bleiben, der nicht mehr zur sichtbaren Frequenz passt.
+
+- Verhalten beim Editieren bestehender Plaene:
+  - Bestehende Slots muessen mit stabiler Reihenfolge geladen werden.
+  - Editieren eines Labels oder einer Menge darf die Reihenfolge nicht unnoetig neu mischen.
+  - Das verhindert UI-Drift und erleichtert spaeter die Lesbarkeit im IN-Tab.
+
+- Validierungsstil fuer MIDAS:
+  - lokal und direkt
+  - keine ueberengineerten Fehlersysteme
+  - klare Status- oder Inline-Hinweise reichen
+  - Ziel:
+    - Fehler frueh stoppen
+    - aber den Daily-Flow nicht in Formular-Drama verwandeln
+
+- Nicht Teil der V1-Validierung:
+  - keine medizinische Plausibilitaetspruefung von Wirkstoff und Frequenz
+  - keine Arzneimittelinteraktionslogik
+  - keine Zeitintervall-Pruefung
+  - keine Pflicht, dass `4x` exakt die Labels `Morgen/Mittag/Abend/Nacht` tragen muss
+
+- Umsetzungskritische Folge:
+  - Die Kombination aus:
+    - stabiler `sort_order`
+    - klarer Slot-Mengenvalidierung
+    - deterministischem Frequenzwechsel
+    ist die Voraussetzung dafuer, dass `S6` spaeter dieselbe Reihenfolge im Daily Flow ruhig rendern kann.
+
+- Check-Ergebnis:
+  - Der Slot-Editor ist jetzt fachlich eng genug definiert, um sauber implementiert zu werden:
+    - keine offene Planner-Logik
+    - keine instabile Reihenfolge
+    - keine stillen Ungueltigkeiten
+    - genug Freiheit fuer echte Mehrfach-Einnahmen.
+
+#### S5.4 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S5.4`:
+  - Die Kartenliste im TAB-Panel muss nach dem Umbau nicht nur Stammdaten, sondern auch den aktuellen Tagesplan eines Medikaments lesbar machen.
+  - Das soll schnell erfassbar bleiben:
+    - welche Medikation ist das
+    - wie oft wird sie genommen
+    - gibt es besondere Hinweise oder temporaere Gueltigkeit
+
+- Kernregel fuer die Kartenliste:
+  - Die Karte bleibt eine kompakte Medikamentenkarte.
+  - Sie wird nicht zu einer zweiten Vollansicht des Editors.
+  - Das heisst:
+    - Plan sichtbar
+    - aber nicht jeder interne Vertragswert rohdatenartig ausgeschuettet
+
+- Sichtbare Pflichtinformationen pro Karte:
+  - Name
+  - Wirkstoff / Staerke, wenn vorhanden
+  - Bestand
+  - `days_left`
+  - `runout_day`
+  - Aktiv/Inaktiv-Status
+  - aktuelle Plan-Zusammenfassung
+
+- Form der Plan-Zusammenfassung:
+  - Statt nur `Dose/Tag: n` braucht die Karte kuenftig eine lesbare Planzeile.
+  - Beispiele:
+    - `Plan: Abend`
+    - `Plan: Morgen, Abend`
+    - `Plan: Morgen, Mittag, Abend`
+    - `Plan: Morgen, Mittag, Abend, Nacht`
+  - Bei Custom-Plaenen:
+    - Reihenfolge sichtbar halten
+    - keine technische Slot-ID-Sprache in der UI
+
+- Umgang mit Slot-Mengen in der Karte:
+  - Wenn alle Slots dieselbe Menge haben und der Plan alltagsnah lesbar ist, reicht die Label-Zusammenfassung.
+  - Wenn Slot-Mengen voneinander abweichen, muss die Karte differenzierter lesbar sein.
+  - V1-taugliche Richtung:
+    - `Plan: Morgen (1), Abend (2)`
+  - Damit bleiben ungleiche Slotmengen sichtbar, ohne dass die Karte aufbricht.
+
+- Sichtbare Zusatzhinweise:
+  - `mit Mahlzeit` soll als knapper Hinweis in der Karte erscheinen, wenn gesetzt.
+  - Beispiel:
+    - `Hinweis: mit Mahlzeit`
+  - Nicht als Badge-Flut, sondern als ruhige Zusatzzeile.
+
+- Sichtbare temporaere Gueltigkeit:
+  - Wenn Start-/Enddatum gesetzt sind und fuer den Nutzer relevant sind, soll die Karte das lesbar machen.
+  - Beispiele:
+    - `Start: 2026-03-22`
+    - `Bis: 2026-03-29`
+    - oder kompakter `Aktiv von ... bis ...`
+  - Dauer-Medikation ohne Enddatum braucht keine auffaellige Datumszeile.
+
+- Lesbarkeitsregel fuer aktive vs. inaktive Medikamente:
+  - Aktive Medikamente sollen den aktuellen Plan klar lesbar zeigen.
+  - Inaktive/archivierte Medikamente duerfen visuell ruhiger oder abgeschwaecht sein.
+  - Wichtig:
+    - Archivierung darf die Planlesbarkeit nicht komplett zerstoeren
+    - aber aktive Tagesmedikation bleibt optisch priorisiert
+
+- Kartenaktionen bleiben erhalten, aber mit neuer Semantik:
+  - Bearbeiten
+  - Bestand anpassen
+  - Bestand setzen
+  - Aktivieren/Archivieren
+  - Loeschen
+  - Was entfaellt als Kartenannahme:
+    - `Dose/Tag` als alleinige Beschreibung
+    - Medication-Day-Confirm als Kernkartenmetrik im TAB-Panel
+
+- Guard gegen Kartenueberladung:
+  - Keine Darstellung aller Slots mit vollen Bearbeitungscontrols in der Listenkarte.
+  - Keine technische Feldsammlung wie:
+    - `taken_count`
+    - `daily_planned_qty`
+    - `plan_active`
+  - Solche Werte gehoeren in Daily Flow oder internen Contract, nicht in die Verwaltungsliste.
+
+- Beziehung zum Editor:
+  - Die Karte ist die knappe Lesefassung des Formularzustands.
+  - Der Editor bleibt der Ort fuer Aenderung.
+  - Die Karte muss also genug zeigen fuer:
+    - Orientierung
+    - Wiederfinden
+    - Kontrolle
+  - aber nicht alles doppelt editierbar machen.
+
+- Umsetzungskritische UI-Linie:
+  - Nach dem Speichern eines Medikaments muss der Nutzer sofort erkennen koennen:
+    - wurde aus `1x taeglich` jetzt `2x taeglich`
+    - hat das Medikament ein Enddatum
+    - ist `mit Mahlzeit` gesetzt
+  - Wenn die Karte das nicht sofort lesbar macht, wird der TAB-Umbau im Alltag zu intransparent.
+
+- Check-Ergebnis:
+  - Die Kartenliste bleibt nach dem Umbau kompakt, aber deutlich aussagekraeftiger:
+    - nicht mehr nur Bestand + `Dose/Tag`
+    - sondern Medikament + lesbarer aktueller Plan
+    - ohne in UI- oder Datenmatsch zu kippen.
+
+#### S5.5 Schritt-Abnahme (abgeschlossen)
+- Abnahme gegen den Produktvertrag:
+  - Der TAB-Planeditor bleibt innerhalb der in `S2` definierten Guardrails:
+    - kein klinischer Planner
+    - kein Zeitlogik-Creep
+    - `1x taeglich` bleibt leicht
+    - `2x` bis `4x` und temporaere Medikamente sind alltagstauglich abbildbar
+  - Die Form bleibt damit klar MIDAS-konform und driftet nicht in ein generisches Medikationssystem.
+
+- Abnahme gegen `S3` und `S4`:
+  - Die Formularfelder passen direkt auf den neuen Daten- und API-Vertrag:
+    - Medication-Stammdaten
+    - Slot-Plan
+    - Start-/Enddatum
+    - `with_meal`
+  - Es gibt keinen offenen UI-Teil mehr, der implizit wieder `dose_per_day` als alleinige Planquelle voraussetzen wuerde.
+
+- UI-/UX-Abnahme:
+  - Der Basiscase bleibt kompakt:
+    - Name
+    - Bestand
+    - Frequenz `1x`
+    - Speichern
+  - Mehrfach-Einnahmen werden kontrolliert sichtbar, aber nicht ueberfrachtet.
+  - Die Kartenliste macht den gespeicherten Plan nach dem Speichern sofort lesbar.
+
+- Validierungs-/Stabilitaets-Abnahme:
+  - Reihenfolge, Slot-Mengen und Pflichtfelder sind jetzt eng genug definiert, um spaeter deterministisch umgesetzt zu werden.
+  - Kritische Fehlzustaende sind abgefangen:
+    - keine Slots
+    - Slotmenge `<= 0`
+    - ungueltige Datumslogik
+    - fehlender Name
+  - Damit ist der Editor fachlich stabil genug fuer echten Code.
+
+- Dead-Path-/Ballast-Check:
+  - Es ist kein zweites Formularsystem entstanden fuer:
+    - einfache Medikation
+    - komplexe Medikation
+  - Es gibt auch keinen offenen Sondervertrag fuer:
+    - `alle 12h`
+    - Uhrzeiten
+    - Wochentage
+    - Mahlzeiten-Engine
+  - Das verhindert spaeter tote UI-Aeste und halb genutzte Formfelder.
+
+- Offene Punkte, aber kein S5-Blocker:
+  - genaue HTML-Struktur und CSS-Anordnung
+  - konkrete Inline-Fehlerdarstellung
+  - genaue Plus/Minus-Mechanik fuer Custom-Slots
+  - diese Punkte gehoeren in die Implementierung, nicht mehr in den Formvertrag
+
+- Abnahme-Entscheid:
+  - `S5` ist als TAB-Editor-Vertrag tragfaehig genug, um im naechsten Block die Daily-UX fuer den IN-Tab darauf aufzubauen.
+
+- Check-Ergebnis:
+  - Der TAB-Planeditor ist jetzt fachlich klar genug fuer die Umsetzung:
+    - kompakt im Alltag
+    - stark genug fuer Multi-Dose
+    - frei von unnötigem Planner-Ballast
+    - direkt anschlussfaehig an den neuen SQL-/RPC-Vertrag.
+
+#### S5.6 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Auch `S5` beschreibt bislang nur den UI-/Formvertrag des kuenftigen TAB-Editors, nicht den bereits umgesetzten Produktivzustand.
+  - Deshalb werden die Modul-Overviews weiterhin noch nicht vorzeitig auf Multi-Dose-TAB-UI umgeschrieben.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap traegt jetzt den vollstaendigen `S5`-Vertrag:
+    - Form-Contract
+    - konkrete Formularerweiterung
+    - Slot-Sortierung und Validierung
+    - Kartenlesbarkeit im TAB-Panel
+  - Der bestehende Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    bleibt weiterhin korrekt:
+    - bestehende Spec = heutiger Single-Dose-Ist-Zustand
+    - Roadmap = kuenftiger Multi-Dose-Umbauvertrag
+
+- Regel fuer spaeteren echten Doku-Sync:
+  - Sobald der TAB-Editor wirklich implementiert ist, muessen nachgezogen werden:
+    - [Medication Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Medication%20Module%20Overview.md)
+    - bei Bedarf [QA_CHECKS.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\QA_CHECKS.md)
+  - Vorher bleibt die aktuelle Modul-Doku bewusst beim ausgelieferten Zustand.
+
+- Check-Ergebnis:
+  - Kein Dokument behauptet jetzt schon einen produktiven TAB-Multi-Dose-Editor, der im Code noch nicht existiert.
+
+#### S5.7 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, nach `S5` ist erneut ein eigener Commit sinnvoll.
+
+- Begruendung:
+  - `S5` schliesst den kompletten TAB-Editor-Vertrag als eigenen Block ab:
+    - Formularstruktur
+    - Frequenz-/Slot-Modell
+    - Validierung
+    - Kartenlesbarkeit
+  - Der naechste Block `S6` ist klar davon getrennt:
+    - Daily UX im IN-Tab
+    - Fortschritt
+    - Slot-Interaktion
+    - Batch-Verhalten
+
+- Warum nicht mit `S6` buendeln:
+  - `S6` ist nicht nur eine UI-Fortsetzung, sondern ein anderer Nutzungskontext:
+    - Verwaltung vs. taegliche Einnahme
+  - Fuer deine Arbeitsweise ist es sauberer, diese beiden UI-Welten nicht in einem Dokumentationscommit zu verschmieren.
+
+- Empfohlene Commit-Semantik:
+  - Fokus des Commits:
+    - Medication Multi-Dose TAB-Editor fachlich finalisiert
+  - Kein Implementierungsclaim:
+    - weiterhin nur Roadmap-/Vertragsstand, noch keine reale Code-Umsetzung
+
+- Check-Ergebnis:
+  - `S5` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Naechster Arbeitsblock startet sauber mit `S6`.
+
 ### S6 - IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen
 - S6.1 Medication-Cards auf Tagesfortschritt umstellen (`taken_count / total_count`).
 - S6.2 `1x taeglich` kompakt halten:
@@ -2506,6 +3039,458 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
 - Output: Daily UX bildet Mehrfach-Einnahmen ab, ohne die Intake-Oberflaeche zu zerstoeren.
 - Exit-Kriterium: `1x taeglich` bleibt schnell, `mehrfach taeglich` bleibt klar.
 
+#### S6.1 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S6.1`:
+  - Die Medication-Card im IN-Tab darf kuenftig nicht mehr auf einem Tages-Boolean `genommen/offen` beruhen.
+  - Ihr primaerer Status muss der sichtbare Tagesfortschritt sein:
+    - `taken_count / total_count`
+
+- Neue Primärsprache der Card:
+  - Nicht mehr:
+    - `genommen`
+    - `offen`
+    - ein einzelner Haken fuer den ganzen Tag
+  - Sondern:
+    - `0/1`
+    - `1/2`
+    - `2/3`
+    - `4/4`
+  - Das ist die kuenftige Hauptlesart fuer Daily Medication.
+
+- Warum der Zaehler die richtige Hauptsprache ist:
+  - Er skaliert natuerlich von `1x taeglich` zu Mehrfach-Einnahmen.
+  - Er bleibt kompakt.
+  - Er braucht keine neue Fachsprache fuer jeden Medikamententyp.
+  - Er ist sofort mit dem Slot-Modell kompatibel.
+
+- Pflichtdaten fuer die Card:
+  - `name`
+  - optional `strength`
+  - `taken_count`
+  - `total_count`
+  - daraus abgeleiteter `state`
+  - bei Bedarf knapper Hinweis wie `mit Mahlzeit`
+
+- Ableitungsregel fuer den Card-Zustand:
+  - `open`
+    - `taken_count = 0`
+  - `partial`
+    - `0 < taken_count < total_count`
+  - `done`
+    - `taken_count = total_count`
+  - Die Card darf diese States visuell tragen, aber der Zaehler bleibt der primaere Anker.
+
+- Visuelle Grundlinie fuer die Card:
+  - Die Karte bleibt eine einzelne ruhige Einheit im bestehenden Intake-Grid.
+  - Kein neues Unterpanel, kein Planner-Look.
+  - Die Fortschrittsanzeige wird zum sichtbaren Card-Meta-Element:
+    - prominent genug fuer Alltag
+    - aber ohne grosses Dashboard in der Karte
+
+- Verhalten fuer `1x taeglich`:
+  - Die Anzeige `0/1` oder `1/1` ist ausreichend.
+  - Der Nutzer soll das weiter fast wie heute lesen koennen:
+    - offen
+    - erledigt
+  - Der Fortschrittszaehler ersetzt hier den alten Tageshaken, ohne neue Reibung zu erzeugen.
+
+- Verhalten fuer `>1x taeglich`:
+  - Die Karte zeigt sofort, dass der Tag nur teilweise erledigt sein kann.
+  - Beispiele:
+    - `1/2`
+    - `2/3`
+    - `3/4`
+  - Das ist der entscheidende Unterschied zum alten Modell:
+    - die Card kann jetzt einen echten Zwischenzustand tragen
+
+- Beziehung zu Slot-Details:
+  - `S6.1` zieht nur die Card auf Fortschritt um.
+  - Die konkrete Slot-Liste folgt erst in spaeteren Substeps.
+  - Wichtig ist hier:
+    - auch ohne aufgeklappte Slot-Details muss die Karte schon korrekt und alltagstauglich lesbar sein.
+
+- Was aus der alten Card-Semantik raus muss:
+  - `taken` als alleiniger Zustand
+  - ein globaler Tagesstatus pro Medication ohne Zwischenstufe
+  - alle Selektions-/Footer-Annahmen, die nur mit `!med.taken` arbeiten
+  - Diese Altannahmen sind ab jetzt fachlich veraltet.
+
+- Beziehung zu Push und Batch:
+  - Der Fortschrittszaehler ist nicht nur UI, sondern spaeter die lesbare Oberflaeche desselben neuen Contract-Kerns.
+  - Push, Batch und Voice arbeiten dann auf derselben Wahrheit:
+    - offene Slots
+    - nicht auf einem groben Bool.
+
+- Guard gegen Overdesign:
+  - Keine Prozentbalkenpflicht.
+  - Keine Timeline.
+  - Keine medizinischen Farbsysteme pro Slot-Anzahl.
+  - Der Zaehler plus ruhiger Status reicht fuer V1.
+
+- Check-Ergebnis:
+  - Die Medication-Card ist jetzt fachlich richtig neu ausgerichtet:
+    - `1x taeglich` bleibt natuerlich lesbar
+    - Mehrfach-Einnahmen bekommen erstmals einen echten Zwischenzustand
+    - der IN-Tab bleibt dabei kompakt statt plannerhaft.
+
+#### S6.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S6.2`:
+  - Der neue Daily-Flow darf den heutigen `1x taeglich`-Fall nicht mit Multi-Dose-Komplexitaet bestrafen.
+  - Genau dieser Basiscase ist der haerteste UX-Guard des gesamten Umbaus.
+
+- Grundregel fuer `1x taeglich`:
+  - Ein Medikament mit genau einem aktiven Slot bleibt in der Daily-UX maximal kompakt.
+  - Der Nutzer soll weiterhin das Gefuehl haben:
+    - sehen
+    - tippen
+    - fertig
+
+- Sichtbare Form der `1x`-Card:
+  - Hauptinhalt:
+    - Name
+    - optional Staerke
+    - Fortschritt `0/1` oder `1/1`
+  - Kein Pflicht-Aufklappen.
+  - Keine sichtbare Slot-Liste im Default.
+  - Kein zusaetzlicher Planner-Block nur fuer den einen Slot.
+
+- Interaktionsregel fuer `1x`:
+  - Die Card braucht einen klaren direkten Status-CTA.
+  - Dieser CTA steht fuer:
+    - den einen offenen Slot bestaetigen
+    - oder bei `done` gezielt rueckgaengig machen
+  - Damit bleibt der Flow faktisch weiterhin:
+    - ein Haupttap fuer Confirm
+    - ggf. ein klarer Rueckgaengig-Pfad
+
+- Warum `1x` keine sichtbare Slot-Liste braucht:
+  - Bei genau einem Slot wuerde eine explizite Slot-Zeile nur dieselbe Information duplizieren.
+  - Das wuerde:
+    - Platz kosten
+    - UI-Lesen verlangsamen
+    - Mehrfach-Einnahme-Komplexitaet auf einen einfachen Fall uebertragen
+  - Deshalb gilt fuer V1:
+    - `1x` nutzt den Slot-Vertrag intern
+    - aber muss ihn nicht voll sichtbar ausstellen
+
+- Verhalten bei Zusatzhinweisen:
+  - `mit Mahlzeit` darf bei `1x` als knapper Hinweis sichtbar sein.
+  - Aber:
+    - nicht als Grund fuer mehr Interaktionsstufen
+    - nicht als eigener Unterblock
+
+- Verhalten bei temporaeren Medikamenten:
+  - Auch ein temporaeres `1x taeglich`-Medikament bleibt im Daily Flow kompakt.
+  - Start-/Enddatum sind kein Grund, die `1x`-Card im Alltag komplizierter zu machen.
+
+- Guard gegen schleichende Reibung:
+  - Nicht erlaubt fuer `1x`:
+    - Card muss erst aufgeklappt werden
+    - Nutzer muss zuerst in einen Slot-Unterbereich
+    - separate Slot-Zeile ist Default-Pflicht
+    - Batch wird noetig, obwohl nur ein Medikament offen ist
+  - Wenn so etwas entsteht, ist die V1-UX fuer MIDAS regressiv.
+
+- Beziehung zu Mehrfach-Einnahmen:
+  - Die Multi-Dose-Faehigkeit lebt im Modell und in den Karten fuer `>1x`.
+  - `1x taeglich` bleibt bewusst der Sonderfall mit maximal wenig Oberflaechenrauschen.
+  - Das ist keine Inkonsistenz, sondern das gewollte Produktverhalten.
+
+- Umsetzungskritische Folge:
+  - In der spaeteren Implementierung darf die `1x`-Card intern denselben neuen Slot-Contract nutzen,
+    aber muss renderseitig einen Fast-Path haben.
+  - Das ist ein echter UX-Fast-Path, kein fachlicher Sondervertrag.
+
+- Check-Ergebnis:
+  - Der wichtigste Daily-Guard ist jetzt klar:
+    - `1x taeglich` bleibt im neuen System praktisch so schnell wie heute
+    - der Mehrfach-Einnahme-Umbau zerstoert nicht den staendig wiederkehrenden Basiscase.
+
+#### S6.3 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S6.3`:
+  - Medikamente mit mehr als einem aktiven Tages-Slot brauchen im IN-Tab eine sichtbare Slot-Liste.
+  - Diese Liste muss alltagstauglich sein:
+    - klar
+    - ruhig
+    - direkt bedienbar
+    - aber ohne Planner- oder Formularcharakter
+
+- Wann die Slot-Liste sichtbar wird:
+  - Bei `total_count > 1`.
+  - Das ist die zentrale Schwelle:
+    - `1x` bleibt kompakt
+    - `>1x` zeigt die Daily-Struktur explizit
+
+- Grundform der Multi-Dose-Card:
+  - Kopfbereich:
+    - Name
+    - optional Staerke
+    - Fortschritt `taken_count / total_count`
+  - Darunter:
+    - ruhige Liste der aktiven Slots fuer heute
+  - Keine zweite Karte, kein Overlay, kein Unterpanel.
+
+- Inhalt pro Slot-Zeile:
+  - Label
+  - ggf. Menge, wenn relevant
+  - Status:
+    - offen
+    - genommen
+  - Interaktionsmoeglichkeit:
+    - Confirm
+    - Undo
+
+- Reihenfolge-Regel:
+  - Die Slot-Liste folgt exakt der `sort_order` des Plans.
+  - Die Daily-UX darf diese Reihenfolge nicht neu interpretieren.
+  - Dadurch bleibt die mentale Linie stabil zwischen:
+    - TAB-Editor
+    - IN-Daily-Card
+
+- Statusdarstellung pro Slot:
+  - `offen`
+    - klar als noch nicht bestaetigt lesbar
+  - `genommen`
+    - klar als bestaetigt lesbar
+  - V1 braucht pro Slot keine dritte Alltagskategorie wie `missed`.
+
+- Mengenanzeige:
+  - Wenn alle Slots dieselbe Menge haben und der Alltag dadurch nicht gewinnt, darf die Darstellung kompakt bleiben.
+  - Wenn Mengen abweichen, muss die Daily-Card das sichtbar machen.
+  - Beispiel:
+    - `Morgen (1)`
+    - `Abend (2)`
+  - Ziel:
+    - keine versteckte Mengendifferenz in einem Medikament mit mehreren Tagespunkten
+
+- Interaktionsregel pro Slot:
+  - Jeder sichtbare offene Slot muss direkt bestaetigbar sein.
+  - Jeder sichtbare bestaetigte Slot muss gezielt rueckgaengig gemacht werden koennen.
+  - Keine Slot-Zeile darf nur Anzeige sein, wenn der Nutzer dort im Alltag eigentlich handeln soll.
+
+- Guard gegen UI-Laerm:
+  - Keine Checkbox-Sammlung wie in einem generischen Task-Tool.
+  - Keine Tabelle.
+  - Keine grossen Aktionsleisten pro Slot.
+  - Keine Wiederholung technischer Begriffe.
+  - Die Liste soll wie eine ruhige Daily-Staffelung wirken, nicht wie ein Admin-Grid.
+
+- Beziehung zum Card-Status:
+  - Der Card-Kopf bleibt das Aggregat:
+    - `1/3`
+    - `2/4`
+  - Die Slot-Liste erklaert dann diesen Fortschritt im Detail.
+  - Damit gilt:
+    - erst Gesamtfortschritt
+    - dann konkrete offene/erledigte Slots
+
+- Verhalten bei temporaeren Medikamenten:
+  - Ein `3x taeglich`-Antibiotikum folgt exakt derselben Card-Logik.
+  - Der Unterschied ist nicht in der Card-Interaktion, sondern nur im Plan-/Datumsvertrag.
+
+- Guard gegen zu viel Offenlegung:
+  - Die Card soll weiterhin im bestehenden Intake-Grid funktionieren.
+  - Das heisst:
+    - Slot-Liste knapp halten
+    - keine zweite Ebene voller Metadaten
+    - keine Sichtbarkeit von `start_date`, `end_date`, `slot_id`, `plan_active` im Daily Flow
+
+- Umsetzungskritische Folge:
+  - `S6.3` zieht die Grenze zwischen:
+    - genug Sichtbarkeit fuer Mehrfach-Einnahmen
+    - und zu viel UI-Last im taeglichen Kernflow
+  - Diese Grenze ist wichtig, weil genau hier der Umbau sonst in eine ueberschwere Medikamentenliste kippen wuerde.
+
+- Check-Ergebnis:
+  - Die `>1x`-Daily-Card ist jetzt fachlich klar definiert:
+    - Fortschritt oben
+    - ruhige Slot-Liste darunter
+    - direkte Slot-Interaktion
+    - keine Planner-UI
+    - keine versteckte Mengen- oder Reihenfolgedrift.
+
+#### S6.4 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S6.4`:
+  - Der Batch-Flow im IN-Tab darf im neuen Modell nicht mehr auf Medikament-Ebene denken.
+  - Sonst wuerde er bei Mehrfach-Einnahmen genau die falsche Grobsemantik wieder einfuehren:
+    - ein Tap bestaetigt unbemerkt den ganzen Tag
+
+- Neue Grundregel fuer Batch:
+  - Batch arbeitet fachlich immer auf offenen Tages-Slots.
+  - Nicht auf:
+    - Medikamenten-Bools
+    - groben Tageskomplettbestaetigungen
+
+- Erlaubter Batch-Fall A - `1x taeglich`:
+  - Bei Medikamenten mit genau einem offenen Slot bleibt Batch weiterhin alltagstauglich.
+  - Hier ist `Medikation bestaetigen` faktisch identisch mit:
+    - den einen offenen Slot bestaetigen
+  - Deshalb darf der bisherige Komfort fuer `1x` erhalten bleiben.
+
+- Erlaubter Batch-Fall B - explizite Sammelaktion:
+  - Bei Mehrfach-Einnahmen darf es nur eine explizit benannte Sammelaktion geben:
+    - `alle offenen Einnahmen bestaetigen`
+  - Diese Aktion muss sprachlich klar machen:
+    - es geht um mehrere offene Slot-Ereignisse
+    - nicht nur um `dieses Medikament abhaken`
+
+- Nicht erlaubte Batch-Semantik:
+  - Ein generischer Medikament-Tap oder ein undeutlicher CTA darf nie stillschweigend:
+    - alle offenen Slots einer Multi-Dose-Medikation
+    - oder alle offenen Slots des ganzen Tages
+    bestaetigen, ohne dass die UI das explizit sagt.
+
+- Default-Verhalten im Daily Flow:
+  - Default ist slot-basierte Interaktion.
+  - Das heisst:
+    - offener Slot -> direkt bestaetigen
+    - bestaetigter Slot -> gezielt rueckgaengig machen
+  - Batch bleibt eine zusaetzliche Komfortaktion, nicht der Kern des Mehrfach-Einnahme-Flows.
+
+- Konsequenz fuer Footer-/Selection-Logik:
+  - Die bisherige Selektion `selected medication ids` ist fachlich ueberholt.
+  - Kuenftig muss Selection, wenn ueberhaupt, auf offene Slot-Einheiten oder klare `1x`-Faelle bezogen sein.
+  - Damit gilt:
+    - `selected medications` als Primitiv passt nicht mehr zum neuen Modell
+
+- Verhalten fuer gemischte Tageslage:
+  - Beispiel:
+    - `Valsartan 0/1`
+    - `Antibiotikum 1/3`
+  - Batch darf dann nicht so tun, als gaebe es nur `zwei offene Medikamente`.
+  - Korrekte Lesart ist:
+    - es gibt mehrere offene Einnahmen
+  - Genau deshalb muss der Batch-Text im neuen Modell an offenen Slot-Ereignissen orientiert sein.
+
+- UI-Regel fuer den Batch-CTA:
+  - Batch muss eindeutig benennen, was bestaetigt wird.
+  - Gute Richtung in V1:
+    - `Alle offenen Einnahmen bestaetigen`
+  - Schlechte Richtung:
+    - `Alle genommen`
+    - wenn darunter auch mehrere Slots pro Medikation liegen koennen
+
+- Undo-Regel fuer Batch:
+  - V1 braucht keinen neuen globalen Batch-Undo-Vertrag als fachliche Pflicht.
+  - Wichtiger ist:
+    - jeder bestaetigte Slot bleibt individuell rueckgaengig machbar
+  - Falls spaeter ein Batch-Undo bleibt, darf er nur die konkret im letzten Batch bestaetigten Slots rueckgaengig machen.
+  - Nicht:
+    - eine ganze Medikation oder den ganzen Tageszustand ungezielt zurueckkippen
+
+- Guard gegen Vertrauenbruch:
+  - Der Nutzer darf nie den Eindruck haben:
+    - "ich habe nur dieses Medikament bestaetigt"
+    - waehrend das System intern alle offenen Slots dieses Medikaments geschlossen hat
+  - Genau dieser Vertrauensbruch waere im Medication-Kontext besonders schaedlich.
+
+- Beziehung zu Voice/Fast-Path:
+  - Dieselbe Semantik muss spaeter fuer `medication_confirm_all` gelten:
+    - explizit alle aktuell offenen Einnahmen fuer heute
+  - Damit bleiben UI, Text und Voice in derselben Logik.
+
+- Check-Ergebnis:
+  - Der Batch-Vertrag ist jetzt sauber neu geschnitten:
+    - `1x` bleibt komfortabel
+    - Mehrfach-Einnahmen bleiben standardmaessig slot-basiert
+    - Sammelaktionen bleiben moeglich, aber nur explizit und semantisch ehrlich
+    - kein stilles Zurueckrutschen in Tageskomplett-Logik.
+
+#### S6.5 Schritt-Abnahme (abgeschlossen)
+- Abnahme gegen Produkt- und UX-Guardrails:
+  - `S6` bleibt innerhalb der Kernregeln aus `S2`:
+    - `1x taeglich` wird nicht verschlechtert
+    - Mehrfach-Einnahmen werden sichtbar, aber nicht plannerhaft
+    - keine versteckte Zeit- oder Reminderlogik
+    - kein stilles `confirm all`
+  - Damit ist der Daily-Flow weiter klar MIDAS und kippt nicht in ein generisches Medication-Board.
+
+- Abnahme gegen `S4`-Contract:
+  - Die Daily-UX benutzt jetzt dieselbe kleinste Einheit wie der API-Vertrag:
+    - offene/bestaetigte Slots
+  - Fortschritt, Slotliste und Batch sind konsistent mit:
+    - `taken_count / total_count`
+    - `slots[]`
+    - slot-basiertem Confirm/Undo
+  - Es gibt keinen offenen Daily-UX-Teil mehr, der einen globalen Tages-Bool wirklich braucht.
+
+- Regressions-Check fuer `1x taeglich`:
+  - Der Basiscase bleibt klar abgesichert:
+    - keine Pflicht-Slotliste
+    - kein Pflicht-Aufklappen
+    - direkter Status-CTA
+  - Das ist der wichtigste Nicht-Regressionspunkt des gesamten Umbaus und in `S6` jetzt sauber gehalten.
+
+- Regressions-Check fuer Mehrfach-Einnahmen:
+  - Mehrfach-Einnahmen sind jetzt in der Daily-UX voll abbildbar:
+    - sichtbarer Zwischenzustand
+    - sichtbare Reihenfolge
+    - direkter Slot-Confirm/Undo
+  - Batch ist explizit genug definiert, um keinen Vertrauensbruch zu erzeugen.
+
+- Dead-Path-/Ballast-Check:
+  - Fachlich veraltet und spaeter aktiv abzubauen sind jetzt klar markiert:
+    - `taken` als Hauptstatus
+    - `!med.taken`-Selektion
+    - Medikament- statt Slot-Batchlogik
+    - `Alle genommen` als unscharfer CTA
+  - `S6` hat diese Altpfade nicht weiter legitimiert, sondern sichtbar entkernt.
+
+- Offene Punkte, aber kein S6-Blocker:
+  - exakte Card-HTML-Struktur
+  - konkrete Button-/Status-Texte
+  - Feinheiten von Spacing, Collapse und Touch-Zielen
+  - das sind jetzt Implementierungsfragen, keine offenen UX-Vertragsluecken
+
+- Abnahme-Entscheid:
+  - `S6` ist als Daily-UX-Vertrag tragfaehig genug, um die verbleibenden Downstream-Bloecke `S7` und `S8` darauf aufzusetzen.
+
+- Check-Ergebnis:
+  - Der neue IN-Tab-Flow ist fachlich geschlossen:
+    - kompakt fuer `1x`
+    - klar fuer `>1x`
+    - ehrlich im Batch-Verhalten
+    - direkt anschlussfaehig an den neuen Read-/Write-Contract.
+
+#### S6.6 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Auch `S6` bleibt bis zur echten Implementierung ein Umbauvertrag und kein bereits ausgerollter Daily-Produktzustand.
+  - Deshalb werden `docs/modules/*` auch hier noch nicht auf den neuen IN-Flow umgeschrieben.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap traegt jetzt den vollstaendigen `S6`-Vertrag:
+    - Fortschrittskarten
+    - `1x`-Fast-Path
+    - `>1x`-Slotliste
+    - neuer Batch-Vertrag
+  - Der Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    bleibt weiterhin passend.
+
+- Regel fuer spaeteren echten Doku-Sync:
+  - Sobald der IN-Flow real umgebaut ist, muessen nachgezogen werden:
+    - [Intake Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Intake%20Module%20Overview.md)
+    - [Medication Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Medication%20Module%20Overview.md)
+    - [QA_CHECKS.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\QA_CHECKS.md)
+
+- Check-Ergebnis:
+  - Kein Dokument behauptet vorzeitig einen bereits implementierten Multi-Dose-Daily-Flow.
+
+#### S6.7 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, `S6` ist als eigener Roadmap-Block commit-wuerdig.
+
+- Begruendung:
+  - `S6` schliesst den letzten grossen Daily-UX-Vertrag vor den verbleibenden Downstream-Bloecken ab.
+  - Danach bleiben vor dem Coding im Kern nur noch:
+    - `S7` Low-Stock/Runout/Incidents
+    - `S8` Assistant/Voice/Fast-Path
+  - Der IN-Flow ist dabei ein ausreichend eigenstaendiger Schnitt fuer einen Commit.
+
+- Check-Ergebnis:
+  - `S6` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Naechster Block kann sauber mit `S7` starten.
+
 ### S7 - Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen
 - S7.1 Verbrauch aus aktiven Tages-Slots ableiten statt aus einfachem `dose_per_day`.
 - S7.2 `days_left` und `runout_day` gegen echten Tagesverbrauch neu berechnen.
@@ -2524,6 +3509,455 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
   - festhalten, ob die fachliche Logik jetzt einen eigenen Commit verdient oder ob Voice-Anpassungen noch dazugenommen werden sollen
 - Output: Bestands- und Incident-Logik bleibt leise, aber fachlich korrekt.
 - Exit-Kriterium: Mehrfachplaene fuehren nicht zu Push-Spam oder falschem Runout.
+
+#### S7.1 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S7.1`:
+  - Der Verbrauch eines Medikaments darf im neuen Modell nicht mehr aus einem pauschalen Tageswert `dose_per_day` abgeleitet werden.
+  - Er muss aus dem fuer den konkreten Tag aktiven Slot-Plan entstehen.
+
+- Neue Grundregel:
+  - Verbrauchsgrundlage ist nicht mehr:
+    - `dose_per_day`
+  - sondern:
+    - Summe der fuer diesen Tag gueltigen Slot-Mengen
+  - Formel:
+    - `daily_planned_qty = sum(qty_per_slot aller aktiven Slots fuer diesen Tag)`
+
+- Warum das fachlich notwendig ist:
+  - Ein Medikament kann jetzt:
+    - `1x`
+    - `2x`
+    - `3x`
+    - `4x`
+    taeglich geplant sein
+  - Die Tagesmenge ist deshalb nicht mehr stabil in einem Stammdatenfeld aufgehoben, sondern ergibt sich aus dem aktuellen Plan.
+
+- Welche Faktoren in den Verbrauch einfliessen:
+  - aktive Medication
+  - aktive Slots
+  - `start_date`
+  - `end_date`
+  - `qty_per_slot`
+  - konkreter Tageskontext
+  - Nicht relevant fuer die Verbrauchsableitung:
+    - `with_meal`
+    - Label wie `Morgen` oder `Abend`
+    - Voice-/Push-Zustand
+
+- Verbrauchsarten im neuen Modell:
+  - Planverbrauch:
+    - was fuer den Tag laut aktivem Plan vorgesehen ist
+  - Ist-Verbrauch:
+    - was fuer den Tag bereits bestaetigt wurde
+  - Restverbrauch:
+    - was fuer heute noch offen ist
+
+- Ableitungen:
+  - `daily_planned_qty`
+    - Summe aller aktiven Slot-Mengen fuer heute
+  - `daily_taken_qty`
+    - Summe aller bestaetigten Slot-Events fuer heute
+  - `daily_remaining_qty`
+    - `max(daily_planned_qty - daily_taken_qty, 0)`
+
+- Warum diese Dreiteilung wichtig ist:
+  - Low-Stock und Runout brauchen den Planverbrauch.
+  - Die konkrete Tageswahrheit braucht den Ist-Verbrauch.
+  - Push/Incidents brauchen den offenen Rest, nicht nur den Tagesplan.
+
+- Guard gegen alte Denkfehler:
+  - Ein Confirm darf nicht mehr implizit den kompletten Tagesverbrauch eines Medikaments ausloesen.
+  - Jede Bestaetigung reduziert den Bestand nur um die dem Slot zugeordnete Menge.
+  - Dadurch wird aus Verbrauch wieder das, was er fachlich sein muss:
+    - slotweise
+    - planbezogen
+    - progress-aware
+
+- Sonderfaelle:
+  - kein aktiver Plan am Tag:
+    - kein normaler Tagesverbrauch
+    - keine kuenstliche Ableitung aus Altfeldern
+  - zukuenftiger Planstart:
+    - vor Start kein Verbrauch
+  - abgelaufener Plan:
+    - nach Ende kein Verbrauch
+  - temporaeres Medikament:
+    - gleicher Verbrauchsvertrag, nur zeitlich begrenzt
+
+- Beziehung zu `dose_per_day`:
+  - `dose_per_day` ist im neuen Modell keine operative Verbrauchsquelle mehr.
+  - Falls das Feld waehrend des Umbaus technisch noch existiert, dann nur als Altbestand oder Hilfsrest, nicht mehr als fachliche Source of Truth.
+
+- Konsequenz fuer spaetere Implementierung:
+  - SQL-Read und Client-State muessen Tagesverbrauch aus den aktiven Slots ableiten.
+  - Confirm/Undo muessen den Bestand pro Slot-Menge veraendern.
+  - Low-Stock/Runout und Incident-Logik duerfen nie wieder auf ein einzelnes Tagesstammdatenfeld zurueckfallen.
+
+- Check-Ergebnis:
+  - Die Verbrauchslogik ist jetzt sauber auf den echten Tagesplan gezogen:
+    - kein pauschales `dose_per_day`
+    - kein versteckter Tagesblockverbrauch
+    - korrekte Grundlage fuer Low-Stock, Runout und offene Tagesmedikation.
+
+#### S7.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S7.2`:
+  - `days_left` und `runout_day` duerfen im Multi-Dose-Modell nicht mehr wie statische Stammdaten-Ableitungen wirken.
+  - Sie muessen sich aus zwei Dingen gemeinsam ergeben:
+    - dem aktiven Tagesplan
+    - dem bereits erreichten Tagesfortschritt
+
+- Neue Grundregel:
+  - `days_left` und `runout_day` basieren nicht nur auf `daily_planned_qty`, sondern auch auf `daily_taken_qty`.
+  - Damit werden sie progress-aware statt nur plan-aware.
+
+- `days_left` im neuen Modell:
+  - Kernidee:
+    - `days_left` beschreibt, wie viele volle Tage der aktuelle Bestand unter dem heute gueltigen Plan noch traegt.
+  - V1-Basisformel:
+    - `days_left = floor(stock_count / daily_planned_qty)`
+  - Diese Formel ist nur sinnvoll, wenn:
+    - ein aktiver Plan existiert
+    - `daily_planned_qty > 0`
+
+- Warum `days_left` trotzdem progress-aware gelesen werden muss:
+  - Der heute bereits bestaetigte Verbrauch ist im Bestand schon enthalten.
+  - Deshalb ist `stock_count` nach einem Slot-Confirm bereits ein echter Zwischenstand.
+  - Das heisst:
+    - `days_left` bleibt auf der Basis des aktuellen Bestands korrekt
+    - solange Confirm/Undo den Bestand wirklich slotweise mitziehen
+
+- `runout_day` im neuen Modell:
+  - `runout_day` ist die alltagsnahe Kalenderlesung derselben Logik.
+  - Es soll nicht nur sagen:
+    - wie viele Tagesmengen noch theoretisch da sind
+  - sondern:
+    - an welchem Kalendertag der Bestand unter dem aktuellen Plan aufgebraucht waere
+
+- Progress-Awareness bei `runout_day`:
+  - Der Rest des heutigen Tages darf nicht als volle Tagesmenge behandelt werden, wenn bereits Slots bestaetigt wurden.
+  - Deshalb gilt fachlich:
+    - fuer heute zaehlt nur `daily_remaining_qty`
+    - fuer Folgetage zaehlt wieder `daily_planned_qty`
+
+- Lesbare Denkregel:
+  - Heute:
+    - offener Restverbrauch = `daily_remaining_qty`
+  - Ab morgen:
+    - normaler Tagesverbrauch = `daily_planned_qty`
+  - Daraus folgt:
+    - `runout_day` wird nicht durch einen bereits teilweise erledigten Tag kuenstlich zu pessimistisch
+
+- Beispiel:
+  - Medikament `2x taeglich`, je Slot `1`
+  - heutiger Bestand nach Morgeneinnahme: `5`
+  - fuer heute gilt noch `daily_remaining_qty = 1`
+  - ab morgen gilt wieder `daily_planned_qty = 2`
+  - Ein altes Tagesblock-Modell wuerde hier zu grob rechnen; das neue Modell liest den Tag korrekt als bereits teilweise erledigt.
+
+- Sonderfaelle:
+  - kein aktiver Plan:
+    - kein valider `days_left`-/`runout_day`-Wert
+  - `daily_planned_qty = 0`:
+    - keine normale Verbrauchsprognose
+  - Startdatum in der Zukunft:
+    - vor Start kein aktueller Verbrauch und damit keine normale Runout-Prognose aus diesem Plan
+  - Enddatum in der Vergangenheit:
+    - kein weiterer Verbrauch
+
+- Guard gegen zu viel Forecast-Komplexitaet:
+  - V1 simuliert nicht:
+    - wechselnde Zukunftsplaene
+    - Wochenmuster
+    - Intervallregime
+    - probabilistische Restprognosen
+  - `days_left` und `runout_day` bleiben bewusst einfache, alltagstaugliche Werte unter dem aktuell gueltigen Plan.
+
+- Beziehung zu Low-Stock:
+  - Low-Stock darf spaeter auf genau diesen Werten aufsetzen.
+  - Wenn `days_left` und `runout_day` schon progress-aware sind, kann Low-Stock ruhig und fachlich sauber bleiben.
+
+- Konsequenz fuer die spaetere Implementierung:
+  - SQL und Client duerfen `runout_day` nicht mehr wie einen bloessen `today + floor(stock/dose_per_day)`-Wert berechnen.
+  - Der Tagesrest muss im Modell sichtbar oder serverseitig korrekt eingerechnet sein.
+  - Confirm/Undo muessen deshalb den Bestand immer unmittelbar aktuell halten.
+
+- Check-Ergebnis:
+  - `days_left` und `runout_day` sind jetzt fachlich sauber neu gezogen:
+    - vom Tagesplan abgeleitet
+    - vom Tagesfortschritt beeinflusst
+    - einfach genug fuer MIDAS
+    - deutlich korrekter als das alte Tagesblock-Modell.
+
+#### S7.3 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S7.3`:
+  - Der Low-Stock-Ack-Vertrag soll im neuen Modell weiter ruhig und alltagstauglich bleiben.
+  - Er darf aber nicht mehr still an alter Tages-Boolean- oder `dose_per_day`-Logik haengen.
+
+- Grundregel:
+  - Low-Stock-Ack bleibt ein Medication-Level-Vertrag.
+  - Er ist nicht an einzelne Slots gebunden.
+  - Er bestaetigt:
+    - diesen kritischen Bestandszustand habe ich gesehen
+  - Nicht:
+    - einzelne Einnahmen
+    - einzelne Slot-Risiken
+    - einen Versand- oder Nachbestellnachweis
+
+- Warum Medication-Level richtig bleibt:
+  - Low-Stock ist weiterhin ein Bestandsproblem, kein Slot-Problem.
+  - Auch bei `3x taeglich` ist nicht jeder offene Slot ein eigener Low-Stock-Kontext.
+  - Das haelt die UI ruhig und verhindert Signalverdopplung.
+
+- Ausloeser des Ack-Kontexts:
+  - Low-Stock entsteht im neuen Modell aus:
+    - aktuellem Bestand
+    - aktivem Tagesplan
+    - progress-aware `days_left`
+  - Der Ack bestaetigt genau diesen daraus entstandenen kritischen Zustand.
+
+- Empfohlene Ack-Basis fuer V1:
+  - `med_id`
+  - `day`
+  - `stock_snapshot`
+  - Optional spaeter:
+    - `days_left_snapshot`
+  - V1 braucht aber keinen slot-bezogenen Ack-Schluessel.
+
+- Was sich gegenueber dem alten Modell aendert:
+  - Nicht mehr ein Ack gegen einen impliziten Tagesverbrauch aus `dose_per_day`.
+  - Sondern ein Ack gegen einen kritischen Zustand, der aus dem echten aktiven Plan abgeleitet wurde.
+  - Die Ack-Semantik bleibt ruhig, aber die Berechnungsbasis darunter wird korrekt.
+
+- Ack-Verhalten bei Plan- oder Bestandsaenderung:
+  - Ein bestehender Ack soll nur so lange unterdruecken, wie derselbe relevante Low-Stock-Kontext fachlich noch gilt.
+  - Wenn sich der relevante Kontext aendert, darf der Hinweis wieder erscheinen.
+
+- Relevante Kontextaenderungen sind:
+  - Bestand hat sich geaendert
+    - z. B. Restock
+    - Confirm/Undo mit echtem Bestandswechsel
+  - aktiver Plan hat sich geaendert
+    - andere Frequenz
+    - andere Slot-Mengen
+    - Start/Ende
+  - Medication wurde deaktiviert/reaktiviert
+
+- Warum Planwechsel den Ack beruehren darf:
+  - Wenn ein Medikament ploetzlich statt `1x` jetzt `3x` taeglich verbraucht wird, ist derselbe numerische Bestand fachlich ein anderer Low-Stock-Zustand.
+  - Ein alter Ack darf diesen neuen Risikokontext nicht unsichtbar machen.
+
+- Was der Ack nicht tun darf:
+  - kein stilles Verknuepfen an einzelne Slot-IDs
+  - kein Unterdruecken offener Slot-Interaktion
+  - kein Einfluss auf Confirm/Undo
+  - kein eigener Push- oder Reminder-Zustand
+
+- V1-Grenze:
+  - Low-Stock-Ack bleibt bewusst schlicht:
+    - gesehen
+    - fuer diesen Medication-Kontext vorerst ausgeblendet
+  - Keine Wiedervorlage-Engine
+  - Keine Snooze-Matrix
+  - Keine getrennten Acks fuer verschiedene Slots desselben Medikaments
+
+- Konsequenz fuer die spaetere Implementierung:
+  - `med_ack_low_stock_v2` bleibt Medication-zentriert.
+  - Die Pruefung, ob ein Ack noch gueltig ist, muss gegen den neuen Bestands-/Plan-Kontext laufen.
+  - Die Low-Stock-UI darf dadurch ruhig bleiben, aber nicht blind fuer echte Kontextwechsel werden.
+
+- Check-Ergebnis:
+  - Der Low-Stock-Ack-Vertrag bleibt im neuen Modell:
+    - einfach
+    - medication-zentriert
+    - kompatibel mit Mehrfach-Einnahmen
+    - sensibel fuer echte Plan- oder Bestandsaenderungen
+    - frei von Slot-Spam oder neuer Reminder-Komplexitaet.
+
+#### S7.4 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S7.4`:
+  - Die Incident-/Push-Logik muss das neue Mehrfach-Einnahme-Modell korrekt lesen, ohne den Charakter von MIDAS zu verlieren.
+  - Sie darf also:
+    - offene Tagesmedikation erkennen
+  - aber nicht:
+    - pro Slot nerven
+    - in Reminder-Ketten kippen
+
+- Grundregel fuer Medication-Incidents:
+  - Auch im Multi-Dose-Modell gibt es maximal einen aggregierten Medication-Incident pro Kalendertag.
+  - Dieser Incident fragt nicht:
+    - welcher einzelne Slot ist offen
+  - sondern:
+    - ist die heutige Medikation am spaeten Schwellenwert noch nicht vollstaendig erledigt
+
+- Neue Incident-Basis:
+  - Nicht mehr:
+    - `exists med where !taken`
+  - Sondern:
+    - `exists medication where plan_active = true and state != done`
+  - Praktisch lesbar:
+    - es gibt heute noch mindestens eine offene Einnahme im aktiven Medication-Plan
+
+- Warum kein Slot-Push:
+  - Ein `3x taeglich`-Antibiotikum darf nicht drei verschiedene Push-Kontexte am Tag erzeugen.
+  - Das waere fuer MIDAS:
+    - zu laut
+    - zu nah an klassischer Reminder-App-Logik
+    - kontraproduktiv fuer Vertrauen und Alltag
+
+- Trigger-Regel fuer V1:
+  - Push/Incident wird nur relevant, wenn:
+    - heute aktive Medikation existiert
+    - und diese am festen spaeten Tages-Schwellenwert noch nicht `done` ist
+  - Kein Trigger:
+    - direkt beim einzelnen offenen Slot
+    - nach jeder Teilbestaetigung
+    - beim Wechsel von `open` auf `partial`
+
+- Rolle von `partial`:
+  - `partial` ist fuer die UI wichtig.
+  - Fuer Push ist `partial` aber kein eigener Incident-Typ.
+  - Fuer Incident-Entscheidung gilt nur:
+    - am Schwellenwert noch nicht vollstaendig erledigt = Incident-relevant
+
+- Re-Trigger-Regel:
+  - Maximal ein Medication-Incident pro Kalendertag.
+  - Keine Schleife fuer:
+    - neuen offenen Slot
+    - zwischenzeitliche Teilbestaetigung
+    - erneuten App-Fokus
+  - Das bestehende ruhige Incident-Prinzip bleibt damit erhalten.
+
+- Notification-Sprache im neuen Modell:
+  - Die Sprache darf weiter aggregiert und ruhig bleiben.
+  - Gute Richtung:
+    - `Medikation fuer heute noch offen`
+  - Nicht notwendig in V1:
+    - Push nennt einzelne Slots
+    - Push nennt jede betroffene Medikation
+  - Der Lockscreen ist Schutznetz, nicht Daily-Detailansicht.
+
+- Beziehung zu Low-Stock:
+  - Low-Stock bleibt ein eigener stiller UI-/Kontextpfad.
+  - Er wird nicht zu einem eigenen Medication-Push pro Slot oder pro Planwechsel.
+  - Damit bleiben:
+    - Adhaerenz-Warnung
+    - Bestandswarnung
+    fachlich getrennt.
+
+- Incident-Quelle im neuen Read-Contract:
+  - Incident-Logik soll denselben Tagesvertrag lesen wie UI und Voice.
+  - Minimal benoetigt:
+    - `plan_active`
+    - `state`
+    - optional `taken_count` / `total_count` fuer Diagnose oder Future Debugging
+  - Kein eigenes Spezialmodell noetig.
+
+- Sonderfaelle:
+  - kein aktiver Plan:
+    - kein Medication-Incident
+  - Startdatum in der Zukunft:
+    - kein heutiger Incident
+  - Enddatum in der Vergangenheit:
+    - kein heutiger Incident
+  - deaktiviertes Medikament:
+    - kein Incident
+
+- Guard gegen Push-Drift:
+  - Nicht erlaubt in V1:
+    - Push pro offenem Slot
+    - Push nach jedem Slotzeitpunkt
+    - Push-Eskalationsketten
+    - Push auf Basis von `mit Mahlzeit`
+    - unterschiedlicher Incident-Typ fuer `partial`
+
+- Konsequenz fuer die spaetere Implementierung:
+  - `app/modules/incidents/index.js` muss von `!med.taken` auf den neuen Tagesvertrag umgestellt werden.
+  - Die lokale und spaeter ggf. remote Incident-Entscheidung muss denselben Aggregat-Trigger nutzen.
+  - Bestehende Tagesgrenzen und ruhige Einmaligkeit bleiben erhalten.
+
+- Check-Ergebnis:
+  - Die Incident-/Push-Regel bleibt auch im Multi-Dose-Modell klar MIDAS-konform:
+    - ein aggregierter Tages-Incident
+    - keine Slot-Flut
+    - kein Reminder-Charakter
+    - korrekt gegen offene Tagesmedikation statt gegen alten Tages-Bool.
+
+#### S7.5 Schritt-Abnahme (abgeschlossen)
+- Abnahme gegen `S3` und `S4`:
+  - `S7` bleibt voll konsistent mit:
+    - aktivem Tagesplan statt `dose_per_day`
+    - slotweiser Bestandsmutation
+    - progress-aware Tageszustand
+    - Medication-Level Low-Stock-Ack
+  - Es gibt keinen offenen Logikteil mehr, der fuer Low-Stock, Runout oder Incident wieder den alten Tages-Boolean-Vertrag braeuchte.
+
+- Abnahme gegen Produkt-Guardrails:
+  - Die Logik bleibt ruhig und MIDAS-konform:
+    - kein Reminder-Spam
+    - kein Push pro Slot
+    - kein `partial`-Alarmismus
+    - kein Mahlzeiten- oder Zeitlogik-Creep
+  - Damit ist `S7` fachlich deutlich staerker, ohne das Produkt lauter zu machen.
+
+- Drift-/Ballast-Check:
+  - Fachlich veraltete Altannahmen sind jetzt klar markiert:
+    - `dose_per_day` als operative Verbrauchsquelle
+    - `!med.taken` als Incident-Trigger
+    - Low-Stock-Ack auf Basis eines alten Tagesblocks
+  - `S7` hat diese Altpfade nicht weiter legitimiert, sondern sauber entkernt.
+
+- Risiko-Check:
+  - Die verbleibenden Risiken liegen jetzt nicht mehr in der Logik selbst, sondern spaeter in der Umsetzung:
+    - falsche Berechnung von `daily_remaining_qty`
+    - halbe Umstellung der Incident-Quelle
+    - Bestandsdrift bei Confirm/Undo
+  - Diese Risiken sind aber jetzt klar sichtbar und testbar.
+
+- Abnahme-Entscheid:
+  - `S7` ist als letzter grosser Logikblock vor Voice/Assistant tragfaehig genug abgeschlossen.
+
+- Check-Ergebnis:
+  - Bestands-, Runout-, Low-Stock- und Incident-Logik sind jetzt fachlich sauber auf das neue Multi-Dose-Modell gezogen.
+
+#### S7.6 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Auch `S7` bleibt bis zur realen Implementierung ein Umbauvertrag.
+  - Deshalb werden `docs/modules/Medication Module Overview.md`, `docs/modules/Intake Module Overview.md`, `docs/modules/Push Module Overview.md` und `docs/QA_CHECKS.md` noch nicht vorzeitig umgeschrieben.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap traegt jetzt den vollstaendigen `S7`-Vertrag:
+    - Verbrauch aus aktivem Tagesplan
+    - progress-aware `days_left` / `runout_day`
+    - Medication-Level Low-Stock-Ack
+    - aggregierter Tages-Incident
+  - Der bereits gesetzte Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    bleibt weiterhin ausreichend und korrekt.
+
+- Regel fuer spaeteren echten Doku-Sync:
+  - Nach echter Implementierung von `S9.6` muessen nachgezogen werden:
+    - [Medication Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Medication%20Module%20Overview.md)
+    - [Intake Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Intake%20Module%20Overview.md)
+    - [Push Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Push%20Module%20Overview.md)
+    - [QA_CHECKS.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\QA_CHECKS.md)
+
+- Check-Ergebnis:
+  - Kein Dokument behauptet vorzeitig eine bereits ausgerollte neue Low-Stock-/Incident-Logik.
+
+#### S7.7 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, `S7` ist als eigener Roadmap-Block commit-wuerdig.
+
+- Begruendung:
+  - `S7` schliesst die komplette Bestands- und Incident-Logik als eigenstaendigen Fachblock ab.
+  - Danach bleibt vor der Umsetzung nur noch `S8` als letzter Downstream-Vertrag fuer Assistant/Voice/Fast-Path.
+  - Das ist ein sauberer Commit-Schnitt zwischen:
+    - Kernlogik
+    - Voice-/Intent-Absicherung
+
+- Check-Ergebnis:
+  - `S7` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Naechster Block kann sauber mit `S8` starten.
 
 ### S8 - Assistant/Voice/Fast-Path auf neues Modell absichern
 - S8.1 Bestehenden `medication_confirm_all`-Pfad auf `alle aktuell offenen Einnahmen fuer heute` umstellen.
@@ -2546,9 +3980,535 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
 - Output: Voice bleibt eng, korrekt und kompatibel mit dem neuen Medication-Kern.
 - Exit-Kriterium: bestehende produktive Voice-Faelle brechen nicht.
 
+#### S8.1 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S8.1`:
+  - Der bestehende Fast-Path `medication_confirm_all` darf im neuen Modell nicht mehr als Sammelbestaetigung "aller offenen Medikamente" verstanden werden.
+  - Er muss fachlich sauber heissen:
+    - bestaetige alle aktuell offenen Einnahmen fuer heute
+
+- Neue Kernsemantik:
+  - `medication_confirm_all` arbeitet nicht mehr auf Medikament-Ebene.
+  - Er arbeitet auf:
+    - allen heute offenen Slot-Ereignissen
+  - Das ist dieselbe Wahrheit wie im neuen IN-Flow.
+
+- Warum diese Umstellung zwingend ist:
+  - Im alten Modell war:
+    - ein offenes Medikament = eine offene Tagesbestaetigung
+  - Im neuen Modell kann ein Medikament aber:
+    - `1/3`
+    - `2/4`
+    - `0/2`
+    sein
+  - Deshalb waere `alle offenen Medikamente bestaetigen` fachlich zu grob und potentiell irrefuehrend.
+
+- Neue Lesart fuer den Intent:
+  - Wenn `medication_confirm_all` ausgefuehrt wird, dann bedeutet das:
+    - finde alle offenen Slots aus dem heutigen aktiven Medication-Plan
+    - bestaetige sie
+  - Nicht:
+    - schliesse alle Medikamente irgendwie auf Tagesebene
+
+- Beziehung zur UI:
+  - Diese Semantik muss identisch sein zu dem expliziten Batch-CTA im IN-Tab:
+    - `alle offenen Einnahmen bestaetigen`
+  - Damit bleiben:
+    - UI
+    - Text
+    - Voice
+    auf derselben Fachwahrheit
+
+- Guard gegen Teilmengen-Drift:
+  - `medication_confirm_all` darf nicht implizit heissen:
+    - bestaetige nur das naechste offene Medikament
+    - bestaetige nur das erste offene Slot-Fragment pro Medikation
+    - bestaetige irgendwie "genug"
+  - Entweder:
+    - alle offenen Einnahmen fuer heute
+  - oder:
+    - nichts
+
+- Verhalten bei `1x taeglich`:
+  - Fuer Daily-Meds bleibt der Intent alltagstauglich, weil ein offenes Medikament dort genau einem offenen Slot entspricht.
+  - Dadurch bleibt die alte Alltagserwartung fuer einfache Medikation weitgehend erhalten.
+
+- Verhalten bei Mehrfach-Einnahmen:
+  - Der Intent ist bewusst stark.
+  - Wenn ein Medikament heute `1/3` ist, dann umfasst `confirm_all` auch die restlichen offenen Slots dieser Medikation.
+  - Genau deshalb muss die Oberflaechen- und Spoken-Sprache das explizit sagen.
+
+- Nicht Aufgabe von `medication_confirm_all`:
+  - keine Auswahl einzelner Medikamente
+  - keine Auswahl einzelner Slots
+  - keine semantische Interpretation von "hab schon einiges genommen"
+  - kein stilles Safety-Net fuer unklare Transkripte
+
+- Konsequenz fuer die spaetere Implementierung:
+  - Hub/Text/Voice muessen den Tages-Read laden und daraus offene Slots ableiten.
+  - Die Ausfuehrung erfolgt dann slotweise ueber den neuen Write-Kern.
+  - Die Erfolgsantwort muss dieselbe Semantik tragen:
+    - nicht `Medikation bestaetigt`
+    - sondern sinngemaess `offene Einnahmen fuer heute bestaetigt`
+
+- Check-Ergebnis:
+  - `medication_confirm_all` ist jetzt fachlich sauber an das neue Modell angeschlossen:
+    - explizit
+    - slot-basiert
+    - gleich zur UI
+    - ohne versteckte Teilmengenlogik oder Rueckfall in Tages-Boolean-Sprache.
+
+#### S8.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S8.2`:
+  - Der neue Slot-Vertrag darf die Voice-Oberflaeche nicht in Richtung freier Medikationssteuerung aufweichen.
+  - Voice muss unter Multi-Dose nicht breiter, sondern nur praeziser werden.
+
+- Grundregel:
+  - Voice bleibt eng gefuehrt.
+  - Multi-Dose fuehrt nicht zu:
+    - freiem Plan-Editing per Sprache
+    - generischer Slot-Manipulation
+    - offener Medikamentenverwaltung ueber Transkript
+
+- Guardrail 1 - kein Plan-Authoring per Voice:
+  - Nicht erlaubt:
+    - Medikament anlegen
+    - Frequenz aendern
+    - Slots umbenennen
+    - Start-/Enddaten setzen
+    - `mit Mahlzeit` setzen
+  - Diese Dinge bleiben im TAB-Editor.
+
+- Guardrail 2 - keine freie Slot-Auswahl ohne engen Vertrag:
+  - Nicht erlaubt in V1:
+    - `bestaetige nur Abend`
+    - `mach Mittag rueckgaengig`
+    - `nimm den zweiten Slot`
+  - Grund:
+    - das wuerde sofort neue Ambiguitaet in Sprache, Matching und Safety erzeugen
+    - ohne echten Alltagsgewinn fuer V1
+
+- Guardrail 3 - keine implizite Teilmengenlogik:
+  - Sprachsaetze wie:
+    - `hab alles genommen`
+    - `bin fertig`
+    - `passt schon`
+    duerfen nicht auf unklare Teilmengen gemappt werden.
+  - Entweder ein Intent ist klar genug fuer:
+    - alle offenen Einnahmen bestaetigen
+  - oder er bleibt geblockt / faellt kontrolliert nicht in den produktiven Fast-Path.
+
+- Guardrail 4 - kein Medication-Reorder-Drift:
+  - Der bestehende enge Low-Stock-Follow-up bleibt lokal und guard-railed.
+  - Multi-Dose ist kein Anlass fuer:
+    - breitere Nachbestelllogik
+    - neue Versand- oder Statusdialoge
+    - freie Folgekonversation ueber Medikamente
+
+- Warum diese Enge fuer MIDAS richtig ist:
+  - Je komplexer das Medikamentenmodell wird, desto wichtiger wird es, den Sprachpfad nicht aufzublasen.
+  - Die sichere Richtung ist:
+    - komplexeres Datenmodell
+    - aber weiterhin enge, explizite Sprachoberflaeche
+
+- Erlaubte Voice-Richtung unter diesen Guardrails:
+  - bestaetige alle offenen Einnahmen fuer heute
+  - Low-Stock-Follow-up im bestehenden engen lokalen Rahmen
+  - keine breitere Medication-Kommandosprache in V1
+
+- Beziehung zur UI:
+  - Die UI darf mehr Detail zeigen als Voice.
+  - Das ist hier bewusst richtig:
+    - Daily-Card kann Slots sichtbar machen
+    - Voice bleibt auf wenige sichere Sammelaktionen begrenzt
+  - Das ist keine Inkonsistenz, sondern ein gewollter Safety-Schnitt.
+
+- Konsequenz fuer die spaetere Implementierung:
+  - Intent-Regeln und Voice-Orchestrator muessen enger filtern, nicht breiter.
+  - Der neue Slot-Contract wird im Voice-Pfad intern genutzt,
+    aber nicht in offene sprachliche Freiheitsgrade uebersetzt.
+
+- Check-Ergebnis:
+  - Die Voice-Guardrails bleiben unter Multi-Dose stabil:
+    - kein freies Medication-Authoring
+    - keine freie Slot-Navigation
+    - keine unklare Teilmengenbestaetigung
+    - weiterhin enger, sicherer Fast-Path statt offener Sprachsteuerung.
+
+#### S8.3 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S8.3`:
+  - Unter dem neuen Slot-Modell muss klar sein, welche Medication-Semantik Voice produktiv ueberhaupt tragen darf.
+  - Die Regel dafuer ist:
+    - lieber wenig und eindeutig
+    - als viel und sprachlich unsauber
+
+- Erlaubte Kernsemantik in V1:
+  - `confirm_all_open`
+  - Fachliche Bedeutung:
+    - bestaetige alle aktuell offenen Einnahmen fuer heute
+  - Das ist die einzige starke Sammelaktion, die unter Multi-Dose produktiv sauber tragfaehig bleibt.
+
+- Anforderungen an diese erlaubte Semantik:
+  - Die Oberflaechenantwort muss dieselbe Bedeutung tragen wie die Ausfuehrung.
+  - Das heisst:
+    - wenn intern alle offenen Slots bestaetigt werden
+    - dann muss auch die Rueckmeldung genau das sagen
+  - Keine weichgespuelte Sprache wie:
+    - `Medikation bestaetigt`
+    wenn tatsaechlich mehrere offene Einnahmen geschlossen wurden.
+
+- Nicht als eigene V1-Semantik freigeben:
+  - `confirm_next_open`
+  - `confirm_evening_slot`
+  - `undo_last_medication`
+  - `confirm_partial_medication`
+  - Grund:
+    - jede dieser Semantiken wuerde neue Mehrdeutigkeit und zusaetzliche Safety-Faelle oeffnen
+
+- Rolle von `confirm_next_open`:
+  - Kann als spaetere Future Hook konzeptionell bestehen bleiben.
+  - Ist aber keine V1-Pflicht und kein produktiver Fast-Path fuer diesen Umbau.
+  - Warum:
+    - "naechste offene Einnahme" ist fuer Nutzer sprachlich intuitiv
+    - aber technisch und fachlich in V1 noch unnoetig riskant
+
+- Sprachliche Konsequenz:
+  - Produktive Voice-Saetze muessen semantisch so eng sein, dass sie klar auf `confirm_all_open` mappen.
+  - Gute Richtung:
+    - `ich habe alle meine Medikamente genommen`
+    - nur dann, wenn das Produkt wirklich `alle offenen Einnahmen fuer heute` bestaetigt
+  - Schlechte Richtung:
+    - vage Teilmengen-Sprache mit unklarer Reichweite
+
+- Beziehung zu Text/Fast-Path:
+  - Dieselbe Semantik gilt nicht nur fuer Voice, sondern auch fuer den lokalen Text-Fast-Path.
+  - Das Ziel bleibt:
+    - ein gemeinsamer Intent-Kern
+    - keine abweichende Medication-Bedeutung je Surface
+
+- Warum diese Enge wichtig ist:
+  - Multi-Dose fuehrt sonst sehr schnell zu falschen mentalen Modellen:
+    - Nutzer meint `alles`, System meint `nur heute offen`
+    - oder Nutzer meint `einen Teil`, System bestaetigt den Rest mit
+  - Genau deshalb muss `S8.3` die erlaubte V1-Semantik scharf halten.
+
+- Konsequenz fuer spaetere Implementierung:
+  - Intent-Matching und Voice-Antworten muessen auf diese erlaubte Semantik abgestimmt werden.
+  - Alles, was nicht klar `confirm_all_open` ist, bleibt:
+    - geblockt
+    - inert
+    - oder faellt nicht in den produktiven lokalen Medication-Fast-Path
+
+- Check-Ergebnis:
+  - Die erlaubte Voice-Semantik ist jetzt bewusst eng und eindeutig:
+    - produktiv nur `confirm_all_open`
+    - keine Pflicht fuer `confirm_next_open`
+    - keine versteckte Teilmengen- oder Slot-Einzelsemantik in V1.
+
+#### S8.4 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S8.4`:
+  - Der bestehende Low-Stock-Follow-up und andere enge lokale Medication-Spezialpfade muessen auf das neue Read-Model passen.
+  - Dabei gilt:
+    - neues Modell lesen
+    - aber keine neue Produktbreite erfinden
+
+- Ausgangslage:
+  - Der heutige Voice-/Medication-Fast-Path haengt an einem frischen Tages-Snapshot.
+  - Nach erfolgreichem `medication_confirm_all` kann ein enger lokaler Low-Stock-Follow-up kommen.
+  - Dieser Pfad soll bleiben, aber auf neuer Datenbasis.
+
+- Neue Lesebasis fuer den Follow-up:
+  - Nicht mehr:
+    - altes Flat-Model mit `taken`, `qty`, `dose_per_day`
+  - Sondern:
+    - neues Tages-Read-Model mit:
+      - `low_stock`
+      - `days_left`
+      - `runout_day`
+      - `state`
+      - `plan_active`
+  - Der Follow-up liest also denselben Medication-Zustand wie UI und Push.
+
+- Produktregel fuer den Low-Stock-Follow-up:
+  - Er bleibt ein enger Nachsatz nach erfolgreichem `confirm_all_open`.
+  - Er ist nicht:
+    - ein eigener offener Dialog
+    - eine neue Medication-Konversation
+    - ein freies Reorder-System
+
+- Trigger-Regel im neuen Modell:
+  - Follow-up nur, wenn nach erfolgreicher Bestaetigung weiterhin ein echter frischer `low_stock`-Zustand vorliegt.
+  - Nicht triggern wegen:
+    - offener Slots allein
+    - `partial`
+    - Planwechsel
+    - Slot-Anzahl
+
+- Warum das im Multi-Dose-Modell wichtig ist:
+  - Ein Medikament kann heute mehrere Slots haben und trotzdem nach `confirm_all_open` erstmals in einen klaren Low-Stock-Zustand kippen.
+  - Der Follow-up darf das sehen.
+  - Er darf aber nicht mit jeder Teilbestaetigung oder jedem offenen Restslot anspringen.
+
+- Guard gegen neue Spezialpfade:
+  - Nicht erlaubt in V1:
+    - Follow-up pro Medikation mit offener Slot-Liste
+    - Follow-up fuer einzelne Slots
+    - Follow-up fuer temporaere Plaene als eigener Zweig
+    - Follow-up auf Basis von `mit Mahlzeit`
+  - Der bestehende Reorder-nahe Spezialpfad bleibt genau so eng wie bisher, nur auf neuer Datenbasis.
+
+- Beziehung zu `confirm_all_open`:
+  - Reihenfolge bleibt logisch:
+    - erst offene Einnahmen bestaetigen
+    - dann, falls relevant, lokaler Low-Stock-Nachsatz
+  - Kein parallel laufender Mischdialog.
+
+- Beziehung zu Text und Hub:
+  - Dieselbe enge Logik gilt fuer Text-/Hub-nahe Spezialpfade, nicht nur fuer Voice.
+  - Das Ziel bleibt:
+    - gemeinsamer Medication-Zustand
+    - wenige eng gefuehrte Folgeaktionen
+
+- Umsetzungskritische Folge:
+  - Nach dem Umbau muessen bestehende Medication-Follow-up-Reads aktiv auf Altfelder geprueft werden.
+  - Alles, was heute noch `taken` oder alte Tagesblock-Semantik erwartet, muss auf den neuen Snapshot wechseln.
+
+- Check-Ergebnis:
+  - Der Low-Stock-Follow-up bleibt im neuen Modell:
+    - lokal
+    - eng
+    - guard-railed
+    - auf neuer Datenbasis korrekt
+    - ohne neue Spezialdialoge oder Medication-Drift.
+
+#### S8.5 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S8.5`:
+  - Der gemeinsame Intent-Kern fuer Text und Voice muss die neue Medication-Semantik verstehen.
+  - Gleichzeitig darf diese Umstellung nicht zu einer breiteren oder freieren Medikamentensprache fuehren.
+
+- Neue Anforderung an den Intent-Kern:
+  - Medication-Intents duerfen nicht mehr implizit auf einem Tages-Boolean beruhen.
+  - Sie muessen gegen den neuen Contract denken in:
+    - offene Einnahmen
+    - Slot-basierter Tagesfortschritt
+    - `confirm_all_open`
+
+- Was Validatoren kuenftig absichern muessen:
+  - dass ein Medication-Fast-Path nur dann greift, wenn die beabsichtigte Aktion semantisch klar ist
+  - dass unklare Teilmengen-Sprache nicht in einen produktiven Confirm kippt
+  - dass keine alte Annahme wie `medication today = done/offen` im Intent-Kern weiterlebt
+
+- Konkrete Guard-Richtung fuer Validatoren:
+  - erlauben:
+    - klare Sammelbestaetigung aller offenen Einnahmen
+  - blocken oder nicht-produktiv behandeln:
+    - unklare Teilmengenformeln
+    - freie Slot-Auswahl
+    - vage Selbstberichte ohne sichere Reichweite
+
+- Beziehung zu Pending-/Confirm-Kontext:
+  - Falls bestaetigende Sprachwoerter wie `ja`, `speichern`, `ok` im Medication-Kontext benutzt werden, muss der Pending-Kontext kuenftig dieselbe neue Medication-Semantik tragen.
+  - Das heisst:
+    - wenn ein Pending-Kontext fuer Medication existiert, dann bezieht er sich nicht mehr auf einen alten Tages-Bool
+    - sondern auf die explizite Sammelaktion oder den engen Follow-up-Kontext
+
+- Was aus dem alten Intent-Vertrag raus muss:
+  - alte stillschweigende Gleichsetzung:
+    - `Medikation offen` = `!taken`
+  - alte Erfolgssemantik:
+    - `Medikation bestaetigt`
+    wenn intern eigentlich mehrere offene Einnahmen bestaetigt wurden
+  - alte Validator-Annahme:
+    - Tagesabschluss sei eine einzige Medikament-Aktion
+
+- Was bewusst nicht dazukommt:
+  - keine neue offene Medication-Slot-Grammatik
+  - keine sprachliche Freigabe fuer:
+    - `nur Abend`
+    - `nur die restlichen`
+    - `mach Antibiotika fertig`
+  - keine freie Plan- oder Mengensteuerung ueber den Intent-Kern
+
+- Konsequenz fuer die spaetere Implementierung:
+  - Intent-Regeln, Validatoren und lokale Erfolgs-/Blockertexte muessen an dieselbe neue Medication-Semantik angepasst werden.
+  - Dabei gilt:
+    - gemeinsamer Intent-Kern fuer Text und Voice
+    - aber weiterhin enger Medication-Scope
+
+- Check-Ergebnis:
+  - Der Intent-/Validator-Vertrag ist jetzt mit dem neuen Slot-/Progress-Modell kompatibel:
+    - ohne Tages-Boolean-Reste
+    - ohne neue Sprachbreite
+    - ohne implizite Teilmengenbestaetigung
+    - konsistent zwischen Text, Voice und UI.
+
+#### S8.6 Schritt-Abnahme (abgeschlossen)
+- Abnahme gegen die bisherigen Vertraege:
+  - `S8` bleibt voll konsistent mit:
+    - neuem IN-Flow aus `S6`
+    - aggregierter Incident-Logik aus `S7`
+    - Read-/Write-Contract aus `S4`
+  - Voice/Text bestaetigen damit nicht mehr eine andere Medication-Wahrheit als UI oder Push.
+
+- Safety-Abnahme:
+  - Die Medication-Semantik bleibt im Sprachpfad eng genug:
+    - kein freies Authoring
+    - keine freie Slot-Navigation
+    - keine implizite Teilmengenlogik
+    - kein offener Medication-Dialog
+  - Das ist fuer den komplexeren Multi-Dose-Kern der entscheidende Sicherheitsanker.
+
+- Drift-/Ballast-Check:
+  - Fachlich veraltet und spaeter aktiv zu entfernen sind jetzt klar benannt:
+    - Medication-Fast-Paths auf Basis von `!taken`
+    - alte Success-Copy wie `Medikation bestaetigt`
+    - Validator-Annahmen, die noch einen Tagesblock statt offener Einnahmen meinen
+  - `S8` hat keine neue Mischsemantik erzeugt, sondern den Sprachpfad auf einen engen sauberen Kern reduziert.
+
+- Abnahme-Entscheid:
+  - `S8` ist als letzter Downstream-Vertragsblock tragfaehig genug abgeschlossen.
+  - Danach bleibt keine offene Grundsatzluecke mehr, die `S9` fachlich blockieren wuerde.
+
+- Check-Ergebnis:
+  - Text, Voice, Intent und Follow-up-Pfade sind jetzt fachlich konsistent mit dem neuen Medication-Modell.
+
+#### S8.7 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Auch `S8` bleibt bis zur realen Implementierung ein Umbauvertrag.
+  - Deshalb werden Assistant-/Intent-/Medication-/Push-Overviews noch nicht vorzeitig auf einen produktiven Multi-Dose-Voice-Stand umgeschrieben.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap traegt jetzt den vollstaendigen `S8`-Vertrag:
+    - `confirm_all_open`
+    - enge Voice-Guardrails
+    - begrenzte Voice-Semantik
+    - Low-Stock-Follow-up auf neuem Read-Model
+    - Intent-/Validator-Anpassung
+  - Der bestehende Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    bleibt weiterhin korrekt.
+
+- Regel fuer spaeteren echten Doku-Sync:
+  - Nach echter Implementierung von `S9.7` muessen nachgezogen werden:
+    - [Medication Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Medication%20Module%20Overview.md)
+    - [Push Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Push%20Module%20Overview.md)
+    - [Intent Engine Module Overview.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\modules\Intent%20Engine%20Module%20Overview.md)
+    - relevante Assistant-/Voice-Doku
+    - [QA_CHECKS.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\QA_CHECKS.md)
+
+- Check-Ergebnis:
+  - Kein Dokument behauptet vorzeitig einen bereits umgebauten Medication-Voice-/Intent-Produktivzustand.
+
+#### S8.8 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, `S8` ist als eigener Roadmap-Block commit-wuerdig.
+
+- Begruendung:
+  - `S8` schliesst den letzten offenen Vertragsblock vor `S9` ab.
+  - Danach ist die Vorbereitungsphase beendet:
+    - Produktvertrag
+    - Datenmodell
+    - API-/RPC-Vertrag
+    - TAB-Editor-Vertrag
+    - Daily-UX-Vertrag
+    - Bestands-/Incident-Logik
+    - Assistant/Voice/Fast-Path
+  - `S9` ist damit nicht mehr ein weiterer Theorieblock, sondern die explizite Umsetzung.
+
+- Check-Ergebnis:
+  - `S8` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Nach diesem Punkt beginnt der echte Umsetzungsmodus in `S9`.
+
+### S9 - Umsetzung des Multi-Dose-Umbaus
+- S9.1 SQL-/Schema-Umsetzung
+  - S9.1.1 Bestehendes `sql/12_Medication.sql` auf das neue Zielmodell umbauen:
+    - Schedule-Slot-Tabelle anlegen
+    - Slot-Event-Tabelle anlegen
+    - bestehende Medication-Stammdatenstruktur auf den neuen Vertrag ausrichten
+  - S9.1.2 Reset-/Neustart-Regel technisch umsetzen:
+    - alter Medication-Bestand darf kontrolliert verworfen werden
+    - keine produktive Dual-Read-Phase
+    - keine Legacy-Backfill-Logik im Live-Pfad
+  - S9.1.3 Constraints, Unique-Regeln und FK-/Konsistenzlogik fuer Slots und Events implementieren
+  - S9.1.4 `stock_log`-Semantik auf `slot_confirm` / `slot_undo` / `stock_adjust` / `stock_set` umstellen
+  - S9.1.5 SQL-Smokes:
+    - `1x`, `2x`, `3x`, `4x`
+    - Confirm/Undo
+    - Reset-Neustart
+
+- S9.2 RPC-Umsetzung
+  - S9.2.1 Neues Tages-Read-Model serverseitig implementieren
+  - S9.2.2 Slot-basierte Write-RPCs implementieren:
+    - confirm slot
+    - undo slot
+    - upsert medication
+    - upsert schedule
+    - set active
+    - delete
+    - adjust/set stock
+    - ack low stock
+  - S9.2.3 Idempotenz und Atomaritaet im echten Write-Pfad absichern
+  - S9.2.4 RPC-Smokes gegen echte DB-Zustaende ausfuehren
+
+- S9.3 Medication-Client umsetzen
+  - S9.3.1 `app/modules/intake-stack/medication/index.js` auf neues Read-Model umbauen
+  - S9.3.2 Neue Slot-Helper einfuehren:
+    - `confirmMedicationSlot(...)`
+    - `undoMedicationSlot(...)`
+  - S9.3.3 Alte Tages-Boolean-Mappings und Alt-Helper kontrolliert entfernen oder eng uebergangsweise absichern
+  - S9.3.4 `medication:changed`-Payload auf den neuen Contract ausrichten
+
+- S9.4 TAB-Editor wirklich bauen
+  - S9.4.1 Formular fuer Frequenz, Slots, Start/Ende und `mit Mahlzeit` implementieren
+  - S9.4.2 Presets `1x/2x/3x/4x/custom` mit deterministischer Slot-Erzeugung bauen
+  - S9.4.3 Slot-Validierung und stabile `sort_order` im UI umsetzen
+  - S9.4.4 Kartenliste auf lesbare Plan-Zusammenfassung umbauen
+  - S9.4.5 Saves gegen neue Medication-/Schedule-RPCs verdrahten
+
+- S9.5 IN-Daily-Flow wirklich bauen
+  - S9.5.1 Medication-Cards auf `taken_count / total_count` umstellen
+  - S9.5.2 `1x taeglich`-Fast-Path rendern, ohne Pflicht-Slotliste
+  - S9.5.3 `>1x taeglich` mit ruhiger Slot-Liste und direktem Confirm/Undo rendern
+  - S9.5.4 Batch-Flow auf `alle offenen Einnahmen bestaetigen` neu schneiden
+  - S9.5.5 Alte Daily-Boolean-Selektionslogik aktiv abbauen
+
+- S9.6 Low-Stock, Runout und Incidents wirklich bauen
+  - S9.6.1 Verbrauch auf Basis des aktiven Tagesplans serverseitig und clientseitig konsistent machen
+  - S9.6.2 `days_left`, `runout_day` und `low_stock` auf progress-aware Logik umstellen
+  - S9.6.3 Low-Stock-Ack auf dem neuen Medication-Level-Vertrag halten
+  - S9.6.4 Incident-/Push-Logik auf offenen Tages-Slots mit genau einem aggregierten Tages-Incident umbauen
+  - S9.6.5 Spam- und Re-Trigger-Smokes ausfuehren
+
+- S9.7 Assistant, Hub und Voice wirklich bauen
+  - S9.7.1 `medication_confirm_all` auf `alle aktuell offenen Einnahmen fuer heute` umstellen
+  - S9.7.2 Hub-/Text-Fast-Path auf den neuen Medication-Contract umbauen
+  - S9.7.3 Voice-Flow und Low-Stock-Follow-up gegen das neue Read-Model absichern
+  - S9.7.4 Alte implizite Teilmengenlogik aktiv entfernen
+
+- S9.8 Read-only-Kontexte und Restpfade nachziehen
+  - S9.8.1 Profile-Snapshot auf lesbare neue Plan-/Medication-Zusammenfassung anpassen
+  - S9.8.2 verbleibende Medication-Read-Pfade im Repo auf Altannahmen pruefen und umstellen
+  - S9.8.3 tote Felder, Helper und Branches des alten Tages-Boolean-Modells entfernen
+
+- S9.9 QA, Doku und Endabnahme
+  - S9.9.1 `docs/modules/Medication Module Overview.md` aktualisieren
+  - S9.9.2 `docs/modules/Intake Module Overview.md` aktualisieren
+  - S9.9.3 `docs/modules/Push Module Overview.md` und relevante Assistant-/Intent-Doku aktualisieren
+  - S9.9.4 `docs/QA_CHECKS.md` auf Multi-Dose-Smokes erweitern
+  - S9.9.5 finale Repo-Smokes und Regression gegen `1x`, `2x`, `3x`, `4x`, temporaere Meds, Low-Stock, Voice und Push fahren
+
+- S9.10 Schritt-Abnahme:
+  - echten Code, SQL, Dead Code und verbliebene Altpfade pruefen
+  - offene Drift zwischen Roadmap-Vertrag und Umsetzung aktiv aufloesen
+- S9.11 Doku-Sync:
+  - alle betroffenen Modul-Overviews, QA-Doku und ggf. CHANGELOG final nachziehen
+- S9.12 Commit-/Release-Empfehlung:
+  - festhalten, ob der Umbau commit-, merge- und produktiv einsatzfaehig ist
+- Output: der in `S1` bis `S8` definierte Multi-Dose-Umbau ist real im Repo umgesetzt.
+- Exit-Kriterium: MIDAS bildet Mehrfach-Einnahmen produktiv ab, ohne den `1x taeglich`-Basiscase zu verschlechtern.
+
 ## Smokechecks / Regression (Definition)
-- Bestehendes `1x taeglich`-Medikament bleibt vor und nach Migration in `1-2 Taps` bestaetigbar.
-- Bestehende Legacy-Historie bleibt taeglich aggregiert und wird nicht in mehrere Schein-Slots uminterpretiert.
+- Nach Reset und Neuerfassung bleibt ein `1x taeglich`-Medikament in `1-2 Taps` bestaetigbar.
+- Der Medication-Neustart erzeugt keinen Mischzustand aus alten Tages-Boolean-Daten und neuem Slot-Modell.
 - `2x taeglich`-Medikament zeigt `0/2`, `1/2`, `2/2` korrekt und erlaubt Undo einzelner Slots.
 - `3x taeglich`-Medikament reduziert Bestand nur fuer bestaetigte Slots.
 - Ein generischer Medikament-Tap bestaetigt bei Mehrfach-Medikation nie stillschweigend alle offenen Slots.
@@ -2563,12 +4523,12 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
 - V1 bleibt count-/order-based und fuehrt keine harte Uhrzeitpflicht oder Slot-Reminder-Logik ein.
 - Datenmodell, RPCs und UI sind auf denselben Slot-/Progress-Vertrag ausgerichtet.
 - Low-Stock, Runout, Push und Voice verhalten sich konsistent mit dem neuen Modell.
-- Migration bestehender Medikamente fuehrt nicht zu stillen Fehlinterpretationen.
+- Der Medication-Reset und die manuelle Neuerfassung erzeugen keinen stillen Mischzustand mit Altsemantik.
 - Dokumentation und QA-Checks sind vollstaendig aktualisiert.
 
 ## Risiken
 - Zu fruehe UI-Komplexitaet kann den heute guten `1x taeglich`-Flow verschlechtern.
-- Halbherzige Migration kann Bestands- oder Runout-Berechnungen verfaelschen.
+- Halbherziger Reset oder vermischte Alt-/Neudaten koennen Bestands- oder Runout-Berechnungen verfaelschen.
 - Zeitlogik-Creep kann MIDAS unnoetig in Richtung klinischer Planner treiben.
 - Push kann ohne harte Guardrails in Mehrfach-Einnahme-Spam kippen.
 - Voice/Fast-Paths koennen still regressieren, wenn sie weiter auf Tages-Boolean basieren.
