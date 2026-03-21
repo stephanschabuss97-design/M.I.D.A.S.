@@ -2550,7 +2550,33 @@
           );
         }
       });
-      doc?.addEventListener('capture:intake-changed', () => {
+      doc?.addEventListener('capture:intake-changed', (event) => {
+        const intakeSnapshot = event?.detail
+          ? {
+              dayIso: event.detail.dayIso || null,
+              logged: event.detail.logged !== false,
+              totals: event.detail.totals || null,
+            }
+          : null;
+        if (intakeSnapshot?.totals) {
+          const profile = getAssistantProfileSnapshot();
+          renderAssistantIntakeTotals(intakeSnapshot);
+          renderAssistantContextExpandable(intakeSnapshot, profile);
+          if (assistantChatCtrl?.context) {
+            assistantChatCtrl.context = {
+              ...assistantChatCtrl.context,
+              intake: intakeSnapshot,
+              profile: profile || assistantChatCtrl.context.profile || null,
+            };
+          }
+          if (hubDashboardCtrl?.context) {
+            hubDashboardCtrl.context = {
+              ...hubDashboardCtrl.context,
+              intake: intakeSnapshot,
+              profile: profile || hubDashboardCtrl.context.profile || null,
+            };
+          }
+        }
         refreshAssistantContext({
           reason: 'capture:intake-changed',
           forceRefresh: false,
