@@ -2553,7 +2553,7 @@
       doc?.addEventListener('capture:intake-changed', () => {
         refreshAssistantContext({
           reason: 'capture:intake-changed',
-          forceRefresh: true,
+          forceRefresh: false,
         })?.catch?.((err) => {
           diag.add?.('[hub-dashboard] intake context refresh err: ' + (err?.message || err));
         });
