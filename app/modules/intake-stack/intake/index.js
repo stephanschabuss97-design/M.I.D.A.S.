@@ -1419,6 +1419,13 @@
       captureIntakeState.logged = true;
       input.value = '';
       updateCaptureIntakeStatus();
+      emitCaptureIntakeChanged({
+        reason: 'capture:intake',
+        source: kind,
+        dayIso,
+        totals,
+        logged: true,
+      });
       const needsLifestyle = dayIso === todayStr();
       requestUiRefresh({
         reason: 'capture:intake',
@@ -1496,6 +1503,13 @@
       if (saltVal > 0) saltInput.value = '';
       if (proteinVal > 0) proteinInput.value = '';
       updateCaptureIntakeStatus();
+      emitCaptureIntakeChanged({
+        reason: 'capture:intake',
+        source: 'salt-protein-combo',
+        dayIso,
+        totals,
+        logged: true,
+      });
       const needsLifestyle = dayIso === todayStr();
       requestUiRefresh({
         reason: 'capture:intake',
@@ -1525,6 +1539,20 @@
       }
       diag.add?.('[capture] save error salt+protein: ' + msg);
     }
+  }
+
+  function emitCaptureIntakeChanged(detail = {}) {
+    try {
+      doc?.dispatchEvent?.(new CustomEvent('capture:intake-changed', {
+        detail: {
+          reason: detail.reason || 'capture:intake',
+          source: detail.source || 'unknown',
+          dayIso: detail.dayIso || todayStr(),
+          logged: detail.logged !== false,
+          totals: cloneIntakeTotals(detail.totals || captureIntakeState.totals || {}),
+        },
+      }));
+    } catch (_) {}
   }
 
   function bindIntakeCapture(){

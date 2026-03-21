@@ -494,13 +494,24 @@
   };
 
   const shiftCarousel = (delta = 1) => {
-    const length = getCarouselLength();
+    let length = getCarouselLength();
     if (!length) return;
     const dir = delta > 0 ? 1 : -1;
     if (!isAssistantSurfaceEnabled() && carouselState.showPassiveVoiceAnchor) {
+      const activeId = carouselState.activeButton?.dataset?.carouselId || null;
       carouselState.showPassiveVoiceAnchor = false;
       if (quickbarState.hubEl) {
-        refreshCarouselItems(quickbarState.hubEl);
+        refreshCarouselItems(quickbarState.hubEl, {
+          preserveActiveId: activeId !== 'assistant-voice',
+        });
+      }
+      length = getCarouselLength();
+      if (!length) return;
+      if (activeId === 'assistant-voice') {
+        if (aura3dApi?.triggerCarouselSweep) {
+          aura3dApi.triggerCarouselSweep(dir > 0 ? 'left' : 'right');
+        }
+        return;
       }
     }
     let changed = false;
@@ -2512,9 +2523,9 @@
         requestMealFollowupSuggestion(event?.detail);
       });
 
-      doc?.addEventListener('profile:changed', (event) => {
-        assistantProfileSnapshot =
-          event?.detail?.data || appModules.profile?.getData?.() || null;
+    doc?.addEventListener('profile:changed', (event) => {
+      assistantProfileSnapshot =
+        event?.detail?.data || appModules.profile?.getData?.() || null;
         if (assistantChatCtrl?.context) {
           assistantChatCtrl.context.profile = assistantProfileSnapshot;
         }
@@ -2528,6 +2539,14 @@
             { reason: 'profile:changed' },
           );
         }
+      });
+      doc?.addEventListener('capture:intake-changed', () => {
+        refreshAssistantContext({
+          reason: 'capture:intake-changed',
+          forceRefresh: true,
+        })?.catch?.((err) => {
+          diag.add?.('[hub-dashboard] intake context refresh err: ' + (err?.message || err));
+        });
       });
       global.addEventListener('assistant:suggest-confirm', (event) => {
         const suggestion = event?.detail?.suggestion;

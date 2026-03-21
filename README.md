@@ -144,6 +144,32 @@ M.I.D.A.S
 │  │  │  │  ├─ session-agent.js
 │  │  │  │  ├─ suggest-store.js
 │  │  │  │  └─ suggest-ui.js
+│  │  │  ├─ intent
+│  │  │  │  ├─ context.js
+│  │  │  │  ├─ index.js
+│  │  │  │  ├─ normalizers
+│  │  │  │  │  ├─ semantic.js
+│  │  │  │  │  └─ surface.js
+│  │  │  │  ├─ normalizers.js
+│  │  │  │  ├─ parser.js
+│  │  │  │  ├─ rules
+│  │  │  │  │  ├─ breath-timer.js
+│  │  │  │  │  ├─ confirm-reject.js
+│  │  │  │  │  ├─ index.js
+│  │  │  │  │  ├─ intake.js
+│  │  │  │  │  ├─ medication.js
+│  │  │  │  │  ├─ navigation.js
+│  │  │  │  │  └─ vitals.js
+│  │  │  │  ├─ rules.js
+│  │  │  │  ├─ semantics
+│  │  │  │  │  ├─ compound.js
+│  │  │  │  │  ├─ entities.js
+│  │  │  │  │  ├─ fillers.js
+│  │  │  │  │  ├─ units.js
+│  │  │  │  │  └─ verbs.js
+│  │  │  │  ├─ slots
+│  │  │  │  │  └─ extract.js
+│  │  │  │  └─ validators.js
 │  │  │  ├─ vad
 │  │  │  │  ├─ vad-worklet.js
 │  │  │  │  └─ vad.js
@@ -179,6 +205,7 @@ M.I.D.A.S
 │  │     └─ vitals
 │  │        ├─ body.js
 │  │        ├─ bp.js
+│  │        ├─ breath-timer.js
 │  │        ├─ entry.js
 │  │        ├─ index.js
 │  │        └─ lab.js
@@ -254,6 +281,7 @@ M.I.D.A.S
 ├─ CHANGELOG.md
 ├─ docs
 │  ├─ archive
+│  │  ├─ Assistant Visibility + Voice Robustness Roadmap (DONE).md
 │  │  ├─ assistant-multimodal-polish-roadmap.md
 │  │  ├─ assistant-stack-refactor-roadmap.md
 │  │  ├─ Assistant_Actions_Spec.md
@@ -261,6 +289,7 @@ M.I.D.A.S
 │  │  ├─ BodyChart-Roadmap.md
 │  │  ├─ Boot Error Log Reliability Roadmap (DONE).md
 │  │  ├─ Bootflow Optimization Roadmap (DONE).md
+│  │  ├─ Breath Timer Implementation Roadmap (DONE).md
 │  │  ├─ carousel_integration.md
 │  │  ├─ db-transition-plan.md
 │  │  ├─ deep-clean-roadmap.md
@@ -277,6 +306,9 @@ M.I.D.A.S
 │  │  ├─ Import Inventory.md
 │  │  ├─ Input_Style_Polish_Plan.md
 │  │  ├─ Intake Medication UX Roadmap.md
+│  │  ├─ Intent Engine Execution Reliability Roadmap (DONE).md
+│  │  ├─ Intent Engine Follow-ups (DONE).md
+│  │  ├─ Intent Engine Implementation Roadmap (DONE).md
 │  │  ├─ Layout Alignment.md
 │  │  ├─ lazy-load-roadmap.md
 │  │  ├─ M.I.D.A.S. – Design Guide v1.2.md
@@ -288,6 +320,7 @@ M.I.D.A.S
 │  │  ├─ Milestone.md
 │  │  ├─ Module Update Plan.md
 │  │  ├─ module-consolidation-roadmap.md
+│  │  ├─ Post-Voice Follow-up Roadmap (DONE).md
 │  │  ├─ Profile Module – Contact Extension Spe.md
 │  │  ├─ Proteinrechner-Roadmap.md
 │  │  ├─ pwa-implementation-roadmap.md
@@ -303,6 +336,7 @@ M.I.D.A.S
 │  │  ├─ twa-implementation-roadmap.md
 │  │  ├─ twa-session-report.md
 │  │  ├─ Voice Assistant roadmap.md
+│  │  ├─ Voice Reactivation Roadmap (DONE).md
 │  │  ├─ voice-archive-roadmap.md
 │  │  └─ Zeus Feedback Engine.md
 │  ├─ Codex Programmandi.docx
@@ -313,6 +347,7 @@ M.I.D.A.S
 │  │  ├─ Assistant Module Overview.md
 │  │  ├─ Auth Module Overview.md
 │  │  ├─ bootflow overview.md
+│  │  ├─ Breath Timer Module Overview.md
 │  │  ├─ Capture Module Overview.md
 │  │  ├─ Charts Module Overview.md
 │  │  ├─ CSS Module Overview.md
@@ -334,7 +369,8 @@ M.I.D.A.S
 │  │  ├─ Trendpilot Module Overview.md
 │  │  ├─ Unlock Flow Overview.md
 │  │  └─ VAD Module Overview.md
-│  └─ QA_CHECKS.md
+│  ├─ QA_CHECKS.md
+│  └─ Voice Command Semantics.md
 ├─ index.html
 ├─ M.I.D.A.S..code-workspace
 ├─ offline.html
