@@ -29,7 +29,7 @@ Related docs:
 | `app/modules/profile/index.js` | Read-only-Zusammenfassung fuer Medikation im Profil. |
 | `app/modules/incidents/index.js` | aggregierter Medication-Incident fuer spaete offene Tages-Einnahmen. |
 | `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
-| `sql/12_Medication.sql` | Tabellen plus `v2`-RPCs fuer Slot-/Progress-Modell; `v1` bleibt noch parallel als Legacy-Pfad bestehen. |
+| `sql/12_Medication.sql` | Tabellen plus produktive RPCs fuer Slot-/Progress-Modell und den bereinigten Medication-Contract. |
 | `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
 
 ---
@@ -40,7 +40,6 @@ Related docs:
 - `health_medication_schedule_slots`: geplanter Tagesplan pro Medication mit `sort_order`, `qty_per_slot`, `start_date`, `end_date`.
 - `health_medication_slot_events`: bestaetigte Slot-Einnahmen je Nutzer/Medication/Tag.
 - `health_medication_stock_log`: Verlauf fuer Confirm/Undo und Bestandskorrekturen; kann `slot_id` und `day` mitfuehren.
-- `health_medication_doses`: alter Tages-Boolean-/Aggregatpfad, bleibt waehrend des Umbaus nur noch als Legacy-Bestand bestehen.
 - `med_list_v2` ist das operative Read-Model fuer Medication im Frontend.
 
 ---

@@ -276,7 +276,7 @@
         ui.actions.hidden = !hasOpen;
       }
       if (ui.confirmBtn) {
-        ui.confirmBtn.textContent = `Offene Einnahmen bestaetigen (${selectedCount})`;
+        ui.confirmBtn.textContent = `Offene Einnahmen bestätigen (${selectedCount})`;
         ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
       }
       if (!activeRows.length) {
@@ -448,16 +448,16 @@
           : '<small class="muted small">Mailkontakt fehlt</small>';
         const effectiveReorderHint =
           reorderState === 'confirming'
-            ? 'Mailstart bitte lokal bestaetigen'
+            ? 'Mailstart bitte lokal bestätigen'
             : reorderState === 'reorder_prompted'
               ? 'Rezeptkontakt angestossen'
               : reorderContract?.ok
-                ? 'Lokaler Rezeptkontakt moeglich'
+                ? 'Lokaler Rezeptkontakt möglich'
                 : 'Rezeptkontakt nicht verfuegbar';
         const effectiveMailAction = isConfirming
           ? `<a class="btn small" href="${escapeAttr(
               reorderContract?.href || ''
-            )}" data-med-mail-confirm="${escapeAttr(med.id || '')}">Mail jetzt oeffnen</a>
+            )}" data-med-mail-confirm="${escapeAttr(med.id || '')}">Mail jetzt öffnen</a>
              <button type="button" class="btn ghost small" data-med-mail-cancel="${escapeAttr(
                med.id || ''
              )}">Abbrechen</button>`
@@ -509,7 +509,7 @@
     const selectedIds = new Set(getSelectedOpenIds(data));
     const items = sortedMeds
       .map((med) => {
-        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage uebrig` : '';
+        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage übrig` : '';
         const progressText =
           Number.isFinite(med.taken_count) && Number.isFinite(med.total_count)
             ? `${med.taken_count}/${med.total_count}`
@@ -522,7 +522,7 @@
         const isTaken = med.state === 'done';
         const isSelected = selectedIds.has(medId);
         const isDisabled = medicationDailyState.busy || isTaken;
-        const checkLabel = isTaken ? 'Bereits genommen' : 'Auswaehlen';
+        const checkLabel = isTaken ? 'Bereits genommen' : 'Auswählen';
         const slotHtml =
           slots.length > 1
             ? `
@@ -557,7 +557,7 @@
                     data-med-select="${escapeAttr(medId)}"
                     ${isTaken ? 'checked' : isSelected ? 'checked' : ''}
                     ${isDisabled ? 'disabled' : ''}
-                    aria-label="${escapeAttr(`Medikation auswaehlen: ${med.name || 'Medikation'}`)}"
+                    aria-label="${escapeAttr(`Medikation auswählen: ${med.name || 'Medikation'}`)}"
                   >
                   <span class="sr-only">${escapeHtml(checkLabel)}</span>
                 </label>
@@ -573,7 +573,7 @@
                           class="medication-card-status-slot status-glow ${isTaken ? 'ok' : 'neutral'}"
                           data-med-slot-id="${escapeAttr(primarySlot.slot_id || '')}"
                           data-med-slot-taken="${isTaken ? '1' : '0'}"
-                          aria-label="${escapeAttr(isTaken ? 'Einnahme zuruecknehmen' : 'Einnahme bestaetigen')}"
+                          aria-label="${escapeAttr(isTaken ? 'Einnahme zurücknehmen' : 'Einnahme bestätigen')}"
                         >
                           <svg class="medication-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -696,11 +696,11 @@
     try {
       if (isTaken) {
         await medModule.undoMedicationSlot(slotId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme zurueckgenommen.');
+        uiInfo('Einnahme zurückgenommen.');
         feedbackApi?.feedback?.('medication:undo', { intent: true, source: 'user' });
       } else {
         await medModule.confirmMedicationSlot(slotId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme bestaetigt.');
+        uiInfo('Einnahme bestätigt.');
         feedbackApi?.feedback?.('medication:confirm', { intent: true, source: 'user' });
       }
       if (typeof medModule.invalidateMedicationCache === 'function') {
@@ -786,7 +786,7 @@
     if (isMedicationReorderRecentlyPrompted(medId)) {
       event?.preventDefault?.();
       diag.add?.(`[capture:med] reorder start blocked med=${medId} reason=reorder-reopen-cooldown`);
-      uiInfo('Rezeptkontakt wurde gerade bereits geoeffnet.');
+      uiInfo('Rezeptkontakt wurde gerade bereits geöffnet.');
       return;
     }
     event?.preventDefault?.();
@@ -794,7 +794,7 @@
     diag.add?.(
       `[capture:med] reorder confirm armed med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
     );
-    uiInfo('Rezeptkontakt lokal bestaetigen, um die Mail-App zu oeffnen.');
+    uiInfo('Rezeptkontakt lokal bestätigen, um die Mail-App zu öffnen.');
     renderMedicationLowStock(medicationDailyState.data);
     return;
   }
@@ -825,14 +825,14 @@
       diag.add?.(
         `[capture:med] reorder confirm blocked med=${medId} reason=${contract?.reason || 'unknown'}`
       );
-      uiError('Rezeptkontakt ist gerade nicht verfuegbar.');
+      uiError('Rezeptkontakt ist gerade nicht verfügbar.');
       renderMedicationLowStock(medicationDailyState.data);
       return;
     }
     if (isMedicationReorderLaunchLocked(medId)) {
       clearMedicationReorderConfirming(medId);
       diag.add?.(`[capture:med] reorder confirm blocked med=${medId} reason=reorder-launch-locked`);
-      uiInfo('Rezeptkontakt wurde gerade bereits geoeffnet.');
+      uiInfo('Rezeptkontakt wurde gerade bereits geöffnet.');
       renderMedicationLowStock(medicationDailyState.data);
       return;
     }
@@ -841,7 +841,7 @@
     diag.add?.(
       `[capture:med] reorder prompted med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
     );
-    uiInfo('Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.');
+    uiInfo('Mail-App wird geöffnet. Rezeptkontakt bleibt lokal.');
     renderMedicationLowStock(medicationDailyState.data);
     if (global?.location) {
       global.location.href = contract.href;
@@ -863,7 +863,7 @@
       return {
         ok: false,
         reason: 'medication-module-missing',
-        replyText: 'Medikationsmodul nicht verfuegbar.'
+        replyText: 'Medikationsmodul nicht verfügbar.'
       };
     }
     if (!captureIntakeState.logged) {
@@ -888,7 +888,7 @@
       return {
         ok: false,
         reason: 'medication-load-failed',
-        replyText: 'Rezeptkontakt ist gerade nicht verfuegbar.'
+        replyText: 'Rezeptkontakt ist gerade nicht verfügbar.'
       };
     }
     const meds = Array.isArray(data?.medications) ? data.medications.filter((med) => med?.low_stock) : [];
@@ -916,7 +916,7 @@
       return {
         ok: false,
         reason: contract?.reason || 'medication-reorder-contract-missing',
-        replyText: 'Rezeptkontakt ist gerade nicht verfuegbar.'
+        replyText: 'Rezeptkontakt ist gerade nicht verfügbar.'
       };
     }
     if (isMedicationReorderLaunchLocked(contract.medId)) {
@@ -924,7 +924,7 @@
       return {
         ok: false,
         reason: 'reorder-launch-locked',
-        replyText: 'Rezeptkontakt wurde gerade bereits geoeffnet.'
+        replyText: 'Rezeptkontakt wurde gerade bereits geöffnet.'
       };
     }
     if (isMedicationReorderRecentlyPrompted(contract.medId)) {
@@ -932,7 +932,7 @@
       return {
         ok: false,
         reason: 'reorder-reopen-cooldown',
-        replyText: 'Rezeptkontakt wurde gerade bereits geoeffnet.'
+        replyText: 'Rezeptkontakt wurde gerade bereits geöffnet.'
       };
     }
     markMedicationReorderPrompted(contract.medId, contract);
@@ -944,7 +944,7 @@
     diag.add?.(
       `[capture:med] reorder prompted med=${contract.medId} day=${contract.dayIso || dayIso} source=${options.source || 'unknown'}`
     );
-    uiInfo('Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.');
+    uiInfo('Mail-App wird geöffnet. Rezeptkontakt bleibt lokal.');
     if (global?.location) {
       global.location.href = contract.href;
     }
@@ -953,7 +953,7 @@
       reason: null,
       medId: contract.medId,
       dayIso: contract.dayIso || dayIso,
-      replyText: 'Mail-App wird geoeffnet. Rezeptkontakt bleibt lokal.'
+      replyText: 'Mail-App wird geöffnet. Rezeptkontakt bleibt lokal.'
     };
   }
 

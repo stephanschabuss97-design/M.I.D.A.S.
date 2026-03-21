@@ -115,7 +115,7 @@ Forbidden:
 | S6 | IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen | DONE | S6.1 bis S6.7 abgeschlossen: Fortschrittskarten, `1x`-Fast-Path, `>1x`-Slotliste, Batch-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer den Daily Flow definiert. |
 | S7 | Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen | DONE | S7.1 bis S7.7 abgeschlossen: Verbrauch, `days_left`/`runout_day`, Low-Stock-Ack, Incident-/Push-Regeln, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Plan-/Progress-Modell gezogen. |
 | S8 | Assistant/Voice/Fast-Path auf neues Modell absichern | DONE | S8.1 bis S8.8 abgeschlossen: `medication_confirm_all`, Voice-Guardrails, erlaubte Voice-Semantik, Low-Stock-Follow-up, Intent-/Validator-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Slot-Modell gezogen. |
-| S9 | Umsetzung des Multi-Dose-Umbaus | DONE | Der Multi-Dose-Umbau ist technisch und funktional abgeschlossen: Schema, `v2`-RPCs, Medication-Client, `TAB`, `IN` sowie Downstream-Pfade in Hub, Voice, Incidents, Profile, Push, QA und Modul-Doku sind nachgezogen. SQL-Paritaet auf Supabase ist hergestellt; lokale Syntaxchecks sowie manuelle Smokechecks fuer den aktuellen Produktfluss sind erfolgreich durchlaufen. |
+| S9 | Umsetzung des Multi-Dose-Umbaus | DONE | Der Multi-Dose-Umbau ist technisch und funktional abgeschlossen: Schema, produktive RPCs, Medication-Client, `TAB`, `IN` sowie Downstream-Pfade in Hub, Voice, Incidents, Profile, Push, QA und Modul-Doku sind nachgezogen. SQL-Paritaet auf Supabase ist hergestellt; lokale Syntaxchecks sowie manuelle Smokechecks fuer den aktuellen Produktfluss sind erfolgreich durchlaufen. Der alte `v1`-Medication-Pfad wurde anschliessend aus dem aktiven SQL-Contract entfernt. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -965,7 +965,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
 - Durchgefuehrter Doku-Sync:
   - `docs/archive/Medication Management Module Spec.md` traegt jetzt einen expliziten Dokumentstatus-Hinweis:
     - aktueller Inhalt = bestehender Single-Dose-Vertrag
-    - kuenftiger Multi-Dose-Vertrag = eigene Roadmap in `docs/archive/Medication Multi-Dose Implementation Roadmap.md`
+    - kuenftiger Multi-Dose-Vertrag = eigene Roadmap in `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md`
     - Modul-Overviews werden erst mit den realen Umsetzungs-Schritten nachgezogen
 
 - Produktregel fuer die weitere Doku:
@@ -4572,9 +4572,14 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - `slot_id` / `day` im `health_medication_stock_log`
     - `med_reset_all_data_v2()`
     - FK-/Constraint-Absicherung fuer `(slot_id, med_id)`
+    - finaler Cleanup:
+      - `health_medication_doses` entfernt
+      - `health_medications.dose_per_day` entfernt
+      - alte `v1`-Medication-RPCs entfernt
+      - `public._med_today()` mit fixem `search_path` abgesichert
 
 - `S9.2 RPC-Umsetzung`:
-  - grosse Teile technisch umgesetzt in `sql/12_Medication.sql`
+  - technisch umgesetzt in `sql/12_Medication.sql`
   - enthalten:
     - `med_list_v2`
     - `med_upsert_v2`
@@ -4586,7 +4591,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - `med_ack_low_stock_v2`
     - `med_set_active_v2`
     - `med_delete_v2`
-  - alter `v1`-Pfad existiert noch parallel und ist noch nicht repo-weit entfernt
+  - der alte `v1`-Pfad wurde im finalen Cleanup aus dem aktiven SQL-Contract entfernt
 
 - `S9.3 Medication-Client`:
   - technisch umgesetzt in `app/modules/intake-stack/medication/index.js`
@@ -4599,6 +4604,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
   - Reststand:
     - produktive Medication-Reads/Writes laufen auf dem neuen Contract
     - keine direkten `v1`-Medication-RPC-Calls mehr im Laufzeitcode gefunden
+    - kein produktiver `dose_per_day`-Fallback mehr im Medication-Client
 
 - `S9.4 TAB-Editor`:
   - technisch umgesetzt
@@ -4643,11 +4649,13 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - `docs/modules/Push Module Overview.md` und `docs/modules/Profile Module Overview.md` wurden ebenfalls auf den neuen Medication-/Incident-Stand nachgezogen
   - SQL-Paritaet:
     - der lokal erweiterte `sql/12_Medication.sql`-Stand inklusive `start_date` und `end_date` in `med_list_v2.slots[]` wurde auch auf Supabase nachgezogen
+    - der finale Legacy-Cleanup wurde ebenfalls auf den aktiven SQL-Contract angewendet
   - Validierungsstand:
     - keine direkten `v1`-Medication-RPC-Calls mehr im Laufzeitcode gefunden
     - Syntaxchecks fuer Medication-, Intake-, Hub-, Voice-, Incidents-, Profile- und Service-Worker-Dateien sind gruen
     - sichtbare Profil-Placeholder-/Encoding-Kanten im geaenderten Stand wurden bereinigt
     - manuelle Smokechecks wurden erfolgreich durchgefuehrt; der aktuelle Flow scheint stabil zu funktionieren
+    - verbleibendes `health_medication_stock_log` ist jetzt ein bewusster optionaler Audit-/Diagnosepfad, kein Legacy-Zwang
 
 ## Smokechecks / Regression (Definition)
 - Nach Reset und Neuerfassung bleibt ein `1x taeglich`-Medikament in `1-2 Taps` bestaetigbar.

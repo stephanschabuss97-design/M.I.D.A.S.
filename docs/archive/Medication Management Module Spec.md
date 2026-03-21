@@ -3,7 +3,7 @@
 
 Hinweis zum Dokumentstatus:
 - Dieses Dokument beschreibt den ausgelieferten Single-Dose-Vertrag des bestehenden Medication-Moduls.
-- Der geplante Multi-Dose-Produktvertrag fuer den kuenftigen Umbau wird separat in `docs/archive/Medication Multi-Dose Implementation Roadmap.md` definiert.
+- Der geplante Multi-Dose-Produktvertrag fuer den kuenftigen Umbau wird separat in `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md` definiert.
 - Solange SQL, RPCs und UI noch nicht umgebaut sind, bleiben die Modul-Overviews in `docs/modules/*` absichtlich beim aktuellen Ist-Zustand.
 
 Dieses Dokument beschreibt das **finale, vollständige Spec Sheet** für das Medication-Management-Modul in MIDAS.  

@@ -276,7 +276,6 @@
       ingredient: row.ingredient,
       strength: row.strength,
       leaflet_url: row.leaflet_url,
-      dose_per_day: totalCount || Math.max(1, toIntOr(row.dose_per_day, 1)),
       stock_count: toIntOr(row.stock_count, 0),
       low_stock_days: toIntOr(row.low_stock_days, 0),
       active: row.active !== false,
@@ -336,10 +335,10 @@
       ...medicationBulletList,
       '',
       'Ich bitte um Ausstellung eines neuen Rezepts auf der e-Card.',
-      'Sollten noch Fragen offen sein, bitte ich um kurze Rueckmeldung.',
-      'Bisher wurden standardmaessig zwei Packungen je Medikament verordnet.',
+      'Sollten noch Fragen offen sein, bitte ich um kurze Rückmeldung.',
+      'Bisher wurden standardmässig zwei Packungen je Medikament verordnet.',
       '',
-      'Vielen Dank und freundliche Gruesse',
+      'Vielen Dank und freundliche Grüsse',
       'Stephan'
     ];
     const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
@@ -486,7 +485,7 @@
         ?.medications?.find((entry) => entry?.id === medId);
     const takenSlots = getTakenMedicationSlots(med);
     if (takenSlots.length !== 1) {
-      throw new Error('undoMedication ist nur fuer Medikamente mit genau einer bestaetigten Einnahme verfuegbar');
+      throw new Error('undoMedication ist nur für Medikamente mit genau einer bestätigten Einnahme verfügbar');
     }
     return await undoMedicationSlot(takenSlots[0].slot_id, { dayIso: normalizedDay, reason: reason || 'undo-med' });
   }
@@ -532,7 +531,7 @@
     const result = await callMedicationRpc('med_upsert_v2', medPayload, { reason: reason || 'upsert' });
     const scheduleSlots = Array.isArray(data.slots) && data.slots.length
       ? data.slots
-      : buildScheduleSlotsFromFrequency(data.dose_per_day ?? data.total_count ?? 1);
+      : buildScheduleSlotsFromFrequency(data.total_count ?? 1);
     await callMedicationRpc(
       'med_upsert_schedule_v2',
       {
@@ -777,7 +776,7 @@
       }));
       const hasInvalidQty = normalized.some((slot) => !Number.isFinite(slot.qty) || slot.qty <= 0);
       if (hasInvalidQty) {
-        throw new Error('Jeder Slot braucht eine gueltige Menge groesser als 0.');
+        throw new Error('Jeder Slot braucht eine gültige Menge grösser als 0.');
       }
       return normalized;
     };
@@ -1003,14 +1002,14 @@
       if (action === 'restock') {
         const raw = global.prompt
           ? global.prompt(
-              `Bestandsaenderung fuer ${entry.name || 'Medikation'} (z. B. 10 oder -5)`,
+              `Bestandsänderung für ${entry.name || 'Medikation'} (z. B. 10 oder -5)`,
               '10'
             )
           : null;
         if (raw === null) return;
         const delta = Number(raw.replace(',', '.'));
         if (!Number.isFinite(delta) || delta === 0) {
-          saveFeedback?.error({ statusEl, message: 'Ungueltige Menge fuer Restock.' });
+          saveFeedback?.error({ statusEl, message: 'Ungültige Menge für Restock.' });
           return;
         }
         return withBusy(target, async () => {
@@ -1029,7 +1028,7 @@
       if (action === 'set-stock') {
         const raw = global.prompt
           ? global.prompt(
-              `Neuer Bestand fuer ${entry.name || 'Medikation'}`,
+              `Neuer Bestand für ${entry.name || 'Medikation'}`,
               String(entry.stock_count ?? 0)
             )
           : null;
@@ -1081,7 +1080,7 @@
       if (action === 'delete') {
         const confirmed = global.confirm
           ? global.confirm(
-              `Medikament ${entry.name || ''} dauerhaft löschen? Diese Aktion kann nicht rueckgaengig gemacht werden.`
+              `Medikament ${entry.name || ''} dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
             )
           : true;
         if (!confirmed) return;

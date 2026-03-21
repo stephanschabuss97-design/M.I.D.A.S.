@@ -362,7 +362,6 @@
           .join(', ');
         detail.push(planSummary);
       } else if (Number.isFinite(med.total_count)) detail.push(`${med.total_count}x/Tag`);
-      else if (Number.isFinite(med.dose_per_day)) detail.push(`${med.dose_per_day}x/Tag`);
       if (med.with_meal) detail.push('mit Mahlzeit');
       if (detail.length) parts.push(`(${detail.join(', ')})`);
       return `- ${parts.join(' ')}`.trim();
