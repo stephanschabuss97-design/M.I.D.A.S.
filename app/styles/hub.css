@@ -1375,6 +1375,49 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   gap: var(--form-grid-gap);
 }
 
+.medication-slot-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.medication-slot-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.medication-slot-editor-list {
+  display: grid;
+  gap: 10px;
+}
+
+.medication-slot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(90px, 120px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.medication-slot-row .field-group {
+  margin: 0;
+}
+
+.medication-slot-row .btn {
+  align-self: stretch;
+}
+
+.medication-slot-row.is-fixed .btn {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .medication-cards-header {
   display: flex;
   align-items: baseline;
@@ -2080,6 +2123,42 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.4;
+}
+
+.medication-slot-list {
+  display: grid;
+  gap: 8px;
+}
+
+.medication-slot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+}
+
+.medication-slot-btn.is-open {
+  border-color: rgba(120, 170, 255, 0.28);
+}
+
+.medication-slot-btn.is-taken {
+  opacity: 0.72;
+  background: rgba(46, 125, 50, 0.16);
+  border-color: rgba(82, 186, 103, 0.28);
+}
+
+.medication-slot-btn-state {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.72;
 }
 
 

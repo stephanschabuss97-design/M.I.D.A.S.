@@ -142,7 +142,7 @@
       throw new Error('Supabase-Konfiguration fehlt');
     }
     const client = await ensure();
-    if (!client) throw new Error('Supabase Client nicht verfÜgbar');
+    if (!client) throw new Error('Supabase Client nicht verfuegbar');
     return client;
   };
 
@@ -350,8 +350,20 @@
     const rows = meds.map((med) => {
       const parts = [med.name || 'Medikation'];
       const detail = [];
+      const slots = Array.isArray(med.slots) ? med.slots.slice().sort((a, b) => a.sort_order - b.sort_order) : [];
       if (med.strength) detail.push(med.strength);
-      if (Number.isFinite(med.dose_per_day)) detail.push(`${med.dose_per_day}×/Tag`);
+      if (slots.length) {
+        const planSummary = slots
+          .map((slot) => {
+            const label = `${slot?.label || ''}`.trim() || 'Einnahme';
+            const qty = Number(slot?.qty) || 1;
+            return qty > 1 ? `${label} (${qty})` : label;
+          })
+          .join(', ');
+        detail.push(planSummary);
+      } else if (Number.isFinite(med.total_count)) detail.push(`${med.total_count}x/Tag`);
+      else if (Number.isFinite(med.dose_per_day)) detail.push(`${med.dose_per_day}x/Tag`);
+      if (med.with_meal) detail.push('mit Mahlzeit');
       if (detail.length) parts.push(`(${detail.join(', ')})`);
       return `- ${parts.join(' ')}`.trim();
     });
@@ -395,7 +407,7 @@
   const updateCkdBadge = () => {
     if (!refs?.ckdBadge) return;
     const stage = getDerivedCkdStage();
-    refs.ckdBadge.value = stage || '—';
+    refs.ckdBadge.value = stage || '--';
   };
 
   const setMedicationsField = (text, { derived = false } = {}) => {
@@ -462,7 +474,7 @@
   };
 
   const formatValue = (value) => {
-    if (value == null || value === '') return '—';
+    if (value == null || value === '') return '--';
     if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
     return String(value);
   };
@@ -478,9 +490,9 @@
     const rows = [
       ['Name', state.data.full_name],
       ['Geburtsdatum', state.data.birth_date],
-      ['Größe (cm)', state.data.height_cm],
+      ['Groesse (cm)', state.data.height_cm],
       ['CKD-Stufe (Lab)', getDerivedCkdStage()],
-      ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '??"'],
+      ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '--'],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],
       ['Protein Faktor', state.data.protein_factor_current != null ? formatFactor(state.data.protein_factor_current) : null],
       ['Protein Min (g/Tag)', state.data.protein_doctor_lock ? null : state.data.protein_target_min],
@@ -489,7 +501,7 @@
       ['Lifestyle', state.data.lifestyle_note],
       ['Arzt (Name)', state.data.primary_doctor_name],
       ['Arzt (E-Mail)', state.data.primary_doctor_email],
-      ['Aktualisiert', state.data.updated_at ? new Date(state.data.updated_at).toLocaleString('de-AT') : '??"'],
+      ['Aktualisiert', state.data.updated_at ? new Date(state.data.updated_at).toLocaleString('de-AT') : '--'],
     ];
     if (state.data.protein_doctor_lock) {
       rows.splice(6, 0,

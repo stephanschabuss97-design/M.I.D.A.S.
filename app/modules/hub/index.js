@@ -3425,8 +3425,8 @@
     if (targetAction === 'medication_confirm_all') {
       const medicationModule = global.AppModules?.medication;
       const loadMedicationForDay = medicationModule?.loadMedicationForDay;
-      const confirmMedication = medicationModule?.confirmMedication;
-      if (typeof loadMedicationForDay !== 'function' || typeof confirmMedication !== 'function') {
+      const confirmAllOpenMedicationSlots = medicationModule?.confirmAllOpenMedicationSlots;
+      if (typeof loadMedicationForDay !== 'function' || typeof confirmAllOpenMedicationSlots !== 'function') {
         return { handled: false, outcome: 'blocked_local', reason: 'medication-module-missing' };
       }
       const dayIso = getLocalTodayIso();
@@ -3437,19 +3437,15 @@
         return { handled: false, outcome: 'blocked_local', reason: 'medication-load-failed' };
       }
       const openMedicationIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
-        .filter((med) => med && med.id && med.active !== false && !med.taken)
+        .filter((med) => med && med.id && med.active !== false && med.state !== 'done')
         .map((med) => med.id);
       if (!openMedicationIds.length) {
         return { handled: false, outcome: 'blocked_local', reason: 'medication-none-open' };
       }
       try {
-        await Promise.all(
-          openMedicationIds.map((medId) =>
-            confirmMedication(medId, {
-              dayIso,
-              reason: 'text:intent-confirm-all',
-            })),
-        );
+        await confirmAllOpenMedicationSlots(dayIso, {
+          reason: 'text:intent-confirm-all',
+        });
       } catch (_) {
         return { handled: false, outcome: 'blocked_local', reason: 'medication-confirm-failed' };
       }

@@ -213,7 +213,7 @@
 
   const getOpenMedicationIds = (data) =>
     getActiveMedicationRows(data)
-      .filter((med) => !med?.taken)
+      .filter((med) => med?.state !== 'done')
       .map((med) => `${med?.id || ''}`.trim())
       .filter(Boolean);
 
@@ -251,6 +251,15 @@
     return Array.from(medicationDailyState.selection).filter((id) => openSet.has(id));
   };
 
+  const getSelectedOpenSlotCount = (data) => {
+    const selectedIds = new Set(getSelectedOpenIds(data));
+    const meds = getActiveMedicationRows(data).filter((med) => selectedIds.has(`${med?.id || ''}`.trim()));
+    return meds.reduce((sum, med) => {
+      const slots = Array.isArray(med?.slots) ? med.slots : [];
+      return sum + slots.filter((slot) => !slot?.is_taken).length;
+    }, 0);
+  };
+
   const updateMedicationBatchFooter = () => {
       const ui = medicationDailyState.elements;
       if (!ui?.footer) return;
@@ -258,7 +267,7 @@
       const activeRows = getActiveMedicationRows(data);
       const openIds = getOpenMedicationIds(data);
       const selectedIds = getSelectedOpenIds(data);
-      const selectedCount = selectedIds.length;
+      const selectedCount = getSelectedOpenSlotCount(data);
       const hasOpen = openIds.length > 0;
       const showFooter = activeRows.length && hasOpen;
 
@@ -267,7 +276,7 @@
         ui.actions.hidden = !hasOpen;
       }
       if (ui.confirmBtn) {
-        ui.confirmBtn.textContent = `Auswahl bestätigen (${selectedCount})`;
+        ui.confirmBtn.textContent = `Offene Einnahmen bestaetigen (${selectedCount})`;
         ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
       }
       if (!activeRows.length) {
@@ -298,7 +307,7 @@
     });
 
     listEl.addEventListener('click', (event) => {
-      const statusBtn = event.target.closest('[data-med-status-id]');
+      const statusBtn = event.target.closest('[data-med-slot-id]');
       if (statusBtn) {
         event.preventDefault();
         handleMedicationStatusToggle(statusBtn);
@@ -500,14 +509,45 @@
     const selectedIds = new Set(getSelectedOpenIds(data));
     const items = sortedMeds
       .map((med) => {
-        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage übrig` : '';
-        const statusText = daysLeft || '';
+        const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage uebrig` : '';
+        const progressText =
+          Number.isFinite(med.taken_count) && Number.isFinite(med.total_count)
+            ? `${med.taken_count}/${med.total_count}`
+            : '';
+        const statusText = [progressText, daysLeft].filter(Boolean).join(' | ');
         const detailText = [med.ingredient, med.strength].filter(Boolean).join(' - ');
         const medId = med.id || '';
-        const isTaken = !!med.taken;
+        const slots = Array.isArray(med.slots) ? med.slots.slice().sort((a, b) => a.sort_order - b.sort_order) : [];
+        const primarySlot = slots.length === 1 ? slots[0] : null;
+        const isTaken = med.state === 'done';
         const isSelected = selectedIds.has(medId);
         const isDisabled = medicationDailyState.busy || isTaken;
-        const checkLabel = isTaken ? 'Bereits genommen' : 'Auswählen';
+        const checkLabel = isTaken ? 'Bereits genommen' : 'Auswaehlen';
+        const slotHtml =
+          slots.length > 1
+            ? `
+                <div class="medication-slot-list">
+                  ${slots
+                    .map((slot) => {
+                      const slotTaken = !!slot.is_taken;
+                      const slotLabel = slot.qty > 1 ? `${slot.label} (${slot.qty})` : slot.label;
+                      return `
+                        <button
+                          type="button"
+                          class="medication-slot-btn ${slotTaken ? 'is-taken' : 'is-open'}"
+                          data-med-slot-id="${escapeAttr(slot.slot_id || '')}"
+                          data-med-slot-taken="${slotTaken ? '1' : '0'}"
+                          ${medicationDailyState.busy ? 'disabled' : ''}
+                        >
+                          <span>${escapeHtml(slotLabel)}</span>
+                          <span class="medication-slot-btn-state">${slotTaken ? 'Erledigt' : 'Offen'}</span>
+                        </button>
+                      `;
+                    })
+                    .join('')}
+                </div>
+              `
+            : '';
         return `
             <article class="medication-card ${med.low_stock ? 'is-low' : ''} ${isTaken ? 'is-taken' : ''} ${isSelected ? 'is-selected' : ''}" data-med-id="${escapeAttr(medId)}">
               <div class="medication-card-header">
@@ -517,7 +557,7 @@
                     data-med-select="${escapeAttr(medId)}"
                     ${isTaken ? 'checked' : isSelected ? 'checked' : ''}
                     ${isDisabled ? 'disabled' : ''}
-                    aria-label="${escapeAttr(`Medikation auswählen: ${med.name || 'Medikation'}`)}"
+                    aria-label="${escapeAttr(`Medikation auswaehlen: ${med.name || 'Medikation'}`)}"
                   >
                   <span class="sr-only">${escapeHtml(checkLabel)}</span>
                 </label>
@@ -525,19 +565,27 @@
                   <h4 class="medication-card-title">${escapeHtml(med.name || 'Medikation')}</h4>
                   ${statusText ? `<span class="medication-card-status">${escapeHtml(statusText)}</span>` : ''}
                 </div>
-                <button
-                  type="button"
-                  class="medication-card-status-slot status-glow ${isTaken ? 'ok' : 'neutral'}"
-                  data-med-status-slot
-                  data-med-status-id="${escapeAttr(medId)}"
-                  aria-label="${escapeAttr(isTaken ? 'Einnahme zurücknehmen' : 'Einnahme bestätigen')}"
-                >
-                  <svg class="medication-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
+                ${
+                  primarySlot
+                    ? `
+                        <button
+                          type="button"
+                          class="medication-card-status-slot status-glow ${isTaken ? 'ok' : 'neutral'}"
+                          data-med-slot-id="${escapeAttr(primarySlot.slot_id || '')}"
+                          data-med-slot-taken="${isTaken ? '1' : '0'}"
+                          aria-label="${escapeAttr(isTaken ? 'Einnahme zuruecknehmen' : 'Einnahme bestaetigen')}"
+                        >
+                          <svg class="medication-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </button>
+                      `
+                    : ''
+                }
               </div>
             ${detailText ? `<p class="medication-card-meta small">${escapeHtml(detailText)}</p>` : ''}
+            ${med.with_meal ? '<p class="medication-card-meta small">Mit Mahlzeit</p>' : ''}
+            ${slotHtml}
           </article>
         `;
       })
@@ -639,20 +687,20 @@
       uiError('Bitte anmelden, um Medikamente zu bestätigen.');
       return;
     }
-    const medId = btn.getAttribute('data-med-status-id');
-    if (!medId) return;
+    const slotId = btn.getAttribute('data-med-slot-id');
+    if (!slotId) return;
     const dayIso = todayStr();
-    const isTaken = btn.classList.contains('ok');
+    const isTaken = btn.getAttribute('data-med-slot-taken') === '1';
     medicationDailyState.dayIso = dayIso;
     withBusy(btn, true);
     try {
       if (isTaken) {
-        await medModule.undoMedication(medId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme zurückgenommen.');
+        await medModule.undoMedicationSlot(slotId, { dayIso, reason: 'capture-status-toggle' });
+        uiInfo('Einnahme zurueckgenommen.');
         feedbackApi?.feedback?.('medication:undo', { intent: true, source: 'user' });
       } else {
-        await medModule.confirmMedication(medId, { dayIso, reason: 'capture-status-toggle' });
-        uiInfo('Einnahme bestätigt.');
+        await medModule.confirmMedicationSlot(slotId, { dayIso, reason: 'capture-status-toggle' });
+        uiInfo('Einnahme bestaetigt.');
         feedbackApi?.feedback?.('medication:confirm', { intent: true, source: 'user' });
       }
       if (typeof medModule.invalidateMedicationCache === 'function') {
@@ -661,7 +709,7 @@
       await refreshMedicationDaily({ dayIso, reason: 'status-toggle', force: true });
     } catch (err) {
       uiError(err?.message || 'Aktion fehlgeschlagen.');
-      diag.add?.(`[capture:med] status toggle error med=${medId} ${err?.message || err}`);
+      diag.add?.(`[capture:med] status toggle error slot=${slotId} ${err?.message || err}`);
     } finally {
       withBusy(btn, false);
     }

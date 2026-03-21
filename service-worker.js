@@ -62,7 +62,10 @@ const getNavigateFallbackResponse = async (request) => {
 const isIncidentNotification = ({ tag = '', data = {} } = {}) => {
   const normalizedTag = String(tag || '');
   const type = String(data?.type || '');
-  return normalizedTag.startsWith('midas-incident-') || type === 'medication_morning' || type === 'bp_evening';
+  return normalizedTag.startsWith('midas-incident-')
+    || type === 'medication_morning'
+    || type === 'medication_daily_open'
+    || type === 'bp_evening';
 };
 const buildNotificationOptions = (payload = {}, fallback = {}) => {
   const data = payload.data || fallback.data || {};

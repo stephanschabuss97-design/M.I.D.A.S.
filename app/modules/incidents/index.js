@@ -12,7 +12,7 @@
   const doc = global.document;
   const diag = appModules.diag || global.diag || null;
 
-  const MED_PUSH_HOUR = 10;
+  const MED_PUSH_HOUR = 19;
   const BP_PUSH_HOUR = 20;
   const CHECK_INTERVAL_MS = 60 * 1000;
   const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -76,7 +76,7 @@
     if (!payload || !Array.isArray(payload.medications)) return null;
     const open = payload.medications
       .filter((med) => med && med.active !== false)
-      .filter((med) => !med.taken);
+      .filter((med) => med.state !== 'done');
     return open.length > 0;
   };
 
@@ -223,9 +223,9 @@
     if (shouldPushMed()) {
       await pushOnce({
         key: 'med',
-        type: 'medication_morning',
-        title: 'Medikation fuer heute offen',
-        body: 'Bitte die heutige Medikation jetzt bestaetigen.',
+        type: 'medication_daily_open',
+        title: 'Medikation heute noch offen',
+        body: 'Bitte die noch offenen Einnahmen fuer heute jetzt bestaetigen.',
       });
     }
 

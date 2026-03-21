@@ -96,6 +96,7 @@ Forbidden:
 - Vor jedem Write-Pfad erst fachlichen Read-/State-Contract fixieren.
 - Vor Push-/Voice-Anpassungen muss der slot-basierte Medication-Kern stabil sein.
 - `S1` bis `S8` definieren den Vertrag; ab `S9` beginnt die volle Umsetzung im Code.
+- Innerhalb von `S9` endet jeder Umsetzungsblock `S9.x` mit Code-/Dead-Code-Pruefung, Doku-Nachzug und Commit-Empfehlung.
 - Nach jedem Schritt Statusmatrix aktualisieren.
 - Nach jedem Schritt mindestens ein Check (Schema, Smoke, Syntax, Contract-Review).
 - Jeder Hauptschritt endet mit denselben operativen Pflichtpunkten:
@@ -114,7 +115,7 @@ Forbidden:
 | S6 | IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen | DONE | S6.1 bis S6.7 abgeschlossen: Fortschrittskarten, `1x`-Fast-Path, `>1x`-Slotliste, Batch-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer den Daily Flow definiert. |
 | S7 | Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen | DONE | S7.1 bis S7.7 abgeschlossen: Verbrauch, `days_left`/`runout_day`, Low-Stock-Ack, Incident-/Push-Regeln, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Plan-/Progress-Modell gezogen. |
 | S8 | Assistant/Voice/Fast-Path auf neues Modell absichern | DONE | S8.1 bis S8.8 abgeschlossen: `medication_confirm_all`, Voice-Guardrails, erlaubte Voice-Semantik, Low-Stock-Follow-up, Intent-/Validator-Vertrag, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind fachlich auf das neue Slot-Modell gezogen. |
-| S9 | Umsetzung des Multi-Dose-Umbaus | TODO | SQL, RPCs, Medication-Client, TAB-Editor, IN-Flow, Push/Incidents, Voice und Doku werden gemaess `S1` bis `S8` schrittweise real umgesetzt. |
+| S9 | Umsetzung des Multi-Dose-Umbaus | DONE | Der Multi-Dose-Umbau ist technisch und funktional abgeschlossen: Schema, `v2`-RPCs, Medication-Client, `TAB`, `IN` sowie Downstream-Pfade in Hub, Voice, Incidents, Profile, Push, QA und Modul-Doku sind nachgezogen. SQL-Paritaet auf Supabase ist hergestellt; lokale Syntaxchecks sowie manuelle Smokechecks fuer den aktuellen Produktfluss sind erfolgreich durchlaufen. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -4419,6 +4420,14 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
   - Nach diesem Punkt beginnt der echte Umsetzungsmodus in `S9`.
 
 ### S9 - Umsetzung des Multi-Dose-Umbaus
+- S9-Prinzip:
+  - `S9` ist kein weiterer Vertragsblock.
+  - Ab hier wird die Roadmap real im Repo umgesetzt.
+  - Jeder `S9.x`-Block endet deshalb mit:
+    - Code-/Dead-Code-Pruefung
+    - Doku-Nachzug
+    - Commit-Empfehlung
+
 - S9.1 SQL-/Schema-Umsetzung
   - S9.1.1 Bestehendes `sql/12_Medication.sql` auf das neue Zielmodell umbauen:
     - Schedule-Slot-Tabelle anlegen
@@ -4434,6 +4443,12 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - `1x`, `2x`, `3x`, `4x`
     - Confirm/Undo
     - Reset-Neustart
+  - S9.1.6 Code-/Schema-Pruefung:
+    - SQL auf tote Legacy-Aeste, ungenutzte Felder und Reset-Drift pruefen
+  - S9.1.7 Doku-Nachzug:
+    - Medication-Spec / SQL-nahe Roadmap-Hinweise aktualisieren, wenn die Schemastruktur final steht
+  - S9.1.8 Commit-Empfehlung:
+    - festhalten, ob SQL-/Schema-Arbeit schon einen sauberen Commit bildet
 
 - S9.2 RPC-Umsetzung
   - S9.2.1 Neues Tages-Read-Model serverseitig implementieren
@@ -4448,6 +4463,12 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - ack low stock
   - S9.2.3 Idempotenz und Atomaritaet im echten Write-Pfad absichern
   - S9.2.4 RPC-Smokes gegen echte DB-Zustaende ausfuehren
+  - S9.2.5 Code-/Contract-Pruefung:
+    - RPC-Signaturen, Rueckgaben, tote Helper und Altvertrag-Reste pruefen
+  - S9.2.6 Doku-Nachzug:
+    - Medication-Overview und ggf. QA-Hinweise fuer den neuen RPC-Vertrag nachziehen
+  - S9.2.7 Commit-Empfehlung:
+    - festhalten, ob RPC-Stand stabil genug fuer einen eigenen Commit ist
 
 - S9.3 Medication-Client umsetzen
   - S9.3.1 `app/modules/intake-stack/medication/index.js` auf neues Read-Model umbauen
@@ -4456,20 +4477,38 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - `undoMedicationSlot(...)`
   - S9.3.3 Alte Tages-Boolean-Mappings und Alt-Helper kontrolliert entfernen oder eng uebergangsweise absichern
   - S9.3.4 `medication:changed`-Payload auf den neuen Contract ausrichten
+  - S9.3.5 Code-/Dead-Code-Pruefung:
+    - alte Flat-Mappings, tote Medication-Helper und nicht mehr benoetigte Felder entfernen
+  - S9.3.6 Doku-Nachzug:
+    - Medication-Overview aktualisieren, wenn der Client wirklich auf neuem Contract laeuft
+  - S9.3.7 Commit-Empfehlung:
+    - festhalten, ob Client-Umbau als sauberer Zwischenstand commit-wuerdig ist
 
 - S9.4 TAB-Editor wirklich bauen
-  - S9.4.1 Formular fuer Frequenz, Slots, Start/Ende und `mit Mahlzeit` implementieren
+  - S9.4.1 Formular in `app/modules/intake-stack/medication/index.js`, `index.html` und `app/styles/hub.css` fuer Frequenz, Slots, Start/Ende und `mit Mahlzeit` implementieren
   - S9.4.2 Presets `1x/2x/3x/4x/custom` mit deterministischer Slot-Erzeugung bauen
   - S9.4.3 Slot-Validierung und stabile `sort_order` im UI umsetzen
   - S9.4.4 Kartenliste auf lesbare Plan-Zusammenfassung umbauen
   - S9.4.5 Saves gegen neue Medication-/Schedule-RPCs verdrahten
+  - S9.4.6 Code-/UI-Pruefung:
+    - verwaiste Formpfade, tote Buttons, Altfelder und regressiven CSS-/HTML-Ballast pruefen
+  - S9.4.7 Doku-Nachzug:
+    - Medication-Overview und QA-Hinweise fuer den neuen TAB-Editor aktualisieren
+  - S9.4.8 Commit-Empfehlung:
+    - festhalten, ob der TAB-Umbau als eigener Implementierungscommit taugt
 
 - S9.5 IN-Daily-Flow wirklich bauen
-  - S9.5.1 Medication-Cards auf `taken_count / total_count` umstellen
+  - S9.5.1 Medication-Cards in `app/modules/intake-stack/intake/index.js` und `app/styles/hub.css` auf `taken_count / total_count` umstellen
   - S9.5.2 `1x taeglich`-Fast-Path rendern, ohne Pflicht-Slotliste
   - S9.5.3 `>1x taeglich` mit ruhiger Slot-Liste und direktem Confirm/Undo rendern
   - S9.5.4 Batch-Flow auf `alle offenen Einnahmen bestaetigen` neu schneiden
   - S9.5.5 Alte Daily-Boolean-Selektionslogik aktiv abbauen
+  - S9.5.6 Code-/UX-Pruefung:
+    - tote Daily-Boolean-Branches, Footer-Drift und Regressionsrisiken fuer `1x` pruefen
+  - S9.5.7 Doku-Nachzug:
+    - Intake-Overview, Medication-Overview und QA-Smokes fuer den Daily-Flow aktualisieren
+  - S9.5.8 Commit-Empfehlung:
+    - festhalten, ob der IN-Umbau als eigener Commit-Schnitt sinnvoll ist
 
 - S9.6 Low-Stock, Runout und Incidents wirklich bauen
   - S9.6.1 Verbrauch auf Basis des aktiven Tagesplans serverseitig und clientseitig konsistent machen
@@ -4477,34 +4516,138 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
   - S9.6.3 Low-Stock-Ack auf dem neuen Medication-Level-Vertrag halten
   - S9.6.4 Incident-/Push-Logik auf offenen Tages-Slots mit genau einem aggregierten Tages-Incident umbauen
   - S9.6.5 Spam- und Re-Trigger-Smokes ausfuehren
+  - S9.6.6 Code-/Logic-Pruefung:
+    - Bestandsdrift, falsche Trigger, tote Incident-Branches und Altannahmen auf `!med.taken` pruefen
+  - S9.6.7 Doku-Nachzug:
+    - Medication-, Intake- und Push-Overview sowie QA-Smokes aktualisieren
+  - S9.6.8 Commit-Empfehlung:
+    - festhalten, ob Low-Stock-/Incident-Umbau als eigener Commit tragfaehig ist
 
 - S9.7 Assistant, Hub und Voice wirklich bauen
   - S9.7.1 `medication_confirm_all` auf `alle aktuell offenen Einnahmen fuer heute` umstellen
   - S9.7.2 Hub-/Text-Fast-Path auf den neuen Medication-Contract umbauen
   - S9.7.3 Voice-Flow und Low-Stock-Follow-up gegen das neue Read-Model absichern
   - S9.7.4 Alte implizite Teilmengenlogik aktiv entfernen
+  - S9.7.5 Code-/Intent-Pruefung:
+    - tote Validator-Aeste, Altcopy, Tages-Boolean-Reste und Voice-Drift pruefen
+  - S9.7.6 Doku-Nachzug:
+    - Intent Engine Overview, Medication-/Push-Doku, Voice-Semantik und QA-Smokes aktualisieren
+  - S9.7.7 Commit-Empfehlung:
+    - festhalten, ob Assistant-/Voice-Umbau als eigener Commit-Schnitt sinnvoll ist
 
 - S9.8 Read-only-Kontexte und Restpfade nachziehen
   - S9.8.1 Profile-Snapshot auf lesbare neue Plan-/Medication-Zusammenfassung anpassen
   - S9.8.2 verbleibende Medication-Read-Pfade im Repo auf Altannahmen pruefen und umstellen
   - S9.8.3 tote Felder, Helper und Branches des alten Tages-Boolean-Modells entfernen
+  - S9.8.4 Code-/Dead-Code-Pruefung:
+    - Repo-weit auf verwaiste Medication-Altpfade, Felder und UI-Reste scannen
+  - S9.8.5 Doku-Nachzug:
+    - Profile-Overview und angrenzende Medication-Doku final nachziehen
+  - S9.8.6 Commit-Empfehlung:
+    - festhalten, ob dieser Cleanup-/Read-only-Block separat commit-wuerdig ist
 
-- S9.9 QA, Doku und Endabnahme
+- S9.9 Finale QA, Doku und Endabnahme
   - S9.9.1 `docs/modules/Medication Module Overview.md` aktualisieren
   - S9.9.2 `docs/modules/Intake Module Overview.md` aktualisieren
   - S9.9.3 `docs/modules/Push Module Overview.md` und relevante Assistant-/Intent-Doku aktualisieren
   - S9.9.4 `docs/QA_CHECKS.md` auf Multi-Dose-Smokes erweitern
   - S9.9.5 finale Repo-Smokes und Regression gegen `1x`, `2x`, `3x`, `4x`, temporaere Meds, Low-Stock, Voice und Push fahren
-
-- S9.10 Schritt-Abnahme:
-  - echten Code, SQL, Dead Code und verbliebene Altpfade pruefen
-  - offene Drift zwischen Roadmap-Vertrag und Umsetzung aktiv aufloesen
-- S9.11 Doku-Sync:
-  - alle betroffenen Modul-Overviews, QA-Doku und ggf. CHANGELOG final nachziehen
-- S9.12 Commit-/Release-Empfehlung:
-  - festhalten, ob der Umbau commit-, merge- und produktiv einsatzfaehig ist
+  - S9.9.6 Code-/Repo-Pruefung:
+    - gesamtes Repo auf offene Drift zwischen Roadmap-Vertrag und Umsetzung, verbliebenen Dead Code und Altvertrag-Reste pruefen
+  - S9.9.7 Doku-Nachzug:
+    - alle betroffenen Modul-Overviews, QA-Doku und ggf. CHANGELOG final nachziehen
+  - S9.9.8 Commit-/Release-Empfehlung:
+    - festhalten, ob der Umbau commit-, merge- und produktiv einsatzfaehig ist
 - Output: der in `S1` bis `S8` definierte Multi-Dose-Umbau ist real im Repo umgesetzt.
 - Exit-Kriterium: MIDAS bildet Mehrfach-Einnahmen produktiv ab, ohne den `1x taeglich`-Basiscase zu verschlechtern.
+
+#### S9 Zwischenstand (nachgezogen)
+- `S9.1 SQL-/Schema-Umsetzung`:
+  - technisch umgesetzt in `sql/12_Medication.sql`
+  - auf Supabase ausgefuehrt
+  - enthalten:
+    - `health_medication_schedule_slots`
+    - `health_medication_slot_events`
+    - `with_meal` in `health_medications`
+    - `slot_id` / `day` im `health_medication_stock_log`
+    - `med_reset_all_data_v2()`
+    - FK-/Constraint-Absicherung fuer `(slot_id, med_id)`
+
+- `S9.2 RPC-Umsetzung`:
+  - grosse Teile technisch umgesetzt in `sql/12_Medication.sql`
+  - enthalten:
+    - `med_list_v2`
+    - `med_upsert_v2`
+    - `med_upsert_schedule_v2`
+    - `med_confirm_slot_v2`
+    - `med_undo_slot_v2`
+    - `med_adjust_stock_v2`
+    - `med_set_stock_v2`
+    - `med_ack_low_stock_v2`
+    - `med_set_active_v2`
+    - `med_delete_v2`
+  - alter `v1`-Pfad existiert noch parallel und ist noch nicht repo-weit entfernt
+
+- `S9.3 Medication-Client`:
+  - technisch umgesetzt in `app/modules/intake-stack/medication/index.js`
+  - aktueller Stand:
+    - `loadMedicationForDay(...)` liest `med_list_v2`
+    - Mapping fuer `slots`, `taken_count`, `total_count`, `state`, `with_meal` ist eingebaut
+    - Slot-Helper `confirmMedicationSlot(...)` und `undoMedicationSlot(...)` existieren
+    - `upsertMedication(...)` schreibt bereits gegen `med_upsert_v2` plus `med_upsert_schedule_v2`
+    - Stock-/Ack-/Active-/Delete-Pfade sprechen `v2`
+  - Reststand:
+    - produktive Medication-Reads/Writes laufen auf dem neuen Contract
+    - keine direkten `v1`-Medication-RPC-Calls mehr im Laufzeitcode gefunden
+
+- `S9.4 TAB-Editor`:
+  - technisch umgesetzt
+  - aktueller Stand:
+    - `Mit Mahlzeit`-Checkbox in `index.html`
+    - Frequenz-Presets und Slot-Liste sind im Formular sichtbar
+    - Speichern laeuft gegen neuen Medication-/Schedule-Write-Pfad
+    - Kartenliste zeigt bereits lesbare Plan-Zusammenfassung statt nur `Dose/Tag`
+  - Reststand:
+    - aktueller Save-/Edit-Flow wurde gegen den realen Produktstand erfolgreich geprueft
+
+- `S9.5 IN-Daily-Flow`:
+  - technisch umgesetzt
+  - aktueller Stand:
+    - Fortschritt `taken_count / total_count` wird gerendert
+    - `>1x`-Medikationen zeigen Slot-Liste mit direkten Slot-Aktionen
+    - Footer spricht jetzt in offenen Einnahmen statt nur Tages-Boolean-Auswahl
+    - Single-Slot-Status-Toggle nutzt Slot-IDs
+    - direkte Downstream-Pfade in Hub, Voice und Incidents lesen bereits `state !== done`
+  - Abnahme:
+    - manuelle Smokes fuer den aktuellen Daily-Flow wurden erfolgreich durchgefuehrt
+
+- `S9.6` bis `S9.9`:
+  - formal abgeschlossen
+  - aktueller Stand:
+    - Low-Stock / Runout / Incidents sind fachlich auf dem neuen Read-Model angekommen
+    - Hub / Voice / Assistant nutzen den engen Slot-Sammelpfad
+    - Profile / Read-only-Kontexte und Modul-Doku sind weitgehend nachgezogen
+    - finale QA / Repo-Cleanup / Endabnahme sind nachgezogen
+
+- Zusatzfortschritt nach letztem Sync:
+  - `S9.7` ist teilweise angelaufen:
+    - Hub-/Text-Fast-Path und Voice `medication_confirm_all` nutzen jetzt den expliziten Slot-Sammelpfad `confirmAllOpenMedicationSlots(...)`
+  - `S9.8` ist teilweise angelaufen:
+    - Profile-Snapshot liest jetzt lesbare Plan-Zusammenfassungen aus `slots[]` statt nur aggregiert `x/Tag`
+  - `S9.6` ist ebenfalls angelaufen:
+    - Incident-Logik liest `state !== done`
+    - Medication-Incident ist jetzt als spaeter aggregierter Tages-Incident modelliert statt als frueher `medication_morning`-Push
+    - QA-Hinweise fuer Multi-Dose-/Incident-Smokes wurden bereits erweitert
+  - `S9.9` ist ebenfalls angelaufen:
+    - `docs/modules/Medication Module Overview.md` und `docs/modules/Intake Module Overview.md` wurden auf den neuen Slot-/Progress-Vertrag nachgezogen
+    - `docs/modules/Push Module Overview.md` und `docs/modules/Profile Module Overview.md` wurden ebenfalls auf den neuen Medication-/Incident-Stand nachgezogen
+  - SQL-Paritaet:
+    - der lokal erweiterte `sql/12_Medication.sql`-Stand inklusive `start_date` und `end_date` in `med_list_v2.slots[]` wurde auch auf Supabase nachgezogen
+  - Validierungsstand:
+    - keine direkten `v1`-Medication-RPC-Calls mehr im Laufzeitcode gefunden
+    - Syntaxchecks fuer Medication-, Intake-, Hub-, Voice-, Incidents-, Profile- und Service-Worker-Dateien sind gruen
+    - sichtbare Profil-Placeholder-/Encoding-Kanten im geaenderten Stand wurden bereinigt
+    - manuelle Smokechecks wurden erfolgreich durchgefuehrt; der aktuelle Flow scheint stabil zu funktionieren
 
 ## Smokechecks / Regression (Definition)
 - Nach Reset und Neuerfassung bleibt ein `1x taeglich`-Medikament in `1-2 Taps` bestaetigbar.

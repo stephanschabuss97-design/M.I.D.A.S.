@@ -1358,8 +1358,10 @@ Regression
 **Scope:** Tablettenmanager (IN/TAB) inklusive Supabase-RPCs, Low-Stock-Box, Safety-Hinweis, CRUD-Formular und Kartenaktionen (Restock/Set/Archive/Delete).
 
 **Smoke**
-- [ ] IN-Tab: Toggle fÃ¼r ein aktives Medikament bestÃ¤tigt die Einnahme (Toast + `medication:changed`), zweiter Klick zeigt Undo-Dialog und stellt den Bestand wieder her.
+- [ ] IN-Tab: `1x taeglich` bleibt kompakt; Toggle bestaetigt die Einnahme (Toast + `medication:changed`), zweiter Klick macht denselben Slot rueckgaengig und stellt den Bestand wieder her.
+- [ ] IN-Tab: `>1x taeglich` zeigt Fortschritt `taken_count / total_count` und erlaubt Confirm/Undo pro Slot ohne Tagesdrift.
 - [ ] Low-Stock-Box erscheint, sobald `days_left <= low_stock_days`; `Erledigt` setzt `med_ack_low_stock` und blendet die Box aus.
+- [ ] Medication-Incident feuert hoechstens einmal pro Kalendertag erst am spaeten Tages-Schwellenwert fuer offene Einnahmen.
 - [ ] Safety-Hinweis springt auf, wenn der Vortag offene Einnahmen hat; Button setzt Datum auf gestern und triggert `maybeRefreshForTodayChange`.
 - [ ] TAB: Neues Medikament anlegen, bestehendes bearbeiten, Speichern deaktiviert/aktiviert den Button korrekt und aktualisiert die Kartenliste ohne Reload.
 - [ ] Kartenaktionen: `Bestand +/-`, `Bestand setzen`, `Archivieren/Reaktivieren` und `Loeschen` fÃ¼hren jeweils zur erwarteten RPC-Aktion und reloaden die Liste.
@@ -1368,7 +1370,7 @@ Regression
 - [ ] Touch-/Diag-Log enthÃ¤lt `[capture:med] refresh â€¦`, `confirm`, `undo`, `low-stock ack` und `safety pending/cleared` EintrÃ¤ge; fehlende Arzt-Mail erzeugt genau einen Warnhinweis.
 - [ ] Manuelles Aktualisieren nutzt den Cache (kein doppelter RPC, solange DayIso unverÃ¤ndert bleibt); `medication:changed` mit passendem `dayIso` aktualisiert die Liste sofort.
 - [ ] Auth-Guard blockiert alle RPCs im IN/TAB-Panel, wenn der Nutzer abgemeldet ist (Placeholder-Texte + Login-Overlay erst bei Aktionen).
-- [ ] TAB-Formular Ã¼bernimmt `low_stock_days`, `dose_per_day` und `active` korrekt; invalides Delta/Stock wird abgefangen (Status-Text, kein RPC).
+- [ ] TAB-Formular uebernimmt `low_stock_days`, Frequenz/Slots, `mit Mahlzeit` und `active` korrekt; invalides Delta/Stock oder ungueltige Slot-Mengen werden abgefangen.
 
 **Regression**
 - [ ] Capture-Wasser/Salz/Protein-Flows laufen unverÃ¤ndert (keine zusÃ¤tzlichen `[capture] refresh` beim Speichern).

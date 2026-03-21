@@ -1,9 +1,9 @@
 # Medication Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Tablettenmanager im Intake-Panel (Daily Batch) und TAB-Panel (Medikationsverwaltung).
-- Rolle: Ergaenzt Intake um pharmakologische Daten; liefert Events fuer andere Module.
-- Abgrenzung: Eigenstaendiges Modul; Intake konsumiert es nur ueber Events/RPCs.
+- Zweck: Tablettenmanager im Intake-Panel (IN) und TAB-Panel (Medikationsverwaltung).
+- Rolle: Verwaltet Medikations-Stammdaten, Tagesplan, Slot-Fortschritt, Bestand und Low-Stock-Hinweise.
+- Abgrenzung: Eigenstaendiges Modul; Intake, Hub, Voice und Profile konsumieren es ueber Events und Modul-API.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
@@ -12,9 +12,9 @@ Related docs:
 
 ## 1. Zielsetzung
 
-- Problem: Tagesbasierte Medikation soll ohne SQL oder manuelle Tabellenpflege funktionieren.
-- Benutzer: Primär Patient (IN/TAB), indirekt Arzt via Warnhinweise.
-- Nicht-Ziel: Kein Arzt-Workflow, keine externen Benachrichtigungen.
+- Problem: Medikation soll im Alltag mit `1x` bis `nx` taeglich ohne externe Planungssoftware funktionieren.
+- Benutzer: Primaer Patient (IN/TAB), indirekt Arzt ueber Hinweise und Read-only-Kontexte.
+- Nicht-Ziel: Kein klinischer Medikationsplaner, kein externer Bestell- oder Arzt-Workflow.
 
 ---
 
@@ -22,144 +22,137 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/intake-stack/medication/index.js` | Client-API, RPC Loader, Cache, TAB-UI. |
-| `app/modules/intake-stack/intake/index.js` | IN-Toggles, Low-Stock Box (nutzt `AppModules.medication`). |
-| `app/styles/hub.css` | Layout/Styles Tablettenmanager. |
-| `sql/12_Medication.sql` | Tabellen + RPCs (`med_list`, `med_upsert`, `med_confirm_dose`, `med_undo_dose`, `med_adjust_stock`, `med_set_stock`, `med_ack_low_stock`, `med_set_active`, `med_delete`). |
-| `docs/Medication Management Module Spec.md` | Spezifikation & Roadmap. |
-| `docs/QA_CHECKS.md` | QA Pack (Phase E). |
+| `app/modules/intake-stack/medication/index.js` | Client-API, `v2`-RPC Loader, Slot-Helper, Cache, TAB-UI. |
+| `app/modules/intake-stack/intake/index.js` | IN-Slot-Aktionen, Batch-Confirm, Low-Stock Box (nutzt `AppModules.medication`). |
+| `app/modules/hub/index.js` | lokaler Text-/Hub-Fast-Path fuer `medication_confirm_all`. |
+| `app/modules/assistant-stack/voice/index.js` | Voice-Fast-Path fuer `medication_confirm_all` plus Low-Stock-Follow-up. |
+| `app/modules/profile/index.js` | Read-only-Zusammenfassung fuer Medikation im Profil. |
+| `app/modules/incidents/index.js` | aggregierter Medication-Incident fuer spaete offene Tages-Einnahmen. |
+| `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
+| `sql/12_Medication.sql` | Tabellen plus `v2`-RPCs fuer Slot-/Progress-Modell; `v1` bleibt noch parallel als Legacy-Pfad bestehen. |
+| `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
 
 ---
 
 ## 3. Datenmodell / Storage
 
-- `health_medications`: Stammdaten + Bestaende, Low-Stock-Felder, `active` Flag.
-- `health_medication_doses`: tägliche Einnahmen je Nutzer/Medikation (unique per day).
-- `health_medication_stock_log`: optionaler Verlauf für Bestandskorrekturen.
-- Beziehungen: Doses & Log referenzieren `health_medications`.
-- Besonderheiten: Low-Stock-Acknowledgements (`low_stock_ack_day/_stock`) verhindern Doppeleinblendung.
+- `health_medications`: Stammdaten, Bestaende, `with_meal`, Low-Stock-Felder, `active`.
+- `health_medication_schedule_slots`: geplanter Tagesplan pro Medication mit `sort_order`, `qty_per_slot`, `start_date`, `end_date`.
+- `health_medication_slot_events`: bestaetigte Slot-Einnahmen je Nutzer/Medication/Tag.
+- `health_medication_stock_log`: Verlauf fuer Confirm/Undo und Bestandskorrekturen; kann `slot_id` und `day` mitfuehren.
+- `health_medication_doses`: alter Tages-Boolean-/Aggregatpfad, bleibt waehrend des Umbaus nur noch als Legacy-Bestand bestehen.
+- `med_list_v2` ist das operative Read-Model fuer Medication im Frontend.
 
 ---
 
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
-- Modul lädt automatisch über `app/modules/intake-stack/medication/index.js` (Script-Tag).
-- Aktiv sobald Supabase Auth Stage ≥ INIT_MODULES.
-- Intake subscribe auf `medication:changed`.
+- Modul laedt ueber `app/modules/intake-stack/medication/index.js`.
+- Aktiv sobald Supabase Auth Stage `INIT_MODULES` erreicht ist.
+- Intake hoert auf `medication:changed`.
 
 ### 4.2 User-Trigger
-- IN-Tab: Checkbox-Auswahl pro Medikament + Batch-Footer (Auswahl bestaetigen/Alle genommen).
-- Status-Row nach Batch-Save mit Rueckgaengig (zeitlich begrenzt).
+- IN-Tab: offene Medikamente koennen gesammelt bestaetigt werden; Mehrfach-Medikation zeigt direkte Slot-Buttons.
+- `1x taeglich` bleibt als kompakter Status-Button im Kartenkopf erhalten.
 - Low-Stock Ack im IN-Tab.
-- TAB-Formular Submit/Reset.
+- TAB-Formular mit Frequenz-Presets, Slot-Liste, `Mit Mahlzeit`, `Startdatum`, Submit/Reset.
 - Kartenaktionen: Restock, Set Stock, Toggle Active, Delete.
 
 ### 4.3 Verarbeitung
-- Client-Validierungen (Name Pflicht, Delta ≠ 0, Stock ≥ 0).
-- Cache & Events sichern, dass UI konsistent bleibt.
+- Client-Validierungen: Name Pflicht, Delta ungleich `0`, Stock `>= 0`.
+- Slot-Validierung vor dem Speichern: mindestens ein Slot, gueltige Mengen, stabile Reihenfolge.
+- Cache und Events sichern, dass UI konsistent bleibt.
 
 ### 4.4 Persistenz
-- RPCs schreiben in `health_medications` & `health_medication_doses`.
-- `med_upsert` Upsert; `med_confirm_dose/undo` passen Dosen & Bestaende an.
-- `med_adjust_stock` und `med_set_stock` loggen in `health_medication_stock_log`.
+- `med_list_v2` liefert Medication, Progress (`taken_count`, `total_count`, `state`) und `slots[]`.
+- `med_upsert_v2` speichert Stammdaten; `med_upsert_schedule_v2` schreibt den aktiven Slot-Plan.
+- `med_confirm_slot_v2` und `med_undo_slot_v2` buchen genau einen Slot und passen den Bestand an.
+- `med_adjust_stock_v2` und `med_set_stock_v2` loggen in `health_medication_stock_log`.
+- `med_ack_low_stock_v2`, `med_set_active_v2`, `med_delete_v2` bilden die restlichen Write-Pfade im neuen Vertrag.
 
 ---
 
 ## 5. UI-Integration
 
-- IN-Panel (Intake) mit Medikamenten-Checkboxen + Batch-Footer (Actions/Status).
-- TAB-Panel (Intake Subtab "TAB") mit Formular + Kartenliste.
+- IN-Panel mit Progress-Anzeige, Slot-Buttons bei `>1x` und Batch-Footer fuer offene Einnahmen.
+- TAB-Panel mit Frequenz-/Slot-Editor, `Mit Mahlzeit`, `Startdatum` und Kartenliste.
 - Low-Stock-Box sichtbar, wenn Daten vorhanden.
 
 ---
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Aktuell keine dedizierte Arztansicht; Doctor Panel könnte später `med_list` konsumieren.
-- Low-Stock-Box zeigt Arzt-Mail zur Kontaktaufnahme (aus Profil).
+- Aktuell keine dedizierte Arztansicht; spaetere Read-only-Pfade sollten `med_list_v2` oder ein separates Read-Model nutzen.
+- Low-Stock-Box zeigt Arzt-Mail zur Kontaktaufnahme aus dem Profil.
+- Profil-Snapshot rendert bereits lesbare Plan-Zusammenfassungen aus `slots[]`.
 
 ---
 
 ## 7. Fehler- & Diagnoseverhalten
 
-- Typische Fehler: Nicht authentifiziert, RPC schlägt fehl, fehlende Arzt-Mail.
-- Logging: `[capture:med] refresh/confirm/undo/ack` in diag.
-- Fallback: Placeholder-Texte, Buttons disabled, kein Silent Failure.
-- Fehlende Daten → IN zeigt Hinweis „Bitte anmelden…“ oder „Keine Daten vorhanden“.
+- Typische Fehler: nicht authentifiziert, RPC schlaegt fehl, fehlende Arzt-Mail, ungueltiger Slot-Plan.
+- Logging: `[capture:med] refresh/confirm/undo/ack` in `diag`.
+- Fallback: Placeholder-Texte, disabled Buttons, kein Silent Failure.
+- Fehlende Daten fuehren zu klaren Hinweisen statt stummer Teil-UI.
 
 ---
 
 ## 8. Events & Integration Points
 
 - Custom Event `medication:changed { reason, dayIso, data }`.
-- Intake reagiert (IN), Profil-Änderungen triggen Low-Stock-Kontakt Update.
-- `AppModules.medication` exportiert API für andere Module (z. B. Trendpilot).
+- Intake reagiert im Daily Flow; Profil-Aenderungen aktualisieren Low-Stock-Kontaktpfade.
+- `AppModules.medication` exportiert Slot- und Sammel-Helper fuer andere Module.
 
 ---
 
 ## Intent / Voice Integration
 
 - Status:
-  - Produktiver lokaler Medikations-Fast-Path ist derzeit auf die taegliche Sammelbestaetigung offener Medikation begrenzt.
+  - Produktiver lokaler Medikations-Fast-Path ist auf die Sammelbestaetigung aller aktuell offenen Einnahmen fuer heute begrenzt.
 - Unterstuetzte Intents:
   - `medication_confirm_all`
 - Voice Entry Points:
-  - Produktiv nur ueber den bestehenden Hero-Hub Push-to-talk-Flow und den gemeinsamen Intent-Surface.
+  - Produktiv ueber Hero-Hub Push-to-talk und den gemeinsamen Intent-Surface.
 - Allowed Actions:
   - Keine generische Allowed-Action fuer das Modul.
-  - Produktiv existiert ein enger lokaler Spezialpfad fuer `medication_confirm_all`, der ueber `loadMedicationForDay(...)` und `confirmMedication(...)` aufloest.
-- Vorbefuellbare Parameter:
-  - Derzeit keine produktiven Intent-/Voice-Prefills.
+  - Produktiv existiert ein enger lokaler Spezialpfad fuer `medication_confirm_all`, der ueber `loadMedicationForDay(...)` und `confirmAllOpenMedicationSlots(...)` aufloest.
 - Nicht erlaubte Operationen:
   - Kein freier Medikations-Write per Voice.
-  - Kein Restock, `set_stock`, Aktivieren/Archivieren oder Loeschen per Intent-/Voice-Fast-Path.
-  - Kein Medication-Reorder-Senden ohne separaten Workflow-Vertrag.
-- Hinweise / offene Punkte:
-  - Pflegehinweis fuer spaetere Satz-Ergaenzungen:
-    - Beispiele und Betriebsueberblick: `docs/Voice Command Semantics.md`
-    - produktive Match-Regeln liegen in `app/modules/assistant-stack/intent/rules.js`
-    - robuste Transkript-/Oberflaechen-Normalisierung liegt in `app/modules/assistant-stack/intent/normalizers.js`
-  - Low-Stock-UI, Arztkontakt und Reorder-Vorstufen existieren bereits im Modul und muenden heute in einen engen lokalen Reorder-Startvertrag.
-  - Der derzeitige Reorder-nahe Pfad bleibt lokal und UI-confirmed; `mailto:`-Start, `ackLowStock(...)` und Low-Stock-Hinweis werden nicht als Versandnachweis oder Pending-Context-Confirm modelliert.
-  - Das Modul traegt jetzt einen lokalen Reorder-Start-Contract mit expliziten Guard-Reasons fuer den Mailto-Pfad; er bleibt ausserhalb von `actions.js`, `allowed-actions.js` und Pending-Context-Confirms.
-  - Die Low-Stock-UI unterscheidet jetzt sichtbar zwischen lokal verfuegbarem Reorder-Start, lokal angestossenem `reorder_prompted` und nicht verfuegbarem Kontaktpfad.
-  - Vor dem Mailto-Start gibt es jetzt einen engen lokalen Zwei-Schritt-Confirm im Low-Stock-UI; auch danach bleibt der Zustand unterhalb eines behaupteten Versandnachweises.
-  - Zusaetzlich schuetzt die UI den lokalen Mailto-Start per kurzem Lock/Cooldown gegen unmittelbares Doppel-Oeffnen; das ist nur lokaler Doppelklick-Schutz, kein Versandtracking.
-  - Voice traegt jetzt zusaetzlich einen engen ephemeren Low-Stock-Follow-up nach erfolgreichem `medication_confirm_all`:
-    - nur bei frischem realem `low_stock`
-    - nur `ja` / `nein`
-    - `ja` fuehrt ausschliesslich in denselben lokalen Reorder-Startvertrag
-    - kein freier Reorder-Dialog, kein Versand-/Bestellstatus und kein persistenter Resume-Context
-  - Future Hook: spaeterer Node-/Shortcut-Anschluss hoechstens oberhalb desselben lokalen Reorder-Starts und nur ohne neue offene Reorder-Session.
+  - Kein Restock, `set_stock`, Aktivieren/Archivieren oder Loeschen per Voice-Fast-Path.
+  - Keine freie Slot-Auswahl oder Teilmengen-Sprache.
+- Hinweise:
+  - Low-Stock-Reorder bleibt lokal, guard-railed und UI-confirmed.
+  - Voice kann nach erfolgreichem `medication_confirm_all` einen engen ephemeren Low-Stock-Follow-up tragen.
 
 ---
 
 ## 9. Erweiterungspunkte / Zukunft
 
-- Geplante Komfort-Buttons (+28/+56), Bulk-Aktionen.
+- Plan-Editor weiter haerten (`custom`, Start-/Ende-Logik, Edit-Kanten).
+- Komfort-Buttons (+28/+56) fuer Bestand.
 - E-Mail/Push-Reminder optional.
-- Playwright-Szenarien für UI-Smoke.
+- Playwright-Szenarien fuer UI-Smokes.
 
 ---
 
 ## 10. Feature-Flags / Konfiguration
 
-- Derzeit keine dedizierten Flags; modul deaktivierbar indem Script entfernt wird.
-- Low-Stock-Schwellen user-spezifisch (Feld `low_stock_days`).
+- Derzeit keine dedizierten Flags; Modul deaktivierbar, indem das Script nicht geladen wird.
+- Low-Stock-Schwellen bleiben nutzerspezifisch (`low_stock_days`).
 
 ---
 
 ## 11. QA-Checkliste
 
-- Siehe `docs/QA_CHECKS.md` Phase E (Smoke/Sanity/Regression).
-- Fokus: Toggles, Low-Stock Box, TAB CRUD, Kartenaktionen, Logging.
+- Siehe `docs/QA_CHECKS.md` Phase E.
+- Fokus: `1x`-Fast-Path, `>1x`-Slot-Confirm/Undo, Low-Stock Box, TAB CRUD, Kartenaktionen, Logging.
 
 ---
 
 ## 12. Definition of Done
 
-- Module lädt ohne Errors.
-- Supabase RPCs + RLS aktiv.
-- IN/TAB Panels reflekten Änderungen unmittelbar.
-- Dokumentation (Spec, Overview, QA) aktuell; Tests durchgeführt.
+- Modul laedt ohne Errors.
+- `v2`-RPCs und RLS sind aktiv.
+- IN/TAB spiegeln Aenderungen unmittelbar.
+- Dokumentation, QA und Downstream-Read-Pfade sprechen denselben Slot-/Progress-Vertrag.
