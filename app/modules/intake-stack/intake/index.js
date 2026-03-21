@@ -1426,6 +1426,11 @@
         totals,
         logged: true,
       });
+      global.AppModules?.hub?.applyAssistantIntakeSnapshot?.({
+        dayIso,
+        logged: true,
+        totals: cloneIntakeTotals(totals),
+      });
       const needsLifestyle = dayIso === todayStr();
       requestUiRefresh({
         reason: 'capture:intake',
@@ -1509,6 +1514,11 @@
         dayIso,
         totals,
         logged: true,
+      });
+      global.AppModules?.hub?.applyAssistantIntakeSnapshot?.({
+        dayIso,
+        logged: true,
+        totals: cloneIntakeTotals(totals),
       });
       const needsLifestyle = dayIso === todayStr();
       requestUiRefresh({

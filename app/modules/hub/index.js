@@ -112,6 +112,7 @@
   let openDoctorInboxPanelWithGuard = null;
   let assistantSurfaceUnsubscribe = null;
   let hubDashboardCtrl = null;
+  let dashboardIntakeRefreshBound = false;
   const aura3dApi = global.AppModules?.hubAura3D || null;
   let aura3dCleanup = null;
   const auraState = {
@@ -1640,6 +1641,28 @@
     updateAssistantPill('protein', proteinText, logged);
   };
 
+  const applyAssistantIntakeSnapshot = (snapshot, { profile = null } = {}) => {
+    if (!snapshot?.totals) return false;
+    const resolvedProfile = profile || getAssistantProfileSnapshot();
+    renderAssistantIntakeTotals(snapshot);
+    renderAssistantContextExpandable(snapshot, resolvedProfile);
+    if (assistantChatCtrl?.context) {
+      assistantChatCtrl.context = {
+        ...assistantChatCtrl.context,
+        intake: snapshot,
+        profile: resolvedProfile || assistantChatCtrl.context.profile || null,
+      };
+    }
+    if (hubDashboardCtrl?.context) {
+      hubDashboardCtrl.context = {
+        ...hubDashboardCtrl.context,
+        intake: snapshot,
+        profile: resolvedProfile || hubDashboardCtrl.context.profile || null,
+      };
+    }
+    return true;
+  };
+
   const renderAssistantAppointments = (items) => {
     const renderInto = (refs) => {
       if (!refs?.container) return;
@@ -2002,6 +2025,25 @@
         if (dashboardState.open) closeDashboard();
       },
     });
+    if (!dashboardIntakeRefreshBound) {
+      dashboardIntakeRefreshBound = true;
+      doc?.addEventListener('capture:intake-changed', (event) => {
+        const intakeSnapshot = event?.detail
+          ? {
+              dayIso: event.detail.dayIso || null,
+              logged: event.detail.logged !== false,
+              totals: event.detail.totals || null,
+            }
+          : null;
+        applyAssistantIntakeSnapshot(intakeSnapshot);
+        refreshAssistantContext({
+          reason: 'capture:intake-changed',
+          forceRefresh: false,
+        })?.catch?.((err) => {
+          diag.add?.('[hub-dashboard] intake context refresh err: ' + (err?.message || err));
+        });
+      });
+    }
     setAssistantCopyButtonState('idle');
   };
 
@@ -2549,40 +2591,6 @@
             { reason: 'profile:changed' },
           );
         }
-      });
-      doc?.addEventListener('capture:intake-changed', (event) => {
-        const intakeSnapshot = event?.detail
-          ? {
-              dayIso: event.detail.dayIso || null,
-              logged: event.detail.logged !== false,
-              totals: event.detail.totals || null,
-            }
-          : null;
-        if (intakeSnapshot?.totals) {
-          const profile = getAssistantProfileSnapshot();
-          renderAssistantIntakeTotals(intakeSnapshot);
-          renderAssistantContextExpandable(intakeSnapshot, profile);
-          if (assistantChatCtrl?.context) {
-            assistantChatCtrl.context = {
-              ...assistantChatCtrl.context,
-              intake: intakeSnapshot,
-              profile: profile || assistantChatCtrl.context.profile || null,
-            };
-          }
-          if (hubDashboardCtrl?.context) {
-            hubDashboardCtrl.context = {
-              ...hubDashboardCtrl.context,
-              intake: intakeSnapshot,
-              profile: profile || hubDashboardCtrl.context.profile || null,
-            };
-          }
-        }
-        refreshAssistantContext({
-          reason: 'capture:intake-changed',
-          forceRefresh: false,
-        })?.catch?.((err) => {
-          diag.add?.('[hub-dashboard] intake context refresh err: ' + (err?.message || err));
-        });
       });
       global.addEventListener('assistant:suggest-confirm', (event) => {
         const suggestion = event?.detail?.suggestion;
@@ -4718,6 +4726,8 @@
     shiftCarousel: (delta) => shiftCarousel(delta),
     openQuickbar: () => openQuickbar(),
     closeQuickbar: () => closeQuickbar(),
+    applyAssistantIntakeSnapshot: (snapshot, options) =>
+      applyAssistantIntakeSnapshot(snapshot, options || {}),
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
