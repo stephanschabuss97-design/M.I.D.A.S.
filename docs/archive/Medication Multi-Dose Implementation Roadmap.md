@@ -31,6 +31,7 @@ Pruefbare Zieldefinition:
 - Generische Push-Eskalationsketten oder Reminder-Spam.
 - Harte uhrzeitgenaue Slot-Reminder oder Slot-Deadline-Logik in V1.
 - Rueckwirkende Aufspaltung alter Tagesdaten in vermeintlich echte Multi-Slot-Historie.
+- Erhalt oder automatische Migration des bisherigen Medication-Datenbestands; fuer diesen Umbau ist ein bewusster Reset mit manueller Neuerfassung erlaubt.
 
 ## Relevante Referenzen (Code)
 - `app/modules/intake-stack/medication/index.js`
@@ -63,20 +64,20 @@ Pruefbare Zieldefinition:
 - Push bleibt Incident-orientiert; kein Slot-Spam und keine Alarmflut.
 - Voice/Assistant bleibt eng gefuehrt; kein freies Plan-Authoring per Sprache.
 - Migration darf bestehende Medikationsdaten nicht stillschweigend falsch uminterpretieren.
-- Legacy-Historie bleibt taeglich aggregiert und wird nicht nachtraeglich in mehrere kuenstliche Slot-Events zerlegt.
+- Wenn Medication-Daten bewusst verworfen werden, dann explizit und vollstaendig; keine halbautomatische Legacy-Uebernahme mit unsauberer Semantik.
 - Batch-Aktionen duerfen nie implizit alle offenen Slots einer Mehrfach-Medikation bestaetigen.
 
 ## Architektur-Constraints
 - Stammdaten, Plan und Event-Log muessen getrennt modelliert werden.
 - Read-Model fuer den IN-Tab muss kompakt und cachebar bleiben.
 - Bestaetigungen muessen atomar und idempotent pro geplantem Slot funktionieren.
-- Historische Daily-Events und neue Slot-Events muessen fachlich sauber koexistieren koennen.
+- Historische Daily-Events muessen nur dann koexistieren, wenn sie bewusst erhalten werden; fuer den Medication-Umbau ist auch ein harter Reset des Modulbestands zulaessig.
 - Bestehende Modulgrenzen bleiben bestehen:
   - Medication verwaltet Medikament und Plan.
   - Intake konsumiert Tagesstatus und rendert Daily UX.
   - Push leitet nur aus fachlich eindeutigen offenen Slots Incidents ab.
   - Profile liefert weiterhin nur Kontakt-/Kontextdaten.
-- Rueckwaertskompatibilitaet fuer bestehende `1x taeglich`-Datensaetze ist Pflicht.
+- Rueckwaertskompatibilitaet fuer bestehende `1x taeglich`-Flows ist Pflicht, nicht aber die technische Weiterfuehrung des bisherigen Medication-Datenbestands.
 
 ## Tool Permissions
 Allowed:
@@ -106,8 +107,8 @@ Forbidden:
 |---|---|---|---|
 | S1 | Ist-Analyse aktueller Medication-Stack + Regressionsrisiken | DONE | Single-Dose-Annahmen, Tages-Boolean-Vertraege, Downstream-Abhaengigkeiten und Regressionsrisiken fuer den bestehenden `1x taeglich`-Flow vollstaendig gemappt. |
 | S2 | Produktvertrag + UX-State fuer Multi-Dose finalisieren | DONE | S2.1 bis S2.8 abgeschlossen: Begriffe, V1-Slot-Striktheit, sichtbares Produktziel, Fortschrittslogik, Edge-Cases, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer Multi-Dose definiert. |
-| S3 | Ziel-Datenmodell + Migrationsstrategie festlegen | TODO | Tabellen, Legacy-Backfill, History-Semantik und Rueckwaertskompatibilitaet final spezifizieren. |
-| S4 | RPC-/Read-Write-Contract auf Slot-Modell umbauen | TODO | Deterministische RPCs und kompaktes Tages-Read-Model fuer UI und Push festlegen. |
+| S3 | Ziel-Datenmodell + Migrationsstrategie festlegen | DONE | S3.1 bis S3.8 abgeschlossen: Zielmodell, Constraints, Reset-Strategie, Planwechsel-Regel, Bestandslogik, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung sind festgezogen. |
+| S4 | RPC-/Read-Write-Contract auf Slot-Modell umbauen | DONE | S4.1 bis S4.7 abgeschlossen: Tages-Read-Model, slot-basierte Write-RPCs, Uebergangsstrategie, Atomicity-/Idempotenz-Regeln, Schritt-Abnahme, Doku-Sync und Commit-Empfehlung fuer den neuen Kern definiert. |
 | S5 | TAB-Planeditor fuer Mehrfach-Einnahmen umsetzen | TODO | Medication-Verwaltung kann mehrere Einnahme-Slots pro Tag sauber anlegen und aendern. |
 | S6 | IN-Tab Daily UX auf Fortschritt + Slot-Status umbauen | TODO | Intake zeigt slot-based Default-Interaktion und nur explizite Batch-Aktionen. |
 | S7 | Low-Stock-, Runout- und Incident-Logik auf Schedule-Basis anpassen | TODO | Bestands- und Incident-Logik folgt echtem Tagesplan mit genau einem aggregierten Tages-Incident. |
@@ -1016,13 +1017,13 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
   - eindeutiger Event pro geplantem Slot und Tag
   - idempotentes Confirm/Undo pro geplantem Slot
 - S3.3 Backfill-Regel fuer bestehende Medikamente definieren:
-  - bestehende Medikamente erhalten genau einen `legacy default slot`
-  - dieser Legacy-Slot traegt die bisherige Tagesmenge (`dose_per_day`) als aggregierte Slot-Menge
-  - bestehende historische Tagesdaten bleiben taeglich aggregiert und werden nicht in mehrere kuenstliche Slot-Events explodiert
-  - erst neu angelegte oder explizit bearbeitete Medikamente erhalten echte Mehrfach-Slot-Plaene
+  - bestehender Medication-Bestand darf fuer den Umbau vollstaendig verworfen werden
+  - aktive Medikamente werden unter der neuen Multi-Dose-Logik bewusst neu angelegt
+  - kein Pflicht-Backfill auf `legacy default slot`
+  - keine automatische Uebernahme alter Tageshistorie in neue Slot-Events
 - S3.4 Regel fuer Planwechsel definieren:
-  - Wechsel von Legacy-Slot auf echten Multi-Slot-Plan wirkt prospektiv ab Planstart
-  - alte Tage behalten ihre bisherige Semantik
+  - fuer neu angelegte Medikamente gilt nur noch der neue Multi-Dose-Planvertrag
+  - falls Legacy-Reste technisch bestehen bleiben, haben sie keine produktive Relevanz mehr
 - S3.5 Low-Stock-/Runout-Berechnung auf taegliche Gesamtmenge aus aktivem Plan umstellen.
 - S3.6 Schritt-Abnahme:
   - SQL-Modell auf Migrationskanten, Rueckwaertskompatibilitaet und unnoetige Zeitlogik pruefen
@@ -1031,8 +1032,663 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
   - SQL-/Medication-Spec und Modul-Overviews aktualisieren, sobald der Zielvertrag fuer Datenmodell und Migration steht
 - S3.8 Commit-Empfehlung:
   - festhalten, ob Datenmodell + Migrationsdesign als eigener Commit sinnvoll ist oder noch mit S4 zusammenbleiben soll
-- Output: finales SQL-Zielmodell plus deterministische Migrationsregeln.
-- Exit-Kriterium: alle Legacy-Daten haben einen eindeutigen Zielzustand.
+- Output: finales SQL-Zielmodell plus deterministische Reset-/Neuanlage-Regeln.
+- Exit-Kriterium: der Medication-Umbau hat einen eindeutigen Startzustand ohne unsaubere Legacy-Uebernahme.
+
+#### S3.1 Ergebnisprotokoll (abgeschlossen)
+- Zielbild fuer das Datenmodell:
+  - Das Multi-Dose-Modell wird in drei fachlich getrennte Ebenen geschnitten:
+    - Medication-Stammsatz
+    - geplanter Tagesplan
+    - tatsaechliche Tagesbestaetigungen
+  - Damit bleibt der Kern robust gegen spaetere Erweiterungen, ohne den `1x taeglich`-Fall unnoetig aufzublaehen.
+
+- Tabelle A - `health_medications` bleibt die Stammdatenbasis:
+  - Diese Tabelle bleibt bestehen.
+  - Sie traegt weiterhin:
+    - Medikamenten-Identitaet
+    - Name / Wirkstoff / Staerke
+    - Bestand
+    - `low_stock_days`
+    - `active`
+    - Low-Stock-Ack-Felder
+    - allgemeine Metadaten wie `leaflet_url`, `created_at`, `updated_at`
+  - Fachliche Rolle in V1:
+    - ein `Medication` ist der persistente Container fuer Bestand, Low-Stock-Kontext und den aktuell gueltigen Plan
+    - nicht der Ort fuer einzelne Tagesereignisse
+
+- Tabelle B - neue Plan-Tabelle fuer taegliche Einnahme-Slots:
+  - Neue Arbeitstabelle:
+    - `health_medication_schedule_slots`
+  - Empfohlene Kernfelder:
+    - `id`
+    - `user_id`
+    - `med_id`
+    - `slot_label`
+    - `sort_order`
+    - `qty_per_slot`
+    - `start_date`
+    - `end_date`
+    - `active`
+    - `created_at`
+    - `updated_at`
+  - Fachliche Rolle:
+    - repraesentiert die geplanten taeglichen Einnahme-Slots einer Medikation
+    - ist in V1 count-/order-based
+    - darf optionale alltagsnahe Labels wie `Morgen`, `Mittag`, `Abend`, `Nacht` tragen
+    - ist kein Reminder-, Alarm- oder Kalenderobjekt
+  - Warum eigene Tabelle:
+    - ein Medikament kann `1..n` Slots haben
+    - Start-/Ende und Planwechsel muessen prospektiv modellierbar bleiben
+    - Low-Stock-/Runout-Berechnung braucht den aktiven Tagesplan getrennt vom Stammsatz
+
+- Tabelle C - neue Event-Tabelle fuer tatsaechliche Tagesbestaetigungen:
+  - Neue Arbeitstabelle:
+    - `health_medication_slot_events`
+  - Empfohlene Kernfelder:
+    - `id`
+    - `user_id`
+    - `med_id`
+    - `slot_id`
+    - `day`
+    - `qty`
+    - `taken_at`
+    - `created_at`
+  - Fachliche Rolle:
+    - repraesentiert die konkrete Bestaetigung eines geplanten Slots an einem Kalendertag
+    - ist die Grundlage fuer:
+      - `taken_count`
+      - `total_count`
+      - `open/partial/done`
+      - slotweises Undo
+      - echten Tagesverbrauch
+  - Guard:
+    - Ein Event ist kein freies Notiz-Log und keine neue Historien-Interpretation alter Daten.
+
+- Legacy-Tabelle - `health_medication_doses`:
+  - Diese Tabelle ist fuer das neue Zielmodell nicht mehr relevant.
+  - Sie ist nicht mehr das Zielmodell fuer neue Multi-Dose-Bestaetigungen.
+  - Ihre weitere Behandlung ist jetzt bewusst vereinfacht:
+    - sie kann im Rahmen des Umbaus geleert, ersetzt oder ganz entfernt werden
+    - sie ist keine Quelle mehr fuer einen verpflichtenden Produkt-Backfill
+  - Die genaue Reset-/Abloseregel folgt in `S3.3`
+
+- Stock-Log-Tabelle - `health_medication_stock_log`:
+  - Diese Tabelle bleibt bestehen.
+  - Sie bleibt die fachliche Audit-/Korrekturspur fuer Bestandsaenderungen.
+  - Multi-Dose aendert nicht ihren Grundzweck, sondern nur die Quelle der Verbrauchslogik.
+
+- V1-Zusatzhinweise:
+  - Zusatzinfos wie `mit Mahlzeit` gehoeren nicht in die Event-Tabelle.
+  - Sie gehoeren fachlich entweder:
+    - an `health_medications`, wenn sie medikationsweit gelten
+    - oder spaeter an den Planvertrag, wenn sie planbezogen werden muessen
+  - Fuer `S3.1` gilt:
+    - kein eigenes Mahlzeiten-Subsystem
+    - keine neue Tabelle nur fuer Hinweise
+
+- Entscheidung zur Granularitaet:
+  - V1 braucht keine separate Tabelle fuer:
+    - Reminder
+    - verpasste Slots
+    - Push-Historie
+    - Mahlzeitenkontext
+  - Das Zielmodell bleibt damit bewusst schlank:
+    - `health_medications`
+    - `health_medication_schedule_slots`
+    - `health_medication_slot_events`
+    - plus bestehende `health_medication_stock_log`
+    - optional temporaer plus Legacy-`health_medication_doses` bis zum Reset
+
+- Konsequenz fuer die Folgeschritte:
+  - `S3.2` muss jetzt die Unique-/Constraint-Logik zwischen `slot_id`, `med_id` und `day` sauber festziehen.
+  - `S3.3` muss definieren, wie der bisherige Medication-Bestand sauber verworfen und durch einen klaren Neu-Start ersetzt wird.
+  - `S4` kann spaeter ein kompaktes Read-Model auf genau diesen drei Ebenen aufbauen.
+
+- Check-Ergebnis:
+  - Das Zielbild bleibt konsistent mit den S2-Guardrails:
+    - kein klinischer Planer
+    - kein Zeitlogik-Creep
+    - klare Trennung von Stammdaten, Plan und Event-Log
+    - `1x taeglich` bleibt als Spezialfall von `genau 1 Slot` voll natuerlich abbildbar.
+
+#### S3.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S3.2`:
+  - Das neue Modell braucht nicht nur Tabellen, sondern harte Regeln dafuer, dass spaetere Confirm-/Undo-Pfade:
+    - atomar
+    - idempotent
+    - konfliktarm
+    - fachlich eindeutig
+    bleiben.
+
+- Constraints fuer `health_medications`:
+  - Bestehende Owner-/Basisregeln bleiben erhalten:
+    - `user_id` Pflicht
+    - `stock_count >= 0`
+    - `low_stock_days >= 0`
+  - `dose_per_day` darf in der Uebergangsphase noch existieren, ist aber nicht mehr die spaetere Source of Truth fuer Multi-Dose.
+  - Falls `mit Mahlzeit` spaeter als boolesches Feld auf `health_medications` landet:
+    - kein eigener Constraint ausser klarer Default (`false`)
+    - keine Koppelung an Slot-Anzahl oder Event-Existenz
+
+- Constraints fuer `health_medication_schedule_slots`:
+  - Pflichtfelder:
+    - `user_id`
+    - `med_id`
+    - `sort_order`
+    - `qty_per_slot`
+  - Basis-Checks:
+    - `qty_per_slot > 0`
+    - `sort_order >= 0`
+    - `start_date <= end_date`, falls `end_date` gesetzt ist
+  - Fremdschluessel:
+    - `med_id` referenziert `health_medications(id)`
+  - Eindeutigkeitsregel fuer Sortierung:
+    - `UNIQUE (user_id, med_id, start_date, sort_order)` ist fuer V1 die sauberste Arbeitsannahme
+  - Zweck:
+    - innerhalb eines aktiven Plans darf ein Slot keine doppelte Position tragen
+    - Planwechsel mit neuem `start_date` bleiben prospektiv modellierbar
+
+- Warum kein Unique auf `slot_label`:
+  - Labels sind nur alltagsnahe Anzeigehilfe.
+  - Die fachliche Identitaet eines Slots ist nicht `Morgen` oder `Abend`, sondern:
+    - zu welchem Medikament gehoert er
+    - in welchem Plan gilt er
+    - an welcher Position steht er
+  - Dadurch bleibt das Modell robust gegen:
+    - unlabeled Slots
+    - doppelte freie Labels
+    - spaetere Umbenennungen
+
+- Constraints fuer `health_medication_slot_events`:
+  - Pflichtfelder:
+    - `user_id`
+    - `med_id`
+    - `slot_id`
+    - `day`
+    - `qty`
+    - `taken_at`
+  - Basis-Checks:
+    - `qty > 0`
+  - Fremdschluessel:
+    - `med_id` referenziert `health_medications(id)`
+    - `slot_id` referenziert `health_medication_schedule_slots(id)`
+  - Kern-Unique fuer Idempotenz:
+    - `UNIQUE (user_id, slot_id, day)`
+  - Fachliche Wirkung:
+    - pro geplantem Slot darf es pro Kalendertag genau ein Taken Event geben
+    - doppeltes Confirm wird technisch blockiert bzw. spaeter per RPC als idempotenter Erfolg behandelt
+
+- Warum nicht nur `UNIQUE (med_id, day)`:
+  - Das wuerde wieder in das alte Single-Dose-Modell zurueckkippen.
+  - Mehrfach-Einnahmen brauchen bewusst mehrere Tagesereignisse pro Medikation.
+  - Die kleinste eindeutige Tages-Unit ist deshalb `slot_id + day`, nicht `med_id + day`.
+
+- Optionale Konsistenzregel zwischen Event und Slot:
+  - Fachlich muss ein Event zu genau dem Medikament des referenzierten Slots gehoeren.
+  - Diese Konsistenz kann spaeter abgesichert werden ueber:
+    - RPC-Logik als Pflichtpfad
+    - und optional zusaetzlich ueber Trigger/Constraint-Check
+  - Entscheidung fuer V1-Design:
+    - die Roadmap verlangt diese Konsistenz fachlich
+    - die konkrete technische Durchsetzung wird in `S4`/SQL-Implementierung entschieden
+  - Grund:
+    - zusammengesetzte FK-/Check-Konstruktionen wuerden `S3.2` unnoetig verkomplizieren
+    - wichtiger ist, dass der Write-Pfad nie `slot_id` und fremdes `med_id` mischen darf
+
+- Regel fuer aktive Plaene und Event-Erzeugung:
+  - Ein Event darf nur fuer einen an diesem Tag gueltigen Slot entstehen.
+  - Das bedeutet fachlich:
+    - Tag muss innerhalb `start_date` / `end_date` liegen
+    - Slot und Medication muessen aktiv sein
+  - Diese Regel ist eher Write-Contract als rohe Tabellen-Constraint und wird deshalb primaer ueber RPCs erzwungen.
+
+- Idempotenz- und Undo-Folgen:
+  - Confirm:
+    - erster Insert fuer `slot_id + day` erzeugt Event und reduziert Bestand
+    - erneuter Confirm auf denselben Slot/Tag darf keinen zweiten Verbrauch erzeugen
+  - Undo:
+    - entfernt genau dieses eine Event
+    - stellt genau diese Slot-Menge wieder her
+    - darf keine anderen Slots desselben Tages beruehren
+  - Daraus folgt:
+    - Slot-Events sind die einzig gueltige technische Einheit fuer Multi-Dose-Undo
+
+- Legacy-Koexistenz:
+  - Fuer den geplanten Umbau ist keine dauerhafte Koexistenz zwischen alter Tageshistorie und neuen Slot-Events erforderlich.
+  - Das senkt Komplexitaet deutlich:
+    - keine Dual-Read-Phase fuer produktive Medication-Daten
+    - keine semantische Vermischung von Tages-Boolean und Slot-Events
+  - Die exakte Reset-Regel folgt in `S3.3`.
+
+- Bewusst nicht als V1-Constraint modelliert:
+  - kein Unique auf Labels
+  - kein Pflichtfeld fuer Uhrzeiten
+  - kein `missed`-Status-Constraint
+  - keine Push-/Reminder-Tabellen
+  - keine Mahlzeiten-/Essenskopplung
+  - keine erzwungene globale Limitierung auf maximal `4` Slots
+  - Grund:
+    - Produktvertrag soll reale Faelle bis `4x taeglich` gut tragen
+    - Datenmodell soll aber nicht schon in S3 kuenstlich enger sein als der fachliche Vertrag
+
+- Konsequenz fuer die Folgeschritte:
+  - `S3.3` kann jetzt auf stabilen technischen Tageseinheiten aufbauen.
+  - `S4` bekommt eine klare Grundlage fuer:
+    - idempotentes `confirm slot`
+    - deterministisches `undo slot`
+    - kompakten Tagesfortschritt aus `count(events)` vs `count(active slots)`
+
+- Check-Ergebnis:
+  - Die Unique-/Constraint-Entscheidungen stuetzen genau den gewuenschten V1-Vertrag:
+    - mehrere Slots pro Medikation und Tag
+    - trotzdem genau ein Event pro geplantem Slot und Tag
+    - keine Rueckkehr zur alten Tages-Boolean-Grobheit
+    - keine vorschnelle Zeitlogik oder klinische Uebermodellierung.
+
+#### S3.3 Ergebnisprotokoll (abgeschlossen)
+- Grundentscheidung fuer die Migration:
+  - Fuer diesen Umbau wird kein produktiver Legacy-Backfill mehr gebaut.
+  - Stattdessen gilt:
+    - bisheriger Medication-Bestand darf bewusst komplett verworfen werden
+    - Medikamente werden danach unter dem neuen Multi-Dose-Vertrag neu angelegt
+  - Diese Entscheidung ist fachlich vertretbar, weil:
+    - es aktuell nur sehr wenige Medikamente betrifft
+    - du den Bestand selbst kennst
+    - die Medikamente unter der neuen Logik ohnehin neu erstellt werden muessen
+
+- Ziel von `S3.3`:
+  - kein halbkompatibles Uebergangsmodell bauen
+  - kein unsauberes Mischen aus alter Tages-Boolean-Historie und neuem Slot-Modell
+  - stattdessen einen eindeutigen Startzustand fuer `S4` bis `S8` definieren
+
+- Reset-Strategie fuer den Medication-Bereich:
+  - Der Umbau darf den bisherigen produktiven Medication-Datenbestand bewusst kappen.
+  - Betroffen sein duerfen:
+    - bestehende Medication-Stammsaetze
+    - bestehende taegliche Dose-Eintraege
+    - bestehende Low-Stock-Ack-Zustaende
+    - bestehende Medication-spezifische Bestandskontexte
+  - Danach startet der Bereich mit:
+    - neuem Datenmodell
+    - leerem Medication-Bestand
+    - manueller Neuerfassung der aktuell relevanten Medikamente
+
+- Produktregel fuer den Neustart:
+  - Der erste gueltige Multi-Dose-Zustand entsteht nicht durch technische Uebernahme alter Datensaetze, sondern durch bewusste Neuanlage im neuen Planeditor.
+  - Damit gilt:
+    - keine versteckte Semantik-Alteingabe
+    - kein `legacy default slot`
+    - keine kuenstlich gerettete Tageshistorie
+
+- Behandlung alter Tabellen und Daten:
+  - `health_medications`:
+    - darf fuer den Nutzerbestand geleert oder durch ein neues Schema ersetzt werden
+  - `health_medication_doses`:
+    - darf geleert, ersetzt oder ganz entfernt werden
+  - `health_medication_stock_log`:
+    - kann ebenfalls geleert werden, wenn sie nur Altbestand betrifft
+    - sie ist kein migrationskritischer Langzeitverlauf
+  - Wichtiger Guard:
+    - kein teilweiser Erhalt einzelner Medication-Reste, wenn dadurch semantische Mischzustaende entstehen
+
+- Reset-Semantik fuer SQL und App:
+  - Nach Anwendung des neuen Schemas gilt produktiv:
+    - Medication Read-Model erwartet nur noch das neue Slot-/Event-Modell
+    - UI rendert nur noch Medikamente, die unter dem neuen Vertrag angelegt wurden
+    - Push/Incident, Intake und Voice bauen nicht mehr auf alte Tages-Boolean-Daten
+  - Das vermeidet:
+    - Dual-Read-Logik
+    - Migrationsadapter im Frontend
+    - Legacy-Sonderpfade in RPCs
+
+- Was trotzdem stabil bleiben muss:
+  - der `1x taeglich`-Flow als Nutzererlebnis
+  - die grundsaetzliche Low-Stock-/Runout-Funktion
+  - der enge `medication_confirm_all`-Pfad
+  - die Modulgrenzen zwischen Medication, Intake, Push, Profile und Voice
+  - Das heisst:
+    - wir kappen Datenbestand
+    - aber nicht die Produktprinzipien
+
+- Guard gegen zu harten Umbau:
+  - Reset ist nur fuer den Medication-Bereich akzeptiert.
+  - Andere MIDAS-Bereiche wie Intake, Profile, BP, Doctor, Reports oder Termine werden dadurch nicht mitgerissen.
+  - Der Reset darf also kein allgemeines Muster fuer andere Module werden, sondern ist eine bewusste Vereinfachung fuer genau diesen Umbau.
+
+- Operative Folge fuer die spaeteren Schritte:
+  - `S4` kann RPCs direkt fuer das neue Modell schreiben, ohne Legacy-Kompatibilitaetsfessel.
+  - `S5` kann den Planeditor ohne Ruecksicht auf Altformate bauen.
+  - `S6` kann den IN-Tab direkt auf Progress-/Slot-States ausrichten.
+  - `S7` kann Low-Stock und Runout direkt auf den aktiven Tagesplan rechnen.
+  - `S8` kann Voice/Fast-Paths ohne Altsemantik neu absichern.
+
+- Konkrete Startzustands-Regel:
+  - Nach dem Umbau ist `kein Medication-Datensatz` ein gueltiger und erwarteter Zwischenzustand.
+  - Erst nach manueller Neuerfassung deiner Medikamente wird der Bereich wieder produktiv genutzt.
+  - Diese Leere ist fachlich besser als eine halbkorrekte automatische Migration.
+
+- Check-Ergebnis:
+  - Die Reset-/Neuanlage-Strategie senkt Komplexitaet, SQL-Risiko und UI-Drift deutlich.
+  - Sie passt zu deinem realen Fall besser als eine konservative Legacy-Migration.
+  - `S3.4` kann jetzt ohne Legacy-Vertrag nur noch die Planwechsel-Regel innerhalb des neuen Modells festziehen.
+
+#### S3.4 Ergebnisprotokoll (abgeschlossen)
+- Ausgangslage:
+  - Durch den bewussten Medication-Reset gibt es keine produktive Legacy-Migration mehr.
+  - Planwechsel muessen deshalb nur noch innerhalb des neuen Modells sauber geregelt werden.
+  - Die Kernfrage ist jetzt nicht mehr:
+    - wie alte Tages-Boolean-Daten ueberfuehrt werden
+  - sondern:
+    - wie ein bestehendes Medikament spaeter von Plan A auf Plan B wechselt, ohne Verlauf und Tageslogik zu verfaelschen
+
+- Grundregel fuer Planwechsel:
+  - Planwechsel wirken immer prospektiv.
+  - Ein neuer Slot-Plan gilt ab einem klaren Startdatum.
+  - Vergangene Tage behalten die Plan- und Event-Semantik, die zum damaligen Zeitpunkt galt.
+
+- Warum diese Regel fuer MIDAS richtig ist:
+  - Sie verhindert rueckwirkende Neuinterpretation bereits bestaetigter Einnahmen.
+  - Sie haelt Undo, Fortschritt, Bestand und Verlauf logisch stabil.
+  - Sie passt zu deinem Alltag:
+    - Wenn sich ein Medikament oder Einnahmeschema aendert, aendert sich die Zukunft
+    - nicht kuenstlich die Vergangenheit
+
+- Fachliche Definition des Planwechsels:
+  - Ein Medication-Stammsatz bleibt dieselbe fachliche Identitaet.
+  - Was sich aendert, ist der aktive Satz geplanter Slots.
+  - Ein Planwechsel bedeutet daher:
+    - bisherige Slots enden spaetestens am Tag vor dem neuen Planstart
+    - neue Slots beginnen am definierten neuen Planstart
+  - Es gibt nie zwei konkurrierende aktive Plaene fuer dieselbe Medication am selben Tag.
+
+- Gueltigkeitsregel fuer Slot-Plaene:
+  - Jeder Slot traegt seine eigene Gueltigkeit ueber:
+    - `start_date`
+    - optional `end_date`
+    - `active`
+  - Fuer einen konkreten Kalendertag duerfen nur Slots zaehlen, die an diesem Tag gueltig sind.
+  - Das ist die Grundlage fuer:
+    - `total_count`
+    - offene Slots
+    - Tagesverbrauch
+    - Low-Stock-/Runout-Berechnung
+
+- Erlaubte Planwechsel-Faelle:
+  - `1x taeglich` -> `2x taeglich`
+  - `2x taeglich` -> `1x taeglich`
+  - `2x taeglich` -> `3x taeglich`
+  - Label-Aenderung innerhalb gleicher Frequenz
+    - z. B. `Abend` -> `Nacht`
+  - temporaerer Medikament-Plan mit Enddatum
+  - Reaktivierung oder spaetere Wiedereintragung mit neuem Startdatum
+
+- Nicht erlaubte oder bewusst ausgeschlossene Planwechsel-Semantik:
+  - keine rueckwirkende Umschreibung bereits vergangener Tagesereignisse
+  - kein automatisches Umpacken alter Slot-Events in einen neuen Plan
+  - kein Mischen mehrerer gleichzeitiger aktiver Planversionen fuer denselben Tag
+  - keine stillschweigende Plan-Aenderung ohne sichtbares neues Startdatum
+
+- Regel fuer denselben Kalendertag:
+  - V1 braucht eine einfache und deterministische Linie.
+  - Deshalb gilt:
+    - wenn ein Plan geaendert wird, beginnt der neue Plan fruehestens am naechsten sinnvollen Gueltigkeitstag
+  - Praeferierte V1-Regel:
+    - kein intraday Planwechsel mit geteilter Tageslogik
+  - Das heisst praktisch:
+    - Tagesereignisse fuer heute laufen gegen den heute gueltigen Plan
+    - geaenderte Plaene werden fuer morgen oder ein explizites kuenftiges Startdatum wirksam
+
+- Warum kein intraday Planwechsel in V1:
+  - Wuerde sofort neue Spezialfaelle erzeugen:
+    - welche offenen Slots von heute zaehlen noch
+    - wie verhalten sich bereits bestaetigte Slots
+    - wie wird Bestand anteilig neu berechnet
+    - was zeigt der IN-Tab bei Planwechsel mitten im Tag
+  - Das waere fuer MIDAS unnoetige Komplexitaet ohne echten Alltagsgewinn.
+
+- Beziehung zu temporaeren Medikamenten:
+  - Start-/Enddatum bleiben dieselbe Grundmechanik wie beim Planwechsel.
+  - Ein Antibiotikum mit begrenzter Laufzeit ist fachlich:
+    - Medication + Slot-Plan + Start/Ende
+  - kein Sondermodell.
+
+- Konsequenz fuer spaetere SQL-/RPC-Arbeit:
+  - `S4` muss Write-Pfade so bauen, dass Plan-Aenderungen:
+    - neue Slots mit neuer Gueltigkeit anlegen
+    - alte Slots sauber beenden oder deaktivieren
+    - keine alten Tagesevents anfassen
+  - Read-Model fuer einen Tag darf nur den an diesem Tag gueltigen Plan sehen.
+
+- Konsequenz fuer UI:
+  - `S5` braucht im Planeditor ein klares Startdatum fuer neue oder geaenderte Plaene.
+  - `S6` muss nicht erklaeren, warum heute ploetzlich halbe Plaene parallel gelten.
+  - Das haelt den Tagesflow ruhig.
+
+- Check-Ergebnis:
+  - Die Planwechsel-Regel ist jetzt einfach und belastbar:
+    - prospektiv
+    - ohne Rueckwirkung
+    - ohne intraday Mischlogik
+    - kompatibel mit temporaeren Medikamenten und spaeteren Plananpassungen.
+
+#### S3.5 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S3.5`:
+  - Low-Stock, `days_left` und `runout_day` duerfen im Multi-Dose-Modell nicht mehr aus einem alten Tagesblock `dose_per_day` abgeleitet werden.
+  - Stattdessen muessen sie sich aus dem aktuell gueltigen Tagesplan ergeben.
+
+- Neue Grundregel:
+  - Die taegliche Sollmenge eines Medikaments ist die Summe aller an diesem Tag gueltigen Slot-Mengen.
+  - Formel:
+    - `daily_planned_qty = sum(qty_per_slot aller aktiven Slots fuer diesen Tag)`
+  - Diese Summe ist die neue fachliche Basis fuer:
+    - `days_left`
+    - `runout_day`
+    - `low_stock`
+
+- Quelle der Wahrheit:
+  - Nicht mehr:
+    - `health_medications.dose_per_day`
+  - Sondern:
+    - aktiver Slot-Plan des jeweiligen Medikaments am betrachteten Tag
+
+- Berechnung von `days_left`:
+  - V1-Regel:
+    - `days_left = floor(stock_count / daily_planned_qty)`
+  - Guard:
+    - nur wenn `daily_planned_qty > 0`
+  - Wenn kein aktiver Plan oder keine aktiven Slots existieren:
+    - `days_left` ist fachlich nicht sinnvoll ableitbar
+    - Read-Model soll dann keinen normalen Verbrauch vortaeuschen
+
+- Bedeutung von `days_left` im neuen Modell:
+  - `days_left` beschreibt nicht mehr eine abstrakte Medikationszahl pro Tag.
+  - Es beschreibt:
+    - wie viele volle Tage der aktuelle Bestand unter dem aktuell gueltigen Tagesplan noch traegt
+
+- Berechnung von `runout_day`:
+  - `runout_day` bleibt ein abgeleiteter Lesewert.
+  - Er basiert auf:
+    - heutigem Bestand
+    - heutigem aktiven Plan
+    - heutigem Einnahmestatus
+  - V1-Logik:
+    - wenn fuer heute bereits Slot-Events bestaetigt wurden, ist der verbleibende Restverbrauch fuer heute kleiner als die volle Tagesmenge
+    - dadurch darf `runout_day` nicht so tun, als sei heute noch die volle Sollmenge offen
+
+- Praktische Rechenregel fuer den Tageskontext:
+  - `daily_planned_qty = Summe aller aktiven Slot-Mengen fuer heute`
+  - `daily_taken_qty = Summe aller heute bestaetigten Slot-Events`
+  - `daily_remaining_qty = max(daily_planned_qty - daily_taken_qty, 0)`
+  - Daraus folgt:
+    - Bestand nach heute = `stock_count - daily_remaining_qty`, wenn fuer die Prognose der noch offene Resttag beruecksichtigt wird
+  - Alternativ lesbar:
+    - `runout_day` muss progress-aware sein, nicht nur plan-aware
+
+- Warum Progress-Awareness wichtig ist:
+  - Sonst wuerde ein `2x taeglich`-Medikament mittags noch so wirken, als waere die volle Tagesmenge offen, obwohl bereits ein Slot bestaetigt wurde.
+  - Das waere fachlich falsch fuer:
+    - Resttage
+    - Aufbrauchdatum
+    - Low-Stock-Wahrnehmung
+
+- Low-Stock-Regel im neuen Modell:
+  - `low_stock` bleibt ein Medikament-Level-Signal.
+  - Es basiert auf:
+    - `days_left`
+    - user-spezifischem `low_stock_days`
+  - V1-Regel:
+    - `low_stock = true`, wenn `days_left <= low_stock_days`
+  - Das Prinzip bleibt also gleich, aber die Berechnungsbasis ist jetzt der echte aktive Tagesplan.
+
+- Beziehung zu `mit Mahlzeit`:
+  - `mit Mahlzeit` hat keinen Einfluss auf `days_left`, `runout_day` oder `low_stock`.
+  - Es bleibt ein Hinweisfeld, kein Verbrauchsmultiplikator und keine neue Rechenlogik.
+
+- Sonderfaelle:
+  - Kein aktiver Plan:
+    - kein normaler `days_left`-/`runout_day`-Wert
+    - kein Verbrauchsmodell vortaeuschen
+  - Startdatum in der Zukunft:
+    - vor Start kein aktiver Tagesverbrauch
+    - daher kein aktuelles Low-Stock aus diesem Plan ableiten
+  - Enddatum in der Vergangenheit:
+    - kein weiterer Verbrauch
+    - keine aktuelle Low-Stock-Relevanz
+
+- Guard gegen zu viel Mathematik in V1:
+  - V1 rechnet nur gegen den aktuell aktiven Tagesplan.
+  - V1 simuliert nicht:
+    - wechselnde Zukunftsplaene ueber viele Tage
+    - variable Wochenmuster
+    - klinische Intervallregime
+  - Das heisst:
+    - `days_left` und `runout_day` sind alltagstaugliche Prognosewerte fuer den aktuellen Plan
+    - nicht ein komplexes Forecast-System
+
+- Konsequenz fuer `S4`:
+  - Read-RPCs muessen mindestens liefern oder intern ableiten:
+    - `daily_planned_qty`
+    - `daily_taken_qty`
+    - `daily_remaining_qty`
+    - `days_left`
+    - `runout_day`
+    - `low_stock`
+  - Write-RPCs muessen den Bestand pro bestaetigtem Slot veraendern, damit diese Werte live konsistent bleiben.
+
+- Konsequenz fuer `S7`:
+  - Incident-/Low-Stock-Logik kann spaeter direkt auf dieser plan- und progress-bewussten Verbrauchsbasis aufsetzen.
+
+- Check-Ergebnis:
+  - Die Bestandslogik bleibt im neuen Modell:
+    - simpel genug fuer MIDAS
+    - korrekt genug fuer Mehrfach-Einnahmen
+    - kompatibel mit `1x taeglich`
+    - frei von unnötiger Intervall- oder Forecast-Komplexitaet.
+
+#### S3.6 Schritt-Abnahme (abgeschlossen)
+- Datenmodell-Abnahme gegen den Produktvertrag:
+  - `S3` bleibt voll kompatibel mit dem in `S2` definierten V1-Vertrag:
+    - count-/order-based Slots
+    - kein klinischer Planner
+    - kein Reminder-/Zeitlogik-Creep
+    - `1x taeglich` als natuerlicher Spezialfall von `1 Slot`
+  - Das Zielmodell stuetzt genau die benoetigte Produktform:
+    - Medication-Stammsatz
+    - geplanter Tagesplan
+    - tatsaechliche Slot-Events
+
+- Migrations-/Reset-Abnahme:
+  - Die Entscheidung fuer einen bewussten Medication-Reset ist mit dem restlichen S3-Modell konsistent.
+  - Kein Teil von `S3` setzt mehr voraus:
+    - Legacy-Backfill
+    - Dual-Read
+    - `legacy default slot`
+    - Rueckrettung alter Tageshistorie
+  - Damit ist der Startzustand fuer den Umbau fachlich eindeutig.
+
+- SQL-/Schema-Risiko-Check:
+  - Es gibt keine offensichtliche Rueckkehr zur alten Tages-Boolean-Semantik.
+  - Die kleinste gueltige Tageseinheit bleibt:
+    - `slot_id + day`
+  - Die Bestandslogik ist direkt auf Slot-Progress und aktiven Plan ausgerichtet.
+  - Planwechsel bleibt prospektiv und ohne intraday Mischlogik.
+
+- Dead-Path-/Ballast-Check:
+  - Durch den Reset-Entscheid wurde frueherer Legacy-Ballast aus dem Zielvertrag entfernt.
+  - Kein S3-Teil haengt jetzt noch an:
+    - konservativem Backfill
+    - Legacy-Koexistenz als Pflicht
+    - kuenstlicher Slot-Historisierung
+  - Das senkt das Risiko spaeterer toter RPC-Aeste und Frontend-Adapter deutlich.
+
+- Offene technische Punkte, aber kein S3-Blocker:
+  - exakte SQL-Namensgebung der neuen Tabellen/Felder
+  - konkrete FK-/Trigger-Durchsetzung fuer Event-Slot-Med-Konsistenz
+  - genaue RPC-Signaturen
+  - diese Punkte gehoeren bewusst nach `S4`, nicht mehr in den fachlichen S3-Vertrag
+
+- Check-Ergebnis:
+  - `S3` ist als Datenmodell- und Migrationsgrundlage tragfaehig genug, um den RPC-/Read-Write-Umbau in `S4` zu starten.
+
+#### S3.7 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Die S3-Ergebnisse sind ein Zielvertrag fuer Schema und Migration, aber noch kein umgesetzter SQL-/RPC-Zustand.
+  - Deshalb bleiben `docs/modules/*` auch nach `S3` weiterhin bewusst beim aktuellen Produktivzustand.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap selbst traegt jetzt den vollstaendigen S3-Vertrag:
+    - Zieltabellen
+    - Constraints
+    - Reset-Strategie
+    - Planwechsel-Regel
+    - Bestandslogik
+  - Zusaetzlich bleibt der bereits gesetzte Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    weiterhin korrekt:
+    - bestehende Spec = Single-Dose-Ist-Zustand
+    - neue Roadmap = kuenftiger Multi-Dose-Vertrag
+
+- Produktregel fuer den weiteren Doku-Sync:
+  - `docs/modules/Medication Module Overview.md`, `docs/modules/Intake Module Overview.md`, `docs/modules/Push Module Overview.md` und `docs/QA_CHECKS.md` werden erst dann fachlich umgeschrieben, wenn `S4` bis `S8` den jeweiligen Codevertrag real aendern.
+  - Damit bleibt die Doku-Hierarchie sauber:
+    - Modul-Overviews = Ist-Zustand
+    - Roadmap = Umbauvertrag
+
+- Check-Ergebnis:
+  - Kein Dokument behauptet vorzeitig einen bereits ausgerollten Multi-Dose-SQL- oder RPC-Stand.
+
+#### S3.8 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, nach `S3` ist wieder ein eigener Commit sinnvoll.
+
+- Begruendung:
+  - `S3` schliesst einen eigenstaendigen Architekturblock sauber ab:
+    - Datenmodell
+    - Constraints
+    - Reset-/Neuanlage-Strategie
+    - Planwechsel-Regel
+    - Bestandslogik
+  - Das ist ein sinnvoller Commit-Schnitt vor `S4`, weil ab dort echte API-/RPC- und spaeter Code-Vertraege folgen.
+
+- Warum nicht mit `S4` buendeln:
+  - `S4` ist der Uebergang von Architekturvertrag zu konkretem SQL-/RPC-Design.
+  - Das ist wieder ein neuer Risikotyp:
+    - Funktionssignaturen
+    - Read-Model
+    - idempotente Write-Pfade
+    - Call-Site-Kompatibilitaet
+  - Fuer deine Arbeitsweise ist es sauberer, Architektur und API-Umbau zu trennen.
+
+- Empfohlene Commit-Semantik:
+  - Fokus des Commits:
+    - Medication Multi-Dose Datenmodell und Reset-Strategie fachlich finalisiert
+  - Kein Implementierungsclaim:
+    - dieser Commit beschreibt Architektur und Migration, nicht die fertige SQL-/Frontend-Umsetzung
+
+- Check-Ergebnis:
+  - `S3` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Naechster Arbeitsblock startet sauber mit `S4`.
 
 ### S4 - RPC-/Read-Write-Contract auf Slot-Modell umbauen
 - S4.1 Neues Tages-Read-Model fuer Medication definieren:
@@ -1059,6 +1715,754 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S8` und sollen
   - festhalten, ob Read-/Write-Contract stabil genug fuer einen Commit ist oder ob erst S5/S6 folgen sollen
 - Output: stabiler RPC- und Client-Contract fuer UI, Push und Voice.
 - Exit-Kriterium: kein Frontend-Code muss mehr auf `taken=true fuer ganzen Tag` vertrauen.
+
+#### S4.1 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S4.1`:
+  - Das neue Medication-Read-Model muss kompakt genug fuer den IN-Tab bleiben, aber stark genug sein fuer:
+    - Progress-UI
+    - Slot-Confirm/Undo
+    - Low-Stock/Runout
+    - aggregierte Incident-Logik
+    - engen Voice-/Fast-Path
+  - Es darf nicht wieder in einen flachen Tages-Boolean-Vertrag zurueckfallen.
+
+- Grundform des Read-Models:
+  - Ein Tages-Read fuer Medication liefert weiterhin eine Liste von Medikationseintraegen fuer genau einen Kalendertag.
+  - Jeder Eintrag repraesentiert:
+    - den Medication-Stammsatz
+    - den fuer diesen Tag gueltigen Plan
+    - den heutigen Fortschritt
+    - die heutigen Slot-Details
+
+- Empfohlene Top-Level-Struktur pro Medication:
+  - `id`
+  - `name`
+  - `ingredient`
+  - `strength`
+  - `leaflet_url`
+  - `active`
+  - `stock_count`
+  - `low_stock_days`
+  - `low_stock`
+  - `days_left`
+  - `runout_day`
+  - `with_meal`
+  - `plan_active`
+  - `daily_planned_qty`
+  - `daily_taken_qty`
+  - `daily_remaining_qty`
+  - `total_count`
+  - `taken_count`
+  - `state`
+  - `slots`
+
+- Bedeutung der neuen Top-Level-Felder:
+  - `plan_active`
+    - zeigt, ob fuer diesen Tag ueberhaupt ein gueltiger Plan existiert
+  - `daily_planned_qty`
+    - Summe aller aktiven Slot-Mengen fuer den Tag
+  - `daily_taken_qty`
+    - Summe aller bestaetigten Slot-Mengen fuer den Tag
+  - `daily_remaining_qty`
+    - noch offene Sollmenge fuer den Tag
+  - `total_count`
+    - Anzahl geplanter Slots fuer den Tag
+  - `taken_count`
+    - Anzahl bereits bestaetigter Slots fuer den Tag
+  - `state`
+    - `open`
+    - `partial`
+    - `done`
+
+- Warum das Read-Model Progress und Menge gleichzeitig tragen muss:
+  - Der IN-Tab braucht vor allem:
+    - `taken_count / total_count`
+    - Slot-Status
+  - Low-Stock/Runout brauchen:
+    - Mengenbasis
+    - Bestandskontext
+  - Push/Voice brauchen:
+    - eine kompakte Aussage, ob fuer heute noch offene Einnahmen existieren
+  - Deshalb reicht weder nur ein Slot-Array noch nur ein Mengenblock.
+
+- Empfohlene Slot-Struktur pro Eintrag:
+  - Jeder Slot in `slots[]` soll mindestens tragen:
+    - `slot_id`
+    - `label`
+    - `sort_order`
+    - `qty`
+    - `is_taken`
+    - `taken_at`
+    - `day`
+  - Optional spaeter:
+    - `start_date`
+    - `end_date`
+  - V1-Read fuer den IN-Tab braucht diese Gueltigkeitsfelder aber nicht zwingend sichtbar, solange nur die fuer den Tag aktiven Slots ausgeliefert werden.
+
+- Bedeutungsregel fuer `slots[]`:
+  - `slots[]` enthaelt nur die fuer den angefragten Tag gueltigen Slots.
+  - Nicht enthalten sind:
+    - abgelaufene Slots
+    - zukuenftige Slots
+    - inaktive Planreste
+  - Dadurch bleibt das Read-Model fuer den Daily Flow ruhig und direkt nutzbar.
+
+- Empfohlene Ableitungsregel fuer `state`:
+  - `open`, wenn `taken_count = 0`
+  - `partial`, wenn `0 < taken_count < total_count`
+  - `done`, wenn `taken_count = total_count`
+  - Wenn `plan_active = false` oder `total_count = 0`:
+    - das Medication-Read-Model soll keinen falschen Tagesabschluss vortaeuschen
+    - fachlich ist das eher `nicht im heutigen Plan`
+
+- Wichtige Product-Guard-Entscheidung:
+  - Das Read-Model soll keine harte Uhrzeit oder Slot-Deadline transportieren.
+  - Also bewusst nicht noetig in V1:
+    - `scheduled_time`
+    - `missed`
+    - `due_in_minutes`
+    - Reminder-Metadaten
+
+- Read-Contract fuer Push und Voice:
+  - Push und Voice sollen nicht ihr eigenes Spezialmodell bekommen.
+  - Sie lesen denselben Tages-Contract wie der IN-Tab.
+  - Dafuer reicht auf Aggregat-Ebene:
+    - `plan_active`
+    - `state`
+    - `taken_count`
+    - `total_count`
+  - Daraus koennen sie ableiten:
+    - gibt es heute offene Medication
+    - ist etwas teilweise erledigt
+    - sind alle offenen Einnahmen bereits done
+
+- Read-Contract fuer Batch- und Fast-Path:
+  - Das Model muss eindeutig genug sein, um spaeter:
+    - `alle offenen Einnahmen fuer heute`
+    - oder einzelne offene Slots
+    sicher zu identifizieren
+  - Deshalb ist `slots[]` mit `slot_id` Pflicht und kein optionaler UI-Anhang.
+
+- Bewusst nicht Teil des V1-Read-Models:
+  - keine Legacy-Tages-Boolean-Felder wie:
+    - `taken`
+    - `qty` als kompletter Tagesblock
+  - keine Mischform aus altem und neuem Vertrag
+  - keine Historienlisten ueber mehrere Tage
+  - kein Push-/Incident-Status im Medication-Read selbst
+  - kein eigener Voice-Hinweiszustand
+
+- Beispielhafte Leselogik fuer einen Medication-Eintrag:
+  - `Rosuvastatin`
+    - `stock_count = 28`
+    - `daily_planned_qty = 1`
+    - `daily_taken_qty = 0`
+    - `daily_remaining_qty = 1`
+    - `taken_count = 0`
+    - `total_count = 1`
+    - `state = open`
+    - `slots = [Abend]`
+  - `Antibiotikum`
+    - `stock_count = 10`
+    - `daily_planned_qty = 3`
+    - `daily_taken_qty = 1`
+    - `daily_remaining_qty = 2`
+    - `taken_count = 1`
+    - `total_count = 3`
+    - `state = partial`
+    - `slots = [Morgen, Mittag, Abend]`
+
+- Konsequenz fuer `S4.2` und `S4.3`:
+  - `S4.2` muss Write-RPCs definieren, die genau diese Slot- und Progress-Felder sauber fortschreiben.
+  - `S4.3` muss sicherstellen, dass bestehende Call-Sites nicht mehr auf `taken=true fuer ganzen Tag` bauen.
+
+- Check-Ergebnis:
+  - Das neue Tages-Read-Model ist:
+    - kompakt genug fuer den IN-Tab
+    - voll nutzbar fuer Push und Voice
+    - progress-aware
+    - bestands-aware
+    - frei von harter Zeit- und Reminder-Semantik.
+
+#### S4.2 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S4.2`:
+  - Die Write-Seite darf im Multi-Dose-Modell nicht mehr auf `med_id + day = ganzer Tag erledigt` beruhen.
+  - Der neue Vertrag muss drei Dinge sauber trennen:
+    - Medication-Stammdaten schreiben
+    - Slot-Plan schreiben
+    - konkrete Tages-Slot-Events schreiben
+
+- Write-Familien im neuen Modell:
+  - Medication CRUD
+  - Schedule-/Plan-Write
+  - Slot-Confirm/Undo
+  - Stock-Write
+  - Low-Stock-Ack
+
+- RPC A - Medication-Stammdaten upsert:
+  - Arbeitstitel:
+    - `med_upsert_v2`
+  - Zweck:
+    - Medikament unter neuem Vertrag anlegen oder bearbeiten
+  - Empfohlene Eingaben:
+    - `id` optional bei Update
+    - `name`
+    - `ingredient`
+    - `strength`
+    - `leaflet_url`
+    - `stock_count`
+    - `low_stock_days`
+    - `active`
+    - `with_meal`
+  - Guard:
+    - dieser RPC schreibt keine Tages-Slot-Events
+    - und nicht stillschweigend den kompletten Plan, wenn Planpflege getrennt laeuft
+
+- RPC B - Medication-Plan upsert:
+  - Arbeitstitel:
+    - `med_upsert_schedule_v2`
+  - Zweck:
+    - den gueltigen Slot-Plan einer Medication neu anlegen oder prospektiv aendern
+  - Empfohlene Eingaben:
+    - `med_id`
+    - `effective_start_date`
+    - `slots[]`
+  - Empfohlene Slot-Struktur im Write:
+    - `label`
+    - `sort_order`
+    - `qty`
+    - optional spaeter `end_date`, wenn der Editor einzelne Slots abweichend beenden koennen soll
+  - Fachliche Wirkung:
+    - alte Planversionen werden sauber beendet/deaktiviert
+    - neue Planversion beginnt prospektiv ab `effective_start_date`
+
+- Warum Schedule-Write separat von Medication-Write:
+  - Stammdaten und Plan haben unterschiedliche Lebenszyklen.
+  - Dadurch bleiben spaeter klar moeglich:
+    - Name aendern ohne Planwechsel
+    - Planwechsel ohne Stammdatenmutation
+    - temporaere Plananpassung mit neuem Startdatum
+
+- RPC C - Slot bestaetigen:
+  - Arbeitstitel:
+    - `med_confirm_slot_v2`
+  - Zweck:
+    - genau einen geplanten Slot fuer einen Kalendertag bestaetigen
+  - Pflichtparameter:
+    - `slot_id`
+    - `day`
+  - Optional:
+    - `taken_at`, wenn serverseitig nicht immer `now()` genutzt wird
+  - Fachliche Wirkung:
+    - idempotenter Insert des Slot-Events
+    - Bestandsreduktion genau um die Slot-Menge
+    - Rueckgabe des aktualisierten Tageszustands oder zumindest Erfolg + Reload-Trigger
+
+- RPC D - Slot rueckgaengig machen:
+  - Arbeitstitel:
+    - `med_undo_slot_v2`
+  - Zweck:
+    - genau ein bestaetigtes Slot-Event fuer einen Kalendertag entfernen
+  - Pflichtparameter:
+    - `slot_id`
+    - `day`
+  - Fachliche Wirkung:
+    - loescht genau das Event fuer `slot_id + day`
+    - stellt genau diese Slot-Menge im Bestand wieder her
+    - fasst keine anderen Slots desselben Tages an
+
+- RPC E - Medication archivieren / aktiv setzen:
+  - Arbeitstitel:
+    - `med_set_active_v2`
+  - Zweck:
+    - Medication-Level Aktiv/Inaktiv sauber schalten
+  - Pflichtparameter:
+    - `med_id`
+    - `active`
+  - Guard:
+    - kein Slot-Event-Write
+    - keine Historienloeschung
+
+- RPC F - Medication loeschen:
+  - Arbeitstitel:
+    - `med_delete_v2`
+  - Zweck:
+    - bewusstes Entfernen eines neu angelegten Medikaments im Reset-Modell
+  - Guard:
+    - muss deterministisch mit zugehoerigem Planbestand umgehen
+    - keine halben Slot-Leichen hinterlassen
+  - Konkrete Delete-Semantik wird spaeter in SQL entschieden:
+    - hartes Delete
+    - oder nur fuer ungenutzte Datensaetze
+
+- RPC G - Stock-Korrektur:
+  - Arbeitstitel:
+    - `med_adjust_stock_v2`
+    - `med_set_stock_v2`
+  - Zweck:
+    - manueller Restock/Korrekturpfad bleibt erhalten
+  - Guard:
+    - bleibt klar getrennt vom Einnahme-Event-Write
+    - schreibt weiter gegen `health_medication_stock_log`
+
+- RPC H - Low-Stock-Ack:
+  - Arbeitstitel:
+    - `med_ack_low_stock_v2`
+  - Zweck:
+    - bestaetigt den aktuellen Low-Stock-Zustand auf Medication-Level
+  - Pflichtparameter:
+    - `med_id`
+    - `day`
+    - `stock_snapshot`
+  - Guard:
+    - kein Slot- oder Plan-Write
+
+- Wichtige Write-Regeln fuer Confirm/Undo:
+  - Confirm und Undo arbeiten nur auf Slot-Ebene.
+  - Es gibt keinen neuen V2-RPC:
+    - `confirm whole medication day`
+  - Batch- und Fast-Paths werden spaeter im Client orchestriert, nicht als eigener grober Serververtrag.
+
+- Batch-Flow-Regel fuer spaetere Call-Sites:
+  - `alle offenen Einnahmen bestaetigen` bedeutet:
+    - mehrfaches Ausfuehren von `med_confirm_slot_v2` fuer alle offenen Slots des Tages
+  - nicht:
+    - ein versteckter Sammel-RPC mit impliziter Tageskomplettlogik
+  - Das haelt den Serververtrag deterministisch und testbar.
+
+- Rueckgabe-Strategie der Write-RPCs:
+  - V1-Praeferenz:
+    - Write-RPCs geben kompakten Erfolg zurueck
+    - danach laedt der Client den Tages-Read neu
+  - Warum:
+    - einfacher, robuster und konsistenter fuer den Umbau
+    - kein Zwang, jede Mutation sofort ein komplexes Vollmodell serverseitig zurueckzugeben
+  - Optional spaeter:
+    - Write + frischer Tages-Snapshot in einer Antwort
+
+- Bewusst nicht Teil des Write-Vertrags:
+  - kein Voice-spezifischer Write-RPC
+  - kein Push-spezifischer Write-RPC
+  - kein Reminder-/Missed-Write
+  - kein Legacy-Adapter fuer alte Tages-Boolean-RPCs im neuen Kernvertrag
+
+- Konsequenz fuer `S4.3`:
+  - Die Rueckwaertskompatibilitaet muss jetzt nicht alte Med-Daten retten, sondern nur bestehende Call-Sites sauber auf den neuen Contract umbiegen.
+  - Das Ziel bleibt:
+    - keine produktive Stelle darf weiter denken in `medication today = taken true/false`
+
+- Check-Ergebnis:
+  - Der Write-Contract ist jetzt sauber getrennt nach:
+    - Stammdaten
+    - Plan
+    - Slot-Events
+    - Stock
+    - Ack
+  - Confirm/Undo bleiben atomar und slot-basiert.
+  - Batch- und Voice-Faelle koennen spaeter auf denselben deterministischen Kern aufsetzen.
+
+#### S4.3 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S4.3`:
+  - Der neue API-Vertrag soll alte Tages-Boolean-Call-Sites sauber ersetzen, aber keine lange Legacy-Doppelwelt erzeugen.
+  - Wegen des bewussten Medication-Resets geht es hier nicht um Datenmigration, sondern um Codepfad-Migration.
+
+- Ausgangslage:
+  - Bestehende Frontend-Pfade erwarten heute:
+    - flaches `taken`
+    - flaches `taken_at`
+    - flaches `qty`
+    - `confirmMedication(medId, day)`
+    - `undoMedication(medId, day)`
+  - Diese Vertragsform darf im neuen Kern nicht erhalten bleiben.
+
+- Grundregel fuer die Uebergangsstrategie:
+  - Neuer SQL-/RPC-Kern zuerst.
+  - Danach ein schmaler Client-Adapter.
+  - Danach schrittweise Umstellung aller Call-Sites auf den neuen Tagesvertrag.
+  - Zielbild:
+    - genau ein produktiver Medication-Read-Contract
+    - genau ein produktiver slot-basierter Write-Contract
+
+- API-Strategie im Medication-Client:
+  - `loadMedicationForDay(day)` darf als oeffentliche Einstiegsmethode bestehen bleiben.
+  - Aber:
+    - Rueckgabeform wird auf das neue Tages-Read-Model umgestellt
+    - kein altes Flat-Mapping mehr auf `taken=true/false`
+  - Das ist die wichtigste Rueckwaertskompatibilitaet:
+    - stabiler Entry Point
+    - neuer Inhalt
+
+- Confirm-/Undo-Strategie:
+  - Die bisherigen Client-Methoden
+    - `confirmMedication(...)`
+    - `undoMedication(...)`
+    sind im neuen Modell fachlich zu grob.
+  - V1-Empfehlung:
+    - neue produktive Methoden einfuehren:
+      - `confirmMedicationSlot(slotId, dayIso)`
+      - `undoMedicationSlot(slotId, dayIso)`
+    - alte Methoden nicht als echten Kernvertrag weiterfuehren
+
+- Wie mit alten Helper-Namen umgehen:
+  - Kurzfristig waehrend der Umstellung sind zwei Wege zulaessig:
+    - alte Helper sofort entfernen und alle Call-Sites in einem Zug migrieren
+    - oder alte Helper sehr kurzzeitig als lokale Adapter halten, die nur noch in klar benannten Uebergangspfaden leben
+  - Praeferenz fuer MIDAS:
+    - moeglichst schnelle Vollumstellung statt laengerer Adapterphase
+  - Grund:
+    - bewusster Reset macht lange Rueckwaertskompatibilitaet unnoetig
+    - Doppelsemantik erzeugt nur Verwirrung
+
+- Regeln fuer einen eventuellen Kurzzeit-Adapter:
+  - Falls alte Helper fuer einen Zwischenschritt bleiben, dann nur mit enger Guard-Semantik:
+    - `confirmMedication(medId, dayIso)` darf nicht stillschweigend `alle Slots` bestaetigen
+    - er darf hoechstens:
+      - bei exakt `1` offenem Slot den neuen Slot-RPC delegieren
+      - sonst kontrolliert fehlschlagen oder vom Aufrufer ersetzt werden muessen
+  - Damit wird verhindert, dass der alte Name unbemerkt falsche Produktsemantik weitertraegt.
+
+- Call-Site-Migrationsreihenfolge:
+  - Prioritaet 1:
+    - Medication-Modul eigener State/Mapper
+  - Prioritaet 2:
+    - Intake Daily Flow
+  - Prioritaet 3:
+    - Incidents / Push
+  - Prioritaet 4:
+    - Hub / Text-Fast-Path
+  - Prioritaet 5:
+    - Voice
+  - Prioritaet 6:
+    - Profile Snapshot / Read-only Darstellung
+  - Warum diese Reihenfolge:
+    - erst Source-of-Truth und Haupt-UI
+    - dann Downstream-Pfade
+
+- Event-Vertrag:
+  - Das bestehende Event `medication:changed` darf als Integrationsereignis bestehen bleiben.
+  - Aber:
+    - Payload-Semantik wird auf den neuen Tagesvertrag ausgerichtet
+    - keine stillschweigende Annahme mehr, dass `data.medications[*].taken` existiert
+  - Event bleibt also als Name stabil, aber fachlich modernisiert.
+
+- Read-Compatibility-Regel:
+  - Es wird keinen langfristigen Parallel-Output geben von:
+    - altem Flat-Model
+    - und neuem Slot-Model
+  - Wenn ein Uebergangs-Mapping noetig ist, dann nur lokal und kurzlebig in den betroffenen Call-Sites.
+  - Nicht im zentralen Read-RPC selbst.
+
+- Warum das wichtig ist:
+  - Ein gemischter Read-Contract waere die gefaehrlichste Drift-Stelle:
+    - UI nutzt neue Felder
+    - Push liest noch `taken`
+    - Voice denkt noch in Tages-Boolean
+  - Deshalb gilt:
+    - lieber wenige kontrollierte Call-Site-Breaks
+    - als ein weichgespueltes Mischmodell
+
+- Delete-Strategie fuer Altvertrag:
+  - Nach erfolgreicher Umstellung von `S5` bis `S8` sollen alte Tages-Boolean-Helper und Mapping-Felder aktiv entfernt werden.
+  - Beispiele fuer spaeteren Abbau:
+    - `taken`
+    - `taken_at` als Medication-Level-Feld
+    - `qty` als ganzer Tagesblock
+    - `confirmMedication(medId, dayIso)` als Produkthelper
+    - `undoMedication(medId, dayIso)` als Produkthelper
+
+- Konsequenz fuer `S4.4`:
+  - Atomicity und Idempotenz muessen auf dem neuen Kern so stark sein, dass die schrittweise UI-Migration kein Zustandslotto erzeugt.
+
+- Check-Ergebnis:
+  - Die API-Uebergangsstrategie ist bewusst kurz und entschlossen:
+    - stabiler Einstiegspunkt fuer Read
+    - neue Slot-Methoden fuer Write
+    - keine lange Doppelwelt
+    - kein verdecktes Weiterleben des alten Tages-Boolean-Vertrags.
+
+#### S4.4 Ergebnisprotokoll (abgeschlossen)
+- Ziel von `S4.4`:
+  - Der neue Medication-Kern darf bei Mehrfach-Einnahmen kein Zustandslotto erzeugen.
+  - Confirm/Undo muessen deshalb nicht nur fachlich korrekt, sondern auch technisch robust sein:
+    - atomar
+    - idempotent
+    - bestandskonsistent
+    - stock-log-konsistent
+
+- Grundregel fuer Confirm:
+  - `med_confirm_slot_v2(slot_id, day)` ist genau eine transaktionale Fachaktion:
+    - Slot-Gueltigkeit fuer den Tag pruefen
+    - pruefen, ob Event fuer `slot_id + day` bereits existiert
+    - falls nicht vorhanden:
+      - Event anlegen
+      - Bestand um die Slot-Menge reduzieren
+      - Stock-Log schreiben
+    - falls bereits vorhanden:
+      - keinen zweiten Verbrauch erzeugen
+      - keinen zweiten Log-Eintrag erzeugen
+
+- Grundregel fuer Undo:
+  - `med_undo_slot_v2(slot_id, day)` ist ebenfalls genau eine transaktionale Fachaktion:
+    - bestaetigtes Event fuer `slot_id + day` finden
+    - falls vorhanden:
+      - Event loeschen
+      - Bestand um genau diese Slot-Menge erhoehen
+      - Stock-Log schreiben
+    - falls nicht vorhanden:
+      - kein Bestandseffekt
+      - kein Phantom-Undo
+
+- Atomaritaets-Regel:
+  - Event-Write und Bestandsaenderung duerfen nie auseinanderlaufen.
+  - Das bedeutet:
+    - kein erfolgreiches Slot-Event ohne passende Bestandsaenderung
+    - keine Bestandsaenderung ohne passenden Event-Zustand
+  - Technisch folgt daraus:
+    - Confirm/Undo nur innerhalb einer DB-Transaktion
+    - kein clientseitiges Nachziehen des Bestands als separater Schritt
+
+- Idempotenz-Regel fuer Confirm:
+  - Zweites Confirm auf denselben `slot_id + day` darf fachlich als no-op gelten.
+  - Erlaubte Wirkung:
+    - Erfolg ohne neue Mutation
+    - oder kontrollierte Information `already confirmed`
+  - Nicht erlaubt:
+    - zweiter Bestandsabzug
+    - zweiter `stock_log`-Eintrag
+    - zweites Tagesevent
+
+- Idempotenz-Regel fuer Undo:
+  - Zweites Undo auf denselben `slot_id + day` darf ebenfalls nur no-op sein.
+  - Nicht erlaubt:
+    - zweiter Bestandsanstieg
+    - zweiter Undo-Logeintrag
+
+- Slot-Mengen-Regel:
+  - Confirm/Undo arbeiten immer gegen die dem Slot zugeordnete Menge.
+  - Nicht gegen:
+    - eine aggregierte Tagesmenge
+    - einen aus dem Client uebergebenen freien Mengenwert
+  - Grund:
+    - die serverseitige Slotdefinition bleibt Source of Truth
+    - damit koennen Clientfehler keine falschen Mengen buchen
+
+- Gueltigkeits- und Aktiv-Checks im Write-Pfad:
+  - Confirm darf nur moeglich sein, wenn:
+    - Slot existiert
+    - Medication existiert
+    - Medication aktiv ist
+    - Slot fuer den Tag gueltig ist
+  - Undo darf nur ein Event rueckgaengig machen, das unter genau diesem Vertrag entstanden ist.
+  - Dadurch werden verhindert:
+    - Writes auf abgelaufene Plaene
+    - Writes auf deaktivierte Medikamente
+    - Cross-link-Fehler zwischen Medication und Slot
+
+- Regel fuer konkurrierende Requests:
+  - Wenn zwei Confirms fast gleichzeitig auf denselben Slot laufen, darf am Ende trotzdem nur genau ein Event existieren.
+  - Grundlage dafuer:
+    - `UNIQUE (user_id, slot_id, day)`
+    - transaktionaler Write-Pfad
+  - Gleiches gilt fuer konkurrierende Undo-/Confirm-Folgen:
+    - Endzustand muss dem letzten gueltigen Event-Zustand entsprechen
+    - kein doppelter Bestandseffekt
+
+- Rolle von `health_medication_stock_log` im neuen Modell:
+  - `stock_log` bleibt die nachvollziehbare Spur fuer Bestandsveraenderungen.
+  - Er dokumentiert weiterhin:
+    - Confirm-bedingte Verbrauchsreduktion
+    - Undo-bedingte Rueckbuchung
+    - manuelle Restocks/Korrekturen
+  - Multi-Dose aendert also nicht den Zweck des Logs, sondern die Granularitaet seines Ausloesers.
+
+- Log-Semantik im neuen Modell:
+  - Empfohlene Log-Reason-Typen:
+    - `slot_confirm`
+    - `slot_undo`
+    - `stock_adjust`
+    - `stock_set`
+  - Optional zusaetzlich:
+    - `slot_id`
+    - `day`
+    - `note/context`
+  - Wichtig:
+    - kein unklarer generischer `dose`-Reason mehr fuer Mehrfach-Einnahmen
+
+- Was der Client nicht mehr tun darf:
+  - nicht lokal raten, wie viel vom Bestand abzuziehen ist
+  - nicht selbst `taken_count` inkrementieren und Bestand separat patchen
+  - nicht auf Retry einen zweiten Verbrauch triggern
+  - Der Client triggert nur die Fachaktion und laedt danach den Tageszustand neu.
+
+- Fehlerverhalten:
+  - Wenn Confirm/Undo fehlschlaegt, bleibt der Zustand unveraendert.
+  - Keine Teilmutation darf nach aussen sichtbar werden.
+  - Das gilt besonders fuer:
+    - Event angelegt, Bestand aber nicht angepasst
+    - Bestand angepasst, Event aber nicht angelegt
+    - Log geschrieben, aber Fachaktion gescheitert
+
+- Beziehung zu Batch- und Voice-Flows:
+  - Batch und Voice duerfen spaeter mehrere Slot-Aktionen ausloesen.
+  - Gerade deshalb muss jede Einzelaktion fuer sich voll robust sein.
+  - Der Sammelcharakter entsteht im Client-Orchestrator, nicht im DB-Vertrag.
+
+- Konsequenz fuer `S4.5`:
+  - Bei der Schritt-Abnahme muessen spaeter gezielt gesucht werden:
+    - doppelte Bestandseffekte
+    - tote Alt-Logs mit Tages-Boolean-Semantik
+    - alte `dose_per_day`-Restannahmen in Confirm/Undo-Pfaden
+
+- Check-Ergebnis:
+  - Der neue Write-Kern ist jetzt fachlich so definiert, dass Mehrfach-Einnahmen robust bleiben:
+    - ein Slot = eine atomare Aktion
+    - ein Undo = genau eine Rueckbuchung
+    - kein doppelter Verbrauch
+    - kein doppeltes Log
+    - kein Client-seitiger Schattenbestand.
+
+#### S4.5 Schritt-Abnahme (abgeschlossen)
+- Contract-Abnahme gegen `S2` und `S3`:
+  - Der in `S4` definierte Read-/Write-Kern passt voll zum Produktvertrag:
+    - Slots bleiben count-/order-based
+    - kein Zeit- oder Reminder-Drift
+    - keine Rueckkehr zum Tages-Boolean-Modell
+    - kein Legacy-Backfill-Zwang
+  - `S4` baut konsistent auf den Entscheidungen aus `S3` auf:
+    - Reset statt Dual-Read
+    - prospektive Planwechsel
+    - progress-aware Bestandslogik
+
+- API-Konsistenz-Check:
+  - Read und Write greifen jetzt auf derselben kleinsten Einheit:
+    - `slot_id + day`
+  - Read liefert:
+    - Aggregat fuer UI/Push/Voice
+    - plus Slot-Details fuer Confirm/Undo
+  - Write mutiert:
+    - genau einen Slot
+    - genau einen Bestandseffekt
+    - genau einen zugeordneten Logeffekt
+  - Damit ist keine verdeckte Grobsemantik mehr offen.
+
+- Call-Site-Risiko-Check:
+  - Die groesste verbleibende Drift-Stelle sitzt nicht mehr im Vertrag, sondern in bestehenden Aufrufern.
+  - Kritische Altannahmen, die spaeter aktiv entfernt werden muessen:
+    - `taken` als Medication-Level-Bool
+    - `taken_at` als alleiniger Tagesstatus
+    - `qty` als aggregierter Tagesblock
+    - `confirmMedication(medId, day)`
+    - `undoMedication(medId, day)`
+    - Filter wie `!med.taken`
+  - Diese Altpfade sind jetzt klar benannt und damit ab `S5` bis `S8` gezielt abbaubar.
+
+- Dead-Code-/Ballast-Check auf Vertragsebene:
+  - In `S4` ist kein neuer Mischvertrag entstanden aus:
+    - altem Flat-Read
+    - neuem Slot-Read
+  - Es gibt auch keinen neuen Sammel-RPC, der spaeter wieder zur Tageskomplettlogik entgleisen koennte.
+  - Das ist wichtig, weil genau solche Zwischenvertraege spaeter fast immer toten Ballast erzeugen.
+
+- Integrations-Check gegen Downstream-Module:
+  - Intake kann auf `taken_count / total_count / slots[]` aufsetzen.
+  - Push kann auf `plan_active`, `state` und offene Tagesmedikation aufsetzen.
+  - Voice/Fast-Path kann offene Slots explizit bestaetigen, ohne Teilmengen zu raten.
+  - Profile kann weiterhin einen read-only Snapshot bekommen, nur auf neuer Datenbasis.
+
+- Fehlerrisiko-Check:
+  - Die groessten Risiken im spaeteren Code-Umbau liegen jetzt noch bei:
+    - halb migrierten Call-Sites
+    - zu langen Uebergangsadaptern
+    - versehentlicher Wiederverwendung alter Feldnamen mit neuer Bedeutung
+  - Diese Risiken sind aber jetzt fachlich sichtbar gemacht und keine blinden Stellen mehr.
+
+- Abnahme-Entscheid:
+  - `S4` ist als RPC-/Contract-Grundlage tragfaehig genug, um danach direkt in die UI- und Modulumbauten zu gehen.
+  - Es gibt keinen offenen Vertragswiderspruch mehr, der `S5` blockieren wuerde.
+
+- Check-Ergebnis:
+  - Der neue Medication-API-Vertrag ist:
+    - deterministisch
+    - slot-basiert
+    - progress-aware
+    - bestandskonsistent
+    - frei von versteckter Legacy-Grobsemantik.
+
+#### S4.6 Doku-Sync (abgeschlossen)
+- Doku-Entscheid:
+  - Auch nach `S4` bleibt der neue RPC-/Read-Write-Contract vorerst ein Architektur- und Umbauvertrag.
+  - Solange noch keine neue SQL, keine neuen RPCs und kein neuer Frontend-Mapper produktiv im Code liegen, werden die Modul-Overviews nicht vorzeitig auf Multi-Dose umgeschrieben.
+
+- Warum diese Zurueckhaltung hier besonders wichtig ist:
+  - `S4` beschreibt bereits sehr konkrete API- und RPC-Semantik.
+  - Wenn `docs/modules/*` das jetzt schon als Ist-Zustand behaupten wuerden, waere das irrefuehrender als in `S2` oder `S3`, weil die Begriffe hier direkt nach implementierter API klingen.
+
+- Durchgefuehrter Doku-Sync:
+  - Die Roadmap selbst traegt jetzt den vollstaendigen `S4`-Contract:
+    - neues Tages-Read-Model
+    - slot-basierte Write-RPCs
+    - kurze Uebergangsstrategie fuer bestehende Call-Sites
+    - Atomicity-/Idempotenz-Regeln
+  - Der bereits vorhandene Dokumentstatus-Hinweis in
+    [Medication Management Module Spec.md](c:\Users\steph\Projekte\M.I.D.A.S\docs\archive\Medication%20Management%20Module%20Spec.md)
+    bleibt weiterhin korrekt und ausreichend:
+    - bestehende Spec = aktueller Single-Dose-Ist-Zustand
+    - Roadmap = kuenftiger Multi-Dose-Umbauvertrag
+
+- Produktregel fuer die naechsten Schritte:
+  - `docs/modules/Medication Module Overview.md`,
+    `docs/modules/Intake Module Overview.md`,
+    `docs/modules/Push Module Overview.md`,
+    `docs/modules/Intent Engine Module Overview.md`
+    und `docs/QA_CHECKS.md`
+    werden erst dann konkret umgeschrieben, wenn `S5` bis `S8` die jeweiligen produktiven Codevertraege wirklich aendern.
+
+- Spezifische Doku-Ziellinie ab jetzt:
+  - Nach SQL-/RPC-Implementierung:
+    - Medication Overview
+  - Nach Daily-UX-Umbau:
+    - Intake Overview
+    - QA Checks
+  - Nach Incident-/Push-Umbau:
+    - Push Overview
+  - Nach Voice-/Intent-Umbau:
+    - Intent Engine Overview
+    - Medication Overview
+    - ggf. Voice-Doku
+
+- Check-Ergebnis:
+  - Die Doku-Hierarchie bleibt sauber:
+    - `docs/modules/*` = aktueller Codezustand
+    - `docs/archive/*` = Umbauvertrag und technische Zielarchitektur
+  - Kein Dokument behauptet jetzt schon einen existierenden `v2`-RPC-Stand, der im Repo noch nicht umgesetzt ist.
+
+#### S4.7 Commit-Empfehlung (abgeschlossen)
+- Empfehlung:
+  - Ja, nach `S4` ist erneut ein eigener Commit sinnvoll.
+
+- Begruendung:
+  - `S4` schliesst den API-/RPC-Vertrag als eigenen Architekturblock ab:
+    - Tages-Read-Model
+    - slot-basierte Write-RPCs
+    - kurze Call-Site-Uebergangsstrategie
+    - Atomicity-/Idempotenz-Regeln
+  - Das ist ein klar anderer Schnitt als der naechste Block `S5`, der erstmals direkt in produktive UI- und Modulumbauten hineingeht.
+
+- Warum nicht mit `S5` buendeln:
+  - `S5` veraendert die reale Medication-Verwaltung im TAB-Flow.
+  - Ab dort beginnen sichtbare Produktaenderungen und spaeter auch echte Code- und SQL-Implementierung.
+  - Fuer deine Arbeitsweise ist es sauberer, den finalen Contract-Block vor dem sichtbaren Umbau separat abzuschliessen.
+
+- Empfohlene Commit-Semantik:
+  - Fokus des Commits:
+    - Medication Multi-Dose API-/RPC-Vertrag fachlich finalisiert
+  - Kein Implementierungsclaim:
+    - dieser Commit beschreibt noch nicht die echte SQL-/Frontend-Umsetzung
+    - sondern den verbindlichen Contract, gegen den `S5` bis `S8` gebaut werden
+
+- Check-Ergebnis:
+  - `S4` ist als abgeschlossener Roadmap-Block commit-wuerdig.
+  - Naechster Arbeitsblock startet sauber mit `S5`.
 
 ### S5 - TAB-Planeditor fuer Mehrfach-Einnahmen umsetzen
 - S5.1 Form-Contract fuer Planbearbeitung festlegen:
