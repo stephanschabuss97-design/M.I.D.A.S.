@@ -499,20 +499,30 @@
     const dir = delta > 0 ? 1 : -1;
     if (!isAssistantSurfaceEnabled() && carouselState.showPassiveVoiceAnchor) {
       const activeId = carouselState.activeButton?.dataset?.carouselId || null;
-      carouselState.showPassiveVoiceAnchor = false;
-      if (quickbarState.hubEl) {
-        refreshCarouselItems(quickbarState.hubEl, {
-          preserveActiveId: activeId !== 'assistant-voice',
-        });
-      }
-      length = getCarouselLength();
-      if (!length) return;
-      if (activeId === 'assistant-voice') {
-        if (aura3dApi?.triggerCarouselSweep) {
+      const shouldPromotePassiveAnchor =
+        carouselState.idle || activeId === 'assistant-voice';
+      if (shouldPromotePassiveAnchor) {
+        const targetIndex = dir > 0 ? 1 : length - 1;
+        const changed = setCarouselActiveIndex(targetIndex, { direction: dir });
+        carouselState.showPassiveVoiceAnchor = false;
+        if (quickbarState.hubEl) {
+          refreshCarouselItems(quickbarState.hubEl, {
+            preserveActiveId: true,
+          });
+        }
+        if (changed && aura3dApi?.triggerCarouselSweep) {
           aura3dApi.triggerCarouselSweep(dir > 0 ? 'left' : 'right');
         }
         return;
       }
+      carouselState.showPassiveVoiceAnchor = false;
+      if (quickbarState.hubEl) {
+        refreshCarouselItems(quickbarState.hubEl, {
+          preserveActiveId: true,
+        });
+      }
+      length = getCarouselLength();
+      if (!length) return;
     }
     let changed = false;
     if (carouselState.idle) {
