@@ -1,413 +1,456 @@
-[README.md](https://github.com/user-attachments/files/22867088/README.md)
-# Gesundheits-Logger
+# MIDAS
 
-Der Gesundheits-Logger ist eine offlinefaehige Web-App zur Erfassung, Auswertung und Synchronisation von Gesundheitsdaten. Die Anwendung laeuft komplett im Browser, speichert Daten in IndexedDB und kann optional ueber Supabase mit der Cloud synchronisieren.
+Medical Incidents (and) Data Analysis Software
 
----
+MIDAS ist keine generische Health-App und kein offenes Multi-User-Produkt. MIDAS ist eine persoenliche, single-user PWA fuer meinen eigenen medizinischen Alltag: Tageserfassung, Intake-Steuerung, Medikamentenflow, Incident-Pushes, Arztansicht, Reports und eine eng gefuehrte Assistant-/Voice-Oberflaeche.
 
-## Kernfunktionen
+Wichtiger noch: MIDAS ist kein Hobby-Tracker, sondern mein persoenliches Gesundheits-Betriebssystem. Es existiert, um alltagsrelevante medizinische Verantwortung in ein belastbares, reibungsarmes System zu uebersetzen: weniger vergessen, weniger Drift, weniger Kopfchaos, mehr Klarheit und bessere Umsetzbarkeit im echten Leben.
 
-- **Capture (Tageserfassung)**
-  - Blutdruck Morgens/Abends inkl. Kommentarpflicht bei Grenzwerten.
-  - Koerperwerte: Gewicht, Taille sowie optional Prozent Fett und Prozent Muskel.
-  - Freitext-Kommentar fuer Tagesereignisse direkt im Body-Panel.
-  - Intake-Accordion fuer Wasser, Salz und Protein mit Tages-Pills und Fortschrittsbalken.
-  - Trendpilot-Pill im Header verlinkt auf aktuelle Warnungen/Kritik (inkl. Chart-/Doctor-Verknuepfung).
+Diese README ist absichtlich nicht wie eine klassische Open-Source-README geschrieben. Sie ist die zentrale Einstiegskarte fuer:
 
-- **Header-Status (v1.6.4 bis v1.7.0)**
-  - Intake-Pills und Termin-Badge direkt unter dem Datumsfeld.
-  - Vollstaendige ARIA-Labels, fokusierbar, Live-Region fuer Screenreader.
-  - Telemetrie misst Render-Zeiten (p50/p90/p95) und schreibt in das Diagnose-Log.
+- mich als Betreiber und einzigen Nutzer
+- spaetere Coding-Agents / LLMs
+- punktuelle technische Wartung
 
-- **Arzt-Ansicht**
-  - Tageskarten mit Datum/Cloud-Status, Messungen, Gewicht und Kommentar.
-  - Cloud-Loeschung einzelner Tage, Export als JSON.
-  - Zugriff nur nach lokalem Unlock (Passkey oder PIN).
-
-- **Diagramm (Daily)**
-  - SVG-Chart fuer Blutdruck und Koerperdaten, inklusive Tastatur- und Tooltip-Unterstuetzung.
-  - Muskel- und Fettbalken (kg) hinter dem Gewicht-Chart (v1.6.8), per Feature-Flag deaktivierbar.
-  - Trendpilot-Baender plus Legenden-Swatches (Warnung/Kritisch).
-
-- **Synchronisation, Diagnostics und Logging**
-  - Google OAuth (anon Key) + Supabase REST/Realtime.
-  - Diagnosepanel (Touch-Log) zeigt Keys, Fehler und Performance-Metriken.
-  - Diagnostics-Layer (`app/diagnostics/{logger,perf,monitor}.js`) mit Feature-Flag `DIAGNOSTICS_ENABLED`.
-
-- **Readiness (Phase 4)**
-  - Assistant-Modul vorbereitet (`app/modules/assistant/` + Doc).
-  - PWA/TWA-Struktur unter `public/` vorhanden (SW/TWA folgen separat).
-  - Capture-Hub V2 Layout (MIDAS UI) per Flag `CAPTURE_HUB_V2` testbar.
-
-- **Export**
-  - JSON-Export (gesundheitslog.json) fuer Aerztinnen und Aerzte.
+Die Detailquelle fuer einzelne Bereiche bleibt `docs/modules/*.md`. Die README erklaert das Produkt, die Leitplanken und die Systemkarte.
 
 ---
 
-## Schnellstart
+## Produktstatus auf einen Blick
 
-1. Repository klonen oder ZIP entpacken.
-2. `index.html` im Browser oeffnen (kein Build notwendig; Bundle liegt unter `app/`).
-3. Daten werden automatisch in IndexedDB gespeichert.
-4. Optional Supabase konfigurieren (Konsole → `putConf`):
-   - `webhookUrl = https://<project-ref>.supabase.co/rest/v1/health_events`
-   - `webhookKey = Bearer <ANON_KEY>` (service_role wird clientseitig blockiert)
-5. Mit Google anmelden → Capture- und Termin-Daten synchronisieren sich, Realtime aktualisiert die UI.
-
-### Arzt-Ansicht entsperren
-
-- Beim ersten Wechsel erscheint ein lokales Entsperr-Overlay.
-- Empfehlung: Passkey (Windows Hello, Touch ID, Face ID). Alternativ lokale PIN setzen.
-- Unlock gilt fuer Arzt-Ansicht, Diagramm und Export; Capture bleibt frei verfuegbar.
-
----
-
-## Bedienhinweise
-
-- **BP-Kontext Auto-Switch (v1.6.5)**: 00:00 → Morgens, 12:05 → Abends. Manuelle Auswahl bleibt bis Tageswechsel bestehen.
-- **Intake-Pills & Termin-Badge**: Screenreader hoeren "Tagesaufnahme: Wasser 1800 ml (Warnung) ..." bzw. "Kein Termin geplant".
-- **Koerper-Chart**: Muskel- und Fettbalken erscheinen nur bei vorhandenen kg-Werten. Flag `SHOW_BODY_COMP_BARS` kann deaktiviert werden.
-- **Diagnosepanel**: `perfStats` Eintraege (z. B. `header_intake`, `header_appt`, `drawChart`) geben Hinweise auf Performance und QA-Messungen.
+| Thema | Stand |
+|------|------|
+| Nutzerbild | genau 1 Nutzer: ich |
+| Produktkern | persoenliches Gesundheits-Betriebssystem fuer meinen CKD-Alltag |
+| Produktstatus | produktiv im eigenen Alltag |
+| Plattform | Browser-first PWA |
+| Frontend | statisches HTML/CSS/JS ohne Build-Step |
+| Backend | Supabase Auth / DB / Realtime / Edge Functions |
+| Voice | Voice V1 produktiv, command-first |
+| Push | lokale und remote Incident-Pushes aktiv |
+| Arztmodus | Read-only Uebersicht + Reports aktiv |
+| Modul-Doku | `docs/modules/*.md` ist Source of Truth |
 
 ---
 
-## Supabase & Sicherheit
+## Warum MIDAS existiert
 
-- Nur anon Keys erlaubt; service_role wird clientseitig blockiert.
-- REST-Aufrufe laufen gegen RLS-geschuetzte Tabellen/Views (`health_events`, `appointments`, `v_events_*`).
-- Sessions und Keys verbleiben in IndexedDB; keine sensiblen Daten im Quellcode.
-- Keine externen Server ausser Supabase: Die App verarbeitet Daten vollständig im Browser.
+MIDAS ist aus einer realen gesundheitlichen Notwendigkeit entstanden. Ausgangspunkt war meine CKD-Einordnung Anfang 2025 und die daraus folgende Anforderung, meinen Alltag nicht nur rueckblickend zu dokumentieren, sondern aktiv und verlaesslich zu steuern. Es ging damit nicht mehr nur um "gesund leben" als vages Ideal, sondern um konkrete, wiederkehrende Alltagsfragen:
 
----
+- Habe ich heute meine Medikation genommen?
+- Bin ich bei Wasser, Salz und Protein noch im sinnvollen Bereich?
+- Fehlt ein relevanter Wert oder ein wichtiger Tagesabschluss?
+- Was soll bei einem Arzttermin nicht untergehen?
+- Wie halte ich medizinisch sinnvolle Routinen stabil, ohne daraus einen zweiten Vollzeitjob zu machen?
 
-## Troubleshooting & QA
+Genau daraus ist MIDAS entstanden.
 
-- Detailierte Testfaelle befinden sich in `QA_CHECKS.md`.
-- Typische Hinweise:
-  - Badge zeigt "Kein Termin geplant": Done-Button bleibt ausgeblendet (erwartet).
-  - Capture-Save bricht ab: Fehlermeldung in `#err` und Diagnosepanel pruefen.
-  - Netzwerkprobleme: Telemetrieeintraege und REST-Logs im Diagnosepanel betrachten.
+MIDAS ist fuer mich kein Tracker im klassischen Sinn. Es ist ein Umsetzungswerkzeug. Das Ziel ist nicht Datensammlung um ihrer selbst willen, sondern alltagstaugliche Adhaerenz, Uebersicht und Reibungsreduktion. MIDAS soll mir nicht nur sagen, was war, sondern mir helfen, das Richtige im Alltag konsistent umzusetzen.
 
-## QA & Smoke-Tests
+Die App ist deshalb bewusst eng geschnitten. Sie konzentriert sich auf genau die Dinge, die in meinem realen Alltag relevant sind: Intake, Medikationsfluss, Blutdruck, Incidents, Arztkontext, Reports und gefuehrte Interaktion ueber Text und Voice. Nicht maximal viele Features, sondern moeglichst wenig Drift zwischen medizinischer Absicht und taeglicher Umsetzung.
 
-- **Headless DOM Check:** `msedge --headless --disable-gpu --dump-dom file:///.../index.html`.
-- **Static-Server Probe:** `python -m http.server 8765` und `Invoke-WebRequest http://127.0.0.1:8765/app/app.css`.
-- **Flag-Checks:** `localStorage.setItem('DIAGNOSTICS_ENABLED','false')` testet den Stub-Modus.
-- Weitere Szenarien (Capture, Doctor, Chart, Trendpilot, Offline) siehe `docs/QA_CHECKS.md`.
+Nach meinem bisherigen Verlauf hat mich dieses System real unterstuetzt: durch bessere Routine, klarere Tagessteuerung, weniger kognitive Last und bessere Vorbereitung fuer Arztkontakte. Parallel dazu haben sich unter Therapie, Lebensstilanpassung und konsequenterem Selbstmanagement Verlauf und nephrologische Befunde stabilisiert bzw. verbessert. Besonders Intake und Assistant haben mir geholfen, Adhaerenz, Ernaehrungsalltag und Tagesroutine verlaesslicher umzusetzen.
+
+Diese Produktrealitaet ist wichtig: MIDAS ist kein Showcase, kein Demo-Stack und kein hypothetisches Startup-Produkt. Die App existiert, weil ich sie selbst brauche.
 
 ---
 
-## Versionierung
+## Die eigentliche Produktwahrheit
 
-Semantic Versioning, Highlights:
+MIDAS ist Software aus Selbstverantwortung.
 
-- **1.7.0** – Integrationspass, A11y/Telemetry, Feature-Freeze.
-- **1.6.x** – Arzttermine, Intake-Header, BP-Auto-Switch, Koerper-Komposition.
-- **1.5.x** – Panelisierte Capture-Workflows, Intake-Accordion, Resume-/Timeout-Fixes.
+Ich habe MIDAS nicht gebaut, um Gesundheitsdaten zu sammeln, sondern um einen komplexen, medizinisch relevanten Alltag in eine Form zu bringen, die tragfaehig bleibt: klar, schnell, nachvollziehbar und mit moeglichst wenig Reibung. MIDAS soll Denken nicht ersetzen, sondern entlasten. Es soll nicht medizinische Entscheidungen simulieren, sondern helfen, gute Gewohnheiten, Arztkontext und relevante Tagessignale sauber zusammenzuhalten.
 
-Komplette Historie siehe `CHANGELOG.md`.
+MIDAS ist auch Ausdruck meiner grundsaetzlichen Arbeitsweise: komplexe Realitaet nicht zu romantisieren, sondern in klare, tragfaehige Systeme zu uebersetzen. Ich baue lieber ein belastbares Werkzeug fuer den echten Alltag als eine beeindruckende, aber instabile Feature-Sammlung.
+
+Wenn eine neue Idee beeindruckend wirkt, aber meinen echten Alltag nicht einfacher, sicherer oder klarer macht, dann passt sie wahrscheinlich nicht zu MIDAS.
 
 ---
 
-## Beitrag & Feedback
+## Was MIDAS heute ist
 
-Pull Requests, Issues und Ideen sind willkommen. Bitte ASCII (ae/oe/ue) verwenden und Patches knapp kommentieren. Viel Erfolg mit dem Gesundheits-Logger!
+MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem mit diesen produktiven Schwerpunkten:
 
+- Hub als zentraler Einstieg fuer Navigation, Dashboard, Panels und Voice
+- Tageserfassung fuer BP, Body, Lab und Aktivitaet
+- Intake fuer Wasser, Salz, Protein und taegliche Medikationsbestaetigung
+- Medication-Verwaltung mit Low-Stock-Hinweisen
+- Assistant in Textform mit lokalem Intent-Fast-Path und LLM-Fallback
+- Voice V1 als command-first Oberflaeche auf demselben Intent-Kern
+- Trendpilot fuer mittelfristige Trends und kontextuelle Warnhinweise
+- Incident-Pushes nur fuer echte Ereignisse wie offene Medikation oder fehlende Abend-BP
+- Arztmodus mit Read-only Zeitraumssicht, Reports-Inbox und Export
+- Profilkontext fuer Limits, Hausarztkontakt und persoenliche Parameter
 
+---
+
+## Was MIDAS bewusst nicht ist
+
+- kein Multi-User-System
+- kein Patientenportal fuer andere Personen
+- kein Arzt-Workflow-System
+- kein allgemeiner Wellness- oder Lifestyle-Reminder
+- keine offene KI fuer freie medizinische Beratung
+- keine native Mobile-App
+- kein SaaS-Produkt mit Rollen, Mandanten oder Teamverwaltung
+
+Mehrfach-Pushes, Eskalationsketten, Gamification und breite generische "Health App"-Features sind bewusst nicht das Ziel.
+
+---
+
+## Produktprinzipien
+
+Diese Prinzipien sind absichtlich hart formuliert. Sie sollen kuenftige Produkt- und Codeentscheidungen begrenzen.
+
+1. Single-user ist keine Zwischenstufe.
+   MIDAS wird nicht auf Multi-User generalisiert, wenn es dafuer keinen existenziellen Grund gibt.
+
+2. Alltagstauglichkeit ist wichtiger als Feature-Breite.
+   MIDAS soll im echten Leben helfen, nicht in einer Produktdemo beeindrucken. Wenn eine neue Idee den taeglichen Kernfluss vernebelt, mehr Pflegeaufwand erzeugt oder die kognitive Last erhoeht, ist sie wahrscheinlich falsch.
+
+3. Deterministische lokale Pfade zuerst.
+   Besonders im Assistant-/Voice-Bereich sollen haeufige Alltagsaktionen lokal, schnell und guard-railed geloest werden. Das LLM ist Interpretations- und Fallback-Schicht, nicht primaerer Steuerpfad fuer wiederkehrende Kernaufgaben.
+
+4. Push nur bei echten Incidents.
+   MIDAS darf nicht in Reminder-Laerm kippen. Pushes sind Schutznetz, nicht Dauerberieselung.
+
+5. Arztmodus ist read-only orientiert.
+   Die Doctor View dient Uebersicht, Export und Berichten, nicht der taeglichen Dateneingabe.
+
+6. Modulgrenzen sind ernst gemeint.
+   Hub orchestriert. Capture schreibt. Doctor liest. Push entscheidet nicht fachlich. Profile liefert Kontext. Diese Grenzen sollen erhalten bleiben.
+
+---
+
+## Aktuelle Produktoberflaeche
+
+### 1. Hub
+
+Der Hub ist der zentrale Einstieg in MIDAS. Er orchestriert:
+
+- Carousel / Orbit Navigation
+- obere Dashboard-Reveal-Flaeche
+- Quickbar
+- Panel-Oeffnung
+- Assistant-Textfluss
+- Voice-Gate und Voice-State
+- Pending-Context-Resolver fuer Confirm-Flows
+
+Der Hub ist bewusst keine Fachlogik-Zentrale. Er ist Orchestrator, nicht Source of Truth fuer Gesundheitsdaten.
+
+### 2. Capture
+
+Capture ist die taegliche Erfassungsflaeche fuer:
+
+- Blutdruck Morgen / Abend
+- Koerperwerte
+- Laborwerte
+- Aktivitaet / Training
+
+Diese Datenbasis speist Doctor View, Reports, Trendpilot und Teile des Assistant-Kontexts.
+
+### 3. Intake und Medication
+
+Das Intake-Modul ist einer der praktisch wichtigsten Teile von MIDAS. Es verbindet:
+
+- Wasser
+- Salz
+- Protein
+- taegliche Medikationsbestaetigung
+- Low-Stock-Warnungen
+
+Medication ist kein isoliertes CRUD-Modul, sondern in den Tagesflow eingebettet. Genau dieser Zuschnitt ist fuer meinen realen Nutzen zentral.
+
+### 4. Assistant und Voice
+
+MIDAS hat keinen "AI-first" Charakter. Der Assistant ist absichtlich eng gefuehrt:
+
+- lokale Intents zuerst
+- bestaetigte Allowed Actions
+- Pending-Context-Guards fuer Confirms
+- LLM-Fallback nur fuer freie Sprache
+
+Voice V1 nutzt denselben fachlichen Kern wie Text. Ziel ist nicht freie Unterhaltung, sondern schnelle, belastbare Alltagskommandos.
+
+### 5. Doctor View und Reports
+
+Die Arztansicht konsolidiert Zeitraumdaten read-only und bildet die Bruecke zu:
+
+- Zeitraumssichten fuer BP / Body / Lab / Training
+- Trendpilot-Eintraegen
+- Monatsbericht
+- Arztbericht fuer explizite Ranges
+- Export / Inbox-Verwaltung
+
+### 6. Trendpilot und Incidents
+
+MIDAS unterscheidet bewusst zwischen:
+
+- Trendpilot: mittel- bis langfristige Muster und Warnhinweise
+- Incidents / Push: akute Alltagsversaeumnisse, die nicht untergehen sollen
+
+Trendpilot ist keine Diagnostik. Incidents sind keine Reminder-Kette.
+
+---
+
+## Architektur in Kurzform
+
+MIDAS ist ein browser-first System ohne Build-Step. Die Architektur laesst sich in wenigen Schichten lesen:
+
+1. `index.html` + `app/styles/*`
+   UI-Flaechen, Panels, Hub-Slots, Overlay-Struktur
+
+2. `app/modules/*`
+   Produktmodule und fachnahe UI-Logik
+
+3. `app/core/*`
+   Boot, Konfiguration, PWA, Diagnostics, Shared Helpers
+
+4. `app/supabase/*`
+   Auth, API, Realtime, Core-Client
+
+5. `sql/*`
+   Datenmodell, Tabellen, Views, RPCs, Policies
+
+6. `service-worker.js` + `.github/workflows/*`
+   PWA-Flaeche, Caching, Push, Scheduler-Anbindung
+
+Wichtige Architekturentscheidung: MIDAS ist nicht als SPA mit Build-Pipeline aufgesetzt. Es ist eine direkte, modulare Browser-Anwendung mit enger Kopplung an ihren realen Nutzkontext.
+
+---
+
+## Daten- und Betriebsmodell
+
+MIDAS arbeitet je nach Bereich mit unterschiedlichen Datenquellen. Auf hoher Ebene gilt:
+
+- `health_events` ist der zentrale Event-Speicher fuer BP, Body, Lab, Activity und report-nahe Eintraege
+- `user_profile` liefert persoenlichen Kontext, Limits und Hausarztkontakt
+- `trendpilot_events` und `trendpilot_state` tragen Trendpilot
+- `push_subscriptions` verwaltet Web-Push-Abos
+- bestimmte Incident- und UI-States leben nur im Speicher, bewusst ohne Persistenz
+
+Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-Layer. Browserseitige Laufzeit- und Fallback-States existieren weiterhin, aber MIDAS ist nicht mehr treffend als "nur lokaler Gesundheits-Logger" beschrieben.
+
+---
+
+## Modulkarte
+
+### Primaere Produktmodule
+
+| Modul | Zweck | Hauptdatei | Overview |
+|------|------|------|------|
+| Hub | zentraler Einstieg, Navigation, Dashboard, Voice-Gate | `app/modules/hub/index.js` | [`docs/modules/Hub Module Overview.md`](docs/modules/Hub%20Module%20Overview.md) |
+| Capture | Tageserfassung fuer BP, Body, Lab, Aktivitaet | `app/modules/vitals-stack/vitals/index.js` | [`docs/modules/Capture Module Overview.md`](docs/modules/Capture%20Module%20Overview.md) |
+| Intake | Wasser, Salz, Protein, Tages-Medikationsflow | `app/modules/intake-stack/intake/index.js` | [`docs/modules/Intake Module Overview.md`](docs/modules/Intake%20Module%20Overview.md) |
+| Medication | Medikamentenverwaltung, Tagesstatus, Low-Stock | `app/modules/intake-stack/medication/index.js` | [`docs/modules/Medication Module Overview.md`](docs/modules/Medication%20Module%20Overview.md) |
+| Assistant | Text-Assistant, lokale Actions, LLM-Fallback | `app/modules/assistant-stack/assistant/index.js` | [`docs/modules/Assistant Module Overview.md`](docs/modules/Assistant%20Module%20Overview.md) |
+| Intent Engine | Intent-Surface fuer Text und Voice | `app/modules/assistant-stack/intent/index.js` | [`docs/modules/Intent Engine Module Overview.md`](docs/modules/Intent%20Engine%20Module%20Overview.md) |
+| Profile | Limits, Hausarztkontakt, Personenparameter | `app/modules/profile/index.js` | [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md) |
+| Push / Incidents | Incident-Logik und Push-Transport | `app/modules/incidents/index.js` | [`docs/modules/Push Module Overview.md`](docs/modules/Push%20Module%20Overview.md) |
+| Doctor View | Zeitraumssicht, Read-only Konsolidierung | `app/modules/doctor-stack/doctor/index.js` | [`docs/modules/Doctor View Module Overview.md`](docs/modules/Doctor%20View%20Module%20Overview.md) |
+| Reports | Monats- und Arztberichte | `app/modules/doctor-stack/reports/index.js` | [`docs/modules/Reports Module Overview.md`](docs/modules/Reports%20Module%20Overview.md) |
+| Trendpilot | Wochenfenster, Trends, Warnhinweise | `app/modules/vitals-stack/trendpilot/index.js` | [`docs/modules/Trendpilot Module Overview.md`](docs/modules/Trendpilot%20Module%20Overview.md) |
+
+### Unterstuetzende Module und Infrastruktur
+
+| Bereich | Zweck | Overview |
+|------|------|------|
+| Auth | Login, Session, Doctor-Unlock | [`docs/modules/Auth Module Overview.md`](docs/modules/Auth%20Module%20Overview.md) |
+| Supabase Core | einheitlicher API-/Auth-/Realtime-Einstieg | [`docs/modules/Supabase Core Overview.md`](docs/modules/Supabase%20Core%20Overview.md) |
+| Charts | Visualisierung fuer Arztansicht und Trends | [`docs/modules/Charts Module Overview.md`](docs/modules/Charts%20Module%20Overview.md) |
+| Diagnostics | Logs, Perf, Diagnoseflaechen | [`docs/modules/Diagnostics Module Overview.md`](docs/modules/Diagnostics%20Module%20Overview.md) |
+| VAD | Sprachsegment-Ende fuer Voice V1 | [`docs/modules/VAD Module Overview.md`](docs/modules/VAD%20Module%20Overview.md) |
+| Appointments | Terminverwaltung und Tageskontext | [`docs/modules/Appointments Module Overview.md`](docs/modules/Appointments%20Module%20Overview.md) |
+| Breath Timer | Messvorbereitung vor BP | [`docs/modules/Breath Timer Module Overview.md`](docs/modules/Breath%20Timer%20Module%20Overview.md) |
+| State Layer | globale Zustandsmuster / Basiskontext | [`docs/modules/State Layer Overview.md`](docs/modules/State%20Layer%20Overview.md) |
+| Bootflow | Start- und Initialisierungssequenz | [`docs/modules/bootflow overview.md`](docs/modules/bootflow%20overview.md) |
+
+---
+
+## Dokumentationshierarchie
+
+Wenn README und Modul-Overview sich widersprechen, gilt in der Regel:
+
+1. `docs/modules/*.md`
+2. Laufender Code
+3. README
+4. `docs/archive/*.md`
+
+`docs/archive` enthaelt wertvolle Historie, aber nicht automatisch den aktuellen Produktvertrag.
+
+Wichtige Einstiegspunkte:
+
+- [`docs/modules/Hub Module Overview.md`](docs/modules/Hub%20Module%20Overview.md)
+- [`docs/modules/Capture Module Overview.md`](docs/modules/Capture%20Module%20Overview.md)
+- [`docs/modules/Intake Module Overview.md`](docs/modules/Intake%20Module%20Overview.md)
+- [`docs/modules/Medication Module Overview.md`](docs/modules/Medication%20Module%20Overview.md)
+- [`docs/modules/Assistant Module Overview.md`](docs/modules/Assistant%20Module%20Overview.md)
+- [`docs/modules/Doctor View Module Overview.md`](docs/modules/Doctor%20View%20Module%20Overview.md)
+- [`docs/modules/Reports Module Overview.md`](docs/modules/Reports%20Module%20Overview.md)
+- [`docs/modules/Trendpilot Module Overview.md`](docs/modules/Trendpilot%20Module%20Overview.md)
+- [`docs/modules/Push Module Overview.md`](docs/modules/Push%20Module%20Overview.md)
+- [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md)
+- [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md)
+
+---
+
+## Repo-Karte
+
+| Pfad | Zweck |
+|------|------|
+| `index.html` | zentrale HTML-Struktur mit Panels, Overlays und Hub-Slot |
+| `app/modules/` | Produktmodule |
+| `app/core/` | Boot, Shared Helpers, PWA, Diagnostics Hooks |
+| `app/styles/` | CSS fuer Hub, Doctor, Auth, Layout |
+| `app/supabase/` | Auth, APIs, Realtime, Core |
+| `assets/js/` | Legacy-nahe UI- und Boot-Helfer |
+| `docs/modules/` | aktuelle Modul-Overviews |
+| `docs/archive/` | historische Roadmaps und Altplanung |
+| `sql/` | Datenmodell, RLS, RPCs, Views |
+| `.github/workflows/` | Scheduler fuer Trends, Reports, Push |
+| `service-worker.js` | PWA Service Worker, Caching, Push, Notification Click |
+
+---
+
+## Lauf und Betrieb
+
+### Ohne Build-Step
+
+MIDAS hat keinen klassischen Build-Prozess. Das Repo kann direkt als statische Web-App betrieben werden.
+
+### Lokaler Start
+
+Fuer den vollen Produktumfang sollte MIDAS ueber `localhost` oder HTTPS ausgeliefert werden, nicht nur als `file://`-Datei. Hintergrund:
+
+- Service Worker braucht einen sicheren Kontext
+- Push und PWA-Funktionen brauchen einen sicheren Kontext
+- Auth- und Netzwerkpfade sind unter `localhost` realistischer testbar
+
+Ein einfacher lokaler Start reicht:
+
+```powershell
+python -m http.server 8765
 ```
-M.I.D.A.S
-├─ .nojekyll
-├─ app
-│  ├─ app.css
-│  ├─ core
-│  │  ├─ boot-flow.js
-│  │  ├─ capture-globals.js
-│  │  ├─ config.js
-│  │  ├─ diag.js
-│  │  ├─ feedback.js
-│  │  ├─ pwa.js
-│  │  └─ utils.js
-│  ├─ diagnostics
-│  │  ├─ devtools.js
-│  │  ├─ logger.js
-│  │  ├─ monitor.js
-│  │  └─ perf.js
-│  ├─ modules
-│  │  ├─ appointments
-│  │  │  └─ index.js
-│  │  ├─ assistant-stack
-│  │  │  ├─ assistant
-│  │  │  │  ├─ actions.js
-│  │  │  │  ├─ allowed-actions.js
-│  │  │  │  ├─ day-plan.js
-│  │  │  │  ├─ index.js
-│  │  │  │  ├─ session-agent.js
-│  │  │  │  ├─ suggest-store.js
-│  │  │  │  └─ suggest-ui.js
-│  │  │  ├─ intent
-│  │  │  │  ├─ context.js
-│  │  │  │  ├─ index.js
-│  │  │  │  ├─ normalizers
-│  │  │  │  │  ├─ semantic.js
-│  │  │  │  │  └─ surface.js
-│  │  │  │  ├─ normalizers.js
-│  │  │  │  ├─ parser.js
-│  │  │  │  ├─ rules
-│  │  │  │  │  ├─ breath-timer.js
-│  │  │  │  │  ├─ confirm-reject.js
-│  │  │  │  │  ├─ index.js
-│  │  │  │  │  ├─ intake.js
-│  │  │  │  │  ├─ medication.js
-│  │  │  │  │  ├─ navigation.js
-│  │  │  │  │  └─ vitals.js
-│  │  │  │  ├─ rules.js
-│  │  │  │  ├─ semantics
-│  │  │  │  │  ├─ compound.js
-│  │  │  │  │  ├─ entities.js
-│  │  │  │  │  ├─ fillers.js
-│  │  │  │  │  ├─ units.js
-│  │  │  │  │  └─ verbs.js
-│  │  │  │  ├─ slots
-│  │  │  │  │  └─ extract.js
-│  │  │  │  └─ validators.js
-│  │  │  ├─ vad
-│  │  │  │  ├─ vad-worklet.js
-│  │  │  │  └─ vad.js
-│  │  │  └─ voice
-│  │  │     └─ index.js
-│  │  ├─ doctor-stack
-│  │  │  ├─ charts
-│  │  │  │  ├─ chart.css
-│  │  │  │  └─ index.js
-│  │  │  ├─ doctor
-│  │  │  │  └─ index.js
-│  │  │  └─ reports
-│  │  │     └─ index.js
-│  │  ├─ hub
-│  │  │  ├─ hub-aura3d.js
-│  │  │  └─ index.js
-│  │  ├─ incidents
-│  │  │  └─ index.js
-│  │  ├─ intake-stack
-│  │  │  ├─ intake
-│  │  │  │  └─ index.js
-│  │  │  └─ medication
-│  │  │     └─ index.js
-│  │  ├─ profile
-│  │  │  └─ index.js
-│  │  └─ vitals-stack
-│  │     ├─ activity
-│  │     │  └─ index.js
-│  │     ├─ protein
-│  │     │  └─ index.js
-│  │     ├─ trendpilot
-│  │     │  └─ index.js
-│  │     └─ vitals
-│  │        ├─ body.js
-│  │        ├─ bp.js
-│  │        ├─ breath-timer.js
-│  │        ├─ entry.js
-│  │        ├─ index.js
-│  │        └─ lab.js
-│  ├─ styles
-│  │  ├─ auth.css
-│  │  ├─ base.css
-│  │  ├─ capture.css
-│  │  ├─ doctor.css
-│  │  ├─ hub.css
-│  │  ├─ layout.css
-│  │  ├─ ui.css
-│  │  └─ utilities.css
-│  └─ supabase
-│     ├─ api
-│     │  ├─ intake.js
-│     │  ├─ notes.js
-│     │  ├─ push.js
-│     │  ├─ reports.js
-│     │  ├─ select.js
-│     │  ├─ system-comments.js
-│     │  ├─ trendpilot.js
-│     │  └─ vitals.js
-│     ├─ auth
-│     │  ├─ core.js
-│     │  ├─ guard.js
-│     │  ├─ index.js
-│     │  └─ ui.js
-│     ├─ core
-│     │  ├─ client.js
-│     │  ├─ http.js
-│     │  └─ state.js
-│     ├─ index.js
-│     └─ realtime
-│        └─ index.js
-├─ assets
-│  ├─ img
-│  │  ├─ Appointments_v1.png
-│  │  ├─ Appointments_v2.png
-│  │  ├─ Chart_v1.png
-│  │  ├─ Chart_v2.png
-│  │  ├─ doctor_view_state.png
-│  │  ├─ Doctor_view_v1.png
-│  │  ├─ Doctor_view_v2.png
-│  │  ├─ Idle_state.png
-│  │  ├─ Intakes_state.png
-│  │  ├─ Intakes_v1.png
-│  │  ├─ Intakes_v2.png
-│  │  ├─ midas_background_v1.PNG
-│  │  ├─ midas_Logo_complete.avif
-│  │  ├─ midas_Logo_complete.png
-│  │  ├─ midas_symbol.PNG
-│  │  ├─ midas_symbol.webp
-│  │  ├─ midas_wordmark.png
-│  │  ├─ midas_wordmark.webp
-│  │  ├─ Personal_data_v1.png
-│  │  ├─ Personal_data_v2.png
-│  │  ├─ Text_chat_v1.png
-│  │  ├─ Text_chat_v2.png
-│  │  ├─ Vitals_state.png
-│  │  ├─ Vitals_v1.png
-│  │  ├─ Vitals_v2.png
-│  │  ├─ Voice_chat_v1.png
-│  │  └─ Voice_chat_v2.png
-│  └─ js
-│     ├─ boot-auth.js
-│     ├─ data-local.js
-│     ├─ format.js
-│     ├─ main.js
-│     ├─ ui-errors.js
-│     ├─ ui-layout.js
-│     ├─ ui-tabs.js
-│     └─ ui.js
-├─ CHANGELOG.md
-├─ docs
-│  ├─ archive
-│  │  ├─ Assistant Visibility + Voice Robustness Roadmap (DONE).md
-│  │  ├─ assistant-multimodal-polish-roadmap.md
-│  │  ├─ assistant-stack-refactor-roadmap.md
-│  │  ├─ Assistant_Actions_Spec.md
-│  │  ├─ Assistant_Endpoint_Spec.md
-│  │  ├─ BodyChart-Roadmap.md
-│  │  ├─ Boot Error Log Reliability Roadmap (DONE).md
-│  │  ├─ Bootflow Optimization Roadmap (DONE).md
-│  │  ├─ Breath Timer Implementation Roadmap (DONE).md
-│  │  ├─ carousel_integration.md
-│  │  ├─ db-transition-plan.md
-│  │  ├─ deep-clean-roadmap.md
-│  │  ├─ Device Module Scaling Roadmap.md
-│  │  ├─ Doctor Lab Domain Roadmap.md
-│  │  ├─ Doctor Report Roadmap.md
-│  │  ├─ doctor-range-export-plan.md
-│  │  ├─ dynamic protein spec.md
-│  │  ├─ Encoding-Cleanup-Guide.md
-│  │  ├─ Future Module Overview Template.md
-│  │  ├─ Future Refactors.md
-│  │  ├─ Git Survival Guide für Stephan.md
-│  │  ├─ hub-momentum-showtime-plan.md
-│  │  ├─ Import Inventory.md
-│  │  ├─ Input_Style_Polish_Plan.md
-│  │  ├─ Intake Medication UX Roadmap.md
-│  │  ├─ Intent Engine Execution Reliability Roadmap (DONE).md
-│  │  ├─ Intent Engine Follow-ups (DONE).md
-│  │  ├─ Intent Engine Implementation Roadmap (DONE).md
-│  │  ├─ Layout Alignment.md
-│  │  ├─ lazy-load-roadmap.md
-│  │  ├─ M.I.D.A.S. – Design Guide v1.2.md
-│  │  ├─ Medication Management Module Spec.md
-│  │  ├─ MIDAS Incidents & Push Roadmap.md
-│  │  ├─ MIDAS Orb Vision.md
-│  │  ├─ MIDAS Sensory Feedback Roadmap.md
-│  │  ├─ MIDAS Ticker Bar Roadmap.md
-│  │  ├─ Milestone.md
-│  │  ├─ Module Update Plan.md
-│  │  ├─ module-consolidation-roadmap.md
-│  │  ├─ Post-Voice Follow-up Roadmap (DONE).md
-│  │  ├─ Profile Module – Contact Extension Spe.md
-│  │  ├─ Proteinrechner-Roadmap.md
-│  │  ├─ pwa-implementation-roadmap.md
-│  │  ├─ PWA-TWA Readiness.md
-│  │  ├─ QA_Notes.md
-│  │  ├─ Repo Cleanup Roadmap.md
-│  │  ├─ Repo Tree v2.md
-│  │  ├─ Reports-Roadmap.md
-│  │  ├─ Supabase Proxy Refactor Plan.md
-│  │  ├─ Training module spec.md
-│  │  ├─ Trendpilot-Correlation-Notes.md
-│  │  ├─ Trendpilotrefactor.md
-│  │  ├─ twa-implementation-roadmap.md
-│  │  ├─ twa-session-report.md
-│  │  ├─ Voice Assistant roadmap.md
-│  │  ├─ Voice Reactivation Roadmap (DONE).md
-│  │  ├─ voice-archive-roadmap.md
-│  │  └─ Zeus Feedback Engine.md
-│  ├─ Codex Programmandi.docx
-│  ├─ M.I.D.A.S._Implementation_Spec_v1.2.yaml
-│  ├─ modules
-│  │  ├─ Activity Module Overview.md
-│  │  ├─ Appointments Module Overview.md
-│  │  ├─ Assistant Module Overview.md
-│  │  ├─ Auth Module Overview.md
-│  │  ├─ bootflow overview.md
-│  │  ├─ Breath Timer Module Overview.md
-│  │  ├─ Capture Module Overview.md
-│  │  ├─ Charts Module Overview.md
-│  │  ├─ CSS Module Overview.md
-│  │  ├─ Diagnostics Module Overview.md
-│  │  ├─ Doctor View Module Overview.md
-│  │  ├─ Hub Module Overview.md
-│  │  ├─ Intake Module Overview.md
-│  │  ├─ Intent Engine Module Overview.md
-│  │  ├─ Main Router Flow Overview.md
-│  │  ├─ Medication Module Overview.md
-│  │  ├─ Profile Module Overview.md
-│  │  ├─ Protein Module Overview.md
-│  │  ├─ Push Module Overview.md
-│  │  ├─ Reports Module Overview.md
-│  │  ├─ Sensory Feedback Module Overview.md
-│  │  ├─ State Layer Overview.md
-│  │  ├─ Supabase Core Overview.md
-│  │  ├─ Ticker Bar Module Overview.md
-│  │  ├─ Trendpilot Module Overview.md
-│  │  ├─ Unlock Flow Overview.md
-│  │  └─ VAD Module Overview.md
-│  ├─ QA_CHECKS.md
-│  └─ Voice Command Semantics.md
-├─ index.html
-├─ M.I.D.A.S..code-workspace
-├─ offline.html
-├─ public
-│  ├─ img
-│  │  ├─ icons
-│  │  │  ├─ icon-192-maskable.png
-│  │  │  ├─ icon-192.png
-│  │  │  ├─ icon-512-maskable.png
-│  │  │  └─ icon-512.png
-│  │  └─ screenshots
-│  │     ├─ screen-narrow.png
-│  │     └─ screen-wide.png
-│  ├─ manifest-placeholder.json
-│  ├─ manifest.json
-│  └─ sw
-│     ├─ README.md
-│     └─ service-worker.js
-├─ README.md
-├─ savehandler rework.md
-├─ service-worker.js
-└─ sql
-   ├─ 00_Tabua Rasa.sql
-   ├─ 01_Health Schema.sql
-   ├─ 02_Admin Checks.sql
-   ├─ 04_Body_Comp.sql
-   ├─ 05_Intake_Rpc.sql
-   ├─ 06_Security.sql
-   ├─ 07_Remove_Day_Flags.sql
-   ├─ 09_Appointments_v2.sql
-   ├─ 10_User_Profile_Ext.sql
-   ├─ 11_Lab_Event_Extension.sql
-   ├─ 12_Medication.sql
-   ├─ 13_Activity_Event.sql
-   ├─ 14_Trendpilot.sql
-   ├─ 15_Push_Subscriptions.sql
-   ├─ HOW_TO.md
-   └─ transition_bp_comment.sql
 
+Danach:
+
+```text
+http://127.0.0.1:8765
 ```
+
+### Backend-Annahmen
+
+- Supabase ist das produktive Backend fuer Auth, Daten, Realtime und mehrere Edge-Funktionen.
+- SQL-Migrationen liegen in `sql/`.
+- Ein Teil der Edge-Function-Logik liegt in einem separaten Backend-Workspace und nicht vollstaendig in diesem Repo.
+
+---
+
+## Aktuelle Funktionsbereiche im Detail
+
+### Hub und taeglicher Kernfluss
+
+Der taegliche Einstieg laeuft ueber den Hub. Von dort aus werden Panels fuer Capture, Intake, Doctor View, Profile und weitere Bereiche geoeffnet. Das obere Dashboard und der Voice-Slot machen den Hub nicht nur zu einer Navigation, sondern zur eigentlichen Betriebsoberflaeche.
+
+### Intake als realer Hebel
+
+Wenn es nur einen Bereich gaebe, der den Charakter von MIDAS am besten erklaert, dann waere es Intake. Wasser, Salz, Protein und Medikationsstatus sind nicht als "Lifestyle-Tracking" praesentiert, sondern als taegliche Steuerflaeche fuer einen gesundheitlich relevanten Alltag.
+
+### Assistant und Voice
+
+MIDAS nutzt KI nicht als Selbstausdruck, sondern als kontrollierte Interaktionsschicht. Deterministische lokale Kommandos, Confirm-Vertraege und enge Allowed Actions sind hier wichtiger als freie Konversation.
+
+### Doctor View und Reports
+
+Die Arztansicht ist die konsolidierte Gegenperspektive zum Alltag. Sie liefert keine neue Datenhaltung, sondern liest und strukturiert den Zeitraum. Reports verdichten diesen Zeitraum weiter, ohne Diagnosen oder Therapieentscheidungen zu behaupten.
+
+### Pushes und Trendpilot
+
+MIDAS unterscheidet sauber zwischen:
+
+- echten Incidents im Alltag
+- mittel- bis langfristigen Trends
+
+Das ist produktseitig wichtig. Ein offener Abend-BP ist etwas anderes als ein mehrwoechiger BP-Trend. Beide brauchen unterschiedliche Oberflaechen, unterschiedliche Sprache und unterschiedliche technische Pfade.
+
+---
+
+## Hinweise fuer LLMs und Coding Agents
+
+Dieser Abschnitt ist bewusst direkt formuliert.
+
+### Produktverstaendnis
+
+- Behandle MIDAS nicht als generische Health-App.
+- Behandle MIDAS nicht als SaaS-Vorstufe.
+- Behandle MIDAS nicht als Multi-User-Produkt mit spaeterer Skalierung.
+- Gehe immer vom single-user Betrieb aus.
+- Priorisiere Alltagstauglichkeit vor architektonischer "Allgemeingueltigkeit".
+
+### Produktrealitaet
+
+- MIDAS ist aus einem realen medizinischen Alltag entstanden, nicht aus einer Marktanalyse.
+- Bevorzuge Klarheit, Robustheit und geringe Reibung gegenueber technischer Eleganz ohne Alltagsnutzen.
+- Gute Optimierungen verbessern Wiederholbarkeit, Uebersicht oder Verlaesslichkeit.
+- Schlechte Features erzeugen mehr Pflegeaufwand, mehr Entscheidungsballast oder mehr Reminder-Laerm.
+- Denke in alltagstauglicher Gesundheitssteuerung, nicht in Feature-Expansion.
+
+### Dokumentationsverhalten
+
+- Lies zuerst die betroffenen Dateien in `docs/modules/`.
+- Nutze `docs/archive/` nur als historische Referenz.
+- Wenn du ein Modul aenderst, aktualisiere nach Moeglichkeit auch das passende Modul-Overview.
+- Lies README als Produktkarte, nicht als vollstaendige Modulspezifikation.
+
+### Produkt-Grenzen
+
+- Kein Push-Spam.
+- Keine freien medizinischen Ratschlaege als Feature.
+- Keine breite Voice-/Assistant-Oeffnung ohne klaren Alltagsnutzen.
+- Keine Verwischung von Hub, Capture, Doctor, Push und Profile-Rollen.
+- Keine vorschnelle Verallgemeinerung auf fremde Nutzer oder neue Zielgruppen.
+
+### Bevorzugte Denkrichtung
+
+- Frage zuerst: Hilft diese Aenderung dem taeglichen realen Betrieb?
+- Frage zweitens: Passt sie zu den bestehenden Guardrails?
+- Frage drittens: Erhoeht sie Klarheit statt Drift?
+
+Wenn die Antwort auf diese Fragen unscharf ist, ist die Aenderung wahrscheinlich kein guter MIDAS-Change.
+
+---
+
+## Hinweise fuer kuenftige README-Pflege
+
+Die README soll nicht zu einem zweiten Changelog werden. Sie soll stabil erklaeren:
+
+- warum MIDAS existiert
+- was MIDAS heute ist
+- was MIDAS bewusst nicht ist
+- welche Module produktiv wichtig sind
+- wo die Detaildoku liegt
+
+Nicht in die README gehoeren:
+
+- kleinteilige Release-Historien
+- alte Versionslisten
+- riesige Repo-Trees ohne Produktwert
+- Standard-Open-Source-Floskeln, die fuer dieses Repo nicht gelten
+
+Fuer Release-Historie und technische Detailentwicklung existieren bereits:
+
+- [`CHANGELOG.md`](CHANGELOG.md)
+- `docs/archive/*`
+- `docs/QA_CHECKS.md`
+
+---
+
+## Eigentum und Beitrag
+
+MIDAS ist ein persoenliches System. Es ist nicht auf Community-Contributions oder einen offenen Produktprozess ausgerichtet. Relevante technische Mitakteure neben mir selbst sind vor allem spaetere Coding-Agents und LLMs, die innerhalb des bestehenden Produktkontexts arbeiten sollen.
+
+---
+
+## Kurzfazit
+
+MIDAS ist ein persoenliches, produktiv genutztes Gesundheits-Betriebssystem fuer meinen eigenen CKD-Alltag. Die App ist schmaler und bewusster geschnitten als eine generische Health-App: enger, nuetzlicher, alltagsnaeher und mit klaren Nicht-Zielen. Wer an MIDAS arbeitet, sollte zuerst diese Produktwahrheit verstehen und erst danach den Code aendern. MIDAS wird nicht besser, wenn es allgemeiner wird, sondern wenn es fuer seinen realen Alltag noch klarer und verlaesslicher funktioniert.
