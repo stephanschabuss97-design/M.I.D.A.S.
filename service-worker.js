@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -62,7 +62,10 @@ const getNavigateFallbackResponse = async (request) => {
 const isIncidentNotification = ({ tag = '', data = {} } = {}) => {
   const normalizedTag = String(tag || '');
   const type = String(data?.type || '');
-  return normalizedTag.startsWith('midas-incident-') || type === 'medication_morning' || type === 'bp_evening';
+  return normalizedTag.startsWith('midas-incident-')
+    || type === 'medication_morning'
+    || type === 'medication_daily_open'
+    || type === 'bp_evening';
 };
 const buildNotificationOptions = (payload = {}, fallback = {}) => {
   const data = payload.data || fallback.data || {};

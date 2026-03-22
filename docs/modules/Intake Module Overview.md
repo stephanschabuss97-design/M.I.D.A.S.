@@ -1,9 +1,9 @@
-﻿# Intake Module - Functional Overview
+# Intake Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: taegliche Erfassung von Wasser/Salz/Protein samt Medikamentenstatus im Hub.
-- Rolle: Liefert Live-Tageswerte, Status-Pills und Low-Stock-Hinweise.
-- Abgrenzung: Kein Langzeit-Reporting (Charts uebernehmen), Medikamentenstammdaten liegen im Medication Modul.
+- Zweck: taegliche Erfassung von Wasser/Salz/Protein samt Medication-Status im Hub.
+- Rolle: Liefert Live-Tageswerte, Status-Pills, Medication-Progress und Low-Stock-Hinweise.
+- Abgrenzung: Kein Langzeit-Reporting; Medikations-Stammdaten und Planlogik liegen im Medication Modul.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
@@ -13,9 +13,9 @@ Related docs:
 
 ## 1. Zielsetzung
 
-- Patienten erfassen Fluessigkeit & Makros per Schnellbuttons und sehen sofortige Tagesfortschritte.
-- Gleiche Oberflaeche zeigt Medikamenten-Toggles (Confirm/Undo) samt Low-Stock-Hinweisen.
-- Nichtziel: Historische Auswertungen oder automatisierte Benachrichtigungen - Fokus liegt auf der aktuellen Tagesansicht.
+- Patienten erfassen Fluessigkeit und Makros per Schnellbuttons und sehen sofortige Tagesfortschritte.
+- Gleiche Oberflaeche zeigt Medication-Progress, Slot-Confirm/Undo und Low-Stock-Hinweise.
+- Nichtziel: Historische Auswertungen oder automatisierte Benachrichtigungen; Fokus bleibt auf der aktuellen Tagesansicht.
 
 ---
 
@@ -23,23 +23,23 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/intake-stack/intake/index.js` | Fachlogik fuer Intake, Medication-Integration (Batch/Selection), Timer, Warnungen |
+| `app/modules/intake-stack/intake/index.js` | Fachlogik fuer Intake, Medication-Integration, Batch-/Slot-Aktionen, Timer, Warnungen |
 | `app/core/capture-globals.js` | Shared State, Helper (`softWarnRange`, `setBusy`, Date Guards) |
 | `app/supabase/api/intake.js` | RPC Wrapper (`loadIntakeToday`, `saveIntakeTotalsRpc`, `cleanupOldIntake`) |
 | `app/modules/hub/index.js` | oeffnet Intake Panel, verschiebt Status-Pills in den Hub-Header |
-| `app/modules/intake-stack/medication/index.js` | Datenquelle fuer IN-Batch, Low-Stock Box |
-| `app/styles/hub.css` | Intake Cards, Grid, Pills, Low-Stock Styles |
-| `docs/Medication Management Module Spec.md` | Kontext fuer Tablettenmanager |
-| `docs/QA_CHECKS.md` | Testfoelle fuer Capture/Intake |
+| `app/modules/intake-stack/medication/index.js` | Medication-Datenquelle fuer Daily Flow und Low-Stock |
+| `app/styles/hub.css` | Intake Cards, Grid, Pills, Medication- und Low-Stock-Styles |
+| `docs/QA_CHECKS.md` | Testfaelle fuer Capture/Intake |
 
 ---
 
 ## 3. Datenmodell / Storage
 
 - Tageswerte werden per Supabase RPC (`health_intake_today` View/Function) geladen und gespeichert.
-- Felder: `water_ml`, `salt_g`, `protein_g`, `logged` Flag.
-- Weitere State-Infos (Trendpilot, Timers) leben clientseitig in `captureIntakeState`.
-- Medikamentendaten stammen aus `health_medications` (`med_list` RPC) - Intake konsumiert nur den Cache des Medication Moduls.
+- Felder: `water_ml`, `salt_g`, `protein_g`, `logged`.
+- Weitere State-Infos (Trendpilot, Timer) leben clientseitig in `captureIntakeState`.
+- Medikamentendaten stammen operativ aus `med_list_v2` und dem Cache des Medication Moduls.
+- Relevante Medication-Felder im IN-Flow: `state`, `taken_count`, `total_count`, `slots[]`, `low_stock`, `days_left`, `with_meal`.
 
 ---
 
@@ -48,42 +48,43 @@ Related docs:
 ### 4.1 Initialisierung
 - Orbit-Button `data-hub-module="intake"` triggert `openIntakeOverlay()`.
 - `prepareIntakeStatusHeader()` verschiebt Pills in den Hub-Header.
-- Beim oeffnen ruft `refreshCaptureIntake()` `loadIntakeToday` und `refreshMedicationDaily()` auf.
+- Beim Oeffnen ruft `refreshCaptureIntake()` sowohl `loadIntakeToday` als auch `refreshMedicationDaily()` auf.
 
 ### 4.2 User-Trigger
-- Buttons `cap-*-add-btn` fuer Wasser/Salz/Protein (+ Kombobutton Salz+Protein).
-- Medikamenten-Checkboxen im IN-Tab setzen die Auswahl fuer Batch-Saves.
-- Footer-Buttons: "Auswahl bestaetigen" (nur Auswahl) und "Alle genommen" (alle offenen).
-- Status-Row nach Save zeigt Ergebnis und bietet "Rueckgaengig" fuer den letzten Batch (Timeout).
-- Low-Stock Box: `data-med-ack` (Erledigt) + globaler Mailto-Button.
+- Buttons `cap-*-add-btn` fuer Wasser/Salz/Protein inklusive Kombobutton Salz+Protein.
+- `1x taeglich`-Medikation nutzt einen kompakten Status-Button im Kartenkopf.
+- `>1x taeglich` zeigt direkte Slot-Buttons pro offenem oder bestaetigtem Slot.
+- Batch-Footer bestaetigt offene Einnahmen der ausgewaehlten Medikamente.
+- Low-Stock Box: `data-med-ack` plus globaler Mailto-Button.
 
 ### 4.3 Verarbeitung
 - Numerische Werte werden validiert (`softWarnRange`, `toNumDE`).
-- `captureIntakeState` haelt Tageswerte, logged-Flag, Trendpilotstatus.
-- Medication-Listener reagiert auf `medication:changed` und `profile:changed` (fuer Arztkontakt).
-- Timer (`scheduleMidnightRefresh`, `scheduleNoonSwitch`) resetten State automatisch.
+- `captureIntakeState` haelt Tageswerte, `logged`-Flag und Trendpilot-Status.
+- Medication-Listener reagiert auf `medication:changed` und `profile:changed`.
+- Timer (`scheduleMidnightRefresh`, `scheduleNoonSwitch`) setzen Daily State zurueck.
 
 ### 4.4 Persistenz
-- Intake Save: `saveIntakeTotalsRpc({ dayIso, totals })`, danach UI Refresh + `requestUiRefresh()`.
-- Medication Batch Save: fuer jedes ausgewaehlte Med `med_confirm_dose` via `AppModules.medication`, danach Refresh.
-- Undo nutzt `med_undo_dose` fuer den letzten Batch.
+- Intake Save: `saveIntakeTotalsRpc({ dayIso, totals })`, danach UI Refresh und `requestUiRefresh()`.
+- Medication Read kommt ueber `loadMedicationForDay()` aus dem Medication Modul (`med_list_v2`).
+- Slot-Aktionen laufen ueber `confirmMedicationSlot(...)` und `undoMedicationSlot(...)`.
+- Sammelbestaetigung aller offenen Slots laeuft ueber `confirmAllOpenMedicationSlots(...)`.
 
 ---
 
 ## 5. UI-Integration
 
 - Panel `#hubIntakePanel` mit Tabs **IN** (taeglicher Flow) und **TAB** (Medikationsverwaltung).
-- IN-Tab: `.intake-card-grid` (1 Spalte Mobile, 2 Spalten Desktop) enthaelt Intake-Karten und Medikamentenkarten im identischen Stil.
-- Unter dem Grid: Batch-Footer (Actions + Status), Status-Pills, Low-Stock Box (Hausarzt + Mailto + Items).
-- TAB-Tab wird vom Medication Modul gerendert (Form + CRUD-Karten), bleibt im selben Panel.
+- IN-Tab: `.intake-card-grid` enthaelt Intake-Karten und Medication-Karten im identischen Stil.
+- Unter dem Grid: Batch-Footer fuer offene Einnahmen, Status-Pills, Low-Stock Box.
+- TAB-Tab wird vom Medication Modul gerendert und bleibt im selben Panel.
 
 ---
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Keine eigene Arztoberfloeche im Intake Panel.
-- Doctor Panel konsumiert Intake Totals separat (ueber `refreshCaptureIntake()`), nicht Teil dieses Moduls.
-- Low-Stock Box zeigt Hausarztkontakt (aus Profil) und dient als manueller Mail-Shortcut.
+- Keine eigene Arztoberflaeche im Intake Panel.
+- Doctor Panel konsumiert Intake Totals separat und ist nicht Teil dieses Moduls.
+- Low-Stock Box zeigt Hausarztkontakt aus dem Profil als manuellen Mail-Shortcut.
 
 ---
 
@@ -91,36 +92,34 @@ Related docs:
 
 - `diag.add` Logs: `[capture] refresh`, `[capture] save error`, `[capture:med] ...`.
 - UI-Feedback via `uiInfo`/`uiError` und Busy-States (`withBusy`).
-- Offline/RPC-Fehler lassen bestehende Werte unveroendert; Toast weist auf Problem hin.
-- Ohne Login werden Inputs disabled, Low-Stock Box blendet Hinweis oeBitte anmeldenoe ein.
+- Offline-/RPC-Fehler lassen bestehende Werte unveraendert; Toast weist auf das Problem hin.
+- Ohne Login werden Inputs disabled; die Low-Stock-Box zeigt einen klaren Login-Hinweis.
 
 ---
 
 ## 8. Events & Integration Points
 
-- Public API / Entry Points: Intake-Panel Buttons, `refreshCaptureIntake`, Medication Selection/Batch Buttons.
-- Source of Truth: `captureIntakeState` + Supabase intake RPC.
-- Side Effects: `requestUiRefresh`, Intake/Medication UI refresh.
-- Constraints: Auth erforderlich fuer Save, Tages-Reset per Timer.
+- Public Entry Points: Intake-Panel Buttons, `refreshCaptureIntake`, Medication-Slot- und Batch-Buttons.
+- Source of Truth: `captureIntakeState` plus Supabase Intake RPCs und Medication-Modul-Cache.
+- Side Effects: `requestUiRefresh`, Intake- und Medication-Refresh.
 - Hoert auf `medication:changed`, `profile:changed`, `supabase:ready`.
-- Dispatcht Trendpilot/Warnungen via `diag` + `requestUiRefresh` (fuer Lifestyle & andere Module).
-- `document.dispatchEvent(new CustomEvent('medication:changed', ...))` stammt aus dem Medication Modul; Intake invalidiert Cache wenn noetig.
+- Dispatcht Warnungen und Refreshes fuer angrenzende Module.
 
 ---
 
 ## 9. Erweiterungspunkte / Zukunft
 
-- Zusoetzliche Makros (Kalorien, Kohlenhydrate) im selben Grid.
+- Zusaetzliche Makros im selben Grid.
 - Historische Intake-Charts direkt im Hub.
-- Reminder/Push-Integration, sobald Benachrichtigungskanal vorhanden.
+- Reminder/Push-Integration, sobald der Kanal produktiv gebraucht wird.
 - Custom-Ziele pro Nutzer statt fixer Grenzwerte.
 
 ---
 
 ## 10. Feature-Flags / Konfiguration
 
-- Keine Flags - Intake Panel ist immer Teil des Hub.
-- Timer/Warnschwellen (z.oeB. Salzrange) aktuell hardcodiert.
+- Keine dedizierten Flags; Intake Panel ist Teil des Hub.
+- Timer und Warnschwellen sind aktuell hardcodiert.
 
 ---
 
@@ -129,25 +128,24 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Intake RPCs (`health_intake_today`, `saveIntakeTotalsRpc`), `captureIntakeState`, Medication-Modul.
 - Dependencies (soft): Profil-Hausarztkontakt (Mailto), Trendpilot.
-- Known issues / risks: Timer-Resets; Offline/RPC-Fehler; Medication-Snapshot Drift.
+- Known issues / risks: Timer-Resets, Offline-/RPC-Fehler, Medication-Snapshot Drift, Rest-Drift zwischen altem Daily-Batch-Wording und neuem Slot-Modell.
 - Backend / SQL / Edge: Intake RPCs/Views, Medication RPCs (`sql/12_Medication.sql`).
 
 ---
 
 ## 12. QA-Checkliste
 
-- Save/Load Wasser/Salz/Protein (inkl. Kombobutton) fuer heute/gestern.
-- Midnight/Noon Timer testen (State Reset, Pills aktualisieren).
-- Medication Toggle + Low-Stock (inkl. Profiloenderung des Hausarztkontakts).
-- Offline/RPC-Error Pfad (Toast + unveroenderte UI).
+- Save/Load Wasser/Salz/Protein inklusive Kombobutton fuer heute/gestern.
+- Midnight-/Noon-Timer testen (State Reset, Pills aktualisieren).
+- Medication `1x`-Fast-Path, `>1x`-Slot-Confirm/Undo und Low-Stock inklusive Profil-Aenderung des Hausarztkontakts.
+- Offline-/RPC-Error Pfad (Toast, unveraenderte UI).
 - Tab-Wechsel IN/TAB bewahrt Fokus und ARIA-States.
 
 ---
 
 ## 13. Definition of Done
 
-- Panel oeffnet/ schlieoet ohne Fehler, Grid reagiert responsiv.
+- Panel oeffnet und schliesst ohne Fehler, Grid reagiert responsiv.
 - Intake Saves persistieren serverseitig, Pills spiegeln Status.
-- Low-Stock-Hinweise verhalten sich konsistent mit Medication Profilen.
-- Dokumentation & QA aktualisiert, keine offenen `diag` Errors.
-
+- Medication-Progress und Low-Stock-Hinweise verhalten sich konsistent mit dem Medication-Modul.
+- Dokumentation und QA sind aktualisiert, keine offenen `diag` Errors.

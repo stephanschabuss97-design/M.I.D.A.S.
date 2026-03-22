@@ -1,8 +1,8 @@
 # Push Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: lokale Incident-Pushes als Sicherheitsnetz (einmalig, ruhig).
-- Rolle innerhalb von MIDAS: erinnert nur bei echten Incidents (Medikation/BP).
+- Zweck: lokale Incident-Pushes als ruhiges Sicherheitsnetz.
+- Rolle innerhalb von MIDAS: erinnert nur bei echten Incidents aus Medikation oder Blutdruck.
 - Abgrenzung: keine Reminder-Ketten, keine Lifestyle-Ziele, keine Termine.
 
 Related docs:
@@ -16,8 +16,8 @@ Related docs:
 ## 1. Zielsetzung
 
 - Problem: echte Incidents duerfen nicht untergehen.
-- Nutzer: Patient (sanfter Hinweis, nicht nervig).
-- Nicht Ziel: Gamification, Eskalation, Push-Spam.
+- Nutzer: Patient, mit sanftem Hinweis statt Eskalation.
+- Nicht-Ziel: Push-Spam, Reminder-Kaskaden oder allgemeine Motivationshinweise.
 
 ---
 
@@ -25,20 +25,20 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/incidents/index.js` | Incident-Engine + lokale Push-Entscheidung |
-| `app/modules/intake-stack/medication/index.js` | Event-Quelle `medication:changed` |
+| `app/modules/incidents/index.js` | Incident-Engine plus lokale Push-Entscheidung |
+| `app/modules/intake-stack/medication/index.js` | Event-Quelle `medication:changed` und Medication-Read-Model |
 | `app/modules/vitals-stack/vitals/bp.js` | BP-Save-Event `bp:changed` |
-| `app/core/pwa.js` | PWA/Service Worker Registrierung |
-| `service-worker.js` | Push-Anzeige (Notification API) |
-| `docs/archive/MIDAS Incidents & Push Roadmap.md` | Regeln, Steps, QA |
+| `app/core/pwa.js` | PWA- und Service-Worker-Registrierung |
+| `service-worker.js` | Notification-Anzeige und Click-Handling |
+| `docs/archive/MIDAS Incidents & Push Roadmap.md` | Regeln, Schritte, QA |
 
 ---
 
 ## 3. Datenmodell / Storage
 
-- Kein eigenes Storage.
-- In-Memory State (pro Tag): gesendete Incidents + BP-Flags.
-- Keine persistente Historie.
+- Kein eigenes persistentes Storage.
+- In-Memory-State pro Tag: gesendete Incident-Flags.
+- Keine historische Incident-Ablage.
 
 ---
 
@@ -47,17 +47,17 @@ Related docs:
 ### 4.1 Initialisierung
 - Incident-Engine startet beim App-Load.
 - Tageswechsel resettiert Push-Flags.
-- Intervall-Check (lokal) fuer Zeitfenster.
+- Lokaler Intervall-Check prueft Zeitfenster.
 
 ### 4.2 Trigger
-- `medication:changed` -> Incidents neu berechnen.
-- `bp:changed` -> Incidents neu berechnen.
-- Visibility-Change -> Recalc.
+- `medication:changed` berechnet Medication-Incidents neu.
+- `bp:changed` berechnet BP-Incidents neu.
+- `visibilitychange` triggert Recalc.
 
 ### 4.3 Verarbeitung
-- Incident A (Medikation Morgen): einmaliger Push ab 10:00, falls offene Medikation.
-- Incident B (Abend-BP): einmaliger Push ab 20:00, wenn Morgen-BP vorhanden und Abend fehlt.
-- Lokale Zeit als Referenz (nicht UTC).
+- Medication-Incident: einmaliger aggregierter Tages-Push ab dem spaeten Cutoff, falls fuer heute noch offene Einnahmen bestehen.
+- BP-Incident: einmaliger Push ab Abend, wenn Morgen-BP vorhanden und Abend-BP fehlt.
+- Lokale Zeit ist Referenz, nicht UTC.
 
 ### 4.4 Persistenz
 - Keine Persistenz.
@@ -67,21 +67,21 @@ Related docs:
 ## 5. Push-Transport
 
 - Lokal ueber Service Worker Registration (`showNotification`) oder Notification API.
-- Einmalig pro Incident/Tag (Tag-Key in Memory).
-- Kein Retry-Loop, keine Eskalation.
+- Maximal ein Push pro Incident und Tag.
+- Kein Retry-Loop, keine Eskalationskette.
 
 ---
 
 ## 6. UI-Integration
 
-- Profil-Panel (View Tab): Push aktivieren/deaktivieren + Statusanzeige.
-- Opt-in nur per User-Intent (Button).
+- Profil-Panel: Push aktivieren/deaktivieren plus Statusanzeige.
+- Opt-in nur per User-Intent.
 
 ---
 
 ## 7. Fehler- & Diagnoseverhalten
 
-- Fehlschlag beim Push bleibt silent (kein User-Error).
+- Fehlschlag beim Push bleibt lokal und fuehrt zu keinem User-Error.
 - Diagnoselog optional bei Debug.
 
 ---
@@ -89,8 +89,9 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Input-Events: `medication:changed`, `bp:changed`.
+- Medication-Incident basiert auf dem Medication-Read-Model mit `state !== 'done'`, nicht mehr auf dem alten Tages-Boolean `taken`.
 - Output: lokale Push-Notification.
-- Constraints: Termine sind kein Incident.
+- Constraints: Termine und allgemeine Hinweise sind keine Incidents.
 
 ---
 
@@ -98,7 +99,7 @@ Related docs:
 
 - Serverseitiger Push (Supabase Edge / Cron).
 - Persistente Incident-Logs.
-- User-Config (stumm, Zeitfenster, Snooze).
+- User-Config fuer Zeitfenster oder Snooze.
 
 ---
 
@@ -110,29 +111,29 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (lokal + remote).
-- Dependencies (hard): PWA/Service Worker, Medication- und BP-Events, Edge Function + GitHub Actions.
+- Status: aktiv.
+- Dependencies (hard): PWA/Service Worker, Medication- und BP-Events, Edge Function und GitHub Actions.
 - Dependencies (soft): Notification Permission.
-- Known issues / risks: keine Persistenz, Permission blockiert Push, Zeitzonen-Edgecases, Schedule-Jitter toleriert.
+- Known issues / risks: keine Persistenz, Permission blockiert Push, Zeitzonen-Edgecases, tolerierter Schedule-Jitter.
 
 ---
 
 ## 12. Remote Push Setup-Notiz (ohne Werte)
 
-- Edge Function `midas-incident-push` ist deployed (Supabase).
+- Edge Function `midas-incident-push` ist deployed.
 - Secrets angelegt: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `INCIDENTS_USER_ID`, `INCIDENTS_TZ`.
-- GitHub Actions Schedule fuer 10:00/21:00 aktiv (UTC-Cron, Zeitfenster tolerant).
+- GitHub Actions Schedule fuer die Zeitfenster aktiv.
 
-Status-Notiz
-- Client Subscription Flow aktiv (Opt-in im Profil).
-- Service Worker: `push` + `notificationclick` aktiv.
+Status-Notiz:
+- Client Subscription Flow aktiv.
+- Service Worker: `push` plus `notificationclick` aktiv.
 
 ---
 
 ## 13. QA-Checkliste
 
-- Medikation nicht bestaetigt bis 10:00 -> Push einmalig.
-- Abend-BP fehlt, Morgen-BP vorhanden -> Push einmalig ab 20:00.
+- Offene Medication bis zum spaeten Cutoff -> genau ein aggregierter Tages-Push.
+- Abend-BP fehlt, Morgen-BP vorhanden -> genau ein Push ab Abend.
 - Keine Pushes fuer Termine.
 - Tageswechsel resettiert Flags.
 
@@ -141,7 +142,7 @@ Status-Notiz
 ## 14. Definition of Done
 
 - Pushes nur bei echten Incidents.
-- Maximal 1 Push pro Incident/Tag.
+- Maximal ein Push pro Incident und Tag.
 - Dokumentation aktuell.
 
 ---
@@ -149,33 +150,31 @@ Status-Notiz
 ## 15. Incident Alert Tuning Notiz
 
 Ziel
-- Incidents sollen auf dem Handy nicht nur im Notification-Center landen, sondern fuer echte Sicherheitsfaelle besser wahrnehmbar sein.
+- Incidents sollen auf dem Handy fuer echte Sicherheitsfaelle besser wahrnehmbar sein.
 - Keine neue Reminder-Logik; nur staerkere Wahrnehmbarkeit fuer bestehende Incident-Pushes.
 
 Kontext
-- Aktuell sind die Incident-Pushes bewusst ruhig ausgelegt.
-- Lokale Incidents setzen im Client `silent: true`.
+- Incident-Pushes sind bewusst ruhig ausgelegt.
+- Lokale Incidents setzen im Client derzeit `silent: true`.
 - Remote Push uebernimmt `silent` aus dem Payload.
 
 Geplante technische Anpassungen
 - Lokale Incident-Pushes nicht mehr explizit stumm senden (`silent: false` oder Feld weglassen).
-- Remote Incident-Payloads ebenfalls auf hoerbar umstellen.
-- Notification-Option `vibrate` fuer echte Incidents setzen.
+- Remote Incident-Payloads ebenfalls hoerbar umstellen.
+- `vibrate` fuer echte Incidents setzen.
 - Optional `requireInteraction` testen, sofern Plattform/Browsersupport vorhanden.
-- Optional `actions` fuer Remote-Push pruefen (z. B. "Jetzt oeffnen"), ohne neue Fachlogik.
-- Titel/Body fuer Incident A/B schaerfer formulieren, damit der Kontext schon im Lockscreen klar ist.
+- Optional `actions` fuer Remote-Push pruefen, ohne neue Fachlogik.
 
 Betroffene Dateien
 - `app/modules/incidents/index.js`
 - `service-worker.js`
-- optional `app/modules/profile/index.js`, falls spaeter ein einfacher Nutzer-Schalter fuer "ruhig" vs. "deutlich" gewuenscht ist
+- optional `app/modules/profile/index.js` fuer einen spaeteren Nutzer-Schalter
 
 Bewusste Grenzen des aktuellen PWA-Stacks
 - Kein frei waehlbarer eigener Nachrichtenton wie in nativen Apps.
 - Keine Kontrolle ueber Lautstaerke, Fokus-Modi oder Lautlos-Schalter.
 - Verhalten bleibt browser- und plattformabhaengig.
-- Android bietet in der Regel mehr Notification-Spielraum als iPhone.
 
 Pragmatische Produktregel
-- Staerkere Wahrnehmbarkeit nur fuer echte Incidents (Medikation/BP), nicht fuer allgemeine Hinweise.
-- Weiterhin maximal 1 Push pro Incident/Tag; keine Eskalationskette.
+- Staerkere Wahrnehmbarkeit nur fuer echte Incidents, nicht fuer allgemeine Hinweise.
+- Weiterhin maximal ein Push pro Incident und Tag.

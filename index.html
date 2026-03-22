@@ -1121,8 +1121,18 @@
                       <input type="text" id="medFormStrength" placeholder="z. B. 160 mg">
                     </label>
                     <label class="field-group" for="medFormDose">
-                      <span class="label">Dosen / Tag</span>
-                      <input type="number" id="medFormDose" min="1" max="96" step="1" value="1">
+                      <span class="label">Frequenz</span>
+                      <select id="medFormDose">
+                        <option value="1">1x taeglich</option>
+                        <option value="2">2x taeglich</option>
+                        <option value="3">3x taeglich</option>
+                        <option value="4">4x taeglich</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </label>
+                    <label class="field-group" for="medFormStartDate">
+                      <span class="label">Startdatum</span>
+                      <input type="date" id="medFormStartDate">
                     </label>
                     <label class="field-group" for="medFormStock">
                       <span class="label">Bestand (Stk.)</span>
@@ -1136,6 +1146,17 @@
                       <input type="checkbox" id="medFormActive" checked>
                       <span class="label">Aktiv</span>
                     </label>
+                    <label class="field-group checkbox" for="medFormWithMeal">
+                      <input type="checkbox" id="medFormWithMeal">
+                      <span class="label">Mit Mahlzeit</span>
+                    </label>
+                  </div>
+                  <div class="medication-slot-editor" id="medFormSlotEditor">
+                    <div class="medication-slot-editor-header">
+                      <strong>Plan</strong>
+                      <button class="btn ghost small" type="button" id="medFormAddSlotBtn">Slot hinzufuegen</button>
+                    </div>
+                    <div class="medication-slot-editor-list" id="medFormSlots"></div>
                   </div>
                   <div class="medication-form-actions form-actions">
                     <button class="btn primary" type="submit" id="medFormSaveBtn">Speichern</button>
