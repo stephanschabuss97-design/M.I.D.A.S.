@@ -23,11 +23,11 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/modules/intake-stack/medication/index.js` | Client-API, `v2`-RPC Loader, Slot-Helper, Cache, TAB-UI. |
-| `app/modules/intake-stack/intake/index.js` | IN-Slot-Aktionen, Batch-Confirm, Low-Stock Box (nutzt `AppModules.medication`). |
-| `app/modules/hub/index.js` | lokaler Text-/Hub-Fast-Path fuer `medication_confirm_all`. |
-| `app/modules/assistant-stack/voice/index.js` | Voice-Fast-Path fuer `medication_confirm_all` plus Low-Stock-Follow-up. |
+| `app/modules/intake-stack/intake/index.js` | IN-Slot-Aktionen, abschnittsbezogene Batch-CTAs, Low-Stock Box (nutzt `AppModules.medication`). |
+| `app/modules/hub/index.js` | lokaler Text-/Hub-Fast-Path fuer `medication_confirm_section`. |
+| `app/modules/assistant-stack/voice/index.js` | Voice-Fast-Path fuer `medication_confirm_section` plus Low-Stock-Follow-up. |
 | `app/modules/profile/index.js` | Read-only-Zusammenfassung fuer Medikation im Profil. |
-| `app/modules/incidents/index.js` | aggregierter Medication-Incident fuer spaete offene Tages-Einnahmen. |
+| `app/modules/incidents/index.js` | lokale Medication-Incidents pro Abschnitt (`morning/noon/evening/night`). |
 | `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
 | `sql/12_Medication.sql` | Tabellen plus produktive RPCs fuer Slot-/Progress-Modell und den bereinigten Medication-Contract. |
 | `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
@@ -37,7 +37,7 @@ Related docs:
 ## 3. Datenmodell / Storage
 
 - `health_medications`: Stammdaten, Bestaende, `with_meal`, Low-Stock-Felder, `active`.
-- `health_medication_schedule_slots`: geplanter Tagesplan pro Medication mit `sort_order`, `qty_per_slot`, `start_date`, `end_date`.
+- `health_medication_schedule_slots`: geplanter Tagesplan pro Medication mit `slot_type`, `sort_order`, `qty_per_slot`, `start_date`, `end_date`.
 - `health_medication_slot_events`: bestaetigte Slot-Einnahmen je Nutzer/Medication/Tag.
 - `health_medication_stock_log`: Verlauf fuer Confirm/Undo und Bestandskorrekturen; kann `slot_id` und `day` mitfuehren.
 - `med_list_v2` ist das operative Read-Model fuer Medication im Frontend.
@@ -52,8 +52,9 @@ Related docs:
 - Intake hoert auf `medication:changed`.
 
 ### 4.2 User-Trigger
-- IN-Tab: offene Medikamente koennen gesammelt bestaetigt werden; Mehrfach-Medikation zeigt direkte Slot-Buttons.
+- IN-Tab: offene Abschnitts-CTAs bestaetigen nur `Morgen`, `Mittag`, `Abend` oder `Nacht`.
 - `1x taeglich` bleibt als kompakter Status-Button im Kartenkopf erhalten.
+- Mehrfach-Medikation zeigt direkte Slot-Buttons plus abschnittsbezogene Sammel-CTAs.
 - Low-Stock Ack im IN-Tab.
 - TAB-Formular mit Frequenz-Presets, Slot-Liste, `Mit Mahlzeit`, `Startdatum`, Submit/Reset.
 - Kartenaktionen: Restock, Set Stock, Toggle Active, Delete.
@@ -64,17 +65,18 @@ Related docs:
 - Cache und Events sichern, dass UI konsistent bleibt.
 
 ### 4.4 Persistenz
-- `med_list_v2` liefert Medication, Progress (`taken_count`, `total_count`, `state`) und `slots[]`.
-- `med_upsert_v2` speichert Stammdaten; `med_upsert_schedule_v2` schreibt den aktiven Slot-Plan.
+- `med_list_v2` liefert Medication, Progress (`taken_count`, `total_count`, `state`) und `slots[]` inklusive `slot_type`.
+- `med_upsert_v2` speichert Stammdaten; `med_upsert_schedule_v2` schreibt den aktiven Slot-Plan inklusive normalisiertem `slot_type`.
 - `med_confirm_slot_v2` und `med_undo_slot_v2` buchen genau einen Slot und passen den Bestand an.
 - `med_adjust_stock_v2` und `med_set_stock_v2` loggen in `health_medication_stock_log`.
 - `med_ack_low_stock_v2`, `med_set_active_v2`, `med_delete_v2` bilden die restlichen Write-Pfade im neuen Vertrag.
+- clientseitig existiert zusaetzlich `confirmMedicationSection(...)` fuer abschnittsbezogene Sammelbestaetigung offener Slots.
 
 ---
 
 ## 5. UI-Integration
 
-- IN-Panel mit Progress-Anzeige, Slot-Buttons bei `>1x` und Batch-Footer fuer offene Einnahmen.
+- IN-Panel mit Progress-Anzeige, Slot-Buttons bei `>1x` und Batch-Footer als CTA-Stack fuer offene Tagesabschnitte.
 - TAB-Panel mit Frequenz-/Slot-Editor, `Mit Mahlzeit`, `Startdatum` und Kartenliste.
 - Low-Stock-Box sichtbar, wenn Daten vorhanden.
 
@@ -108,21 +110,22 @@ Related docs:
 ## Intent / Voice Integration
 
 - Status:
-  - Produktiver lokaler Medikations-Fast-Path ist auf die Sammelbestaetigung aller aktuell offenen Einnahmen fuer heute begrenzt.
+  - Produktiver lokaler Medikations-Fast-Path ist abschnittsbezogen eingeengt.
 - Unterstuetzte Intents:
-  - `medication_confirm_all`
+  - `medication_confirm_section`
 - Voice Entry Points:
   - Produktiv ueber Hero-Hub Push-to-talk und den gemeinsamen Intent-Surface.
 - Allowed Actions:
   - Keine generische Allowed-Action fuer das Modul.
-  - Produktiv existiert ein enger lokaler Spezialpfad fuer `medication_confirm_all`, der ueber `loadMedicationForDay(...)` und `confirmAllOpenMedicationSlots(...)` aufloest.
+  - Produktiv existiert ein enger lokaler Spezialpfad fuer `medication_confirm_section`, der ueber `loadMedicationForDay(...)` und `confirmMedicationSection(...)` aufloest.
 - Nicht erlaubte Operationen:
   - Kein freier Medikations-Write per Voice.
   - Kein Restock, `set_stock`, Aktivieren/Archivieren oder Loeschen per Voice-Fast-Path.
-  - Keine freie Slot-Auswahl oder Teilmengen-Sprache.
+  - Keine freie Slot-Auswahl, kein globaler Tages-Write und keine Teilmengen-Sprache ausserhalb der vier Abschnitte.
 - Hinweise:
   - Low-Stock-Reorder bleibt lokal, guard-railed und UI-confirmed.
-  - Voice kann nach erfolgreichem `medication_confirm_all` einen engen ephemeren Low-Stock-Follow-up tragen.
+  - Voice kann nach erfolgreichem `medication_confirm_section` einen engen ephemeren Low-Stock-Follow-up tragen.
+  - Direkte lokale Writes sind nur mit explizitem Abschnitt (`Morgen/Mittag/Abend/Nacht`) erlaubt.
 
 ---
 

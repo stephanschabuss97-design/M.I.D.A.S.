@@ -1359,9 +1359,9 @@ Regression
 
 **Smoke**
 - [ ] IN-Tab: `1x taeglich` bleibt kompakt; Toggle bestaetigt die Einnahme (Toast + `medication:changed`), zweiter Klick macht denselben Slot rueckgaengig und stellt den Bestand wieder her.
-- [ ] IN-Tab: `>1x taeglich` zeigt Fortschritt `taken_count / total_count` und erlaubt Confirm/Undo pro Slot ohne Tagesdrift.
+- [ ] IN-Tab: `>1x taeglich` zeigt offene Abschnitts-CTAs fuer `Morgen` / `Mittag` / `Abend` / `Nacht` und erlaubt weiter Confirm/Undo pro Slot ohne Tagesdrift.
 - [ ] Low-Stock-Box erscheint, sobald `days_left <= low_stock_days`; `Erledigt` setzt `med_ack_low_stock` und blendet die Box aus.
-- [ ] Medication-Incident feuert hoechstens einmal pro Kalendertag erst am spaeten Tages-Schwellenwert fuer offene Einnahmen.
+- [ ] Lokale Medication-Incidents feuern abschnittsbezogen hoechstens einmal pro Abschnitt und Kalendertag ab den jeweiligen Schwellenwerten `06:00` / `11:00` / `17:00` / `21:00`.
 - [ ] Safety-Hinweis springt auf, wenn der Vortag offene Einnahmen hat; Button setzt Datum auf gestern und triggert `maybeRefreshForTodayChange`.
 - [ ] TAB: Neues Medikament anlegen, bestehendes bearbeiten, Speichern deaktiviert/aktiviert den Button korrekt und aktualisiert die Kartenliste ohne Reload.
 - [ ] Kartenaktionen: `Bestand +/-`, `Bestand setzen`, `Archivieren/Reaktivieren` und `Loeschen` fÃ¼hren jeweils zur erwarteten RPC-Aktion und reloaden die Liste.
@@ -1504,8 +1504,8 @@ Regression
 - [x] `Wasser 300 ml` -> lokaler `direct_match`, `intake_save`, kurzer lokaler Spoken-Reply, kein `midas-assistant`-Call.
 - [x] `Protein 24 Gramm` -> lokaler `direct_match`, `intake_save`, kurzer lokaler Spoken-Reply.
 - [x] `Salz 1,2 Gramm` -> lokaler `direct_match`, Dezimal-Komma wird korrekt normalisiert, kurzer lokaler Spoken-Reply.
-- [x] `Ich habe alle meine Medikamente genommen` -> lokaler Medikamentenpfad `medication_confirm_all`, kurze lokale Rueckmeldung.
-- [x] `Ich habe 780 ml Wasser getrunken, 0,4 g Salz, 32 g Protein und alle Medikamente genommen` -> lokaler Compound-Plan, kein stiller Teilverlust, aggregierte lokale Rueckmeldung.
+- [x] `Ich habe morgens meine Medikamente genommen` -> lokaler Medikamentenpfad `medication_confirm_section`, kurze lokale Rueckmeldung nur fuer offene Morning-Slots.
+- [x] `Ich habe 780 ml Wasser getrunken, 0,4 g Salz, 32 g Protein und abends meine Medikamente genommen` -> lokaler Compound-Plan, kein stiller Teilverlust, aggregierte lokale Rueckmeldung.
 
 **Negative / Out-of-Scope**
 - [x] `Was soll ich heute essen?` -> `fallback_semantic`, kurze lokale Rueckmeldung, kein Assistant-/LLM-Roundtrip im Voice-V1-Pfad.
@@ -1525,7 +1525,7 @@ Regression
 - [x] Positive Voice-Confirms fuehren den Zielpfad aus und clearen den Pending Context.
 - [x] Negative Voice-Confirms verwerfen den Pending Context deterministisch.
 - [x] `inFlight` und `consumed` blocken Doppeltrigger sauber.
-- [x] Nach erfolgreichem `medication_confirm_all` mit realem `low_stock` folgt nur der enge Nachsatz `Lokalen Rezeptkontakt starten?`; `ja` oeffnet nur den lokalen Mailto-Pfad, `nein` beendet sauber.
+- [x] Nach erfolgreichem `medication_confirm_section` mit realem `low_stock` folgt nur der enge Nachsatz `Lokalen Rezeptkontakt starten?`; `ja` oeffnet nur den lokalen Mailto-Pfad, `nein` beendet sauber.
 
 **Static / Sanity**
 - [x] `node --check` ist gruen fuer:
@@ -1551,6 +1551,7 @@ Regression
 - [ ] `Wasser 250 ml` -> lokaler `direct_match`, `intake_save`, kurzer deutscher Spoken-Reply ohne Denglisch-Rest.
 - [ ] `Salz 2 g` -> lokaler `direct_match`, kurzer deutscher Spoken-Reply.
 - [ ] `Protein 30 g` und `Proteine 30 g` -> gleicher lokaler `direct_match`; semantische Alias-Normalisierung fuehrt nicht zu Compound-Teilverlust.
+- [ ] `Ich habe abends meine Medikamente genommen` -> lokaler `medication_confirm_section`-Pfad, bestaetigt nur offene Evening-Slots und liefert keinen Tages-Write mehr.
 - [ ] `oeffne vitals` -> lokaler `open_module`-Pfad, Spoken-Reply natuerlich (`... ist offen`), kein Assistant-Roundtrip.
 - [ ] `starte timer` -> lokaler `start_breath_timer`-Pfad, `3` Minuten Default, Rueckkehr in den BP-Kontext kontrolliert.
 
@@ -1569,7 +1570,7 @@ Regression
 
 **Medication / Reorder**
 - [ ] Low-Stock-Follow-up bleibt eng:
-  - nur nach erfolgreichem `medication_confirm_all`
+  - nur nach erfolgreichem `medication_confirm_section`
   - nur bei frischem realem `low_stock`
   - nur `ja` / `nein`
 - [ ] `ja` fuehrt hoechstens in den bestehenden lokalen Reorder-Start; kein Versand-/Bestellstatus entsteht.

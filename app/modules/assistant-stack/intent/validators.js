@@ -3,7 +3,7 @@
 const ACTION_SAFETY_CLASS = new Map([
   ['confirm_reject', 'confirm_only'],
   ['intake_quick_add', 'guarded_write'],
-  ['medication_confirm_all', 'guarded_write'],
+  ['medication_confirm_section', 'guarded_write'],
   ['start_breath_timer', 'safe_read'],
   ['vitals_quick_log', 'guarded_write'],
   ['simple_navigation', 'safe_read'],
@@ -80,13 +80,16 @@ function validateIntakeQuickAdd(match) {
   return ok({ safety_class: 'guarded_write' });
 }
 
-function validateMedicationConfirmAll(match) {
+function validateMedicationConfirmSection(match) {
   const payload = match?.payload || {};
-  if (match?.target_action !== 'medication_confirm_all') {
+  if (match?.target_action !== 'medication_confirm_section') {
     return fail('medication-target-action-invalid');
   }
-  if (`${payload.scope || ''}`.trim() !== 'all_open_for_day') {
+  if (`${payload.scope || ''}`.trim() !== 'open_for_section') {
     return fail('medication-scope-invalid');
+  }
+  if (!['morning', 'noon', 'evening', 'night'].includes(`${payload.section || ''}`.trim())) {
+    return fail('medication-section-invalid');
   }
   return ok({ safety_class: 'guarded_write' });
 }
@@ -166,8 +169,8 @@ export function validateIntentMatch(match) {
       return validateConfirmReject(match);
     case 'intake_quick_add':
       return validateIntakeQuickAdd(match);
-    case 'medication_confirm_all':
-      return validateMedicationConfirmAll(match);
+    case 'medication_confirm_section':
+      return validateMedicationConfirmSection(match);
     case 'start_breath_timer':
       return validateStartBreathTimer(match);
     case 'vitals_quick_log':

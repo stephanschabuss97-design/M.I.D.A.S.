@@ -72,21 +72,72 @@
     if (typeof value === 'string' && ISO_DAY_RE.test(value)) return value;
     return todayIso();
   };
-  const DEFAULT_SLOT_LABELS = Object.freeze(['Morgen', 'Mittag', 'Abend', 'Nacht']);
+  const SLOT_TYPE_ORDER = Object.freeze(['morning', 'noon', 'evening', 'night']);
+  const SLOT_TYPE_LABELS = Object.freeze({
+    morning: 'Morgen',
+    noon: 'Mittag',
+    evening: 'Abend',
+    night: 'Nacht'
+  });
+  const SLOT_TYPE_LABEL_ALIASES = Object.freeze({
+    morgen: 'morning',
+    morgens: 'morning',
+    morning: 'morning',
+    frueh: 'morning',
+    früh: 'morning',
+    mittag: 'noon',
+    mittags: 'noon',
+    noon: 'noon',
+    abend: 'evening',
+    abends: 'evening',
+    evening: 'evening',
+    nacht: 'night',
+    nachts: 'night',
+    night: 'night'
+  });
+  const DEFAULT_SLOT_LABELS = Object.freeze(SLOT_TYPE_ORDER.map((type) => SLOT_TYPE_LABELS[type]));
 
   const toIntOr = (value, fallback) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
   };
 
+  const normalizeSlotType = (value) => {
+    const normalized = `${value || ''}`.trim().toLowerCase();
+    return SLOT_TYPE_ORDER.includes(normalized) ? normalized : '';
+  };
+
+  const inferSlotTypeFromContext = ({ slotType, label, index, slotCount }) => {
+    const normalizedType = normalizeSlotType(slotType);
+    if (normalizedType) return normalizedType;
+
+    const labelKey = `${label || ''}`.trim().toLowerCase();
+    if (labelKey && SLOT_TYPE_LABEL_ALIASES[labelKey]) return SLOT_TYPE_LABEL_ALIASES[labelKey];
+
+    const order = Math.max(0, toIntOr(index, 0));
+    const count = Math.max(1, toIntOr(slotCount, 1));
+    if (count <= 1) return 'morning';
+    if (count === 2) return order === 0 ? 'morning' : 'evening';
+    if (count === 3) return SLOT_TYPE_ORDER[Math.min(order, 2)] || 'evening';
+    return SLOT_TYPE_ORDER[Math.min(order, SLOT_TYPE_ORDER.length - 1)] || 'night';
+  };
+
   const normalizeSlot = (slot, index, dayIso) => {
     if (!slot || typeof slot !== 'object') return null;
     const slotId = `${slot.slot_id || slot.id || ''}`.trim();
     const qty = Math.max(1, toIntOr(slot.qty, 1));
+    const slotCount = Math.max(1, toIntOr(slot.slot_count ?? slot.total_count, index + 1));
     const labelValue = `${slot.label || ''}`.trim();
+    const slotType = inferSlotTypeFromContext({
+      slotType: slot.slot_type,
+      label: labelValue,
+      index,
+      slotCount
+    });
     return {
       slot_id: slotId,
-      label: labelValue || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+      label: labelValue || SLOT_TYPE_LABELS[slotType] || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+      slot_type: slotType,
       sort_order: Math.max(0, toIntOr(slot.sort_order, index)),
       qty,
       start_date: slot.start_date || null,
@@ -99,11 +150,15 @@
 
   const buildScheduleSlotsFromFrequency = (frequencyInput) => {
     const frequency = Math.min(12, Math.max(1, toIntOr(frequencyInput, 1)));
-    return Array.from({ length: frequency }, (_, index) => ({
-      label: DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
-      sort_order: index,
-      qty: 1
-    }));
+    return Array.from({ length: frequency }, (_, index) => {
+      const slotType = inferSlotTypeFromContext({ index, slotCount: frequency });
+      return {
+        label: SLOT_TYPE_LABELS[slotType] || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+        slot_type: slotType,
+        sort_order: index,
+        qty: 1
+      };
+    });
   };
 
   const getMedicationSlots = (med) =>
@@ -260,7 +315,9 @@
         ? row.slots
         : [];
     const slots = Array.isArray(slotsRaw)
-      ? slotsRaw.map((slot, index) => normalizeSlot(slot, index, row.day)).filter(Boolean)
+      ? slotsRaw
+          .map((slot, index) => normalizeSlot({ ...slot, slot_count: slotsRaw.length }, index, row.day))
+          .filter(Boolean)
       : [];
     const totalCount = Math.max(0, toIntOr(row.total_count, slots.length));
     const takenCount = Math.max(0, toIntOr(row.taken_count, slots.filter((slot) => slot.is_taken).length));
@@ -490,15 +547,23 @@
     return await undoMedicationSlot(takenSlots[0].slot_id, { dayIso: normalizedDay, reason: reason || 'undo-med' });
   }
 
-  async function confirmAllOpenMedicationSlots(dayIsoInput, { reason } = {}) {
+  async function confirmMedicationSection(sectionInput, dayIsoInput, { reason } = {}) {
     const normalizedDay = normalizeDayIso(dayIsoInput);
+    const normalizedSection = normalizeSlotType(sectionInput);
+    if (!normalizedSection) {
+      throw new Error('confirmMedicationSection requires valid section');
+    }
     const payload = await loadMedicationForDay(normalizedDay, {
       force: false,
-      reason: reason || 'confirm-all-open'
+      reason: reason || `confirm-section:${normalizedSection}`
     });
     const openSlotIds = (Array.isArray(payload?.medications) ? payload.medications : [])
       .filter((med) => med && med.active !== false)
-      .flatMap((med) => getOpenMedicationSlots(med).map((slot) => slot.slot_id))
+      .flatMap((med) =>
+        getOpenMedicationSlots(med)
+          .filter((slot) => normalizeSlotType(slot?.slot_type) === normalizedSection)
+          .map((slot) => slot.slot_id)
+      )
       .filter(Boolean);
     if (!openSlotIds.length) return payload;
     await Promise.all(
@@ -506,13 +571,13 @@
         callMedicationRpc(
           'med_confirm_slot_v2',
           { p_slot_id: slotId, p_day: normalizedDay },
-          { reason: `mutate:${reason || 'confirm-all-open'}` }
+          { reason: `mutate:${reason || `confirm-section:${normalizedSection}`}` }
         ))
     );
     invalidateMedicationCache(normalizedDay);
     return await loadMedicationForDay(normalizedDay, {
       force: true,
-      reason: `mutate:${reason || 'confirm-all-open'}`
+      reason: `mutate:${reason || `confirm-section:${normalizedSection}`}`
     });
   }
 
@@ -655,9 +720,15 @@
     const count = slots.length;
     if (count >= 1 && count <= 4) {
       const allDefault = slots.every((slot, index) => {
-        const label = `${slot?.label || ''}`.trim();
+        const slotType = inferSlotTypeFromContext({
+          slotType: slot?.slot_type,
+          label: slot?.label,
+          index,
+          slotCount: count
+        });
         const qty = Math.max(1, toIntOr(slot?.qty, 1));
-        return label === (DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`) && qty === 1;
+        const expectedType = inferSlotTypeFromContext({ index, slotCount: count });
+        return slotType === expectedType && qty === 1;
       });
       if (allDefault) return String(count);
     }
@@ -726,15 +797,21 @@
       ui.slots.innerHTML = normalizedSlots
         .map((slot, index) => {
           const qty = Math.max(1, toIntOr(slot.qty, 1));
+          const slotType = inferSlotTypeFromContext({
+            slotType: slot.slot_type,
+            label: slot.label,
+            index,
+            slotCount: normalizedSlots.length
+          });
           return `
-            <div class="medication-slot-row ${fixed ? 'is-fixed' : ''}" data-slot-row="${index}">
+            <div class="medication-slot-row ${fixed ? 'is-fixed' : ''}" data-slot-row="${index}" data-slot-type="${escapeHtml(slotType)}">
               <label class="field-group">
                 <span class="label">Slot ${index + 1}</span>
                 <input
                   type="text"
                   data-slot-label
                   value="${escapeHtml(slot.label || '')}"
-                  placeholder="${escapeHtml(DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`)}"
+                  placeholder="${escapeHtml(SLOT_TYPE_LABELS[slotType] || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`)}"
                 >
               </label>
               <label class="field-group">
@@ -757,8 +834,15 @@
       return rows.map((row, index) => {
         const labelInput = row.querySelector('[data-slot-label]');
         const qtyInput = row.querySelector('[data-slot-qty]');
+        const slotType = inferSlotTypeFromContext({
+          slotType: row.getAttribute('data-slot-type'),
+          label: labelInput?.value,
+          index,
+          slotCount: rows.length
+        });
         return {
-          label: `${labelInput?.value || ''}`.trim() || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+          label: `${labelInput?.value || ''}`.trim() || SLOT_TYPE_LABELS[slotType] || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+          slot_type: slotType,
           sort_order: index,
           qty: Math.max(1, toIntOr(qtyInput?.value, 1))
         };
@@ -769,14 +853,27 @@
       if (!Array.isArray(slots) || !slots.length) {
         throw new Error('Mindestens ein Einnahme-Slot ist erforderlich.');
       }
-      const normalized = slots.map((slot, index) => ({
-        label: `${slot?.label || ''}`.trim() || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
-        sort_order: index,
-        qty: Math.max(1, toIntOr(slot?.qty, 1))
-      }));
+      const normalized = slots.map((slot, index) => {
+        const slotType = inferSlotTypeFromContext({
+          slotType: slot?.slot_type,
+          label: slot?.label,
+          index,
+          slotCount: slots.length
+        });
+        return {
+          label: `${slot?.label || ''}`.trim() || SLOT_TYPE_LABELS[slotType] || DEFAULT_SLOT_LABELS[index] || `Einnahme ${index + 1}`,
+          slot_type: slotType,
+          sort_order: index,
+          qty: Math.max(1, toIntOr(slot?.qty, 1))
+        };
+      });
       const hasInvalidQty = normalized.some((slot) => !Number.isFinite(slot.qty) || slot.qty <= 0);
       if (hasInvalidQty) {
         throw new Error('Jeder Slot braucht eine gültige Menge grösser als 0.');
+      }
+      const hasInvalidType = normalized.some((slot) => !normalizeSlotType(slot.slot_type));
+      if (hasInvalidType) {
+        throw new Error('Jeder Slot braucht einen gueltigen Tagesabschnitt.');
       }
       return normalized;
     };
@@ -927,9 +1024,14 @@
 
     medicationState.ui.elements.addSlotBtn?.addEventListener('click', () => {
       const currentSlots = collectFormSlots();
+      const nextSlotType = inferSlotTypeFromContext({
+        index: currentSlots.length,
+        slotCount: currentSlots.length + 1
+      });
       renderSlotEditor(
         currentSlots.concat({
-          label: DEFAULT_SLOT_LABELS[currentSlots.length] || `Einnahme ${currentSlots.length + 1}`,
+          label: SLOT_TYPE_LABELS[nextSlotType] || DEFAULT_SLOT_LABELS[currentSlots.length] || `Einnahme ${currentSlots.length + 1}`,
+          slot_type: nextSlotType,
           sort_order: currentSlots.length,
           qty: 1
         }),
@@ -1207,7 +1309,7 @@
     getTakenMedicationSlots,
     confirmMedicationSlot,
     undoMedicationSlot,
-    confirmAllOpenMedicationSlots,
+    confirmMedicationSection,
     confirmMedication,
     undoMedication,
     upsertMedication,

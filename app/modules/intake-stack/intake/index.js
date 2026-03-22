@@ -78,8 +78,6 @@
     reorderLaunchLocks: new Map(),
     reorderPrompted: new Map(),
     cardOrder: [],
-    selection: new Set(),
-    selectionDirty: false,
     busy: false,
     elements: {}
   };
@@ -211,11 +209,73 @@
     return data.medications.filter((med) => med && med.active !== false);
   };
 
-  const getOpenMedicationIds = (data) =>
-    getActiveMedicationRows(data)
-      .filter((med) => med?.state !== 'done')
-      .map((med) => `${med?.id || ''}`.trim())
-      .filter(Boolean);
+  const MEDICATION_DAYPART_ORDER = Object.freeze(['morning', 'noon', 'evening', 'night']);
+  const MEDICATION_DAYPART_LABELS = Object.freeze({
+    morning: 'Morgen',
+    noon: 'Mittag',
+    evening: 'Abend',
+    night: 'Nacht'
+  });
+  const normalizeMedicationDaypart = (value) => {
+    const normalized = `${value || ''}`.trim().toLowerCase();
+    return MEDICATION_DAYPART_ORDER.includes(normalized) ? normalized : '';
+  };
+
+  const getCurrentMedicationDaypart = (date = new Date()) => {
+    const hour = date instanceof Date ? date.getHours() : new Date().getHours();
+    if (hour >= 21 || hour < 6) return 'night';
+    if (hour >= 17) return 'evening';
+    if (hour >= 11) return 'noon';
+    return 'morning';
+  };
+
+  const getOpenMedicationDaypartGroups = (data) => {
+    const groups = new Map();
+    getActiveMedicationRows(data).forEach((med) => {
+      const medId = `${med?.id || ''}`.trim();
+      const slots = Array.isArray(med?.slots) ? med.slots : [];
+      slots.forEach((slot) => {
+        if (!slot || slot.is_taken) return;
+        const slotId = `${slot.slot_id || ''}`.trim();
+        const section = normalizeMedicationDaypart(slot.slot_type);
+        if (!slotId || !section) return;
+        let group = groups.get(section);
+        if (!group) {
+          group = {
+            section,
+            slotIds: new Set(),
+            medIds: new Set()
+          };
+          groups.set(section, group);
+        }
+        group.slotIds.add(slotId);
+        if (medId) group.medIds.add(medId);
+      });
+    });
+    return MEDICATION_DAYPART_ORDER
+      .map((section) => groups.get(section))
+      .filter((group) => group && group.slotIds.size)
+      .map((group) => ({
+        section: group.section,
+        label: MEDICATION_DAYPART_LABELS[group.section] || group.section,
+        slotIds: Array.from(group.slotIds),
+        medIds: Array.from(group.medIds),
+        slotCount: group.slotIds.size,
+        medCount: group.medIds.size
+      }));
+  };
+
+  const getPrioritizedMedicationDaypartGroups = (data) => {
+    const groups = getOpenMedicationDaypartGroups(data);
+    if (groups.length <= 1) return groups;
+    const currentSection = getCurrentMedicationDaypart();
+    const primarySection = groups.some((group) => group.section === currentSection)
+      ? currentSection
+      : groups[0]?.section;
+    const primaryGroup = groups.find((group) => group.section === primarySection);
+    const secondaryGroups = groups.filter((group) => group.section !== primarySection);
+    return primaryGroup ? [primaryGroup, ...secondaryGroups] : groups;
+  };
 
   const markMedicationReorderPrompted = (medId, contract) => {
     const key = `${medId || ''}`.trim();
@@ -229,60 +289,45 @@
     });
   };
 
-  const syncMedicationSelection = (data, { reset = false } = {}) => {
-    const openIds = getOpenMedicationIds(data);
-    const openSet = new Set(openIds);
-    let nextSelection = new Set();
-    if (!reset && medicationDailyState.selectionDirty) {
-      medicationDailyState.selection.forEach((id) => {
-        if (openSet.has(id)) nextSelection.add(id);
-      });
-    } else {
-      openIds.forEach((id) => nextSelection.add(id));
-    }
-    medicationDailyState.selection = nextSelection;
-    if (reset) {
-      medicationDailyState.selectionDirty = false;
-    }
-  };
-
-  const getSelectedOpenIds = (data) => {
-    const openSet = new Set(getOpenMedicationIds(data));
-    return Array.from(medicationDailyState.selection).filter((id) => openSet.has(id));
-  };
-
-  const getSelectedOpenSlotCount = (data) => {
-    const selectedIds = new Set(getSelectedOpenIds(data));
-    const meds = getActiveMedicationRows(data).filter((med) => selectedIds.has(`${med?.id || ''}`.trim()));
-    return meds.reduce((sum, med) => {
-      const slots = Array.isArray(med?.slots) ? med.slots : [];
-      return sum + slots.filter((slot) => !slot?.is_taken).length;
-    }, 0);
-  };
-
   const updateMedicationBatchFooter = () => {
-      const ui = medicationDailyState.elements;
-      if (!ui?.footer) return;
-      const data = medicationDailyState.data;
-      const activeRows = getActiveMedicationRows(data);
-      const openIds = getOpenMedicationIds(data);
-      const selectedIds = getSelectedOpenIds(data);
-      const selectedCount = getSelectedOpenSlotCount(data);
-      const hasOpen = openIds.length > 0;
-      const showFooter = activeRows.length && hasOpen;
+    const ui = medicationDailyState.elements;
+    if (!ui?.footer) return;
+    const data = medicationDailyState.data;
+    const activeRows = getActiveMedicationRows(data);
+    const groups = getPrioritizedMedicationDaypartGroups(data);
+    const showFooter = activeRows.length && groups.length;
 
-      ui.footer.hidden = !showFooter;
-      if (ui.actions) {
-        ui.actions.hidden = !hasOpen;
-      }
-      if (ui.confirmBtn) {
-        ui.confirmBtn.textContent = `Offene Einnahmen bestätigen (${selectedCount})`;
-        ui.confirmBtn.disabled = medicationDailyState.busy || selectedCount === 0;
-      }
-      if (!activeRows.length) {
-        ui.footer.hidden = true;
-      }
-    };
+    ui.footer.hidden = !showFooter;
+    if (!ui.actions) return;
+    ui.actions.hidden = !groups.length;
+
+    if (!showFooter) {
+      ui.actions.innerHTML = '';
+      return;
+    }
+    ui.actions.innerHTML = groups
+      .map((group, index) => {
+        const isPrimary = index === 0;
+        const label = isPrimary
+          ? `Alle ${group.label}-Medikamente genommen (${group.medCount})`
+          : `${group.label} erledigen (${group.medCount})`;
+        const classes = ['btn', isPrimary ? 'primary' : 'ghost', 'medication-batch-btn'];
+        if (!isPrimary) classes.push('small', 'is-secondary');
+        return `
+          <button
+            type="button"
+            class="${classes.join(' ')}"
+            data-med-batch-section="${escapeAttr(group.section)}"
+            data-med-batch-primary="${isPrimary ? '1' : '0'}"
+            ${medicationDailyState.busy ? 'disabled' : ''}
+          >
+            ${escapeHtml(label)}
+          </button>
+        `;
+      })
+      .join('');
+  };
+
 
   function initMedicationDailyUi() {
     if (medicationDailyState.initialized) return;
@@ -294,29 +339,16 @@
     medicationDailyState.lowStockEl = doc.getElementById('medLowStockBox');
     medicationDailyState.elements = {
       footer: doc.getElementById('medicationBatchFooter'),
-      actions: doc.getElementById('medicationBatchActions'),
-      confirmBtn: doc.getElementById('medBatchConfirmBtn')
+      actions: doc.getElementById('medicationBatchActions')
     };
     medicationDailyState.initialized = true;
-
-    listEl.addEventListener('change', (event) => {
-      const checkbox = event.target.closest('[data-med-select]');
-      if (!checkbox) return;
-      event.preventDefault();
-      handleMedicationSelectionToggle(checkbox);
-    });
 
     listEl.addEventListener('click', (event) => {
       const statusBtn = event.target.closest('[data-med-slot-id]');
       if (statusBtn) {
         event.preventDefault();
         handleMedicationStatusToggle(statusBtn);
-        return;
       }
-      const card = event.target.closest('.medication-card');
-      if (!card) return;
-      if (event.target.closest('button, a, input, label')) return;
-      handleMedicationCardClick(card);
     });
 
     medicationDailyState.lowStockEl?.addEventListener('click', (event) => {
@@ -341,8 +373,11 @@
       handleLowStockAck(btn);
     });
 
-    medicationDailyState.elements.confirmBtn?.addEventListener('click', () => {
-      handleMedicationBatchConfirm();
+    medicationDailyState.elements.actions?.addEventListener('click', (event) => {
+      const batchBtn = event.target.closest('[data-med-batch-section]');
+      if (!batchBtn) return;
+      event.preventDefault();
+      handleMedicationBatchConfirm(batchBtn.getAttribute('data-med-batch-section'), batchBtn);
     });
 
     doc.addEventListener('medication:changed', (event) => {
@@ -372,8 +407,6 @@
     if (listEl) {
       listEl.innerHTML = `<p class="muted small">${escapeHtml(effectiveMessage)}</p>`;
     }
-    medicationDailyState.selection = new Set();
-    medicationDailyState.selectionDirty = false;
     updateMedicationBatchFooter();
     diag.add?.(
       `[capture:med] placeholder day=${medicationDailyState.dayIso || 'n/a'} msg="${effectiveMessage}"`
@@ -497,16 +530,12 @@
     if (!meds.length) {
       listEl.innerHTML = '<p class="muted small">Keine aktiven Medikamente für diesen Tag.</p>';
       renderMedicationLowStock(data);
-      medicationDailyState.selection = new Set();
-      medicationDailyState.selectionDirty = false;
       updateMedicationBatchFooter();
       return;
     }
-    syncMedicationSelection(data);
     const nextOrder = syncCardOrder(medicationDailyState.cardOrder, meds);
     medicationDailyState.cardOrder = nextOrder;
     const sortedMeds = sortByCardOrder(meds, nextOrder);
-    const selectedIds = new Set(getSelectedOpenIds(data));
     const items = sortedMeds
       .map((med) => {
         const daysLeft = Number.isFinite(med.days_left) ? `${med.days_left} Tage übrig` : '';
@@ -520,9 +549,6 @@
         const slots = Array.isArray(med.slots) ? med.slots.slice().sort((a, b) => a.sort_order - b.sort_order) : [];
         const primarySlot = slots.length === 1 ? slots[0] : null;
         const isTaken = med.state === 'done';
-        const isSelected = selectedIds.has(medId);
-        const isDisabled = medicationDailyState.busy || isTaken;
-        const checkLabel = isTaken ? 'Bereits genommen' : 'Auswählen';
         const slotHtml =
           slots.length > 1
             ? `
@@ -549,18 +575,8 @@
               `
             : '';
         return `
-            <article class="medication-card ${med.low_stock ? 'is-low' : ''} ${isTaken ? 'is-taken' : ''} ${isSelected ? 'is-selected' : ''}" data-med-id="${escapeAttr(medId)}">
+            <article class="medication-card ${med.low_stock ? 'is-low' : ''} ${isTaken ? 'is-taken' : ''}" data-med-id="${escapeAttr(medId)}">
               <div class="medication-card-header">
-                <label class="medication-card-select">
-                  <input
-                    type="checkbox"
-                    data-med-select="${escapeAttr(medId)}"
-                    ${isTaken ? 'checked' : isSelected ? 'checked' : ''}
-                    ${isDisabled ? 'disabled' : ''}
-                    aria-label="${escapeAttr(`Medikation auswählen: ${med.name || 'Medikation'}`)}"
-                  >
-                  <span class="sr-only">${escapeHtml(checkLabel)}</span>
-                </label>
                 <div class="medication-card-title-wrap">
                   <h4 class="medication-card-title">${escapeHtml(med.name || 'Medikation')}</h4>
                   ${statusText ? `<span class="medication-card-status">${escapeHtml(statusText)}</span>` : ''}
@@ -595,34 +611,7 @@
     updateMedicationBatchFooter();
   }
 
-  function handleMedicationSelectionToggle(checkbox) {
-    if (!checkbox || checkbox.disabled) return;
-    const medId = checkbox.getAttribute('data-med-select');
-    if (!medId) return;
-    const card = checkbox.closest('.medication-card');
-    if (checkbox.checked) {
-      medicationDailyState.selection.add(medId);
-      card?.classList.add('is-selected');
-    } else {
-      medicationDailyState.selection.delete(medId);
-      card?.classList.remove('is-selected');
-    }
-    feedbackApi?.feedback?.('medication:toggle', { intent: true, source: 'user' });
-    medicationDailyState.selectionDirty = true;
-    updateMedicationBatchFooter();
-  }
-
-  function handleMedicationCardClick(card) {
-    if (!card || medicationDailyState.busy) return;
-    const medId = card.getAttribute('data-med-id');
-    if (!medId) return;
-    const checkbox = card.querySelector('[data-med-select]');
-    if (!checkbox || checkbox.disabled) return;
-    checkbox.checked = !checkbox.checked;
-    handleMedicationSelectionToggle(checkbox);
-  }
-
-  async function handleMedicationBatchConfirm() {
+  async function handleMedicationBatchConfirm(section, triggerBtn) {
     if (!captureIntakeState.logged) {
       uiError('Bitte anmelden, um Medikamente zu bestätigen.');
       return;
@@ -633,12 +622,12 @@
       return;
     }
     const data = medicationDailyState.data;
-    const selectedIds = getSelectedOpenIds(data);
-    if (!selectedIds.length) return;
+    const normalizedSection = normalizeMedicationDaypart(section);
+    const group = getOpenMedicationDaypartGroups(data).find((entry) => entry.section === normalizedSection);
+    if (!group?.slotIds?.length) return;
 
     const dayIso = todayStr();
     const panel = document.getElementById('cap-intake-wrap');
-    const triggerBtn = medicationDailyState.elements.confirmBtn;
 
     medicationDailyState.dayIso = dayIso;
     medicationDailyState.busy = true;
@@ -646,21 +635,24 @@
     saveFeedback?.start({ button: triggerBtn, panel });
     try {
       await Promise.all(
-        selectedIds.map((medId) =>
-          medModule.confirmMedication(medId, { dayIso, reason: 'capture-batch' })
+        group.slotIds.map((slotId) =>
+          medModule.confirmMedicationSlot(slotId, { dayIso, reason: `capture-batch:${normalizedSection}` })
         )
       );
-      medicationDailyState.selectionDirty = false;
       feedbackApi?.feedback?.('medication:confirm', {
         intent: true,
         source: 'user',
-        dedupeKey: 'medication:confirm:batch'
+        dedupeKey: `medication:confirm:batch:${normalizedSection}`
       });
-      saveFeedback?.ok({ button: triggerBtn, panel, successText: '&#x2705; Tabletten gespeichert' });
+      saveFeedback?.ok({
+        button: triggerBtn,
+        panel,
+        successText: `&#x2705; ${escapeHtml(MEDICATION_DAYPART_LABELS[normalizedSection] || 'Medikamente')} gespeichert`
+      });
       if (typeof medModule.invalidateMedicationCache === 'function') {
         medModule.invalidateMedicationCache(dayIso);
       }
-      await refreshMedicationDaily({ dayIso, reason: 'batch', force: true });
+      await refreshMedicationDaily({ dayIso, reason: `batch:${normalizedSection}`, force: true });
     } catch (err) {
       saveFeedback?.error({
         button: triggerBtn,
@@ -668,7 +660,7 @@
         message: err?.message || 'Speichern fehlgeschlagen.'
       });
       uiError(err?.message || 'Speichern fehlgeschlagen.');
-      diag.add?.(`[capture:med] batch error ${err?.message || err}`);
+      diag.add?.(`[capture:med] batch error section=${normalizedSection} ${err?.message || err}`);
     } finally {
       medicationDailyState.busy = false;
       updateMedicationBatchFooter();
@@ -971,7 +963,6 @@
     const dayChanged = medicationDailyState.dayIso && medicationDailyState.dayIso !== nextDayIso;
     medicationDailyState.dayIso = nextDayIso;
     if (dayChanged) {
-      medicationDailyState.selectionDirty = false;
       medicationDailyState.reorderConfirming.clear();
       medicationDailyState.reorderLaunchLocks.clear();
       medicationDailyState.reorderPrompted.clear();

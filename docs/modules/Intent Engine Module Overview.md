@@ -5,6 +5,10 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: produktiver Fast-Path vor `midas-assistant`.
 - Abgrenzung: kein LLM-Ersatz, keine freie Beratung, kein eigener Persistenz-Layer.
 
+Status-Hinweis:
+- Der aktuelle Produktivstand nutzt fuer Medication den abschnittsbezogenen Confirm-Intent `medication_confirm_section`.
+- Direkte lokale Medication-Writes sind nur noch mit explizitem Abschnitt (`Morgen`, `Mittag`, `Abend`, `Nacht`) erlaubt.
+
 Related docs:
 - [Assistant Module Overview](Assistant Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
@@ -62,8 +66,10 @@ Related docs:
   - inklusive natuerlicherer Phrasen wie `ich habe 780 ml wasser getrunken`
   - inklusive Dezimal-Komma-Formen wie `1,2 gramm salz`
   - inklusive enger semantischer Varianten wie `proteine`
-- `medication_confirm_all`
-  - taegliche Sammelbestaetigung offener Medikamente
+- `medication_confirm_section`
+  - abschnittsbezogene Bestaetigung offener Medication-Slots
+  - `payload.scope = open_for_section`
+  - `payload.section = morning | noon | evening | night`
 - `simple_navigation`
   - enger lokaler Scope wie `oeffne vitals` oder `gehe zu medikamente`
 
@@ -72,7 +78,7 @@ Related docs:
 - freie Beratung
 - vage Writes
 - implizite Umdeutung
-- freie Einzelmedikationssprache
+- freie Einzelmedikationssprache ohne expliziten Abschnitt
 - produktive Compound-Confirms
 
 ---
@@ -215,7 +221,9 @@ Wichtige Grenze:
 - `Wasser 300 ml` -> lokaler Treffer
 - `ich habe 780 ml wasser getrunken` -> lokaler Treffer
 - `32 g protein` -> lokaler Treffer
-- `alle medikamente genommen` -> lokaler Treffer
+- `morgen medikamente genommen` -> lokaler Treffer
+- `abend tabletten genommen` -> lokaler Treffer
+- `alle medikamente genommen` -> kein direkter lokaler Write ohne expliziten Abschnitt
 - `ja/nein/speichern/abbrechen` nur mit aktivem Pending Context wirksam
 - Text und Voice nutzen denselben Intent-Surface
 - Lokale Treffer fuehren zu keinem unnoetigen `midas-assistant`-Call

@@ -54,7 +54,12 @@ Related docs:
 - Buttons `cap-*-add-btn` fuer Wasser/Salz/Protein inklusive Kombobutton Salz+Protein.
 - `1x taeglich`-Medikation nutzt einen kompakten Status-Button im Kartenkopf.
 - `>1x taeglich` zeigt direkte Slot-Buttons pro offenem oder bestaetigtem Slot.
-- Batch-Footer bestaetigt offene Einnahmen der ausgewaehlten Medikamente.
+- Batch-Footer arbeitet jetzt abschnittsbezogen:
+  - `Alle Morgen-Medikamente genommen`
+  - `Alle Mittag-Medikamente genommen`
+  - `Alle Abend-Medikamente genommen`
+  - `Alle Nacht-Medikamente genommen`
+- Batch bestaetigt nur offene Slots des jeweiligen `slot_type`, nie mehr den ganzen Tag auf einmal.
 - Low-Stock Box: `data-med-ack` plus globaler Mailto-Button.
 
 ### 4.3 Verarbeitung
@@ -67,7 +72,7 @@ Related docs:
 - Intake Save: `saveIntakeTotalsRpc({ dayIso, totals })`, danach UI Refresh und `requestUiRefresh()`.
 - Medication Read kommt ueber `loadMedicationForDay()` aus dem Medication Modul (`med_list_v2`).
 - Slot-Aktionen laufen ueber `confirmMedicationSlot(...)` und `undoMedicationSlot(...)`.
-- Sammelbestaetigung aller offenen Slots laeuft ueber `confirmAllOpenMedicationSlots(...)`.
+- Abschnitts-Batch im IN-Tab dispatcht nur offene `slot_id`s je `slot_type`; die Tages-Sammelbestaetigung existiert produktiv nicht mehr.
 
 ---
 
@@ -128,7 +133,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Intake RPCs (`health_intake_today`, `saveIntakeTotalsRpc`), `captureIntakeState`, Medication-Modul.
 - Dependencies (soft): Profil-Hausarztkontakt (Mailto), Trendpilot.
-- Known issues / risks: Timer-Resets, Offline-/RPC-Fehler, Medication-Snapshot Drift, Rest-Drift zwischen altem Daily-Batch-Wording und neuem Slot-Modell.
+- Known issues / risks: Timer-Resets, Offline-/RPC-Fehler, Medication-Snapshot Drift, Remote-Push-/Scheduler-Drift solange der externe Incident-Backend-Vertrag noch nicht im selben Repo mitgezogen ist.
 - Backend / SQL / Edge: Intake RPCs/Views, Medication RPCs (`sql/12_Medication.sql`).
 
 ---

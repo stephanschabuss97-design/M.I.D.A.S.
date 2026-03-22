@@ -3231,9 +3231,15 @@
   const DIRECT_INTENT_ACTIONS = new Set([
     'intake_save',
     'open_module',
-    'medication_confirm_all',
+    'medication_confirm_section',
     'start_breath_timer',
   ]);
+  const MEDICATION_SECTION_LABELS = Object.freeze({
+    morning: 'Morgen',
+    noon: 'Mittag',
+    evening: 'Abend',
+    night: 'Nacht',
+  });
   const getLocalTodayIso = () =>
     new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const waitForAssistantUiTick = () =>
@@ -3422,32 +3428,41 @@
       );
       return { handled: false, outcome: 'unsupported_local', reason: 'local-dispatch-unsupported' };
     }
-    if (targetAction === 'medication_confirm_all') {
+    if (targetAction === 'medication_confirm_section') {
       const medicationModule = global.AppModules?.medication;
       const loadMedicationForDay = medicationModule?.loadMedicationForDay;
-      const confirmAllOpenMedicationSlots = medicationModule?.confirmAllOpenMedicationSlots;
-      if (typeof loadMedicationForDay !== 'function' || typeof confirmAllOpenMedicationSlots !== 'function') {
+      const confirmMedicationSection = medicationModule?.confirmMedicationSection;
+      const section = `${intentResult?.payload?.section || ''}`.trim().toLowerCase();
+      if (
+        typeof loadMedicationForDay !== 'function'
+        || typeof confirmMedicationSection !== 'function'
+        || !MEDICATION_SECTION_LABELS[section]
+      ) {
         return { handled: false, outcome: 'blocked_local', reason: 'medication-module-missing' };
       }
       const dayIso = getLocalTodayIso();
       let snapshot = null;
       try {
-        snapshot = await loadMedicationForDay(dayIso, { reason: 'text:intent-medication-confirm-all' });
+        snapshot = await loadMedicationForDay(dayIso, { reason: `text:intent-medication-confirm-section:${section}` });
       } catch (_) {
         return { handled: false, outcome: 'blocked_local', reason: 'medication-load-failed' };
       }
-      const openMedicationIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
+      const openSlotIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
         .filter((med) => med && med.id && med.active !== false && med.state !== 'done')
-        .map((med) => med.id);
-      if (!openMedicationIds.length) {
-        return { handled: false, outcome: 'blocked_local', reason: 'medication-none-open' };
+        .flatMap((med) =>
+          (Array.isArray(med?.slots) ? med.slots : [])
+            .filter((slot) => slot && !slot.is_taken && `${slot.slot_type || ''}`.trim().toLowerCase() === section)
+            .map((slot) => slot.slot_id)
+        );
+      if (!openSlotIds.length) {
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-section-none-open' };
       }
       try {
-        await confirmAllOpenMedicationSlots(dayIso, {
-          reason: 'text:intent-confirm-all',
+        await confirmMedicationSection(section, dayIso, {
+          reason: `text:intent-confirm-section:${section}`,
         });
       } catch (_) {
-        return { handled: false, outcome: 'blocked_local', reason: 'medication-confirm-failed' };
+        return { handled: false, outcome: 'blocked_local', reason: 'medication-section-confirm-failed' };
       }
       recordAssistantIntentDispatchSuccess(intentResult, rawText);
       return { handled: true, outcome: 'handled', reason: null };
@@ -3507,8 +3522,9 @@
   const buildAssistantLocalIntentReply = (intentResult) => {
     const targetAction = `${intentResult?.target_action || ''}`.trim();
     const payload = intentResult?.payload || {};
-    if (targetAction === 'medication_confirm_all') {
-      return 'Medikation bestaetigt.';
+    if (targetAction === 'medication_confirm_section') {
+      const sectionLabel = MEDICATION_SECTION_LABELS[payload.section] || 'Medikation';
+      return `${sectionLabel}-Medikation bestaetigt.`;
     }
     if (targetAction === 'start_breath_timer') {
       const minutes = Number(payload.minutes) === 5 ? 5 : 3;
@@ -3542,11 +3558,12 @@
   const buildAssistantLocalIntentBlockedReply = (intentResult, localDispatch = null) => {
     const targetAction = `${intentResult?.target_action || ''}`.trim();
     const reason = `${localDispatch?.reason || ''}`.trim();
-    if (targetAction === 'medication_confirm_all') {
-      if (reason === 'medication-none-open') {
-        return 'Es gibt heute keine offene Medikation.';
+    if (targetAction === 'medication_confirm_section') {
+      const sectionLabel = MEDICATION_SECTION_LABELS[intentResult?.payload?.section] || 'Dieser Abschnitt';
+      if (reason === 'medication-section-none-open') {
+        return `Fuer ${sectionLabel} ist heute keine Medikation offen.`;
       }
-      return 'Ich habe den Befehl erkannt, aber ich kann die Medikation gerade nicht bestaetigen.';
+      return 'Ich habe den Befehl erkannt, aber ich kann diesen Medikationsabschnitt gerade nicht bestaetigen.';
     }
     if (targetAction === 'start_breath_timer') {
       return 'Ich habe den Befehl erkannt, aber ich kann den Atemtimer gerade nicht starten.';

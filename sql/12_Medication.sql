@@ -5,6 +5,61 @@
 
 begin;
 
+create or replace function public._med_default_slot_type(
+  p_sort_order int,
+  p_slot_count int
+)
+returns text
+language sql
+immutable
+set search_path = public, pg_catalog
+as $$
+  select case
+    when coalesce(p_slot_count, 0) <= 1 then 'morning'
+    when p_slot_count = 2 then
+      case when coalesce(p_sort_order, 0) <= 0 then 'morning' else 'evening' end
+    when p_slot_count = 3 then
+      case coalesce(p_sort_order, 0)
+        when 0 then 'morning'
+        when 1 then 'noon'
+        else 'evening'
+      end
+    else
+      case
+        when coalesce(p_sort_order, 0) <= 0 then 'morning'
+        when coalesce(p_sort_order, 0) = 1 then 'noon'
+        when coalesce(p_sort_order, 0) = 2 then 'evening'
+        else 'night'
+      end
+  end;
+$$;
+
+create or replace function public._med_infer_slot_type(
+  p_raw_type text,
+  p_label text,
+  p_sort_order int,
+  p_slot_count int
+)
+returns text
+language sql
+immutable
+set search_path = public, pg_catalog
+as $$
+  select case
+    when lower(btrim(coalesce(p_raw_type, ''))) in ('morning', 'noon', 'evening', 'night')
+      then lower(btrim(p_raw_type))
+    when lower(btrim(coalesce(p_label, ''))) in ('morgen', 'morgens', 'morning', 'frueh', 'früh')
+      then 'morning'
+    when lower(btrim(coalesce(p_label, ''))) in ('mittag', 'mittags', 'noon')
+      then 'noon'
+    when lower(btrim(coalesce(p_label, ''))) in ('abend', 'abends', 'evening')
+      then 'evening'
+    when lower(btrim(coalesce(p_label, ''))) in ('nacht', 'nachts', 'night')
+      then 'night'
+    else public._med_default_slot_type(p_sort_order, p_slot_count)
+  end;
+$$;
+
 drop function if exists public.med_confirm_dose(uuid, date);
 drop function if exists public.med_undo_dose(uuid, date);
 drop function if exists public.med_list(date);
@@ -103,6 +158,7 @@ create table if not exists public.health_medication_schedule_slots (
   user_id      uuid not null default auth.uid(),
   med_id       uuid not null references public.health_medications(id) on delete cascade,
   label        text,
+  slot_type    text not null default 'morning',
   sort_order   int  not null check (sort_order >= 0),
   qty_per_slot int  not null check (qty_per_slot > 0 and qty_per_slot <= 24),
   start_date   date not null default ((now() at time zone 'Europe/Vienna')::date),
@@ -117,8 +173,44 @@ create table if not exists public.health_medication_schedule_slots (
 create unique index if not exists uq_medication_schedule_slot_id_med
   on public.health_medication_schedule_slots (id, med_id);
 
+alter table public.health_medication_schedule_slots
+  add column if not exists slot_type text;
+
+alter table public.health_medication_schedule_slots
+  drop constraint if exists chk_medication_schedule_slot_type;
+
+with slot_groups as (
+  select
+    s.id,
+    public._med_infer_slot_type(
+      s.slot_type,
+      s.label,
+      s.sort_order,
+      (count(*) over (partition by s.user_id, s.med_id, s.start_date))::int
+    ) as normalized_slot_type
+  from public.health_medication_schedule_slots s
+)
+update public.health_medication_schedule_slots s
+   set slot_type = slot_groups.normalized_slot_type
+  from slot_groups
+ where s.id = slot_groups.id
+   and s.slot_type is distinct from slot_groups.normalized_slot_type;
+
+alter table public.health_medication_schedule_slots
+  alter column slot_type set default 'morning';
+
+alter table public.health_medication_schedule_slots
+  alter column slot_type set not null;
+
+alter table public.health_medication_schedule_slots
+  add constraint chk_medication_schedule_slot_type
+    check (slot_type in ('morning', 'noon', 'evening', 'night'));
+
 comment on table public.health_medication_schedule_slots is
   'Geplante taegliche Einnahme-Slots je Medication. V1 ist count-/order-based und nicht uhrzeitpflichtig.';
+
+comment on column public.health_medication_schedule_slots.slot_type is
+  'Kanonischer Tagesabschnitt des Slots fuer Batch-, Reminder- und Incident-Logik.';
 
 drop trigger if exists set_health_medication_schedule_slots_updated_at on public.health_medication_schedule_slots;
 create trigger set_health_medication_schedule_slots_updated_at
@@ -386,6 +478,7 @@ begin
       s.id as slot_id,
       s.med_id,
       s.label,
+      s.slot_type,
       s.sort_order,
       s.qty_per_slot,
       s.start_date,
@@ -405,6 +498,7 @@ begin
       s.med_id,
       s.slot_id,
       s.label,
+      s.slot_type,
       s.sort_order,
       s.qty_per_slot,
       s.start_date,
@@ -430,6 +524,7 @@ begin
           jsonb_build_object(
             'slot_id', sr.slot_id,
             'label', sr.label,
+            'slot_type', sr.slot_type,
             'sort_order', sr.sort_order,
             'qty', sr.qty_per_slot,
             'start_date', sr.start_date,
@@ -617,12 +712,18 @@ begin
      and start_date >= v_start_date;
 
   insert into public.health_medication_schedule_slots (
-    user_id, med_id, label, sort_order, qty_per_slot, start_date, active
+    user_id, med_id, label, slot_type, sort_order, qty_per_slot, start_date, active
   )
   select
     v_user,
     p_med_id,
     nullif(btrim(coalesce(slot.value->>'label', '')), ''),
+    public._med_infer_slot_type(
+      slot.value->>'slot_type',
+      slot.value->>'label',
+      coalesce((slot.value->>'sort_order')::int, slot.ordinality - 1),
+      jsonb_array_length(p_slots)
+    ),
     coalesce((slot.value->>'sort_order')::int, slot.ordinality - 1),
     greatest(coalesce((slot.value->>'qty')::int, 1), 1),
     v_start_date,

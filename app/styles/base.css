@@ -364,7 +364,7 @@ label {
   letter-spacing: 0.2px;
 }
 
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
@@ -379,7 +379,7 @@ textarea {
   scroll-margin-top: calc(var(--size-header-height) + var(--size-tabs-height) + 8px);
 }
 
-input::placeholder,
+input:not([type="checkbox"]):not([type="radio"])::placeholder,
 select::placeholder,
 textarea::placeholder {
   color: var(--color-text-muted);
@@ -387,12 +387,23 @@ textarea::placeholder {
 }
 
 /* SUBMODULE: Interaction States @public - visuelles Feedback für Fokuszustände */
-input:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
   border-color: rgba(79, 157, 255, 0.8);
   box-shadow: var(--glow-soft);
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: rgb(32, 163, 220);
+  cursor: pointer;
 }
 
 /* SUBMODULE: Button Reset @internal - erbt Schriftstil aus globalem Font */

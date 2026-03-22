@@ -5,6 +5,10 @@ Kurze Einordnung:
 - Rolle innerhalb von MIDAS: erinnert nur bei echten Incidents aus Medikation oder Blutdruck.
 - Abgrenzung: keine Reminder-Ketten, keine Lifestyle-Ziele, keine Termine.
 
+Status-Hinweis:
+- Der repo-lokale Produktivstand nutzt fuer Medication jetzt abschnittsbezogene lokale Incidents (`Morgen`, `Mittag`, `Abend`, `Nacht`).
+- Der externe Remote-Scheduler-/Edge-Function-Vertrag ist davon getrennt und muss ausserhalb dieses Repos separat mitgezogen werden.
+
 Related docs:
 - [MIDAS Incidents & Push Roadmap](../archive/MIDAS Incidents & Push Roadmap.md)
 - [Intake Module Overview](Intake Module Overview.md)
@@ -55,7 +59,12 @@ Related docs:
 - `visibilitychange` triggert Recalc.
 
 ### 4.3 Verarbeitung
-- Medication-Incident: einmaliger aggregierter Tages-Push ab dem spaeten Cutoff, falls fuer heute noch offene Einnahmen bestehen.
+- Medication-Incident: einmaliger lokaler Abschnitts-Push je `morning/noon/evening/night`, wenn fuer den aktuellen Abschnitt noch offene Slots bestehen.
+- Abschnitts-Cutoffs lokal:
+  - `06:00` Morgen
+  - `11:00` Mittag
+  - `17:00` Abend
+  - `21:00` Nacht
 - BP-Incident: einmaliger Push ab Abend, wenn Morgen-BP vorhanden und Abend-BP fehlt.
 - Lokale Zeit ist Referenz, nicht UTC.
 
@@ -89,7 +98,7 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Input-Events: `medication:changed`, `bp:changed`.
-- Medication-Incident basiert auf dem Medication-Read-Model mit `state !== 'done'`, nicht mehr auf dem alten Tages-Boolean `taken`.
+- Medication-Incident basiert auf dem Medication-Read-Model mit offenen `slots[]` und `slot_type`, nicht mehr auf einem aggregierten Tages-Boolean.
 - Output: lokale Push-Notification.
 - Constraints: Termine und allgemeine Hinweise sind keine Incidents.
 
@@ -132,7 +141,10 @@ Status-Notiz:
 
 ## 13. QA-Checkliste
 
-- Offene Medication bis zum spaeten Cutoff -> genau ein aggregierter Tages-Push.
+- Offene `morning`-Slots ab `06:00` -> genau ein `medication_morning`-Push.
+- Offene `noon`-Slots ab `11:00` -> genau ein `medication_noon`-Push.
+- Offene `evening`-Slots ab `17:00` -> genau ein `medication_evening`-Push.
+- Offene `night`-Slots ab `21:00` -> genau ein `medication_night`-Push.
 - Abend-BP fehlt, Morgen-BP vorhanden -> genau ein Push ab Abend.
 - Keine Pushes fuer Termine.
 - Tageswechsel resettiert Flags.

@@ -17,6 +17,12 @@
     confirming: 'Bestaetige',
     error: 'Fehler',
   };
+  const VOICE_MEDICATION_SECTION_LABELS = Object.freeze({
+    morning: 'Morgen',
+    noon: 'Mittag',
+    evening: 'Abend',
+    night: 'Nacht',
+  });
   const VAD_SINGLE_COMMAND_SILENCE_MS = 450;
   const VAD_SHORT_UTTERANCE_SILENCE_MS = 550;
   const VAD_SILENCE_MS = 700;
@@ -1175,10 +1181,11 @@
   const buildVoiceMedicationLowStockFollowupPrompt = ({
     includeMedicationConfirmed = true,
     spoken = true,
+    sectionLabel = '',
   } = {}) => {
     const parts = [];
     if (includeMedicationConfirmed) {
-      parts.push('Medikation bestaetigt.');
+      parts.push(sectionLabel ? `${sectionLabel}-Medikation bestaetigt.` : 'Medikation bestaetigt.');
     }
     if (spoken) {
       parts.push('Medikament ist knapp.');
@@ -1429,7 +1436,7 @@
   const VOICE_V1_ALLOWED_TARGET_ACTIONS = new Set([
     'intake_save',
     'open_module',
-    'medication_confirm_all',
+    'medication_confirm_section',
     'start_breath_timer',
   ]);
   const VOICE_V1_ALLOWED_OPEN_MODULE_TARGETS = new Set(['intake', 'medikamente', 'vitals']);
@@ -1527,8 +1534,9 @@
       }
       return 'Modul ist offen.';
     }
-    if (targetAction === 'medication_confirm_all') {
-      return 'Medikation bestaetigt.';
+    if (targetAction === 'medication_confirm_section') {
+      const sectionLabel = VOICE_MEDICATION_SECTION_LABELS[payload.section] || 'Medikation';
+      return `${sectionLabel}-Medikation bestaetigt.`;
     }
     if (targetAction === 'start_breath_timer') {
       const minutes = Number(payload.minutes) === 5 ? 5 : 3;
@@ -1543,8 +1551,9 @@
     if (reason === 'voice-v1-action-not-allowed' || reason === 'voice-v1-open-module-not-allowed') {
       return 'Diesen Befehl unterstuetze ich per Voice im Moment noch nicht.';
     }
-    if (reason === 'voice-medication-none-open') {
-      return 'Es gibt heute keine offene Medikation.';
+    if (reason === 'voice-medication-section-none-open') {
+      const sectionLabel = VOICE_MEDICATION_SECTION_LABELS[intentResult?.payload?.section] || 'Dieser Abschnitt';
+      return `Fuer ${sectionLabel} ist heute keine Medikation offen.`;
     }
     if (targetAction === 'open_module') {
       return 'Ich habe den Befehl erkannt, aber das Modul ist gerade noch nicht bereit.';
@@ -1552,8 +1561,8 @@
     if (targetAction === 'intake_save') {
       return 'Ich habe den Befehl erkannt, aber ich kann den Eintrag gerade noch nicht speichern.';
     }
-    if (targetAction === 'medication_confirm_all') {
-      return 'Ich habe den Befehl erkannt, aber ich kann die Medikation gerade nicht bestaetigen.';
+    if (targetAction === 'medication_confirm_section') {
+      return 'Ich habe den Befehl erkannt, aber ich kann diesen Medikationsabschnitt gerade nicht bestaetigen.';
     }
     if (targetAction === 'start_breath_timer') {
       return 'Ich habe den Befehl erkannt, aber ich kann den Atemtimer gerade nicht starten.';
@@ -1567,14 +1576,15 @@
     if (reason === 'voice-v1-action-not-allowed' || reason === 'voice-v1-open-module-not-allowed') {
       return 'Diesen Befehl unterstuetze ich per Voice noch nicht.';
     }
-    if (reason === 'voice-medication-none-open') {
-      return 'Heute ist keine Medikation offen.';
+    if (reason === 'voice-medication-section-none-open') {
+      const sectionLabel = VOICE_MEDICATION_SECTION_LABELS[intentResult?.payload?.section] || 'Dieser Abschnitt';
+      return `${sectionLabel} ist heute nicht offen.`;
     }
     if (reason === 'voice-medication-module-missing' || reason === 'voice-medication-load-failed') {
       return 'Medikation ist gerade nicht bereit.';
     }
-    if (reason === 'voice-medication-confirm-failed') {
-      return 'Medikation konnte ich gerade nicht bestaetigen.';
+    if (reason === 'voice-medication-section-confirm-failed') {
+      return 'Diesen Medikationsabschnitt konnte ich gerade nicht bestaetigen.';
     }
     if (reason === 'voice-local-dispatch-failed') {
       if (targetAction === 'open_module') {
@@ -1591,8 +1601,8 @@
     if (targetAction === 'intake_save') {
       return 'Eintrag gerade nicht moeglich.';
     }
-    if (targetAction === 'medication_confirm_all') {
-      return 'Medikation gerade nicht bestaetigbar.';
+    if (targetAction === 'medication_confirm_section') {
+      return 'Medikationsabschnitt gerade nicht bestaetigbar.';
     }
     if (targetAction === 'start_breath_timer') {
       return 'Atemtimer gerade nicht startbar.';
@@ -1834,8 +1844,9 @@
       if (target === 'medikamente' || target === 'intake') return 'Tageserfassung';
       return 'Modul';
     }
-    if (targetAction === 'medication_confirm_all') {
-      return 'Medikation';
+    if (targetAction === 'medication_confirm_section') {
+      const sectionLabel = VOICE_MEDICATION_SECTION_LABELS[payload.section] || 'Medikation';
+      return `${sectionLabel}-Medikation`;
     }
     if (commandUnit?.kind === 'medication_command_unit') {
       return 'Medikation';
@@ -1863,7 +1874,7 @@
       const label = getVoiceOutcomeLabel(entry.intentResult, entry.commandUnit);
       if (entry.localDispatch?.handled === true) {
         successLabels.push(label);
-        if (`${entry.intentResult?.target_action || ''}`.trim() === 'medication_confirm_all') {
+        if (`${entry.intentResult?.target_action || ''}`.trim() === 'medication_confirm_section') {
           hasMedicationSuccess = true;
         }
         return;
@@ -1901,7 +1912,7 @@
       const label = getVoiceOutcomeLabel(entry.intentResult, entry.commandUnit);
       if (entry.localDispatch?.handled === true) {
         successLabels.push(label);
-        if (`${entry.intentResult?.target_action || ''}`.trim() === 'medication_confirm_all') {
+        if (`${entry.intentResult?.target_action || ''}`.trim() === 'medication_confirm_section') {
           hasMedicationSuccess = true;
         }
         return;
@@ -1932,38 +1943,49 @@
     return 'Mehrfachbefehl erledigt.';
   };
 
-  const runVoiceMedicationConfirmAll = async () => {
+  const runVoiceMedicationConfirmSection = async (payload = {}) => {
     const medicationModule = global.AppModules?.medication;
     const loadMedicationForDay = medicationModule?.loadMedicationForDay;
-    const confirmAllOpenMedicationSlots = medicationModule?.confirmAllOpenMedicationSlots;
-    if (typeof loadMedicationForDay !== 'function' || typeof confirmAllOpenMedicationSlots !== 'function') {
+    const confirmMedicationSection = medicationModule?.confirmMedicationSection;
+    const section = `${payload.section || ''}`.trim().toLowerCase();
+    const sectionLabel = VOICE_MEDICATION_SECTION_LABELS[section] || 'Medikation';
+    if (
+      typeof loadMedicationForDay !== 'function'
+      || typeof confirmMedicationSection !== 'function'
+      || !VOICE_MEDICATION_SECTION_LABELS[section]
+    ) {
       return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-module-missing' };
     }
     const dayIso = getVoiceTodayIso();
     let snapshot = null;
     try {
-      snapshot = await loadMedicationForDay(dayIso, { reason: 'voice:intent-medication-confirm-all' });
+      snapshot = await loadMedicationForDay(dayIso, { reason: `voice:intent-medication-confirm-section:${section}` });
     } catch (_) {
       return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-load-failed' };
     }
-    const openMedicationIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
+    const openSlotIds = (Array.isArray(snapshot?.medications) ? snapshot.medications : [])
       .filter((med) => med && med.id && med.active !== false && med.state !== 'done')
-      .map((med) => med.id);
-    if (!openMedicationIds.length) {
-      return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-none-open' };
+      .flatMap((med) =>
+        (Array.isArray(med?.slots) ? med.slots : [])
+          .filter((slot) => slot && !slot.is_taken && `${slot.slot_type || ''}`.trim().toLowerCase() === section)
+          .map((slot) => slot.slot_id)
+      )
+      .filter(Boolean);
+    if (!openSlotIds.length) {
+      return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-section-none-open' };
     }
     try {
-      await confirmAllOpenMedicationSlots(dayIso, {
-        reason: 'voice:intent-confirm-all',
+      await confirmMedicationSection(section, dayIso, {
+        reason: `voice:intent-confirm-section:${section}`,
       });
     } catch (_) {
-      return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-confirm-failed' };
+      return { handled: false, outcome: 'blocked_local', reason: 'voice-medication-section-confirm-failed' };
     }
     let refreshedSnapshot = null;
     try {
       refreshedSnapshot = await loadMedicationForDay(dayIso, {
         force: true,
-        reason: 'voice:intent-confirm-all-followup',
+        reason: `voice:intent-confirm-section-followup:${section}`,
       });
     } catch (_) {
       refreshedSnapshot = null;
@@ -1983,6 +2005,7 @@
         replyText: buildVoiceMedicationLowStockFollowupPrompt({
           includeMedicationConfirmed: true,
           spoken: true,
+          sectionLabel,
         }),
         followup: {
           type: 'medication_low_stock_reorder',
@@ -1992,7 +2015,12 @@
         },
       };
     }
-    return { handled: true, outcome: 'handled', reason: null };
+    return {
+      handled: true,
+      outcome: 'handled',
+      reason: null,
+      replyText: `${sectionLabel}-Medikation bestaetigt.`,
+    };
   };
 
   const executeVoiceCompoundCommandPlan = async (transcript, commandPlan) => {
@@ -2158,8 +2186,8 @@
       }
       return { handled: true, outcome: 'handled', reason: null };
     }
-    if (targetAction === 'medication_confirm_all') {
-      const result = await runVoiceMedicationConfirmAll();
+    if (targetAction === 'medication_confirm_section') {
+      const result = await runVoiceMedicationConfirmSection(payload);
       if (result?.handled && result?.followup && commandPlan?.mode === 'single_unit') {
         armVoiceMedicationLowStockFollowup(result.followup);
       }

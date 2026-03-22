@@ -73,16 +73,21 @@ Beispiele:
 ### 2.4 Medikation
 
 Produktiver Vertrag:
-- taegliche Sammelbestaetigung offener Medikation
+- abschnittsbezogene Bestaetigung offener Medikation
+- gueltige Abschnitte:
+  - `morning`
+  - `noon`
+  - `evening`
+  - `night`
 
 Beispiele:
-- `Medikamente genommen`
-- `Tabletten genommen`
-- `Meine Medikamente genommen`
-- `Alle meine Medikamente genommen`
+- `Ich habe morgens meine Medikamente genommen`
+- `Mittags Tabletten genommen`
+- `Ich habe abends meine Medikamente genommen`
+- `Nachts Medikamente genommen`
 
 Enger Follow-up-Spezialfall:
-- nur nach erfolgreichem lokalem `medication_confirm_all`
+- nur nach erfolgreichem lokalem `medication_confirm_section`
 - nur wenn danach im frischen Tageszustand reales `low_stock` vorhanden ist
 - kurzer Nachsatz:
   - `Medikation bestaetigt. Medikament ist knapp. Lokalen Rezeptkontakt starten?`
@@ -93,6 +98,7 @@ Enger Follow-up-Spezialfall:
 Hinweise:
 - `ja` startet nur den bestehenden lokalen Mailto-/Rezeptkontakt-Pfad.
 - `nein` beendet den Nachsatz ohne weitere Session.
+- Generische Saetze wie `Ich habe meine Medikamente genommen` sind kein direkter Write mehr, solange kein Abschnitt genannt ist.
 - Kein freier Reorder-Dialog und keine Versand-/Bestellsemantik.
 
 ### 2.5 Breath Timer
@@ -124,9 +130,9 @@ Produktiv ist ein klarer Mehrfachbefehl aus einzelnen freigegebenen Units:
 - Medikation
 
 Beispiele:
-- `Wasser 500 ml und 2 g Salz und 30 g Protein und Medikamente genommen`
-- `Ich habe 500 ml Wasser getrunken und 2 g Salz und 30 g Protein genommen und meine Medikamente genommen`
-- `500 ml Wasser, 2 g Salz, 30 g Protein und Tabletten genommen`
+- `Wasser 500 ml und 2 g Salz und 30 g Protein und morgens Medikamente genommen`
+- `Ich habe 500 ml Wasser getrunken und 2 g Salz und 30 g Protein genommen und abends meine Medikamente genommen`
+- `500 ml Wasser, 2 g Salz, 30 g Protein und nachts Tabletten genommen`
 
 Hinweise:
 - Am stabilsten sind klare Einheiten mit `und` oder kurzen Kommas.

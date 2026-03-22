@@ -6,6 +6,20 @@ import { UNIT_TERMS } from '../semantics/units.js';
 import { FILLER_TERMS } from '../semantics/fillers.js';
 import { COMPOUND_MARKERS } from '../semantics/compound.js';
 
+const MEDICATION_DAYPART_TERMS = new Map([
+  ['morgen', 'morning'],
+  ['morgens', 'morning'],
+  ['frueh', 'morning'],
+  ['früh', 'morning'],
+  ['mittag', 'noon'],
+  ['mittags', 'noon'],
+  ['zu mittag', 'noon'],
+  ['abend', 'evening'],
+  ['abends', 'evening'],
+  ['nacht', 'night'],
+  ['nachts', 'night'],
+]);
+
 function pushSlot(slots, type, value, index, meta = null) {
   slots.push({
     type,
@@ -65,6 +79,14 @@ function extractMarkerSlots(tokens, slots) {
   });
 }
 
+function extractMedicationDaypartSlots(tokens, slots) {
+  tokens.forEach((token, index) => {
+    const section = MEDICATION_DAYPART_TERMS.get(token);
+    if (!section) return;
+    pushSlot(slots, 'MEDICATION_DAYPART', section, index, { section });
+  });
+}
+
 function buildSlotIndex(slots) {
   const byType = Object.create(null);
   slots.forEach((slot) => {
@@ -83,6 +105,7 @@ export function extractSemanticSlots(semanticInput = {}) {
   extractEntitySlots(tokens, slots);
   extractVerbSlots(tokens, slots);
   extractMarkerSlots(tokens, slots);
+  extractMedicationDaypartSlots(tokens, slots);
   return {
     tokens,
     slots,

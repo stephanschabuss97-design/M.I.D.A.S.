@@ -2,9 +2,10 @@
 **Final Spec & Roadmap**
 
 Hinweis zum Dokumentstatus:
-- Dieses Dokument beschreibt den ausgelieferten Single-Dose-Vertrag des bestehenden Medication-Moduls.
-- Der geplante Multi-Dose-Produktvertrag fuer den kuenftigen Umbau wird separat in `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md` definiert.
-- Solange SQL, RPCs und UI noch nicht umgebaut sind, bleiben die Modul-Overviews in `docs/modules/*` absichtlich beim aktuellen Ist-Zustand.
+- Dieses Dokument ist ein archivierter historischer Spec-Stand des frueheren Single-Dose-Medication-Moduls.
+- Der Multi-Dose-Umbau ist bereits separat in `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md` abgeschlossen dokumentiert.
+- Der nachgelagerte Umbau auf abschnittsbezogene Batch-/Reminder-Logik (`Morgen`, `Mittag`, `Abend`, `Nacht`) ist im Arbeitsstand von `docs/Medication Daypart Batch & Reminder Roadmap.md` dokumentiert.
+- Die aktuellen nicht-archivierten Modul-Overviews in `docs/modules/*` beschreiben den heutigen Runtime-Stand des Repos und sind fuer die laufende Orientierung die wichtigere Referenz.
 
 Dieses Dokument beschreibt das **finale, vollständige Spec Sheet** für das Medication-Management-Modul in MIDAS.  
 Der Fokus liegt ausschließlich auf dem Modul selbst: Ziel, Scope, UI, Datenmodell, Logik, APIs, Integration und Roadmap.  

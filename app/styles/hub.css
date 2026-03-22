@@ -1980,6 +1980,25 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   background: rgba(10, 12, 20, 0.45);
 }
 
+.medication-batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.medication-batch-actions .medication-batch-btn {
+  width: auto;
+}
+
+.medication-batch-actions .medication-batch-btn[data-med-batch-primary="1"] {
+  flex: 1 1 260px;
+}
+
+.medication-batch-actions .medication-batch-btn.is-secondary {
+  flex: 0 1 auto;
+}
+
 
 @media (min-width: 900px) {
   .medication-card-grid {

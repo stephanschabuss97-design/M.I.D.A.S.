@@ -12,9 +12,37 @@
   const doc = global.document;
   const diag = appModules.diag || global.diag || null;
 
-  const MED_PUSH_HOUR = 19;
   const BP_PUSH_HOUR = 20;
   const CHECK_INTERVAL_MS = 60 * 1000;
+  const MEDICATION_SECTION_ORDER = Object.freeze(['morning', 'noon', 'evening', 'night']);
+  const MEDICATION_SECTION_CUTOFFS = Object.freeze({
+    morning: 6,
+    noon: 11,
+    evening: 17,
+    night: 21,
+  });
+  const MEDICATION_INCIDENT_META = Object.freeze({
+    morning: {
+      type: 'medication_morning',
+      title: 'Morgen-Medikation offen',
+      body: 'Bitte die offenen Morgen-Einnahmen jetzt bestaetigen.',
+    },
+    noon: {
+      type: 'medication_noon',
+      title: 'Mittag-Medikation offen',
+      body: 'Bitte die offenen Mittag-Einnahmen jetzt bestaetigen.',
+    },
+    evening: {
+      type: 'medication_evening',
+      title: 'Abend-Medikation offen',
+      body: 'Bitte die offenen Abend-Einnahmen jetzt bestaetigen.',
+    },
+    night: {
+      type: 'medication_night',
+      title: 'Nacht-Medikation offen',
+      body: 'Bitte die offenen Nacht-Einnahmen jetzt bestaetigen.',
+    },
+  });
   const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
   const INCIDENT_ACTIONS = [
     {
@@ -25,11 +53,16 @@
 
   const state = {
     dayIso: null,
-    medsOpen: null,
+    medsOpenBySection: null,
     bpMorning: false,
     bpEvening: false,
     sent: {
-      med: null,
+      medication: {
+        morning: null,
+        noon: null,
+        evening: null,
+        night: null,
+      },
       bp: null,
     },
     timer: null,
@@ -51,33 +84,73 @@
     return toDayIso();
   };
 
+  const createMedicationSectionState = () => ({
+    morning: false,
+    noon: false,
+    evening: false,
+    night: false,
+  });
+
+  const normalizeMedicationSection = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return MEDICATION_SECTION_ORDER.includes(normalized) ? normalized : '';
+  };
+
   const getLocalCutoff = (hour) => {
     const now = new Date();
     now.setHours(hour, 0, 0, 0);
     return now.getTime();
   };
 
+  const getCurrentMedicationSection = (date = new Date()) => {
+    const hour = date instanceof Date ? date.getHours() : new Date().getHours();
+    if (hour >= MEDICATION_SECTION_CUTOFFS.night) return 'night';
+    if (hour >= MEDICATION_SECTION_CUTOFFS.evening) return 'evening';
+    if (hour >= MEDICATION_SECTION_CUTOFFS.noon) return 'noon';
+    if (hour >= MEDICATION_SECTION_CUTOFFS.morning) return 'morning';
+    return '';
+  };
+
   const updateDayState = () => {
     const today = getDayIso();
     if (state.dayIso === today) return false;
     state.dayIso = today;
-    state.sent.med = null;
+    state.sent.medication = {
+      morning: null,
+      noon: null,
+      evening: null,
+      night: null,
+    };
     state.sent.bp = null;
     state.bpMorning = false;
     state.bpEvening = false;
-    state.medsOpen = null;
+    state.medsOpenBySection = null;
     state.lastMedicationPayload = null;
     state.medLoadDay = null;
     state.medLoadInFlight = false;
     return true;
   };
 
-  const resolveMedicationOpen = (payload) => {
+  const resolveMedicationOpenBySection = (payload) => {
     if (!payload || !Array.isArray(payload.medications)) return null;
-    const open = payload.medications
+    const sections = createMedicationSectionState();
+    payload.medications
       .filter((med) => med && med.active !== false)
-      .filter((med) => med.state !== 'done');
-    return open.length > 0;
+      .forEach((med) => {
+        const slots = Array.isArray(med?.slots) ? med.slots : [];
+        let matchedSlot = false;
+        slots.forEach((slot) => {
+          if (!slot || slot.is_taken) return;
+          const section = normalizeMedicationSection(slot.slot_type);
+          if (!section) return;
+          sections[section] = true;
+          matchedSlot = true;
+        });
+        if (!matchedSlot && med?.state !== 'done') {
+          sections.morning = true;
+        }
+      });
+    return sections;
   };
 
   const loadMedicationCache = () => {
@@ -175,10 +248,11 @@
     return false;
   };
 
-  const shouldPushMed = () => {
-    if (!state.medsOpen) return false;
-    const now = Date.now();
-    return now >= getLocalCutoff(MED_PUSH_HOUR);
+  const shouldPushMedicationSection = (section) => {
+    const normalizedSection = normalizeMedicationSection(section);
+    if (!normalizedSection) return false;
+    if (!state.medsOpenBySection?.[normalizedSection]) return false;
+    return getCurrentMedicationSection() === normalizedSection;
   };
 
   const shouldPushBp = () => {
@@ -187,9 +261,21 @@
     return now >= getLocalCutoff(BP_PUSH_HOUR);
   };
 
+  const resolveSentBucket = (key) => {
+    if (Array.isArray(key)) {
+      const [namespace, bucketKey] = key;
+      if (namespace === 'medication') {
+        return [state.sent.medication, bucketKey];
+      }
+    }
+    return [state.sent, key];
+  };
+
   const pushOnce = async ({ key, type, title, body }) => {
     const day = getDayIso();
-    if (state.sent[key] === day) return false;
+    const [bucket, bucketKey] = resolveSentBucket(key);
+    if (!bucket || !bucketKey) return false;
+    if (bucket[bucketKey] === day) return false;
     const sent = await notify({
       title,
       body,
@@ -198,7 +284,7 @@
       tag: `midas-incident-${type}-${day}`,
     });
     if (sent) {
-      state.sent[key] = day;
+      bucket[bucketKey] = day;
       return true;
     }
     return false;
@@ -210,22 +296,24 @@
     const medPayload =
       state.lastMedicationPayload ||
       loadMedicationCache() ||
-      (state.medsOpen === null ? await ensureMedicationPayload() : null);
-    const medsOpen = resolveMedicationOpen(medPayload);
-    if (typeof medsOpen === 'boolean') {
-      state.medsOpen = medsOpen;
+      (state.medsOpenBySection === null ? await ensureMedicationPayload() : null);
+    const medsOpenBySection = resolveMedicationOpenBySection(medPayload);
+    if (medsOpenBySection) {
+      state.medsOpenBySection = medsOpenBySection;
     }
 
     if (!state.bpMorning && !state.bpEvening) {
       await refreshBpStateFromLocal();
     }
 
-    if (shouldPushMed()) {
+    const currentMedicationSection = getCurrentMedicationSection();
+    if (shouldPushMedicationSection(currentMedicationSection)) {
+      const meta = MEDICATION_INCIDENT_META[currentMedicationSection];
       await pushOnce({
-        key: 'med',
-        type: 'medication_daily_open',
-        title: 'Medikation heute noch offen',
-        body: 'Bitte die noch offenen Einnahmen fuer heute jetzt bestaetigen.',
+        key: ['medication', currentMedicationSection],
+        type: meta.type,
+        title: meta.title,
+        body: meta.body,
       });
     }
 
@@ -239,8 +327,11 @@
     }
 
     if (appModules.config?.LOG_HUB_DEBUG) {
+      const medState = state.medsOpenBySection
+        ? MEDICATION_SECTION_ORDER.map((section) => `${section}:${state.medsOpenBySection[section] ? 1 : 0}`).join(',')
+        : 'n/a';
       diag.add?.(
-        `[incidents] refresh reason=${reason} medsOpen=${state.medsOpen} bpM=${state.bpMorning} bpA=${state.bpEvening}`
+        `[incidents] refresh reason=${reason} medSections=${medState} current=${currentMedicationSection || 'none'} bpM=${state.bpMorning} bpA=${state.bpEvening}`
       );
     }
   };
@@ -257,9 +348,9 @@
     const payload = detail.data || null;
     if (payload) {
       state.lastMedicationPayload = payload;
-      const medsOpen = resolveMedicationOpen(payload);
-      if (typeof medsOpen === 'boolean') {
-        state.medsOpen = medsOpen;
+      const medsOpenBySection = resolveMedicationOpenBySection(payload);
+      if (medsOpenBySection) {
+        state.medsOpenBySection = medsOpenBySection;
       }
     }
     evaluateIncidents({ reason: 'medication:changed' });
