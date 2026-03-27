@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -59,21 +59,31 @@ const getNavigateFallbackResponse = async (request) => {
   if (shellRoot) return shellRoot;
   return caches.match(toUrl('offline.html'));
 };
-const isIncidentNotification = ({ tag = '', data = {} } = {}) => {
-  const normalizedTag = String(tag || '');
-  const type = String(data?.type || '');
-  return normalizedTag.startsWith('midas-incident-')
-    || type === 'medication_morning'
+const isLegacyIncidentType = (type) => (
+  type === 'medication_morning'
     || type === 'medication_noon'
     || type === 'medication_evening'
     || type === 'medication_night'
     || type === 'medication_daily_open'
-    || type === 'bp_evening';
+    || type === 'bp_evening'
+);
+const resolveNotificationSeverity = ({ tag = '', data = {} } = {}) => {
+  const explicitSeverity = String(data?.severity || '').trim().toLowerCase();
+  if (explicitSeverity === 'reminder' || explicitSeverity === 'incident') {
+    return explicitSeverity;
+  }
+  const normalizedTag = String(tag || '');
+  const type = String(data?.type || '');
+  if (normalizedTag.startsWith('midas-reminder-')) return 'reminder';
+  if (normalizedTag.startsWith('midas-incident-')) return 'incident';
+  if (isLegacyIncidentType(type)) return 'incident';
+  return '';
 };
 const buildNotificationOptions = (payload = {}, fallback = {}) => {
   const data = payload.data || fallback.data || {};
   const tag = payload.tag || fallback.tag;
-  const isIncident = isIncidentNotification({ tag, data });
+  const severity = resolveNotificationSeverity({ tag, data });
+  const isIncident = severity === 'incident';
   const options = {
     body: payload.body || fallback.body,
     tag,

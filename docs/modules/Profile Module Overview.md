@@ -1,9 +1,9 @@
 # Profile Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: zentrale Pflege persoenlicher Gesundheits- und Kontaktparameter.
-- Rolle: liefert Stammdaten, Limits, Hausarztkontakt und read-only Medication-Snapshot an andere Module.
-- Abgrenzung: kein Medical Record, keine Mehrarztverwaltung, keine externen Benachrichtigungen.
+- Zweck: zentrale Pflege persoenlicher Gesundheits- und Kontaktparameter plus Push-Opt-in und Push-Status.
+- Rolle: liefert Stammdaten, Limits, Hausarztkontakt, read-only Medication-Snapshot und den lokalen Push-Routing-Stand.
+- Abgrenzung: kein Medical Record, keine Mehrarztverwaltung, keine eigene Notification-Engine.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
@@ -27,6 +27,7 @@ Related docs:
 | `app/modules/intake-stack/medication/index.js` | liefert Tagesliste (`loadMedicationForDay`) fuer den Medication-Snapshot |
 | `app/styles/hub.css` | Formular- und Card-Styling |
 | `sql/10_User_Profile_Ext.sql` | Tabelle plus Spalten inklusive Hausarztfelder |
+| `sql/15_Push_Subscriptions.sql` | Push-Subscriptions, Remote-Health und Delivery-State |
 | `docs/QA_CHECKS.md` | CRUD- und Event-Testfaelle |
 
 ---
@@ -47,9 +48,10 @@ Related docs:
 - Modul laedt beim DOM Ready.
 - `ensureRefs()` cached Formelemente.
 - Wartet auf `supabase:ready`, dann `syncProfile({ reason: 'init' })`.
+- Initialisiert auch den Push-Status fuer Browser-Subscription und Remote-Health.
 
 ### 4.2 User-Trigger
-- Buttons `profileSaveBtn`, `profileRefreshBtn`.
+- Buttons `profileSaveBtn`, `profileRefreshBtn`, `profilePushEnableBtn`, `profilePushDisableBtn`.
 - Input-Aenderungen bleiben lokal bis Save.
 
 ### 4.3 Verarbeitung
@@ -57,12 +59,17 @@ Related docs:
 - `profileDoctorEmail` nutzt native HTML5-Validation.
 - CKD-Abzeichen kommt aus `loadLatestLabSnapshot()` und bleibt read-only.
 - Medication-Snapshot: `AppModules.medication.loadMedicationForDay(today)` liefert aktive Medikamente und wird als lesbare Plan-Zusammenfassung gerendert.
+- Push-Status:
+  - liest die aktuelle Browser-Subscription
+  - gleicht sie mit `push_subscriptions` ab
+  - bewertet `remote gesund` nur bei nachgewiesen erfolgreicher Remote-Zustellung ohne spaeteren Failure
 
 ### 4.4 Persistenz
 - Save: `supabase.from('user_profile').upsert({ ...payload, user_id }, { onConflict: 'user_id' })`.
 - Select: `.maybeSingle()`.
 - Nach erfolgreichem Save/Sync wird State aktualisiert, Overview gerendert und `profile:changed` gefeuert.
 - Der Medication-Snapshot wird nicht separat gespeichert; Quelle bleibt das Medication-Modul.
+- Push-Opt-in speichert/entfernt den Browser-Endpoint in `push_subscriptions`.
 
 ---
 
@@ -76,6 +83,7 @@ Related docs:
   - `profileDoctorName`, `profileDoctorEmail`
   - Limits und Lifestyle-Felder
 - Medication-Snapshot zeigt aktive Medikamente mit lesbarer Plan-Zusammenfassung aus `slots[]`, optional `mit Mahlzeit` und Restbestand.
+- Push-Status zeigt `bereit`, `aktiv (warte auf Remote-Bestaetigung)`, `aktiv (lokales Fallback)` oder `aktiv (remote gesund)`.
 - Keine Dev-Toggles im Profil.
 
 ---
@@ -91,6 +99,7 @@ Related docs:
 ## 7. Fehler- & Diagnoseverhalten
 
 - Save-/Sync-Fehler loggen `[profile] save failed` bzw. `[profile] sync failed`.
+- Push-Fehler loggen `[profile] push enable failed`, `[profile] push disable failed` oder einen ausgelassenen Health-Refresh.
 - Formular wird waehrend Requests disabled.
 - Fehlender Supabase-Client fuehrt zu einem klaren Fehler.
 - Ohne Profil-Datensatz zeigt die Overview einen leeren Initialzustand.
@@ -99,9 +108,9 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Public API / Entry Points: `AppModules.profile.syncProfile`, `profileSaveBtn`, `profileRefreshBtn`.
-- Source of Truth: `user_profile` plus Lab-Snapshot plus Medication-Snapshot.
-- Side Effects: `profile:changed`, Updates fuer Assistant, Charts und Medication-Low-Stock.
+- Public API / Entry Points: `AppModules.profile.sync`, `AppModules.profile.refreshPushStatus`, `AppModules.profile.getPushRoutingStatus`, `profileSaveBtn`, `profileRefreshBtn`.
+- Source of Truth: `user_profile`, `push_subscriptions`, Lab-Snapshot und Medication-Snapshot.
+- Side Effects: `profile:changed`, Updates fuer Assistant, Charts, Medication-Low-Stock und lokale Push-Suppression.
 - Konsumenten:
   - Charts
   - Assistant
@@ -129,8 +138,8 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): `user_profile`, Supabase Client, Medication-Snapshot, Lab-Snapshot.
 - Dependencies (soft): Assistant-Kontext.
-- Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save.
-- Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`.
+- Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save, Remote-Health muss zuerst erfolgreich belegt werden bevor lokal unterdrueckt werden darf.
+- Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/15_Push_Subscriptions.sql`.
 
 ---
 
@@ -141,6 +150,7 @@ Related docs:
 - `profile:changed` feuert nach Save; Charts und Assistant reagieren.
 - Low-Stock Box aktualisiert Arztkontakt nach Profil-Update.
 - Medication-Snapshot zeigt `1x` und `>1x` Medikation mit lesbarer Plan-Zusammenfassung.
+- Push-Status wechselt bei aktivem Browser-Abo sauber zwischen lokalem Fallback und gesundem Remote-Pfad.
 
 ---
 

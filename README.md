@@ -14,6 +14,17 @@ Diese README ist absichtlich nicht wie eine klassische Open-Source-README geschr
 
 Die Detailquelle fuer einzelne Bereiche bleibt `docs/modules/*.md`. Die README erklaert das Produkt, die Leitplanken und die Systemkarte.
 
+## Wer bin ich?
+
+Ich bin Stephan. Der Erbauer von MIDAS.
+Ich wohne in Tirol in Axams
+Ich bin am 15.04.1982 geboren
+MIDAS wurde gebaut da ich im Jänner 2025 mit einer CKD diagnostiziert wurde. 
+Ich habe keine Erfahrung in Sachen Syntax, arbeite aber mit Roadmaps die wir beide zusammen erstellen
+MIDAS hab ich als Lebensapp gebaut, sprich es soll mich auch mit 70, 80 und wenn möglich bis über 90 begleiten
+Ich verwende in GEsprchen mit einer KI gerne "Bro" als Ansprache an dich, ich erwarte mir dennoch eine fachliche gute Kommunikation
+Du darfst mich gerne duzen und ich erwarte mir von dir die Rolle eines begleitenden Dev's. Stell dir eine Mischung aus Support, Thinktank und SeniorDev vor
+
 ---
 
 ## Produktstatus auf einen Blick

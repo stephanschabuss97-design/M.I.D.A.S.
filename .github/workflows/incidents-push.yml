@@ -2,12 +2,9 @@ name: Incidents Push
 
 on:
   schedule:
-    # 10:00 Europe/Vienna ~= 09:00 UTC (Winterzeit).
-    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
-    - cron: "0 9 * * *"
-    # 21:00 Europe/Vienna ~= 20:00 UTC (Winterzeit).
-    # Hinweis: UTC-Cron verschiebt sich in der Sommerzeit um 1h.
-    - cron: "0 20 * * *"
+    # Regelmaessiger Tick; die eigentliche Reminder-/Incident-Entscheidung lebt in der Edge Function
+    # und wird dort in Europe/Vienna ausgewertet.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       window:
@@ -25,14 +22,7 @@ jobs:
           if [ -n "$WINDOW_INPUT" ]; then
             WINDOW="$WINDOW_INPUT"
           else
-            HOUR_UTC=$(date -u +%H)
-            if [ "$HOUR_UTC" = "09" ]; then
-              WINDOW="med"
-            elif [ "$HOUR_UTC" = "20" ]; then
-              WINDOW="bp"
-            else
-              WINDOW="all"
-            fi
+            WINDOW="all"
           fi
 
           curl -sS -X POST "${{ secrets.INCIDENTS_PUSH_URL }}" \

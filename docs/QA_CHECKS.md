@@ -1361,7 +1361,11 @@ Regression
 - [ ] IN-Tab: `1x taeglich` bleibt kompakt; Toggle bestaetigt die Einnahme (Toast + `medication:changed`), zweiter Klick macht denselben Slot rueckgaengig und stellt den Bestand wieder her.
 - [ ] IN-Tab: `>1x taeglich` zeigt offene Abschnitts-CTAs fuer `Morgen` / `Mittag` / `Abend` / `Nacht` und erlaubt weiter Confirm/Undo pro Slot ohne Tagesdrift.
 - [ ] Low-Stock-Box erscheint, sobald `days_left <= low_stock_days`; `Erledigt` setzt `med_ack_low_stock` und blendet die Box aus.
-- [ ] Lokale Medication-Incidents feuern abschnittsbezogen hoechstens einmal pro Abschnitt und Kalendertag ab den jeweiligen Schwellenwerten `06:00` / `11:00` / `17:00` / `21:00`.
+- [ ] Lokale Medication-Pushes feuern abschnittsbezogen hoechstens einmal pro Abschnitt, Severity und Kalendertag:
+  - `morning`: Reminder `10:00`, Incident `12:00`
+  - `noon`: Reminder `14:00`, Incident `16:00`
+  - `evening`: Reminder `20:00`, Incident `22:00`
+  - `night`: Reminder `22:30`, Incident `23:30`
 - [ ] Safety-Hinweis springt auf, wenn der Vortag offene Einnahmen hat; Button setzt Datum auf gestern und triggert `maybeRefreshForTodayChange`.
 - [ ] TAB: Neues Medikament anlegen, bestehendes bearbeiten, Speichern deaktiviert/aktiviert den Button korrekt und aktualisiert die Kartenliste ohne Reload.
 - [ ] Kartenaktionen: `Bestand +/-`, `Bestand setzen`, `Archivieren/Reaktivieren` und `Loeschen` fÃ¼hren jeweils zur erwarteten RPC-Aktion und reloaden die Liste.
@@ -1376,6 +1380,35 @@ Regression
 - [ ] Capture-Wasser/Salz/Protein-Flows laufen unverÃ¤ndert (keine zusÃ¤tzlichen `[capture] refresh` beim Speichern).
 - [ ] Profile-Ã„nderungen aktualisieren weiter nur die benÃ¶tigten Module (`medication` reagiert ausschlieÃŸlich auf `profile:changed` fÃ¼r die Arzt-Mail).
 - [ ] Supabase-Fehler (z.â€¯B. Netzwerk aus) lassen die App bestehen: IN zeigt Placeholder mit Fehlermeldung, TAB-Formular bleibt editierbar.
+
+---
+
+## Phase F8 - Push Reminder Softening (2026-03-27)
+
+**Scope:** Medication `reminder -> incident`, Service-Worker-Severity, Remote-Health-Suppression und Off-App-Push-Takt.
+
+**Smoke**
+- [ ] Offene Morning-Slots erzeugen vor `10:00` keinen lokalen Medication-Push.
+- [ ] Offene Medication-Slots erzeugen zuerst einen sanften Reminder mit `... noch nicht erfasst?`; ein spaeterer Incident folgt nur wenn derselbe Abschnitt weiter offen bleibt.
+- [ ] Reminder und Incident nutzen getrennte Tags (`midas-reminder-*` / `midas-incident-*`) und unterscheiden sich sichtbar in `requireInteraction`, Actions und Vibration.
+- [ ] Abend-BP bleibt incident-orientiert und feuert ab `20:00` nur wenn Morgen-BP vorhanden und Abend-BP offen ist.
+
+**Remote / Suppression**
+- [ ] Frisch aktiviertes Browser-Abo zeigt zunaechst `aktiv (warte auf Remote-Bestaetigung)` oder `aktiv (lokales Fallback)`; lokale Pushes bleiben aktiv bis ein gesunder Remote-Pfad nachweisbar ist.
+- [ ] Nach mindestens einer erfolgreichen Remote-Zustellung wechselt der Profil-Status auf `aktiv (remote gesund)` und lokale Duplicate-Pushes werden unterdrueckt.
+- [ ] GitHub Workflow tickt alle `30` Minuten; echter Off-App-Push funktioniert auch ohne geoeffnete App.
+- [ ] `push_notification_deliveries` verhindert doppelte Remote-Zustellung fuer denselben `user/day/type/severity/source`.
+
+**Sanity**
+- [ ] `node --check app/modules/incidents/index.js` ist gruen.
+- [ ] `node --check app/modules/profile/index.js` ist gruen.
+- [ ] `node --check service-worker.js` ist gruen.
+- [ ] Legacy-Payloads ohne `data.severity` bleiben im Service Worker lesbar und werden fuer bekannte alte Incident-Typen weiter korrekt als Incident behandelt.
+
+**Regression**
+- [ ] Offene, aber bereits bestaetigte Medication-Slots erzeugen weder Reminder noch Incident.
+- [ ] Tageswechsel resettet die lokalen Sendeflags weiter sauber.
+- [ ] Das Profil-Panel kann Push aktivieren/deaktivieren, ohne CRUD-Save oder Medication-Snapshot zu stoeren.
 
 ---
 

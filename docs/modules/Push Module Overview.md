@@ -1,27 +1,30 @@
 # Push Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: lokale Incident-Pushes als ruhiges Sicherheitsnetz.
-- Rolle innerhalb von MIDAS: erinnert nur bei echten Incidents aus Medikation oder Blutdruck.
-- Abgrenzung: keine Reminder-Ketten, keine Lifestyle-Ziele, keine Termine.
+- Zweck: gestaffelte Medication-Reminder plus spaetere Incidents und ein klarer BP-Incident-Pfad.
+- Rolle innerhalb von MIDAS: ruhiges Sicherheitsnetz fuer offene Medication-Slots und fehlenden Abend-Blutdruck.
+- Abgrenzung: keine Reminder-Ketten, keine Termine, keine Lifestyle-Motivation.
 
 Status-Hinweis:
-- Der repo-lokale Produktivstand nutzt fuer Medication jetzt abschnittsbezogene lokale Incidents (`Morgen`, `Mittag`, `Abend`, `Nacht`).
-- Der externe Remote-Scheduler-/Edge-Function-Vertrag ist davon getrennt und muss ausserhalb dieses Repos separat mitgezogen werden.
+- Repo-lokal ist der neue Severity-Vertrag aktiv:
+  - `reminder`
+  - `incident`
+- Lokal und extern sprechen denselben Typ-/Severity-/Tag-Vertrag.
+- Off-App-Push laeuft ueber GitHub Actions plus Edge Function im Backend-Workspace.
 
 Related docs:
-- [MIDAS Incidents & Push Roadmap](../archive/MIDAS Incidents & Push Roadmap.md)
-- [Intake Module Overview](Intake Module Overview.md)
 - [Medication Module Overview](Medication Module Overview.md)
-- [Hub Module Overview](Hub Module Overview.md)
+- [Intake Module Overview](Intake Module Overview.md)
+- [Profile Module Overview](Profile Module Overview.md)
 
 ---
 
 ## 1. Zielsetzung
 
-- Problem: echte Incidents duerfen nicht untergehen.
-- Nutzer: Patient, mit sanftem Hinweis statt Eskalation.
-- Nicht-Ziel: Push-Spam, Reminder-Kaskaden oder allgemeine Motivationshinweise.
+- Medication soll nicht mehr direkt beim Abschnittsbeginn wie ein harter Vorfall wirken.
+- Die erste Medication-Benachrichtigung ist eine spaete, freundliche Nachfrage.
+- Wenn weiterhin offen, darf spaeter ein klarerer Incident folgen.
+- BP darf weiter incident-orientierter bleiben.
 
 ---
 
@@ -29,20 +32,24 @@ Related docs:
 
 | Datei | Zweck |
 |------|------|
-| `app/modules/incidents/index.js` | Incident-Engine plus lokale Push-Entscheidung |
-| `app/modules/intake-stack/medication/index.js` | Event-Quelle `medication:changed` und Medication-Read-Model |
-| `app/modules/vitals-stack/vitals/bp.js` | BP-Save-Event `bp:changed` |
-| `app/core/pwa.js` | PWA- und Service-Worker-Registrierung |
-| `service-worker.js` | Notification-Anzeige und Click-Handling |
-| `docs/archive/MIDAS Incidents & Push Roadmap.md` | Regeln, Schritte, QA |
+| `app/modules/incidents/index.js` | lokale Incident-Engine, Medication-Schwellen, lokale Suppression |
+| `service-worker.js` | Severity-Auswertung, Anzeige-Defaults, Click-Handling |
+| `app/modules/profile/index.js` | Push-Opt-in, Browser-Subscription, Remote-Health-Status |
+| `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
+| `.github/workflows/incidents-push.yml` | 30-Minuten-Takt fuer Off-App-Push |
+| `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts` | externer Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
+| `sql/15_Push_Subscriptions.sql` | `push_subscriptions` plus `push_notification_deliveries` |
 
 ---
 
 ## 3. Datenmodell / Storage
 
-- Kein eigenes persistentes Storage.
-- In-Memory-State pro Tag: gesendete Incident-Flags.
-- Keine historische Incident-Ablage.
+- Lokal:
+  - In-Memory-Sendeflags pro Tag
+  - Medication getrennt nach Abschnitt und Severity
+- Remote:
+  - `push_subscriptions` fuer Endpoint, Browser-Keys und Remote-Health
+  - `push_notification_deliveries` fuer persistentes Remote-Dedupe pro `user/day/type/severity/source`
 
 ---
 
@@ -50,143 +57,166 @@ Related docs:
 
 ### 4.1 Initialisierung
 - Incident-Engine startet beim App-Load.
-- Tageswechsel resettiert Push-Flags.
-- Lokaler Intervall-Check prueft Zeitfenster.
+- Tageswechsel resettet lokale Sendeflags.
+- Lokaler Intervall-Check laeuft minuetlich.
+- Profil-Modul synchronisiert Browser-Push und den letzten bekannten Remote-Health-Stand.
 
 ### 4.2 Trigger
-- `medication:changed` berechnet Medication-Incidents neu.
-- `bp:changed` berechnet BP-Incidents neu.
-- `visibilitychange` triggert Recalc.
+- `medication:changed`
+- `bp:changed`
+- `visibilitychange`
+- lokaler Minutentick
+- externer GitHub-Action-Tick alle `30` Minuten
 
-### 4.3 Verarbeitung
-- Medication-Incident: einmaliger lokaler Abschnitts-Push je `morning/noon/evening/night`, wenn fuer den aktuellen Abschnitt noch offene Slots bestehen.
-- Abschnitts-Cutoffs lokal:
-  - `06:00` Morgen
-  - `11:00` Mittag
-  - `17:00` Abend
-  - `21:00` Nacht
-- BP-Incident: einmaliger Push ab Abend, wenn Morgen-BP vorhanden und Abend-BP fehlt.
-- Lokale Zeit ist Referenz, nicht UTC.
+### 4.3 Verarbeitung lokal
+- Medication prueft offene Slots je `morning/noon/evening/night`.
+- Final beschlossene Medication-Schwellen:
+  - `morning`: Reminder `10:00`, Incident `12:00`
+  - `noon`: Reminder `14:00`, Incident `16:00`
+  - `evening`: Reminder `20:00`, Incident `22:00`
+  - `night`: Reminder `22:30`, Incident `23:30`
+- Reminder-Copy:
+  - `... noch nicht erfasst?`
+  - `Falls noch offen: bitte kurz bestaetigen.`
+- Incident-Copy:
+  - `... weiterhin offen`
+  - `Bitte jetzt pruefen und bestaetigen.`
+- BP bleibt ein klarer Abend-Incident ab `20:00`, wenn Morgen-BP vorhanden und Abend-BP noch offen ist.
 
-### 4.4 Persistenz
-- Keine Persistenz.
+### 4.4 Verarbeitung remote
+- GitHub Actions ist nur Taktgeber.
+- Die Edge Function entscheidet in `Europe/Vienna`, was aktuell faellig ist.
+- Medication liest slot-/abschnittsbasiert:
+  - `health_medications`
+  - `health_medication_schedule_slots`
+  - `health_medication_slot_events`
+- Catch-up sendet pro Typ und Tag immer nur die hoechste aktuell faellige Severity.
+- Remote-Dedupe verhindert Doppelzustellung fuer denselben Fachfall.
+
+### 4.5 Lokale-vs.-Remote-Suppression
+- Lokal wird nicht blind abgeschaltet.
+- Lokale Notification-Suppression ist nur erlaubt, wenn:
+  - eine aktive Browser-Subscription existiert
+  - dieselbe Subscription im Backend bekannt ist
+  - fuer diese Subscription bereits ein erfolgreicher Remote-Push belegt ist
+  - kein spaeterer Failure-Stand darauf liegt
+- Ohne diesen Nachweis bleibt lokal der Fallback aktiv.
 
 ---
 
 ## 5. Push-Transport
 
-- Lokal ueber Service Worker Registration (`showNotification`) oder Notification API.
-- Maximal ein Push pro Incident und Tag.
-- Kein Retry-Loop, keine Eskalationskette.
+- Lokal:
+  - `showNotification(...)` ueber Service Worker Registration
+  - Fallback `Notification API`
+- Remote:
+  - Web Push ueber Edge Function und GitHub Actions Takt
+- Tags:
+  - `midas-reminder-<type>-<dayIso>`
+  - `midas-incident-<type>-<dayIso>`
+- Payload:
+  - `data.type`
+  - `data.severity`
+  - `data.dayIso`
+  - `data.source`
 
 ---
 
 ## 6. UI-Integration
 
-- Profil-Panel: Push aktivieren/deaktivieren plus Statusanzeige.
-- Opt-in nur per User-Intent.
+- Profil-Panel:
+  - Push aktivieren/deaktivieren
+  - Statusanzeige:
+    - `aktiv (warte auf Remote-Bestaetigung)`
+    - `aktiv (lokales Fallback)`
+    - `aktiv (remote gesund)`
+- Opt-in bleibt explizit per User-Intent.
 
 ---
 
 ## 7. Fehler- & Diagnoseverhalten
 
-- Fehlschlag beim Push bleibt lokal und fuehrt zu keinem User-Error.
-- Diagnoselog optional bei Debug.
+- Lokaler Push-Fehlschlag bleibt lokal und erzeugt keinen harten User-Error.
+- Ohne verifizierten Remote-Health-Stand bleibt lokal der Fallback aktiv.
+- Service Worker behaelt Legacy-Fallbacks fuer alte Payloads ohne `data.severity`.
+- Scheduler-Jitter von bis zu knapp `30` Minuten ist ein bewusster Tradeoff.
 
 ---
 
 ## 8. Events & Integration Points
 
-- Input-Events: `medication:changed`, `bp:changed`.
-- Medication-Incident basiert auf dem Medication-Read-Model mit offenen `slots[]` und `slot_type`, nicht mehr auf einem aggregierten Tages-Boolean.
-- Output: lokale Push-Notification.
-- Constraints: Termine und allgemeine Hinweise sind keine Incidents.
+- Input-Events:
+  - `medication:changed`
+  - `bp:changed`
+  - `visibilitychange`
+- Medication-Read-Model basiert auf offenen `slots[]` und `slot_type`.
+- `AppModules.profile` exportiert den Push-Routing-Stand fuer die Incident-Engine.
+- Output:
+  - lokale Reminder-/Incident-Notification
+  - externer Off-App-Push
 
 ---
 
 ## 9. Erweiterungspunkte / Zukunft
 
-- Serverseitiger Push (Supabase Edge / Cron).
-- Persistente Incident-Logs.
-- User-Config fuer Zeitfenster oder Snooze.
+- Nutzerindividuelle Reminder-Zeitfenster.
+- Snooze oder bewusste Follow-up-Stufe.
+- zusaetzliche Delivery-/Health-Diagnostik im Profil.
 
 ---
 
 ## 10. Feature-Flags / Konfiguration
 
-- Keine dedizierten Flags.
+- Keine dedizierten Feature-Flags.
+- Notification-Vertrag ist aktuell fest im Modulvertrag verdrahtet.
 
 ---
 
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv.
-- Dependencies (hard): PWA/Service Worker, Medication- und BP-Events, Edge Function und GitHub Actions.
-- Dependencies (soft): Notification Permission.
-- Known issues / risks: keine Persistenz, Permission blockiert Push, Zeitzonen-Edgecases, tolerierter Schedule-Jitter.
+- Dependencies (hard):
+  - Service Worker / PWA
+  - Medication- und BP-Events
+  - `push_subscriptions`
+  - `push_notification_deliveries`
+  - Edge Function und GitHub Actions
+- Dependencies (soft):
+  - Browser Notification Permission
+- Known risks:
+  - Schedule-Jitter
+  - fehlende erste Remote-Erfolgsbestaetigung haelt lokales Fallback aktiv
+  - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
 ---
 
-## 12. Remote Push Setup-Notiz (ohne Werte)
+## 12. Remote Push Setup-Notiz
 
-- Edge Function `midas-incident-push` ist deployed.
-- Secrets angelegt: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `INCIDENTS_USER_ID`, `INCIDENTS_TZ`.
-- GitHub Actions Schedule fuer die Zeitfenster aktiv.
-
-Status-Notiz:
-- Client Subscription Flow aktiv.
-- Service Worker: `push` plus `notificationclick` aktiv.
+- Edge Function `midas-incident-push` muss deployed sein.
+- `sql/15_Push_Subscriptions.sql` muss produktiv eingespielt sein.
+- Workflow [`.github/workflows/incidents-push.yml`](../../.github/workflows/incidents-push.yml) muss auf dem GitHub-Default-Branch liegen.
+- GitHub-Secrets fuer den Workflow muessen vorhanden sein:
+  - `INCIDENTS_PUSH_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
 
 ## 13. QA-Checkliste
 
-- Offene `morning`-Slots ab `06:00` -> genau ein `medication_morning`-Push.
-- Offene `noon`-Slots ab `11:00` -> genau ein `medication_noon`-Push.
-- Offene `evening`-Slots ab `17:00` -> genau ein `medication_evening`-Push.
-- Offene `night`-Slots ab `21:00` -> genau ein `medication_night`-Push.
-- Abend-BP fehlt, Morgen-BP vorhanden -> genau ein Push ab Abend.
-- Keine Pushes fuer Termine.
-- Tageswechsel resettiert Flags.
+- Offene Medication-Slots erzeugen vor der Reminder-Schwelle keinen Push.
+- Jeder offene Medication-Abschnitt erzeugt zuerst genau einen `reminder`.
+- Ein `incident` folgt nur spaeter und nur wenn derselbe Abschnitt weiter offen ist.
+- Reminder und Incident nutzen getrennte Tags und unterscheiden sich sichtbar in der Praesentation.
+- Lokale Suppression greift nur bei nachweislich gesundem Remote-Pfad.
+- Off-App-Push funktioniert auch ohne geoeffnete App.
+- BP bleibt konsistent incident-orientiert.
 
 ---
 
 ## 14. Definition of Done
 
-- Pushes nur bei echten Incidents.
-- Maximal ein Push pro Incident und Tag.
-- Dokumentation aktuell.
-
----
-
-## 15. Incident Alert Tuning Notiz
-
-Ziel
-- Incidents sollen auf dem Handy fuer echte Sicherheitsfaelle besser wahrnehmbar sein.
-- Keine neue Reminder-Logik; nur staerkere Wahrnehmbarkeit fuer bestehende Incident-Pushes.
-
-Kontext
-- Incident-Pushes sind bewusst ruhig ausgelegt.
-- Lokale Incidents setzen im Client derzeit `silent: true`.
-- Remote Push uebernimmt `silent` aus dem Payload.
-
-Geplante technische Anpassungen
-- Lokale Incident-Pushes nicht mehr explizit stumm senden (`silent: false` oder Feld weglassen).
-- Remote Incident-Payloads ebenfalls hoerbar umstellen.
-- `vibrate` fuer echte Incidents setzen.
-- Optional `requireInteraction` testen, sofern Plattform/Browsersupport vorhanden.
-- Optional `actions` fuer Remote-Push pruefen, ohne neue Fachlogik.
-
-Betroffene Dateien
-- `app/modules/incidents/index.js`
-- `service-worker.js`
-- optional `app/modules/profile/index.js` fuer einen spaeteren Nutzer-Schalter
-
-Bewusste Grenzen des aktuellen PWA-Stacks
-- Kein frei waehlbarer eigener Nachrichtenton wie in nativen Apps.
-- Keine Kontrolle ueber Lautstaerke, Fokus-Modi oder Lautlos-Schalter.
-- Verhalten bleibt browser- und plattformabhaengig.
-
-Pragmatische Produktregel
-- Staerkere Wahrnehmbarkeit nur fuer echte Incidents, nicht fuer allgemeine Hinweise.
-- Weiterhin maximal ein Push pro Incident und Tag.
+- Medication fuehlt sich spaeter und sanfter an als der alte `06/11/17/21`-Pfad.
+- Lokal und remote sprechen denselben Severity-Vertrag.
+- Service Worker behandelt Reminder und Incident technisch unterschiedlich.
+- Die Rollenverteilung lokal vs. remote erzeugt weder Doppelpushes noch stille Ausfaelle.
+- Dokumentation und QA entsprechen dem produktiven Vertrag.

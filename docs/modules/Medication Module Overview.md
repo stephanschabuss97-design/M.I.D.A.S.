@@ -27,7 +27,7 @@ Related docs:
 | `app/modules/hub/index.js` | lokaler Text-/Hub-Fast-Path fuer `medication_confirm_section`. |
 | `app/modules/assistant-stack/voice/index.js` | Voice-Fast-Path fuer `medication_confirm_section` plus Low-Stock-Follow-up. |
 | `app/modules/profile/index.js` | Read-only-Zusammenfassung fuer Medikation im Profil. |
-| `app/modules/incidents/index.js` | lokale Medication-Incidents pro Abschnitt (`morning/noon/evening/night`). |
+| `app/modules/incidents/index.js` | gestaffelte lokale Medication-Reminder/Incidents pro Abschnitt (`morning/noon/evening/night`). |
 | `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
 | `sql/12_Medication.sql` | Tabellen plus produktive RPCs fuer Slot-/Progress-Modell und den bereinigten Medication-Contract. |
 | `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
@@ -102,8 +102,9 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Custom Event `medication:changed { reason, dayIso, data }`.
-- Intake reagiert im Daily Flow; Profil-Aenderungen aktualisieren Low-Stock-Kontaktpfade.
+- Intake reagiert im Daily Flow; Profil-Aenderungen aktualisieren Low-Stock-Kontaktpfade und den Push-Routing-Stand.
 - `AppModules.medication` exportiert Slot- und Sammel-Helper fuer andere Module.
+- Das Push-Modul liest denselben Slot-/Abschnittsvertrag fuer Reminder und spaetere Incidents.
 
 ---
 
@@ -133,7 +134,7 @@ Related docs:
 
 - Plan-Editor weiter haerten (`custom`, Start-/Ende-Logik, Edit-Kanten).
 - Komfort-Buttons (+28/+56) fuer Bestand.
-- E-Mail/Push-Reminder optional.
+- Nutzerindividuelle Reminder-Zeitfenster optional.
 - Playwright-Szenarien fuer UI-Smokes.
 
 ---
@@ -157,4 +158,4 @@ Related docs:
 - Modul laedt ohne Errors.
 - `v2`-RPCs und RLS sind aktiv.
 - IN/TAB spiegeln Aenderungen unmittelbar.
-- Dokumentation, QA und Downstream-Read-Pfade sprechen denselben Slot-/Progress-Vertrag.
+- Dokumentation, QA, Downstream-Read-Pfade und Push-Vertrag sprechen denselben Slot-/Progress-Vertrag.

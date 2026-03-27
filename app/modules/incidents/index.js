@@ -14,33 +14,54 @@
 
   const BP_PUSH_HOUR = 20;
   const CHECK_INTERVAL_MS = 60 * 1000;
+  const PUSH_ROUTING_REFRESH_MS = 5 * 60 * 1000;
   const MEDICATION_SECTION_ORDER = Object.freeze(['morning', 'noon', 'evening', 'night']);
-  const MEDICATION_SECTION_CUTOFFS = Object.freeze({
-    morning: 6,
-    noon: 11,
-    evening: 17,
-    night: 21,
+  const MEDICATION_SECTION_THRESHOLDS = Object.freeze({
+    morning: {
+      reminderAfter: { hour: 10, minute: 0 },
+      incidentAfter: { hour: 12, minute: 0 },
+    },
+    noon: {
+      reminderAfter: { hour: 14, minute: 0 },
+      incidentAfter: { hour: 16, minute: 0 },
+    },
+    evening: {
+      reminderAfter: { hour: 20, minute: 0 },
+      incidentAfter: { hour: 22, minute: 0 },
+    },
+    night: {
+      reminderAfter: { hour: 22, minute: 30 },
+      incidentAfter: { hour: 23, minute: 30 },
+    },
   });
   const MEDICATION_INCIDENT_META = Object.freeze({
     morning: {
       type: 'medication_morning',
-      title: 'Morgen-Medikation offen',
-      body: 'Bitte die offenen Morgen-Einnahmen jetzt bestaetigen.',
+      reminderTitle: 'Morgenmedikation noch nicht erfasst?',
+      reminderBody: 'Falls noch offen: bitte kurz bestaetigen.',
+      incidentTitle: 'Morgenmedikation weiterhin offen',
+      incidentBody: 'Bitte jetzt pruefen und bestaetigen.',
     },
     noon: {
       type: 'medication_noon',
-      title: 'Mittag-Medikation offen',
-      body: 'Bitte die offenen Mittag-Einnahmen jetzt bestaetigen.',
+      reminderTitle: 'Mittagmedikation noch nicht erfasst?',
+      reminderBody: 'Falls noch offen: bitte kurz bestaetigen.',
+      incidentTitle: 'Mittagmedikation weiterhin offen',
+      incidentBody: 'Bitte jetzt pruefen und bestaetigen.',
     },
     evening: {
       type: 'medication_evening',
-      title: 'Abend-Medikation offen',
-      body: 'Bitte die offenen Abend-Einnahmen jetzt bestaetigen.',
+      reminderTitle: 'Abendmedikation noch nicht erfasst?',
+      reminderBody: 'Falls noch offen: bitte kurz bestaetigen.',
+      incidentTitle: 'Abendmedikation weiterhin offen',
+      incidentBody: 'Bitte jetzt pruefen und bestaetigen.',
     },
     night: {
       type: 'medication_night',
-      title: 'Nacht-Medikation offen',
-      body: 'Bitte die offenen Nacht-Einnahmen jetzt bestaetigen.',
+      reminderTitle: 'Nachtmedikation noch nicht erfasst?',
+      reminderBody: 'Falls noch offen: bitte kurz bestaetigen.',
+      incidentTitle: 'Nachtmedikation weiterhin offen',
+      incidentBody: 'Bitte jetzt pruefen und bestaetigen.',
     },
   });
   const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -58,10 +79,10 @@
     bpEvening: false,
     sent: {
       medication: {
-        morning: null,
-        noon: null,
-        evening: null,
-        night: null,
+        morning: { reminder: null, incident: null },
+        noon: { reminder: null, incident: null },
+        evening: { reminder: null, incident: null },
+        night: { reminder: null, incident: null },
       },
       bp: null,
     },
@@ -96,18 +117,30 @@
     return MEDICATION_SECTION_ORDER.includes(normalized) ? normalized : '';
   };
 
-  const getLocalCutoff = (hour) => {
+  const getLocalCutoff = (hour, minute = 0) => {
     const now = new Date();
-    now.setHours(hour, 0, 0, 0);
+    now.setHours(hour, minute, 0, 0);
     return now.getTime();
   };
 
-  const getCurrentMedicationSection = (date = new Date()) => {
-    const hour = date instanceof Date ? date.getHours() : new Date().getHours();
-    if (hour >= MEDICATION_SECTION_CUTOFFS.night) return 'night';
-    if (hour >= MEDICATION_SECTION_CUTOFFS.evening) return 'evening';
-    if (hour >= MEDICATION_SECTION_CUTOFFS.noon) return 'noon';
-    if (hour >= MEDICATION_SECTION_CUTOFFS.morning) return 'morning';
+  const createMedicationSentState = () => ({
+    morning: { reminder: null, incident: null },
+    noon: { reminder: null, incident: null },
+    evening: { reminder: null, incident: null },
+    night: { reminder: null, incident: null },
+  });
+
+  const getMedicationSeverityForSection = (section, date = new Date()) => {
+    const normalizedSection = normalizeMedicationSection(section);
+    if (!normalizedSection) return '';
+    if (!state.medsOpenBySection?.[normalizedSection]) return '';
+    const threshold = MEDICATION_SECTION_THRESHOLDS[normalizedSection];
+    if (!threshold) return '';
+    const nowMs = date instanceof Date ? date.getTime() : Date.now();
+    const incidentAt = getLocalCutoff(threshold.incidentAfter.hour, threshold.incidentAfter.minute);
+    if (nowMs >= incidentAt) return 'incident';
+    const reminderAt = getLocalCutoff(threshold.reminderAfter.hour, threshold.reminderAfter.minute);
+    if (nowMs >= reminderAt) return 'reminder';
     return '';
   };
 
@@ -115,12 +148,7 @@
     const today = getDayIso();
     if (state.dayIso === today) return false;
     state.dayIso = today;
-    state.sent.medication = {
-      morning: null,
-      noon: null,
-      evening: null,
-      night: null,
-    };
+    state.sent.medication = createMedicationSentState();
     state.sent.bp = null;
     state.bpMorning = false;
     state.bpEvening = false;
@@ -206,26 +234,37 @@
     }
   };
 
-  const buildNotificationPayload = ({ title, body, tag, type, dayIso }) => ({
-    title,
-    body,
-    tag,
-    data: {
-      type,
-      dayIso,
-      source: 'local',
-    },
-    silent: false,
-    renotify: false,
-    requireInteraction: true,
-    vibrate: INCIDENT_VIBRATE_PATTERN,
-    actions: INCIDENT_ACTIONS,
-    icon: 'public/img/icons/icon-192.png',
-    badge: 'public/img/icons/icon-192.png',
-  });
+  const buildNotificationPayload = ({ title, body, tag, type, dayIso, severity = 'incident' }) => {
+    const isIncident = severity === 'incident';
+    return {
+      title,
+      body,
+      tag,
+      data: {
+        type,
+        severity,
+        dayIso,
+        source: 'local',
+      },
+      renotify: false,
+      icon: 'public/img/icons/icon-192.png',
+      badge: 'public/img/icons/icon-192.png',
+      ...(isIncident
+        ? {
+            silent: false,
+            requireInteraction: true,
+            vibrate: INCIDENT_VIBRATE_PATTERN,
+            actions: INCIDENT_ACTIONS,
+          }
+        : {
+            silent: false,
+            requireInteraction: false,
+          }),
+    };
+  };
 
-  const notify = async ({ title, body, tag, type, dayIso }) => {
-    const payload = buildNotificationPayload({ title, body, tag, type, dayIso });
+  const notify = async ({ title, body, tag, type, dayIso, severity = 'incident' }) => {
+    const payload = buildNotificationPayload({ title, body, tag, type, dayIso, severity });
     try {
       if (global.navigator?.serviceWorker?.getRegistration) {
         const reg = await global.navigator.serviceWorker.getRegistration();
@@ -248,13 +287,6 @@
     return false;
   };
 
-  const shouldPushMedicationSection = (section) => {
-    const normalizedSection = normalizeMedicationSection(section);
-    if (!normalizedSection) return false;
-    if (!state.medsOpenBySection?.[normalizedSection]) return false;
-    return getCurrentMedicationSection() === normalizedSection;
-  };
-
   const shouldPushBp = () => {
     if (!state.bpMorning || state.bpEvening) return false;
     const now = Date.now();
@@ -263,25 +295,53 @@
 
   const resolveSentBucket = (key) => {
     if (Array.isArray(key)) {
-      const [namespace, bucketKey] = key;
+      const [namespace, bucketKey, severityKey] = key;
       if (namespace === 'medication') {
+        const medicationBucket = state.sent.medication?.[bucketKey];
+        if (severityKey && medicationBucket) {
+          return [medicationBucket, severityKey];
+        }
         return [state.sent.medication, bucketKey];
       }
     }
     return [state.sent, key];
   };
 
-  const pushOnce = async ({ key, type, title, body }) => {
+  const pushOnce = async ({ key, type, title, body, severity = 'incident' }) => {
     const day = getDayIso();
     const [bucket, bucketKey] = resolveSentBucket(key);
     if (!bucket || !bucketKey) return false;
     if (bucket[bucketKey] === day) return false;
+    const shouldSuppress = await (async () => {
+      const profileModule = appModules.profile || null;
+      if (!profileModule?.getPushRoutingStatus) return false;
+      const routing = profileModule.getPushRoutingStatus();
+      const checkedAtMs = Date.parse(routing?.checkedAt || '');
+      const isStale = !Number.isFinite(checkedAtMs) || (Date.now() - checkedAtMs) > PUSH_ROUTING_REFRESH_MS;
+      if (isStale && typeof profileModule.refreshPushStatus === 'function') {
+        try {
+          await profileModule.refreshPushStatus({ reason: 'incidents-routing-check' });
+        } catch (_) {
+          // fall back to the last known routing state
+        }
+      }
+      return !!profileModule.shouldSuppressLocalPushes?.();
+    })();
+    if (shouldSuppress) {
+      bucket[bucketKey] = day;
+      if (appModules.config?.LOG_HUB_DEBUG) {
+        diag?.add?.(`[incidents] local push suppressed type=${type} severity=${severity} reason=remote-healthy`);
+      }
+      return true;
+    }
+    const tagPrefix = severity === 'reminder' ? 'midas-reminder' : 'midas-incident';
     const sent = await notify({
       title,
       body,
       type,
+      severity,
       dayIso: day,
-      tag: `midas-incident-${type}-${day}`,
+      tag: `${tagPrefix}-${type}-${day}`,
     });
     if (sent) {
       bucket[bucketKey] = day;
@@ -306,14 +366,19 @@
       await refreshBpStateFromLocal();
     }
 
-    const currentMedicationSection = getCurrentMedicationSection();
-    if (shouldPushMedicationSection(currentMedicationSection)) {
-      const meta = MEDICATION_INCIDENT_META[currentMedicationSection];
+    for (const section of MEDICATION_SECTION_ORDER) {
+      const severity = getMedicationSeverityForSection(section);
+      if (!severity) continue;
+      const meta = MEDICATION_INCIDENT_META[section];
+      if (!meta) continue;
+      const title = severity === 'reminder' ? meta.reminderTitle : meta.incidentTitle;
+      const body = severity === 'reminder' ? meta.reminderBody : meta.incidentBody;
       await pushOnce({
-        key: ['medication', currentMedicationSection],
+        key: ['medication', section, severity],
         type: meta.type,
-        title: meta.title,
-        body: meta.body,
+        title,
+        body,
+        severity,
       });
     }
 
@@ -328,10 +393,16 @@
 
     if (appModules.config?.LOG_HUB_DEBUG) {
       const medState = state.medsOpenBySection
-        ? MEDICATION_SECTION_ORDER.map((section) => `${section}:${state.medsOpenBySection[section] ? 1 : 0}`).join(',')
+        ? MEDICATION_SECTION_ORDER
+          .map((section) => {
+            if (!state.medsOpenBySection[section]) return `${section}:0`;
+            const severity = getMedicationSeverityForSection(section);
+            return `${section}:${severity || 'open'}`;
+          })
+          .join(',')
         : 'n/a';
       diag.add?.(
-        `[incidents] refresh reason=${reason} medSections=${medState} current=${currentMedicationSection || 'none'} bpM=${state.bpMorning} bpA=${state.bpEvening}`
+        `[incidents] refresh reason=${reason} medSections=${medState} bpM=${state.bpMorning} bpA=${state.bpEvening}`
       );
     }
   };

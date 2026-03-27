@@ -116,7 +116,7 @@ Related docs:
 
 - Zusaetzliche Makros im selben Grid.
 - Historische Intake-Charts direkt im Hub.
-- Reminder/Push-Integration, sobald der Kanal produktiv gebraucht wird.
+- Engere In-App-Hinweise oder spaetere Nutzer-Konfiguration fuer Reminder-Zeitfenster.
 - Custom-Ziele pro Nutzer statt fixer Grenzwerte.
 
 ---
@@ -133,7 +133,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Intake RPCs (`health_intake_today`, `saveIntakeTotalsRpc`), `captureIntakeState`, Medication-Modul.
 - Dependencies (soft): Profil-Hausarztkontakt (Mailto), Trendpilot.
-- Known issues / risks: Timer-Resets, Offline-/RPC-Fehler, Medication-Snapshot Drift, Remote-Push-/Scheduler-Drift solange der externe Incident-Backend-Vertrag noch nicht im selben Repo mitgezogen ist.
+- Known issues / risks: Timer-Resets, Offline-/RPC-Fehler, Medication-Snapshot Drift, Schedule-Jitter und potenzielle Remote-Deployment-Drift zwischen Repo und Backend-Workspace.
 - Backend / SQL / Edge: Intake RPCs/Views, Medication RPCs (`sql/12_Medication.sql`).
 
 ---

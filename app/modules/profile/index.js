@@ -50,7 +50,16 @@
     syncPromise: null,
     latestLab: null,
     medicationSummary: null,
-    pushSyncing: false
+    pushSyncing: false,
+    pushRouting: {
+      hasBrowserSubscription: false,
+      endpoint: '',
+      remoteHealthy: false,
+      localSuppressionAllowed: false,
+      lastRemoteSuccessAt: '',
+      lastRemoteFailureAt: '',
+      checkedAt: ''
+    }
   };
 
   let refs = null;
@@ -171,6 +180,28 @@
     refs.pushStatus.textContent = text;
   };
 
+  const clonePushRoutingState = () => ({
+    hasBrowserSubscription: !!state.pushRouting?.hasBrowserSubscription,
+    endpoint: String(state.pushRouting?.endpoint || ''),
+    remoteHealthy: !!state.pushRouting?.remoteHealthy,
+    localSuppressionAllowed: !!state.pushRouting?.localSuppressionAllowed,
+    lastRemoteSuccessAt: String(state.pushRouting?.lastRemoteSuccessAt || ''),
+    lastRemoteFailureAt: String(state.pushRouting?.lastRemoteFailureAt || ''),
+    checkedAt: String(state.pushRouting?.checkedAt || '')
+  });
+
+  const setPushRoutingState = (nextState) => {
+    state.pushRouting = {
+      hasBrowserSubscription: !!nextState?.hasBrowserSubscription,
+      endpoint: String(nextState?.endpoint || ''),
+      remoteHealthy: !!nextState?.remoteHealthy,
+      localSuppressionAllowed: !!nextState?.localSuppressionAllowed,
+      lastRemoteSuccessAt: String(nextState?.lastRemoteSuccessAt || ''),
+      lastRemoteFailureAt: String(nextState?.lastRemoteFailureAt || ''),
+      checkedAt: new Date().toISOString()
+    };
+  };
+
   const ensurePushSupport = () => {
     if (!('serviceWorker' in global.navigator)) {
       throw new Error('Service Worker nicht verfuegbar');
@@ -223,22 +254,74 @@
     if (error) throw error;
   };
 
+  const fetchRemoteSubscriptionHealth = async ({ userId, endpoint }) => {
+    if (!userId || !endpoint) return null;
+    const client = await requireSupabaseClient();
+    const { data, error } = await client
+      .from('push_subscriptions')
+      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, consecutive_remote_failures')
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  };
+
+  const isRemoteSubscriptionHealthy = (row) => {
+    if (!row || row.disabled) return false;
+    const successMs = Date.parse(row.last_remote_success_at || '');
+    if (!Number.isFinite(successMs)) return false;
+    const failureMs = Date.parse(row.last_remote_failure_at || '');
+    if (Number.isFinite(failureMs) && failureMs > successMs) return false;
+    return Number(row.consecutive_remote_failures || 0) <= 0;
+  };
+
   const refreshPushStatus = async ({ reason = 'refresh' } = {}) => {
     if (!refs?.pushStatus) return;
     try {
       ensurePushSupport();
       const permission = global.Notification?.permission || 'default';
       if (permission === 'denied') {
+        setPushRoutingState({ hasBrowserSubscription: false });
         setPushStatus('Status: blockiert (Browser)');
         return;
       }
       const subscription = await getCurrentSubscription();
       if (subscription) {
-        setPushStatus('Status: aktiv');
+        let remoteRow = null;
+        try {
+          const userId = await requireUserId();
+          remoteRow = await fetchRemoteSubscriptionHealth({
+            userId,
+            endpoint: subscription.endpoint
+          });
+        } catch (err) {
+          diag?.add?.(`[profile] push health refresh skipped (${reason}) ${err?.message || err}`);
+        }
+        const remoteHealthy = isRemoteSubscriptionHealthy(remoteRow);
+        setPushRoutingState({
+          hasBrowserSubscription: true,
+          endpoint: subscription.endpoint,
+          remoteHealthy,
+          localSuppressionAllowed: remoteHealthy,
+          lastRemoteSuccessAt: remoteRow?.last_remote_success_at || '',
+          lastRemoteFailureAt: remoteRow?.last_remote_failure_at || ''
+        });
+        if (remoteHealthy) {
+          setPushStatus('Status: aktiv (remote gesund)');
+          return;
+        }
+        setPushStatus(
+          remoteRow
+            ? 'Status: aktiv (lokales Fallback)'
+            : 'Status: aktiv (warte auf Remote-Bestaetigung)'
+        );
         return;
       }
+      setPushRoutingState({ hasBrowserSubscription: false });
       setPushStatus(permission === 'granted' ? 'Status: bereit (kein Abo)' : 'Status: aus');
     } catch (err) {
+      setPushRoutingState({ hasBrowserSubscription: false });
       setPushStatus(`Status: nicht verfuegbar (${err.message || err})`);
     }
   };
@@ -280,7 +363,7 @@
       }
       const userId = await requireUserId();
       await upsertSubscription({ userId, subscription });
-      setPushStatus('Status: aktiv');
+      await refreshPushStatus({ reason: 'enable-push' });
       log?.('push subscription aktiv');
     } catch (err) {
       diag?.add?.(`[profile] push enable failed ${err.message || err}`);
@@ -299,13 +382,14 @@
       btn?.setAttribute('disabled', 'true');
       const subscription = await getCurrentSubscription();
       if (!subscription) {
+        setPushRoutingState({ hasBrowserSubscription: false });
         setPushStatus('Status: aus');
         return;
       }
       const userId = await requireUserId();
       await deleteSubscription({ userId, endpoint: subscription.endpoint });
       await subscription.unsubscribe();
-      setPushStatus('Status: aus');
+      await refreshPushStatus({ reason: 'disable-push' });
       log?.('push subscription deaktiviert');
     } catch (err) {
       diag?.add?.(`[profile] push disable failed ${err.message || err}`);
@@ -712,7 +796,10 @@
     getData: () => (state.data ? { ...state.data } : null),
     enablePush: handleEnablePush,
     disablePush: handleDisablePush,
-    isPushEnabled
+    isPushEnabled,
+    refreshPushStatus,
+    getPushRoutingStatus: clonePushRoutingState,
+    shouldSuppressLocalPushes: () => !!state.pushRouting?.localSuppressionAllowed
   };
 
   if (doc?.readyState === 'complete' || doc?.readyState === 'interactive') {
