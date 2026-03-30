@@ -113,6 +113,8 @@
   let assistantSurfaceUnsubscribe = null;
   let hubDashboardCtrl = null;
   let dashboardIntakeRefreshBound = false;
+  let dashboardHydrationTickId = null;
+  let dashboardHydrationVisibilityBound = false;
   const aura3dApi = global.AppModules?.hubAura3D || null;
   let aura3dCleanup = null;
   const auraState = {
@@ -126,8 +128,53 @@
     hour: '2-digit',
     minute: '2-digit',
   });
+  const HYDRATION_TARGET_TOTAL_ML = 2000;
+  const HYDRATION_TARGET_STOPS = Object.freeze([
+    { hour: 7, minute: 0, valueMl: 0 },
+    { hour: 8, minute: 0, valueMl: 180 },
+    { hour: 9, minute: 0, valueMl: 350 },
+    { hour: 10, minute: 0, valueMl: 530 },
+    { hour: 11, minute: 0, valueMl: 720 },
+    { hour: 12, minute: 0, valueMl: 920 },
+    { hour: 13, minute: 0, valueMl: 1130 },
+    { hour: 14, minute: 0, valueMl: 1340 },
+    { hour: 15, minute: 0, valueMl: 1540 },
+    { hour: 16, minute: 0, valueMl: 1710 },
+    { hour: 17, minute: 0, valueMl: 1850 },
+    { hour: 18, minute: 0, valueMl: 1940 },
+    { hour: 19, minute: 0, valueMl: 1985 },
+    { hour: 19, minute: 30, valueMl: HYDRATION_TARGET_TOTAL_ML },
+  ]);
 
   const getTodayIso = () => new Date().toISOString().slice(0, 10);
+  const getMinutesSinceMidnight = (value = new Date()) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return 0;
+    return (date.getHours() * 60) + date.getMinutes();
+  };
+  const getHydrationTargetMl = (value = new Date()) => {
+    const nowMinutes = getMinutesSinceMidnight(value);
+    const firstStop = HYDRATION_TARGET_STOPS[0];
+    const lastStop = HYDRATION_TARGET_STOPS[HYDRATION_TARGET_STOPS.length - 1];
+    const firstMinutes = (firstStop.hour * 60) + firstStop.minute;
+    const lastMinutes = (lastStop.hour * 60) + lastStop.minute;
+    if (nowMinutes <= firstMinutes) return 0;
+    if (nowMinutes >= lastMinutes) return HYDRATION_TARGET_TOTAL_ML;
+    for (let index = 0; index < HYDRATION_TARGET_STOPS.length - 1; index += 1) {
+      const current = HYDRATION_TARGET_STOPS[index];
+      const next = HYDRATION_TARGET_STOPS[index + 1];
+      const currentMinutes = (current.hour * 60) + current.minute;
+      const nextMinutes = (next.hour * 60) + next.minute;
+      if (nowMinutes < currentMinutes || nowMinutes > nextMinutes) continue;
+      if (nowMinutes === currentMinutes) return current.valueMl;
+      const spanMinutes = nextMinutes - currentMinutes;
+      if (spanMinutes <= 0) return current.valueMl;
+      const progress = (nowMinutes - currentMinutes) / spanMinutes;
+      const interpolated = current.valueMl + ((next.valueMl - current.valueMl) * progress);
+      return Math.round(interpolated);
+    }
+    return HYDRATION_TARGET_TOTAL_ML;
+  };
   const getTickerRefs = () => {
     if (!doc) return null;
     const bar = doc.getElementById('tickerBar');
@@ -646,12 +693,15 @@
     if (!dashboardState.el || dashboardState.open) return;
     closeQuickbar();
     dashboardState.open = true;
+    renderDashboardHydrationTarget();
+    startDashboardHydrationTick();
     syncDashboardUi();
   };
 
   const closeDashboard = () => {
     if (!dashboardState.el || !dashboardState.open) return;
     dashboardState.open = false;
+    stopDashboardHydrationTick();
     syncDashboardUi();
   };
 
@@ -1545,6 +1595,25 @@
     updatePillRef(assistantChatCtrl?.pills?.[key], text, isActive);
     updatePillRef(hubDashboardCtrl?.pills?.[key], text, isActive);
   };
+  const renderDashboardHydrationTarget = (value = new Date()) => {
+    const hydrationText = `${getHydrationTargetMl(value)} ml`;
+    updatePillRef(hubDashboardCtrl?.pills?.waterTarget, hydrationText, true);
+  };
+  const stopDashboardHydrationTick = () => {
+    if (dashboardHydrationTickId == null) return;
+    global.clearInterval(dashboardHydrationTickId);
+    dashboardHydrationTickId = null;
+  };
+  const startDashboardHydrationTick = () => {
+    if (!dashboardState.open || dashboardHydrationTickId != null) return;
+    dashboardHydrationTickId = global.setInterval(() => {
+      if (!dashboardState.open) {
+        stopDashboardHydrationTick();
+        return;
+      }
+      renderDashboardHydrationTarget();
+    }, 60 * 1000);
+  };
 
   const updateContextItem = (ref, text, { placeholder = null, keepVisible = false } = {}) => {
     if (!ref) return false;
@@ -1639,6 +1708,7 @@
     updateAssistantPill('water', waterText, logged);
     updateAssistantPill('salt', saltText, logged);
     updateAssistantPill('protein', proteinText, logged);
+    renderDashboardHydrationTarget();
   };
 
   const applyAssistantIntakeSnapshot = (snapshot, { profile = null } = {}) => {
@@ -1995,6 +2065,7 @@
       closeBtn,
       pills: {
         water: buildPillRef(pillsWrap, 'water'),
+        waterTarget: buildPillRef(pillsWrap, 'water-target'),
         salt: buildPillRef(pillsWrap, 'salt'),
         protein: buildPillRef(pillsWrap, 'protein'),
       },
@@ -2025,6 +2096,14 @@
         if (dashboardState.open) closeDashboard();
       },
     });
+    if (!dashboardHydrationVisibilityBound) {
+      dashboardHydrationVisibilityBound = true;
+      doc?.addEventListener('visibilitychange', () => {
+        if (doc.visibilityState === 'visible') {
+          renderDashboardHydrationTarget();
+        }
+      });
+    }
     if (!dashboardIntakeRefreshBound) {
       dashboardIntakeRefreshBound = true;
       doc?.addEventListener('capture:intake-changed', (event) => {
@@ -2044,6 +2123,7 @@
         });
       });
     }
+    renderDashboardHydrationTarget();
     setAssistantCopyButtonState('idle');
   };
 

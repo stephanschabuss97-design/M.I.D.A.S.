@@ -1678,3 +1678,27 @@ Regression
 - [ ] Text-/Voice-/Hub-Flow bei `on` bleibt normal nutzbar.
 - [ ] Bei `off` bleiben keine toten Buttons, keine halbaktiven Needle-Zustaende und kein UI-Drift sichtbar.
 - [ ] Hub-Dashboard und Assistant-Panel zeigen konsistente Werte fuer denselben Snapshot-Zeitpunkt.
+
+---
+
+## Phase A6 - Hydration Target Dashboard (2026-03-30)
+
+**Scope:** Lokaler Dashboard-Referenzwert `WASSER-SOLL` im bestehenden Pill-Block, ohne Reminder- oder Bewertungslogik.
+
+**Smoke**
+- [ ] Dashboard zeigt `WASSER-SOLL` direkt nach `WASSER` im bestehenden Pill-Block.
+- [ ] Vor `07:00` zeigt `WASSER-SOLL` `0 ml`.
+- [ ] Um `19:30` zeigt `WASSER-SOLL` `2000 ml`.
+- [ ] Zwischenwerte folgen der Stützpunkt-Tabelle plausibel ohne Sprünge.
+
+**Sanity**
+- [ ] `WASSER-SOLL` nutzt keinen Backend-/Supabase-Pfad und bleibt auch ohne neuen Intake-Save berechenbar.
+- [ ] Bei offenem Dashboard aktualisiert sich `WASSER-SOLL` mit dem Minutenwechsel weiter.
+- [ ] `visibilitychange -> visible` zieht den Wert korrekt nach.
+- [ ] `node --check app/modules/hub/index.js` ist gruen.
+
+**Regression**
+- [ ] Dashboard-Optik bleibt auf Desktop ruhig; der vierte Pill-Eintrag erzeugt keinen Layoutbruch.
+- [ ] Mobile unter `768px` stapelt den Pill-Block weiterhin sauber vertikal.
+- [ ] Keine Warntexte, Farben, Toasts oder Reminder-Nebenwirkungen entstehen durch das Feature.
+- [ ] Wasser-Istwert, Salz, Protein, Termine und Restbudget bleiben unverändert funktional.

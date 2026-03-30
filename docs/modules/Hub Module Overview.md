@@ -9,6 +9,7 @@ Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Assistant Module Overview](Assistant Module Overview.md)
 - [VAD Module Overview](VAD Module Overview.md)
+- [Hydration Target Module Overview](Hydration Target Module Overview.md)
 
 ---
 
@@ -94,6 +95,7 @@ Related docs:
   - kompakt
   - datenorientiert
   - aus demselben Assistant-Kontext gespeist
+  - traegt jetzt zusaetzlich einen rein lokalen `WASSER-SOLL`-Orientierungswert im bestehenden Pill-Block
   - zieht nach normalen Intake-Saves direkt mit dem frischen lokalen Snapshot nach
 - Panels bleiben im DOM und werden nur geoeffnet/geschlossen.
 
@@ -133,6 +135,7 @@ Related docs:
 - Relevante Events:
   - `assistant:action-success`
   - `assistant:intent-*`
+- Das Dashboard konsumiert weiterhin den bestehenden Intake-Snapshot fuer Ist-Werte und ergaenzt lokal einen separaten Hydration-Referenzwert ohne neue Persistenz.
 
 ---
 
@@ -159,6 +162,7 @@ Related docs:
 - Dashboard, Hero und Quickbar bilden drei saubere Ebenen ohne Direkt-Sprung von oben nach unten.
 - Die passive Nadel bei `off` fuehlt sich beim ersten Swipe wie ein echter erster Carousel-Schritt an und nicht wie ein harter Platzhalter-Sprung.
 - Das obere Dashboard zieht normale Intake-Saves sofort sichtbar nach, ohne Reload.
+- `WASSER-SOLL` sitzt direkt nach `WASSER`, bleibt rein informativ und aktualisiert sich bei offenem Dashboard mit dem Minutenwechsel mit.
 - Pending-Context-Resolver funktioniert fuer Text und Voice.
 - Doctor-/Panel-Navigation bleibt unbeeintraechtigt.
 

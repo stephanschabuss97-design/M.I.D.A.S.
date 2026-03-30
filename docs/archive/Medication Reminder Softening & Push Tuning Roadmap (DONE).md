@@ -1,4 +1,4 @@
-# Medication Reminder Softening & Push Tuning Roadmap
+# Medication Reminder Softening & Push Tuning Roadmap (DONE)
 
 ## Ziel (klar und pruefbar)
 Der bestehende Medication-Push-Pfad soll von fruehen, harten Abschnitts-Incidents auf ein ruhigeres, gestaffeltes Reminder-Modell umgebaut werden, damit MIDAS spaeter im Alltag sanft unterstuetzt statt zu frueh Druck aufzubauen.

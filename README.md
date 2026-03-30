@@ -23,7 +23,10 @@ MIDAS wurde gebaut da ich im Jänner 2025 mit einer CKD diagnostiziert wurde.
 Ich habe keine Erfahrung in Sachen Syntax, arbeite aber mit Roadmaps die wir beide zusammen erstellen
 MIDAS hab ich als Lebensapp gebaut, sprich es soll mich auch mit 70, 80 und wenn möglich bis über 90 begleiten
 Ich verwende in GEsprchen mit einer KI gerne "Bro" als Ansprache an dich, ich erwarte mir dennoch eine fachliche gute Kommunikation
-Du darfst mich gerne duzen und ich erwarte mir von dir die Rolle eines begleitenden Dev's. Stell dir eine Mischung aus Support, Thinktank und SeniorDev vor
+Zukuenftige Chats duerfen mich gerne beim Namen Stephan nennen. Eine persoenlichere Ansprache ist willkommen, solange die fachliche Qualitaet hoch bleibt.
+Du darfst mich gerne duzen und ich erwarte mir von dir die Rolle eines begleitenden Dev's. Stell dir eine Mischung aus Support, Thinktank und SeniorDev vor.
+Am Projekt MIDAS wurde am 10.08.2025 gestartet.
+Ich arbeite beruflich in einer Pharmafirma und bin dort fuer die Qualifizierung von Geraeten sowie fuer Software-Validierung zustaendig. Das praegt auch meinen Blick auf meine Projekte: Reproduzierbarkeit, Guardrails, klare Systemgrenzen und belastbares Verhalten sind fuer mich keine Nebensache.
 
 ---
 
@@ -58,6 +61,8 @@ Genau daraus ist MIDAS entstanden.
 
 MIDAS ist fuer mich kein Tracker im klassischen Sinn. Es ist ein Umsetzungswerkzeug. Das Ziel ist nicht Datensammlung um ihrer selbst willen, sondern alltagstaugliche Adhaerenz, Uebersicht und Reibungsreduktion. MIDAS soll mir nicht nur sagen, was war, sondern mir helfen, das Richtige im Alltag konsistent umzusetzen.
 
+Wichtig ist dabei auch mein reales Nutzungsverhalten: MIDAS ist nicht auf lueckenloses Mikrologging bis in jede Kleinigkeit des Abends ausgelegt. Der praktisch wichtigste Nutzen entsteht oft bis zum Nachmittag oder nach dem Mittagessen, wenn eine belastbare Zwischenbilanz fuer Wasser, Salz, Protein, Medikation und Tageslage steht. Abendliches Nachtracking ist moeglich, aber nicht der Kern des Systems. MIDAS soll rechtzeitig Klarheit schaffen, nicht jeden spaeten Snack des Tages kontrollieren.
+
 Die App ist deshalb bewusst eng geschnitten. Sie konzentriert sich auf genau die Dinge, die in meinem realen Alltag relevant sind: Intake, Medikationsfluss, Blutdruck, Incidents, Arztkontext, Reports und gefuehrte Interaktion ueber Text und Voice. Nicht maximal viele Features, sondern moeglichst wenig Drift zwischen medizinischer Absicht und taeglicher Umsetzung.
 
 Nach meinem bisherigen Verlauf hat mich dieses System real unterstuetzt: durch bessere Routine, klarere Tagessteuerung, weniger kognitive Last und bessere Vorbereitung fuer Arztkontakte. Parallel dazu haben sich unter Therapie, Lebensstilanpassung und konsequenterem Selbstmanagement Verlauf und nephrologische Befunde stabilisiert bzw. verbessert. Besonders Intake und Assistant haben mir geholfen, Adhaerenz, Ernaehrungsalltag und Tagesroutine verlaesslicher umzusetzen.
@@ -83,6 +88,7 @@ Wenn eine neue Idee beeindruckend wirkt, aber meinen echten Alltag nicht einfach
 MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem mit diesen produktiven Schwerpunkten:
 
 - Hub als zentraler Einstieg fuer Navigation, Dashboard, Panels und Voice
+- Hub-Dashboard mit lokaler Hydration-Orientierung (`WASSER-SOLL`) als ruhigem Referenzwert
 - Tageserfassung fuer BP, Body, Lab und Aktivitaet
 - Intake fuer Wasser, Salz, Protein und taegliche Medikationsbestaetigung
 - Medication-Verwaltung mit Low-Stock-Hinweisen
@@ -266,6 +272,7 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 
 | Bereich | Zweck | Overview |
 |------|------|------|
+| Hydration Target | lokaler Dashboard-Referenzwert fuer `WASSER-SOLL` | [`docs/modules/Hydration Target Module Overview.md`](docs/modules/Hydration%20Target%20Module%20Overview.md) |
 | Auth | Login, Session, Doctor-Unlock | [`docs/modules/Auth Module Overview.md`](docs/modules/Auth%20Module%20Overview.md) |
 | Supabase Core | einheitlicher API-/Auth-/Realtime-Einstieg | [`docs/modules/Supabase Core Overview.md`](docs/modules/Supabase%20Core%20Overview.md) |
 | Charts | Visualisierung fuer Arztansicht und Trends | [`docs/modules/Charts Module Overview.md`](docs/modules/Charts%20Module%20Overview.md) |
@@ -301,6 +308,7 @@ Wichtige Einstiegspunkte:
 - [`docs/modules/Trendpilot Module Overview.md`](docs/modules/Trendpilot%20Module%20Overview.md)
 - [`docs/modules/Push Module Overview.md`](docs/modules/Push%20Module%20Overview.md)
 - [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md)
+- [`docs/modules/Hydration Target Module Overview.md`](docs/modules/Hydration%20Target%20Module%20Overview.md)
 - [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md)
 
 ---
@@ -390,6 +398,13 @@ Das ist produktseitig wichtig. Ein offener Abend-BP ist etwas anderes als ein me
 
 Dieser Abschnitt ist bewusst direkt formuliert.
 
+### Nicht verhandelbarer Vertrag
+
+- MIDAS bleibt single-user und wird nicht stillschweigend auf Multi-User verallgemeinert.
+- MIDAS ersetzt weder Arzt noch Labor und darf keine freie medizinische Diagnose simulieren.
+- Schreibende Aktionen brauchen einen klaren, expliziten Nutzerkontext; keine versteckten Writes oder Hintergrund-Automation ohne erkennbare Absicht.
+- Assistant, Voice und Intent-Pfade duerfen wiederkehrende Kernaufgaben nur deterministisch, guard-railed und innerhalb der erlaubten Grenzen ausfuehren.
+
 ### Produktverstaendnis
 
 - Behandle MIDAS nicht als generische Health-App.
@@ -406,12 +421,29 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 - Schlechte Features erzeugen mehr Pflegeaufwand, mehr Entscheidungsballast oder mehr Reminder-Laerm.
 - Denke in alltagstauglicher Gesundheitssteuerung, nicht in Feature-Expansion.
 
+### Operativer Arbeitsmodus
+
+- Lies zuerst README, dann die betroffenen Dateien in `docs/modules/`, dann erst den Code.
+- Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse beruehrt werden.
+- Wenn eine Aenderung fachlich relevant ist, pruefe nicht nur die UI, sondern auch Seiteneffekte in SQL, Edge Functions, Push, Reports oder Service Worker, falls betroffen.
+- Behandle produktive Alltagsfluesse als wichtiger als formale Schoenheit oder abstrakte Generalisierung.
+- Verwende in kuenftigen Chats gerne den Namen Stephan, wenn eine persoenlichere Ansprache hilfreich ist und die fachliche Klarheit erhalten bleibt.
+
 ### Dokumentationsverhalten
 
 - Lies zuerst die betroffenen Dateien in `docs/modules/`.
 - Nutze `docs/archive/` nur als historische Referenz.
 - Wenn du ein Modul aenderst, aktualisiere nach Moeglichkeit auch das passende Modul-Overview.
 - Lies README als Produktkarte, nicht als vollstaendige Modulspezifikation.
+- Beachte, dass ein Teil der Edge-Function-Logik in einem separaten Backend-Workspace liegt.
+
+### Besonders sensible Bereiche
+
+- Medication und Intake, weil hier reale Adhaerenz, Tagesstatus und Low-Stock-Kontext zusammenlaufen.
+- Push und Incidents, weil hier zu viel Laerm schnell den Produktkern beschaedigt.
+- Assistant und Voice, weil Allowed Actions, Confirm-Flows und lokale Intents nicht aufgeweicht werden duerfen.
+- Doctor View und Reports, weil hier Read-only-Vertraege und medizinischer Zeitraumskontext stabil bleiben muessen.
+- Profile und persoenliche Limits, weil davon Bewertung, Hinweise und Guardrails in anderen Modulen abhaengen.
 
 ### Produkt-Grenzen
 
@@ -426,6 +458,14 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 - Frage zuerst: Hilft diese Aenderung dem taeglichen realen Betrieb?
 - Frage zweitens: Passt sie zu den bestehenden Guardrails?
 - Frage drittens: Erhoeht sie Klarheit statt Drift?
+
+### Typische Fehlannahmen, die falsch waeren
+
+- Mehr Reminder oder mehr Pushes sind nicht automatisch besser.
+- Freiere KI ist nicht automatisch nuetzlicher als eng gefuehrte Intents und Allowed Actions.
+- Mehr Generalisierung ist nicht automatisch bessere Architektur.
+- Ein Trend ist nicht dasselbe wie ein Incident.
+- Eine beeindruckende Oberflaeche ist kein Gewinn, wenn sie den taeglichen Kernfluss verlangsamt oder unklarer macht.
 
 Wenn die Antwort auf diese Fragen unscharf ist, ist die Aenderung wahrscheinlich kein guter MIDAS-Change.
 

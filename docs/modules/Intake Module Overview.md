@@ -8,6 +8,7 @@ Kurze Einordnung:
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Push Module Overview](Push Module Overview.md)
+- [Hydration Target Module Overview](Hydration Target Module Overview.md)
 
 ---
 
@@ -82,6 +83,7 @@ Related docs:
 - IN-Tab: `.intake-card-grid` enthaelt Intake-Karten und Medication-Karten im identischen Stil.
 - Unter dem Grid: Batch-Footer fuer offene Einnahmen, Status-Pills, Low-Stock Box.
 - TAB-Tab wird vom Medication Modul gerendert und bleibt im selben Panel.
+- Das obere Hub-Dashboard konsumiert den Wasser-Istwert weiter aus demselben Intake-Snapshot und ergaenzt lokal einen separaten `WASSER-SOLL`-Referenzwert.
 
 ---
 
@@ -109,6 +111,7 @@ Related docs:
 - Side Effects: `requestUiRefresh`, Intake- und Medication-Refresh.
 - Hoert auf `medication:changed`, `profile:changed`, `supabase:ready`.
 - Dispatcht Warnungen und Refreshes fuer angrenzende Module.
+- Das Modul bleibt Source of Truth fuer Wasser-Istwerte; `WASSER-SOLL` im Hub-Dashboard ist bewusst ein separater lokaler Referenzpfad.
 
 ---
 
