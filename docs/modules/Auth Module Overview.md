@@ -60,6 +60,23 @@ Related docs:
 ### 4.4 Persistenz
 - Session liegt im Supabase Client und wird persistent im Browser gehalten; im Frontend zusaetzlich Runtime-Status.
 
+### 4.5 Browser- vs. Android-Kontext
+- Der hier dokumentierte Standardpfad ist der browser-first MIDAS-Auth-Flow.
+- Google-OAuth ueber `signInWithOAuth(...)` ist im echten Browser/PWA stabil und soll fuer den Web-Kontext nicht leichtfertig umgebaut werden.
+- Ein nativer Android-Node kann einen separaten Login-Entry brauchen, wenn Provider-Richtlinien eingebettete `WebView`-Logins blockieren.
+- Wichtig:
+  - getrennte Login-Starts sind zulaessig
+  - der fachliche Zielzustand bleibt gleich:
+    - gueltige Supabase-Session
+    - korrekter `authState`
+    - normaler MIDAS-Boot nach erfolgreicher Anmeldung
+- Finaler Android-Vertrag:
+  - nativer OAuth-Start ueber sicheren Browser-Kontext
+  - Deep-Link-Callback zur App
+  - native Session als Android-Owner
+  - Android-gateter Session-Import in die `WebView`
+  - `WebView` ist MIDAS-Surface, nicht Login-Surface
+
 ---
 
 ## 5. UI-Integration
@@ -93,6 +110,9 @@ Related docs:
 - `watchAuthState` triggert `afterLoginBoot` + Module-Refresh.
 - `authGuardState` wird von Hub/Doctor gelesen.
 - `requestUiRefresh` wird nach Unlock genutzt (Chart/Doctor).
+- Ein nativer Android-Node darf an diesem Vertrag auf Session-/State-Ebene andocken, nicht dadurch, dass der Browser-Login blind in einer `WebView` wiederverwendet wird.
+- Android-Logout/Clear muss denselben Grundsatz wahren:
+  - Auth-Zustand darf nicht nur optisch, sondern deterministisch ueber Session-, Widget- und WebView-Pfad geloescht werden.
 
 ---
 
@@ -116,7 +136,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Supabase Auth + `supabaseState`, Auth UI/Guard, Login/Unlock Overlays.
 - Dependencies (soft): Passkey/MFA Ausbau.
-- Known issues / risks: fehlende Supabase Config; `authState=unknown` blockt; Unlock-Flow kann haengen.
+- Known issues / risks: fehlende Supabase Config; `authState=unknown` blockt; Unlock-Flow kann haengen; Browser-OAuth darf nicht still in unzulaessige native `WebView`-Container gespiegelt werden.
 - Backend / SQL / Edge: Supabase Auth.
 
 ---

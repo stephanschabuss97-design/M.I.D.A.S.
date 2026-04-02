@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/background_dark"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textAllCaps="true"
+        android:textColor="@android:color/white"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/subtitleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:text="@string/launcher_subtitle"
+        android:textColor="#C7D1E0"
+        android:textSize="15sp" />
+
+    <EditText
+        android:id="@+id/nativeRestUrlInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:autofillHints=""
+        android:hint="@string/native_rest_url_hint"
+        android:inputType="textUri"
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textColorHint="#99C7D1E0" />
+
+    <EditText
+        android:id="@+id/nativeAnonKeyInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:autofillHints=""
+        android:hint="@string/native_anon_key_hint"
+        android:inputType="textVisiblePassword"
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textColorHint="#99C7D1E0" />
+
+    <Button
+        android:id="@+id/saveNativeConfigButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/save_native_config" />
+
+    <Button
+        android:id="@+id/nativeGoogleLoginButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/native_google_login" />
+
+    <Button
+        android:id="@+id/openMidasButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/open_midas" />
+
+    <Button
+        android:id="@+id/nativeLogoutButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/native_logout" />
+
+</LinearLayout>

@@ -1702,3 +1702,62 @@ Regression
 - [ ] Mobile unter `768px` stapelt den Pill-Block weiterhin sauber vertikal.
 - [ ] Keine Warntexte, Farben, Toasts oder Reminder-Nebenwirkungen entstehen durch das Feature.
 - [ ] Wasser-Istwert, Salz, Protein, Termine und Restbudget bleiben unverändert funktional.
+
+---
+
+## Phase A7 - Android Widget & Shell (2026-04-02)
+
+**Scope:** Minimaler nativer Android-Node fuer MIDAS mit read-only Homescreen-Widget, lokalem Snapshot-Cache, nativer Sync-Huelle und Ruecksprung in MIDAS.
+
+**Smoke**
+- [ ] APK laesst sich lokal installieren; App startet ohne Crash.
+- [ ] Widget laesst sich auf dem Homescreen platzieren und zeigt die drei V1-Zeilen:
+  - `Wasser`
+  - `Wasser-Soll`
+  - `Medikation`
+- [ ] Ein Tap auf Widget oder Launcher fuehrt in die native MIDAS-Huelle.
+- [ ] Nach einmaligem auth-faehigen Oeffnen der nativen MIDAS-Huelle verschwinden Platzhalter und das Widget zeigt echte Werte.
+
+**Sanity**
+- [ ] `Wasser-Soll` im Widget bleibt vertraglich konsistent zur MIDAS-Stuetzpunkt-Tabelle.
+- [ ] Das Widget bleibt read-only:
+  - keine Capture-Aktionen
+  - keine Reminder- oder Confirm-Buttons
+  - keine versteckten Writes
+- [ ] Nach dem ersten Bridge-/Auth-Export kann der periodische Android-Refresh ohne regelmaessige manuelle Shell-Oeffnung weiterlaufen.
+- [ ] `:app:compileDebugKotlin` und `:app:assembleDebug` laufen mit lokalem Android-SDK/JDK gruen.
+
+**Regression**
+- [ ] Das Android-Widget fuehrt nicht zu Drift gegen MIDAS als Hauptsystem; Detailinteraktion bleibt in der PWA.
+- [ ] Homescreen-Look ist fuer V1 ruhig genug; verbleibende vertikale Abstaende werden nicht vorschnell als MIDAS-Layoutfehler bewertet, wenn sie klar launcher-/Samsung-gridbedingt sind.
+- [ ] README, Modul-Overview und Roadmap sprechen denselben Android-Node-Vertrag.
+
+---
+
+## Phase A8 - Android Native OAuth & Widget Activation (2026-04-02)
+
+**Scope:** Nativer Google-/Supabase-OAuth fuer den Android-Node, Deep-Link-Callback, nativer Session-Owner, auth-konsistenter WebView-Boot und deterministischer Logout-/Clear-Lebenszyklus.
+
+**Smoke**
+- [ ] Android-Launcher: `Mit Google anmelden` startet den Login im sicheren Browser bzw. in `Custom Tabs`, nicht in der eingebetteten `WebView`.
+- [ ] Nach erfolgreichem Login kehrt der OAuth-Callback sauber in die App zurueck; keine Google-Seite `Zugriff blockiert` / `Use secure browsers`.
+- [ ] Nach erfolgreichem Callback wird die native Session uebernommen und das Widget wird aktivierbar bzw. zieht echte Werte statt Platzhalter.
+- [ ] MIDAS in der Android-`WebView` bootet nach erfolgreichem nativen Login ohne unauth-Overlay-Flicker in einen konsistenten auth-Zustand.
+
+**Logout / Session-Clear**
+- [ ] Logout in `MainActivity` leert native Session, Widget-Zustand und sichtbaren Snapshot deterministisch.
+- [ ] Logout in `MidasWebActivity` zieht Android, Widget und offene `WebView` gemeinsam nach.
+- [ ] Nach Logout zeigt das Widget wieder Platzhalter statt alter Werte.
+- [ ] Nach Logout bleibt die `WebView` nicht still im auth-Zustand haengen.
+
+**PWA / Regression**
+- [ ] Browser-/PWA-Google-Login funktioniert unveraendert weiter.
+- [ ] Browser-/PWA-Logout funktioniert unveraendert weiter.
+- [ ] Der gemeinsame Google-Login-Button im Browser bleibt der Web-Login; im Android-WebView startet derselbe Button keinen eingebetteten Google-OAuth mehr.
+- [ ] `AUTH_CHECK` und Android-Bootstrap erzeugen keinen doppelten Refresh- oder unauth-Drift.
+
+**Sanity**
+- [ ] `:app:compileDebugKotlin` ist gruen.
+- [ ] `:app:assembleDebug` ist gruen.
+- [ ] Deep-Link-Konfiguration in Android + Supabase-Allowlist ist fuer das Testgeraet korrekt.
+- [ ] Android-Bootstrap-Konfiguration (`REST + ANON`) ist fuer frische Installationen einmalig hinterlegt und fuehrt danach reproduzierbar zum nativen Login-Start.

@@ -22,9 +22,9 @@ Ich bin am 15.04.1982 geboren
 MIDAS wurde gebaut da ich im Jänner 2025 mit einer CKD diagnostiziert wurde. 
 Ich habe keine Erfahrung in Sachen Syntax, arbeite aber mit Roadmaps die wir beide zusammen erstellen
 MIDAS hab ich als Lebensapp gebaut, sprich es soll mich auch mit 70, 80 und wenn möglich bis über 90 begleiten
-Ich verwende in GEsprchen mit einer KI gerne "Bro" als Ansprache an dich, ich erwarte mir dennoch eine fachliche gute Kommunikation
+Ich verwende in Gesprchen mit einer KI gerne "Bro" als Ansprache an dich, ich erwarte mir dennoch eine fachliche gute Kommunikation
 Zukuenftige Chats duerfen mich gerne beim Namen Stephan nennen. Eine persoenlichere Ansprache ist willkommen, solange die fachliche Qualitaet hoch bleibt.
-Du darfst mich gerne duzen und ich erwarte mir von dir die Rolle eines begleitenden Dev's. Stell dir eine Mischung aus Support, Thinktank und SeniorDev vor.
+Du darfst mich gerne duzen und ich erwarte mir von dir die Rolle eines begleitenden Developer. Stell dir eine Mischung aus Support, Thinktank und SeniorDev vor.
 Am Projekt MIDAS wurde am 10.08.2025 gestartet.
 Ich arbeite beruflich in einer Pharmafirma und bin dort fuer die Qualifizierung von Geraeten sowie fuer Software-Validierung zustaendig. Das praegt auch meinen Blick auf meine Projekte: Reproduzierbarkeit, Guardrails, klare Systemgrenzen und belastbares Verhalten sind fuer mich keine Nebensache.
 
@@ -37,11 +37,12 @@ Ich arbeite beruflich in einer Pharmafirma und bin dort fuer die Qualifizierung 
 | Nutzerbild | genau 1 Nutzer: ich |
 | Produktkern | persoenliches Gesundheits-Betriebssystem fuer meinen CKD-Alltag |
 | Produktstatus | produktiv im eigenen Alltag |
-| Plattform | Browser-first PWA |
+| Plattform | Browser-first PWA mit minimalem nativen Android-Node |
 | Frontend | statisches HTML/CSS/JS ohne Build-Step |
 | Backend | Supabase Auth / DB / Realtime / Edge Functions |
 | Voice | Voice V1 produktiv, command-first |
 | Push | lokale und remote Incident-Pushes aktiv |
+| Android Node | Homescreen-Widget + minimale Launcher-/Sync-Huelle aktiv, nativer OAuth-/Deep-Link-Pfad integriert |
 | Arztmodus | Read-only Uebersicht + Reports aktiv |
 | Modul-Doku | `docs/modules/*.md` ist Source of Truth |
 
@@ -61,7 +62,20 @@ Genau daraus ist MIDAS entstanden.
 
 MIDAS ist fuer mich kein Tracker im klassischen Sinn. Es ist ein Umsetzungswerkzeug. Das Ziel ist nicht Datensammlung um ihrer selbst willen, sondern alltagstaugliche Adhaerenz, Uebersicht und Reibungsreduktion. MIDAS soll mir nicht nur sagen, was war, sondern mir helfen, das Richtige im Alltag konsistent umzusetzen.
 
-Wichtig ist dabei auch mein reales Nutzungsverhalten: MIDAS ist nicht auf lueckenloses Mikrologging bis in jede Kleinigkeit des Abends ausgelegt. Der praktisch wichtigste Nutzen entsteht oft bis zum Nachmittag oder nach dem Mittagessen, wenn eine belastbare Zwischenbilanz fuer Wasser, Salz, Protein, Medikation und Tageslage steht. Abendliches Nachtracking ist moeglich, aber nicht der Kern des Systems. MIDAS soll rechtzeitig Klarheit schaffen, nicht jeden spaeten Snack des Tages kontrollieren.
+Wichtig ist dabei auch mein reales Nutzungsverhalten: MIDAS ist nicht auf lueckenloses Mikrologging bis in jede Kleinigkeit des Abends ausgelegt. Das gilt vor allem fuer Intake-orientierte Tagessteuerung wie Wasser sowie Teile von Salz und Protein. Der praktisch wichtigste Nutzen entsteht dort oft bis zum Nachmittag oder nach dem Mittagessen, wenn eine belastbare Zwischenbilanz fuer Wasser, Salz, Protein, Medikation und Tageslage steht. Abendliches Nachtracking ist moeglich, aber nicht der Kern dieses Intake-Pfads. MIDAS soll hier rechtzeitig Klarheit schaffen, nicht jeden spaeten Snack des Tages kontrollieren.
+
+In der Praxis bedeutet das meist:
+
+- aktive Nutzung vor allem vom Morgen bis etwa `14:00-15:00`
+- Fokus auf Fruehstueck, Mittagessen, grobe Intake-Zwischenbilanz und Medikationsstatus
+- Nutzung als Tageskompass und Kalibrierung fuer den restlichen Tag, nicht als Vollzeit-Tracking
+- nachmittags und abends deutlich weniger aktive Eingabe; dort tragen Routine, Erfahrung und Gefuehl mehr als konsequentes Nachloggen
+- Sichtbarkeit und "at a glance"-Orientierung sind oft wertvoller als tiefe Interaktion oder formale Vollstaendigkeit
+- Wasser ist dabei eher eine grobe Fuehrungsgroesse, waehrend Salz und Protein trotz Schaetzung fachlich oft relevanter bleiben
+
+Diese Aussage darf nicht falsch verallgemeinert werden: Sie beschreibt primaer den Intake-/Tageskalibrierungs-Charakter von MIDAS. Andere Kernpfade der App werden weiterhin normal und konsequent genutzt, auch unabhaengig von der Uhrzeit, z. B. Abend-BP, Koerperdaten, Termine, Reports oder andere relevante Tagesabschluesse.
+
+Diese Nutzungswahrheit soll kuenftige Produktentscheidungen aktiv begrenzen: Features, die lueckenlose Abendbuchhaltung voraussetzen oder taeglich hohe Eingabefriktion erzeugen, passen eher nicht zu MIDAS als System.
 
 Die App ist deshalb bewusst eng geschnitten. Sie konzentriert sich auf genau die Dinge, die in meinem realen Alltag relevant sind: Intake, Medikationsfluss, Blutdruck, Incidents, Arztkontext, Reports und gefuehrte Interaktion ueber Text und Voice. Nicht maximal viele Features, sondern moeglichst wenig Drift zwischen medizinischer Absicht und taeglicher Umsetzung.
 
@@ -98,6 +112,7 @@ MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem m
 - Incident-Pushes nur fuer echte Ereignisse wie offene Medikation oder fehlende Abend-BP
 - Arztmodus mit Read-only Zeitraumssicht, Reports-Inbox und Export
 - Profilkontext fuer Limits, Hausarztkontakt und persoenliche Parameter
+- minimale native Android-Huelle als Widget-/Launcher-Node fuer passive Homescreen-Sichtbarkeit inkl. nativer OAuth-Aktivierung fuer Widget und Shell
 
 ---
 
@@ -108,10 +123,14 @@ MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem m
 - kein Arzt-Workflow-System
 - kein allgemeiner Wellness- oder Lifestyle-Reminder
 - keine offene KI fuer freie medizinische Beratung
-- keine native Mobile-App
+- keine vollwertige native Mobile-App als Ersatz fuer MIDAS
 - kein SaaS-Produkt mit Rollen, Mandanten oder Teamverwaltung
 
 Mehrfach-Pushes, Eskalationsketten, Gamification und breite generische "Health App"-Features sind bewusst nicht das Ziel.
+
+Wichtig:
+- Eine kleine native Android-Huelle als Widget-/Launcher-Node ist zulaessig.
+- Sie ersetzt MIDAS nicht, verlagert keine Fachlogik und bleibt bewusst eine schmale Surface fuer Homescreen-Sichtbarkeit und Ruecksprung in die PWA.
 
 ---
 
@@ -125,16 +144,19 @@ Diese Prinzipien sind absichtlich hart formuliert. Sie sollen kuenftige Produkt-
 2. Alltagstauglichkeit ist wichtiger als Feature-Breite.
    MIDAS soll im echten Leben helfen, nicht in einer Produktdemo beeindrucken. Wenn eine neue Idee den taeglichen Kernfluss vernebelt, mehr Pflegeaufwand erzeugt oder die kognitive Last erhoeht, ist sie wahrscheinlich falsch.
 
-3. Deterministische lokale Pfade zuerst.
+3. Orientierung vor Vollstaendigkeit.
+   MIDAS ist besonders im Intake-Bereich primaer ein Tageskompass und Kalibrierungswerkzeug, nicht ein System fuer lueckenlose Abendbuchhaltung. Fruehe Klarheit, geringe Friktion und sichtbare Zwischenstaende sind dort fuer den realen Nutzen oft wichtiger als vollstaendige Datensammlung. Diese Logik gilt nicht pauschal fuer alle App-Bereiche; Pflichtpfade wie relevante Abendwerte oder andere Kernereignisse bleiben normale, konsequente MIDAS-Nutzung.
+
+4. Deterministische lokale Pfade zuerst.
    Besonders im Assistant-/Voice-Bereich sollen haeufige Alltagsaktionen lokal, schnell und guard-railed geloest werden. Das LLM ist Interpretations- und Fallback-Schicht, nicht primaerer Steuerpfad fuer wiederkehrende Kernaufgaben.
 
-4. Push nur bei echten Incidents.
+5. Push nur bei echten Incidents.
    MIDAS darf nicht in Reminder-Laerm kippen. Pushes sind Schutznetz, nicht Dauerberieselung.
 
-5. Arztmodus ist read-only orientiert.
+6. Arztmodus ist read-only orientiert.
    Die Doctor View dient Uebersicht, Export und Berichten, nicht der taeglichen Dateneingabe.
 
-6. Modulgrenzen sind ernst gemeint.
+7. Modulgrenzen sind ernst gemeint.
    Hub orchestriert. Capture schreibt. Doctor liest. Push entscheidet nicht fachlich. Profile liefert Kontext. Diese Grenzen sollen erhalten bleiben.
 
 ---
@@ -282,6 +304,7 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 | Breath Timer | Messvorbereitung vor BP | [`docs/modules/Breath Timer Module Overview.md`](docs/modules/Breath%20Timer%20Module%20Overview.md) |
 | State Layer | globale Zustandsmuster / Basiskontext | [`docs/modules/State Layer Overview.md`](docs/modules/State%20Layer%20Overview.md) |
 | Bootflow | Start- und Initialisierungssequenz | [`docs/modules/bootflow overview.md`](docs/modules/bootflow%20overview.md) |
+| Android Widget | nativer Android-Node fuer Homescreen-Snapshot, Sync und minimalen Launcher | [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md) |
 
 ---
 
@@ -309,6 +332,7 @@ Wichtige Einstiegspunkte:
 - [`docs/modules/Push Module Overview.md`](docs/modules/Push%20Module%20Overview.md)
 - [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md)
 - [`docs/modules/Hydration Target Module Overview.md`](docs/modules/Hydration%20Target%20Module%20Overview.md)
+- [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md)
 - [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md)
 
 ---
@@ -325,6 +349,7 @@ Wichtige Einstiegspunkte:
 | `assets/js/` | Legacy-nahe UI- und Boot-Helfer |
 | `docs/modules/` | aktuelle Modul-Overviews |
 | `docs/archive/` | historische Roadmaps und Altplanung |
+| `android/` | native Android-Huelle fuer Widget, Sync-Worker, nativen OAuth-/Deep-Link-Pfad und minimalen Launcher |
 | `sql/` | Datenmodell, RLS, RPCs, Views |
 | `.github/workflows/` | Scheduler fuer Trends, Reports, Push |
 | `service-worker.js` | PWA Service Worker, Caching, Push, Notification Click |
@@ -336,6 +361,9 @@ Wichtige Einstiegspunkte:
 ### Ohne Build-Step
 
 MIDAS hat keinen klassischen Build-Prozess. Das Repo kann direkt als statische Web-App betrieben werden.
+
+Wichtige Ausnahme:
+Der Android-Node unter `android/` ist ein eigenes natives Teilprojekt mit Gradle-/SDK-/JDK-Anforderungen. MIDAS selbst bleibt browser-first ohne Web-Build-Step; der Android-Pfad ist nur der schmale Homescreen-/OAuth-Node.
 
 ### Lokaler Start
 
@@ -362,6 +390,16 @@ http://127.0.0.1:8765
 - Supabase ist das produktive Backend fuer Auth, Daten, Realtime und mehrere Edge-Funktionen.
 - SQL-Migrationen liegen in `sql/`.
 - Ein Teil der Edge-Function-Logik liegt in einem separaten Backend-Workspace und nicht vollstaendig in diesem Repo.
+
+### Android Node Kurzvertrag
+
+- Browser-/PWA-Google-Login bleibt unveraendert und ist weiterhin der normale Web-Login-Pfad.
+- Der Android-Node verwendet fuer Google-Login einen separaten nativen Entry:
+  - sicherer Browser / `Custom Tabs`
+  - Deep-Link-Callback in die App
+  - native Session als Android-Source-of-Truth
+- Die Android-`WebView` ist MIDAS-Surface, nicht Login-Surface.
+- Das Widget bleibt read-only und haengt fachlich an derselben MIDAS-/Supabase-Realitaet, nicht an eigener Business-Logik.
 
 ---
 

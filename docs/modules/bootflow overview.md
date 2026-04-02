@@ -22,6 +22,8 @@ Purpose: single source of truth for how MIDAS boots, in which order modules are 
 Notes:
 - The boot order is about readiness, not speed. Modules may render placeholders until data is ready.
 - Auth and storage readiness are prerequisites for any data sync.
+- Im Android-WebView-Kontext gibt es zusaetzlich einen fruehen nativen Session-Bootstrap vor dem normalen `AUTH_CHECK`.
+  Der Browser-/PWA-Pfad bleibt davon unberuehrt.
 
 ---
 

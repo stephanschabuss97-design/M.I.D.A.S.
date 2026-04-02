@@ -1758,6 +1758,7 @@
   <!-- @refactor: Phase 2 - app/supabase/index.js -->
   <!-- @refactor: Phase 2 - legacy proxy thin shim -->
   <script type="module" src="app/supabase/index.js"></script>
+  <script src="app/core/android-webview-auth-bridge.js"></script>
   <script type="module" src="assets/js/boot-auth.js"></script>
   <!-- @refactor: moved to assets/js/ui-tabs.js -->
   <script src="assets/js/ui-tabs.js"></script>
@@ -1776,7 +1777,7 @@
   <div id="loginOverlay" class="u-hidden">
     <div class="login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
       <h3 id="loginTitle">Willkommen</h3>
-      <p class="small u-mb-8">Melde dich an, um Arzt-Ansicht & Diagramme zu nutzen.</p>
+      <p class="small u-mb-8" id="loginSubtitle">Melde dich an, um Arzt-Ansicht & Diagramme zu nutzen.</p>
       <button class="btn primary u-w100-h48-mb12" id="googleLoginBtn" type="button">
         Mit Google anmelden
       </button>

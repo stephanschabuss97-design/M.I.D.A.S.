@@ -29,6 +29,33 @@ const diag =
     globalWindow?.AppModules?.diagnostics ||
     { add() {} });
 
+const hasAndroidNativeLoginBridge = () =>
+  typeof globalWindow?.MidasAndroidAuth?.requestNativeGoogleLogin === 'function';
+
+const syncAndroidLoginOverlayMode = () => {
+  const subtitle = document.getElementById('loginSubtitle');
+  const googleBtn = document.getElementById('googleLoginBtn');
+  const configAdv = document.getElementById('configAdv');
+  const isAndroidWebView = hasAndroidNativeLoginBridge();
+
+  if (subtitle) {
+    subtitle.textContent = isAndroidWebView
+      ? 'In der Android-Huelle startet Google-Login im sicheren Browser.'
+      : 'Melde dich an, um Arzt-Ansicht & Diagramme zu nutzen.';
+  }
+  if (googleBtn) {
+    googleBtn.textContent = isAndroidWebView
+      ? 'Mit Google im Browser anmelden'
+      : 'Mit Google anmelden';
+  }
+  if (configAdv) {
+    configAdv.hidden = isAndroidWebView;
+    if (isAndroidWebView) {
+      configAdv.open = false;
+    }
+  }
+};
+
 // SUBMODULE: config accessors @internal - sichere Wrapper für getConf / putConf
 const getConf = (...args) => {
   const fn = globalWindow?.getConf;
@@ -80,6 +107,7 @@ const deactivateFocusTrap = () => {
 // SUBMODULE: prefillSupabaseConfigForm @public - liest gespeicherte REST/Key-Werte ein und befüllt das Formular
 export async function prefillSupabaseConfigForm() {
   try {
+    syncAndroidLoginOverlayMode();
     setConfigStatus('', 'info');
     const restInput = document.getElementById('configRestUrl');
     const keyInput = document.getElementById('configAnonKey');
@@ -127,6 +155,7 @@ const toggleLoginOverlay = (show) => {
   const ov = document.getElementById('loginOverlay');
   if (!ov) return;
   const dialog = ov.querySelector('[role="dialog"]') || ov;
+  syncAndroidLoginOverlayMode();
   if (show) {
     const alreadyVisible = ov.style.display === 'flex';
     ov.style.display = 'flex';
@@ -157,6 +186,7 @@ export function setUserUi(email) {
 
 // SUBMODULE: bindAuthButtons @public - verbindet UI-Buttons mit Save-/OAuth-Aktionen
 export function bindAuthButtons() {
+  syncAndroidLoginOverlayMode();
   const googleBtn = document.getElementById('googleLoginBtn');
   const saveBtn = document.getElementById('configSaveBtn');
 
@@ -207,6 +237,18 @@ export function bindAuthButtons() {
 
   if (googleBtn) {
     googleBtn.addEventListener('click', async () => {
+      if (hasAndroidNativeLoginBridge()) {
+        setConfigStatus('Google-Login wird im sicheren Browser geoeffnet.', 'info');
+        try {
+          globalWindow.MidasAndroidAuth.requestNativeGoogleLogin();
+        } catch (error) {
+          setConfigStatus(
+            'Android-Login konnte nicht gestartet werden: ' + (error?.message || error),
+            'error'
+          );
+        }
+        return;
+      }
       const supa = await ensureSupabaseClient();
       if (!supa) {
         setConfigStatus(

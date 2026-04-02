@@ -37,6 +37,11 @@ Related docs:
 
 - `supabaseState` (Runtime): `authState`, `sbClient`, Header-Cache, `lastUserId`.
 - Session wird durch Supabase Auth im Browser persistent gespeichert; Runtime-Status liegt in `supabaseState`.
+- Wichtig:
+  - MIDAS ist browser-first.
+  - Ein nativer Android-Node kann einen separaten Session-Owner haben.
+  - Entscheidend ist nicht identischer Login-Start, sondern identischer fachlicher Session-Vertrag nach erfolgreicher Anmeldung.
+  - Im aktuellen Android-Vertrag ist dieser Session-Owner der native Android-Store; die `WebView` importiert Session nur abgeleitet.
 
 ---
 
@@ -89,6 +94,8 @@ Related docs:
 - Constraints: Supabase config required for client init.
 - `supabase:ready` (CustomEvent) fuer Boot-Flow.
 - `createSupabaseFn` in `assets/js/main.js` als Standard-Entry.
+- Ein nativer Android-Node darf am Supabase-Vertrag andocken, ohne den stabilen Browser-/PWA-Login-Start selbst umzuschneiden.
+- Der Android-Pfad darf dieselben Reads und denselben fachlichen Session-Vertrag nutzen, aber keinen zweiten fachlich abweichenden Auth-Zustand neben Browser/PWA erzeugen.
 
 ---
 
@@ -111,7 +118,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Supabase Config, Core Client/Auth/HTTP, `MODULE_SOURCES`.
 - Dependencies (soft): Realtime (optional).
-- Known issues / risks: fehlende Config; Header-Cache stale; `supabase:ready` Timing.
+- Known issues / risks: fehlende Config; Header-Cache stale; `supabase:ready` Timing; Browser- und Native-Auth duerfen nicht in zwei fachlich unterschiedliche Session-Zustaende auseinanderlaufen.
 - Backend / SQL / Edge: Supabase Projekt.
 
 ---

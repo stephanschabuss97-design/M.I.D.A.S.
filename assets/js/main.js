@@ -356,6 +356,25 @@ const waitForDomReady = () => {
   });
 };
 
+const waitForAndroidWebViewAuthBootstrap = async ({ timeoutMs = 2500 } = {}) => {
+  const promise = window.__midasAndroidAuthBootstrapPromise;
+  if (!promise || typeof promise.then !== 'function') return 'missing';
+
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve({ status: 'timeout' }), Math.max(0, Number(timeoutMs) || 0));
+  });
+  try {
+    const result = await Promise.race([Promise.resolve(promise), timeoutPromise]);
+    return result?.status || 'resolved';
+  } catch (err) {
+    diag.add?.('[boot] android webview auth bootstrap failed: ' + (err?.message || err));
+    return 'error';
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const waitForAuthDecisionSoft = async ({ timeoutMs = 1200 } = {}) => {
   if (!hasSupabaseFn('waitForAuthDecision')) return 'missing';
   if (isAuthDecisionKnown()) return 'known';
@@ -460,6 +479,10 @@ async function runAuthCheckPhase(context) {
   setBootStage('AUTH_CHECK');
   logBootPhaseSummary('AUTH_CHECK', 'start');
   try {
+    const androidBootstrapStatus = await waitForAndroidWebViewAuthBootstrap({ timeoutMs: 2500 });
+    if (androidBootstrapStatus !== 'missing' && androidBootstrapStatus !== 'bridge-missing') {
+      diag.add?.('[boot] android webview auth bootstrap: ' + androidBootstrapStatus);
+    }
     await ensureSupabaseReadyForAuth({ timeoutMs: 6000 });
     await initDB();
     await ensureSupabaseClient();

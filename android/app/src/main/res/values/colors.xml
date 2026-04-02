@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_text_primary">#FFFFFFFF</color>
+    <color name="widget_text_muted">#F2F5FB</color>
+    <color name="widget_medication_neutral">#E2E8F5</color>
+    <color name="widget_medication_open">#F0D08A</color>
+    <color name="widget_medication_done">#85D8B2</color>
+</resources>

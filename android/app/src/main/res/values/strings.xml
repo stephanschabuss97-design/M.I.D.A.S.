@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MIDAS Android Widget</string>
+    <string name="launcher_subtitle">Minimaler MIDAS-Launcher mit lokalem Widget-Snapshot und nativer Google-OAuth-Aktivierung fuer das Widget.</string>
+    <string name="native_rest_url_hint">REST-Endpoint (/rest/v1/health_events)</string>
+    <string name="native_anon_key_hint">ANON-Key</string>
+    <string name="save_native_config">Android-Konfiguration speichern</string>
+    <string name="native_config_saved">Android-Konfiguration gespeichert.</string>
+    <string name="native_config_invalid">REST-Endpoint oder ANON-Key sind ungueltig. Erlaubt ist nur /rest/v1/health_events mit ANON-Key.</string>
+    <string name="native_google_login">Mit Google anmelden</string>
+    <string name="native_login_started">Google-Login wird im sicheren Browser geoeffnet.</string>
+    <string name="native_login_missing_config">Supabase-Konfiguration fehlt noch. MIDAS einmal oeffnen und REST-/ANON-Konfiguration verfuegbar machen.</string>
+    <string name="native_login_invalid_config">Die gespeicherte Android-Konfiguration ist fuer nativen Login noch nicht gueltig.</string>
+    <string name="native_login_failed">Google-Login konnte nicht gestartet werden: %1$s</string>
+    <string name="native_callback_success">Native MIDAS-Session wurde uebernommen.</string>
+    <string name="native_callback_missing_client">OAuth-Callback konnte nicht verarbeitet werden: nativer Auth-Client fehlt.</string>
+    <string name="native_callback_missing_code">OAuth-Callback enthaelt keinen Autorisierungscode.</string>
+    <string name="native_callback_failed">OAuth-Callback fehlgeschlagen: %1$s</string>
+    <string name="native_logout">Native Session loeschen</string>
+    <string name="native_logout_done">Native MIDAS-Session wurde geloescht.</string>
+    <string name="open_midas">MIDAS oeffnen</string>
+    <string name="midas_url">https://stephanschabuss97-design.github.io/M.I.D.A.S./</string>
+    <string name="widget_title">MIDAS</string>
+    <string name="widget_description">Passiver MIDAS Daily-Snapshot fuer Wasser und Medikation.</string>
+    <string name="widget_label_water">Wasser</string>
+    <string name="widget_label_water_target">Wasser-Soll</string>
+    <string name="widget_label_medication">Medikation</string>
+    <string name="widget_placeholder_water">-- ml</string>
+    <string name="widget_placeholder_water_target">-- ml</string>
+    <string name="widget_placeholder_medication">Lade...</string>
+    <string name="widget_value_water_ml">%1$d ml</string>
+    <string name="widget_medication_none">Kein Plan</string>
+    <string name="widget_medication_open">Offen</string>
+    <string name="widget_medication_partial">Teilweise</string>
+    <string name="widget_medication_done">Erledigt</string>
+    <string name="web_title">MIDAS</string>
+    <string name="web_back">Zurueck</string>
+    <string name="web_refresh">Neu laden</string>
+    <string name="web_logout">Logout</string>
+</resources>
