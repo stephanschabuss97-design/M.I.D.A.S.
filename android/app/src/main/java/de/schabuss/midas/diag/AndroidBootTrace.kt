@@ -17,6 +17,11 @@ import java.util.Locale
 object AndroidBootTrace {
     private const val LATEST_TRACE_FILE = "midas-android-latest-trace.json"
     private const val CRASH_TRACE_PREFIX = "midas-android-crash"
+    private const val META_PREFS = "midas_android_trace_meta"
+    private const val KEY_LAST_STAGE = "last_stage"
+    private const val KEY_LAST_DETAIL = "last_detail"
+    private const val KEY_LAST_AT = "last_at"
+    private const val KEY_LAST_RUN_ID = "last_run_id"
     private val timestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
     private val fileStampFormat = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US)
 
@@ -55,6 +60,23 @@ object AndroidBootTrace {
         }
     }
 
+    fun latestTraceLocationLabel(): String = "Interner Speicher/Download/$LATEST_TRACE_FILE"
+
+    fun latestSummary(context: Context): String {
+        val prefs = context.applicationContext.getSharedPreferences(META_PREFS, Context.MODE_PRIVATE)
+        val stage = prefs.getString(KEY_LAST_STAGE, "")?.trim().orEmpty()
+        val detail = prefs.getString(KEY_LAST_DETAIL, "")?.trim().orEmpty()
+        val at = prefs.getString(KEY_LAST_AT, "")?.trim().orEmpty()
+        val run = prefs.getString(KEY_LAST_RUN_ID, "")?.trim().orEmpty()
+        if (stage.isBlank()) return ""
+        val parts = mutableListOf<String>()
+        parts += stage
+        if (detail.isNotBlank()) parts += detail
+        if (at.isNotBlank()) parts += at
+        if (run.isNotBlank()) parts += run
+        return parts.joinToString(" | ")
+    }
+
     private fun appendLocked(stage: String, detail: String, extras: Map<String, String> = emptyMap()) {
         val entry = JSONObject()
             .put("at", nowIso())
@@ -76,9 +98,26 @@ object AndroidBootTrace {
             .put("events", JSONArray(events))
             .toString(2)
 
+        persistSummaryLocked(context)
+
         runCatching {
             writeToDownloads(context, filename, payload)
         }
+    }
+
+    private fun persistSummaryLocked(context: Context) {
+        val lastEvent = events.lastOrNull()
+        val stage = lastEvent?.optString("stage", "").orEmpty()
+        val detail = lastEvent?.optString("detail", "").orEmpty()
+        val at = lastEvent?.optString("at", "").orEmpty()
+        context.applicationContext
+            .getSharedPreferences(META_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_STAGE, stage)
+            .putString(KEY_LAST_DETAIL, detail)
+            .putString(KEY_LAST_AT, at)
+            .putString(KEY_LAST_RUN_ID, runId)
+            .apply()
     }
 
     private fun writeToDownloads(context: Context, filename: String, payload: String) {

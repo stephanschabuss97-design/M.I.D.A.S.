@@ -24,6 +24,7 @@ Notes:
 - Auth and storage readiness are prerequisites for any data sync.
 - Im Android-WebView-Kontext gibt es zusaetzlich einen fruehen nativen Session-Bootstrap vor dem normalen `AUTH_CHECK`.
   Der Browser-/PWA-Pfad bleibt davon unberuehrt.
+- Seit dem Android-OAuth-Nachzug liegt diese Android-spezifische Auth-Vorbereitung bewusst im Auth-Core und nicht verteilt im Router.
 
 ---
 
@@ -38,6 +39,7 @@ Notes:
 - Very-early boot errors before panel readiness are surfaced via a minimal plaintext fallback overlay (`#earlyBootErrorFallback`).
 - Post-`IDLE` warmups are non-fatal by design: refresh failures are logged but do not re-enter boot failure state.
 - PWA controller updates do not hard-interrupt early boot anymore; reload is deferred to `IDLE` with timeout fallback.
+- Android-WebView-Bootstrap darf den Web-Client nicht vor dem Auth-Core blind mutieren; Session-Import und Clear laufen deshalb ueber den offiziellen Auth-Core.
 
 ---
 
@@ -57,6 +59,7 @@ Notes:
 - Auth overlay flicker: auth state not known before UI initializes.
 - Duplicate Supabase clients: multiple `createClient` calls without a shared inflight lock.
 - Random refresh order: manual module refresh instead of `requestUiRefresh` pipeline.
+- Android-WebView loop / fallback to launcher: nativer Callback ok, aber Session-Handoff oder Bootstrap-Entscheid nicht sauber im Auth-Core angekommen.
 - "Touch-Log oeffnen does nothing": fixed by early diagnostics init + fallback renderer in boot error panel.
 - "Diag hidden under milkglass": fixed by boot-error-specific z-index rule (`#diag` above `#bootScreen`).
 - "IndexedDB not initialized" during early boot: mitigated by early `getUserId` guards and deterministic null-return on init-pending paths.
@@ -69,6 +72,7 @@ Notes:
 - `assets/js/boot-auth.js`: initial auth status and login overlay.
 - `app/supabase/index.js`: Supabase API export and readiness signal.
 - `app/supabase/core/client.js`: client creation and session persistence.
+- `app/core/android-webview-auth-bridge.js`: Android bootstrap staging for WebView auth handoff.
 - `app/core/boot-flow.js`: boot stage machine, central boot error reporting, fallback log rendering.
 - `app/core/diag.js`: boot logging and diagnostics.
 - `app/core/pwa.js`: update/install banner flow and boot-aware `controllerchange` reload strategy.
@@ -84,6 +88,7 @@ Notes:
 - [Supabase Core Overview](Supabase Core Overview.md)
 - [Main Router Flow Overview](Main Router Flow Overview.md)
 - [Diagnostics Module Overview](Diagnostics Module Overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 - [Unlock Flow Overview](Unlock Flow Overview.md)
 - [State Layer Overview](State Layer Overview.md)
 - [Capture Module Overview](Capture Module Overview.md)

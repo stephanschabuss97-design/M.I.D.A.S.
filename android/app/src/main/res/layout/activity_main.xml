@@ -91,4 +91,22 @@
         android:layout_marginTop="12dp"
         android:text="@string/native_logout" />
 
+    <TextView
+        android:id="@+id/nativeDiagPathText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/native_diag_path_placeholder"
+        android:textColor="#B8C7D9"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/nativeDiagSummaryText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/native_diag_summary_empty"
+        android:textColor="#8FA3BC"
+        android:textSize="12sp" />
+
 </LinearLayout>

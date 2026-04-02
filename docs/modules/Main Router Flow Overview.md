@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 
 ---
 
@@ -40,6 +41,7 @@ Related docs:
 ### 4.1 Initialisierung
 - `ensureModulesReady()` prueft Supabase + Globals.
 - `watchAuthState()` wird gebunden, sobald Supabase da ist.
+- Im Android-WebView fragt der Router den Auth-Core nur noch ueber den offiziellen Bootstrap-Einstieg an; er orchestriert Android-Auth nicht mehr selbst.
 
 ### 4.2 User-Trigger
 - Save-Buttons (BP/Body/Lab/Activity) -> `requestUiRefresh`.
@@ -74,6 +76,7 @@ Related docs:
 - `diag.add` fuer Fehlpfade.
 - Touch-Log Eintraege: `[ui] refresh start/end`, `[resume] ...`.
 - `ensureModulesReady` zeigt Fallback-Fehler bei missing APIs.
+- Android-spezifische Bootstrap-/OAuth-Entscheide gehoeren nicht in den Router, sondern in den Auth-Core; der Router reagiert nur noch auf den offiziellen Auth-Zustand.
 
 ---
 
@@ -86,6 +89,7 @@ Related docs:
 - `requestUiRefresh` ist das zentrale Integrations-Event.
 - `supabase:ready` gate fuer Auth/Refresh.
 - `resumeFromBackground` hookt in Refresh.
+- Der Android-WebView-Boot wird nicht mehr direkt im Router gehandhabt, sondern nur noch ueber den vom Auth-Core vorbereiteten `AUTH_CHECK`.
 
 ---
 

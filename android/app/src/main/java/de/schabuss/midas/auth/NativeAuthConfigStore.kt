@@ -6,6 +6,7 @@ import org.json.JSONObject
 class NativeAuthConfigStore(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = SecurePreferencesFactory.create(appContext, SECURE_PREFS_NAME)
+    private val nativeAuthStore = NativeAuthStore(appContext)
 
     init {
         migrateLegacyPlaintextConfigIfNeeded()
@@ -31,6 +32,7 @@ class NativeAuthConfigStore(context: Context) {
             .put("supabaseUrl", config.supabaseUrl)
             .put("anonKey", config.anonKey)
         prefs.edit().putString(KEY_CONFIG, payload.toString()).apply()
+        syncNativeAuthConfig(config)
     }
 
     fun clear() {
@@ -52,5 +54,16 @@ class NativeAuthConfigStore(context: Context) {
             }
         }
         legacyPrefs.edit().remove(KEY_CONFIG).apply()
+    }
+
+    private fun syncNativeAuthConfig(config: NativeAuthBootstrapConfig) {
+        val currentAuth = nativeAuthStore.load() ?: return
+        if (currentAuth.restUrl == config.restUrl && currentAuth.anonKey == config.anonKey) return
+        nativeAuthStore.save(
+            currentAuth.copy(
+                restUrl = config.restUrl,
+                anonKey = config.anonKey,
+            )
+        )
     }
 }

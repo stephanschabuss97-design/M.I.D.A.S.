@@ -19,6 +19,10 @@
     <string name="native_callback_failed">OAuth-Callback fehlgeschlagen: %1$s</string>
     <string name="native_logout">Native Session loeschen</string>
     <string name="native_logout_done">Native MIDAS-Session wurde geloescht.</string>
+    <string name="native_diag_path_placeholder">Diagnosepfad: Interner Speicher/Download/midas-android-latest-trace.json</string>
+    <string name="native_diag_path_value">Diagnosepfad: %1$s</string>
+    <string name="native_diag_summary_empty">Letzter Trace: noch kein Eintrag.</string>
+    <string name="native_diag_summary_value">Letzter Trace: %1$s</string>
     <string name="open_midas">MIDAS oeffnen</string>
     <string name="midas_url">https://stephanschabuss97-design.github.io/M.I.D.A.S./</string>
     <string name="widget_title">MIDAS</string>

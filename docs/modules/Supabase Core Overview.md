@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 
 ---
 
@@ -35,7 +36,7 @@ Related docs:
 
 ## 3. Datenmodell / Storage
 
-- `supabaseState` (Runtime): `authState`, `sbClient`, Header-Cache, `lastUserId`.
+- `supabaseState` (Runtime): `authState`, `sbClient`, Header-Cache, `lastUserId`, `authDecisionMeta`.
 - Session wird durch Supabase Auth im Browser persistent gespeichert; Runtime-Status liegt in `supabaseState`.
 - Wichtig:
   - MIDAS ist browser-first.
@@ -59,6 +60,9 @@ Related docs:
 - `fetchWithAuth` fuehrt REST calls mit Auth-Headern aus.
 - `createSupabaseFn` (main.js) kapselt Zugriff und Fehler bei fehlenden Exports.
 - `ensureSupabaseClient` erstellt den Client einmal (inflight lock), um Mehrfach-Instanzen zu vermeiden.
+- `ensureSupabaseClient` laeuft inzwischen kontextsensitiv:
+  - Browser/PWA behaelt die normalen Supabase-Defaults
+  - Android-WebView nutzt einen engeren Client-Modus, weil die Session importiert statt lokal gestartet wird
 
 ### 4.4 Persistenz
 - Persistente Session im Browser (Supabase Auth); Frontend haelt zusaetzlich Runtime-State.
@@ -96,6 +100,9 @@ Related docs:
 - `createSupabaseFn` in `assets/js/main.js` als Standard-Entry.
 - Ein nativer Android-Node darf am Supabase-Vertrag andocken, ohne den stabilen Browser-/PWA-Login-Start selbst umzuschneiden.
 - Der Android-Pfad darf dieselben Reads und denselben fachlichen Session-Vertrag nutzen, aber keinen zweiten fachlich abweichenden Auth-Zustand neben Browser/PWA erzeugen.
+- Im Android-WebView darf `SupabaseAPI` nicht wieder still der Auth-Owner werden:
+  - native Session bleibt fuehrend
+  - WebView-Client bleibt Mirror-/Arbeitskontext
 
 ---
 
@@ -118,7 +125,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Supabase Config, Core Client/Auth/HTTP, `MODULE_SOURCES`.
 - Dependencies (soft): Realtime (optional).
-- Known issues / risks: fehlende Config; Header-Cache stale; `supabase:ready` Timing; Browser- und Native-Auth duerfen nicht in zwei fachlich unterschiedliche Session-Zustaende auseinanderlaufen.
+- Known issues / risks: fehlende Config; Header-Cache stale; `supabase:ready` Timing; Browser- und Native-Auth duerfen nicht in zwei fachlich unterschiedliche Session-Zustaende auseinanderlaufen; Android-WebView darf Browser-Client-Defaults nicht wieder unkritisch wie die PWA behandeln.
 - Backend / SQL / Edge: Supabase Projekt.
 
 ---

@@ -222,15 +222,19 @@ const resolveAuthStateWaiters = (state) => {
 };
 
 const updateBootStatusForState = (state) => {
+  const decisionMeta = supabaseState.authDecisionMeta;
   if (state === 'auth') {
     reportBootStatus('');
     return;
   }
   if (state === 'unauth') {
-    reportBootStatus('Nicht angemeldet', 'error');
+    reportBootStatus(
+      decisionMeta?.bootMessage || 'Nicht angemeldet',
+      decisionMeta?.tone || 'error'
+    );
     return;
   }
-  reportBootStatus('Pr\u00fcfe Session ...', 'info');
+  reportBootStatus(decisionMeta?.bootMessage || 'Pr\u00fcfe Session ...', decisionMeta?.tone || 'info');
 };
 
 const updateBootLockForState = (state) => {
@@ -265,10 +269,23 @@ const applyAuthUi = (state) => {
   }
 };
 
+const setAuthDecisionMeta = (meta) => {
+  supabaseState.authDecisionMeta = meta && typeof meta === 'object' ? { ...meta } : null;
+};
+
+const clearAuthDecisionMeta = () => {
+  supabaseState.authDecisionMeta = null;
+};
+
 const setAuthState = (nextState, { force = false } = {}) => {
   const normalized = normalizeAuthState(nextState);
   if (!force && supabaseState.authState === normalized) {
     return normalized;
+  }
+  if (normalized === 'auth') {
+    clearAuthDecisionMeta();
+  } else if (!supabaseState.authDecisionMeta && normalized === 'unknown') {
+    setAuthDecisionMeta({ source: 'auth-core', status: 'auth-check', bootMessage: 'Pr\u00fcfe Session ...', tone: 'info' });
   }
   supabaseState.authState = normalized;
   if (normalized === 'auth') {
@@ -317,6 +334,30 @@ const clearAuthGrace = () => {
     clearTimeout(supabaseState.authGraceTimer);
     supabaseState.authGraceTimer = null;
   }
+};
+
+const clearCachedAuthIdentity = () => {
+  callUserUi('');
+  supabaseState.lastLoggedIn = false;
+  if (supabaseState.lastUserId) {
+    diag.add?.('[auth] session cleared');
+    supabaseState.lastUserId = null;
+  }
+};
+
+const createPendingSignOutCleanup = () => async () => {
+  (globalWindow?.teardownRealtime || noopRealtime)();
+  try {
+    await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:logout');
+  } catch (_) {}
+  try {
+    await globalWindow?.refreshAppointments?.();
+  } catch (_) {}
+};
+
+const stageSignedOutState = () => {
+  clearCachedAuthIdentity();
+  supabaseState.pendingSignOut = createPendingSignOutCleanup();
 };
 
 export const finalizeAuthState = (logged) => {
@@ -375,9 +416,127 @@ const refreshAndroidBootstrapState = async () => {
   }
 };
 
+const markAndroidBootstrapSessionAbsent = () => {
+  if (!globalWindow) return null;
+  const current = getAndroidBootstrapState() || {};
+  const nextState = {
+    ...current,
+    status: 'session-absent',
+    accessToken: '',
+    refreshToken: '',
+    userId: '',
+    applied: false,
+    clearedAt: new Date().toISOString()
+  };
+  globalWindow.__midasAndroidAuthBootstrapState = nextState;
+  return nextState;
+};
+
+const buildAndroidBootstrapDecision = (status) => {
+  switch (status) {
+    case 'invalid-config':
+    case 'empty':
+      return {
+        authState: 'unauth',
+        tone: 'error',
+        bootMessage: 'Android-Konfiguration fehlt oder ist ungueltig.',
+        reason: 'android-bootstrap-config'
+      };
+    case 'session-absent':
+      return {
+        authState: 'unauth',
+        tone: 'error',
+        bootMessage: 'Nicht angemeldet',
+        reason: 'android-bootstrap-unauth'
+      };
+    case 'session-staged':
+      return {
+        authState: 'unknown',
+        tone: 'info',
+        bootMessage: 'Uebernehme native Session ...',
+        reason: 'android-bootstrap-staged'
+      };
+    case 'session-imported':
+      return {
+        authState: 'unknown',
+        tone: 'info',
+        bootMessage: 'Pruefe native Session ...',
+        reason: 'android-bootstrap-imported'
+      };
+    case 'session-import-error':
+    case 'session-staging-invalid':
+    case 'client-missing':
+    case 'timeout':
+    case 'error':
+      return {
+        authState: 'unauth',
+        tone: 'error',
+        bootMessage: 'Android-Session konnte nicht uebernommen werden.',
+        reason: 'android-bootstrap-error'
+      };
+    case 'bridge-missing':
+    case 'missing':
+    default:
+      return null;
+  }
+};
+
+const applyAndroidBootstrapDecision = (status) => {
+  const decision = buildAndroidBootstrapDecision(status);
+  if (!decision) return null;
+  setAuthDecisionMeta({
+    source: 'android-bootstrap',
+    status,
+    bootMessage: decision.bootMessage,
+    tone: decision.tone,
+    reason: decision.reason
+  });
+  setAuthState(decision.authState, { force: true });
+  return decision;
+};
+
+const waitForAndroidBootstrapState = async ({ timeoutMs = 2500 } = {}) => {
+  const promise = globalWindow?.__midasAndroidAuthBootstrapPromise;
+  if (!promise || typeof promise.then !== 'function') {
+    return { status: 'missing' };
+  }
+
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(
+      () => resolve({ status: 'timeout' }),
+      Math.max(0, Number(timeoutMs) || 0)
+    );
+  });
+
+  try {
+    const result = await Promise.race([Promise.resolve(promise), timeoutPromise]);
+    if (result && typeof result === 'object') {
+      return result;
+    }
+    return { status: String(result?.status || result || 'resolved') };
+  } catch (error) {
+    diag.add?.('[auth] android bootstrap wait failed: ' + (error?.message || error));
+    return {
+      status: 'error',
+      message: String(error?.message || error || 'android-bootstrap-wait-failed')
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export async function applyAndroidBootstrapSession() {
   const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
   if (!bootstrapState) return 'missing';
+  const sessionGeneration = Number(bootstrapState.sessionGeneration || 0) || 0;
+  if (
+    bootstrapState.applied &&
+    sessionGeneration > 0 &&
+    Number(bootstrapState.appliedGeneration || 0) === sessionGeneration
+  ) {
+    return bootstrapState.status || 'already-applied';
+  }
   if (bootstrapState.applied) return bootstrapState.status || 'already-applied';
   if (bootstrapState.status !== 'session-staged') {
     return bootstrapState.status || 'noop';
@@ -405,8 +564,77 @@ export async function applyAndroidBootstrapSession() {
   bootstrapState.applied = true;
   bootstrapState.status = 'session-imported';
   bootstrapState.appliedAt = new Date().toISOString();
+  bootstrapState.appliedGeneration = sessionGeneration;
+  setAuthDecisionMeta({
+    source: 'android-bootstrap',
+    status: 'session-imported',
+    bootMessage: 'Pruefe native Session ...',
+    tone: 'info',
+    reason: 'android-bootstrap-imported'
+  });
   diag.add?.('[auth] android bootstrap session imported');
   return bootstrapState.status;
+}
+
+export async function prepareAndroidBootstrapAuthCheck({ timeoutMs = 2500 } = {}) {
+  const bootstrapState = await waitForAndroidBootstrapState({ timeoutMs });
+  const bootstrapStatus = bootstrapState?.status || 'missing';
+
+  if (!isAndroidNativeAuthOwnerContext()) {
+    return {
+      status: bootstrapStatus,
+      bootstrapStatus,
+      action: 'browser-auth-owner'
+    };
+  }
+
+  applyAndroidBootstrapDecision(bootstrapStatus);
+
+  if (bootstrapStatus === 'session-staged') {
+    const importStatus = await applyAndroidBootstrapSession();
+    applyAndroidBootstrapDecision(importStatus);
+    return {
+      status: importStatus,
+      bootstrapStatus,
+      action: 'session-imported'
+    };
+  }
+
+  return {
+    status: bootstrapStatus,
+    bootstrapStatus,
+    action: 'bootstrap-observed'
+  };
+}
+
+export async function handleAndroidNativeSessionCleared({ reload = true } = {}) {
+  if (!isAndroidNativeAuthOwnerContext()) {
+    return false;
+  }
+
+  clearAuthGrace();
+  markAndroidBootstrapSessionAbsent();
+  applyAndroidBootstrapDecision('session-absent');
+  try {
+    await refreshAndroidBootstrapState();
+  } catch (_) {}
+
+  stageSignedOutState();
+
+  try {
+    if (supabaseState.sbClient?.auth?.signOut) {
+      await supabaseState.sbClient.auth.signOut();
+    }
+  } catch (error) {
+    diag.add?.('[auth] android native clear signOut failed: ' + (error?.message || error));
+  } finally {
+    finalizeAuthState(false);
+  }
+
+  if (reload && globalWindow?.location?.reload) {
+    globalWindow.location.reload();
+  }
+  return true;
 }
 
 export async function requireSession() {
@@ -421,6 +649,7 @@ export async function requireSession() {
     if (isAndroidNativeAuthOwnerContext()) {
       const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
       const bootstrapStatus = bootstrapState?.status || 'missing';
+      applyAndroidBootstrapDecision(bootstrapStatus);
       if (
         bootstrapStatus === 'session-absent' ||
         bootstrapStatus === 'invalid-config' ||
@@ -518,17 +747,7 @@ export function watchAuthState() {
       }
     }
 
-    callUserUi('');
-    supabaseState.lastLoggedIn = false;
-    if (supabaseState.lastUserId) {
-      diag.add?.('[auth] session cleared');
-      supabaseState.lastUserId = null;
-    }
-    supabaseState.pendingSignOut = async () => {
-      (globalWindow?.teardownRealtime || noopRealtime)();
-      try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:logout'); } catch (_) {}
-      try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
-    };
+    stageSignedOutState();
 
     if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       finalizeAuthState(false);

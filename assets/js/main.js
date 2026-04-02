@@ -240,7 +240,7 @@ const requireSession = createSupabaseFn('requireSession');
 const watchAuthState = createSupabaseFn('watchAuthState');
 const bindAuthButtons = createSupabaseFn('bindAuthButtons');
 const afterLoginBoot = createSupabaseFn('afterLoginBoot');
-const applyAndroidBootstrapSession = createSupabaseFn('applyAndroidBootstrapSession', { optional: true });
+const prepareAndroidBootstrapAuthCheck = createSupabaseFn('prepareAndroidBootstrapAuthCheck', { optional: true });
 const baseUrlFromRest = createSupabaseFn('baseUrlFromRest');
 const requireDoctorUnlock = createSupabaseFn('requireDoctorUnlock');
 const bindAppLockButtons = createSupabaseFn('bindAppLockButtons');
@@ -357,25 +357,6 @@ const waitForDomReady = () => {
   });
 };
 
-const waitForAndroidWebViewAuthBootstrap = async ({ timeoutMs = 2500 } = {}) => {
-  const promise = window.__midasAndroidAuthBootstrapPromise;
-  if (!promise || typeof promise.then !== 'function') return 'missing';
-
-  let timeoutId;
-  const timeoutPromise = new Promise((resolve) => {
-    timeoutId = setTimeout(() => resolve({ status: 'timeout' }), Math.max(0, Number(timeoutMs) || 0));
-  });
-  try {
-    const result = await Promise.race([Promise.resolve(promise), timeoutPromise]);
-    return result?.status || 'resolved';
-  } catch (err) {
-    diag.add?.('[boot] android webview auth bootstrap failed: ' + (err?.message || err));
-    return 'error';
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
 const waitForAuthDecisionSoft = async ({ timeoutMs = 1200 } = {}) => {
   if (!hasSupabaseFn('waitForAuthDecision')) return 'missing';
   if (isAuthDecisionKnown()) return 'known';
@@ -480,20 +461,13 @@ async function runAuthCheckPhase(context) {
   setBootStage('AUTH_CHECK');
   logBootPhaseSummary('AUTH_CHECK', 'start');
   try {
-    const androidBootstrapStatus = await waitForAndroidWebViewAuthBootstrap({ timeoutMs: 2500 });
-    if (androidBootstrapStatus !== 'missing' && androidBootstrapStatus !== 'bridge-missing') {
-      diag.add?.('[boot] android webview auth bootstrap: ' + androidBootstrapStatus);
-    }
     await ensureSupabaseReadyForAuth({ timeoutMs: 6000 });
     await initDB();
     await ensureSupabaseClient();
-    const androidSessionImportStatus = await applyAndroidBootstrapSession?.();
-    if (
-      androidSessionImportStatus &&
-      androidSessionImportStatus !== 'missing' &&
-      androidSessionImportStatus !== 'config-imported'
-    ) {
-      diag.add?.('[boot] android webview session import: ' + androidSessionImportStatus);
+    const androidBootstrapAuthCheck = await prepareAndroidBootstrapAuthCheck?.({ timeoutMs: 2500 });
+    const androidBootstrapStatus = androidBootstrapAuthCheck?.status || 'missing';
+    if (androidBootstrapStatus !== 'missing' && androidBootstrapStatus !== 'bridge-missing') {
+      diag.add?.('[boot] android auth bootstrap auth-check: ' + androidBootstrapStatus);
     }
     context.hasSession = await requireSession();
     const authDecisionState = await waitForAuthDecisionSoft({ timeoutMs: 1200 });

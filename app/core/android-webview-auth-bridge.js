@@ -35,10 +35,14 @@
 
       const payload = JSON.parse(String(rawPayload));
       const restUrl = String(payload?.restUrl || '').trim();
+      const supabaseUrl = String(payload?.supabaseUrl || '').trim();
       const anonKey = normalizeAnonKey(payload?.anonKey);
       const accessToken = String(payload?.accessToken || '').trim();
       const refreshToken = String(payload?.refreshToken || '').trim();
       const userId = String(payload?.userId || '').trim();
+      const updatedAt = String(payload?.updatedAt || '').trim();
+      const sessionGeneration = Number(payload?.sessionGeneration || 0) || 0;
+      const configSource = String(payload?.configSource || '').trim();
 
       if (!restUrl || !anonKey) {
         globalWindow.__midasAndroidAuthBootstrapState = { status: 'invalid-config' };
@@ -56,10 +60,14 @@
       globalWindow.__midasAndroidAuthBootstrapState = {
         status: accessToken && refreshToken ? 'session-staged' : 'session-absent',
         restUrl,
+        supabaseUrl,
         anonKey,
         accessToken,
         refreshToken,
         userId,
+        updatedAt,
+        sessionGeneration,
+        configSource,
         stagedAt: new Date().toISOString(),
         applied: false,
       };

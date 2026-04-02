@@ -229,6 +229,20 @@ Bewertung:
 - Android muss Auth von ausserhalb des Web-Boots einspeisen.
 - Genau dort ist Drift zwischen `native session ok` und `web auth decision noch nicht sauber` am wahrscheinlichsten.
 
+F5 Ergebnisprotokoll:
+- Die Android-Bootstrap-Orchestrierung lebt fuer `AUTH_CHECK` nicht mehr in `assets/js/main.js`, sondern im offiziellen Auth-Core:
+  - `app/supabase/auth/core.js` besitzt jetzt `prepareAndroidBootstrapAuthCheck()`
+- Dieser Einstieg uebernimmt im Auth-Layer:
+  - das Warten auf den nativen Android-Bootstrap
+  - die Bewertung des Bootstrap-Status
+  - den kontrollierten Session-Import bei `session-staged`
+- `assets/js/main.js` fragt im Boot jetzt nur noch den Auth-Core:
+  - kein eigener Android-Bootstrap-Waiter mehr im Main-Router
+  - kein separater Session-Import ausserhalb des Auth-Layers
+- Ergebnis:
+  - Android bleibt zwar ein nativer Vorzustand vor dem Web-Boot
+  - aber die eigentliche Auth-Vorbereitung fuer `AUTH_CHECK` liegt jetzt naeher am selben Auth-Core, der auch den restlichen Web-State fuehrt
+
 ### F6 - Die PWA serialisiert Signout/Cleanup im Auth-Core, Android hat mehrere Clear-Akteure
 
 PWA:
@@ -247,6 +261,19 @@ Bewertung:
 - Die PWA hat einen serialisierten Auth-Clear-Pfad.
 - Android hat aktuell mehrere legitime Stellen, die Session-/Logout-Verhalten anstossen.
 - Das erhoeht die Gefahr fuer Loops, stale States und schwer sichtbare Race Conditions.
+
+F6 Ergebnisprotokoll:
+- Der Android-WebView-Logout schiesst nicht mehr blind `signOut()+reload` ausserhalb des Auth-Cores ab.
+- `app/supabase/auth/core.js` besitzt jetzt `handleAndroidNativeSessionCleared()`:
+  - markiert den Android-Bootstrap lokal als `session-absent`
+  - staged den Signed-Out-Zustand ueber denselben Core-Pfad wie sonstige Logout-Faelle
+  - fuehrt `signOut()` im Web-Kontext kontrolliert aus
+  - finalisiert ueber `finalizeAuthState(false)`
+- `watchAuthState()` nutzt fuer Signed-Out-Faelle jetzt denselben vorbereiteten Cleanup-Pfad statt eine zweite, lokale Logout-Strecke zu bauen.
+- `MidasWebActivity` ruft beim nativen Logout zuerst diesen offiziellen Auth-Core-Einstieg auf und faellt nur bei fehlender API auf den alten Minimalpfad zurueck.
+- Ergebnis:
+  - Android hat fuer den WebView-Kontext jetzt einen naeher am PWA-Core liegenden Clear-Pfad
+  - die Zahl konkurrierender Logout-Akteure im Web-Kontext ist reduziert
 
 ### F7 - Der Android-WebView-Boot kennt Bootstrap-Status, aber diese Status werden noch nicht als vollwertige Boot-/State-Entscheidung verwertet
 
@@ -273,6 +300,19 @@ Bewertung:
 - Android hat bereits Bootstrap-Signale, aber noch keinen gleichwertig harten Uebergang von "Bootstrap-Ergebnis" zu "offizieller Auth-/Boot-Entscheidung".
 - Dadurch kann derselbe Fehler wie ein diffuses Loop-/Crash-Symptom erscheinen statt wie ein klarer, frueher Bootzustand.
 
+F7 Ergebnisprotokoll:
+- Bootstrap-Status werden jetzt im Auth-Core nicht mehr nur geloggt, sondern in einen offiziellen Auth-/Boot-Entscheid uebersetzt.
+- `app/supabase/auth/core.js` mappt Android-Bootstrap-Zustaende jetzt auf:
+  - offiziellen Auth-State (`unknown` / `unauth`)
+  - Boot-Statusnachricht
+  - Error-/Info-Ton
+- `session-absent`, `invalid-config`, `empty` und Importfehler enden damit nicht mehr als diffuse Folgeeffekte, sondern als klarer unauth-/error-Zustand.
+- `session-staged` und `session-imported` werden als offizielle Zwischenzustaende mit Info-Status gefuehrt.
+- `app/supabase/core/state.js` traegt dafuer jetzt `authDecisionMeta`, damit Boot-Status und Auth-Entscheid aus demselben Core gelesen werden.
+- Ergebnis:
+  - Android-Bootstrap-Status haben jetzt einen gleichwertigeren Uebergang in den sichtbaren Auth-/Boot-Layer
+  - fruehe Android-Bootprobleme erscheinen weniger als "mystischer Loop", sondern naeher an einem offiziellen Bootzustand
+
 ### F8 - Die PWA nutzt ein Runtime-/Persistenzmodell, Android muss Stores zwischen nativer Huelle und WebView ueberbruecken
 
 PWA:
@@ -289,6 +329,22 @@ Bewertung:
 - Android muss Konfiguration und Session ueber Store-Grenzen hinweg spiegeln.
 - Die PWA hat dieses Problem nicht.
 - Jeder Bug in diesem Spiegelpfad wirkt sofort wie ein Boot-/Login-Loop, obwohl die eigentliche Fachlogik intakt sein kann.
+
+F8 Ergebnisprotokoll:
+- Der Android-Bootstrap fuehrt Konfiguration und Session jetzt konsistenter zusammen:
+  - `NativeWebViewAuthBridge` bevorzugt fuer `restUrl`/`anonKey` jetzt den expliziten `NativeAuthConfigStore`
+  - Tokens und User-Session kommen weiter aus `NativeAuthStore`
+- `NativeAuthConfigStore.save(...)` synchronisiert geaenderte Android-Konfiguration jetzt in einen vorhandenen nativen Auth-State mit hinein.
+  - Dadurch driften `NativeAuthConfigStore` und `NativeAuthStore` bei spaeteren Konfig-Aenderungen nicht mehr still auseinander.
+- Der WebView-Bootstrap traegt jetzt zusaetzliche Spiegel-Metadaten:
+  - `supabaseUrl`
+  - `sessionGeneration`
+  - `updatedAt`
+  - `configSource`
+- `app/supabase/auth/core.js` nutzt `sessionGeneration`, damit ein bereits importierter nativer Session-Spiegel nicht blind erneut als neuer Import behandelt wird.
+- Ergebnis:
+  - Android-Konfiguration und Session-Spiegel sind naeher an einem kontrollierten Brueckenvertrag
+  - der Store-Uebergang zwischen nativer Huelle und WebView ist weniger drift-anfaellig
 
 ### F9 - Die PWA hat keinen Activity-/Intent-Lebenszyklus, Android schon
 
@@ -308,6 +364,17 @@ Bewertung:
 - Einige Android-Fehler sind keine Auth-Fachfehler, sondern Activity-/Intent-Lebenszyklusfehler.
 - Diese Fehlerklasse existiert in der PWA praktisch nicht.
 
+F9 Ergebnisprotokoll:
+- `MainActivity` ist fuer Launcher + OAuth-Callback jetzt expliziter als Reentry-Owner geschnitten:
+  - Android-Manifest nutzt dafuer jetzt `launchMode="singleTask"`.
+- Dadurch landet der Deep-Link-Callback eher auf einer bestehenden `MainActivity`, statt still weitere Instanzen desselben Einstiegspunkts aufzubauen.
+- `openMidas()` in `MainActivity.kt` startet `MidasWebActivity` jetzt mit:
+  - `FLAG_ACTIVITY_CLEAR_TOP`
+  - `FLAG_ACTIVITY_SINGLE_TOP`
+- Ergebnis:
+  - der Rueckweg `Browser -> Callback -> MainActivity -> MIDAS-WebView` ist naeher an einem einzelnen Android-Task-Pfad
+  - stale Reentry-/Stack-Effekte zwischen mehreren `MainActivity`-/`MidasWebActivity`-Instanzen werden reduziert
+
 ### F10 - Die PWA besitzt einen sichtbaren, zentralen Boot-Fehlerpfad; Android hat noch keinen gleichwertigen On-Device-Diagnosepfad
 
 PWA:
@@ -325,6 +392,16 @@ Android:
 Bewertung:
 - Die PWA ist leichter zu debuggen, weil Bootfehler sichtbar und zentralisiert sind.
 - Android fuehlt sich aktuell instabiler an, weil derselbe Fehler schnell als Loop/Crash erscheint, ohne dass der eigentliche Bootpunkt klar sichtbar ist.
+
+F10 Ergebnisprotokoll:
+- Android hatte bereits JSON-Trace-/Crash-Dateien, aber keinen gleichwertig sichtbaren On-Device-Hinweis innerhalb der App.
+- `AndroidBootTrace` persistiert jetzt zusaetzlich eine kleine Zusammenfassung des letzten Trace-/Crashpunkts.
+- `MainActivity` zeigt diesen Diagnosepfad jetzt direkt an:
+  - statischer Pfad zur JSON im Download-Ordner
+  - letzte bekannte Trace-Zeile als Kurzsummary
+- Ergebnis:
+  - Android-Diagnostik ist nicht mehr nur "Datei irgendwo im Speicher"
+  - der native Node besitzt jetzt einen sichtbareren, zentraleren On-Device-Diagnosepfad als zuvor
 
 ## Vorlaeufige Gesamtschlussfolgerung aus dem Finding-Katalog
 

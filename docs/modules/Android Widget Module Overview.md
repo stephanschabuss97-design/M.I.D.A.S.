@@ -13,12 +13,14 @@ Status-Hinweis:
   - der bestehende Browser-/PWA-Login bleibt unveraendert
   - Android-Login laeuft ueber sicheren Browser-Kontext + Deep Link
   - die `WebView` ist MIDAS-Surface, nicht Login-Surface
+  - die Detailtiefe dazu liegt bewusst in `Android Native Auth Module Overview`
 
 Related docs:
 - [Hub Module Overview](Hub Module Overview.md)
 - [Hydration Target Module Overview](Hydration Target Module Overview.md)
 - [Intake Module Overview](Intake Module Overview.md)
 - [Medication Module Overview](Medication Module Overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 
 ---
 
@@ -200,6 +202,7 @@ Konsequenz:
 - Die `WebView` ist MIDAS-Surface und nicht mehr Login-Source of Truth.
 - Der gemeinsame Google-Login-Button bleibt im Browser/PWA der Web-Login.
 - Im Android-WebView wird derselbe Button gezielt auf nativen Login umgelenkt und startet keinen eingebetteten Google-OAuth mehr.
+- Der Auth-, Deep-Link- und Session-Handoff-Vertrag ist getrennt dokumentiert, damit dieses Dokument Widget-zentriert bleibt.
 
 ---
 
@@ -304,4 +307,5 @@ Known risks:
 
 - Der Android-Pfad ist als MIDAS-Node sauber dokumentiert.
 - Die Modul-Overview beschreibt Snapshot, Sync, Cache, Launcher und Widget-Rolle ohne Reverse Engineering.
+- Native Auth-/Deep-Link-Details bleiben ueber die getrennte Android-Auth-Overview nachvollziehbar, ohne dieses Dokument zu ueberladen.
 - Spaetere Chats koennen den Android-Widget-Pfad aus der Doku heraus sicher uebernehmen.

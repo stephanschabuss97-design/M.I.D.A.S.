@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 
 ---
 
@@ -32,6 +33,8 @@ Related docs:
 | `index.html` | Touch-Log Panel + Script-Reihenfolge |
 | `app/styles/base.css` | Bootscreen + Boot-Error-Fallback-Log Styling |
 | `app/styles/auth.css` | Diagnostics Panel Layout + Toggles |
+| `android/app/src/main/java/de/schabuss/midas/diag/AndroidBootTrace.kt` | nativer Android-Boot-/Crash-Trace mit JSON-Output |
+| `android/app/src/main/java/de/schabuss/midas/MidasAndroidApp.kt` | globaler nativer Crash-Hook |
 
 ---
 
@@ -40,6 +43,10 @@ Related docs:
 - Ringbuffer im Logger (max Entries) + Perf-Samples im RAM.
 - Keine persistente Speicherung im Diagnostics-Layer selbst.
 - Bootflow speichert zusaetzlich die letzten 3 Boot-Fehler in `localStorage` (separate Boot-Historie).
+- Der Android-Node besitzt zusaetzlich einen getrennten nativen Diagnosepfad:
+  - JSON-Trace im Download-Ordner
+  - Crash-Dateien bei uncaught exceptions
+  - kleine Summary in `MainActivity`
 
 ---
 
@@ -65,6 +72,8 @@ Related docs:
 
 ### 4.4 Persistenz
 - Keine Persistenz.
+- Ausnahme:
+  - der native Android-Diagnosepfad persistiert Trace-/Crash-Daten absichtlich dateibasiert fuer On-Device-Debugging.
 
 ---
 
@@ -106,6 +115,10 @@ Related docs:
 - Boot-Flow ruft `diag.show()` bei Fehlerzustand und hat einen UI-Fallback, falls das nicht greift.
 - Boot-Flow stellt `bootFlow.getErrorHistory()` und `bootFlow.clearErrorHistory()` fuer persistente Fehlerhistorie bereit.
 - Boot-Flow hat einen Early-Fallback fuer Fehler vor regularem Boot-Error-Panel (`#earlyBootErrorFallback`).
+- Android nutzt fuer denselben Zweck keinen Web-Overlay-Pfad, sondern:
+  - `midas-android-latest-trace.json`
+  - `midas-android-crash-YYYYMMDD-HHMMSS.json`
+  - plus sichtbare Summary in der nativen `MainActivity`
 
 ---
 
@@ -136,7 +149,7 @@ Related docs:
 - Status: aktiv (Dev/QA).
 - Dependencies (hard): diag Core, diagnosticsLayer, `DIAGNOSTICS_ENABLED`.
 - Dependencies (soft): n/a.
-- Known issues / risks: deaktiviert -> weniger Sichtbarkeit; aktiviert -> leichte Perf-Kosten.
+- Known issues / risks: deaktiviert -> weniger Sichtbarkeit; aktiviert -> leichte Perf-Kosten; Web- und Android-Diagnosepfad sind bewusst getrennt und muessen im Fehlerfall als zwei unterschiedliche Kontexte gelesen werden.
 - Backend / SQL / Edge: n/a.
 
 ---

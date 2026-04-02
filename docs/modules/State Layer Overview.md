@@ -37,7 +37,7 @@ Related docs:
 - Kein persistenter Speicher, nur Runtime-Objekte.
 - Zentrale Objekte:
   - `window.AppModules.captureGlobals` (Capture/Intake)
-  - `supabaseState` (Auth/Client/Headers)
+  - `supabaseState` (Auth/Client/Headers/Auth-Decision-Meta)
   - `uiRefreshState` (Refresh-Batching)
   - Modulinterne Caches (z. B. `chartPanel.currentMeta`, `latestSystemComment`).
 
@@ -48,6 +48,7 @@ Related docs:
 ### 4.1 Initialisierung
 - `capture-globals` initialisiert Default-Werte und Timer-Refs.
 - `supabase/core/state.js` initialisiert Auth/Client Status.
+- `supabase/core/state.js` traegt fuer den Android-WebView jetzt auch fruehe Bootstrap-Entscheide ueber `authDecisionMeta`.
 - Module laden ihre internen Caches lazy (z. B. Charts, Trendpilot).
 
 ### 4.2 User-Trigger
@@ -98,6 +99,7 @@ Related docs:
 - `requestUiRefresh` orchestriert Refresh von Doctor/Charts/Hub.
 - `trendpilot:latest` Event signalisiert neue System-Kommentare.
 - Supabase Auth State wird von mehreren Modulen gelesen.
+- Im Android-WebView kommt zusaetzlich ein frueher Auth-/Boot-Entscheid ueber `authDecisionMeta` hinzu.
 
 ---
 

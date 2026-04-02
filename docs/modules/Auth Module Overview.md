@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
 
 ---
 
@@ -76,6 +77,10 @@ Related docs:
   - native Session als Android-Owner
   - Android-gateter Session-Import in die `WebView`
   - `WebView` ist MIDAS-Surface, nicht Login-Surface
+  - Android-Bootstrap-Status werden im Auth-Core als offizieller Auth-/Boot-Entscheid verwertet
+  - Android-Logout im Web-Kontext laeuft ueber denselben Auth-Core-Grundsatz statt ueber verteilte Blind-Clears
+- Detailtiefe:
+  - die Android-seitige Umsetzung von nativer Session, Deep Link, WebView-Handoff und Diagnosepfad ist separat dokumentiert in `Android Native Auth Module Overview`
 
 ---
 
@@ -113,6 +118,10 @@ Related docs:
 - Ein nativer Android-Node darf an diesem Vertrag auf Session-/State-Ebene andocken, nicht dadurch, dass der Browser-Login blind in einer `WebView` wiederverwendet wird.
 - Android-Logout/Clear muss denselben Grundsatz wahren:
   - Auth-Zustand darf nicht nur optisch, sondern deterministisch ueber Session-, Widget- und WebView-Pfad geloescht werden.
+- Der Auth-Core besitzt dafuer heute Android-spezifische Einstiege:
+  - `prepareAndroidBootstrapAuthCheck()`
+  - `applyAndroidBootstrapSession()`
+  - `handleAndroidNativeSessionCleared()`
 
 ---
 
@@ -136,7 +145,7 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): Supabase Auth + `supabaseState`, Auth UI/Guard, Login/Unlock Overlays.
 - Dependencies (soft): Passkey/MFA Ausbau.
-- Known issues / risks: fehlende Supabase Config; `authState=unknown` blockt; Unlock-Flow kann haengen; Browser-OAuth darf nicht still in unzulaessige native `WebView`-Container gespiegelt werden.
+- Known issues / risks: fehlende Supabase Config; `authState=unknown` blockt; Unlock-Flow kann haengen; Browser-OAuth darf nicht still in unzulaessige native `WebView`-Container gespiegelt werden; Android darf im WebView nicht wieder zu einem zweiten gleichrangigen Auth-Owner driften.
 - Backend / SQL / Edge: Supabase Auth.
 
 ---

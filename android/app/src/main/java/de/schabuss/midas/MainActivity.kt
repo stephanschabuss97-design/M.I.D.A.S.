@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         AndroidBootTrace.log(applicationContext, "MainActivity.onCreate", intent?.dataString ?: "no-intent-data")
         WidgetSyncScheduler.ensureScheduled(applicationContext)
         prefillNativeAuthConfig()
+        renderBootTraceInfo()
 
         binding.openMidasButton.setOnClickListener {
             openMidas()
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         AndroidBootTrace.log(applicationContext, "MainActivity.onNewIntent", intent.dataString ?: "no-intent-data")
         setIntent(intent)
         maybeHandleOAuthCallback(intent)
+        renderBootTraceInfo()
         if (intent.getBooleanExtra(EXTRA_OPEN_MIDAS_IMMEDIATELY, false)) {
             openMidas()
         }
@@ -70,7 +72,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun openMidas() {
         AndroidBootTrace.log(applicationContext, "MainActivity.openMidas", "launch-webview")
-        startActivity(Intent(this, MidasWebActivity::class.java))
+        startActivity(
+            Intent(this, MidasWebActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+        )
     }
 
     private fun prefillNativeAuthConfig() {
@@ -133,6 +139,19 @@ class MainActivity : AppCompatActivity() {
         binding.nativeRestUrlInput.requestFocus()
         binding.nativeRestUrlInput.post {
             binding.nativeRestUrlInput.setSelection(binding.nativeRestUrlInput.text?.length ?: 0)
+        }
+    }
+
+    private fun renderBootTraceInfo() {
+        binding.nativeDiagPathText.text = getString(
+            R.string.native_diag_path_value,
+            AndroidBootTrace.latestTraceLocationLabel(),
+        )
+        val summary = AndroidBootTrace.latestSummary(applicationContext)
+        binding.nativeDiagSummaryText.text = if (summary.isBlank()) {
+            getString(R.string.native_diag_summary_empty)
+        } else {
+            getString(R.string.native_diag_summary_value, summary)
         }
     }
 
@@ -202,14 +221,16 @@ class MainActivity : AppCompatActivity() {
                 WidgetSyncScheduler.requestImmediate(applicationContext)
                 MidasWidgetProvider.refreshAll(applicationContext)
                 AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "session-saved", mapOf("entry" to entryReason))
-                Toast.makeText(
-                    this,
-                    getString(R.string.native_callback_success),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                if (entryReason == AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW) {
-                    AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "reopen-webview")
-                    openMidas()
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.native_callback_success),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    if (entryReason == AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW) {
+                        AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "reopen-webview")
+                        openMidas()
+                    }
                 }
             }
             AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "callback-handled")

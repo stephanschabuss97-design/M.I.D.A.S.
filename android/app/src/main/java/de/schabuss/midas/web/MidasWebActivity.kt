@@ -296,6 +296,12 @@ class MidasWebActivity : AppCompatActivity() {
         private val FORCE_LOGOUT_SCRIPT = """
             (async function() {
               try {
+                if (typeof window.AppModules?.supabase?.handleAndroidNativeSessionCleared === 'function') {
+                  await window.AppModules.supabase.handleAndroidNativeSessionCleared({ reload: true });
+                  return true;
+                }
+              } catch (_) {}
+              try {
                 await window.sbClient?.auth?.signOut?.();
               } catch (_) {}
               try {

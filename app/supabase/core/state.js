@@ -19,6 +19,7 @@ export const supabaseState = {
   intakeRpcDisabled: false,
   lastLoggedIn: false,
   authState: 'unauth',
+  authDecisionMeta: null,
   authGraceTimer: null,
   pendingSignOut: null,
   booted: false,
