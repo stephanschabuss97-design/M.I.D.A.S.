@@ -11,6 +11,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import de.schabuss.midas.R
 import de.schabuss.midas.auth.AndroidAuthContract
 import de.schabuss.midas.auth.NativeSessionController
@@ -18,6 +19,7 @@ import de.schabuss.midas.auth.NativeOAuthStartResult
 import de.schabuss.midas.auth.NativeOAuthStarter
 import de.schabuss.midas.databinding.ActivityMidasWebBinding
 import de.schabuss.midas.widget.WidgetSyncBridge
+import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
 class MidasWebActivity : AppCompatActivity() {
@@ -107,26 +109,28 @@ class MidasWebActivity : AppCompatActivity() {
     }
 
     private fun startNativeGoogleLoginFromWebView() {
-        when (
-            val result = NativeOAuthStarter(this).startGoogleLogin(
-                AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW,
-            )
-        ) {
-            NativeOAuthStartResult.Started -> {
-                Toast.makeText(this, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
-            }
-            NativeOAuthStartResult.MissingConfig -> {
-                Toast.makeText(this, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
-            }
-            NativeOAuthStartResult.InvalidConfig -> {
-                Toast.makeText(this, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
-            }
-            is NativeOAuthStartResult.Failed -> {
-                Toast.makeText(
-                    this,
-                    getString(R.string.native_login_failed, result.message),
-                    Toast.LENGTH_LONG,
-                ).show()
+        lifecycleScope.launch {
+            when (
+                val result = NativeOAuthStarter(this@MidasWebActivity).startGoogleLogin(
+                    AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW,
+                )
+            ) {
+                NativeOAuthStartResult.Started -> {
+                    Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
+                }
+                NativeOAuthStartResult.MissingConfig -> {
+                    Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
+                }
+                NativeOAuthStartResult.InvalidConfig -> {
+                    Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
+                }
+                is NativeOAuthStartResult.Failed -> {
+                    Toast.makeText(
+                        this@MidasWebActivity,
+                        getString(R.string.native_login_failed, result.message),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
         }
     }

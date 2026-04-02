@@ -29,6 +29,16 @@
         android:textColor="#C7D1E0"
         android:textSize="15sp" />
 
+    <TextView
+        android:id="@+id/nativeConfigHelpText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:text="@string/native_config_help"
+        android:textColor="#99C7D1E0"
+        android:textSize="13sp" />
+
     <EditText
         android:id="@+id/nativeRestUrlInput"
         android:layout_width="match_parent"

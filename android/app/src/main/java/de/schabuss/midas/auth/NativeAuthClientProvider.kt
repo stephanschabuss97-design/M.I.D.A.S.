@@ -23,6 +23,8 @@ object NativeAuthClientProvider {
 
         val newClient = createSupabaseClient(config.supabaseUrl, config.anonKey) {
             install(Auth) {
+                scheme = AndroidAuthContract.CALLBACK_SCHEME
+                host = AndroidAuthContract.CALLBACK_HOST
                 defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
             }
         }

@@ -72,6 +72,243 @@ Wichtige neue Erkenntnis:
   - https://supabase.com/docs/reference/kotlin/initializing
   - https://supabase.com/docs/reference/kotlin/v2/auth-signinwithoauth
 
+## Finding-Katalog - PWA vs. Android-Boot/Auth
+
+Zweck dieses Katalogs:
+- die Unterschiede festhalten, die die Browser-/PWA-Version stabil machen
+- Android-Probleme nicht nur als Einzelfehler, sondern als Muster lesen
+- spaetere Fixes gegen denselben Root Cause ausrichten statt nur Symptome zu patchen
+
+### F1 - Der Android-WebView-Bootstrap mutiert Auth frueher als der Web-Auth-Core ihn uebernimmt
+
+PWA:
+- `ensureSupabaseClient()` baut nur den Client.
+- `requireSession()`, `scheduleAuthGrace()`, `finalizeAuthState()` und `watchAuthState()` in `app/supabase/auth/core.js` sind die Stellen, die Auth-Zustand offiziell entscheiden und in UI/Bootflow ueberfuehren.
+
+Android:
+- `app/core/android-webview-auth-bridge.js` ruft bereits vor dem normalen Web-Boot:
+  - `ensureSupabaseClient()`
+  - `client.auth.setSession(...)`
+  - und bei fehlenden Tokens sogar `client.auth.signOut()`
+- damit wird der Web-Supabase-Client mutiert, bevor der normale Auth-Core den Zustand fuehrt.
+
+Bewertung:
+- Die PWA haelt Auth-Entscheidung und Auth-Mutation enger zusammen.
+- Android schiebt Auth-Mutation in einen vorgelagerten Bridge-Pfad.
+- Das ist ein sehr wahrscheinlicher Loop-Kandidat, weil Bootflow und Auth-Core einen bereits veraenderten Client vorfinden, den sie nicht selbst in diesen Zustand gebracht haben.
+
+F1 Ergebnisprotokoll:
+- `app/core/android-webview-auth-bridge.js` staged fuer Android nur noch:
+  - Konfiguration (`webhookUrl`, `webhookKey`)
+  - native Session-Daten als Bootstrap-State
+- Der Bridge-Pfad mutiert den Web-Supabase-Client nicht mehr selbst:
+  - kein fruehes `setSession(...)`
+  - kein fruehes `signOut()`
+- Der eigentliche Session-Import wurde in den offiziellen Web-Auth-Pfad gezogen:
+  - `app/supabase/auth/core.js` besitzt jetzt `applyAndroidBootstrapSession()`
+  - `assets/js/main.js` ruft diesen Import kontrolliert innerhalb von `AUTH_CHECK` nach `ensureSupabaseClient()` und vor `requireSession()` auf
+- Ergebnis:
+  - der Android-WebView-Bootstrap liefert nur Vorzustand
+  - der MIDAS-Bootflow bleibt der Owner der eigentlichen Auth-Mutation im Web-Kontext
+
+### F2 - Android behandelt "keine nativen Tokens" als aktive Web-Signout-Aktion; die PWA behandelt das nur als Beobachtung
+
+PWA:
+- `requireSession()` fragt `sbClient.auth.getSession()` ab.
+- Wenn keine Session da ist, faellt der Zustand auf `unauth` oder ueber `unknown`/Grace.
+- Die PWA fuehrt beim blossen Fehlen einer Session im Boot nicht automatisch ein zusaetzliches `signOut()` aus.
+
+Android:
+- `app/core/android-webview-auth-bridge.js` fuehrt bei vorhandener Config, aber fehlenden nativen Tokens aktiv `client.auth.signOut()` aus.
+
+Bewertung:
+- Das ist eine wichtigere Abweichung als es zuerst wirkt.
+- Beobachtung (`keine Session`) und Aktion (`signOut`) sind in der PWA bewusst getrennt.
+- Android koppelt beides im Bootstrap zusammen und riskiert damit Reentry-/Clear-Schleifen in einem Moment, in dem der Web-Boot eigentlich erst Zustand verstehen sollte.
+
+F2 Ergebnisprotokoll:
+- Der Android-WebView-Bootstrap behandelt "Config vorhanden, aber keine nativen Tokens" jetzt explizit als Beobachtung:
+  - neuer Bootstrap-Status `session-absent`
+- Dadurch gilt im Android-Web-Kontext jetzt derselbe Grundsatz wie in der PWA:
+  - fehlende Session wird zuerst als Zustand gelesen
+  - nicht sofort als aktive `signOut()`-Mutation eskaliert
+- Ergebnis:
+  - `session-absent` ist fuer den Bootflow jetzt ein klarer, lesbarer Zustand
+  - der Android-Boot koppelt Beobachtung und Logout-Aktion nicht mehr zusammen
+
+### F3 - Dieselbe Web-Client-Konfiguration laeuft im Android-WebView gegen einen anderen Lebenszyklus als in der PWA
+
+Relevanter Client in `app/supabase/core/client.js`:
+- `persistSession: true`
+- `autoRefreshToken: true`
+- `detectSessionInUrl: true`
+
+PWA:
+- diese Optionen laufen im nativen Browser-Kontext, fuer den sie gedacht sind
+- derselbe Runtime-Kontext startet Login, verarbeitet URL-/Session-Signale und besitzt den Client danach weiter
+
+Android-WebView:
+- der Login startet nativ ausserhalb der WebView
+- die Session wird danach importiert
+- trotzdem benutzt der WebView-Client weiterhin dieselbe Browser-Automatik
+
+Bewertung:
+- Vor allem `detectSessionInUrl` und Web-Persistenz sind im Android-WebView nicht automatisch falsch, aber wesentlich anfaelliger fuer Drift, weil Login, Callback und Session-Owner ausserhalb dieses Kontexts liegen.
+- Die PWA und Android verwenden also aktuell denselben Client-Modus fuer zwei unterschiedliche Auth-Lebenszyklen.
+
+### F4 - Die PWA hat einen Auth-Owner, Android hat aktuell zwei
+
+PWA:
+- ein Supabase-Client in `app/supabase/core/client.js`
+- ein Runtime-State in `app/supabase/core/state.js`
+- ein Auth-Lebenszyklus in `app/supabase/auth/core.js`
+
+Android:
+- native Session in `NativeAuthStore`
+- danach zusaetzlicher Session-Import in die MIDAS-WebView ueber `app/core/android-webview-auth-bridge.js`
+- damit zwei Auth-Welten:
+  - native Android-Session
+  - WebView-/Web-Supabase-Session
+
+Bewertung:
+- Das ist der groesste strukturelle Unterschied.
+- Die PWA muss keinen Session-Handoff zwischen zwei Ownern ueberleben.
+- Android muss genau diesen Handoff stabil koennen.
+
+### F5 - Die PWA entscheidet Auth innerhalb desselben Bootflows, Android importiert Auth von aussen
+
+PWA:
+- `boot-auth.js` setzt frueh den Lock-/Statuspfad
+- `assets/js/main.js` fuehrt `AUTH_CHECK` im selben Runtime-Kontext aus
+- `waitForAuthDecision()` und `setAuthState()` leben im selben State-Layer
+
+Android:
+- OAuth-Callback wird nativ in `MainActivity.kt` verarbeitet
+- danach wird Session in den WebView-Kontext importiert
+- der Web-Boot bekommt Auth also nicht nativ, sondern als importierten Vorzustand
+
+Bewertung:
+- Die PWA loest Auth intern und deterministisch.
+- Android muss Auth von ausserhalb des Web-Boots einspeisen.
+- Genau dort ist Drift zwischen `native session ok` und `web auth decision noch nicht sauber` am wahrscheinlichsten.
+
+### F6 - Die PWA serialisiert Signout/Cleanup im Auth-Core, Android hat mehrere Clear-Akteure
+
+PWA:
+- `pendingSignOut`
+- `scheduleAuthGrace()`
+- `finalizeAuthState(false)`
+- ein klarer Cleanup-Pfad in `app/supabase/auth/core.js`
+
+Android:
+- nativer Logout ueber `NativeSessionController`
+- WebView-Logout ueber `FORCE_LOGOUT_SCRIPT`
+- Android-WebView-Bootstrap liefert nur noch Session-/Bootstrap-Zustand an den Web-Boot weiter
+- Widget-Worker und Session-Generation-Guard wirken zusaetzlich auf denselben Lebenszyklus ein
+
+Bewertung:
+- Die PWA hat einen serialisierten Auth-Clear-Pfad.
+- Android hat aktuell mehrere legitime Stellen, die Session-/Logout-Verhalten anstossen.
+- Das erhoeht die Gefahr fuer Loops, stale States und schwer sichtbare Race Conditions.
+
+### F7 - Der Android-WebView-Boot kennt Bootstrap-Status, aber diese Status werden noch nicht als vollwertige Boot-/State-Entscheidung verwertet
+
+Android:
+- `app/core/android-webview-auth-bridge.js` liefert Statuswerte wie:
+  - `bridge-missing`
+  - `empty`
+  - `invalid-config`
+  - `session-absent`
+  - `session-staged`
+  - `session-imported`
+  - `session-import-error`
+  - `error`
+- `assets/js/main.js` wartet zwar auf das Promise, behandelt diese Status aber nicht wie einen eigenen, zentralen Auth-/Boot-Entscheid.
+
+PWA:
+- Auth-Zustand endet sichtbar und zentral in:
+  - `unknown`
+  - `auth`
+  - `unauth`
+- dieser Zustand fliesst direkt in Bootflow, Overlay und Lock Reason.
+
+Bewertung:
+- Android hat bereits Bootstrap-Signale, aber noch keinen gleichwertig harten Uebergang von "Bootstrap-Ergebnis" zu "offizieller Auth-/Boot-Entscheidung".
+- Dadurch kann derselbe Fehler wie ein diffuses Loop-/Crash-Symptom erscheinen statt wie ein klarer, frueher Bootzustand.
+
+### F8 - Die PWA nutzt ein Runtime-/Persistenzmodell, Android muss Stores zwischen nativer Huelle und WebView ueberbruecken
+
+PWA:
+- Browser-Session + Browser-Persistenz
+- Web-Konfiguration via `getConf` / `putConf`
+- ein einheitlicher Supabase-Runtime-Kontext
+
+Android:
+- nativer Secure Store (`NativeAuthStore`, `NativeAuthConfigStore`)
+- WebView-/MIDAS-Konfiguration via `putConf('webhookUrl'/'webhookKey')`
+- WebView-Supabase-Session wird zusaetzlich ueber `setSession(...)` gesetzt
+
+Bewertung:
+- Android muss Konfiguration und Session ueber Store-Grenzen hinweg spiegeln.
+- Die PWA hat dieses Problem nicht.
+- Jeder Bug in diesem Spiegelpfad wirkt sofort wie ein Boot-/Login-Loop, obwohl die eigentliche Fachlogik intakt sein kann.
+
+### F9 - Die PWA hat keinen Activity-/Intent-Lebenszyklus, Android schon
+
+PWA:
+- ein Browser-Tab
+- ein URL-/Session-Kontext
+- kein Deep-Link-Reentry zwischen zwei Activities
+
+Android:
+- `MainActivity`
+- `MidasWebActivity`
+- OAuth-Browser/Custom-Tab
+- Deep-Link-Reentry
+- stale Intent-/Callback-Risiken
+
+Bewertung:
+- Einige Android-Fehler sind keine Auth-Fachfehler, sondern Activity-/Intent-Lebenszyklusfehler.
+- Diese Fehlerklasse existiert in der PWA praktisch nicht.
+
+### F10 - Die PWA besitzt einen sichtbaren, zentralen Boot-Fehlerpfad; Android hat noch keinen gleichwertigen On-Device-Diagnosepfad
+
+PWA:
+- `bootFlow.reportError(...)`
+- `BOOT_ERROR`
+- Error-History
+- Fallback-Overlay
+- Touch-Log / Diag
+
+Android:
+- Toaster/Meldungen
+- Systemdialog `App enthaelt einen Fehler`
+- bislang kein gleichwertiger on-device Crash-/Boot-Diag-Pfad fuer den nativen Node
+
+Bewertung:
+- Die PWA ist leichter zu debuggen, weil Bootfehler sichtbar und zentralisiert sind.
+- Android fuehlt sich aktuell instabiler an, weil derselbe Fehler schnell als Loop/Crash erscheint, ohne dass der eigentliche Bootpunkt klar sichtbar ist.
+
+## Vorlaeufige Gesamtschlussfolgerung aus dem Finding-Katalog
+
+Der staerkste Stabilitaetsvorteil der PWA ist nicht "der Browser an sich", sondern:
+- ein Supabase-Client
+- ein Auth-Owner
+- ein Bootflow
+- ein serialisierter Clear-Pfad
+
+Der Android-Pfad ist aktuell dort am empfindlichsten, wo er genau von diesem Modell abweicht:
+- nativer Session-Owner plus WebView-Session-Import
+- Browser-/Web-Auth-Automatik im importierten WebView-Kontext
+- mehrere Clear-/Reentry-Akteure statt eines einzigen linearen Auth-Lebenszyklus
+
+Arbeitsregel fuer weitere Fixes:
+- nicht nur einzelne Callback-/Redirect-Bugs patchen
+- sondern Android schrittweise naeher an den PWA-Grundsatz ziehen:
+  - moeglichst ein Auth-Owner pro aktivem Runtime-Kontext
+  - moeglichst ein klarer, serialisierter Boot-/Clear-Pfad
+  - moeglichst wenig konkurrierende Session-Automatik im WebView-Kontext
+
 ## Scope
 - Analyse und Ersatz des aktuellen WebView-basierten Google-Login-Pfads.
 - Explizite Wahrung des bestehenden Browser-/PWA-OAuth-Pfads.
@@ -541,11 +778,12 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - `app/core/android-webview-auth-bridge.js`
   - wird in `index.html` vor `boot-auth.js` geladen
   - laeuft nur, wenn die Android-Bridge vorhanden ist
-- Dieser Bootstrap importiert fuer den WebView-Kontext fruehzeitig:
+- Dieser Bootstrap staged fuer den WebView-Kontext fruehzeitig:
   - `webhookUrl`
   - `webhookKey`
-  - sowie, falls vorhanden, die native Session ueber `sbClient.auth.setSession(...)`
+  - sowie, falls vorhanden, die native Session als Bootstrap-Payload
 - `assets/js/main.js` wartet im `AUTH_CHECK` jetzt bewusst auf diesen Android-Bootstrap-Pfad, bevor die normale Web-Sessionpruefung greift.
+  - der eigentliche Web-Session-Import passiert danach kontrolliert im Web-Auth-Core
   - Damit wird genau die Drift vermieden, die der Vertrag ausgeschlossen hat:
     - kein spaetes "Geradebiegen" nach bereits festgelaufenem unauth-Boot
     - deutlich geringeres Risiko fuer Login-Overlay-Flicker oder unauth-Drift nach nativer Anmeldung
@@ -577,7 +815,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - in `MidasWebActivity` ueber einen eigenen Toolbar-Logout
 - Die MIDAS-WebView wird dabei nicht nur spaeter beim naechsten Boot "hoffentlich" unauth, sondern aktiv nachgezogen:
   - offene `MidasWebActivity`-Instanzen werden ueber `notifyNativeSessionCleared()` explizit zum Web-Logout und Reload angestossen
-  - der Android-WebView-Bootstrap loescht bei fehlender nativer Session zusaetzlich lokale WebView-Sessions defensiv ueber `sbClient.auth.signOut()`
+  - der Android-WebView-Bootstrap fuehrt bei fehlender nativer Session keine zusaetzliche defensive Web-Signout-Mutation mehr aus
 - Wichtiger Lifecycle-Effekt:
   - nach nativer Abmeldung bleibt das Widget nicht mit alten Werten stehen
   - der Worker retryt ohne Auth nicht endlos weiter

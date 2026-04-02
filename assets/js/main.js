@@ -240,6 +240,7 @@ const requireSession = createSupabaseFn('requireSession');
 const watchAuthState = createSupabaseFn('watchAuthState');
 const bindAuthButtons = createSupabaseFn('bindAuthButtons');
 const afterLoginBoot = createSupabaseFn('afterLoginBoot');
+const applyAndroidBootstrapSession = createSupabaseFn('applyAndroidBootstrapSession', { optional: true });
 const baseUrlFromRest = createSupabaseFn('baseUrlFromRest');
 const requireDoctorUnlock = createSupabaseFn('requireDoctorUnlock');
 const bindAppLockButtons = createSupabaseFn('bindAppLockButtons');
@@ -486,6 +487,14 @@ async function runAuthCheckPhase(context) {
     await ensureSupabaseReadyForAuth({ timeoutMs: 6000 });
     await initDB();
     await ensureSupabaseClient();
+    const androidSessionImportStatus = await applyAndroidBootstrapSession?.();
+    if (
+      androidSessionImportStatus &&
+      androidSessionImportStatus !== 'missing' &&
+      androidSessionImportStatus !== 'config-imported'
+    ) {
+      diag.add?.('[boot] android webview session import: ' + androidSessionImportStatus);
+    }
     context.hasSession = await requireSession();
     const authDecisionState = await waitForAuthDecisionSoft({ timeoutMs: 1200 });
     if (authDecisionState === 'timeout') {

@@ -1,11 +1,12 @@
 'use strict';
 /**
  * MODULE: android-webview-auth-bridge.js
- * Description: Importiert in der Android-WebView fruehzeitig Konfiguration und native Session,
- *              damit AUTH_CHECK im MIDAS-Web-Boot auf einem konsistenten Zustand aufsetzt.
+ * Description: Importiert in der Android-WebView fruehzeitig Konfiguration und staged native Session-Daten,
+ *              damit AUTH_CHECK im MIDAS-Web-Boot den Auth-Import selbst kontrolliert ausfuehren kann.
  * Notes:
  *  - Browser/PWA bleiben unberuehrt: ohne Android-Bridge no-op.
  *  - Fuer Android wird derselbe Supabase-/Boot-Vertrag genutzt, nur mit nativem Session-Owner.
+ *  - Der Bootstrap mutiert den Web-Auth-Zustand bewusst nicht mehr selbst.
  */
 
 (function installAndroidWebViewAuthBootstrap(globalWindow) {
@@ -49,38 +50,15 @@
         await globalWindow.putConf('webhookKey', anonKey);
       }
 
-      const supa = globalWindow.AppModules?.supabase;
-      const client = await supa?.ensureSupabaseClient?.();
-      if (!client) {
-        return { status: 'config-imported' };
-      }
-
-      if ((!accessToken || !refreshToken) && typeof client.auth?.signOut === 'function') {
-        try {
-          await client.auth.signOut();
-        } catch (_) {
-          // keep config import even if local signout is already clean
-        }
-        globalWindow.__midasAndroidAuthBootstrapState = {
-          status: 'session-cleared',
-          userId: '',
-          importedAt: new Date().toISOString(),
-        };
-        return globalWindow.__midasAndroidAuthBootstrapState;
-      }
-
-      if (accessToken && refreshToken && typeof client.auth?.setSession === 'function') {
-        const { error } = await client.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) throw error;
-      }
-
       globalWindow.__midasAndroidAuthBootstrapState = {
-        status: accessToken && refreshToken ? 'session-imported' : 'config-imported',
+        status: accessToken && refreshToken ? 'session-staged' : 'session-absent',
+        restUrl,
+        anonKey,
+        accessToken,
+        refreshToken,
         userId,
-        importedAt: new Date().toISOString(),
+        stagedAt: new Date().toISOString(),
+        applied: false,
       };
       return globalWindow.__midasAndroidAuthBootstrapState;
     } catch (error) {

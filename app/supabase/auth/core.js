@@ -354,6 +354,45 @@ export const scheduleAuthGrace = () => {
 };
 
 // SUBMODULE: requireSession @public - prüft aktuelle Session und aktualisiert UI
+const getAndroidBootstrapState = () => {
+  const state = globalWindow?.__midasAndroidAuthBootstrapState;
+  return state && typeof state === 'object' ? state : null;
+};
+
+export async function applyAndroidBootstrapSession() {
+  const bootstrapState = getAndroidBootstrapState();
+  if (!bootstrapState) return 'missing';
+  if (bootstrapState.applied) return bootstrapState.status || 'already-applied';
+  if (bootstrapState.status !== 'session-staged') {
+    return bootstrapState.status || 'noop';
+  }
+  if (!supabaseState.sbClient?.auth?.setSession) {
+    return 'client-missing';
+  }
+  const accessToken = String(bootstrapState.accessToken || '').trim();
+  const refreshToken = String(bootstrapState.refreshToken || '').trim();
+  if (!accessToken || !refreshToken) {
+    bootstrapState.status = 'session-staging-invalid';
+    return bootstrapState.status;
+  }
+
+  const { error } = await supabaseState.sbClient.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken
+  });
+  if (error) {
+    bootstrapState.status = 'session-import-error';
+    bootstrapState.message = String(error?.message || error || 'android-session-import-failed');
+    throw error;
+  }
+
+  bootstrapState.applied = true;
+  bootstrapState.status = 'session-imported';
+  bootstrapState.appliedAt = new Date().toISOString();
+  diag.add?.('[auth] android bootstrap session imported');
+  return bootstrapState.status;
+}
+
 export async function requireSession() {
   if (!supabaseState.sbClient) {
     reportBootStatus('Supabase Client fehlt', 'error');

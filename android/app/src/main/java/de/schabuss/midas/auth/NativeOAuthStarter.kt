@@ -1,11 +1,6 @@
 package de.schabuss.midas.auth
 
 import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
-import io.github.jan.supabase.auth.ExternalAuthAction
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 
@@ -19,7 +14,7 @@ sealed interface NativeOAuthStartResult {
 class NativeOAuthStarter(
     private val activity: Activity,
 ) {
-    fun startGoogleLogin(entryReason: String): NativeOAuthStartResult {
+    suspend fun startGoogleLogin(entryReason: String): NativeOAuthStartResult {
         val clientBundle = NativeAuthClientProvider.getOrCreate(activity.applicationContext)
             ?: return NativeOAuthStartResult.MissingConfig
 
@@ -29,18 +24,12 @@ class NativeOAuthStarter(
         }
 
         return try {
-            val oauthUrl = client.auth.getOAuthUrl(
+            client.auth.signInWith(
                 Google,
-                AndroidAuthContract.callbackUri(entryReason).toString(),
-                "",
+                redirectUrl = AndroidAuthContract.callbackUri(entryReason).toString(),
             ) {
-                automaticallyOpenUrl = false
-            }
-            val parsedUri = Uri.parse(oauthUrl)
-            try {
-                openInCustomTabs(parsedUri, ExternalAuthAction.CustomTabs())
-            } catch (_: ActivityNotFoundException) {
-                openInExternalBrowser(parsedUri)
+                scopes.add("email")
+                scopes.add("profile")
             }
             NativeOAuthStartResult.Started
         } catch (error: Exception) {
@@ -48,19 +37,5 @@ class NativeOAuthStarter(
                 error.message?.takeIf { it.isNotBlank() } ?: "native-oauth-start-failed"
             )
         }
-    }
-
-    private fun openInCustomTabs(uri: Uri, action: ExternalAuthAction.CustomTabs) {
-        val intentBuilder = CustomTabsIntent.Builder().also { builder ->
-            action.intentBuilder.invoke(builder)
-        }
-        intentBuilder.build().launchUrl(activity, uri)
-    }
-
-    private fun openInExternalBrowser(uri: Uri) {
-        val browserIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-        }
-        activity.startActivity(browserIntent)
     }
 }

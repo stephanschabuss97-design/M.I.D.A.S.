@@ -19,6 +19,7 @@ import de.schabuss.midas.widget.MidasWidgetProvider
 import de.schabuss.midas.widget.WidgetSyncScheduler
 import de.schabuss.midas.web.MidasWebActivity
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -83,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         val anonKey = binding.nativeAnonKeyInput.text?.toString().orEmpty()
         val config = NativeAuthBootstrapValidator.validate(restUrl, anonKey)
         if (config == null) {
+            focusNativeConfigInputs()
             Toast.makeText(this, getString(R.string.native_config_invalid), Toast.LENGTH_LONG).show()
             return
         }
@@ -92,23 +94,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startNativeGoogleLogin() {
-        when (val result = NativeOAuthStarter(this).startGoogleLogin(AndroidAuthContract.OAUTH_ENTRY_REASON_SHELL)) {
-            NativeOAuthStartResult.Started -> {
-                Toast.makeText(this, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            when (val result = NativeOAuthStarter(this@MainActivity).startGoogleLogin(AndroidAuthContract.OAUTH_ENTRY_REASON_SHELL)) {
+                NativeOAuthStartResult.Started -> {
+                    Toast.makeText(this@MainActivity, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
+                }
+                NativeOAuthStartResult.MissingConfig -> {
+                    focusNativeConfigInputs()
+                    Toast.makeText(this@MainActivity, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
+                }
+                NativeOAuthStartResult.InvalidConfig -> {
+                    focusNativeConfigInputs()
+                    Toast.makeText(this@MainActivity, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
+                }
+                is NativeOAuthStartResult.Failed -> {
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.native_login_failed, result.message),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
-            NativeOAuthStartResult.MissingConfig -> {
-                Toast.makeText(this, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
-            }
-            NativeOAuthStartResult.InvalidConfig -> {
-                Toast.makeText(this, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
-            }
-            is NativeOAuthStartResult.Failed -> {
-                Toast.makeText(
-                    this,
-                    getString(R.string.native_login_failed, result.message),
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
+        }
+    }
+
+    private fun focusNativeConfigInputs() {
+        binding.nativeRestUrlInput.requestFocus()
+        binding.nativeRestUrlInput.post {
+            binding.nativeRestUrlInput.setSelection(binding.nativeRestUrlInput.text?.length ?: 0)
         }
     }
 
@@ -142,18 +155,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         val (client, config) = clientBundle
-        val authCode = callbackUri.getQueryParameter("code")
-        if (authCode.isNullOrBlank()) {
-            Toast.makeText(this, getString(R.string.native_callback_missing_code), Toast.LENGTH_LONG).show()
-            markOAuthCallbackHandled(intent)
-            return
-        }
+        val callbackIntent = Intent(intent)
 
-        lifecycleScope.launch {
-            runCatching<Unit> {
-                val session = client.auth.exchangeCodeForSession(authCode, true)
+        runCatching {
+            client.handleDeeplinks(callbackIntent) { session ->
                 val userId = session.user?.id?.takeIf { it.isNotBlank() }
-                    ?: error("oauth-session-user-missing")
+                    ?: return@handleDeeplinks
                 val sessionGeneration = nativeAuthStore.issueFreshGeneration()
                 nativeAuthStore.save(
                     NativeAuthState(
@@ -169,33 +176,39 @@ class MainActivity : AppCompatActivity() {
                 WidgetSyncScheduler.ensureScheduled(applicationContext)
                 WidgetSyncScheduler.requestImmediate(applicationContext)
                 MidasWidgetProvider.refreshAll(applicationContext)
-            }.onSuccess {
                 Toast.makeText(
-                    this@MainActivity,
+                    this,
                     getString(R.string.native_callback_success),
                     Toast.LENGTH_SHORT,
                 ).show()
                 if (entryReason == AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW) {
                     openMidas()
                 }
-            }.onFailure { error ->
-                Toast.makeText(
-                    this@MainActivity,
-                    getString(
-                        R.string.native_callback_failed,
-                        error.message?.takeIf { it.isNotBlank() } ?: "oauth-callback-failed",
-                    ),
-                    Toast.LENGTH_LONG,
-                ).show()
             }
             markOAuthCallbackHandled(intent)
+        }.onFailure { error ->
+            Toast.makeText(
+                this,
+                getString(
+                    R.string.native_callback_failed,
+                    error.message?.takeIf { it.isNotBlank() } ?: "oauth-callback-failed",
+                ),
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
     private fun markOAuthCallbackHandled(intent: Intent) {
         intent.putExtra(EXTRA_OAUTH_CALLBACK_HANDLED, true)
+        intent.data = null
+        intent.action = Intent.ACTION_MAIN
+        intent.replaceExtras(Bundle())
+        val sanitizedIntent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
         if (this.intent === intent) {
-            setIntent(intent)
+            setIntent(sanitizedIntent)
         }
     }
 
