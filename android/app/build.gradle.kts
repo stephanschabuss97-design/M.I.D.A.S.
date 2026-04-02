@@ -51,5 +51,6 @@ dependencies {
   implementation("androidx.work:work-runtime-ktx:2.9.1")
   implementation(platform("io.github.jan-tennert.supabase:bom:3.2.1"))
   implementation("io.github.jan-tennert.supabase:auth-kt")
+  implementation("io.github.jan-tennert.supabase:realtime-kt")
   implementation("io.ktor:ktor-client-okhttp:3.2.1")
 }

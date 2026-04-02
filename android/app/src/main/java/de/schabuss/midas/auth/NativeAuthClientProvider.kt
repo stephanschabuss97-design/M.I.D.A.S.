@@ -5,6 +5,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.ExternalAuthAction
+import io.github.jan.supabase.realtime.Realtime
 
 object NativeAuthClientProvider {
     @Volatile
@@ -27,6 +28,7 @@ object NativeAuthClientProvider {
                 host = AndroidAuthContract.CALLBACK_HOST
                 defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
             }
+            install(Realtime)
         }
         cachedClient = newClient
         cachedFingerprint = fingerprint

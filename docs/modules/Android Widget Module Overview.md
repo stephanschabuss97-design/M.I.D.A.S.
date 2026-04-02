@@ -57,6 +57,7 @@ Related docs:
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncRepository.kt` | nativer Read-/Refresh-Pfad gegen bestehende MIDAS-/Supabase-Reads |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncWorker.kt` | periodischer Android-Refresh via `WorkManager` |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncScheduler.kt` | Scheduling des nativen Sync-Pfads |
+| `android/app/src/main/java/de/schabuss/midas/widget/WidgetRealtimeSync.kt` | nativer Realtime-Listener fuer nahezu sofortige Widget-Refreshes bei relevanten Datenwrites |
 | `android/app/src/main/java/de/schabuss/midas/widget/HydrationTargetCalculator.kt` | lokale `Wasser-Soll`-Berechnung aus derselben Stuetzpunkt-Tabelle wie MIDAS |
 | `android/app/src/main/res/layout/widget_midas.xml` | aktuelles Widget-Layout |
 | `android/app/src/main/res/xml/midas_widget_info.xml` | Android-Widget-Metadaten, Zellgroesse und Resize-Vertrag |
@@ -127,7 +128,21 @@ Related docs:
 
 ### 4.3 Laufender Refresh
 
-- `WorkManager` triggert periodische Syncs.
+- `WidgetRealtimeSync` haelt im laufenden Android-Prozess einen nativen Supabase-Realtime-Listener offen.
+- Relevante Writes auf:
+  - `health_events`
+  - `health_medications`
+  - `health_medication_schedule_slots`
+  - `health_medication_slot_events`
+  triggern einen debouncten nativen Re-Sync.
+- Zusaetzlich darf die Android-WebView bei erfolgreichem Intake-Save den nativen Widget-Sync direkt anstossen.
+  - Das ist der pragmatische Sofortpfad fuer `save -> Widget`
+  - und reduziert die Abhaengigkeit von Realtime-/Lifecycle-Timing innerhalb der offenen Android-Sitzung
+- Dadurch koennen Aenderungen aus:
+  - Android-MIDAS
+  - Browser-/PWA-MIDAS
+  nahezu sofort im Widget sichtbar werden, solange der Android-Prozess lebt.
+- `WorkManager` bleibt als periodischer Sicherheitsgurt und Fallback aktiv.
 - `WidgetSyncRepository` liest:
   - Intake-Tagesdaten ueber denselben Vertrag wie MIDAS
   - Medication-Tagesstatus ueber `med_list_v2`
@@ -224,6 +239,7 @@ Konsequenz:
 - Native Events:
   - Widget-Update
   - `WorkManager`-Tick
+  - nativer Realtime-Write-Trigger
   - Widget-Tap
 - WebView-/MIDAS-Bridge:
   - Android -> WebView:
@@ -270,9 +286,13 @@ Wichtig:
 
 - Status: `V1` fuer Widget + minimale Android-Huelle ist umgesetzt und dokumentiert.
 - Der native Android-OAuth-/Deep-Link-Nachzug fuer Widget-Aktivierung ist technisch geschlossen; echter Geraete-Smoke bleibt ein manueller End-to-End-Test.
+- Der Widget-Refresh ist jetzt nicht mehr nur Worker-basiert:
+  - laufender Android-Prozess -> nativer Realtime-Refresh
+  - Prozess nicht aktiv -> periodischer Worker-Fallback
 - Dependencies (hard):
   - Android AppWidget Host
   - `WorkManager`
+  - `supabase:realtime-kt`
   - MIDAS-/Supabase-Read-Vertraege
   - lokales Android-SDK/Gradle-Buildsetup
 - Dependencies (soft):
@@ -283,6 +303,7 @@ Known risks:
 - Launcher-/Samsung-Raster bestimmt sichtbare Restabstaende mit, auch wenn das Widget selbst bereits kompakt genug ist.
 - Frische Android-Installationen brauchen weiterhin einmalige Android-Bootstrap-Konfiguration fuer REST-/ANON-Daten.
 - Deep-Link-/Provider-Konfiguration bleibt ein echter End-to-End-Risikopunkt fuer den Geraetetest.
+- Wirklich sofortiger Widget-Refresh ist an einen lebenden Android-Prozess gebunden; bei gekilltem Prozess greift wieder der Worker-/Reconnect-Pfad.
 - Zukuenftige Aenderungen an:
   - `Wasser-Soll`-Stuetzpunkten
   - `DailyWidgetState`
@@ -297,6 +318,7 @@ Known risks:
 - Das Widget zeigt `Wasser`, `Wasser-Soll` und `Medikation`.
 - Ein Tap fuehrt in MIDAS zurueck.
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
+- Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.
 - `Wasser-Soll` bleibt vertraglich konsistent zur MIDAS-Hub-Version.
 - Der aktuelle V1-Look ist ruhig genug fuer den Homescreen.
 - Verbleibende Leerraeume werden nicht vorschnell als MIDAS-Layoutfehler missdeutet, wenn sie klar launcherbedingt sind.

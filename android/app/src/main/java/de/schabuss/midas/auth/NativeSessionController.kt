@@ -4,6 +4,7 @@ import android.content.Context
 import de.schabuss.midas.widget.MidasWidgetProvider
 import de.schabuss.midas.widget.WidgetAuthStore
 import de.schabuss.midas.widget.WidgetSnapshotStore
+import de.schabuss.midas.widget.WidgetRealtimeSync
 import de.schabuss.midas.widget.WidgetSyncScheduler
 
 object NativeSessionController {
@@ -13,6 +14,7 @@ object NativeSessionController {
         WidgetAuthStore(appContext).clear()
         WidgetSnapshotStore(appContext).clear()
         NativeAuthClientProvider.clear()
+        WidgetRealtimeSync.stop()
         WidgetSyncScheduler.cancelAll(appContext)
         MidasWidgetProvider.refreshAll(appContext)
     }

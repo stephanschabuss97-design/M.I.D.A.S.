@@ -17,6 +17,7 @@ import de.schabuss.midas.auth.NativeOAuthStartResult
 import de.schabuss.midas.auth.NativeOAuthStarter
 import de.schabuss.midas.diag.AndroidBootTrace
 import de.schabuss.midas.widget.MidasWidgetProvider
+import de.schabuss.midas.widget.WidgetRealtimeSync
 import de.schabuss.midas.widget.WidgetSyncScheduler
 import de.schabuss.midas.web.MidasWebActivity
 import io.github.jan.supabase.auth.auth
@@ -101,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         }
         nativeAuthConfigStore.save(config)
         NativeAuthClientProvider.clear()
+        WidgetRealtimeSync.ensureRunning(applicationContext)
         AndroidBootTrace.log(applicationContext, "MainActivity.saveNativeAuthConfig", "saved")
         Toast.makeText(this, getString(R.string.native_config_saved), Toast.LENGTH_SHORT).show()
     }
@@ -219,6 +221,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 WidgetSyncScheduler.ensureScheduled(applicationContext)
                 WidgetSyncScheduler.requestImmediate(applicationContext)
+                WidgetRealtimeSync.ensureRunning(applicationContext)
                 MidasWidgetProvider.refreshAll(applicationContext)
                 AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "session-saved", mapOf("entry" to entryReason))
                 runOnUiThread {

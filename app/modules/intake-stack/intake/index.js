@@ -1458,6 +1458,9 @@
       captureIntakeState.logged = true;
       input.value = '';
       updateCaptureIntakeStatus();
+      try {
+        window.MidasAndroidWidget?.requestImmediateRefresh?.('intake-save');
+      } catch (_) {}
       emitCaptureIntakeChanged({
         reason: 'capture:intake',
         source: kind,
@@ -1547,6 +1550,9 @@
       if (saltVal > 0) saltInput.value = '';
       if (proteinVal > 0) proteinInput.value = '';
       updateCaptureIntakeStatus();
+      try {
+        window.MidasAndroidWidget?.requestImmediateRefresh?.('intake-combo-save');
+      } catch (_) {}
       emitCaptureIntakeChanged({
         reason: 'capture:intake',
         source: 'salt-protein-combo',

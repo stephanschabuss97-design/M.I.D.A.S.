@@ -3,6 +3,10 @@ package de.schabuss.midas.widget
 import android.content.Context
 import android.webkit.JavascriptInterface
 import de.schabuss.midas.auth.NativeAuthStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.time.Instant
 
 class WidgetSyncBridge(
@@ -11,6 +15,7 @@ class WidgetSyncBridge(
     private val store = WidgetSnapshotStore(context.applicationContext)
     private val authStore = WidgetAuthStore(context.applicationContext)
     private val nativeAuthStore = NativeAuthStore(context.applicationContext)
+    private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @JavascriptInterface
     fun postWidgetState(dayIso: String?, waterCurrentMl: Int, medicationStatus: String?, updatedAt: String?) {
@@ -60,5 +65,17 @@ class WidgetSyncBridge(
     @JavascriptInterface
     fun postSyncError(_message: String?) {
         // Intentionally quiet for V1: keep the last good snapshot instead of clearing it.
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    @JavascriptInterface
+    fun requestImmediateRefresh(_reason: String?) {
+        bridgeScope.launch {
+            val synced = WidgetSyncRepository(context.applicationContext).syncNow()
+            if (!synced) {
+                WidgetSyncScheduler.ensureScheduled(context.applicationContext)
+                WidgetSyncScheduler.requestImmediate(context.applicationContext)
+            }
+        }
     }
 }
