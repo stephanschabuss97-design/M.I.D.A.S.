@@ -18,6 +18,7 @@ import de.schabuss.midas.auth.NativeSessionController
 import de.schabuss.midas.auth.NativeOAuthStartResult
 import de.schabuss.midas.auth.NativeOAuthStarter
 import de.schabuss.midas.databinding.ActivityMidasWebBinding
+import de.schabuss.midas.diag.AndroidBootTrace
 import de.schabuss.midas.widget.WidgetSyncBridge
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
@@ -33,6 +34,7 @@ class MidasWebActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMidasWebBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        AndroidBootTrace.log(applicationContext, "MidasWebActivity.onCreate", "start")
         widgetSyncBridge = WidgetSyncBridge(applicationContext)
         nativeWebViewAuthBridge = NativeWebViewAuthBridge(applicationContext) {
             runOnUiThread { startNativeGoogleLoginFromWebView() }
@@ -69,6 +71,7 @@ class MidasWebActivity : AppCompatActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+                    AndroidBootTrace.log(applicationContext, "MidasWebActivity.onPageFinished", url ?: "no-url")
                     injectWidgetSyncBridge(view)
                 }
             }
@@ -109,6 +112,7 @@ class MidasWebActivity : AppCompatActivity() {
     }
 
     private fun startNativeGoogleLoginFromWebView() {
+        AndroidBootTrace.log(applicationContext, "MidasWebActivity.startNativeGoogleLoginFromWebView", AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW)
         lifecycleScope.launch {
             when (
                 val result = NativeOAuthStarter(this@MidasWebActivity).startGoogleLogin(
@@ -116,15 +120,19 @@ class MidasWebActivity : AppCompatActivity() {
                 )
             ) {
                 NativeOAuthStartResult.Started -> {
+                    AndroidBootTrace.log(applicationContext, "MidasWebActivity.startNativeGoogleLoginFromWebView.result", "started")
                     Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
                 }
                 NativeOAuthStartResult.MissingConfig -> {
+                    AndroidBootTrace.log(applicationContext, "MidasWebActivity.startNativeGoogleLoginFromWebView.result", "missing-config")
                     Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
                 }
                 NativeOAuthStartResult.InvalidConfig -> {
+                    AndroidBootTrace.log(applicationContext, "MidasWebActivity.startNativeGoogleLoginFromWebView.result", "invalid-config")
                     Toast.makeText(this@MidasWebActivity, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
                 }
                 is NativeOAuthStartResult.Failed -> {
+                    AndroidBootTrace.log(applicationContext, "MidasWebActivity.startNativeGoogleLoginFromWebView.result", "failed", mapOf("message" to result.message))
                     Toast.makeText(
                         this@MidasWebActivity,
                         getString(R.string.native_login_failed, result.message),
@@ -140,6 +148,9 @@ class MidasWebActivity : AppCompatActivity() {
         private var currentActivityRef: WeakReference<MidasWebActivity>? = null
 
         fun notifyNativeSessionCleared() {
+            currentActivityRef?.get()?.applicationContext?.let {
+                AndroidBootTrace.log(it, "MidasWebActivity.notifyNativeSessionCleared", "reload")
+            }
             currentActivityRef?.get()?.forceLogoutAndReloadFromAndroid()
         }
 
@@ -296,6 +307,7 @@ class MidasWebActivity : AppCompatActivity() {
     }
 
     private fun forceLogoutAndReloadFromAndroid() {
+        AndroidBootTrace.log(applicationContext, "MidasWebActivity.forceLogoutAndReloadFromAndroid", "execute-js")
         binding.webView.evaluateJavascript(FORCE_LOGOUT_SCRIPT, null)
     }
 }

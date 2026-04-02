@@ -15,6 +15,7 @@ import de.schabuss.midas.auth.NativeAuthState
 import de.schabuss.midas.auth.NativeAuthStore
 import de.schabuss.midas.auth.NativeOAuthStartResult
 import de.schabuss.midas.auth.NativeOAuthStarter
+import de.schabuss.midas.diag.AndroidBootTrace
 import de.schabuss.midas.widget.MidasWidgetProvider
 import de.schabuss.midas.widget.WidgetSyncScheduler
 import de.schabuss.midas.web.MidasWebActivity
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         nativeAuthConfigStore = NativeAuthConfigStore(applicationContext)
         nativeAuthStore = NativeAuthStore(applicationContext)
+        AndroidBootTrace.log(applicationContext, "MainActivity.onCreate", intent?.dataString ?: "no-intent-data")
         WidgetSyncScheduler.ensureScheduled(applicationContext)
         prefillNativeAuthConfig()
 
@@ -58,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        AndroidBootTrace.log(applicationContext, "MainActivity.onNewIntent", intent.dataString ?: "no-intent-data")
         setIntent(intent)
         maybeHandleOAuthCallback(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_MIDAS_IMMEDIATELY, false)) {
@@ -66,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openMidas() {
+        AndroidBootTrace.log(applicationContext, "MainActivity.openMidas", "launch-webview")
         startActivity(Intent(this, MidasWebActivity::class.java))
     }
 
@@ -84,30 +88,37 @@ class MainActivity : AppCompatActivity() {
         val anonKey = binding.nativeAnonKeyInput.text?.toString().orEmpty()
         val config = NativeAuthBootstrapValidator.validate(restUrl, anonKey)
         if (config == null) {
+            AndroidBootTrace.log(applicationContext, "MainActivity.saveNativeAuthConfig", "invalid-config")
             focusNativeConfigInputs()
             Toast.makeText(this, getString(R.string.native_config_invalid), Toast.LENGTH_LONG).show()
             return
         }
         nativeAuthConfigStore.save(config)
         NativeAuthClientProvider.clear()
+        AndroidBootTrace.log(applicationContext, "MainActivity.saveNativeAuthConfig", "saved")
         Toast.makeText(this, getString(R.string.native_config_saved), Toast.LENGTH_SHORT).show()
     }
 
     private fun startNativeGoogleLogin() {
+        AndroidBootTrace.log(applicationContext, "MainActivity.startNativeGoogleLogin", AndroidAuthContract.OAUTH_ENTRY_REASON_SHELL)
         lifecycleScope.launch {
             when (val result = NativeOAuthStarter(this@MainActivity).startGoogleLogin(AndroidAuthContract.OAUTH_ENTRY_REASON_SHELL)) {
                 NativeOAuthStartResult.Started -> {
+                    AndroidBootTrace.log(applicationContext, "MainActivity.startNativeGoogleLogin.result", "started")
                     Toast.makeText(this@MainActivity, getString(R.string.native_login_started), Toast.LENGTH_SHORT).show()
                 }
                 NativeOAuthStartResult.MissingConfig -> {
+                    AndroidBootTrace.log(applicationContext, "MainActivity.startNativeGoogleLogin.result", "missing-config")
                     focusNativeConfigInputs()
                     Toast.makeText(this@MainActivity, getString(R.string.native_login_missing_config), Toast.LENGTH_LONG).show()
                 }
                 NativeOAuthStartResult.InvalidConfig -> {
+                    AndroidBootTrace.log(applicationContext, "MainActivity.startNativeGoogleLogin.result", "invalid-config")
                     focusNativeConfigInputs()
                     Toast.makeText(this@MainActivity, getString(R.string.native_login_invalid_config), Toast.LENGTH_LONG).show()
                 }
                 is NativeOAuthStartResult.Failed -> {
+                    AndroidBootTrace.log(applicationContext, "MainActivity.startNativeGoogleLogin.result", "failed", mapOf("message" to result.message))
                     Toast.makeText(
                         this@MainActivity,
                         getString(R.string.native_login_failed, result.message),
@@ -126,8 +137,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun performNativeLogout() {
+        AndroidBootTrace.log(applicationContext, "MainActivity.performNativeLogout", "start")
         NativeSessionController.clearSessionState(applicationContext)
         MidasWebActivity.notifyNativeSessionCleared()
+        AndroidBootTrace.log(applicationContext, "MainActivity.performNativeLogout", "done")
         Toast.makeText(this, getString(R.string.native_logout_done), Toast.LENGTH_SHORT).show()
     }
 
@@ -136,12 +149,22 @@ class MainActivity : AppCompatActivity() {
         if (!AndroidAuthContract.isCallbackUri(callbackUri)) return
         if (intent.getBooleanExtra(EXTRA_OAUTH_CALLBACK_HANDLED, false)) return
         val entryReason = callbackUri.getQueryParameter("entry").orEmpty()
+        AndroidBootTrace.log(
+            applicationContext,
+            "MainActivity.maybeHandleOAuthCallback",
+            "callback-detected",
+            mapOf(
+                "uri" to callbackUri.toString(),
+                "entry" to entryReason,
+            )
+        )
 
         if (!callbackUri.getQueryParameter("error").isNullOrBlank()) {
             val errorMessage = callbackUri.getQueryParameter("error_description")
                 ?.takeIf { it.isNotBlank() }
                 ?: callbackUri.getQueryParameter("error")
                 ?: "oauth-callback-failed"
+            AndroidBootTrace.log(applicationContext, "MainActivity.maybeHandleOAuthCallback.error", errorMessage)
             Toast.makeText(this, getString(R.string.native_callback_failed, errorMessage), Toast.LENGTH_LONG).show()
             markOAuthCallbackHandled(intent)
             return
@@ -149,6 +172,7 @@ class MainActivity : AppCompatActivity() {
 
         val clientBundle = NativeAuthClientProvider.getOrCreate(applicationContext)
         if (clientBundle == null) {
+            AndroidBootTrace.log(applicationContext, "MainActivity.maybeHandleOAuthCallback.error", "missing-client")
             Toast.makeText(this, getString(R.string.native_callback_missing_client), Toast.LENGTH_LONG).show()
             markOAuthCallbackHandled(intent)
             return
@@ -161,6 +185,7 @@ class MainActivity : AppCompatActivity() {
             client.handleDeeplinks(callbackIntent) { session ->
                 val userId = session.user?.id?.takeIf { it.isNotBlank() }
                     ?: return@handleDeeplinks
+                AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "session-received", mapOf("userId" to userId))
                 val sessionGeneration = nativeAuthStore.issueFreshGeneration()
                 nativeAuthStore.save(
                     NativeAuthState(
@@ -176,17 +201,25 @@ class MainActivity : AppCompatActivity() {
                 WidgetSyncScheduler.ensureScheduled(applicationContext)
                 WidgetSyncScheduler.requestImmediate(applicationContext)
                 MidasWidgetProvider.refreshAll(applicationContext)
+                AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "session-saved", mapOf("entry" to entryReason))
                 Toast.makeText(
                     this,
                     getString(R.string.native_callback_success),
                     Toast.LENGTH_SHORT,
                 ).show()
                 if (entryReason == AndroidAuthContract.OAUTH_ENTRY_REASON_WEBVIEW) {
+                    AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "reopen-webview")
                     openMidas()
                 }
             }
+            AndroidBootTrace.log(applicationContext, "MainActivity.handleDeeplinks", "callback-handled")
             markOAuthCallbackHandled(intent)
         }.onFailure { error ->
+            AndroidBootTrace.log(
+                applicationContext,
+                "MainActivity.handleDeeplinks.error",
+                error.message?.takeIf { it.isNotBlank() } ?: "oauth-callback-failed",
+            )
             Toast.makeText(
                 this,
                 getString(
@@ -199,6 +232,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun markOAuthCallbackHandled(intent: Intent) {
+        AndroidBootTrace.log(applicationContext, "MainActivity.markOAuthCallbackHandled", "sanitize-intent")
         intent.putExtra(EXTRA_OAUTH_CALLBACK_HANDLED, true)
         intent.data = null
         intent.action = Intent.ACTION_MAIN
