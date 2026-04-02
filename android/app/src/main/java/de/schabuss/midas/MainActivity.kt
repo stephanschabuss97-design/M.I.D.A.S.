@@ -18,10 +18,12 @@ import de.schabuss.midas.auth.NativeOAuthStarter
 import de.schabuss.midas.diag.AndroidBootTrace
 import de.schabuss.midas.widget.MidasWidgetProvider
 import de.schabuss.midas.widget.WidgetRealtimeSync
+import de.schabuss.midas.widget.WidgetSyncRepository
 import de.schabuss.midas.widget.WidgetSyncScheduler
 import de.schabuss.midas.web.MidasWebActivity
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         WidgetSyncScheduler.ensureScheduled(applicationContext)
         prefillNativeAuthConfig()
         renderBootTraceInfo()
+        maybeRefreshWidgetOnAppStart(intent)
 
         binding.openMidasButton.setOnClickListener {
             openMidas()
@@ -66,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         maybeHandleOAuthCallback(intent)
         renderBootTraceInfo()
+        maybeRefreshWidgetOnAppStart(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_MIDAS_IMMEDIATELY, false)) {
             openMidas()
         }
@@ -163,6 +167,28 @@ class MainActivity : AppCompatActivity() {
         MidasWebActivity.notifyNativeSessionCleared()
         AndroidBootTrace.log(applicationContext, "MainActivity.performNativeLogout", "done")
         Toast.makeText(this, getString(R.string.native_logout_done), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun maybeRefreshWidgetOnAppStart(intent: Intent?) {
+        if (intent?.data != null) return
+        val auth = nativeAuthStore.load() ?: return
+        AndroidBootTrace.log(
+            applicationContext,
+            "MainActivity.maybeRefreshWidgetOnAppStart",
+            "start",
+            mapOf("sessionGeneration" to auth.sessionGeneration.toString()),
+        )
+        lifecycleScope.launch(Dispatchers.IO) {
+            val synced = WidgetSyncRepository(applicationContext).syncNow()
+            if (!synced) {
+                WidgetSyncScheduler.requestImmediate(applicationContext)
+            }
+            AndroidBootTrace.log(
+                applicationContext,
+                "MainActivity.maybeRefreshWidgetOnAppStart",
+                if (synced) "synced" else "scheduled-fallback",
+            )
+        }
     }
 
     private fun maybeHandleOAuthCallback(intent: Intent?) {

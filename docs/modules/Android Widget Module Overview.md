@@ -138,6 +138,9 @@ Related docs:
 - Zusaetzlich darf die Android-WebView bei erfolgreichem Intake-Save den nativen Widget-Sync direkt anstossen.
   - Das ist der pragmatische Sofortpfad fuer `save -> Widget`
   - und reduziert die Abhaengigkeit von Realtime-/Lifecycle-Timing innerhalb der offenen Android-Sitzung
+- Zusaetzlich stoesst `MainActivity` bei vorhandenem nativen Login direkt beim Android-App-Start einen Widget-Catch-up-Sync an.
+  - Dadurch wird ein veraltetes Widget beim bewussten Android-Einstieg moeglichst frueh nachgezogen
+  - auch wenn davor nur die PWA genutzt wurde
 - Dadurch koennen Aenderungen aus:
   - Android-MIDAS
   - Browser-/PWA-MIDAS
