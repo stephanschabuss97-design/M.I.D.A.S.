@@ -29,6 +29,9 @@ const diag =
     globalWindow?.AppModules?.diagnostics ||
     { add() {} });
 
+const isAndroidWebViewAuthContext = () =>
+  typeof globalWindow?.MidasAndroidAuth?.getBootstrapState === 'function';
+
 // SUBMODULE: safe accessors @internal - gesicherter Zugriff auf window.getConf / setConfigStatus
 const getConfSafe = (...args) => {
   const fn = globalWindow?.getConf;
@@ -86,6 +89,21 @@ export function isServiceRoleKey(raw) {
 // SUBMODULE: ensureSupabaseClient @public - erstellt oder cached den Supabase-Client
 let inflightClientPromise = null;
 
+const buildSupabaseAuthOptions = () => {
+  if (isAndroidWebViewAuthContext()) {
+    return {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    };
+  }
+  return {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  };
+};
+
 export async function ensureSupabaseClient() {
   if (supabaseState.sbClient) return supabaseState.sbClient;
   if (inflightClientPromise) return inflightClientPromise;
@@ -126,10 +144,16 @@ export async function ensureSupabaseClient() {
       return null;
     }
 
+    const authOptions = buildSupabaseAuthOptions();
     supabaseState.sbClient = globalWindow.supabase.createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      auth: authOptions
     });
     diag.add('Supabase: Client (Auth) initialisiert');
+    if (isAndroidWebViewAuthContext()) {
+      diag.add(
+        '[auth] android webview client mode: persistSession=false, autoRefreshToken=false, detectSessionInUrl=false'
+      );
+    }
     setConfigStatusSafe('', 'info');
     return supabaseState.sbClient;
   })().finally(() => {

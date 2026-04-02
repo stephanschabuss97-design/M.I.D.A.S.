@@ -156,6 +156,26 @@ Bewertung:
 - Vor allem `detectSessionInUrl` und Web-Persistenz sind im Android-WebView nicht automatisch falsch, aber wesentlich anfaelliger fuer Drift, weil Login, Callback und Session-Owner ausserhalb dieses Kontexts liegen.
 - Die PWA und Android verwenden also aktuell denselben Client-Modus fuer zwei unterschiedliche Auth-Lebenszyklen.
 
+F3 Ergebnisprotokoll:
+- `app/supabase/core/client.js` unterscheidet jetzt zwischen:
+  - Browser/PWA-Kontext
+  - Android-WebView-Kontext
+- Browser/PWA bleibt unveraendert:
+  - `persistSession: true`
+  - `autoRefreshToken: true`
+  - `detectSessionInUrl: true`
+- Android-WebView bekommt jetzt bewusst einen engeren Auth-Modus:
+  - `persistSession: false`
+  - `autoRefreshToken: false`
+  - `detectSessionInUrl: false`
+- Begruendung:
+  - im Android-WebView wird Login nicht lokal gestartet
+  - die Session wird importiert
+  - damit soll der WebView-Client nicht mehr dieselbe Browser-Automatik fahren wie die PWA
+- Ergebnis:
+  - Browser-/PWA-OAuth bleibt unberuehrt
+  - Android-WebView reduziert konkurrierende Auth-Automatik und wird naeher an einen importierten, nicht selbstfuehrenden Session-Kontext gezogen
+
 ### F4 - Die PWA hat einen Auth-Owner, Android hat aktuell zwei
 
 PWA:
@@ -174,6 +194,23 @@ Bewertung:
 - Das ist der groesste strukturelle Unterschied.
 - Die PWA muss keinen Session-Handoff zwischen zwei Ownern ueberleben.
 - Android muss genau diesen Handoff stabil koennen.
+
+F4 Ergebnisprotokoll:
+- Der Android-Pfad bleibt technisch weiter ein Zwei-Kontext-System:
+  - native Android-Huelle
+  - WebView mit eigenem Web-Supabase-Client
+- Die Owner-Hierarchie ist jetzt aber explizit enger gezogen:
+  - `NativeAuthStore` bleibt der fuehrende Session-Owner
+  - der WebView-Client wird nur noch als Spiegel-/Arbeitskontext behandelt
+- Konkret umgesetzt:
+  - `app/core/android-webview-auth-bridge.js` markiert den Android-WebView jetzt explizit als `native auth owned`
+  - `app/supabase/auth/core.js` nutzt diesen Kontext, um Auth-Entscheidungen gegen den nativen Bootstrap-State zu validieren
+  - `requireSession()` behandelt im Android-Kontext `session-absent` direkt als unauth statt still einer moeglichen WebView-Eigensession zu folgen
+  - `watchAuthState()` reimportiert im Android-Kontext die native Session, wenn der WebView-Client aus dem auth-Zustand kippt, obwohl die native Session noch vorhanden ist
+- Ergebnis:
+  - der WebView-Supabase-Client ist nicht mehr gleichrangiger Auth-Owner
+  - die native Session ist jetzt der entscheidende Auth-Massstab
+  - der WebView wird naeher an einen kontrollierten Mirror-Context herangezogen
 
 ### F5 - Die PWA entscheidet Auth innerhalb desselben Bootflows, Android importiert Auth von aussen
 

@@ -359,8 +359,24 @@ const getAndroidBootstrapState = () => {
   return state && typeof state === 'object' ? state : null;
 };
 
+const isAndroidNativeAuthOwnerContext = () => !!globalWindow?.__midasAndroidNativeAuthOwner;
+
+const refreshAndroidBootstrapState = async () => {
+  const fn = globalWindow?.__midasAndroidRefreshBootstrapState;
+  if (typeof fn !== 'function') {
+    return getAndroidBootstrapState();
+  }
+  try {
+    const state = await fn();
+    return state && typeof state === 'object' ? state : null;
+  } catch (error) {
+    diag.add?.('[auth] android bootstrap refresh failed: ' + (error?.message || error));
+    return getAndroidBootstrapState();
+  }
+};
+
 export async function applyAndroidBootstrapSession() {
-  const bootstrapState = getAndroidBootstrapState();
+  const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
   if (!bootstrapState) return 'missing';
   if (bootstrapState.applied) return bootstrapState.status || 'already-applied';
   if (bootstrapState.status !== 'session-staged') {
@@ -402,6 +418,23 @@ export async function requireSession() {
     return false;
   }
   try {
+    if (isAndroidNativeAuthOwnerContext()) {
+      const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
+      const bootstrapStatus = bootstrapState?.status || 'missing';
+      if (
+        bootstrapStatus === 'session-absent' ||
+        bootstrapStatus === 'invalid-config' ||
+        bootstrapStatus === 'empty'
+      ) {
+        callUserUi('');
+        setAuthState('unauth', { force: true });
+        return false;
+      }
+      if (bootstrapStatus === 'session-staged') {
+        await applyAndroidBootstrapSession();
+      }
+    }
+
     const { data: { session } = {} } = await supabaseState.sbClient.auth.getSession();
     const logged = !!session;
     callUserUi(session?.user?.email || '');
@@ -470,6 +503,19 @@ export function watchAuthState() {
       try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
       try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
       return;
+    }
+
+    if (isAndroidNativeAuthOwnerContext()) {
+      const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
+      const bootstrapStatus = bootstrapState?.status || 'missing';
+      if (bootstrapStatus === 'session-staged') {
+        diag.add?.('[auth] webview signed out while native session still staged; reimport session');
+        try {
+          await applyAndroidBootstrapSession();
+        } catch (_) {}
+        scheduleAuthGrace();
+        return;
+      }
     }
 
     callUserUi('');

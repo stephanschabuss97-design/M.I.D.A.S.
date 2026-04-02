@@ -13,6 +13,7 @@
   if (!globalWindow) return;
 
   const bridge = globalWindow.MidasAndroidAuth;
+  globalWindow.__midasAndroidNativeAuthOwner = !!bridge;
   if (!bridge || typeof bridge.getBootstrapState !== 'function') {
     globalWindow.__midasAndroidAuthBootstrapPromise = Promise.resolve({ status: 'bridge-missing' });
     return;
@@ -24,11 +25,12 @@
     return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
   };
 
-  globalWindow.__midasAndroidAuthBootstrapPromise = (async () => {
+  const readBootstrapState = async () => {
     try {
       const rawPayload = bridge.getBootstrapState?.();
       if (!rawPayload) {
-        return { status: 'empty' };
+        globalWindow.__midasAndroidAuthBootstrapState = { status: 'empty' };
+        return globalWindow.__midasAndroidAuthBootstrapState;
       }
 
       const payload = JSON.parse(String(rawPayload));
@@ -39,7 +41,8 @@
       const userId = String(payload?.userId || '').trim();
 
       if (!restUrl || !anonKey) {
-        return { status: 'invalid-config' };
+        globalWindow.__midasAndroidAuthBootstrapState = { status: 'invalid-config' };
+        return globalWindow.__midasAndroidAuthBootstrapState;
       }
 
       if (typeof globalWindow.initDB === 'function') {
@@ -73,5 +76,8 @@
       };
       return globalWindow.__midasAndroidAuthBootstrapState;
     }
-  })();
+  };
+
+  globalWindow.__midasAndroidRefreshBootstrapState = readBootstrapState;
+  globalWindow.__midasAndroidAuthBootstrapPromise = readBootstrapState();
 })(typeof window !== 'undefined' ? window : undefined);
