@@ -33,6 +33,7 @@
     <string name="widget_placeholder_water">-- ml</string>
     <string name="widget_placeholder_water_target">-- ml</string>
     <string name="widget_placeholder_medication">Lade...</string>
+    <string name="widget_syncing">Synchronisiere...</string>
     <string name="widget_value_water_ml">%1$d ml</string>
     <string name="widget_medication_none">Kein Plan</string>
     <string name="widget_medication_open">Offen</string>

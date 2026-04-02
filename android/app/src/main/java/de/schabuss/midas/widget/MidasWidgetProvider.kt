@@ -13,6 +13,7 @@ class MidasWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action != ACTION_MANUAL_SYNC) return
+        refreshAllSyncing(context.applicationContext)
         WidgetRefreshCoordinator.request(context.applicationContext, "widget-manual-sync", force = true)
     }
 
@@ -40,13 +41,27 @@ class MidasWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun buildRemoteViews(context: Context): RemoteViews {
+        fun refreshAllSyncing(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, MidasWidgetProvider::class.java)
+            val widgetIds = manager.getAppWidgetIds(componentName)
+            if (widgetIds.isEmpty()) return
+            widgetIds.forEach { widgetId ->
+                manager.updateAppWidget(widgetId, buildRemoteViews(context, isSyncing = true))
+            }
+        }
+
+        private fun buildRemoteViews(context: Context, isSyncing: Boolean = false): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_midas)
             val snapshot = WidgetSnapshotStore(context.applicationContext).load()
             views.setTextViewText(
                 R.id.widgetWaterValue,
-                snapshot?.let { context.getString(R.string.widget_value_water_ml, it.waterCurrentMl) }
-                    ?: context.getString(R.string.widget_placeholder_water)
+                if (isSyncing) {
+                    context.getString(R.string.widget_syncing)
+                } else {
+                    snapshot?.let { context.getString(R.string.widget_value_water_ml, it.waterCurrentMl) }
+                        ?: context.getString(R.string.widget_placeholder_water)
+                }
             )
             views.setTextViewText(
                 R.id.widgetWaterTargetValue,
