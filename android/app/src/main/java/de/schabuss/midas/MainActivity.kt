@@ -17,13 +17,12 @@ import de.schabuss.midas.auth.NativeOAuthStartResult
 import de.schabuss.midas.auth.NativeOAuthStarter
 import de.schabuss.midas.diag.AndroidBootTrace
 import de.schabuss.midas.widget.MidasWidgetProvider
+import de.schabuss.midas.widget.WidgetRefreshCoordinator
 import de.schabuss.midas.widget.WidgetRealtimeSync
-import de.schabuss.midas.widget.WidgetSyncRepository
 import de.schabuss.midas.widget.WidgetSyncScheduler
 import de.schabuss.midas.web.MidasWebActivity
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -171,24 +170,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun maybeRefreshWidgetOnAppStart(intent: Intent?) {
         if (intent?.data != null) return
-        val auth = nativeAuthStore.load() ?: return
-        AndroidBootTrace.log(
-            applicationContext,
-            "MainActivity.maybeRefreshWidgetOnAppStart",
-            "start",
-            mapOf("sessionGeneration" to auth.sessionGeneration.toString()),
-        )
-        lifecycleScope.launch(Dispatchers.IO) {
-            val synced = WidgetSyncRepository(applicationContext).syncNow()
-            if (!synced) {
-                WidgetSyncScheduler.requestImmediate(applicationContext)
-            }
-            AndroidBootTrace.log(
-                applicationContext,
-                "MainActivity.maybeRefreshWidgetOnAppStart",
-                if (synced) "synced" else "scheduled-fallback",
-            )
-        }
+        if (nativeAuthStore.load() == null) return
+        WidgetRefreshCoordinator.request(applicationContext, "app-start", force = true)
     }
 
     private fun maybeHandleOAuthCallback(intent: Intent?) {

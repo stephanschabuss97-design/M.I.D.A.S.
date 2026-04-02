@@ -8,9 +8,14 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import de.schabuss.midas.R
-import de.schabuss.midas.web.MidasWebActivity
 
 class MidasWidgetProvider : AppWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action != ACTION_MANUAL_SYNC) return
+        WidgetRefreshCoordinator.request(context.applicationContext, "widget-manual-sync", force = true)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -57,15 +62,15 @@ class MidasWidgetProvider : AppWidgetProvider() {
                 R.id.widgetMedicationValue,
                 resolveMedicationColor(context, snapshot?.medicationStatus ?: MedicationStatus.NONE),
             )
-            views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenMidasIntent(context))
+            views.setOnClickPendingIntent(R.id.widgetRoot, buildManualSyncIntent(context))
             return views
         }
 
-        private fun buildOpenMidasIntent(context: Context): PendingIntent {
-            val intent = Intent(context, MidasWebActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        private fun buildManualSyncIntent(context: Context): PendingIntent {
+            val intent = Intent(context, MidasWidgetProvider::class.java).apply {
+                action = ACTION_MANUAL_SYNC
             }
-            return PendingIntent.getActivity(
+            return PendingIntent.getBroadcast(
                 context,
                 1001,
                 intent,
@@ -87,5 +92,7 @@ class MidasWidgetProvider : AppWidgetProvider() {
             MedicationStatus.NONE,
             -> context.getColor(R.color.widget_medication_neutral)
         }
+
+        private const val ACTION_MANUAL_SYNC = "de.schabuss.midas.action.WIDGET_MANUAL_SYNC"
     }
 }

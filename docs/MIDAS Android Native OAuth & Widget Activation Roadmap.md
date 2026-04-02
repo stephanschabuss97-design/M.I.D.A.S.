@@ -1109,6 +1109,33 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - `S5.3` bis `S5.5` sind damit als Abschlussblock geschlossen.
   - Die Roadmap ist fachlich fertig und kann nach dem Commit wie ueblich auf `(DONE)` gezogen und archiviert werden.
 
+## Follow-up - Widget Refresh Ergonomics
+
+Ziel:
+- den Android-Widget-Pfad ohne Push-/FCM-Infrastruktur alltagstauglicher machen
+- den direkten Android-Einstieg fuer Widget-Aktualitaet staerken
+- die Gefahr reduzieren, Browser-PWA und Android-MIDAS unnoetig parallel zu oeffnen
+
+Guardrails:
+- kein Push / FCM / serverseitiger Weckpfad
+- Browser-/PWA bleibt Hauptsystem
+- Android bleibt read-mostly Node mit pragmatischen Catch-up-Mechanismen
+- Long-Press-Kontextmenues gehoeren primaer dem Launcher und werden nicht als eigener Produktvertrag missbraucht
+
+Follow-up-Punkte:
+- FU1 App-Start-Catch-up:
+  - Beim Start der Android-App wird bei vorhandener nativer Session direkt ein Widget-Sync angestossen.
+- FU2 Wake-/Unlock-Catch-up:
+  - Solange der Android-Prozess lebt, wird bei `USER_PRESENT` / Unlock ein gedrosselter Catch-up-Sync versucht.
+  - Das ist bewusst nur best effort und kein Ersatz fuer Push oder einen gekillten Prozess.
+- FU3 Manueller Widget-Sync:
+  - Ein kurzer Tap auf das Widget startet einen nativen Sync statt MIDAS direkt zu oeffnen.
+  - Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher bestehen.
+
+Bewertung:
+- Dieser Follow-up-Block ist bewusst ein UX-/Refresh-Nachzug und kein neuer Architekturstrang.
+- Er soll den Widget-Alltag verbessern, ohne die bestehende PWA-/Android-Trennung oder die Plattform-Guardrails aufzubrechen.
+
 ## Smokechecks / Regression (Definition)
 - Der bestehende Browser-/PWA-Google-Login funktioniert unveraendert weiter.
 - Der bestehende Browser-/PWA-Logout funktioniert unveraendert weiter.

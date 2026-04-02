@@ -2,6 +2,7 @@ package de.schabuss.midas
 
 import android.app.Application
 import de.schabuss.midas.diag.AndroidBootTrace
+import de.schabuss.midas.widget.WidgetWakeRefresh
 import de.schabuss.midas.widget.WidgetRealtimeSync
 
 class MidasAndroidApp : Application() {
@@ -9,6 +10,7 @@ class MidasAndroidApp : Application() {
         super.onCreate()
         AndroidBootTrace.startRun(applicationContext, "application-created")
         WidgetRealtimeSync.ensureRunning(applicationContext)
+        WidgetWakeRefresh.register(applicationContext)
 
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

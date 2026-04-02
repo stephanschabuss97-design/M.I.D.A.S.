@@ -141,6 +141,9 @@ Related docs:
 - Zusaetzlich stoesst `MainActivity` bei vorhandenem nativen Login direkt beim Android-App-Start einen Widget-Catch-up-Sync an.
   - Dadurch wird ein veraltetes Widget beim bewussten Android-Einstieg moeglichst frueh nachgezogen
   - auch wenn davor nur die PWA genutzt wurde
+- Solange der Android-Prozess lebt, wird zusaetzlich bei `USER_PRESENT` / Unlock ein gedrosselter Catch-up-Sync versucht.
+  - Das ist bewusst best effort
+  - und kein vollwertiger Hintergrund-Push-Ersatz
 - Dadurch koennen Aenderungen aus:
   - Android-MIDAS
   - Browser-/PWA-MIDAS
@@ -161,7 +164,8 @@ Related docs:
   - `Wasser`
   - `Wasser-Soll`
   - `Medikation`
-- Ein Tap auf das Widget oeffnet die native MIDAS-Huelle.
+- Ein kurzer Tap auf das Widget startet einen manuellen nativen Sync.
+- Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher erhalten.
 
 ### 4.5 Logout / Session-Clear
 
@@ -242,6 +246,7 @@ Konsequenz:
 - Native Events:
   - Widget-Update
   - `WorkManager`-Tick
+  - `USER_PRESENT` / Unlock im lebenden Android-Prozess
   - nativer Realtime-Write-Trigger
   - Widget-Tap
 - WebView-/MIDAS-Bridge:
@@ -296,6 +301,7 @@ Wichtig:
   - Android AppWidget Host
   - `WorkManager`
   - `supabase:realtime-kt`
+  - Android `USER_PRESENT` Broadcast im lebenden Prozess
   - MIDAS-/Supabase-Read-Vertraege
   - lokales Android-SDK/Gradle-Buildsetup
 - Dependencies (soft):
@@ -307,6 +313,9 @@ Known risks:
 - Frische Android-Installationen brauchen weiterhin einmalige Android-Bootstrap-Konfiguration fuer REST-/ANON-Daten.
 - Deep-Link-/Provider-Konfiguration bleibt ein echter End-to-End-Risikopunkt fuer den Geraetetest.
 - Wirklich sofortiger Widget-Refresh ist an einen lebenden Android-Prozess gebunden; bei gekilltem Prozess greift wieder der Worker-/Reconnect-Pfad.
+- Der Wake-/Unlock-Catch-up ist bewusst nur best effort:
+  - kein Weckpfad fuer gekillte Prozesse
+  - keine Garantie fuer jeden einzelnen Unlock
 - Zukuenftige Aenderungen an:
   - `Wasser-Soll`-Stuetzpunkten
   - `DailyWidgetState`
@@ -319,7 +328,8 @@ Known risks:
 
 - Das Widget ist read-only.
 - Das Widget zeigt `Wasser`, `Wasser-Soll` und `Medikation`.
-- Ein Tap fuehrt in MIDAS zurueck.
+- Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
+- Ein Android-App-Start zieht das Widget bei vorhandener Session direkt nach.
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
 - Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.
 - `Wasser-Soll` bleibt vertraglich konsistent zur MIDAS-Hub-Version.
