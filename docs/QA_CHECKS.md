@@ -1396,7 +1396,7 @@ Regression
 **Remote / Suppression**
 - [ ] Frisch aktiviertes Browser-Abo zeigt zunaechst `aktiv (warte auf Remote-Bestaetigung)` oder `aktiv (lokales Fallback)`; lokale Pushes bleiben aktiv bis ein gesunder Remote-Pfad nachweisbar ist.
 - [ ] Nach mindestens einer erfolgreichen Remote-Zustellung wechselt der Profil-Status auf `aktiv (remote gesund)` und lokale Duplicate-Pushes werden unterdrueckt.
-- [ ] GitHub Workflow tickt alle `30` Minuten; echter Off-App-Push funktioniert auch ohne geoeffnete App.
+- [ ] GitHub Workflow tickt gezielt rund um die Medication-/BP-Schwellen; echter Off-App-Push funktioniert auch ohne geoeffnete App.
 - [ ] `push_notification_deliveries` verhindert doppelte Remote-Zustellung fuer denselben `user/day/type/severity/source`.
 
 **Sanity**

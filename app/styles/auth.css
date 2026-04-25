@@ -75,6 +75,28 @@ body[data-boot-stage="boot_error"] #diag pre {
   width: 100%;
   justify-content: space-between;
 }
+#diag .diag-status {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(235, 242, 255, 0.84);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+#diag .diag-status.is-ok {
+  border-color: rgba(155, 231, 191, 0.35);
+  color: #9be7bf;
+}
+#diag .diag-status.is-warn {
+  border-color: rgba(255, 211, 122, 0.35);
+  color: #ffd37a;
+}
+#diag .diag-status.is-error {
+  border-color: rgba(255, 155, 155, 0.35);
+  color: #ff9b9b;
+}
 #diag .diag-log {
   flex: 1 1 auto;
   min-width: 220px;
@@ -230,16 +252,56 @@ body[data-boot-stage]:not([data-boot-stage="idle"]) #busy {
 }
 
 @media (max-width: 700px) {
+  #diag.panel {
+    top: auto;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    overflow: hidden;
+  }
+  #diag > header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-card, #10131a);
+  }
   #diag .diag-body {
     flex-direction: column;
+    max-height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    overflow: auto;
+    overscroll-behavior: contain;
   }
   #diag .diag-controls {
     flex: 1 1 auto;
+    min-width: 0;
+  }
+  #diag .diag-toggle {
+    min-height: 44px;
+  }
+  #diag .diag-log {
+    min-width: 0;
+    max-height: min(44dvh, 360px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
   }
   body[data-boot-stage="boot_error"] #diag {
-    width: calc(100vw - 16px);
-    right: 8px;
-    left: 8px;
-    bottom: 8px;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 430px) {
+  #diag .diag-body {
+    padding: 10px;
+  }
+  #diag .diag-controls {
+    gap: 8px;
+  }
+  #diag .diag-log {
+    font-size: 0.72rem;
+    line-height: 1.45;
   }
 }

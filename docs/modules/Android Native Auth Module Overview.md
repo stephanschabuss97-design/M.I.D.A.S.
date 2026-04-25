@@ -41,6 +41,7 @@ Related docs:
 | `android/app/src/main/java/de/schabuss/midas/auth/SecurePreferencesFactory.kt` | `EncryptedSharedPreferences` + `MasterKey` |
 | `android/app/src/main/java/de/schabuss/midas/MidasAndroidApp.kt` | globaler Android-App-Start + Crash-Hook |
 | `android/app/src/main/java/de/schabuss/midas/diag/AndroidBootTrace.kt` | persistenter On-Device-Trace fuer Boot-/OAuth-/Crash-Diagnose |
+| `android/app/src/main/java/de/schabuss/midas/widget/WidgetRefreshCoordinator.kt` | nutzt den nativen Session-Owner fuer App-Start-, Widget- und Unlock-Catch-up |
 | `app/core/android-webview-auth-bridge.js` | WebView-seitiger Android-Bootstrap-Layer |
 | `app/supabase/auth/core.js` | offizieller Web-Auth-Core mit Android-Bootstrap-/Import-/Clear-Pfaden |
 | `app/supabase/core/client.js` | kontextsensitiver Supabase-Client fuer Browser/PWA vs. Android-WebView |
@@ -209,6 +210,8 @@ Damit hat der Android-Node einen sichtbareren On-Device-Diagnosepfad als frueher
   - Session-Clear
 - Android -> Widget:
   - Scheduler
+  - App-Start-/Unlock-Catch-up
+  - manueller Widget-Sync
   - Snapshot-Refresh
   - Placeholder-Reset bei Logout
 

@@ -21,6 +21,14 @@ V1-Zielbild:
 - `Wasser-Soll`
 - `Medikation-Status`
 
+Aktueller Widget-Refresh-Vertrag:
+
+- Android-Save in der WebView darf den nativen Widget-Sync direkt anstossen
+- Android-App-Start zieht das Widget bei vorhandener nativer Session direkt nach
+- ein kurzer Tap auf das Widget startet einen nativen manuellen Sync
+- solange der Android-Prozess lebt, versucht `USER_PRESENT` / Unlock zusaetzlich einen gedrosselten Catch-up-Sync
+- Browser-/PWA-Aenderungen ohne lebenden Android-Prozess landen nicht als sofortiger Push im Widget; dafuer ist der Widget-Tap der verlässlichste Catch-up-Pfad
+
 Android-Auth-Vertrag:
 
 - Browser-/PWA-Google-Login bleibt unveraendert
@@ -38,5 +46,6 @@ Build-Hinweis:
 Der fachliche Vertrag lebt primaer in:
 
 - [`docs/Widget Contract.md`](docs/Widget%20Contract.md)
+- [`../docs/modules/Android Widget Module Overview.md`](../docs/modules/Android%20Widget%20Module%20Overview.md)
 
 MIDAS bleibt Source of Truth.

@@ -2836,6 +2836,67 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 12px;
 }
 
+.profile-push-health {
+  margin-top: 14px;
+}
+
+.profile-push-status {
+  margin: 10px 0 0;
+  font-weight: 700;
+  color: rgba(235, 242, 255, 0.94);
+}
+
+.profile-push-status.is-ok {
+  color: #9be7bf;
+}
+
+.profile-push-status.is-warn {
+  color: #ffd37a;
+}
+
+.profile-push-status.is-error {
+  color: #ff9b9b;
+}
+
+.profile-push-details {
+  margin-top: 12px;
+}
+
+.profile-push-details dl {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.profile-push-details dt {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.profile-push-details dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: rgba(245, 248, 255, 0.9);
+}
+
+.profile-push-hint {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 211, 122, 0.26);
+  background: rgba(255, 211, 122, 0.08);
+  color: rgba(255, 242, 210, 0.94);
+  font-size: 0.9rem;
+}
+
+.profile-push-actions {
+  margin-top: 14px;
+}
+
 .profile-overview-list {
   display: grid;
   gap: 8px;
@@ -3382,6 +3443,10 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 
   .hub-panel[data-hub-panel="profile"] .profile-overview-list dl {
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  }
+
+  .hub-panel[data-hub-panel="profile"] .profile-push-details dl {
     grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
   }
 }

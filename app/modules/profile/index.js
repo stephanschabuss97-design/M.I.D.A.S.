@@ -40,7 +40,8 @@
     overview: '#profileOverview',
     pushEnableBtn: '#profilePushEnableBtn',
     pushDisableBtn: '#profilePushDisableBtn',
-    pushStatus: '#profilePushStatus'
+    pushStatus: '#profilePushStatus',
+    pushDetails: '#profilePushDetails'
   };
 
   const state = {
@@ -56,8 +57,13 @@
       endpoint: '',
       remoteHealthy: false,
       localSuppressionAllowed: false,
+      permission: '',
+      hasRemoteSubscription: false,
       lastRemoteSuccessAt: '',
       lastRemoteFailureAt: '',
+      lastRemoteFailureReason: '',
+      consecutiveRemoteFailures: 0,
+      healthRefreshError: '',
       checkedAt: ''
     }
   };
@@ -110,7 +116,8 @@
       overview: panel.querySelector(selectors.overview),
       pushEnableBtn: panel.querySelector(selectors.pushEnableBtn),
       pushDisableBtn: panel.querySelector(selectors.pushDisableBtn),
-      pushStatus: panel.querySelector(selectors.pushStatus)
+      pushStatus: panel.querySelector(selectors.pushStatus),
+      pushDetails: panel.querySelector(selectors.pushDetails)
     };
     return refs;
   };
@@ -175,9 +182,71 @@
     return output;
   };
 
-  const setPushStatus = (text) => {
+  const formatDateTime = (value) => {
+    if (!value) return '--';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '--';
+    return date.toLocaleString('de-AT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getPermissionLabel = (permission) => {
+    if (permission === 'granted') return 'erlaubt';
+    if (permission === 'denied') return 'blockiert';
+    return 'nicht entschieden';
+  };
+
+  const setPushStatus = (text, tone = '') => {
     if (!refs?.pushStatus) return;
     refs.pushStatus.textContent = text;
+    refs.pushStatus.classList.toggle('is-ok', tone === 'ok');
+    refs.pushStatus.classList.toggle('is-warn', tone === 'warn');
+    refs.pushStatus.classList.toggle('is-error', tone === 'error');
+  };
+
+  const renderPushDetails = ({ remoteLabel = '', hint = '' } = {}) => {
+    if (!refs?.pushDetails) return;
+    refs.pushDetails.innerHTML = '';
+    const routing = state.pushRouting || {};
+    const rows = [
+      ['Browser-Berechtigung', getPermissionLabel(routing.permission)],
+      ['Browser-Abo', routing.hasBrowserSubscription ? 'aktiv' : 'kein Abo'],
+      ['Remote-Status', remoteLabel || (routing.remoteHealthy ? 'remote gesund' : 'nicht bestaetigt')],
+      ['Letzter Remote-Erfolg', formatDateTime(routing.lastRemoteSuccessAt)],
+      ['Letzter Remote-Fehler', formatDateTime(routing.lastRemoteFailureAt)],
+    ];
+    if (routing.lastRemoteFailureReason) {
+      rows.push(['Fehlergrund', routing.lastRemoteFailureReason]);
+    }
+    if (Number(routing.consecutiveRemoteFailures || 0) > 0) {
+      rows.push(['Fehler in Folge', String(routing.consecutiveRemoteFailures)]);
+    }
+    if (routing.healthRefreshError) {
+      rows.push(['Health-Check', `nicht lesbar (${routing.healthRefreshError})`]);
+    }
+    rows.push(['Geprueft', formatDateTime(routing.checkedAt)]);
+
+    const dl = doc.createElement('dl');
+    rows.forEach(([label, value]) => {
+      const dt = doc.createElement('dt');
+      dt.textContent = label;
+      const dd = doc.createElement('dd');
+      dd.textContent = value || '--';
+      dl.append(dt, dd);
+    });
+    refs.pushDetails.appendChild(dl);
+
+    if (hint) {
+      const p = doc.createElement('p');
+      p.className = 'profile-push-hint';
+      p.textContent = hint;
+      refs.pushDetails.appendChild(p);
+    }
   };
 
   const clonePushRoutingState = () => ({
@@ -185,8 +254,13 @@
     endpoint: String(state.pushRouting?.endpoint || ''),
     remoteHealthy: !!state.pushRouting?.remoteHealthy,
     localSuppressionAllowed: !!state.pushRouting?.localSuppressionAllowed,
+    permission: String(state.pushRouting?.permission || ''),
+    hasRemoteSubscription: !!state.pushRouting?.hasRemoteSubscription,
     lastRemoteSuccessAt: String(state.pushRouting?.lastRemoteSuccessAt || ''),
     lastRemoteFailureAt: String(state.pushRouting?.lastRemoteFailureAt || ''),
+    lastRemoteFailureReason: String(state.pushRouting?.lastRemoteFailureReason || ''),
+    consecutiveRemoteFailures: Number(state.pushRouting?.consecutiveRemoteFailures || 0),
+    healthRefreshError: String(state.pushRouting?.healthRefreshError || ''),
     checkedAt: String(state.pushRouting?.checkedAt || '')
   });
 
@@ -196,8 +270,13 @@
       endpoint: String(nextState?.endpoint || ''),
       remoteHealthy: !!nextState?.remoteHealthy,
       localSuppressionAllowed: !!nextState?.localSuppressionAllowed,
+      permission: String(nextState?.permission || ''),
+      hasRemoteSubscription: !!nextState?.hasRemoteSubscription,
       lastRemoteSuccessAt: String(nextState?.lastRemoteSuccessAt || ''),
       lastRemoteFailureAt: String(nextState?.lastRemoteFailureAt || ''),
+      lastRemoteFailureReason: String(nextState?.lastRemoteFailureReason || ''),
+      consecutiveRemoteFailures: Number(nextState?.consecutiveRemoteFailures || 0),
+      healthRefreshError: String(nextState?.healthRefreshError || ''),
       checkedAt: new Date().toISOString()
     };
   };
@@ -259,7 +338,7 @@
     const client = await requireSupabaseClient();
     const { data, error } = await client
       .from('push_subscriptions')
-      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, consecutive_remote_failures')
+      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, last_remote_failure_reason, consecutive_remote_failures')
       .eq('user_id', userId)
       .eq('endpoint', endpoint)
       .maybeSingle();
@@ -282,13 +361,18 @@
       ensurePushSupport();
       const permission = global.Notification?.permission || 'default';
       if (permission === 'denied') {
-        setPushRoutingState({ hasBrowserSubscription: false });
-        setPushStatus('Status: blockiert (Browser)');
+        setPushRoutingState({ hasBrowserSubscription: false, permission });
+        setPushStatus('Status: blockiert (Browser)', 'error');
+        renderPushDetails({
+          remoteLabel: 'blockiert',
+          hint: 'Push ist im Browser blockiert. Bitte Browser- und Geraete-Benachrichtigungen fuer MIDAS erlauben.'
+        });
         return;
       }
       const subscription = await getCurrentSubscription();
       if (subscription) {
         let remoteRow = null;
+        let healthRefreshError = '';
         try {
           const userId = await requireUserId();
           remoteRow = await fetchRemoteSubscriptionHealth({
@@ -296,33 +380,73 @@
             endpoint: subscription.endpoint
           });
         } catch (err) {
+          healthRefreshError = err?.message || String(err);
           diag?.add?.(`[profile] push health refresh skipped (${reason}) ${err?.message || err}`);
         }
         const remoteHealthy = isRemoteSubscriptionHealthy(remoteRow);
+        const hasRemoteSubscription = !!remoteRow;
         setPushRoutingState({
           hasBrowserSubscription: true,
           endpoint: subscription.endpoint,
           remoteHealthy,
           localSuppressionAllowed: remoteHealthy,
+          permission,
+          hasRemoteSubscription,
           lastRemoteSuccessAt: remoteRow?.last_remote_success_at || '',
-          lastRemoteFailureAt: remoteRow?.last_remote_failure_at || ''
+          lastRemoteFailureAt: remoteRow?.last_remote_failure_at || '',
+          lastRemoteFailureReason: remoteRow?.last_remote_failure_reason || '',
+          consecutiveRemoteFailures: Number(remoteRow?.consecutive_remote_failures || 0),
+          healthRefreshError
         });
         if (remoteHealthy) {
-          setPushStatus('Status: aktiv (remote gesund)');
+          setPushStatus('Status: aktiv (remote gesund)', 'ok');
+          renderPushDetails({ remoteLabel: 'remote gesund' });
           return;
         }
-        setPushStatus(
-          remoteRow
-            ? 'Status: aktiv (lokales Fallback)'
-            : 'Status: aktiv (warte auf Remote-Bestaetigung)'
-        );
+        if (healthRefreshError) {
+          setPushStatus('Status: aktiv (Health-Check nicht lesbar)', 'warn');
+          renderPushDetails({
+            remoteLabel: 'Health-Check nicht lesbar',
+            hint: 'Browser-Abo ist aktiv, aber MIDAS konnte den Remote-Status nicht lesen. Off-App-Push bitte ueber einen manuellen Workflow-Smoke pruefen.'
+          });
+          return;
+        }
+        if (hasRemoteSubscription) {
+          setPushStatus('Status: aktiv (lokales Fallback)', 'warn');
+          renderPushDetails({
+            remoteLabel: 'lokales Fallback',
+            hint: 'Remote-Push ist noch nicht gesund bestaetigt oder zuletzt fehlgeschlagen. Geraete-/Browser-Benachrichtigungen koennen ausserhalb von MIDAS blockiert sein.'
+          });
+          return;
+        }
+        setPushStatus('Status: aktiv (warte auf Remote-Bestaetigung)', 'warn');
+        renderPushDetails({
+          remoteLabel: 'warte auf Remote-Bestaetigung',
+          hint: 'Browser-Abo ist aktiv, aber noch nicht durch eine erfolgreiche Remote-Zustellung bestaetigt.'
+        });
         return;
       }
-      setPushRoutingState({ hasBrowserSubscription: false });
-      setPushStatus(permission === 'granted' ? 'Status: bereit (kein Abo)' : 'Status: aus');
+      setPushRoutingState({ hasBrowserSubscription: false, permission });
+      if (permission === 'granted') {
+        setPushStatus('Status: bereit (kein Abo)', 'warn');
+        renderPushDetails({
+          remoteLabel: 'kein Abo',
+          hint: 'Benachrichtigungen sind erlaubt, aber dieses Geraet ist noch nicht fuer Push abonniert.'
+        });
+      } else {
+        setPushStatus('Status: aus', '');
+        renderPushDetails({
+          remoteLabel: 'aus',
+          hint: 'Push ist noch nicht aktiviert. Ohne Push kann MIDAS ausserhalb der geoeffneten App nicht erinnern.'
+        });
+      }
     } catch (err) {
       setPushRoutingState({ hasBrowserSubscription: false });
-      setPushStatus(`Status: nicht verfuegbar (${err.message || err})`);
+      setPushStatus(`Status: nicht verfuegbar (${err.message || err})`, 'error');
+      renderPushDetails({
+        remoteLabel: 'nicht verfuegbar',
+        hint: 'Push wird von diesem Browser oder dieser Umgebung aktuell nicht unterstuetzt.'
+      });
     }
   };
 
@@ -367,7 +491,11 @@
       log?.('push subscription aktiv');
     } catch (err) {
       diag?.add?.(`[profile] push enable failed ${err.message || err}`);
-      setPushStatus(`Status: Fehler (${err.message || err})`);
+      setPushStatus(`Status: Fehler (${err.message || err})`, 'error');
+      renderPushDetails({
+        remoteLabel: 'Fehler',
+        hint: 'Push konnte nicht aktiviert werden. Bitte Browser- und Geraete-Benachrichtigungen pruefen.'
+      });
     } finally {
       btn?.removeAttribute('disabled');
       state.pushSyncing = false;
@@ -382,8 +510,9 @@
       btn?.setAttribute('disabled', 'true');
       const subscription = await getCurrentSubscription();
       if (!subscription) {
-        setPushRoutingState({ hasBrowserSubscription: false });
+        setPushRoutingState({ hasBrowserSubscription: false, permission: global.Notification?.permission || 'default' });
         setPushStatus('Status: aus');
+        renderPushDetails({ remoteLabel: 'aus' });
         return;
       }
       const userId = await requireUserId();
@@ -393,7 +522,11 @@
       log?.('push subscription deaktiviert');
     } catch (err) {
       diag?.add?.(`[profile] push disable failed ${err.message || err}`);
-      setPushStatus(`Status: Fehler (${err.message || err})`);
+      setPushStatus(`Status: Fehler (${err.message || err})`, 'error');
+      renderPushDetails({
+        remoteLabel: 'Fehler',
+        hint: 'Push konnte nicht deaktiviert werden. Bitte spaeter erneut versuchen.'
+      });
     } finally {
       btn?.removeAttribute('disabled');
       state.pushSyncing = false;

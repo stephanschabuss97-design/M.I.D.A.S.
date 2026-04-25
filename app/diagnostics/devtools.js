@@ -13,6 +13,7 @@
 
   const selectors = {
     push: '#devTogglePush',
+    pushStatus: '#devPushStatus',
     sound: '#devToggleSound',
     haptic: '#devToggleHaptic',
     nocache: '#devToggleNoCache',
@@ -47,6 +48,55 @@
   const updateToggle = (el, value) => {
     if (!el) return;
     el.checked = !!value;
+  };
+
+  const setPushDiagStatus = (el, text, tone = '') => {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('is-ok', tone === 'ok');
+    el.classList.toggle('is-warn', tone === 'warn');
+    el.classList.toggle('is-error', tone === 'error');
+  };
+
+  const formatShortDateTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('de-AT', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const describePushRouting = (routing) => {
+    if (!routing?.hasBrowserSubscription) {
+      const permission = routing?.permission || global.Notification?.permission || 'default';
+      if (permission === 'denied') {
+        return { text: 'Push: Browser blockiert', tone: 'error' };
+      }
+      return { text: 'Push: kein Browser-Abo', tone: 'warn' };
+    }
+    if (routing.remoteHealthy) {
+      const lastSuccess = formatShortDateTime(routing.lastRemoteSuccessAt);
+      return {
+        text: `Push: Abo aktiv, Remote gesund${lastSuccess ? ` (${lastSuccess})` : ''}`,
+        tone: 'ok',
+      };
+    }
+    if (routing.healthRefreshError) {
+      return { text: 'Push: Abo aktiv, Health-Check nicht lesbar', tone: 'warn' };
+    }
+    if (routing.hasRemoteSubscription) {
+      const lastFailure = formatShortDateTime(routing.lastRemoteFailureAt);
+      const reason = routing.lastRemoteFailureReason ? ` - ${routing.lastRemoteFailureReason}` : '';
+      return {
+        text: `Push: Abo aktiv, Remote nicht gesund${lastFailure ? ` (${lastFailure})` : ''}${reason}`,
+        tone: 'warn',
+      };
+    }
+    return { text: 'Push: Abo aktiv, wartet auf Remote-Bestaetigung', tone: 'warn' };
   };
 
   const readAssistantSurfaceEnabled = () => readFlag(ASSISTANT_SURFACE_STORAGE_KEY, false) === true;
@@ -99,18 +149,24 @@
 
   applyAssistantSurfaceState(readAssistantSurfaceEnabled());
 
-  const updatePushToggle = async (el) => {
+  const updatePushToggle = async (el, statusEl = null) => {
     if (!el) return;
     try {
       const profile = getProfileApi();
       if (profile?.isPushEnabled) {
+        await profile.refreshPushStatus?.({ reason: 'devtools' });
         const enabled = await profile.isPushEnabled();
         updateToggle(el, !!enabled);
+        const routing = profile.getPushRoutingStatus?.();
+        const status = describePushRouting(routing);
+        setPushDiagStatus(statusEl, status.text, status.tone);
         return;
       }
       updateToggle(el, false);
-    } catch (_) {
+      setPushDiagStatus(statusEl, 'Push: Profilmodul nicht bereit', 'warn');
+    } catch (err) {
       updateToggle(el, false);
+      setPushDiagStatus(statusEl, `Push: Diagnose fehlgeschlagen (${err?.message || err})`, 'error');
     }
   };
 
@@ -132,6 +188,7 @@
 
   const bind = () => {
     const pushEl = doc.querySelector(selectors.push);
+    const pushStatusEl = doc.querySelector(selectors.pushStatus);
     const soundEl = doc.querySelector(selectors.sound);
     const hapticEl = doc.querySelector(selectors.haptic);
     const nocacheEl = doc.querySelector(selectors.nocache);
@@ -142,7 +199,7 @@
     updateToggle(hapticEl, feedback?.isHapticEnabled?.() ?? readFlag('FEEDBACK_HAPTIC_ENABLED', true));
     updateToggle(nocacheEl, readFlag('DEV_NOCACHE_ASSETS', false));
     updateToggle(assistantEl, readAssistantSurfaceEnabled());
-    updatePushToggle(pushEl);
+    updatePushToggle(pushEl, pushStatusEl);
 
     soundEl?.addEventListener('change', () => {
       const on = !!soundEl.checked;
@@ -174,7 +231,7 @@
       } else {
         await profile?.disablePush?.();
       }
-      await updatePushToggle(pushEl);
+      await updatePushToggle(pushEl, pushStatusEl);
     });
 
     const nocacheInitial = readFlag('DEV_NOCACHE_ASSETS', false);

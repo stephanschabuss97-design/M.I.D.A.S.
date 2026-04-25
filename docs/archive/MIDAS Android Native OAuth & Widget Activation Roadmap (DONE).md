@@ -1,4 +1,4 @@
-# MIDAS Android Native OAuth & Widget Activation Roadmap
+# MIDAS Android Native OAuth & Widget Activation Roadmap (DONE)
 
 ## Ziel (klar und pruefbar)
 Der Android-Widget-/Shell-Pfad soll so umgebaut werden, dass Google-Login nicht mehr in der eingebetteten `WebView` stattfindet. Stattdessen soll die Android-Huelle eine native OAuth-Anmeldung ueber einen sicheren externen Browser-Kontext durchfuehren, den Callback per Deep Link empfangen, die Session nativ halten und damit das Widget aktivieren koennen.
@@ -1135,6 +1135,10 @@ Follow-up-Punkte:
 Bewertung:
 - Dieser Follow-up-Block ist bewusst ein UX-/Refresh-Nachzug und kein neuer Architekturstrang.
 - Er soll den Widget-Alltag verbessern, ohne die bestehende PWA-/Android-Trennung oder die Plattform-Guardrails aufzubrechen.
+- Der Follow-up-Block ist abgeschlossen:
+  - App-Start-Catch-up ist aktiv
+  - Wake-/Unlock-Catch-up ist als best effort aktiv
+  - kurzer Widget-Tap startet manuellen nativen Sync mit sichtbarem `Synchronisiere...`-Feedback
 
 ## Smokechecks / Regression (Definition)
 - Der bestehende Browser-/PWA-Google-Login funktioniert unveraendert weiter.

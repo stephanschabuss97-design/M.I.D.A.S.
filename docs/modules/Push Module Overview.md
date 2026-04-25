@@ -36,7 +36,7 @@ Related docs:
 | `service-worker.js` | Severity-Auswertung, Anzeige-Defaults, Click-Handling |
 | `app/modules/profile/index.js` | Push-Opt-in, Browser-Subscription, Remote-Health-Status |
 | `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
-| `.github/workflows/incidents-push.yml` | 30-Minuten-Takt fuer Off-App-Push |
+| `.github/workflows/incidents-push.yml` | gezielte UTC-Ticks fuer Off-App-Push rund um die produktiven Schwellen |
 | `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts` | externer Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
 | `sql/15_Push_Subscriptions.sql` | `push_subscriptions` plus `push_notification_deliveries` |
 
@@ -66,7 +66,7 @@ Related docs:
 - `bp:changed`
 - `visibilitychange`
 - lokaler Minutentick
-- externer GitHub-Action-Tick alle `30` Minuten
+- externer GitHub-Action-Tick zu gezielten UTC-Zeitpunkten rund um die produktiven Schwellen
 
 ### 4.3 Verarbeitung lokal
 - Medication prueft offene Slots je `morning/noon/evening/night`.
@@ -85,6 +85,8 @@ Related docs:
 
 ### 4.4 Verarbeitung remote
 - GitHub Actions ist nur Taktgeber.
+- Der Workflow laeuft nicht mehr als 30-Minuten-Dauerlauf, sondern gezielt rund um die relevanten Medication-/BP-Schwellen.
+- Die Cron-Zeiten sind in UTC gesetzt und decken CET/CEST fuer `Europe/Vienna` ab.
 - Die Edge Function entscheidet in `Europe/Vienna`, was aktuell faellig ist.
 - Medication liest slot-/abschnittsbasiert:
   - `health_medications`
@@ -139,7 +141,7 @@ Related docs:
 - Lokaler Push-Fehlschlag bleibt lokal und erzeugt keinen harten User-Error.
 - Ohne verifizierten Remote-Health-Stand bleibt lokal der Fallback aktiv.
 - Service Worker behaelt Legacy-Fallbacks fuer alte Payloads ohne `data.severity`.
-- Scheduler-Jitter von bis zu knapp `30` Minuten ist ein bewusster Tradeoff.
+- Scheduler-Jitter bleibt ein bewusster Tradeoff; die gezielte Kadenz reduziert unnoetige Action-Runs, ohne die fachliche Entscheidung aus der Edge Function zu verschieben.
 
 ---
 
@@ -185,6 +187,7 @@ Related docs:
   - Browser Notification Permission
 - Known risks:
   - Schedule-Jitter
+  - bei Aenderungen an Medication-/BP-Schwellen muss die GitHub-Action-Kadenz mitgeprueft werden
   - fehlende erste Remote-Erfolgsbestaetigung haelt lokales Fallback aktiv
   - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
@@ -195,6 +198,10 @@ Related docs:
 - Edge Function `midas-incident-push` muss deployed sein.
 - `sql/15_Push_Subscriptions.sql` muss produktiv eingespielt sein.
 - Workflow [`.github/workflows/incidents-push.yml`](../../.github/workflows/incidents-push.yml) muss auf dem GitHub-Default-Branch liegen.
+- Der Workflow nutzt gezielte UTC-Ticks statt `*/30`:
+  - Hauptfenster `5 8,9,10,11,12,13,14,15,18,19,20,21 * * *`
+  - Nachtfenster `35 20,21,22 * * *`
+  - Nacht-Backup `50 21,22 * * *`
 - GitHub-Secrets fuer den Workflow muessen vorhanden sein:
   - `INCIDENTS_PUSH_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`

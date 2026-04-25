@@ -19,7 +19,7 @@ Die Detailquelle fuer einzelne Bereiche bleibt `docs/modules/*.md`. Die README e
 Ich bin Stephan. Der Erbauer von MIDAS.
 Ich wohne in Tirol in Axams
 Ich bin am 15.04.1982 geboren
-MIDAS wurde gebaut da ich im Jänner 2025 mit einer CKD diagnostiziert wurde. 
+MIDAS wurde gebaut da ich im Jänner 2025 mit einer CKD diagnostiziert wurde.
 Ich habe keine Erfahrung in Sachen Syntax, arbeite aber mit Roadmaps die wir beide zusammen erstellen
 MIDAS hab ich als Lebensapp gebaut, sprich es soll mich auch mit 70, 80 und wenn möglich bis über 90 begleiten
 Ich verwende in Gesprchen mit einer KI gerne "Bro" als Ansprache an dich, ich erwarte mir dennoch eine fachliche gute Kommunikation
@@ -129,6 +129,7 @@ MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem m
 Mehrfach-Pushes, Eskalationsketten, Gamification und breite generische "Health App"-Features sind bewusst nicht das Ziel.
 
 Wichtig:
+
 - Eine kleine native Android-Huelle als Widget-/Launcher-Node ist zulaessig.
 - Sie ersetzt MIDAS nicht, verlagert keine Fachlogik und bleibt bewusst eine schmale Surface fuer Homescreen-Sichtbarkeit und Ruecksprung in die PWA.
 

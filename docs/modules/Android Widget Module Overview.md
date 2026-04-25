@@ -8,7 +8,8 @@ Kurze Einordnung:
 Status-Hinweis:
 - `V1` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
 - MIDAS bleibt Source of Truth.
-- Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag und fuehrt bei Tap in MIDAS zurueck.
+- Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag.
+- Der kurze Widget-Tap ist jetzt der primaere manuelle Sync-Pfad; der harte MIDAS-Einstieg bleibt ueber den Launcher.
 - Der Android-Pfad besitzt jetzt einen eigenen nativen Google-/Supabase-OAuth-Entry:
   - der bestehende Browser-/PWA-Login bleibt unveraendert
   - Android-Login laeuft ueber sicheren Browser-Kontext + Deep Link
@@ -49,7 +50,7 @@ Related docs:
 | `android/app/src/main/java/de/schabuss/midas/auth/NativeAuthStore.kt` | finaler nativer Session-Source-of-Truth |
 | `android/app/src/main/java/de/schabuss/midas/auth/NativeAuthConfigStore.kt` | abgesicherter Bootstrap-Store fuer REST-/ANON-Konfiguration |
 | `android/app/src/main/java/de/schabuss/midas/auth/NativeSessionController.kt` | gemeinsamer Clear-Pfad fuer Android, Widget und WebView |
-| `android/app/src/main/java/de/schabuss/midas/widget/MidasWidgetProvider.kt` | AppWidget-Render und Open-Action |
+| `android/app/src/main/java/de/schabuss/midas/widget/MidasWidgetProvider.kt` | AppWidget-Render, manueller Sync-Tap und sichtbarer Sync-Zustand |
 | `android/app/src/main/java/de/schabuss/midas/widget/DailyWidgetState.kt` | kompakter lokaler Widget-Vertrag |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSnapshotStore.kt` | lokaler Snapshot-Cache |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetAuthStore.kt` | Kompatibilitaetsadapter zum nativen Session-Store |
@@ -57,6 +58,8 @@ Related docs:
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncRepository.kt` | nativer Read-/Refresh-Pfad gegen bestehende MIDAS-/Supabase-Reads |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncWorker.kt` | periodischer Android-Refresh via `WorkManager` |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncScheduler.kt` | Scheduling des nativen Sync-Pfads |
+| `android/app/src/main/java/de/schabuss/midas/widget/WidgetRefreshCoordinator.kt` | zentraler Catch-up-/Manual-Sync-Koordinator fuer App-Start, Widget-Tap und Unlock |
+| `android/app/src/main/java/de/schabuss/midas/widget/WidgetWakeRefresh.kt` | `USER_PRESENT`-/Unlock-Best-Effort fuer Catch-up-Sync im lebenden Android-Prozess |
 | `android/app/src/main/java/de/schabuss/midas/widget/WidgetRealtimeSync.kt` | nativer Realtime-Listener fuer nahezu sofortige Widget-Refreshes bei relevanten Datenwrites |
 | `android/app/src/main/java/de/schabuss/midas/widget/HydrationTargetCalculator.kt` | lokale `Wasser-Soll`-Berechnung aus derselben Stuetzpunkt-Tabelle wie MIDAS |
 | `android/app/src/main/res/layout/widget_midas.xml` | aktuelles Widget-Layout |
@@ -165,6 +168,7 @@ Related docs:
   - `Wasser-Soll`
   - `Medikation`
 - Ein kurzer Tap auf das Widget startet einen manuellen nativen Sync.
+- Waehrend dieses manuellen Syncs zeigt das Widget sichtbar `Synchronisiere...`.
 - Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher erhalten.
 
 ### 4.5 Logout / Session-Clear
@@ -316,6 +320,7 @@ Known risks:
 - Der Wake-/Unlock-Catch-up ist bewusst nur best effort:
   - kein Weckpfad fuer gekillte Prozesse
   - keine Garantie fuer jeden einzelnen Unlock
+- Fuer PWA-Aenderungen ohne lebenden Android-Prozess bleibt der manuelle Widget-Tap der verlässlichste Catch-up-Pfad.
 - Zukuenftige Aenderungen an:
   - `Wasser-Soll`-Stuetzpunkten
   - `DailyWidgetState`
@@ -329,6 +334,7 @@ Known risks:
 - Das Widget ist read-only.
 - Das Widget zeigt `Wasser`, `Wasser-Soll` und `Medikation`.
 - Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
+- Der Widget-Tap zeigt waehrend des manuellen Syncs sichtbar `Synchronisiere...`.
 - Ein Android-App-Start zieht das Widget bei vorhandener Session direkt nach.
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
 - Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.

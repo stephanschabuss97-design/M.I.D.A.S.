@@ -99,6 +99,19 @@ Die Android-Huelle:
 - schreibt den letzten gueltigen `DailyWidgetState` in einen lokalen Android-Cache
 - das Widget rendert ausschliesslich aus diesem Cache
 
+## Refresh- / Interaktionsvertrag
+
+- Das Widget bleibt read-only; es ist kein Capture-Frontend.
+- Ein kurzer Tap auf das Widget startet einen nativen manuellen Sync.
+- Waehrend dieses manuellen Syncs zeigt das Widget sichtbar `Synchronisiere...`.
+- Der harte MIDAS-Einstieg bleibt ueber den Android-Launcher bestehen und ist nicht mehr der primaere Widget-Tap.
+- Bei vorhandenem nativen Login stoesst die Android-App zusaetzlich beim App-Start einen Catch-up-Sync an.
+- Solange der Android-Prozess lebt, darf `USER_PRESENT` / Unlock einen gedrosselten Catch-up-Sync versuchen.
+- Dieser Unlock-Pfad ist bewusst nur best effort:
+  - kein Ersatz fuer Push
+  - kein Weckpfad fuer gekillte Prozesse
+  - keine Garantie fuer jeden einzelnen Unlock
+
 ## Android Auth / Shell Vertrag
 
 - Browser-/PWA-OAuth bleibt der bestehende Web-Standardpfad.
