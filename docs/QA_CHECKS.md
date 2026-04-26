@@ -2094,3 +2094,60 @@ Regression
 - [ ] `:app:assembleDebug` ist gruen.
 - [ ] Deep-Link-Konfiguration in Android + Supabase-Allowlist ist fuer das Testgeraet korrekt.
 - [ ] Android-Bootstrap-Konfiguration (`REST + ANON`) ist fuer frische Installationen einmalig hinterlegt und fuehrt danach reproduzierbar zum nativen Login-Start.
+
+## Phase P10 - Touchlog Maintenance & Mobile Diagnostics (2026-04-26)
+
+**Scope:** Touchlog v2 als sichtbare Maintenance-Zentrale, Profil ohne sichtbare Push-Surface, mobile Diagnose und Push-Wartung.
+
+**Static / Local Checks**
+
+- [x] `node --check app/core/diag.js`
+- [x] `node --check app/diagnostics/devtools.js`
+- [x] `node --check app/modules/profile/index.js`
+- [x] `git diff --check` fuer betroffene Dateien.
+- [x] Statischer HTTP-Probe liefert `index.html` und `app/diagnostics/devtools.js` mit HTTP 200.
+- [x] Touchlog-Anker vorhanden: `devTogglePush`, `devPushStatus`, `devPushDetails`, `devActiveModes`, `devClearLogBtn`, `diagLog`.
+
+**Touchlog Desktop Smoke**
+
+- [ ] Touchlog oeffnen und schliessen; Panel bleibt bedienbar.
+- [ ] Push-Wartung, lokale Diagnosemodi, Hilfsaktionen und Log-Stream sind visuell getrennt.
+- [ ] Log-Stream bleibt scrollbar und lesbar.
+- [ ] `Touchlog leeren` leert nur den sichtbaren/localen Log.
+- [ ] Aktive lokale Modi erscheinen als Status, nicht als wiederholter Log-Spam.
+
+**Touchlog Mobile / Android Smoke**
+
+- [ ] Touchlog am Android-Geraet oeffnen und schliessen.
+- [ ] Header und `x` bleiben erreichbar.
+- [ ] Panel ist nicht abgeschnitten und erzeugt keine horizontale Ueberbreite.
+- [ ] Push-Wartung und Log-Stream sind getrennt lesbar.
+- [ ] Button-, Toggle- und Status-Texte passen in den Viewport.
+
+**Profile Regression**
+
+- [ ] Profil oeffnet ohne Fehler.
+- [ ] Keine sichtbare `Push & Erinnerungen`-Section.
+- [ ] Keine Push-Buttons im Profil.
+- [ ] Kein Profil-Push-Kurzstatus und keine Push-Health-Details im Profil.
+- [ ] Stammdaten, Arztkontakt, Limits und Medication-Snapshot bleiben sichtbar.
+- [ ] Kein toter Leerraum durch entfernte Push-Section.
+
+**Push-Wartung**
+
+- [ ] Push aktivieren ist nur im Touchlog sichtbar erreichbar.
+- [ ] Push deaktivieren ist nur im Touchlog sichtbar erreichbar.
+- [ ] Browser-Berechtigung und Browser-Abo werden ohne Endpoint/UID/Payload angezeigt.
+- [ ] `Health-Check offen` wird nicht als harter Fehler behandelt, wenn kein echter faelliger Remote-Push gelaufen ist.
+- [ ] Manueller Workflow-Smoke mit `window=all` und `status=no-incidents` gilt als erfolgreicher Scheduler/API-Smoke, aber nicht als echter Push-Delivery-Smoke.
+- [ ] Echter faelliger Remote-Push schreibt spaeter sichtbar einen Remote-Erfolg.
+- [ ] Echter Zustellfehler wird als Wartungsproblem sichtbar, ohne sensible Rohdaten anzuzeigen.
+
+**Regression**
+
+- [ ] Keine Produktdatenaktion aus dem Touchlog heraus.
+- [ ] Kein Service-Worker-, Backend- oder Android-Native-Umbau erforderlich.
+- [ ] Boot-Error-Fallback kann weiterhin den Touchlog oder Fallback-Log anzeigen.
+- [ ] Profil-Push-API bleibt intern nutzbar fuer Touchlog und lokale Push-Suppression.
+
+---

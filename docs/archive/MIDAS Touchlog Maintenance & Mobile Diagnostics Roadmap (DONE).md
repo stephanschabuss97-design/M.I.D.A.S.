@@ -1,4 +1,4 @@
-# MIDAS Touchlog Maintenance & Mobile Diagnostics Roadmap
+# MIDAS Touchlog Maintenance & Mobile Diagnostics Roadmap (DONE)
 
 ## Ziel (klar und pruefbar)
 
@@ -102,6 +102,7 @@ Die UI ist aber nicht auf derselben Hoehe:
 - `README.md`
 - `docs/MIDAS Roadmap Template.md`
 - `docs/modules/Diagnostics Module Overview.md`
+- `docs/modules/Touchlog Module Overview.md`
 - `docs/modules/Profile Module Overview.md`
 - `docs/modules/Push Module Overview.md`
 - `docs/QA_CHECKS.md`
@@ -303,7 +304,7 @@ Mobile:
 | S3 | Bruchrisiko-, Mobile- und User-Facing-Copy-Review | DONE | Bruchrisiken, Mobile-/Accessibility-Grenzen, Copy-Vertrag, Profil-Entkopplungsplan und konkrete S4-Pflichtpunkte festgelegt. |
 | S4 | Umsetzung Touchlog v2 und Profil-Entkopplung | DONE | Touchlog v2 umgesetzt, Profil-Push-Surface entfernt, interne Push-API gehaertet, Maintenance-/Copy-/Hilfsaktionsvertrag umgesetzt. |
 | S5 | Tests, Code Review und Contract Review | DONE | Syntax-, Diff-, statische Contract- und HTTP-Serve-Checks erledigt; Desktop-/Android-/Push-Smokes fuer lokale Endabnahme definiert; keine offenen Code-Findings. |
-| S6 | Doku-Sync, QA-Update und Abschlussreview | TODO | Diagnostics/Profile/Push Overviews, QA und Roadmap final synchronisieren. |
+| S6 | Doku-Sync, QA-Update und Abschlussreview | DONE | Neues Touchlog Module Overview angelegt; Diagnostics/Profile/Push Overviews, QA und Roadmap synchronisiert; Abschlussreview ohne offene P0/P1-Findings. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -1751,6 +1752,11 @@ Exit-Kriterium:
   - Push ueber Touchlog deaktivieren.
   - Pruefen, dass der sichtbare Status echte Bereitschaft nicht als falsche Sicherheit darstellt.
   - Profil parallel push-frei kontrollieren.
+- Rueckmeldung aus lokalem Smoke am 26.04.2026:
+  - Aus- und Einschalten ueber Touchlog funktioniert.
+  - Nach erneutem Einschalten zeigt Touchlog konservativ `Push: unbekannt - Health-Check offen`.
+  - Details zeigen `Berechtigung erlaubt`, `Browser-Abo aktiv`, `Remote Health-Check offen`.
+  - Profil bleibt dadurch fachlich nicht betroffen.
 - Findings:
   - Keine.
 
@@ -1768,6 +1774,12 @@ Exit-Kriterium:
     - aktiv, wartet auf erste faellige Erinnerung
     - remote gesund
     - Zustellung pruefen, falls real ausloesbar
+- Rueckmeldung aus lokalem Smoke am 26.04.2026:
+  - Manueller Scheduler-Run war technisch erfolgreich: Response `ok:true`, `dryRun:false`, Zeitfenster `all`.
+  - Ergebnis war `status:"no-incidents"`; damit wurde vermutlich keine echte Push-Zustellung ausgeloest.
+  - Medikamente waren als genommen erfasst; BP wurde im Ergebnis als `skipped` gefuehrt.
+  - Der sichtbare `Health-Check offen`-Status ist deshalb plausibel, weil ein erfolgreicher Scheduler-Lauf ohne Incident nicht zwingend einen Remote-Push-Erfolg schreibt.
+  - Kein Blocker fuer S5; echter Push-Delivery-Smoke bleibt optional separat.
 - Findings:
   - Keine.
 
@@ -1826,9 +1838,8 @@ Exit-Kriterium:
   - Nicht automatisierbare visuelle Smokes sind konkret fuer Desktop/Android/echten Push-Browser definiert.
   - Keine Code-Findings offen.
 - Lokal fuer dich offen:
-  - Desktop-Smoke im echten Browser.
-  - Android-Smoke am echten Geraet.
-  - Echter Push-Aktivieren-/Deaktivieren- und Health-Smoke.
+  - Optional: Remote-Health-Zeitstempel spaeter erneut ansehen, falls nach echten Push-Laeufen weiterhin dauerhaft `Health-Check offen` bleibt.
+  - Optional: Android-Textfit weiter beobachten, falls laengere Statuswerte auftreten.
 - Commit-Empfehlung:
   - Nach S6 sinnvoll als gemeinsamer Abschlusscommit, z. B. `feat(touchlog): move push maintenance into touchlog`.
 
@@ -1842,26 +1853,36 @@ Ziel:
 
 Substeps:
 
-- S6.1 `docs/modules/Diagnostics Module Overview.md` aktualisieren.
-- S6.2 `docs/modules/Profile Module Overview.md` aktualisieren:
+- S6.1 `docs/modules/Touchlog Module Overview.md` neu anlegen:
+  - sichtbare Maintenance-Surface
+  - Push-Wartung
+  - lokale Diagnosemodi
+  - Hilfsaktionen
+  - Log-Stream
+  - Profil-Abgrenzung
+  - Mobile-/PII-/Copy-Guardrails
+- S6.2 `docs/modules/Diagnostics Module Overview.md` aktualisieren:
+  - Diagnostics-Core und Touchlog-UI abgrenzen
+  - neues Touchlog Overview verlinken
+- S6.3 `docs/modules/Profile Module Overview.md` aktualisieren:
   - Profil hat keine Push-Surface mehr.
   - Falls technische Push-Funktionen im Profil-Modul bleiben, als interne/uebergangsweise Quelle dokumentieren.
-- S6.3 `docs/modules/Push Module Overview.md` aktualisieren:
+- S6.4 `docs/modules/Push Module Overview.md` aktualisieren:
   - Touchlog/Maintenance ist einzige sichtbare Push-Wartungs-Surface.
   - Profil enthaelt keine Push-Bedienung.
-- S6.4 `docs/QA_CHECKS.md` um Touchlog-v2-Smokes erweitern.
-- S6.5 Diese Roadmap mit Ergebnisprotokollen aktualisieren.
-- S6.6 Finaler Contract Review:
+- S6.5 `docs/QA_CHECKS.md` um Touchlog-v2-Smokes erweitern.
+- S6.6 Diese Roadmap mit Ergebnisprotokollen aktualisieren.
+- S6.7 Finaler Contract Review:
   - Roadmap vs. Code
   - Roadmap vs. Module Overviews
   - Roadmap vs. README-Guardrails
   - Roadmap vs. QA
-- S6.7 Abschluss-Abnahme:
+- S6.8 Abschluss-Abnahme:
   - keine offenen P0/P1-Risiken
   - bekannte Restrisiken dokumentiert
   - nicht betroffene Schichten bleiben unberuehrt
-- S6.8 Commit-Empfehlung.
-- S6.9 Archiv-Entscheidung.
+- S6.9 Commit-Empfehlung.
+- S6.10 Archiv-Entscheidung.
 
 Output:
 
@@ -1870,6 +1891,97 @@ Output:
 Exit-Kriterium:
 
 - Code, Doku, QA und Roadmap sprechen denselben finalen Diagnostics-Vertrag.
+
+#### S6 Ergebnisprotokoll
+
+##### S6.1 Touchlog Module Overview neu angelegt
+- Umsetzung:
+  - `docs/modules/Touchlog Module Overview.md` neu erstellt.
+  - Dokumentiert Touchlog als sichtbare Maintenance- und Diagnoseoberflaeche.
+  - Beschreibt Push-Wartung, lokale Diagnosemodi, Hilfsaktionen, Log-Stream, Profil-Abgrenzung, Mobile-Regeln und PII-Grenzen.
+- Contract Review:
+  - Touchlog nutzt Diagnostics-Core und interne Profile-Push-API, ist aber dokumentarisch eigene sichtbare Surface.
+- Findings:
+  - Keine.
+
+##### S6.2 Diagnostics Module Overview aktualisiert
+- Umsetzung:
+  - Diagnostics als Core/Infrastruktur abgegrenzt.
+  - Touchlog Overview verlinkt.
+  - `diag.clear()` und UI-nahe Entry Points ergaenzt.
+- Contract Review:
+  - Diagnostics bleibt kein Produktfeature und kein State Store.
+- Findings:
+  - Keine.
+
+##### S6.3 Profile Module Overview aktualisiert
+- Umsetzung:
+  - Profil-Zweck von sichtbarem Push getrennt.
+  - Profil-Push-Buttons und sichtbare Push-Health-Anzeige aus der Doku entfernt.
+  - Interne Push-API als technische Quelle fuer Touchlog und Incident-Suppression dokumentiert.
+- Contract Review:
+  - Profil bleibt Stammdaten-, Limit-, Arztkontakt- und Medication-Snapshot-Flaeche.
+- Findings:
+  - Keine.
+
+##### S6.4 Push Module Overview aktualisiert
+- Umsetzung:
+  - Touchlog als einzige sichtbare Push-Wartungs- und Bedienoberflaeche dokumentiert.
+  - Profil als sichtbar push-frei dokumentiert.
+  - Zukunftspunkt fuer spaetere Push-Service-Migration ergaenzt.
+- Contract Review:
+  - Push-Fachlogik, Service Worker, GitHub Actions und Edge Function bleiben unveraendert.
+- Findings:
+  - Keine.
+
+##### S6.5 QA aktualisiert
+- Umsetzung:
+  - `docs/QA_CHECKS.md` um Phase `P10 - Touchlog Maintenance & Mobile Diagnostics` erweitert.
+  - Static Checks, Desktop-Smoke, Android-Smoke, Profile Regression, Push-Wartung und Regression dokumentiert.
+- Contract Review:
+  - Manueller `status=no-incidents`-Workflow-Smoke ist korrekt als Scheduler/API-Smoke, nicht als Push-Delivery-Smoke beschrieben.
+- Findings:
+  - Keine.
+
+##### S6.6 Roadmap synchronisiert
+- Umsetzung:
+  - Relevante Doku-Liste um Touchlog Overview ergaenzt.
+  - S6-Substeps an neue Touchlog-Doku-Entscheidung angepasst.
+  - S6 in der Statusmatrix auf `DONE` gesetzt.
+- Findings:
+  - Keine.
+
+##### S6.7 Finaler Contract Review
+- Ergebnis:
+  - Code, Module Overviews, QA und Roadmap sprechen denselben Vertrag.
+  - Touchlog ist die sichtbare Maintenance-Zentrale.
+  - Profil ist sichtbar push-frei.
+  - Diagnostics ist Core/Infrastruktur.
+  - Push-Fachlogik bleibt unveraendert.
+  - Keine Produktdatenaktion aus dem Touchlog heraus.
+  - Keine sensiblen Push-Rohdaten sichtbar.
+- Findings:
+  - Keine offenen P0/P1/P2-Findings.
+
+##### S6.8 Abschluss-Abnahme
+- Abnahme:
+  - Touchlog-v2-Umbau ist dokumentiert.
+  - Bekannte Restrisiken sind dokumentiert:
+    - echter Push-Delivery-Smoke bei faelligem Remote-Push
+    - Android-Textfit bei laengeren Statuswerten
+    - interne Push-API liegt vorerst im Profil-Modul
+  - Nicht betroffene Schichten bleiben unberuehrt.
+- Findings:
+  - Keine.
+
+##### S6.9 Commit-Empfehlung
+- Empfehlung:
+  - `feat(touchlog): move push maintenance into touchlog`
+
+##### S6.10 Archiv-Entscheidung
+- Entscheidung:
+  - Offene lokale Optional-Smokes wurden durch Nutzerentscheidung am 26.04.2026 als abgeschlossen markiert.
+  - Roadmap wird als `(DONE)` markiert und nach `docs/archive/` verschoben.
 
 ## Ergebnisprotokolle
 

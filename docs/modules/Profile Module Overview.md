@@ -1,12 +1,14 @@
 # Profile Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: zentrale Pflege persoenlicher Gesundheits- und Kontaktparameter plus Push-Opt-in und Push-Status.
-- Rolle: liefert Stammdaten, Limits, Hausarztkontakt, read-only Medication-Snapshot und den lokalen Push-Routing-Stand.
+- Zweck: zentrale Pflege persoenlicher Gesundheits- und Kontaktparameter.
+- Rolle: liefert Stammdaten, Limits, Hausarztkontakt, read-only Medication-Snapshot und intern den lokalen Push-Routing-Stand.
 - Abgrenzung: kein Medical Record, keine Mehrarztverwaltung, keine eigene Notification-Engine.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Touchlog Module Overview](Touchlog Module Overview.md)
+- [Push Module Overview](Push Module Overview.md)
 
 ---
 
@@ -48,10 +50,10 @@ Related docs:
 - Modul laedt beim DOM Ready.
 - `ensureRefs()` cached Formelemente.
 - Wartet auf `supabase:ready`, dann `syncProfile({ reason: 'init' })`.
-- Initialisiert auch den Push-Status fuer Browser-Subscription und Remote-Health.
+- Initialisiert intern auch den Push-Routing-Status fuer Browser-Subscription und Remote-Health.
 
 ### 4.2 User-Trigger
-- Buttons `profileSaveBtn`, `profileRefreshBtn`, `profilePushEnableBtn`, `profilePushDisableBtn`.
+- Buttons `profileSaveBtn`, `profileRefreshBtn`.
 - Input-Aenderungen bleiben lokal bis Save.
 
 ### 4.3 Verarbeitung
@@ -59,7 +61,7 @@ Related docs:
 - `profileDoctorEmail` nutzt native HTML5-Validation.
 - CKD-Abzeichen kommt aus `loadLatestLabSnapshot()` und bleibt read-only.
 - Medication-Snapshot: `AppModules.medication.loadMedicationForDay(today)` liefert aktive Medikamente und wird als lesbare Plan-Zusammenfassung gerendert.
-- Push-Status:
+- Interner Push-Routing-Status:
   - liest die aktuelle Browser-Subscription
   - gleicht sie mit `push_subscriptions` ab
   - bewertet `remote gesund` nur bei nachgewiesen erfolgreicher Remote-Zustellung ohne spaeteren Failure
@@ -70,7 +72,7 @@ Related docs:
 - Select: `.maybeSingle()`.
 - Nach erfolgreichem Save/Sync wird State aktualisiert, Overview gerendert und `profile:changed` gefeuert.
 - Der Medication-Snapshot wird nicht separat gespeichert; Quelle bleibt das Medication-Modul.
-- Push-Opt-in speichert/entfernt den Browser-Endpoint in `push_subscriptions`.
+- Push-Opt-in/-Opt-out wird sichtbar ueber den Touchlog ausgeloest und nutzt intern weiter die bestehende Profile-Push-API.
 
 ---
 
@@ -84,14 +86,10 @@ Related docs:
   - `profileDoctorName`, `profileDoctorEmail`
   - Limits und Lifestyle-Felder
 - Medication-Snapshot zeigt aktive Medikamente mit lesbarer Plan-Zusammenfassung aus `slots[]`, optional `mit Mahlzeit` und Restbestand.
-- Push-Status zeigt:
-  - `bereit (kein Abo)`
-  - `bereit (wartet auf erste Erinnerung)`
-  - `aktiv (warte auf Remote-Bestaetigung)`
-  - `Zustellung noch nicht gesund`
-  - `aktiv (remote gesund)`
-- `bereit (wartet auf erste Erinnerung)` ist kein Fehlerzustand; es bedeutet, dass Browser-Abo und Backend-Subscription vorhanden sind, aber noch kein faelliger Remote-Push erfolgreich bestaetigt werden konnte.
-- `Zustellung noch nicht gesund` ist der Warnzustand fuer echten Remote-Failure, Failure-Counter oder deaktivierte Remote-Subscription.
+- Keine sichtbare Push-Section im Profil.
+- Keine Push-Buttons im Profil.
+- Kein Profil-Push-Kurzstatus und keine Push-Health-Details im Profil.
+- Sichtbare Push-Wartung gehoert in den Touchlog.
 - Keine Dev-Toggles im Profil.
 
 ---
@@ -108,7 +106,7 @@ Related docs:
 
 - Save-/Sync-Fehler loggen `[profile] save failed` bzw. `[profile] sync failed`.
 - Push-Fehler loggen `[profile] push enable failed`, `[profile] push disable failed` oder einen ausgelassenen Health-Refresh.
-- Push-Health-Texte duerfen `noch keine echte Zustellung` nicht als Fehler darstellen.
+- Push-Health-Texte werden sichtbar im Touchlog gerendert und duerfen `noch keine echte Zustellung` nicht als Fehler darstellen.
 - Lokale Push-Suppression bleibt nur erlaubt, wenn `remoteHealthy` wahr ist.
 - Formular wird waehrend Requests disabled.
 - Fehlender Supabase-Client fuehrt zu einem klaren Fehler.
@@ -118,13 +116,15 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Public API / Entry Points: `AppModules.profile.sync`, `AppModules.profile.refreshPushStatus`, `AppModules.profile.getPushRoutingStatus`, `profileSaveBtn`, `profileRefreshBtn`.
+- Public API / Entry Points: `AppModules.profile.sync`, `AppModules.profile.refreshPushStatus`, `AppModules.profile.getPushRoutingStatus`, `AppModules.profile.enablePush`, `AppModules.profile.disablePush`, `profileSaveBtn`, `profileRefreshBtn`.
 - Source of Truth: `user_profile`, `push_subscriptions`, Lab-Snapshot und Medication-Snapshot.
 - Side Effects: `profile:changed`, Updates fuer Assistant, Charts, Medication-Low-Stock und lokale Push-Suppression.
 - Konsumenten:
   - Charts
   - Assistant
   - Medication Low-Stock / Mailto
+  - Touchlog Push-Wartung
+  - Incident-Engine fuer lokale Push-Suppression
 
 ---
 
@@ -133,6 +133,7 @@ Related docs:
 - Zusaetzliche Felder wie Blutdruckziel oder Allergien.
 - Staerker serverseitige Validation.
 - Snapshot-Caching und Offline-Fallback.
+- Spaetere Migration der internen Push-API in ein eigenes Push-Service-Modul, falls die Modulgrenze weiter geschaerft werden soll.
 
 ---
 
@@ -149,7 +150,7 @@ Related docs:
 - Dependencies (hard): `user_profile`, Supabase Client, Medication-Snapshot, Lab-Snapshot.
 - Dependencies (soft): Assistant-Kontext.
 - Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save, Remote-Health muss zuerst erfolgreich belegt werden bevor lokal unterdrueckt werden darf.
-- Technische Push-Health-Details sind aktuell im Profil sichtbar, sollen aber spaeter groesstenteils in eine Touchlog-Maintenance-Section wandern.
+- Die interne Push-API liegt vorerst weiterhin im Profil-Modul; sichtbar ist Push aber ausschliesslich im Touchlog.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/15_Push_Subscriptions.sql`.
 
 ---
@@ -161,7 +162,8 @@ Related docs:
 - `profile:changed` feuert nach Save; Charts und Assistant reagieren.
 - Low-Stock Box aktualisiert Arztkontakt nach Profil-Update.
 - Medication-Snapshot zeigt `1x` und `>1x` Medikation mit lesbarer Plan-Zusammenfassung.
-- Push-Status unterscheidet:
+- Profil zeigt keine sichtbare Push-Section, keine Push-Buttons und keinen Push-Kurzstatus.
+- Interner Push-Routing-Status unterscheidet weiterhin:
   - kein Browser-Abo
   - Backend-Subscription vorhanden, aber noch keine echte faellige Zustellung
   - echter Remote-Failure

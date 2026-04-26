@@ -16,6 +16,7 @@ Related docs:
 - [Medication Module Overview](Medication Module Overview.md)
 - [Intake Module Overview](Intake Module Overview.md)
 - [Profile Module Overview](Profile Module Overview.md)
+- [Touchlog Module Overview](Touchlog Module Overview.md)
 
 ---
 
@@ -34,7 +35,8 @@ Related docs:
 |------|------|
 | `app/modules/incidents/index.js` | lokale Incident-Engine, Medication-Schwellen, lokale Suppression |
 | `service-worker.js` | Severity-Auswertung, Anzeige-Defaults, Click-Handling |
-| `app/modules/profile/index.js` | Push-Opt-in, Browser-Subscription, Remote-Health-Status |
+| `app/modules/profile/index.js` | interne Push-API, Browser-Subscription, Remote-Health-Status |
+| `app/diagnostics/devtools.js` | sichtbare Push-Wartung im Touchlog |
 | `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
 | `.github/workflows/incidents-push.yml` | gezielte UTC-Ticks fuer Off-App-Push rund um die produktiven Schwellen |
 | `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts` | externer Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
@@ -59,7 +61,8 @@ Related docs:
 - Incident-Engine startet beim App-Load.
 - Tageswechsel resettet lokale Sendeflags.
 - Lokaler Intervall-Check laeuft minuetlich.
-- Profil-Modul synchronisiert Browser-Push und den letzten bekannten Remote-Health-Stand.
+- Profil-Modul synchronisiert intern Browser-Push und den letzten bekannten Remote-Health-Stand.
+- Sichtbare Bedienung und Health-Anzeige liegen im Touchlog.
 
 ### 4.2 Trigger
 - `medication:changed`
@@ -126,17 +129,15 @@ Related docs:
 
 ## 6. UI-Integration
 
-- Profil-Panel:
+- Touchlog:
+  - einzige sichtbare Push-Wartungs- und Bedienoberflaeche
   - Push aktivieren/deaktivieren
-  - Statusanzeige:
-    - `bereit (kein Abo)`
-    - `bereit (wartet auf erste Erinnerung)`
-    - `aktiv (warte auf Remote-Bestaetigung)`
-    - `Zustellung noch nicht gesund`
-    - `aktiv (remote gesund)`
-- Touchlog-/Diagnosepanel:
-  - Push-Toggle bleibt Bedienung fuer aktivieren/deaktivieren.
-  - Diagnosezeile unterscheidet Browser-Abo, erste faellige Erinnerung, Remote-Erfolg und Zustellproblem.
+  - Statusanzeige fuer Browser-Berechtigung, Browser-Abo, Remote-Status, letzte Remote-Zeitpunkte und Pruefzeit
+  - Diagnose unterscheidet Browser-Abo, erste faellige Erinnerung, Remote-Erfolg und Zustellproblem
+- Profil:
+  - keine sichtbare Push-Section
+  - keine Push-Buttons
+  - kein Push-Kurzstatus und keine Push-Health-Details
 - Opt-in bleibt explizit per User-Intent.
 
 ---
@@ -164,7 +165,7 @@ Related docs:
   - `bp:changed`
   - `visibilitychange`
 - Medication-Read-Model basiert auf offenen `slots[]` und `slot_type`.
-- `AppModules.profile` exportiert den Push-Routing-Stand fuer die Incident-Engine.
+- `AppModules.profile` exportiert den Push-Routing-Stand fuer die Incident-Engine und den Touchlog.
 - Output:
   - lokale Reminder-/Incident-Notification
   - externer Off-App-Push
@@ -175,8 +176,8 @@ Related docs:
 
 - Nutzerindividuelle Reminder-Zeitfenster.
 - Snooze oder bewusste Follow-up-Stufe.
-- zusaetzliche Delivery-/Health-Diagnostik im Profil.
-- Geplante Touchlog-Maintenance-Section fuer technische Push-Health-Details.
+- zusaetzliche Delivery-/Health-Diagnostik im Touchlog.
+- spaetere technische Migration der internen Push-API aus dem Profil-Modul in ein dediziertes Push-Service-Modul.
 
 ---
 
@@ -238,6 +239,7 @@ Related docs:
 - Manueller Workflow-Smoke mit `window=all` liefert `ok=true` und bei nicht faelligen Ereignissen `status=no-incidents` plus Skip-Gruende.
 - `bereit (wartet auf erste Erinnerung)` darf nicht als Fehler angezeigt werden, wenn noch kein echter Remote-Push faellig war.
 - Echter Zustellfehler muss als `Zustellung noch nicht gesund` sichtbar werden.
+- Touchlog zeigt Push-Wartung; Profil bleibt sichtbar push-frei.
 - BP bleibt konsistent incident-orientiert.
 
 ---

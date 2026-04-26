@@ -1,13 +1,14 @@
 ﻿# Diagnostics Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: Touch-Log, Fehleranzeigen und Performance-Sampling fuer Debug/QA.
+- Zweck: Diagnose-Core, Fehleranzeigen und Performance-Sampling fuer Debug/QA.
 - Rolle innerhalb von MIDAS: zentrale Diagnose-Schnittstelle fuer alle Module.
-- Abgrenzung: kein Business-Output, keine Produktfeatures.
+- Abgrenzung: kein Business-Output, keine Produktfeatures, nicht die sichtbare Maintenance-Surface selbst.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
+- [Touchlog Module Overview](Touchlog Module Overview.md)
 
 ---
 
@@ -28,7 +29,7 @@ Related docs:
 | `app/diagnostics/logger.js` | Ringbuffer-Logger (diagnosticsLayer.logger) |
 | `app/diagnostics/perf.js` | Perf-Sampler (diagnosticsLayer.perf) |
 | `app/diagnostics/monitor.js` | Heartbeat/Monitor (diagnosticsLayer.monitor) |
-| `app/diagnostics/devtools.js` | Dev-Toggles (Push/Sound/Haptik/No-Cache) |
+| `app/diagnostics/devtools.js` | Touchlog-Bindings, lokale Dev-Toggles und Maintenance-Anzeige |
 | `app/core/boot-flow.js` | Boot-Fehleroverlay + Fallback-Log + zentrale Error-Route |
 | `index.html` | Touch-Log Panel + Script-Reihenfolge |
 | `app/styles/base.css` | Bootscreen + Boot-Error-Fallback-Log Styling |
@@ -79,9 +80,8 @@ Related docs:
 
 ## 5. UI-Integration
 
-- Touch-Log Panel (`#diag` + `#diagLog`) zweispaltig:
-  - Links: Dev-Toggles (Push, Sound, Haptik, No-Cache)
-  - Rechts: Log-Stream
+- Touchlog UI (`#diag`) ist die sichtbare Maintenance- und Log-Oberflaeche.
+- Details zu Touchlog-Layout, Push-Wartung, lokalen Diagnosemodi und Hilfsaktionen stehen im eigenen [Touchlog Module Overview](Touchlog Module Overview.md).
 - Floating/Quickbar Trigger fuer Diagnostics.
 
 ---
@@ -106,6 +106,7 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Public API / Entry Points: `diag.add`, `uiError`, `uiInfo`, `recordPerfStat`.
+- UI-nahe Entry Points fuer den Touchlog: `diag.show`, `diag.hide`, `diag.clear`.
 - Source of Truth: diagnosticsLayer logger/perf (RAM).
 - Side Effects: Touch-Log UI updates, monitor heartbeat.
 - Constraints: `DIAGNOSTICS_ENABLED` kann Stub-API erzwingen.
@@ -127,6 +128,7 @@ Related docs:
 - Remote-Upload fuer Logger/Perf.
 - Overlay fuer Monitor-Status.
 - Konfigurierbare Perf-Keys.
+- Weitere sichtbare Maintenance-Funktionen gehoeren zuerst in den Touchlog-Vertrag, nicht direkt in den Diagnostics-Core.
 - Bei Bedarf spaeter verdichtete Voice-Perf-Auswertung fuer:
   - `voice_tap_to_listening`
   - `voice_first_speech_to_stop`
@@ -158,6 +160,7 @@ Related docs:
 
 - `DIAGNOSTICS_ENABLED=false` -> Stub-API.
 - Touch-Log zeigt neue Entries.
+- `diag.clear()` leert nur lokale Log-Anzeige und lokale Log-Indizes.
 - Perf-Samples sind abrufbar.
 - Boot-Error Panel: `Touch-Log oeffnen` oeffnet `#diag` oder zeigt Fallback-Log.
 - Im Zustand `boot_error` liegt `#diag` visuell ueber `#bootScreen` und bleibt bedienbar.
