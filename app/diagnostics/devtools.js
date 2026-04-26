@@ -89,10 +89,19 @@
       return { text: 'Push: Abo aktiv, Health-Check nicht lesbar', tone: 'warn' };
     }
     if (routing.hasRemoteSubscription) {
+      const hasFailure = routing.remoteDisabled
+        || !!routing.lastRemoteFailureAt
+        || Number(routing.consecutiveRemoteFailures || 0) > 0;
+      if (!hasFailure && !routing.lastRemoteSuccessAt) {
+        return {
+          text: 'Push: bereit, wartet auf erste faellige Erinnerung',
+          tone: '',
+        };
+      }
       const lastFailure = formatShortDateTime(routing.lastRemoteFailureAt);
       const reason = routing.lastRemoteFailureReason ? ` - ${routing.lastRemoteFailureReason}` : '';
       return {
-        text: `Push: Abo aktiv, Remote nicht gesund${lastFailure ? ` (${lastFailure})` : ''}${reason}`,
+        text: `Push: Zustellung pruefen${lastFailure ? ` (${lastFailure})` : ''}${reason}`,
         tone: 'warn',
       };
     }

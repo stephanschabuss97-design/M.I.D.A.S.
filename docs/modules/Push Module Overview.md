@@ -129,9 +129,14 @@ Related docs:
 - Profil-Panel:
   - Push aktivieren/deaktivieren
   - Statusanzeige:
+    - `bereit (kein Abo)`
+    - `bereit (wartet auf erste Erinnerung)`
     - `aktiv (warte auf Remote-Bestaetigung)`
-    - `aktiv (lokales Fallback)`
+    - `Zustellung noch nicht gesund`
     - `aktiv (remote gesund)`
+- Touchlog-/Diagnosepanel:
+  - Push-Toggle bleibt Bedienung fuer aktivieren/deaktivieren.
+  - Diagnosezeile unterscheidet Browser-Abo, erste faellige Erinnerung, Remote-Erfolg und Zustellproblem.
 - Opt-in bleibt explizit per User-Intent.
 
 ---
@@ -140,8 +145,15 @@ Related docs:
 
 - Lokaler Push-Fehlschlag bleibt lokal und erzeugt keinen harten User-Error.
 - Ohne verifizierten Remote-Health-Stand bleibt lokal der Fallback aktiv.
+- `bereit (wartet auf erste Erinnerung)` ist kein Fehlerzustand:
+  - Browser-Abo und Backend-Subscription sind vorhanden.
+  - Es gab noch keinen faelligen Remote-Push und deshalb noch keine echte Zustellbestaetigung.
+  - Lokale Suppression bleibt trotzdem aus, bis ein echter Remote-Erfolg belegt ist.
+- `Zustellung noch nicht gesund` ist der Warnzustand fuer echten Failure, Failure-Counter oder deaktivierte Remote-Subscription.
 - Service Worker behaelt Legacy-Fallbacks fuer alte Payloads ohne `data.severity`.
 - Scheduler-Jitter bleibt ein bewusster Tradeoff; die gezielte Kadenz reduziert unnoetige Action-Runs, ohne die fachliche Entscheidung aus der Edge Function zu verschieben.
+- Workflow-HTTP-Fehler schlagen durch `curl --fail-with-body` sichtbar fehl.
+- Die Edge-Function-Response enthaelt Run-Kontext, lokale Bewertungszeit, `results`, `skipped`-Gruende und ausgelieferte bzw. fehlgeschlagene Events.
 
 ---
 
@@ -164,6 +176,7 @@ Related docs:
 - Nutzerindividuelle Reminder-Zeitfenster.
 - Snooze oder bewusste Follow-up-Stufe.
 - zusaetzliche Delivery-/Health-Diagnostik im Profil.
+- Geplante Touchlog-Maintenance-Section fuer technische Push-Health-Details.
 
 ---
 
@@ -188,7 +201,7 @@ Related docs:
 - Known risks:
   - Schedule-Jitter
   - bei Aenderungen an Medication-/BP-Schwellen muss die GitHub-Action-Kadenz mitgeprueft werden
-  - fehlende erste Remote-Erfolgsbestaetigung haelt lokales Fallback aktiv
+  - fehlende erste Remote-Erfolgsbestaetigung haelt lokale Push-Suppression aus
   - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
 ---
@@ -202,6 +215,12 @@ Related docs:
   - Hauptfenster `5 8,9,10,11,12,13,14,15,18,19,20,21 * * *`
   - Nachtfenster `35 20,21,22 * * *`
   - Nacht-Backup `50 21,22 * * *`
+- Regulaer sind das 17 geplante Runs pro Tag statt vorher 48 Runs pro Tag.
+- Manuelle `workflow_dispatch`-Runs bleiben zusaetzlich fuer Diagnose moeglich:
+  - `all`
+  - `med`
+  - `bp`
+- Scheduler-Calls senden standardmaessig `window=all`.
 - GitHub-Secrets fuer den Workflow muessen vorhanden sein:
   - `INCIDENTS_PUSH_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
@@ -216,6 +235,9 @@ Related docs:
 - Reminder und Incident nutzen getrennte Tags und unterscheiden sich sichtbar in der Praesentation.
 - Lokale Suppression greift nur bei nachweislich gesundem Remote-Pfad.
 - Off-App-Push funktioniert auch ohne geoeffnete App.
+- Manueller Workflow-Smoke mit `window=all` liefert `ok=true` und bei nicht faelligen Ereignissen `status=no-incidents` plus Skip-Gruende.
+- `bereit (wartet auf erste Erinnerung)` darf nicht als Fehler angezeigt werden, wenn noch kein echter Remote-Push faellig war.
+- Echter Zustellfehler muss als `Zustellung noch nicht gesund` sichtbar werden.
 - BP bleibt konsistent incident-orientiert.
 
 ---

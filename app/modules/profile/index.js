@@ -59,6 +59,7 @@
       localSuppressionAllowed: false,
       permission: '',
       hasRemoteSubscription: false,
+      remoteDisabled: false,
       lastRemoteSuccessAt: '',
       lastRemoteFailureAt: '',
       lastRemoteFailureReason: '',
@@ -220,6 +221,9 @@
       ['Letzter Remote-Erfolg', formatDateTime(routing.lastRemoteSuccessAt)],
       ['Letzter Remote-Fehler', formatDateTime(routing.lastRemoteFailureAt)],
     ];
+    if (routing.remoteDisabled) {
+      rows.push(['Remote-Abo', 'deaktiviert']);
+    }
     if (routing.lastRemoteFailureReason) {
       rows.push(['Fehlergrund', routing.lastRemoteFailureReason]);
     }
@@ -256,6 +260,7 @@
     localSuppressionAllowed: !!state.pushRouting?.localSuppressionAllowed,
     permission: String(state.pushRouting?.permission || ''),
     hasRemoteSubscription: !!state.pushRouting?.hasRemoteSubscription,
+    remoteDisabled: !!state.pushRouting?.remoteDisabled,
     lastRemoteSuccessAt: String(state.pushRouting?.lastRemoteSuccessAt || ''),
     lastRemoteFailureAt: String(state.pushRouting?.lastRemoteFailureAt || ''),
     lastRemoteFailureReason: String(state.pushRouting?.lastRemoteFailureReason || ''),
@@ -272,6 +277,7 @@
       localSuppressionAllowed: !!nextState?.localSuppressionAllowed,
       permission: String(nextState?.permission || ''),
       hasRemoteSubscription: !!nextState?.hasRemoteSubscription,
+      remoteDisabled: !!nextState?.remoteDisabled,
       lastRemoteSuccessAt: String(nextState?.lastRemoteSuccessAt || ''),
       lastRemoteFailureAt: String(nextState?.lastRemoteFailureAt || ''),
       lastRemoteFailureReason: String(nextState?.lastRemoteFailureReason || ''),
@@ -355,6 +361,15 @@
     return Number(row.consecutive_remote_failures || 0) <= 0;
   };
 
+  const isRemoteSubscriptionAwaitingFirstDelivery = (row) => {
+    if (!row || row.disabled) return false;
+    const successMs = Date.parse(row.last_remote_success_at || '');
+    const failureMs = Date.parse(row.last_remote_failure_at || '');
+    return !Number.isFinite(successMs)
+      && !Number.isFinite(failureMs)
+      && Number(row.consecutive_remote_failures || 0) <= 0;
+  };
+
   const refreshPushStatus = async ({ reason = 'refresh' } = {}) => {
     if (!refs?.pushStatus) return;
     try {
@@ -384,6 +399,7 @@
           diag?.add?.(`[profile] push health refresh skipped (${reason}) ${err?.message || err}`);
         }
         const remoteHealthy = isRemoteSubscriptionHealthy(remoteRow);
+        const awaitingFirstDelivery = isRemoteSubscriptionAwaitingFirstDelivery(remoteRow);
         const hasRemoteSubscription = !!remoteRow;
         setPushRoutingState({
           hasBrowserSubscription: true,
@@ -392,6 +408,7 @@
           localSuppressionAllowed: remoteHealthy,
           permission,
           hasRemoteSubscription,
+          remoteDisabled: !!remoteRow?.disabled,
           lastRemoteSuccessAt: remoteRow?.last_remote_success_at || '',
           lastRemoteFailureAt: remoteRow?.last_remote_failure_at || '',
           lastRemoteFailureReason: remoteRow?.last_remote_failure_reason || '',
@@ -411,11 +428,19 @@
           });
           return;
         }
-        if (hasRemoteSubscription) {
-          setPushStatus('Status: aktiv (lokales Fallback)', 'warn');
+        if (awaitingFirstDelivery) {
+          setPushStatus('Status: bereit (wartet auf erste Erinnerung)');
           renderPushDetails({
-            remoteLabel: 'lokales Fallback',
-            hint: 'Remote-Push ist noch nicht gesund bestaetigt oder zuletzt fehlgeschlagen. Geraete-/Browser-Benachrichtigungen koennen ausserhalb von MIDAS blockiert sein.'
+            remoteLabel: 'bereit, noch nicht zugestellt',
+            hint: 'Remote-Push ist eingerichtet. Es gab bisher keine faellige Erinnerung fuer eine echte Zustellbestaetigung.'
+          });
+          return;
+        }
+        if (hasRemoteSubscription) {
+          setPushStatus('Status: Zustellung noch nicht gesund', 'warn');
+          renderPushDetails({
+            remoteLabel: 'Zustellung pruefen',
+            hint: 'Remote-Push ist eingerichtet, aber die letzte Zustellung ist fehlgeschlagen oder das Remote-Abo wurde deaktiviert. Geraete-/Browser-Benachrichtigungen koennen ausserhalb von MIDAS blockiert sein.'
           });
           return;
         }

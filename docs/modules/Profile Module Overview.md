@@ -63,6 +63,7 @@ Related docs:
   - liest die aktuelle Browser-Subscription
   - gleicht sie mit `push_subscriptions` ab
   - bewertet `remote gesund` nur bei nachgewiesen erfolgreicher Remote-Zustellung ohne spaeteren Failure
+  - behandelt `Backend-Subscription vorhanden, aber noch kein echter Push faellig` als neutralen Bereit-Zustand
 
 ### 4.4 Persistenz
 - Save: `supabase.from('user_profile').upsert({ ...payload, user_id }, { onConflict: 'user_id' })`.
@@ -83,7 +84,14 @@ Related docs:
   - `profileDoctorName`, `profileDoctorEmail`
   - Limits und Lifestyle-Felder
 - Medication-Snapshot zeigt aktive Medikamente mit lesbarer Plan-Zusammenfassung aus `slots[]`, optional `mit Mahlzeit` und Restbestand.
-- Push-Status zeigt `bereit`, `aktiv (warte auf Remote-Bestaetigung)`, `aktiv (lokales Fallback)` oder `aktiv (remote gesund)`.
+- Push-Status zeigt:
+  - `bereit (kein Abo)`
+  - `bereit (wartet auf erste Erinnerung)`
+  - `aktiv (warte auf Remote-Bestaetigung)`
+  - `Zustellung noch nicht gesund`
+  - `aktiv (remote gesund)`
+- `bereit (wartet auf erste Erinnerung)` ist kein Fehlerzustand; es bedeutet, dass Browser-Abo und Backend-Subscription vorhanden sind, aber noch kein faelliger Remote-Push erfolgreich bestaetigt werden konnte.
+- `Zustellung noch nicht gesund` ist der Warnzustand fuer echten Remote-Failure, Failure-Counter oder deaktivierte Remote-Subscription.
 - Keine Dev-Toggles im Profil.
 
 ---
@@ -100,6 +108,8 @@ Related docs:
 
 - Save-/Sync-Fehler loggen `[profile] save failed` bzw. `[profile] sync failed`.
 - Push-Fehler loggen `[profile] push enable failed`, `[profile] push disable failed` oder einen ausgelassenen Health-Refresh.
+- Push-Health-Texte duerfen `noch keine echte Zustellung` nicht als Fehler darstellen.
+- Lokale Push-Suppression bleibt nur erlaubt, wenn `remoteHealthy` wahr ist.
 - Formular wird waehrend Requests disabled.
 - Fehlender Supabase-Client fuehrt zu einem klaren Fehler.
 - Ohne Profil-Datensatz zeigt die Overview einen leeren Initialzustand.
@@ -139,6 +149,7 @@ Related docs:
 - Dependencies (hard): `user_profile`, Supabase Client, Medication-Snapshot, Lab-Snapshot.
 - Dependencies (soft): Assistant-Kontext.
 - Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save, Remote-Health muss zuerst erfolgreich belegt werden bevor lokal unterdrueckt werden darf.
+- Technische Push-Health-Details sind aktuell im Profil sichtbar, sollen aber spaeter groesstenteils in eine Touchlog-Maintenance-Section wandern.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/15_Push_Subscriptions.sql`.
 
 ---
@@ -150,7 +161,12 @@ Related docs:
 - `profile:changed` feuert nach Save; Charts und Assistant reagieren.
 - Low-Stock Box aktualisiert Arztkontakt nach Profil-Update.
 - Medication-Snapshot zeigt `1x` und `>1x` Medikation mit lesbarer Plan-Zusammenfassung.
-- Push-Status wechselt bei aktivem Browser-Abo sauber zwischen lokalem Fallback und gesundem Remote-Pfad.
+- Push-Status unterscheidet:
+  - kein Browser-Abo
+  - Backend-Subscription vorhanden, aber noch keine echte faellige Zustellung
+  - echter Remote-Failure
+  - gesunder Remote-Pfad
+- Lokale Suppression bleibt bei `bereit (wartet auf erste Erinnerung)` aus.
 
 ---
 

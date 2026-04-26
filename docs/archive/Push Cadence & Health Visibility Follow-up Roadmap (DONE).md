@@ -299,8 +299,8 @@ Dieser Review ist Teil der Roadmap und grenzt die Follow-up-Idee gegen den berei
 | S2 | Kadenz- und Scheduler-Contract Review | DONE | Option `B` ist als Scheduler-Vertrag bestaetigt: DST-sichere Ziel-Ticks mit begrenzter Ueberdeckung; offen fuer `S4` bleibt die Workflow-Haertung gegen gruene HTTP-Fehler. |
 | S3 | Push-Health-, Diagnose- und Bruchrisiko-Review | DONE | Health-State, Berechtigungsebenen, lokale Suppression, mobile Diagnose, Android-Abgrenzung und stille Ausfallrisiken wurden analysiert; S4-Pflichtkorrekturen sind dokumentiert. |
 | S4 | Umsetzung der gefundenen Punkte | DONE | S4.1-S4.10 sind erledigt: Workflow-Fehlererkennung, Kadenz-Driftcheck, `window=all`, `workflow_dispatch`, Edge-Response-Diagnose, Push-Health-UI, Dev-Push-Diagnose, mobiler Diagnosepanel-Fix, Code Review und Schritt-Abnahme. |
-| S5 | Tests, Code Review und Contract Review nach Umsetzung | DONE | Lokal moegliche Checks, statische Workflow-Pruefung, JS-Syntaxchecks, Edge-Function-Strukturchecks, Smoke-Definitionen, Code Review und Contract Review erledigt; echte GitHub-/Device-Smokes bleiben nach Commit beim Nutzer. |
-| S6 | Doku-Sync, QA-Update und finaler Abschlussreview | TODO | Modul-Overviews, QA, Roadmap-Status, Abschluss-Contract-Review und Commit-/Archiv-Empfehlung finalisieren. |
+| S5 | Tests, Code Review und Contract Review nach Umsetzung | DONE | Lokal moegliche Checks, statische Workflow-Pruefung, JS-Syntaxchecks, Edge-Function-Strukturchecks, Smoke-Definitionen, Code Review und Contract Review erledigt; Health-Text fuer `bereit, aber noch keine echte Zustellung` nachkorrigiert; echte GitHub-/Device-Smokes bleiben nach Commit beim Nutzer. |
+| S6 | Doku-Sync, QA-Update und finaler Abschlussreview | DONE | Push/Profile-Overviews, QA, Roadmap-Ergebnisprotokoll, finaler Contract Review sowie Commit-/Archiv-Empfehlung sind synchronisiert. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -351,6 +351,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
 #### S1 Ergebnisprotokoll (abgeschlossen)
 
 ##### S1.1 Historischer Vertrag aus DONE-Roadmap
+
 - Die DONE-Roadmap ist fachlich weiterhin die Basis fuer:
   - gestaffelte Medication-Severity `reminder` -> `incident`
   - fixe Abschnittsschwellen fuer `morning/noon/evening/night`
@@ -365,6 +366,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Dieser Follow-up ist deshalb kein erneuter Medication-Reminder-Umbau, sondern eine Betriebs- und Diagnose-Nacharbeit.
 
 ##### S1.2 Aktueller Push Module Vertrag
+
 - `docs/modules/Push Module Overview.md` beschreibt den aktuellen Vertrag konsistent:
   - lokaler und externer Pfad sprechen denselben `type/severity/tag`-Vertrag
   - Off-App-Push laeuft ueber GitHub Actions plus Edge Function
@@ -378,6 +380,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Die alte DONE-Roadmap bleibt historische Referenz, aber nicht mehr alleiniger aktueller Scheduler-Vertrag.
 
 ##### S1.3 Lokale Incident Engine
+
 - `app/modules/incidents/index.js` ist weiterhin der lokale Rechner fuer App-laufende Pushes.
 - Medication-Schwellen sind im lokalen Pfad aktiv:
   - `morning`: Reminder `10:00`, Incident `12:00`
@@ -398,6 +401,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Echter Off-App-Push bleibt Aufgabe von Scheduler plus Edge Function.
 
 ##### S1.4 Service Worker Vertrag
+
 - `service-worker.js` wertet `data.severity` primaer aus.
 - Fallbacks bleiben bewusst vorhanden:
   - `midas-reminder-*` -> `reminder`
@@ -412,6 +416,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Der Service Worker bleibt im Follow-up nur Referenz- und Review-Flanke, nicht primaerer Umsetzungsgegenstand.
 
 ##### S1.5 Profil-, Subscription- und Health-Vertrag
+
 - `docs/modules/Profile Module Overview.md` und `app/modules/profile/index.js` bestaetigen:
   - Push-Opt-in liegt im Profil
   - Browser-Subscription wird in `push_subscriptions` gespeichert
@@ -433,6 +438,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Die Follow-up-Frage ist nicht, ob Health existiert, sondern ob er fuer den Nutzer und auf Mobile ausreichend sichtbar und verstaendlich ist.
 
 ##### S1.6 SQL-/Persistenzvertrag
+
 - `sql/15_Push_Subscriptions.sql` enthaelt:
   - `push_subscriptions`
   - Health-Felder fuer Remote-Versuche, Erfolg, Fehlergrund und Failure-Counter
@@ -443,6 +449,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Kein S1-Befund fuer neue Tabellen oder neues Persistenzmodell.
 
 ##### S1.7 Edge-Function-Vertrag
+
 - Die externe Edge Function liegt ausserhalb dieses Repos:
   - `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts`
 - Gelesener Stand:
@@ -464,6 +471,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Backend-Deployment-Drift bleibt ein Risiko, weil dieser Code ausserhalb des Frontend-Repos liegt.
 
 ##### S1.8 Contract Review gegen MIDAS-Guardrails
+
 - Ergebnis: S1-Vertrag passt zu MIDAS.
 - Begruendung:
   - MIDAS bleibt single-user.
@@ -478,6 +486,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Workflow-Haertung und Health-/Diagnose-Sichtbarkeit sind die plausiblen Umsetzungsachsen fuer spaetere Schritte.
 
 ##### S1.9 Offene Punkte fuer S2/S3
+
 - S2 muss den Scheduler-Vertrag jetzt detailliert pruefen:
   - Ziel-Ticks
   - UTC/DST
@@ -532,6 +541,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
 #### S2 Ergebnisprotokoll (abgeschlossen)
 
 ##### S2.1 Workflow-Ist-Stand
+
 - `.github/workflows/incidents-push.yml` ist bereits auf gezielte UTC-Ticks umgestellt.
 - Aktuelle Cron-Gruppen:
   - Hauptfenster: `5 8,9,10,11,12,13,14,15,18,19,20,21 * * *`
@@ -548,6 +558,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Der Workflow ist bereits Taktgeber, nicht fachliche Entscheidungsinstanz.
 
 ##### S2.2 Ziel-Ticks gegen fachliche Schwellen
+
 - Fachliche lokale Schwellen:
   - `10:00` Morning Reminder
   - `12:00` Morning Incident
@@ -572,6 +583,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Die Ausfuehrung liegt bewusst wenige Minuten nach der Schwelle.
 
 ##### S2.3 UTC/DST-Vertrag
+
 - GitHub Actions Cron ist UTC und nicht timezone-aware.
 - Die Edge Function berechnet `dayIso`, Stunde und Minute ueber `INCIDENTS_TZ`, Default `Europe/Vienna`.
 - Dadurch bleibt die fachliche Due-Entscheidung in der Edge Function.
@@ -584,6 +596,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Die Alternative waere saisonale Workflow-Pflege oder komplexere Cron-Monatslogik; beides waere fehleranfaelliger.
 
 ##### S2.4 Optionenbewertung
+
 - Option `A - */30`:
   - robusteste Trigger-Abdeckung
   - aber ca. 48 Runs pro Tag
@@ -602,6 +615,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Option `C` bleibt nur Denkmodell fuer spaeter, nicht Umsetzungsziel dieser Roadmap.
 
 ##### S2.5 Workflow-Fehlerverhalten
+
 - Aktueller Befund:
   - Der Workflow ruft die Edge Function mit `curl -sS` auf.
   - `curl` behandelt HTTP-4xx/5xx ohne `--fail` bzw. `--fail-with-body` nicht automatisch als fehlgeschlagenen Prozess.
@@ -617,6 +631,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - keine Secrets in Logs ausgeben
 
 ##### S2.6 Window- und Edge-Source-of-Truth-Vertrag
+
 - Edge Function normalisiert `window` auf:
   - `med`
   - `bp`
@@ -630,6 +645,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Workflow-Zeiten sind nur Trigger-Gelegenheiten.
 
 ##### S2.7 Contract Review gegen Grundidee
+
 - Ergebnis: S2 entspricht der besprochenen MIDAS-Idee.
 - Begruendung:
   - Push bleibt Schutznetz, kein Reminder-Laerm.
@@ -642,6 +658,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Workflow-HTTP-Fehlererkennung wird Pflichtpunkt fuer `S4`.
 
 ##### S2.8 Schritt-Abnahme und Commit-Empfehlung
+
 - S2-Abnahme:
   - finaler Scheduler-Zielvertrag steht mit Option `B`
   - alle fachlichen Schwellen sind fuer CET und CEST abgedeckt
@@ -695,6 +712,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
 #### S3 Ergebnisprotokoll (abgeschlossen)
 
 ##### S3.1 Health-State aus Profil und Persistenz
+
 - `push_subscriptions` bietet die noetigen Remote-Health-Felder:
   - `last_remote_attempt_at`
   - `last_remote_success_at`
@@ -712,6 +730,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Das Problem liegt primaer in Sichtbarkeit und Eindeutigkeit fuer den Nutzer.
 
 ##### S3.2 Berechtigungsebenen
+
 - Fachlich getrennte Ebenen:
   - Browser Permission
   - System-/Geraete-Notification
@@ -726,6 +745,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Fuer S4 braucht es einen sichtbaren Hinweis auf Geraete-/Browser-Einstellungen, wenn Remote-Push nicht bestaetigt oder zuletzt fehlgeschlagen ist.
 
 ##### S3.3 Falsch-positive Remote-Gesundheit
+
 - Der aktuelle Health-Algorithmus verhindert die wichtigsten Falschpositiven:
   - alter Erfolg nach spaeterem Failure wird nicht als gesund gewertet
   - deaktivierte Subscription wird nicht als gesund gewertet
@@ -738,6 +758,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Health-Fetch-Fehler sollen nicht als gesunder oder neutraler Zustand missverstanden werden.
 
 ##### S3.4 Lokale Suppression
+
 - Lokale Suppression ist korrekt an `remoteHealthy` gebunden.
 - Bei `warte auf Remote-Bestaetigung`, `lokales Fallback`, fehlender Backend-Subscription oder Failure bleibt lokale App-interne Benachrichtigung moeglich, solange die App laeuft.
 - S3-Finding:
@@ -747,6 +768,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Texte muessen klar zwischen `Remote gesund`, `Fallback aktiv`, `wartet auf Remote-Bestaetigung` und `blockiert/fehlerhaft` unterscheiden.
 
 ##### S3.5 Mobile Touchlog-/Debuglog-Darstellung
+
 - `index.html` zeigt Dev-Toggles und `diagLog` im selben Diagnosepanel.
 - Die CSS-Regeln fuer den normalen Diagnosezustand sind auf Mobile nicht ausreichend robust:
   - allgemeine `.panel`-Breite ist nicht explizit auf kleine Screens begrenzt
@@ -765,6 +787,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Push-Toggle/Diagnose darf `Browser-Abo aktiv` nicht als `Remote-Push gesund` darstellen.
 
 ##### S3.6 Android-Abgrenzung
+
 - `docs/modules/Android Widget Module Overview.md` bestaetigt:
   - Widget ist read-only/passiv
   - keine Reminder-/Push-Interaktion in V1
@@ -778,6 +801,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Keine FCM-, AlarmManager-, WorkManager- oder TWA-Sonderlogik fuer diese Roadmap.
 
 ##### S3.7 Bruchrisiko-Review
+
 - DST:
   - Bereits in S2 abgedeckt; bleibt als QA-Risiko bestehen.
 - GitHub-Jitter:
@@ -794,6 +818,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Hauptgefahr ist nicht die fachliche Push-Entscheidung, sondern eine unklare Health-Anzeige oder ein gruen wirkender Workflow trotz HTTP-Fehler.
 
 ##### S3.8 Contract Review und Korrekturen
+
 - Ergebnis: S3 besteht den Contract Review, wenn S4 die Sichtbarkeits- und Diagnosekorrekturen uebernimmt.
 - Pflichtkorrekturen fuer S4:
   - Workflow-HTTP-Fehler muessen sichtbar fehlschlagen.
@@ -857,6 +882,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
 #### S4 Ergebnisprotokoll (laufend)
 
 ##### S4.1 Workflow-Fehlererkennung haerten
+
 - Umsetzung:
   - `.github/workflows/incidents-push.yml` nutzt im Edge-Function-Call jetzt `set -euo pipefail`.
   - `curl -sS` wurde auf `curl --fail-with-body -sS` geaendert.
@@ -873,6 +899,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Der echte rote Run bei HTTP-4xx/5xx kann lokal nicht vollstaendig bewiesen werden; dafuer ist ein GitHub-Actions- oder gezielter Edge-Smoke noetig.
 
 ##### S4.2 Workflow-Kadenz gegen Option-B-Vertrag pruefen
+
 - Umsetzung:
   - `.github/workflows/incidents-push.yml` wurde gegen den in `S2` bestaetigten Option-B-Vertrag gelesen.
   - Keine Codekorrektur noetig, weil die Workflow-Crons bereits exakt dem Zielvertrag entsprechen.
@@ -899,6 +926,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - GitHub-Actions-Jitter bleibt moeglich, wird aber durch Edge-Catch-up, Dedupe und Backup-Ticks abgefedert.
 
 ##### S4.3 Scheduler-Calls mit `window=all` sicherstellen
+
 - Umsetzung:
   - `.github/workflows/incidents-push.yml` wurde auf den Payload-Contract gelesen.
   - Der Workflow setzt bei leerem Input `WINDOW="all"`.
@@ -922,6 +950,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Der praktische Nachweis bleibt ein `workflow_dispatch`- bzw. Schedule-Smoke in `S5`.
 
 ##### S4.4 `workflow_dispatch` fuer manuelle Tests erhalten
+
 - Umsetzung:
   - `workflow_dispatch` bleibt im Workflow erhalten.
   - Der manuelle `window`-Input wurde von Freitext auf ein `choice`-Feld umgestellt.
@@ -944,6 +973,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Der praktische UI-Smoke bleibt Teil von `S5`.
 
 ##### S4.5 Edge-Function-Response schaerfen
+
 - Umsetzung:
   - Externe Datei angepasst:
     - `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts`
@@ -1011,6 +1041,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Echter Edge-Function-Smoke gegen Supabase bleibt Teil von `S5`.
 
 ##### S4.6 Push-Health-UI verbessern
+
 - Umsetzung:
   - Profilansicht in `index.html` um eine eigene Karte `Push & Erinnerungen` erweitert.
   - Neue UI-Elemente:
@@ -1068,6 +1099,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Diese Roadmap zieht den Touchlog-Umbau nicht vor; S4.7 entambiguiert nur den bestehenden Dev-Push-Toggle.
 
 ##### S4.7 Dev-Push-Toggle und Diagnose-Status entambiguisieren
+
 - Umsetzung:
   - `index.html` im bestehenden Touchlog-/Dev-Panel um `devPushStatus` erweitert.
   - `app/diagnostics/devtools.js` liest nach Push-Refresh den Routingstatus aus dem Profilmodul.
@@ -1104,6 +1136,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Die mobile Lesbarkeit des gesamten Touchlog-Panels ist noch nicht geloest; das bleibt `S4.8`.
 
 ##### S4.8 Mobile Diagnose-/Touchlog-UI verbessern
+
 - Umsetzung:
   - `app/styles/auth.css` verbessert das bestehende `#diag`-Panel fuer kleine Screens.
   - Normales Diagnosepanel bekommt auf Mobile jetzt:
@@ -1130,6 +1163,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Ziel dort: Hestia-Learnings uebernehmen, Maintenance-Section schaffen und die aktuell im Profil sichtbaren Push-Health-Details sinnvoll im Touchlog verfuegbar machen.
 
 ##### S4.9 Code Review waehrend der Umsetzung
+
 - Review-Scope:
   - `.github/workflows/incidents-push.yml`
   - `index.html`
@@ -1171,6 +1205,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - OS-/Android-Notification-Blockaden bleiben ausserhalb von MIDAS nur hinweisbar, nicht verlaesslich automatisch erkennbar.
 
 ##### S4.10 Schritt-Abnahme
+
 - Abnahme gegen S4-Ziel:
   - Workflow-HTTP-Fehler werden sichtbar rot statt still gruen.
   - Scheduler-Kadenz bleibt beim bestaetigten Option-`B`-Vertrag.
@@ -1241,6 +1276,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
 #### S5 Ergebnisprotokoll
 
 ##### S5.1 YAML-/Workflow-Check
+
 - Ausgefuehrt:
   - Statischer Workflow-Check der Pflichtfelder.
   - `git diff --check -- .github/workflows/incidents-push.yml`.
@@ -1262,6 +1298,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - `PyYAML` ist lokal nicht installiert.
 
 ##### S5.2 JavaScript-Syntaxchecks
+
 - Erfolgreich ausgefuehrt:
   - `node --check app/diagnostics/devtools.js`
   - `node --check app/modules/profile/index.js`
@@ -1271,6 +1308,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Keine Syntaxfehler in den betroffenen Push-/Diagnose-Dateien.
 
 ##### S5.3 Edge-Function-Check
+
 - Lokal moeglich und ausgefuehrt:
   - Supabase CLI im Backend-Pfad geprueft: `2.84.2`.
   - `supabase functions deploy --help` geprueft.
@@ -1290,6 +1328,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Voller Runtime-Smoke ohne echte Supabase-/Secret-/Edge-Ausfuehrung.
 
 ##### S5.4 Manuelle Scheduler-Smokes definiert
+
 - Nach Commit vom Nutzer auszufuehren:
   - GitHub Actions `Incidents Push` manuell mit `window=all` starten.
   - Optional manuell mit `window=med` starten.
@@ -1300,6 +1339,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Bei keinem faelligen Event erscheinen nachvollziehbare `skipped`-Gruende.
 
 ##### S5.5 Workflow-Fehler-Smoke definiert
+
 - Nach Commit vom Nutzer auszufuehren, falls ohne Produktivrisiko moeglich:
   - Einen kontrollierten Test mit fehlerhafter Edge-Function-URL oder bewusst ungueltigem Secret nur in sicherem Rahmen ausfuehren.
 - Erwartung:
@@ -1310,6 +1350,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - `curl --fail-with-body` erfuellt den roten-Run-Vertrag fuer HTTP-Fehler.
 
 ##### S5.6 Off-App-Push-Smoke definiert
+
 - Nach Commit vom Nutzer am Handy auszufuehren:
   - Push am Geraet und im Browser erlauben.
   - App schliessen.
@@ -1321,6 +1362,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Bei spaeterem Tick kommt nur die hoechste aktuell faellige Severity.
 
 ##### S5.7 Dedupe- und Catch-up-Smokes definiert
+
 - Nach Commit vom Nutzer oder ueber manuelle Scheduler-Laeufe zu pruefen:
   - Wiederholter Run fuer denselben `user/day/type/severity/source=remote` erzeugt keinen Doppelpush.
   - Erster Run nach `incident_after` sendet nur `incident`, nicht nachtraeglich auch `reminder`.
@@ -1329,6 +1371,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - S4 hat Dedupe-Keys und Severity-Entscheidung nicht veraendert.
 
 ##### S5.8 Push-Health- und Mobile-Diagnose-Smokes definiert
+
 - Nach Commit vom Nutzer im Browser/Handy zu pruefen:
   - Profilkarte zeigt Browser-Berechtigung, Browser-Abo, Remote-Status, letzten Erfolg und letzten Fehler nachvollziehbar an.
   - Dev-Toggle zeigt einen Diagnose-Satz und setzt `Browser-Abo aktiv` nicht mit `Remote gesund` gleich.
@@ -1338,6 +1381,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - `profile.shouldSuppressLocalPushes()` bleibt an `remoteHealthy` gebunden.
 
 ##### S5.9 Code Review gegen Bruchrisiken
+
 - Ergebnis:
   - Kein Befund fuer stille HTTP-Fehler im Workflow nach `curl --fail-with-body`.
   - Kein Befund fuer fachliche Due-Logik im Workflow.
@@ -1350,6 +1394,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - OS-/Browser-Notification-Blockaden koennen weiterhin nur sichtbar gemacht, nicht sicher automatisch erkannt werden.
 
 ##### S5.10 Contract Review gegen MIDAS-Guardrails
+
 - Ergebnis:
   - Push bleibt ruhiges Sicherheitsnetz.
   - Keine Reminder-Ketten.
@@ -1362,6 +1407,39 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - Alle lokal moeglichen Checks sind erledigt.
   - Alle nicht lokal sinnvoll ausfuehrbaren Smokes sind konkret definiert.
   - Nach Commit kann der Nutzer die echten GitHub-/Device-Smokes ausfuehren.
+
+##### S5.11 Health-Text-Nachkorrektur und Code Review
+
+- Befund aus manuellem `workflow_dispatch`-Run:
+  - GitHub Action rief die Edge Function erfolgreich mit `window=all` auf.
+  - Edge Function antwortete mit `ok=true`.
+  - Ergebnis war fachlich `status="no-incidents"`.
+  - Skip-Gruende waren:
+    - Medication-Abschnitte `section-not-open`
+    - BP `morning-bp-missing`
+  - Es wurde daher korrekt kein Push versendet und kein `last_remote_success_at` geschrieben.
+- Problem:
+  - Profiltext `Status: aktiv (lokales Fallback)` war fuer diesen Normalfall zu alarmistisch.
+  - Eigentlich war Remote-Push eingerichtet, aber noch nicht durch eine echte faellige Zustellung bestaetigt.
+- Korrektur:
+  - `app/modules/profile/index.js` unterscheidet jetzt:
+    - Backend-Subscription vorhanden, kein Erfolg, kein Fehler, nicht deaktiviert -> `Status: bereit (wartet auf erste Erinnerung)`
+    - echter Fehler, Failure-Counter oder deaktivierte Remote-Subscription -> `Status: Zustellung noch nicht gesund`
+    - echter Remote-Erfolg -> `Status: aktiv (remote gesund)`
+  - `app/diagnostics/devtools.js` zeigt analog:
+    - `Push: bereit, wartet auf erste faellige Erinnerung`
+    - `Push: Zustellung pruefen (...)`
+  - Der neue `bereit`-Zustand ist bewusst neutral, nicht `ok`/gruen.
+- Code Review:
+  - Lokale Push-Suppression bleibt unveraendert nur bei `remoteHealthy`.
+  - Kein Service-Worker-Umbau.
+  - Keine Android-/TWA-native Push-Aenderung.
+  - Keine Edge-Function- oder Scheduler-Fachlogik geaendert.
+  - Keine neue Reminder- oder Eskalationslogik.
+- Checks:
+  - `node --check app/modules/profile/index.js` erfolgreich.
+  - `node --check app/diagnostics/devtools.js` erfolgreich.
+  - `git diff --check -- app/modules/profile/index.js app/diagnostics/devtools.js` ohne Diff-Whitespace-Fehler; nur Git-CRLF-Hinweise.
 
 ### S6 - Doku-Sync, QA-Update und finaler Abschlussreview
 
@@ -1386,6 +1464,113 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S6` und sollen
   - vorher bleibt sie aktive Arbeitsroadmap
 - Output: dokumentierter, gepruefter und abschliessend synchronisierter Follow-up-Umbau.
 - Exit-Kriterium: Code, Workflow, Doku, QA und Roadmap sprechen denselben finalen Vertrag.
+
+#### S6 Ergebnisprotokoll
+
+##### S6.1 Push Module Overview aktualisiert
+
+- Datei:
+  - `docs/modules/Push Module Overview.md`
+- Aktualisiert:
+  - finaler Profil-/Diagnose-Statusvertrag
+  - `bereit (wartet auf erste Erinnerung)` als neutraler Nicht-Fehlerzustand
+  - `Zustellung noch nicht gesund` als echter Warnzustand
+  - gezielte UTC-Crons und 17 regulaere Schedule-Runs pro Tag
+  - `workflow_dispatch`-Optionen `all`, `med`, `bp`
+  - `curl --fail-with-body` als sichtbare Workflow-Fehlerhaertung
+  - Edge-Function-Response mit Run-Kontext und Skip-Gruenden
+  - geplante Touchlog-Maintenance-Section als spaeterer Zielort fuer technische Push-Health-Details
+
+##### S6.2 Profile Module Overview aktualisiert
+
+- Datei:
+  - `docs/modules/Profile Module Overview.md`
+- Aktualisiert:
+  - Push-Status unterscheidet jetzt:
+    - `bereit (kein Abo)`
+    - `bereit (wartet auf erste Erinnerung)`
+    - `aktiv (warte auf Remote-Bestaetigung)`
+    - `Zustellung noch nicht gesund`
+    - `aktiv (remote gesund)`
+  - `bereit (wartet auf erste Erinnerung)` ist kein Fehlerzustand.
+  - `Zustellung noch nicht gesund` ist Failure-/Deaktivierungszustand.
+  - lokale Push-Suppression bleibt nur bei `remoteHealthy`.
+  - technische Health-Details sollen spaeter groesstenteils in eine Touchlog-Maintenance-Section wandern.
+
+##### S6.3 QA aktualisiert
+
+- Datei:
+  - `docs/QA_CHECKS.md`
+- Neuer QA-Block:
+  - `Phase P9 - Push Cadence & Health Visibility Follow-up (2026-04-25)`
+- Abgedeckt:
+  - Workflow-/Scheduler-Vertrag
+  - CET-/CEST-Cadence
+  - Edge-Function-Response
+  - Profil-/Health-UI
+  - Touchlog-/Mobile-Diagnose
+  - Regression gegen Service Worker, Android und Reminder-Ketten
+- Bestehender Remote-/Suppression-Block wurde an den neuen Health-Text-Vertrag angepasst.
+
+##### S6.4 Roadmap aktualisiert
+
+- Diese Roadmap enthaelt nun Ergebnisprotokolle fuer:
+  - S1 bis S3 Analyse und Contract Reviews
+  - S4 Umsetzung inklusive Substeps S4.1 bis S4.10
+  - S5 lokale Checks, Smokes, Nachkorrektur und Code Review
+  - S6 Doku-Sync und Abschlussreview
+
+##### S6.5 Finaler Contract Review
+
+- Roadmap vs. Code:
+  - Workflow nutzt gezielte UTC-Ticks.
+  - `window=all` ist robust als Default gesetzt.
+  - Profil-/Devtools-Texte entsprechen dem finalen Health-Vertrag.
+  - lokale Suppression bleibt nur bei `remoteHealthy`.
+- Roadmap vs. Modul-Overviews:
+  - Push- und Profile-Overview beschreiben denselben Statusvertrag wie der Code.
+  - Scheduler-Runzahl und Cron-Vertrag sind im Push Overview dokumentiert.
+- Roadmap vs. README-Guardrails:
+  - Push bleibt Schutznetz, kein Reminder-Laerm.
+  - keine Reminder-Ketten
+  - keine native Android-Push-Ausweitung
+  - keine Service-Worker-Neuarchitektur
+  - GitHub Actions bleibt Trigger, Edge Function bleibt fachliche Source of Truth.
+- Roadmap vs. QA:
+  - QA enthaelt lokale Checks und offene praktische Smokes.
+  - Nicht lokal beweisbare Punkte sind als manuelle Checks markiert.
+
+##### S6.6 Abschluss-Abnahme
+
+- Keine offenen P0/P1-Bruchrisiken gefunden.
+- Bekannte Restrisiken:
+  - echter faelliger Off-App-Push bei geschlossener App bleibt ein praktischer Device-Smoke.
+  - Mobile-Diagnosepanel muss am Handy visuell abgenommen werden.
+  - echter Failure-Pfad muss bei Gelegenheit mit kontrolliertem Zustellfehler beobachtet werden.
+- Bewusst nicht beruehrt:
+  - Service Worker
+  - Android/TWA-native Push-Schicht
+  - medizinische Fachlogik
+  - Reminder-/Eskalationsketten
+
+##### S6.7 Commit-Empfehlung
+
+- Empfohlener Commit-Scope:
+  - Workflow-Kadenz und Fehlerhaertung
+  - Profil-/Devtools-Push-Health
+  - mobile Diagnosepanel-Verbesserung
+  - Edge-Function-Diagnose im Backend-Workspace
+  - Modul-/QA-/Roadmap-Doku
+- Commit-Hinweis:
+  - Backend-Edge-Function liegt ausserhalb dieses Git-Repos und muss separat im Backend-Workspace nachvollzogen werden.
+  - In diesem Repo sollten die Web-/Workflow-/Doku-Aenderungen gemeinsam committed werden, weil sie denselben Push-Cadence-Vertrag abbilden.
+
+##### S6.8 Archiv-Entscheidung
+
+- Diese Roadmap ist fachlich abgeschlossen.
+- Empfehlung:
+  - Nach Commit und kurzer Sichtpruefung kann sie nach `docs/archive/` verschoben und als `(DONE)` markiert werden.
+  - Bis zum Commit bleibt sie sinnvollerweise im aktiven `docs/`-Bereich, damit Review und Commit-Scope leicht lesbar bleiben.
 
 ## Smokechecks / Regression (Definition)
 
