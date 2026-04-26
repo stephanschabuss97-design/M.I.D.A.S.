@@ -60,10 +60,34 @@ body[data-boot-stage="boot_error"] #diag pre {
   padding: 12px;
 }
 #diag .diag-controls {
-  flex: 0 0 220px;
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+#diag .diag-section,
+#diag .diag-log-section {
+  min-width: 0;
+}
+#diag .diag-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+}
+#diag .diag-maintenance {
+  background: rgba(68, 98, 255, 0.08);
+  border-color: rgba(129, 156, 255, 0.22);
+}
+#diag .diag-log-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 #diag .diag-controls-title {
   margin: 0 0 4px;
@@ -74,10 +98,49 @@ body[data-boot-stage="boot_error"] #diag pre {
 #diag .diag-toggle {
   width: 100%;
   justify-content: space-between;
+  min-width: 0;
+}
+#diag .diag-toggle > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#diag .diag-push-control {
+  padding: 10px;
+  border: 1px solid rgba(129, 156, 255, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 14, 28, 0.34);
+}
+#diag .diag-active-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+}
+#diag .diag-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid rgba(155, 231, 191, 0.28);
+  border-radius: 999px;
+  background: rgba(155, 231, 191, 0.08);
+  color: rgba(214, 255, 232, 0.94);
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+#diag .diag-mode-pill.is-muted {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(235, 242, 255, 0.58);
+}
+#diag .diag-action-btn {
+  width: 100%;
+  justify-content: center;
 }
 #diag .diag-status {
   padding: 8px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(235, 242, 255, 0.84);
@@ -97,6 +160,28 @@ body[data-boot-stage="boot_error"] #diag pre {
   border-color: rgba(255, 155, 155, 0.35);
   color: #ff9b9b;
 }
+#diag .diag-health-details {
+  min-width: 0;
+}
+#diag .diag-health-details dl {
+  display: grid;
+  grid-template-columns: minmax(0, 112px) minmax(0, 1fr);
+  gap: 5px 10px;
+  margin: 0;
+}
+#diag .diag-health-details dt {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.58);
+}
+#diag .diag-health-details dd {
+  margin: 0;
+  min-width: 0;
+  color: rgba(235, 242, 255, 0.86);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
 #diag .diag-log {
   flex: 1 1 auto;
   min-width: 220px;
@@ -104,6 +189,7 @@ body[data-boot-stage="boot_error"] #diag pre {
   padding: 8px;
   font-size: var(--text-xs);
   white-space: pre-wrap;
+  overflow: auto;
 }
 #diag pre {
   margin: 0;
@@ -272,13 +358,22 @@ body[data-boot-stage]:not([data-boot-stage="idle"]) #busy {
     max-height: calc(100dvh - 96px - env(safe-area-inset-bottom));
     overflow: auto;
     overscroll-behavior: contain;
+    gap: 10px;
   }
   #diag .diag-controls {
     flex: 1 1 auto;
     min-width: 0;
+    gap: 10px;
+  }
+  #diag .diag-section {
+    padding: 10px;
   }
   #diag .diag-toggle {
     min-height: 44px;
+  }
+  #diag .diag-log-section {
+    flex: 0 0 auto;
+    min-height: 0;
   }
   #diag .diag-log {
     min-width: 0;
@@ -299,6 +394,16 @@ body[data-boot-stage]:not([data-boot-stage="idle"]) #busy {
   }
   #diag .diag-controls {
     gap: 8px;
+  }
+  #diag .diag-section {
+    gap: 8px;
+    padding: 8px;
+  }
+  #diag .diag-controls-title {
+    font-size: var(--text-xs);
+  }
+  #diag .diag-health-details dl {
+    grid-template-columns: minmax(0, 96px) minmax(0, 1fr);
   }
   #diag .diag-log {
     font-size: 0.72rem;

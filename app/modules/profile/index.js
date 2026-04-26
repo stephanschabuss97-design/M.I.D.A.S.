@@ -371,7 +371,6 @@
   };
 
   const refreshPushStatus = async ({ reason = 'refresh' } = {}) => {
-    if (!refs?.pushStatus) return;
     try {
       ensurePushSupport();
       const permission = global.Notification?.permission || 'default';

@@ -36,6 +36,7 @@
       open: false,
       lines: [],
       add() {},
+      clear() {},
       init() {},
       show() {},
       hide() {}
@@ -205,6 +206,12 @@
     _refreshDom() {
       if (!this.logEl) return;
       this.logEl.textContent = this.lines.map((entry) => entry.render).join('\n');
+    },
+    clear() {
+      this.lines = [];
+      this.eventIndex.clear();
+      this.summaryIndex.clear();
+      this._refreshDom();
     },
     _enforceLimit() {
       while (this.lines.length > MAX_LINES) {

@@ -4,7 +4,7 @@
  * Description: Dev toggles attached to the Touch-Log panel (left column).
  * Notes:
  *  - Uses localStorage flags where possible.
- *  - Push toggle reuses profile buttons to avoid duplicate logic.
+ *  - Push control uses the internal profile push API; no visible profile UI is required.
  */
 
 (function initDevTools(global) {
@@ -14,6 +14,9 @@
   const selectors = {
     push: '#devTogglePush',
     pushStatus: '#devPushStatus',
+    pushDetails: '#devPushDetails',
+    activeModes: '#devActiveModes',
+    clearLog: '#devClearLogBtn',
     sound: '#devToggleSound',
     haptic: '#devToggleHaptic',
     nocache: '#devToggleNoCache',
@@ -24,6 +27,20 @@
 
   const getFeedback = () => global.AppModules?.feedback || null;
   const getProfileApi = () => global.AppModules?.profile || null;
+  const getDiag = () => global.AppModules?.diagnostics?.diag || global.diag || null;
+  const getProfilePushApi = () => {
+    const profile = getProfileApi();
+    if (
+      !profile?.enablePush
+      || !profile?.disablePush
+      || !profile?.isPushEnabled
+      || !profile?.refreshPushStatus
+      || !profile?.getPushRoutingStatus
+    ) {
+      return null;
+    }
+    return profile;
+  };
 
   const readFlag = (key, fallback = null) => {
     try {
@@ -50,12 +67,45 @@
     el.checked = !!value;
   };
 
+  const renderActiveModes = (el, modes = []) => {
+    if (!el) return;
+    el.innerHTML = '';
+    const active = modes.filter((mode) => mode?.active);
+    if (!active.length) {
+      const pill = doc.createElement('span');
+      pill.className = 'diag-mode-pill is-muted';
+      pill.textContent = 'Keine aktiv';
+      el.appendChild(pill);
+      return;
+    }
+    active.forEach((mode) => {
+      const pill = doc.createElement('span');
+      pill.className = 'diag-mode-pill';
+      pill.textContent = mode.label;
+      el.appendChild(pill);
+    });
+  };
+
   const setPushDiagStatus = (el, text, tone = '') => {
     if (!el) return;
     el.textContent = text;
     el.classList.toggle('is-ok', tone === 'ok');
     el.classList.toggle('is-warn', tone === 'warn');
     el.classList.toggle('is-error', tone === 'error');
+  };
+
+  const setPushDiagDetails = (el, rows = []) => {
+    if (!el) return;
+    el.innerHTML = '';
+    const dl = doc.createElement('dl');
+    rows.forEach(([label, value]) => {
+      const dt = doc.createElement('dt');
+      dt.textContent = label;
+      const dd = doc.createElement('dd');
+      dd.textContent = value || '--';
+      dl.append(dt, dd);
+    });
+    el.appendChild(dl);
   };
 
   const formatShortDateTime = (value) => {
@@ -70,23 +120,59 @@
     });
   };
 
+  const getPermissionLabel = (permission) => {
+    if (permission === 'granted') return 'erlaubt';
+    if (permission === 'denied') return 'blockiert';
+    if (permission === 'default') return 'offen';
+    return 'unbekannt';
+  };
+
+  const describeRemoteDetail = (routing) => {
+    if (!routing?.hasBrowserSubscription) return 'unbekannt';
+    if (routing.remoteHealthy) return 'gesund';
+    if (routing.healthRefreshError) return 'Health-Check offen';
+    if (routing.remoteDisabled) return 'pruefen';
+    if (routing.hasRemoteSubscription) {
+      const hasFailure = !!routing.lastRemoteFailureAt
+        || Number(routing.consecutiveRemoteFailures || 0) > 0;
+      if (hasFailure) return 'pruefen';
+      if (!routing.lastRemoteSuccessAt) return 'bereit, wartet';
+    }
+    return 'unbekannt';
+  };
+
+  const buildPushDetailRows = (routing) => {
+    const permission = routing?.permission || global.Notification?.permission || 'default';
+    return [
+      ['Berechtigung', getPermissionLabel(permission)],
+      ['Browser-Abo', routing?.hasBrowserSubscription ? 'aktiv' : 'fehlt'],
+      ['Remote', describeRemoteDetail(routing)],
+      ['Letzter Erfolg', formatShortDateTime(routing?.lastRemoteSuccessAt) || '--'],
+      ['Letzter Fehler', formatShortDateTime(routing?.lastRemoteFailureAt) || '--'],
+      ['Geprueft', formatShortDateTime(routing?.checkedAt) || '--'],
+    ];
+  };
+
   const describePushRouting = (routing) => {
     if (!routing?.hasBrowserSubscription) {
       const permission = routing?.permission || global.Notification?.permission || 'default';
       if (permission === 'denied') {
-        return { text: 'Push: Browser blockiert', tone: 'error' };
+        return { text: 'Push: Zustellung pruefen (Browser blockiert)', tone: 'error' };
       }
-      return { text: 'Push: kein Browser-Abo', tone: 'warn' };
+      if (permission === 'granted') {
+        return { text: 'Push: Browser-Abo fehlt', tone: 'warn' };
+      }
+      return { text: 'Push: nicht aktiv', tone: '' };
     }
     if (routing.remoteHealthy) {
       const lastSuccess = formatShortDateTime(routing.lastRemoteSuccessAt);
       return {
-        text: `Push: Abo aktiv, Remote gesund${lastSuccess ? ` (${lastSuccess})` : ''}`,
+        text: `Push: aktiv - remote gesund${lastSuccess ? ` (${lastSuccess})` : ''}`,
         tone: 'ok',
       };
     }
     if (routing.healthRefreshError) {
-      return { text: 'Push: Abo aktiv, Health-Check nicht lesbar', tone: 'warn' };
+      return { text: 'Push: unbekannt - Health-Check offen', tone: 'warn' };
     }
     if (routing.hasRemoteSubscription) {
       const hasFailure = routing.remoteDisabled
@@ -94,18 +180,17 @@
         || Number(routing.consecutiveRemoteFailures || 0) > 0;
       if (!hasFailure && !routing.lastRemoteSuccessAt) {
         return {
-          text: 'Push: bereit, wartet auf erste faellige Erinnerung',
+          text: 'Push: aktiv - bereit, wartet',
           tone: '',
         };
       }
       const lastFailure = formatShortDateTime(routing.lastRemoteFailureAt);
-      const reason = routing.lastRemoteFailureReason ? ` - ${routing.lastRemoteFailureReason}` : '';
       return {
-        text: `Push: Zustellung pruefen${lastFailure ? ` (${lastFailure})` : ''}${reason}`,
+        text: `Push: Zustellung pruefen${lastFailure ? ` (${lastFailure})` : ''}`,
         tone: 'warn',
       };
     }
-    return { text: 'Push: Abo aktiv, wartet auf Remote-Bestaetigung', tone: 'warn' };
+    return { text: 'Push: unbekannt - Remote offen', tone: 'warn' };
   };
 
   const readAssistantSurfaceEnabled = () => readFlag(ASSISTANT_SURFACE_STORAGE_KEY, false) === true;
@@ -160,22 +245,26 @@
 
   const updatePushToggle = async (el, statusEl = null) => {
     if (!el) return;
+    const detailsEl = doc.querySelector(selectors.pushDetails);
     try {
-      const profile = getProfileApi();
-      if (profile?.isPushEnabled) {
-        await profile.refreshPushStatus?.({ reason: 'devtools' });
+      const profile = getProfilePushApi();
+      if (profile) {
+        await profile.refreshPushStatus({ reason: 'devtools' });
         const enabled = await profile.isPushEnabled();
         updateToggle(el, !!enabled);
-        const routing = profile.getPushRoutingStatus?.();
+        const routing = profile.getPushRoutingStatus();
         const status = describePushRouting(routing);
         setPushDiagStatus(statusEl, status.text, status.tone);
+        setPushDiagDetails(detailsEl, buildPushDetailRows(routing));
         return;
       }
       updateToggle(el, false);
-      setPushDiagStatus(statusEl, 'Push: Profilmodul nicht bereit', 'warn');
+      setPushDiagStatus(statusEl, 'Push: unbekannt - Modul nicht bereit', 'warn');
+      setPushDiagDetails(detailsEl, buildPushDetailRows(null));
     } catch (err) {
       updateToggle(el, false);
-      setPushDiagStatus(statusEl, `Push: Diagnose fehlgeschlagen (${err?.message || err})`, 'error');
+      setPushDiagStatus(statusEl, 'Push: unbekannt - Diagnose fehlgeschlagen', 'error');
+      setPushDiagDetails(detailsEl, buildPushDetailRows(null));
     }
   };
 
@@ -202,43 +291,68 @@
     const hapticEl = doc.querySelector(selectors.haptic);
     const nocacheEl = doc.querySelector(selectors.nocache);
     const assistantEl = doc.querySelector(selectors.assistant);
+    const activeModesEl = doc.querySelector(selectors.activeModes);
+    const clearLogBtn = doc.querySelector(selectors.clearLog);
+
+    const updateActiveModes = () => {
+      renderActiveModes(activeModesEl, [
+        { label: 'Sound', active: !!soundEl?.checked },
+        { label: 'Haptik', active: !!hapticEl?.checked },
+        { label: 'No Cache', active: !!nocacheEl?.checked },
+        { label: 'Assistant', active: !!assistantEl?.checked },
+      ]);
+    };
 
     const feedback = getFeedback();
     updateToggle(soundEl, feedback?.isSoundEnabled?.() ?? readFlag('FEEDBACK_SOUND_ENABLED', true));
     updateToggle(hapticEl, feedback?.isHapticEnabled?.() ?? readFlag('FEEDBACK_HAPTIC_ENABLED', true));
     updateToggle(nocacheEl, readFlag('DEV_NOCACHE_ASSETS', false));
     updateToggle(assistantEl, readAssistantSurfaceEnabled());
+    updateActiveModes();
     updatePushToggle(pushEl, pushStatusEl);
 
     soundEl?.addEventListener('change', () => {
       const on = !!soundEl.checked;
       writeFlag('FEEDBACK_SOUND_ENABLED', on);
       feedback?.setSoundEnabled?.(on);
+      updateActiveModes();
     });
 
     hapticEl?.addEventListener('change', () => {
       const on = !!hapticEl.checked;
       writeFlag('FEEDBACK_HAPTIC_ENABLED', on);
       feedback?.setHapticEnabled?.(on);
+      updateActiveModes();
     });
 
     nocacheEl?.addEventListener('change', () => {
       const on = !!nocacheEl.checked;
       applyNoCacheMode(on);
+      updateActiveModes();
     });
 
     assistantEl?.addEventListener('change', () => {
       const on = !!assistantEl.checked;
       setAssistantSurfaceEnabled(on);
       updateToggle(assistantEl, on);
+      updateActiveModes();
+    });
+
+    clearLogBtn?.addEventListener('click', () => {
+      getDiag()?.clear?.();
     });
 
     pushEl?.addEventListener('change', async () => {
-      const profile = getProfileApi();
+      const profile = getProfilePushApi();
+      if (!profile) {
+        updateToggle(pushEl, false);
+        setPushDiagStatus(pushStatusEl, 'Push: unbekannt - Modul nicht bereit', 'warn');
+        return;
+      }
       if (pushEl.checked) {
-        await profile?.enablePush?.();
+        await profile.enablePush();
       } else {
-        await profile?.disablePush?.();
+        await profile.disablePush();
       }
       await updatePushToggle(pushEl, pushStatusEl);
     });

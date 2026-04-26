@@ -52,45 +52,91 @@
       <button class="btn ghost" id="diagClose" type="button">x</button>
     </header>
     <div class="diag-body">
-      <aside class="diag-controls">
-        <h5 class="diag-controls-title">Dev Toggles</h5>
-        <label class="chart-switch diag-toggle">
-          <span>Push</span>
-          <input type="checkbox" id="devTogglePush">
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-        </label>
-        <div
-          id="devPushStatus"
-          class="diag-status"
-          aria-live="polite"
-        >
-          Push: Status wird geprueft ...
-        </div>
-        <label class="chart-switch diag-toggle">
-          <span>Sound</span>
-          <input type="checkbox" id="devToggleSound">
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-        </label>
-        <label class="chart-switch diag-toggle">
-          <span>Haptik</span>
-          <input type="checkbox" id="devToggleHaptic">
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-        </label>
-        <label class="chart-switch diag-toggle">
-          <span>No Cache</span>
-          <input type="checkbox" id="devToggleNoCache">
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-        </label>
-        <label class="chart-switch diag-toggle">
-          <span>Assistant</span>
-          <input type="checkbox" id="devToggleAssistant">
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-        </label>
-        <p class="u-meta u-mt8-opacity80">
-          Dev-Modus: lokale Flags, keine Persistenz in Profil.
-        </p>
+      <aside class="diag-controls" aria-label="Touchlog-Wartung">
+        <section class="diag-section diag-maintenance" aria-labelledby="diagPushTitle">
+          <h5 class="diag-controls-title" id="diagPushTitle">Push-Wartung</h5>
+          <label class="chart-switch diag-toggle diag-push-control">
+            <span>Push-Benachrichtigungen</span>
+            <input
+              type="checkbox"
+              id="devTogglePush"
+              aria-describedby="devPushStatus devPushDetails"
+            >
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+          <div
+            id="devPushStatus"
+            class="diag-status"
+            aria-live="polite"
+          >
+            Push: unbekannt
+          </div>
+          <div
+            id="devPushDetails"
+            class="diag-health-details"
+            aria-label="Push-Wartungsdetails"
+          >
+            <dl>
+              <dt>Berechtigung</dt>
+              <dd>unbekannt</dd>
+              <dt>Browser-Abo</dt>
+              <dd>unbekannt</dd>
+              <dt>Remote</dt>
+              <dd>unbekannt</dd>
+              <dt>Letzter Erfolg</dt>
+              <dd>--</dd>
+              <dt>Letzter Fehler</dt>
+              <dd>--</dd>
+              <dt>Geprueft</dt>
+              <dd>--</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="diag-section diag-local-modes" aria-labelledby="diagModesTitle">
+          <h5 class="diag-controls-title" id="diagModesTitle">Lokale Diagnosemodi</h5>
+          <div
+            id="devActiveModes"
+            class="diag-active-modes"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="diag-mode-pill is-muted">Keine aktiv</span>
+          </div>
+          <label class="chart-switch diag-toggle">
+            <span>Sound</span>
+            <input type="checkbox" id="devToggleSound">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+          <label class="chart-switch diag-toggle">
+            <span>Haptik</span>
+            <input type="checkbox" id="devToggleHaptic">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+          <label class="chart-switch diag-toggle">
+            <span>No Cache</span>
+            <input type="checkbox" id="devToggleNoCache">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+          <label class="chart-switch diag-toggle">
+            <span>Assistant</span>
+            <input type="checkbox" id="devToggleAssistant">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+          <p class="u-meta u-mt8-opacity80">
+            Dev-Modus: lokale Flags, keine Persistenz in Profil.
+          </p>
+        </section>
+        <section class="diag-section diag-actions" aria-labelledby="diagActionsTitle">
+          <h5 class="diag-controls-title" id="diagActionsTitle">Hilfsaktionen</h5>
+          <button class="btn ghost diag-action-btn" id="devClearLogBtn" type="button">
+            Touchlog leeren
+          </button>
+        </section>
       </aside>
-      <pre id="diagLog" class="content u-m-0 diag-log"></pre>
+      <section class="diag-log-section" aria-labelledby="diagLogTitle">
+        <h5 class="diag-controls-title" id="diagLogTitle">Log-Stream</h5>
+        <pre id="diagLog" class="content u-m-0 diag-log"></pre>
+      </section>
     </div>
   </div>
   <!-- Placeholder help panel to satisfy ui-core init (no visible toggle yet) -->
@@ -760,27 +806,6 @@
                 </header>
                 <div id="profileOverview" class="profile-overview-list">
                   <p class="muted small">Noch keine Daten gespeichert.</p>
-                </div>
-              </section>
-              <section class="profile-push-health card subtle" aria-live="polite">
-                <header>
-                  <h3>Push &amp; Erinnerungen</h3>
-                </header>
-                <p id="profilePushStatus" class="profile-push-status">
-                  Status: wird geprueft ...
-                </p>
-                <div
-                  id="profilePushDetails"
-                  class="profile-push-details"
-                  aria-label="Push Diagnose"
-                ></div>
-                <div class="profile-actions profile-push-actions">
-                  <button type="button" class="btn primary" id="profilePushEnableBtn">
-                    Push aktivieren
-                  </button>
-                  <button type="button" class="btn ghost" id="profilePushDisableBtn">
-                    Push deaktivieren
-                  </button>
                 </div>
               </section>
             </section>
