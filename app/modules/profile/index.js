@@ -265,6 +265,16 @@
     lastRemoteFailureAt: String(state.pushRouting?.lastRemoteFailureAt || ''),
     lastRemoteFailureReason: String(state.pushRouting?.lastRemoteFailureReason || ''),
     consecutiveRemoteFailures: Number(state.pushRouting?.consecutiveRemoteFailures || 0),
+    endpointHash: String(state.pushRouting?.endpointHash || ''),
+    clientContext: String(state.pushRouting?.clientContext || ''),
+    clientDisplayMode: String(state.pushRouting?.clientDisplayMode || ''),
+    clientPlatform: String(state.pushRouting?.clientPlatform || ''),
+    clientBrowser: String(state.pushRouting?.clientBrowser || ''),
+    clientLabel: String(state.pushRouting?.clientLabel || ''),
+    lastDiagnosticAttemptAt: String(state.pushRouting?.lastDiagnosticAttemptAt || ''),
+    lastDiagnosticSuccessAt: String(state.pushRouting?.lastDiagnosticSuccessAt || ''),
+    lastDiagnosticFailureAt: String(state.pushRouting?.lastDiagnosticFailureAt || ''),
+    lastDiagnosticFailureReason: String(state.pushRouting?.lastDiagnosticFailureReason || ''),
     healthRefreshError: String(state.pushRouting?.healthRefreshError || ''),
     checkedAt: String(state.pushRouting?.checkedAt || '')
   });
@@ -282,6 +292,16 @@
       lastRemoteFailureAt: String(nextState?.lastRemoteFailureAt || ''),
       lastRemoteFailureReason: String(nextState?.lastRemoteFailureReason || ''),
       consecutiveRemoteFailures: Number(nextState?.consecutiveRemoteFailures || 0),
+      endpointHash: String(nextState?.endpointHash || ''),
+      clientContext: String(nextState?.clientContext || ''),
+      clientDisplayMode: String(nextState?.clientDisplayMode || ''),
+      clientPlatform: String(nextState?.clientPlatform || ''),
+      clientBrowser: String(nextState?.clientBrowser || ''),
+      clientLabel: String(nextState?.clientLabel || ''),
+      lastDiagnosticAttemptAt: String(nextState?.lastDiagnosticAttemptAt || ''),
+      lastDiagnosticSuccessAt: String(nextState?.lastDiagnosticSuccessAt || ''),
+      lastDiagnosticFailureAt: String(nextState?.lastDiagnosticFailureAt || ''),
+      lastDiagnosticFailureReason: String(nextState?.lastDiagnosticFailureReason || ''),
       healthRefreshError: String(nextState?.healthRefreshError || ''),
       checkedAt: new Date().toISOString()
     };
@@ -311,11 +331,26 @@
     return registration.pushManager.getSubscription();
   };
 
+  const isPushMetadataSchemaError = (err) => {
+    const text = `${err?.code || ''} ${err?.message || ''} ${err?.details || ''}`.toLowerCase();
+    if (!text) return false;
+    return text.includes('endpoint_hash')
+      || text.includes('client_context')
+      || text.includes('client_display_mode')
+      || text.includes('client_platform')
+      || text.includes('client_browser')
+      || text.includes('client_label')
+      || text.includes('last_diagnostic_attempt_at')
+      || text.includes('last_diagnostic_success_at')
+      || text.includes('last_diagnostic_failure_at')
+      || text.includes('last_diagnostic_failure_reason');
+  };
+
   const upsertSubscription = async ({ userId, subscription }) => {
     const client = await requireSupabaseClient();
     const json = subscription?.toJSON?.() || {};
     const keys = json.keys || {};
-    const payload = {
+    const basePayload = {
       user_id: userId,
       endpoint: subscription.endpoint,
       p256dh: keys.p256dh || null,
@@ -323,9 +358,24 @@
       subscription: json,
       disabled: false
     };
-    const { error } = await client
+    const pushApi = appModules.push || null;
+    const metadata = typeof pushApi?.buildSubscriptionMetadata === 'function'
+      ? await pushApi.buildSubscriptionMetadata({ subscription })
+      : {};
+    const payload = Object.assign({}, basePayload, metadata);
+    const result = await client
       .from('push_subscriptions')
       .upsert(payload, { onConflict: 'user_id,endpoint' });
+    if (!result.error) return;
+    if (isPushMetadataSchemaError(result.error) && Object.keys(metadata).length) {
+      diag?.add?.('[profile] push metadata columns missing, retrying base subscription upsert');
+      const fallback = await client
+        .from('push_subscriptions')
+        .upsert(basePayload, { onConflict: 'user_id,endpoint' });
+      if (fallback.error) throw fallback.error;
+      return;
+    }
+    const { error } = result;
     if (error) throw error;
   };
 
@@ -344,7 +394,7 @@
     const client = await requireSupabaseClient();
     const { data, error } = await client
       .from('push_subscriptions')
-      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, last_remote_failure_reason, consecutive_remote_failures')
+      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, last_remote_failure_reason, consecutive_remote_failures, endpoint_hash, client_context, client_display_mode, client_platform, client_browser, client_label, last_diagnostic_attempt_at, last_diagnostic_success_at, last_diagnostic_failure_at, last_diagnostic_failure_reason')
       .eq('user_id', userId)
       .eq('endpoint', endpoint)
       .maybeSingle();
@@ -412,6 +462,16 @@
           lastRemoteFailureAt: remoteRow?.last_remote_failure_at || '',
           lastRemoteFailureReason: remoteRow?.last_remote_failure_reason || '',
           consecutiveRemoteFailures: Number(remoteRow?.consecutive_remote_failures || 0),
+          endpointHash: remoteRow?.endpoint_hash || '',
+          clientContext: remoteRow?.client_context || '',
+          clientDisplayMode: remoteRow?.client_display_mode || '',
+          clientPlatform: remoteRow?.client_platform || '',
+          clientBrowser: remoteRow?.client_browser || '',
+          clientLabel: remoteRow?.client_label || '',
+          lastDiagnosticAttemptAt: remoteRow?.last_diagnostic_attempt_at || '',
+          lastDiagnosticSuccessAt: remoteRow?.last_diagnostic_success_at || '',
+          lastDiagnosticFailureAt: remoteRow?.last_diagnostic_failure_at || '',
+          lastDiagnosticFailureReason: remoteRow?.last_diagnostic_failure_reason || '',
           healthRefreshError
         });
         if (remoteHealthy) {

@@ -13,6 +13,14 @@ on:
     - cron: "50 21,22 * * *"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Manual run mode"
+        required: false
+        default: "incidents"
+        type: choice
+        options:
+          - incidents
+          - diagnostic
       window:
         description: "Manual test window"
         required: false
@@ -31,7 +39,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          MODE_INPUT="${{ github.event.inputs.mode || 'incidents' }}"
           WINDOW_INPUT="${{ github.event.inputs.window || 'all' }}"
+          TRIGGER="scheduler"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TRIGGER="manual"
+          fi
+
+          if [ "$MODE_INPUT" = "diagnostic" ]; then
+            MODE="diagnostic"
+          else
+            MODE="incidents"
+          fi
+
           if [ -n "$WINDOW_INPUT" ]; then
             WINDOW="$WINDOW_INPUT"
           else
@@ -41,4 +61,4 @@ jobs:
           curl --fail-with-body -sS -X POST "${{ secrets.INCIDENTS_PUSH_URL }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -d "{\"trigger\":\"scheduler\",\"window\":\"$WINDOW\"}"
+            -d "{\"trigger\":\"$TRIGGER\",\"mode\":\"$MODE\",\"window\":\"$WINDOW\"}"

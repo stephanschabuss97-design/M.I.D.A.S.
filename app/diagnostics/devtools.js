@@ -4,7 +4,7 @@
  * Description: Dev toggles attached to the Touch-Log panel (left column).
  * Notes:
  *  - Uses localStorage flags where possible.
- *  - Push control uses the internal profile push API; no visible profile UI is required.
+ *  - Push control uses AppModules.push when available; profile remains a temporary backend.
  */
 
 (function initDevTools(global) {
@@ -26,20 +26,20 @@
   const assistantSurfaceListeners = new Set();
 
   const getFeedback = () => global.AppModules?.feedback || null;
-  const getProfileApi = () => global.AppModules?.profile || null;
+  const getPushApi = () => global.AppModules?.push || null;
   const getDiag = () => global.AppModules?.diagnostics?.diag || global.diag || null;
-  const getProfilePushApi = () => {
-    const profile = getProfileApi();
+  const getOperationalPushApi = () => {
+    const push = getPushApi();
     if (
-      !profile?.enablePush
-      || !profile?.disablePush
-      || !profile?.isPushEnabled
-      || !profile?.refreshPushStatus
-      || !profile?.getPushRoutingStatus
+      push?.enablePush
+      && push?.disablePush
+      && push?.isPushEnabled
+      && push?.refreshPushStatus
+      && push?.getPushRoutingStatus
     ) {
-      return null;
+      return push;
     }
-    return profile;
+    return null;
   };
 
   const readFlag = (key, fallback = null) => {
@@ -141,19 +141,77 @@
     return 'unbekannt';
   };
 
+  const compactHash = (value) => {
+    const text = String(value || '');
+    if (!text) return '';
+    if (text.length <= 12) return text;
+    return `${text.slice(0, 8)}...${text.slice(-4)}`;
+  };
+
+  const describeContext = (routing) => {
+    const context = routing?.context || {};
+    const value = routing?.clientContext || context.clientContext || '';
+    if (value === 'android-webview') return 'Android-WebView';
+    if (value === 'pwa-standalone') return 'PWA/Standalone';
+    if (value === 'browser') return 'Browser';
+    return value || 'unbekannt';
+  };
+
+  const describeDeviceLabel = (routing) => {
+    const context = routing?.context || {};
+    return routing?.clientLabel
+      || routing?.subscriptionMetadata?.client_label
+      || [routing?.clientPlatform || context.platform, routing?.clientBrowser || context.browser, routing?.clientDisplayMode || context.displayMode]
+        .filter(Boolean)
+        .join(' / ')
+      || 'unbekannt';
+  };
+
+  const describeDiagnosticDetail = (routing) => {
+    if (!routing?.hasBrowserSubscription) return 'nicht verfuegbar';
+    const successMs = Date.parse(routing?.lastDiagnosticSuccessAt || '');
+    const failureMs = Date.parse(routing?.lastDiagnosticFailureAt || '');
+    if (Number.isFinite(failureMs) && (!Number.isFinite(successMs) || failureMs > successMs)) {
+      return 'pruefen';
+    }
+    if (Number.isFinite(successMs)) return 'Test erfolgreich';
+    if (routing?.lastDiagnosticAttemptAt) return 'Test offen';
+    return 'nicht getestet';
+  };
+
+  const isAndroidWebViewRouting = (routing) => (
+    routing?.context?.isAndroidWebView === true || routing?.clientContext === 'android-webview'
+  );
+
   const buildPushDetailRows = (routing) => {
     const permission = routing?.permission || global.Notification?.permission || 'default';
-    return [
+    const endpointHash = routing?.endpointHash || routing?.subscriptionMetadata?.endpoint_hash || '';
+    const rows = [
+      ['Kontext', describeContext(routing)],
+      ['Geraet', describeDeviceLabel(routing)],
       ['Berechtigung', getPermissionLabel(permission)],
       ['Browser-Abo', routing?.hasBrowserSubscription ? 'aktiv' : 'fehlt'],
       ['Remote', describeRemoteDetail(routing)],
+      ['Diagnose', describeDiagnosticDetail(routing)],
+      ['Endpoint-Hash', compactHash(endpointHash) || '--'],
       ['Letzter Erfolg', formatShortDateTime(routing?.lastRemoteSuccessAt) || '--'],
       ['Letzter Fehler', formatShortDateTime(routing?.lastRemoteFailureAt) || '--'],
+      ['Letzter Test', formatShortDateTime(routing?.lastDiagnosticSuccessAt) || '--'],
       ['Geprueft', formatShortDateTime(routing?.checkedAt) || '--'],
     ];
+    if (isAndroidWebViewRouting(routing)) {
+      rows.push(['Empfehlung', 'Fuer Erinnerungen MIDAS in Chrome/PWA aktivieren.']);
+    }
+    return rows;
   };
 
   const describePushRouting = (routing) => {
+    if (isAndroidWebViewRouting(routing)) {
+      return {
+        text: 'Push: Android-WebView - Chrome/PWA empfohlen',
+        tone: 'warn',
+      };
+    }
     if (!routing?.hasBrowserSubscription) {
       const permission = routing?.permission || global.Notification?.permission || 'default';
       if (permission === 'denied') {
@@ -191,6 +249,19 @@
       };
     }
     return { text: 'Push: unbekannt - Remote offen', tone: 'warn' };
+  };
+
+  const setPushControlBlocked = (el, blocked) => {
+    if (!el) return;
+    el.disabled = !!blocked;
+    el.setAttribute('aria-disabled', blocked ? 'true' : 'false');
+    const label = el.closest?.('label');
+    label?.setAttribute('aria-disabled', blocked ? 'true' : 'false');
+    if (blocked) {
+      el.title = 'Diese Android-Ansicht ist fuer Widget und Sync gedacht. Fuer verlaessliche Erinnerungen bitte MIDAS in Chrome/PWA aktivieren.';
+    } else {
+      el.removeAttribute('title');
+    }
   };
 
   const readAssistantSurfaceEnabled = () => readFlag(ASSISTANT_SURFACE_STORAGE_KEY, false) === true;
@@ -247,22 +318,26 @@
     if (!el) return;
     const detailsEl = doc.querySelector(selectors.pushDetails);
     try {
-      const profile = getProfilePushApi();
-      if (profile) {
-        await profile.refreshPushStatus({ reason: 'devtools' });
-        const enabled = await profile.isPushEnabled();
+      const push = getOperationalPushApi();
+      if (push) {
+        const routingFromRefresh = await push.refreshPushStatus({ reason: 'devtools' });
+        const enabled = await push.isPushEnabled();
+        const routing = routingFromRefresh || push.getPushRoutingStatus();
+        const blocked = isAndroidWebViewRouting(routing);
         updateToggle(el, !!enabled);
-        const routing = profile.getPushRoutingStatus();
+        setPushControlBlocked(el, blocked);
         const status = describePushRouting(routing);
         setPushDiagStatus(statusEl, status.text, status.tone);
         setPushDiagDetails(detailsEl, buildPushDetailRows(routing));
         return;
       }
       updateToggle(el, false);
+      setPushControlBlocked(el, false);
       setPushDiagStatus(statusEl, 'Push: unbekannt - Modul nicht bereit', 'warn');
       setPushDiagDetails(detailsEl, buildPushDetailRows(null));
     } catch (err) {
       updateToggle(el, false);
+      setPushControlBlocked(el, false);
       setPushDiagStatus(statusEl, 'Push: unbekannt - Diagnose fehlgeschlagen', 'error');
       setPushDiagDetails(detailsEl, buildPushDetailRows(null));
     }
@@ -343,16 +418,24 @@
     });
 
     pushEl?.addEventListener('change', async () => {
-      const profile = getProfilePushApi();
-      if (!profile) {
+      const push = getOperationalPushApi();
+      if (!push) {
         updateToggle(pushEl, false);
         setPushDiagStatus(pushStatusEl, 'Push: unbekannt - Modul nicht bereit', 'warn');
         return;
       }
+      const currentRouting = push.getPushRoutingStatus();
+      if (isAndroidWebViewRouting(currentRouting)) {
+        updateToggle(pushEl, false);
+        setPushDiagStatus(pushStatusEl, 'Push: Android-WebView - Chrome/PWA empfohlen', 'warn');
+        setPushDiagDetails(doc.querySelector(selectors.pushDetails), buildPushDetailRows(currentRouting));
+        setPushControlBlocked(pushEl, true);
+        return;
+      }
       if (pushEl.checked) {
-        await profile.enablePush();
+        await push.enablePush();
       } else {
-        await profile.disablePush();
+        await push.disablePush();
       }
       await updatePushToggle(pushEl, pushStatusEl);
     });

@@ -313,19 +313,19 @@
     if (!bucket || !bucketKey) return false;
     if (bucket[bucketKey] === day) return false;
     const shouldSuppress = await (async () => {
-      const profileModule = appModules.profile || null;
-      if (!profileModule?.getPushRoutingStatus) return false;
-      const routing = profileModule.getPushRoutingStatus();
+      const pushModule = appModules.push || appModules.profile || null;
+      if (!pushModule?.getPushRoutingStatus) return false;
+      const routing = pushModule.getPushRoutingStatus();
       const checkedAtMs = Date.parse(routing?.checkedAt || '');
       const isStale = !Number.isFinite(checkedAtMs) || (Date.now() - checkedAtMs) > PUSH_ROUTING_REFRESH_MS;
-      if (isStale && typeof profileModule.refreshPushStatus === 'function') {
+      if (isStale && typeof pushModule.refreshPushStatus === 'function') {
         try {
-          await profileModule.refreshPushStatus({ reason: 'incidents-routing-check' });
+          await pushModule.refreshPushStatus({ reason: 'incidents-routing-check' });
         } catch (_) {
           // fall back to the last known routing state
         }
       }
-      return !!profileModule.shouldSuppressLocalPushes?.();
+      return !!pushModule.shouldSuppressLocalPushes?.();
     })();
     if (shouldSuppress) {
       bucket[bucketKey] = day;
