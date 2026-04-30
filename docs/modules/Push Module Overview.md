@@ -37,10 +37,11 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/modules/incidents/index.js` | lokale Incident-Engine, Medication-Schwellen, lokale Suppression |
-| `app/modules/push/index.js` | Push-Kontext, sichere Subscription-Metadaten und temporaere Push-Service-Grenze |
+| `app/modules/push/index.js` | Push-Service, Browser-Subscription, sichere Subscription-Metadaten und Remote-Health-Status |
 | `service-worker.js` | Severity-Auswertung, Anzeige-Defaults, Click-Handling |
-| `app/modules/profile/index.js` | interne Push-API, Browser-Subscription, Remote-Health-Status |
-| `app/diagnostics/devtools.js` | sichtbare Push-Wartung im Touchlog |
+| `app/modules/profile/index.js` | Stammdaten und Profilkontext; keine Push-Service-API |
+| `app/modules/touchlog/index.js` | sichtbare Push-Wartung im Touchlog |
+| `app/diagnostics/devtools.js` | Thin Bootstrap fuer Touchlog-Initialisierung |
 | `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
 | `.github/workflows/incidents-push.yml` | gezielte UTC-Ticks fuer Off-App-Push rund um die produktiven Schwellen |
 | `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts` | externer Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
@@ -67,9 +68,9 @@ Related docs:
 - Incident-Engine startet beim App-Load.
 - Tageswechsel resettet lokale Sendeflags.
 - Lokaler Intervall-Check laeuft minuetlich.
-- Profil-Modul synchronisiert intern Browser-Push und den letzten bekannten Remote-Health-Stand.
-- `AppModules.push` ergaenzt den Client-Kontext und ist die bevorzugte API-Grenze fuer neue Push-Konsumenten.
-- Das Profil-Modul bleibt vorerst temporaeres technisches Backend fuer Subscription-Upsert und Remote-Health.
+- `AppModules.push` synchronisiert Browser-Push und den letzten bekannten Remote-Health-Stand.
+- `AppModules.push` ergaenzt den Client-Kontext und ist die API-Grenze fuer Push-Konsumenten.
+- Das Profil-Modul ist kein Backend fuer Subscription-Upsert oder Remote-Health.
 - Sichtbare Bedienung und Health-Anzeige liegen im Touchlog.
 
 ### 4.2 Trigger
@@ -187,9 +188,9 @@ Related docs:
   - `bp:changed`
   - `visibilitychange`
 - Medication-Read-Model basiert auf offenen `slots[]` und `slot_type`.
-- `AppModules.profile` exportiert den Push-Routing-Stand fuer die Incident-Engine und den Touchlog.
-- Neue Konsumenten sollen bevorzugt `AppModules.push` verwenden.
-- `AppModules.profile` bleibt nur temporaerer Backend-/Fallback-Pfad, solange die vollstaendige Push-Service-Extraction noch offen ist.
+- `AppModules.push` exportiert den Push-Routing-Stand fuer die Incident-Engine und den Touchlog.
+- Neue Push-Konsumenten verwenden `AppModules.push`.
+- `AppModules.profile` ist kein Push-Backend und kein Fallback-Pfad mehr.
 - Output:
   - lokale Reminder-/Incident-Notification
   - externer Off-App-Push
@@ -202,7 +203,7 @@ Related docs:
 - Snooze oder bewusste Follow-up-Stufe.
 - zusaetzliche Delivery-/Health-Diagnostik im Touchlog.
 - ruhigere Touchlog-Push-UX, z. B. kompakte Push-Pill plus Detailzeilen im Touchlog.
-- spaetere vollstaendige Migration der internen Push-API aus dem Profil-Modul in ein dediziertes Push-Service-Modul.
+- weitere Push-Service-Erweiterungen bleiben in `AppModules.push`; Profile bleibt push-frei.
 
 ---
 

@@ -37,11 +37,7 @@
     lifestyle: '#profileLifestyleNote',
     saveBtn: '#profileSaveBtn',
     refreshBtn: '#profileRefreshBtn',
-    overview: '#profileOverview',
-    pushEnableBtn: '#profilePushEnableBtn',
-    pushDisableBtn: '#profilePushDisableBtn',
-    pushStatus: '#profilePushStatus',
-    pushDetails: '#profilePushDetails'
+    overview: '#profileOverview'
   };
 
   const state = {
@@ -50,29 +46,10 @@
     ready: false,
     syncPromise: null,
     latestLab: null,
-    medicationSummary: null,
-    pushSyncing: false,
-    pushRouting: {
-      hasBrowserSubscription: false,
-      endpoint: '',
-      remoteHealthy: false,
-      localSuppressionAllowed: false,
-      permission: '',
-      hasRemoteSubscription: false,
-      remoteDisabled: false,
-      lastRemoteSuccessAt: '',
-      lastRemoteFailureAt: '',
-      lastRemoteFailureReason: '',
-      consecutiveRemoteFailures: 0,
-      healthRefreshError: '',
-      checkedAt: ''
-    }
+    medicationSummary: null
   };
 
   let refs = null;
-  const VAPID_PUBLIC_KEY =
-    global?.VAPID_PUBLIC_KEY ||
-    'BCUnF1w9VYIKZ9KPnEx_TNjpiwVuqGY7CZE2oEijz72tjGUORqZQdcJ_CR7nI-rIxkzHiyjOgsxUwZhbIVP6Bxw';
 
   const sanitize = (val) => (val == null ? '' : String(val).trim());
   const todayIso = () => {
@@ -114,11 +91,7 @@
       lifestyle: panel.querySelector(selectors.lifestyle),
       saveBtn: panel.querySelector(selectors.saveBtn),
       refreshBtn: panel.querySelector(selectors.refreshBtn),
-      overview: panel.querySelector(selectors.overview),
-      pushEnableBtn: panel.querySelector(selectors.pushEnableBtn),
-      pushDisableBtn: panel.querySelector(selectors.pushDisableBtn),
-      pushStatus: panel.querySelector(selectors.pushStatus),
-      pushDetails: panel.querySelector(selectors.pushDetails)
+      overview: panel.querySelector(selectors.overview)
     };
     return refs;
   };
@@ -170,451 +143,6 @@
     const uid = await getUid();
     if (!uid) throw new Error('Supabase User nicht angemeldet');
     return uid;
-  };
-
-  const urlBase64ToUint8Array = (base64String) => {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const raw = global.atob(base64);
-    const output = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i += 1) {
-      output[i] = raw.charCodeAt(i);
-    }
-    return output;
-  };
-
-  const formatDateTime = (value) => {
-    if (!value) return '--';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '--';
-    return date.toLocaleString('de-AT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getPermissionLabel = (permission) => {
-    if (permission === 'granted') return 'erlaubt';
-    if (permission === 'denied') return 'blockiert';
-    return 'nicht entschieden';
-  };
-
-  const setPushStatus = (text, tone = '') => {
-    if (!refs?.pushStatus) return;
-    refs.pushStatus.textContent = text;
-    refs.pushStatus.classList.toggle('is-ok', tone === 'ok');
-    refs.pushStatus.classList.toggle('is-warn', tone === 'warn');
-    refs.pushStatus.classList.toggle('is-error', tone === 'error');
-  };
-
-  const renderPushDetails = ({ remoteLabel = '', hint = '' } = {}) => {
-    if (!refs?.pushDetails) return;
-    refs.pushDetails.innerHTML = '';
-    const routing = state.pushRouting || {};
-    const rows = [
-      ['Browser-Berechtigung', getPermissionLabel(routing.permission)],
-      ['Browser-Abo', routing.hasBrowserSubscription ? 'aktiv' : 'kein Abo'],
-      ['Remote-Status', remoteLabel || (routing.remoteHealthy ? 'remote gesund' : 'nicht bestaetigt')],
-      ['Letzter Remote-Erfolg', formatDateTime(routing.lastRemoteSuccessAt)],
-      ['Letzter Remote-Fehler', formatDateTime(routing.lastRemoteFailureAt)],
-    ];
-    if (routing.remoteDisabled) {
-      rows.push(['Remote-Abo', 'deaktiviert']);
-    }
-    if (routing.lastRemoteFailureReason) {
-      rows.push(['Fehlergrund', routing.lastRemoteFailureReason]);
-    }
-    if (Number(routing.consecutiveRemoteFailures || 0) > 0) {
-      rows.push(['Fehler in Folge', String(routing.consecutiveRemoteFailures)]);
-    }
-    if (routing.healthRefreshError) {
-      rows.push(['Health-Check', `nicht lesbar (${routing.healthRefreshError})`]);
-    }
-    rows.push(['Geprueft', formatDateTime(routing.checkedAt)]);
-
-    const dl = doc.createElement('dl');
-    rows.forEach(([label, value]) => {
-      const dt = doc.createElement('dt');
-      dt.textContent = label;
-      const dd = doc.createElement('dd');
-      dd.textContent = value || '--';
-      dl.append(dt, dd);
-    });
-    refs.pushDetails.appendChild(dl);
-
-    if (hint) {
-      const p = doc.createElement('p');
-      p.className = 'profile-push-hint';
-      p.textContent = hint;
-      refs.pushDetails.appendChild(p);
-    }
-  };
-
-  const clonePushRoutingState = () => ({
-    hasBrowserSubscription: !!state.pushRouting?.hasBrowserSubscription,
-    endpoint: String(state.pushRouting?.endpoint || ''),
-    remoteHealthy: !!state.pushRouting?.remoteHealthy,
-    localSuppressionAllowed: !!state.pushRouting?.localSuppressionAllowed,
-    permission: String(state.pushRouting?.permission || ''),
-    hasRemoteSubscription: !!state.pushRouting?.hasRemoteSubscription,
-    remoteDisabled: !!state.pushRouting?.remoteDisabled,
-    lastRemoteSuccessAt: String(state.pushRouting?.lastRemoteSuccessAt || ''),
-    lastRemoteFailureAt: String(state.pushRouting?.lastRemoteFailureAt || ''),
-    lastRemoteFailureReason: String(state.pushRouting?.lastRemoteFailureReason || ''),
-    consecutiveRemoteFailures: Number(state.pushRouting?.consecutiveRemoteFailures || 0),
-    endpointHash: String(state.pushRouting?.endpointHash || ''),
-    clientContext: String(state.pushRouting?.clientContext || ''),
-    clientDisplayMode: String(state.pushRouting?.clientDisplayMode || ''),
-    clientPlatform: String(state.pushRouting?.clientPlatform || ''),
-    clientBrowser: String(state.pushRouting?.clientBrowser || ''),
-    clientLabel: String(state.pushRouting?.clientLabel || ''),
-    lastDiagnosticAttemptAt: String(state.pushRouting?.lastDiagnosticAttemptAt || ''),
-    lastDiagnosticSuccessAt: String(state.pushRouting?.lastDiagnosticSuccessAt || ''),
-    lastDiagnosticFailureAt: String(state.pushRouting?.lastDiagnosticFailureAt || ''),
-    lastDiagnosticFailureReason: String(state.pushRouting?.lastDiagnosticFailureReason || ''),
-    healthRefreshError: String(state.pushRouting?.healthRefreshError || ''),
-    checkedAt: String(state.pushRouting?.checkedAt || '')
-  });
-
-  const setPushRoutingState = (nextState) => {
-    state.pushRouting = {
-      hasBrowserSubscription: !!nextState?.hasBrowserSubscription,
-      endpoint: String(nextState?.endpoint || ''),
-      remoteHealthy: !!nextState?.remoteHealthy,
-      localSuppressionAllowed: !!nextState?.localSuppressionAllowed,
-      permission: String(nextState?.permission || ''),
-      hasRemoteSubscription: !!nextState?.hasRemoteSubscription,
-      remoteDisabled: !!nextState?.remoteDisabled,
-      lastRemoteSuccessAt: String(nextState?.lastRemoteSuccessAt || ''),
-      lastRemoteFailureAt: String(nextState?.lastRemoteFailureAt || ''),
-      lastRemoteFailureReason: String(nextState?.lastRemoteFailureReason || ''),
-      consecutiveRemoteFailures: Number(nextState?.consecutiveRemoteFailures || 0),
-      endpointHash: String(nextState?.endpointHash || ''),
-      clientContext: String(nextState?.clientContext || ''),
-      clientDisplayMode: String(nextState?.clientDisplayMode || ''),
-      clientPlatform: String(nextState?.clientPlatform || ''),
-      clientBrowser: String(nextState?.clientBrowser || ''),
-      clientLabel: String(nextState?.clientLabel || ''),
-      lastDiagnosticAttemptAt: String(nextState?.lastDiagnosticAttemptAt || ''),
-      lastDiagnosticSuccessAt: String(nextState?.lastDiagnosticSuccessAt || ''),
-      lastDiagnosticFailureAt: String(nextState?.lastDiagnosticFailureAt || ''),
-      lastDiagnosticFailureReason: String(nextState?.lastDiagnosticFailureReason || ''),
-      healthRefreshError: String(nextState?.healthRefreshError || ''),
-      checkedAt: new Date().toISOString()
-    };
-  };
-
-  const ensurePushSupport = () => {
-    if (!('serviceWorker' in global.navigator)) {
-      throw new Error('Service Worker nicht verfuegbar');
-    }
-    if (!('PushManager' in global)) {
-      throw new Error('Push wird nicht unterstuetzt');
-    }
-    if (!VAPID_PUBLIC_KEY) {
-      throw new Error('VAPID Public Key fehlt');
-    }
-  };
-
-  const getPushRegistration = async () => {
-    ensurePushSupport();
-    const registration = await global.navigator.serviceWorker.ready;
-    if (!registration) throw new Error('Service Worker nicht bereit');
-    return registration;
-  };
-
-  const getCurrentSubscription = async () => {
-    const registration = await getPushRegistration();
-    return registration.pushManager.getSubscription();
-  };
-
-  const isPushMetadataSchemaError = (err) => {
-    const text = `${err?.code || ''} ${err?.message || ''} ${err?.details || ''}`.toLowerCase();
-    if (!text) return false;
-    return text.includes('endpoint_hash')
-      || text.includes('client_context')
-      || text.includes('client_display_mode')
-      || text.includes('client_platform')
-      || text.includes('client_browser')
-      || text.includes('client_label')
-      || text.includes('last_diagnostic_attempt_at')
-      || text.includes('last_diagnostic_success_at')
-      || text.includes('last_diagnostic_failure_at')
-      || text.includes('last_diagnostic_failure_reason');
-  };
-
-  const upsertSubscription = async ({ userId, subscription }) => {
-    const client = await requireSupabaseClient();
-    const json = subscription?.toJSON?.() || {};
-    const keys = json.keys || {};
-    const basePayload = {
-      user_id: userId,
-      endpoint: subscription.endpoint,
-      p256dh: keys.p256dh || null,
-      auth: keys.auth || null,
-      subscription: json,
-      disabled: false
-    };
-    const pushApi = appModules.push || null;
-    const metadata = typeof pushApi?.buildSubscriptionMetadata === 'function'
-      ? await pushApi.buildSubscriptionMetadata({ subscription })
-      : {};
-    const payload = Object.assign({}, basePayload, metadata);
-    const result = await client
-      .from('push_subscriptions')
-      .upsert(payload, { onConflict: 'user_id,endpoint' });
-    if (!result.error) return;
-    if (isPushMetadataSchemaError(result.error) && Object.keys(metadata).length) {
-      diag?.add?.('[profile] push metadata columns missing, retrying base subscription upsert');
-      const fallback = await client
-        .from('push_subscriptions')
-        .upsert(basePayload, { onConflict: 'user_id,endpoint' });
-      if (fallback.error) throw fallback.error;
-      return;
-    }
-    const { error } = result;
-    if (error) throw error;
-  };
-
-  const deleteSubscription = async ({ userId, endpoint }) => {
-    const client = await requireSupabaseClient();
-    const { error } = await client
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('endpoint', endpoint);
-    if (error) throw error;
-  };
-
-  const fetchRemoteSubscriptionHealth = async ({ userId, endpoint }) => {
-    if (!userId || !endpoint) return null;
-    const client = await requireSupabaseClient();
-    const { data, error } = await client
-      .from('push_subscriptions')
-      .select('endpoint, disabled, last_remote_success_at, last_remote_failure_at, last_remote_failure_reason, consecutive_remote_failures, endpoint_hash, client_context, client_display_mode, client_platform, client_browser, client_label, last_diagnostic_attempt_at, last_diagnostic_success_at, last_diagnostic_failure_at, last_diagnostic_failure_reason')
-      .eq('user_id', userId)
-      .eq('endpoint', endpoint)
-      .maybeSingle();
-    if (error) throw error;
-    return data || null;
-  };
-
-  const isRemoteSubscriptionHealthy = (row) => {
-    if (!row || row.disabled) return false;
-    const successMs = Date.parse(row.last_remote_success_at || '');
-    if (!Number.isFinite(successMs)) return false;
-    const failureMs = Date.parse(row.last_remote_failure_at || '');
-    if (Number.isFinite(failureMs) && failureMs > successMs) return false;
-    return Number(row.consecutive_remote_failures || 0) <= 0;
-  };
-
-  const isRemoteSubscriptionAwaitingFirstDelivery = (row) => {
-    if (!row || row.disabled) return false;
-    const successMs = Date.parse(row.last_remote_success_at || '');
-    const failureMs = Date.parse(row.last_remote_failure_at || '');
-    return !Number.isFinite(successMs)
-      && !Number.isFinite(failureMs)
-      && Number(row.consecutive_remote_failures || 0) <= 0;
-  };
-
-  const refreshPushStatus = async ({ reason = 'refresh' } = {}) => {
-    try {
-      ensurePushSupport();
-      const permission = global.Notification?.permission || 'default';
-      if (permission === 'denied') {
-        setPushRoutingState({ hasBrowserSubscription: false, permission });
-        setPushStatus('Status: blockiert (Browser)', 'error');
-        renderPushDetails({
-          remoteLabel: 'blockiert',
-          hint: 'Push ist im Browser blockiert. Bitte Browser- und Geraete-Benachrichtigungen fuer MIDAS erlauben.'
-        });
-        return;
-      }
-      const subscription = await getCurrentSubscription();
-      if (subscription) {
-        let remoteRow = null;
-        let healthRefreshError = '';
-        try {
-          const userId = await requireUserId();
-          remoteRow = await fetchRemoteSubscriptionHealth({
-            userId,
-            endpoint: subscription.endpoint
-          });
-        } catch (err) {
-          healthRefreshError = err?.message || String(err);
-          diag?.add?.(`[profile] push health refresh skipped (${reason}) ${err?.message || err}`);
-        }
-        const remoteHealthy = isRemoteSubscriptionHealthy(remoteRow);
-        const awaitingFirstDelivery = isRemoteSubscriptionAwaitingFirstDelivery(remoteRow);
-        const hasRemoteSubscription = !!remoteRow;
-        setPushRoutingState({
-          hasBrowserSubscription: true,
-          endpoint: subscription.endpoint,
-          remoteHealthy,
-          localSuppressionAllowed: remoteHealthy,
-          permission,
-          hasRemoteSubscription,
-          remoteDisabled: !!remoteRow?.disabled,
-          lastRemoteSuccessAt: remoteRow?.last_remote_success_at || '',
-          lastRemoteFailureAt: remoteRow?.last_remote_failure_at || '',
-          lastRemoteFailureReason: remoteRow?.last_remote_failure_reason || '',
-          consecutiveRemoteFailures: Number(remoteRow?.consecutive_remote_failures || 0),
-          endpointHash: remoteRow?.endpoint_hash || '',
-          clientContext: remoteRow?.client_context || '',
-          clientDisplayMode: remoteRow?.client_display_mode || '',
-          clientPlatform: remoteRow?.client_platform || '',
-          clientBrowser: remoteRow?.client_browser || '',
-          clientLabel: remoteRow?.client_label || '',
-          lastDiagnosticAttemptAt: remoteRow?.last_diagnostic_attempt_at || '',
-          lastDiagnosticSuccessAt: remoteRow?.last_diagnostic_success_at || '',
-          lastDiagnosticFailureAt: remoteRow?.last_diagnostic_failure_at || '',
-          lastDiagnosticFailureReason: remoteRow?.last_diagnostic_failure_reason || '',
-          healthRefreshError
-        });
-        if (remoteHealthy) {
-          setPushStatus('Status: aktiv (remote gesund)', 'ok');
-          renderPushDetails({ remoteLabel: 'remote gesund' });
-          return;
-        }
-        if (healthRefreshError) {
-          setPushStatus('Status: aktiv (Health-Check nicht lesbar)', 'warn');
-          renderPushDetails({
-            remoteLabel: 'Health-Check nicht lesbar',
-            hint: 'Browser-Abo ist aktiv, aber MIDAS konnte den Remote-Status nicht lesen. Off-App-Push bitte ueber einen manuellen Workflow-Smoke pruefen.'
-          });
-          return;
-        }
-        if (awaitingFirstDelivery) {
-          setPushStatus('Status: bereit (wartet auf erste Erinnerung)');
-          renderPushDetails({
-            remoteLabel: 'bereit, noch nicht zugestellt',
-            hint: 'Remote-Push ist eingerichtet. Es gab bisher keine faellige Erinnerung fuer eine echte Zustellbestaetigung.'
-          });
-          return;
-        }
-        if (hasRemoteSubscription) {
-          setPushStatus('Status: Zustellung noch nicht gesund', 'warn');
-          renderPushDetails({
-            remoteLabel: 'Zustellung pruefen',
-            hint: 'Remote-Push ist eingerichtet, aber die letzte Zustellung ist fehlgeschlagen oder das Remote-Abo wurde deaktiviert. Geraete-/Browser-Benachrichtigungen koennen ausserhalb von MIDAS blockiert sein.'
-          });
-          return;
-        }
-        setPushStatus('Status: aktiv (warte auf Remote-Bestaetigung)', 'warn');
-        renderPushDetails({
-          remoteLabel: 'warte auf Remote-Bestaetigung',
-          hint: 'Browser-Abo ist aktiv, aber noch nicht durch eine erfolgreiche Remote-Zustellung bestaetigt.'
-        });
-        return;
-      }
-      setPushRoutingState({ hasBrowserSubscription: false, permission });
-      if (permission === 'granted') {
-        setPushStatus('Status: bereit (kein Abo)', 'warn');
-        renderPushDetails({
-          remoteLabel: 'kein Abo',
-          hint: 'Benachrichtigungen sind erlaubt, aber dieses Geraet ist noch nicht fuer Push abonniert.'
-        });
-      } else {
-        setPushStatus('Status: aus', '');
-        renderPushDetails({
-          remoteLabel: 'aus',
-          hint: 'Push ist noch nicht aktiviert. Ohne Push kann MIDAS ausserhalb der geoeffneten App nicht erinnern.'
-        });
-      }
-    } catch (err) {
-      setPushRoutingState({ hasBrowserSubscription: false });
-      setPushStatus(`Status: nicht verfuegbar (${err.message || err})`, 'error');
-      renderPushDetails({
-        remoteLabel: 'nicht verfuegbar',
-        hint: 'Push wird von diesem Browser oder dieser Umgebung aktuell nicht unterstuetzt.'
-      });
-    }
-  };
-
-  const isPushEnabled = async () => {
-    try {
-      ensurePushSupport();
-      const subscription = await getCurrentSubscription();
-      return !!subscription;
-    } catch (_) {
-      return false;
-    }
-  };
-
-  const handleEnablePush = async () => {
-    if (state.pushSyncing) return;
-    state.pushSyncing = true;
-    const btn = refs?.pushEnableBtn || null;
-    try {
-      btn?.setAttribute('disabled', 'true');
-      ensurePushSupport();
-      if (global.Notification?.permission === 'denied') {
-        throw new Error('Push ist im Browser blockiert');
-      }
-      if (global.Notification?.permission !== 'granted') {
-        const perm = await global.Notification?.requestPermission?.();
-        if (perm !== 'granted') {
-          throw new Error('Push-Berechtigung verweigert');
-        }
-      }
-      const registration = await getPushRegistration();
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        const key = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: key
-        });
-      }
-      const userId = await requireUserId();
-      await upsertSubscription({ userId, subscription });
-      await refreshPushStatus({ reason: 'enable-push' });
-      log?.('push subscription aktiv');
-    } catch (err) {
-      diag?.add?.(`[profile] push enable failed ${err.message || err}`);
-      setPushStatus(`Status: Fehler (${err.message || err})`, 'error');
-      renderPushDetails({
-        remoteLabel: 'Fehler',
-        hint: 'Push konnte nicht aktiviert werden. Bitte Browser- und Geraete-Benachrichtigungen pruefen.'
-      });
-    } finally {
-      btn?.removeAttribute('disabled');
-      state.pushSyncing = false;
-    }
-  };
-
-  const handleDisablePush = async () => {
-    if (state.pushSyncing) return;
-    state.pushSyncing = true;
-    const btn = refs?.pushDisableBtn || null;
-    try {
-      btn?.setAttribute('disabled', 'true');
-      const subscription = await getCurrentSubscription();
-      if (!subscription) {
-        setPushRoutingState({ hasBrowserSubscription: false, permission: global.Notification?.permission || 'default' });
-        setPushStatus('Status: aus');
-        renderPushDetails({ remoteLabel: 'aus' });
-        return;
-      }
-      const userId = await requireUserId();
-      await deleteSubscription({ userId, endpoint: subscription.endpoint });
-      await subscription.unsubscribe();
-      await refreshPushStatus({ reason: 'disable-push' });
-      log?.('push subscription deaktiviert');
-    } catch (err) {
-      diag?.add?.(`[profile] push disable failed ${err.message || err}`);
-      setPushStatus(`Status: Fehler (${err.message || err})`, 'error');
-      renderPushDetails({
-        remoteLabel: 'Fehler',
-        hint: 'Push konnte nicht deaktiviert werden. Bitte spaeter erneut versuchen.'
-      });
-    } finally {
-      btn?.removeAttribute('disabled');
-      state.pushSyncing = false;
-    }
   };
 
   const parseMedicationsInput = (text) => {
@@ -992,16 +520,12 @@
     updateDoctorFieldsVisibility();
     panelRefs.saveBtn?.addEventListener('click', handleSave);
     panelRefs.refreshBtn?.addEventListener('click', handleRefresh);
-    panelRefs.pushEnableBtn?.addEventListener('click', handleEnablePush);
-    panelRefs.pushDisableBtn?.addEventListener('click', handleDisablePush);
     state.ready = true;
     syncProfile({ reason: 'init' });
-    refreshPushStatus({ reason: 'init' });
     doc?.addEventListener(
       'supabase:ready',
       () => {
         syncProfile({ reason: 'supabase-ready' });
-        refreshPushStatus({ reason: 'supabase-ready' });
       },
       { once: true }
     );
@@ -1010,13 +534,7 @@
   appModules.profile = {
     init,
     sync: syncProfile,
-    getData: () => (state.data ? { ...state.data } : null),
-    enablePush: handleEnablePush,
-    disablePush: handleDisablePush,
-    isPushEnabled,
-    refreshPushStatus,
-    getPushRoutingStatus: clonePushRoutingState,
-    shouldSuppressLocalPushes: () => !!state.pushRouting?.localSuppressionAllowed
+    getData: () => (state.data ? { ...state.data } : null)
   };
 
   if (doc?.readyState === 'complete' || doc?.readyState === 'interactive') {

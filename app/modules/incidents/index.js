@@ -313,7 +313,7 @@
     if (!bucket || !bucketKey) return false;
     if (bucket[bucketKey] === day) return false;
     const shouldSuppress = await (async () => {
-      const pushModule = appModules.push || appModules.profile || null;
+      const pushModule = appModules.push || null;
       if (!pushModule?.getPushRoutingStatus) return false;
       const routing = pushModule.getPushRoutingStatus();
       const checkedAtMs = Date.parse(routing?.checkedAt || '');

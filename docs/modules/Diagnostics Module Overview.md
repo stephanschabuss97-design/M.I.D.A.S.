@@ -29,7 +29,8 @@ Related docs:
 | `app/diagnostics/logger.js` | Ringbuffer-Logger (diagnosticsLayer.logger) |
 | `app/diagnostics/perf.js` | Perf-Sampler (diagnosticsLayer.perf) |
 | `app/diagnostics/monitor.js` | Heartbeat/Monitor (diagnosticsLayer.monitor) |
-| `app/diagnostics/devtools.js` | Touchlog-Bindings, lokale Dev-Toggles und Maintenance-Anzeige |
+| `app/modules/touchlog/index.js` | sichtbare Touchlog-Maintenance-Surface |
+| `app/diagnostics/devtools.js` | Thin Bootstrap fuer historische Touchlog-Initialisierung |
 | `app/core/boot-flow.js` | Boot-Fehleroverlay + Fallback-Log + zentrale Error-Route |
 | `index.html` | Touch-Log Panel + Script-Reihenfolge |
 | `app/styles/base.css` | Bootscreen + Boot-Error-Fallback-Log Styling |

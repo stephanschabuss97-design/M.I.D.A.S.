@@ -1,4 +1,59 @@
-﻿## Phase P11 - Push Channel Robustness & Android WebView Boundary (2026-04-28)
+﻿## Phase P12 - Touchlog Module & Push Service Extraction (2026-04-30)
+
+**Scope:** UI-freier Refaktor: Touchlog als eigenes Code-Modul, Push-Service als Owner, Profile push-frei, Incidents konsumiert Push ueber `AppModules.push`.
+
+**Static / Local Checks**
+
+- [x] `node --check app/modules/push/index.js`
+- [x] `node --check app/modules/profile/index.js`
+- [x] `node --check app/modules/incidents/index.js`
+- [x] `node --check app/modules/touchlog/index.js`
+- [x] `node --check app/diagnostics/devtools.js`
+- [x] `node --check app/modules/assistant-stack/voice/index.js`
+- [x] `node --check app/modules/hub/index.js`
+- [x] `node --check app/core/diag.js`
+- [x] `node --check app/core/feedback.js`
+- [x] `git diff --check`
+- [x] Neues Touchlog-Modul separat auf trailing whitespace geprueft.
+
+**Module Boundary**
+
+- [x] `AppModules.push` besitzt Browser-Subscription, Subscription-Upsert/Delete/Read, Push-Kontext, Routing-Status, Remote-Health und Diagnose-Health.
+- [x] `AppModules.touchlog` besitzt die sichtbare Maintenance-Surface und ruft Push nur ueber `AppModules.push`.
+- [x] `app/diagnostics/devtools.js` ist Thin Bootstrap fuer `AppModules.touchlog.init()`.
+- [x] `AppModules.profile` besitzt keine Push-Service-API fuer Opt-in, Opt-out, Routing-Health oder lokale Suppression.
+- [x] `AppModules.incidents` konsumiert lokale Suppression ueber `AppModules.push`, nicht ueber Profile.
+
+**UI-Free Contract**
+
+- [x] Keine CSS-/Layout-Aenderung.
+- [x] Sichtbare Push-Wartung bleibt im Touchlog.
+- [x] Profil bleibt sichtbar push-frei.
+- [x] `index.html` erhaelt nur die notwendige Script-Einbindung fuer `app/modules/touchlog/index.js`.
+- [x] Keine Service-Worker-, SQL-, Edge-, GitHub-Actions- oder Android-Native-Aenderung.
+
+**Browser / Device Smokes**
+
+- [x] Browser/PWA laedt ohne neue Modulfehler.
+- [x] Touchlog oeffnet und schliesst.
+- [x] Touchlog-Log kann lokal geleert werden.
+- [x] Lokale Modi Sound, Haptik, No Cache und Assistant sind im Touchlog bedienbar.
+- [x] Push aktivieren/deaktivieren bleibt im Touchlog erreichbar.
+- [x] Profil oeffnet ohne Push-Section, Push-Buttons oder Push-Kurzstatus.
+- [x] Android-WebView bleibt als nicht verlaesslicher Reminder-Push-Kanal abgegrenzt.
+- [ ] Optionaler manueller echter Push-Smoke wird separat beobachtet.
+
+**Suppression / Diagnose Contract**
+
+- [x] Lokale Suppression bleibt konservativ, wenn kein echter Remote-Health-Nachweis vorliegt.
+- [x] `remoteHealthy` wird nur aus echten Remote-Health-Feldern abgeleitet.
+- [x] `last_diagnostic_success_at` schaltet lokale medizinische Suppression nicht frei.
+- [x] Technischer Diagnose-Push bleibt getrennt von fachlicher Delivery-Dedupe.
+- [x] Touchlog zeigt nur sichere Subscription-Diagnose wie Endpoint-Hash, keine Roh-Endpunkte oder Keys.
+
+---
+
+## Phase P11 - Push Channel Robustness & Android WebView Boundary (2026-04-28)
 
 **Scope:** Browser/PWA als Reminder-Push-Master, Android-WebView-Abgrenzung, technischer Diagnose-Push, sichere Subscription-Diagnose und Touchlog-Health-UX.
 
@@ -56,6 +111,7 @@
 - [x] Touchlog-Push-Health darf spaeter ruhiger als kompakte Pill plus Details gestaltet werden.
 
 ---
+
 ## Phase P9 - Push Cadence & Health Visibility Follow-up (2026-04-25)
 
 **Scope:** GitHub-Actions-Kadenz von `*/30` auf gezielte Push-Ticks, Edge-Function-Diagnose, Profil-/Touchlog-Push-Health und mobile Diagnose.
@@ -2206,6 +2262,4 @@ Regression
 - [ ] Keine Produktdatenaktion aus dem Touchlog heraus.
 - [ ] Kein Service-Worker-, Backend- oder Android-Native-Umbau erforderlich.
 - [ ] Boot-Error-Fallback kann weiterhin den Touchlog oder Fallback-Log anzeigen.
-- [ ] Profil-Push-API bleibt intern nutzbar fuer Touchlog und lokale Push-Suppression.
-
----
+- [x] Profil bleibt push-frei; Touchlog und lokale Suppression nutzen `AppModules.push`.

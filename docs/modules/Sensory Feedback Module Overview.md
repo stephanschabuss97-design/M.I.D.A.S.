@@ -26,7 +26,7 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/core/feedback.js` | Zentrale Feedback-Utility (sound + haptic) |
-| `app/diagnostics/devtools.js` | Dev-Toggles im Touch-Log Panel |
+| `app/modules/touchlog/index.js` | Sound-/Haptik-Toggles im Touchlog |
 | `app/modules/hub/index.js` | Panel-Open/Close Hooks |
 | `app/modules/intake-stack/intake/index.js` | Save/Confirm/Undo Hooks |
 | `app/modules/vitals-stack/vitals/index.js` | Vitals Save/Reset Hooks |

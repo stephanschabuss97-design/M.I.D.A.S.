@@ -28,9 +28,10 @@ Related docs:
 |------|------|
 | `index.html` | Touchlog-Markup, Maintenance-Sektionen, Log-Stream |
 | `app/core/diag.js` | Diagnostics-Core, sichtbarer Log-Stream, `diag.clear()` |
-| `app/diagnostics/devtools.js` | Touchlog-Bindings, Push-Wartung, lokale Diagnosemodi, Hilfsaktionen |
-| `app/modules/push/index.js` | Push-Kontext, sichere Subscription-Diagnose und bevorzugte Push-Service-Grenze |
-| `app/modules/profile/index.js` | interne Push-API und Push-Routing-Status fuer Touchlog/Incidents |
+| `app/modules/touchlog/index.js` | Touchlog-Bindings, Push-Wartung, lokale Diagnosemodi, Hilfsaktionen, `AppModules.touchlog` |
+| `app/diagnostics/devtools.js` | Thin Bootstrap fuer `AppModules.touchlog.init()` |
+| `app/modules/push/index.js` | Push-Service, Push-Kontext, sichere Subscription-Diagnose und Push-Routing-Status fuer Touchlog/Incidents |
+| `app/modules/profile/index.js` | Stammdaten, Limits, Hausarztkontakt und read-only Medication-Snapshot; keine Push-Service-API |
 | `app/styles/auth.css` | Touchlog-Layout, Mobile-Panel, Maintenance-Sektionen |
 | `app/styles/hub.css` | Profil-Styles; enthaelt keine sichtbare Profile-Push-Surface mehr |
 | `docs/QA_CHECKS.md` | Touchlog-v2-Smokes |
@@ -51,14 +52,15 @@ Related docs:
 
 ### 4.1 Initialisierung
 - `diag.init()` bindet das Panel und den Log-Stream.
-- `devtools.js` bindet die sichtbaren Touchlog-Controls, wenn die DOM-Elemente vorhanden sind.
+- `app/modules/touchlog/index.js` bindet die sichtbaren Touchlog-Controls, wenn die DOM-Elemente vorhanden sind.
+- `devtools.js` bleibt nur Bootstrap fuer historische Script-Kompatibilitaet.
 - Push-Wartung nutzt bevorzugt `AppModules.push` als technische Quelle:
   - `enablePush`
   - `disablePush`
   - `isPushEnabled`
   - `refreshPushStatus`
   - `getPushRoutingStatus`
-- `AppModules.profile` bleibt temporaeres technisches Backend hinter `AppModules.push`.
+- `AppModules.profile` ist kein technisches Push-Backend.
 
 ### 4.2 User-Trigger
 - Touchlog oeffnen/schliessen.
@@ -124,7 +126,7 @@ Related docs:
 - Profil enthaelt keine `Push & Erinnerungen`-Section.
 - Profil enthaelt keine Push-Buttons.
 - Profil enthaelt keinen Push-Kurzstatus und keine Push-Health-Details.
-- Das Profil-Modul darf technisch weiterhin Push-API und Push-Routing-Status bereitstellen, solange daraus keine sichtbare Profil-Surface folgt.
+- Das Profil-Modul stellt keine Push-API und keinen Push-Routing-Status mehr bereit.
 
 ---
 
@@ -150,22 +152,26 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Public Touchlog-Entry-Points:
+  - `AppModules.touchlog.init()`
+  - `AppModules.touchlog.refreshPushStatus(reason?)`
+  - `AppModules.touchlog.updateActiveModes()`
+  - `AppModules.touchlog.add(...)`
   - `diag.show()`
   - `diag.hide()`
   - `diag.add(...)`
   - `diag.clear()`
-- Push-Wartung nutzt intern `AppModules.push`; `AppModules.profile` bleibt vorerst Backend/Fallback.
+- Push-Wartung nutzt intern `AppModules.push`.
 - Incident-Engine bleibt Konsument des Push-Routing-Status; der Touchlog trifft keine fachliche Reminder-Entscheidung.
 - Source of Truth:
   - Diagnostics-Core fuer Log
-  - Profile-/Push-Subscription-Status fuer Push-Wartung
+  - Push-Subscription-Status fuer Push-Wartung
   - lokale Dev-Flags fuer Diagnosemodi
 
 ---
 
 ## 9. Erweiterungspunkte / Zukunft
 
-- Separater Push-Service statt interner Profile-Push-API, falls spaeter gewuenscht.
+- Weitere Touchlog-Wartungsbereiche nur als UI-freie Maintenance-Erweiterung, nicht als Produktdashboard.
 - Weitere eng begrenzte lokale Hilfsaktionen, sofern sie keine Produktdaten veraendern.
 - Ruhigere Push-Health-Komprimierung, z. B. kompakte Push-Pill plus Detailzeilen, falls die aktuelle Health-Karte bei mehreren/alten Subscriptions zu technisch oder nervoes wirkt.
 
@@ -186,12 +192,12 @@ Related docs:
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv.
-- Dependencies (hard): Diagnostics-Core, Touchlog-Markup, Push-Service-Boundary, Profile-Push-Backend, Browser Notification/Service Worker.
+- Dependencies (hard): Diagnostics-Core, Touchlog-Markup, `AppModules.push`, Browser Notification/Service Worker.
 - Dependencies (soft): Remote-Push-Health aus `push_subscriptions`.
 - Known risks:
   - Remote-Health kann `Health-Check offen` bleiben, wenn kein echter faelliger Remote-Push gelaufen ist.
   - Remote-/Diagnose-Health kann bei mehreren oder alten Subscriptions irritierend wirken, obwohl Push transportseitig funktioniert.
-  - Interne Push-API liegt vorerst noch im Profil-Modul; das ist bewusst technische Quelle, keine sichtbare Profil-Verantwortung.
+  - Push-Service-API liegt in `AppModules.push`; Profile ist kein Push-Backend.
   - Mobile-Textfit muss bei neuen Statuswerten weiter mitgeprueft werden.
 - Backend / SQL / Edge: keine eigene Touchlog-Schicht.
 
