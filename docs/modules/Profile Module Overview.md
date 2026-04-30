@@ -2,7 +2,7 @@
 
 Kurze Einordnung:
 - Zweck: zentrale Pflege persoenlicher Gesundheits- und Kontaktparameter.
-- Rolle: liefert Stammdaten, Limits, Hausarztkontakt, read-only Medication-Snapshot und intern den lokalen Push-Routing-Stand.
+- Rolle: liefert Stammdaten, Limits, Hausarztkontakt, read-only Medication-Snapshot und vorerst intern das technische Push-Backend fuer Subscription/Routing.
 - Abgrenzung: kein Medical Record, keine Mehrarztverwaltung, keine eigene Notification-Engine.
 
 Related docs:
@@ -25,6 +25,7 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/modules/profile/index.js` | UI-Bindung, Supabase Sync/Upsert, `profile:changed` Event |
+| `app/modules/push/index.js` | bevorzugte Push-Service-Grenze fuer neue Konsumenten, delegiert temporaer an Profile |
 | `app/modules/hub/index.js` | oeffnet Panel via Orbit, konsumiert Snapshot im Assistant |
 | `app/modules/intake-stack/medication/index.js` | liefert Tagesliste (`loadMedicationForDay`) fuer den Medication-Snapshot |
 | `app/styles/hub.css` | Formular- und Card-Styling |
@@ -51,6 +52,7 @@ Related docs:
 - `ensureRefs()` cached Formelemente.
 - Wartet auf `supabase:ready`, dann `syncProfile({ reason: 'init' })`.
 - Initialisiert intern auch den Push-Routing-Status fuer Browser-Subscription und Remote-Health.
+- Stellt Push-Subscription-Upsert und Remote-Health noch technisch bereit, wird aber fuer neue Konsumenten ueber `AppModules.push` gekapselt.
 
 ### 4.2 User-Trigger
 - Buttons `profileSaveBtn`, `profileRefreshBtn`.
@@ -66,6 +68,8 @@ Related docs:
   - gleicht sie mit `push_subscriptions` ab
   - bewertet `remote gesund` nur bei nachgewiesen erfolgreicher Remote-Zustellung ohne spaeteren Failure
   - behandelt `Backend-Subscription vorhanden, aber noch kein echter Push faellig` als neutralen Bereit-Zustand
+  - liest sichere Kontext-/Diagnosefelder wie `endpoint_hash`, `client_context`, `client_display_mode`, `client_platform`, `client_browser`, `client_label` und `last_diagnostic_*`
+  - nutzt `last_diagnostic_*` nicht fuer lokale medizinische Suppression
 
 ### 4.4 Persistenz
 - Save: `supabase.from('user_profile').upsert({ ...payload, user_id }, { onConflict: 'user_id' })`.
@@ -73,6 +77,7 @@ Related docs:
 - Nach erfolgreichem Save/Sync wird State aktualisiert, Overview gerendert und `profile:changed` gefeuert.
 - Der Medication-Snapshot wird nicht separat gespeichert; Quelle bleibt das Medication-Modul.
 - Push-Opt-in/-Opt-out wird sichtbar ueber den Touchlog ausgeloest und nutzt intern weiter die bestehende Profile-Push-API.
+- Push-Opt-in/-Opt-out wird sichtbar ueber den Touchlog ausgeloest und laeuft fuer UI-Konsumenten ueber `AppModules.push`.
 
 ---
 
@@ -108,6 +113,12 @@ Related docs:
 - Push-Fehler loggen `[profile] push enable failed`, `[profile] push disable failed` oder einen ausgelassenen Health-Refresh.
 - Push-Health-Texte werden sichtbar im Touchlog gerendert und duerfen `noch keine echte Zustellung` nicht als Fehler darstellen.
 - Lokale Push-Suppression bleibt nur erlaubt, wenn `remoteHealthy` wahr ist.
+- `remoteHealthy` darf nur aus echten Remote-Health-Feldern entstehen:
+  - `last_remote_success_at`
+  - `last_remote_failure_at`
+  - `disabled`
+  - `consecutive_remote_failures`
+- Technische Diagnosefelder (`last_diagnostic_*`) duerfen den medizinischen Suppression-Vertrag nicht freischalten.
 - Formular wird waehrend Requests disabled.
 - Fehlender Supabase-Client fuehrt zu einem klaren Fehler.
 - Ohne Profil-Datensatz zeigt die Overview einen leeren Initialzustand.
@@ -117,6 +128,7 @@ Related docs:
 ## 8. Events & Integration Points
 
 - Public API / Entry Points: `AppModules.profile.sync`, `AppModules.profile.refreshPushStatus`, `AppModules.profile.getPushRoutingStatus`, `AppModules.profile.enablePush`, `AppModules.profile.disablePush`, `profileSaveBtn`, `profileRefreshBtn`.
+- Neuer Push-Konsum soll bevorzugt ueber `AppModules.push` laufen; direkte neue Profile-Push-Abhaengigkeiten sind nur als temporaere Delegation zulaessig.
 - Source of Truth: `user_profile`, `push_subscriptions`, Lab-Snapshot und Medication-Snapshot.
 - Side Effects: `profile:changed`, Updates fuer Assistant, Charts, Medication-Low-Stock und lokale Push-Suppression.
 - Konsumenten:
@@ -133,7 +145,7 @@ Related docs:
 - Zusaetzliche Felder wie Blutdruckziel oder Allergien.
 - Staerker serverseitige Validation.
 - Snapshot-Caching und Offline-Fallback.
-- Spaetere Migration der internen Push-API in ein eigenes Push-Service-Modul, falls die Modulgrenze weiter geschaerft werden soll.
+- Spaetere vollstaendige Migration der internen Push-API in ein eigenes Push-Service-Modul, damit Profile wieder rein Stammdaten-/Kontextmodul wird.
 
 ---
 
@@ -150,7 +162,8 @@ Related docs:
 - Dependencies (hard): `user_profile`, Supabase Client, Medication-Snapshot, Lab-Snapshot.
 - Dependencies (soft): Assistant-Kontext.
 - Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save, Remote-Health muss zuerst erfolgreich belegt werden bevor lokal unterdrueckt werden darf.
-- Die interne Push-API liegt vorerst weiterhin im Profil-Modul; sichtbar ist Push aber ausschliesslich im Touchlog.
+- Die interne Push-API liegt vorerst weiterhin im Profil-Modul; sichtbar ist Push aber ausschliesslich im Touchlog und neue Konsumenten sollen `AppModules.push` nutzen.
+- Known issue: Touchlog-Health kann bei mehreren/alten Subscriptions temporaer `Health-Check offen` anzeigen, obwohl der Push-Transport funktioniert. Das ist ein Maintenance-/Mapping-Restpunkt, kein Profil-Fachproblem.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/15_Push_Subscriptions.sql`.
 
 ---
@@ -168,6 +181,7 @@ Related docs:
   - Backend-Subscription vorhanden, aber noch keine echte faellige Zustellung
   - echter Remote-Failure
   - gesunder Remote-Pfad
+- Diagnose-Health (`last_diagnostic_*`) wird angezeigt, aber nicht als `remoteHealthy` gewertet.
 - Lokale Suppression bleibt bei `bereit (wartet auf erste Erinnerung)` aus.
 
 ---

@@ -1,4 +1,62 @@
-﻿## Phase P9 - Push Cadence & Health Visibility Follow-up (2026-04-25)
+﻿## Phase P11 - Push Channel Robustness & Android WebView Boundary (2026-04-28)
+
+**Scope:** Browser/PWA als Reminder-Push-Master, Android-WebView-Abgrenzung, technischer Diagnose-Push, sichere Subscription-Diagnose und Touchlog-Health-UX.
+
+**Static / Local Checks**
+
+- [x] `deno check C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts`
+- [x] `node --check app/modules/push/index.js`
+- [x] `node --check app/modules/profile/index.js`
+- [x] `node --check app/modules/incidents/index.js`
+- [x] `node --check app/diagnostics/devtools.js`
+- [x] `node --check service-worker.js`
+- [x] `node --check public/sw/service-worker.js`
+- [x] `.env.supabase.local` ist per `.gitignore` ausgeschlossen.
+
+**Edge Function / Workflow**
+
+- [x] `workflow_dispatch` bietet `mode=incidents` und `mode=diagnostic`.
+- [x] Schedule-Runs bleiben `mode=incidents`.
+- [x] Diagnosemodus ist nur fuer manuelle Runs gedacht.
+- [x] Diagnose-Push schreibt nur `last_diagnostic_*`.
+- [x] Diagnose-Push schreibt nicht in `push_notification_deliveries`.
+- [x] Diagnose-Push setzt kein medizinisches `last_remote_success_at`.
+- [x] Echter Diagnose-Smoke liefert `status=diagnostic-sent`, `failedSubscriptions=0`.
+
+**Touchlog / Push Context**
+
+- [x] Touchlog zeigt Kontext/Geraet/Berechtigung/Browser-Abo/Remote/Diagnose/Endpoint-Hash/letzte Zeitpunkte ohne Roh-Endpunkte.
+- [x] Desktop-PWA wird als `PWA/Standalone` bzw. Browser/PWA-Kontext erkannt.
+- [x] Android-PWA wird als `PWA/Standalone` mit `android / chrome / standalone` erkannt.
+- [x] Android-WebView darf nicht als gesunder Reminder-Push-Master dargestellt werden.
+- [x] Android-WebView soll Chrome/PWA fuer verlaessliche Erinnerungen empfehlen.
+- [x] Endpoint-Hash darf fehlen, wenn alte Subscriptions noch nicht neu upserted wurden.
+
+**Device Smokes**
+
+- [x] Desktop/PWA erhaelt fachlichen oder Diagnose-Push real.
+- [x] Android-PWA erhaelt Diagnose-Push real sichtbar in der Notification-Zeile.
+- [x] Edge Function meldet erfolgreiche Zustellung an aktive Subscriptions.
+- [ ] Optionaler naechster natuerlicher Medication-/BP-Reminder wird beobachtet und gegen die Touchlog-Anzeige bewertet.
+
+**Suppression / Health Contract**
+
+- [x] Lokale Suppression bleibt nur bei echtem Remote-Health-Nachweis erlaubt.
+- [x] `last_diagnostic_success_at` schaltet lokale medizinische Suppression nicht frei.
+- [x] `Health-Check offen` ist kein harter Fehler.
+- [x] Bei mehreren/alten Subscriptions darf Touchlog-Health nervoes/offen wirken, solange realer Push-Transport funktioniert.
+
+**Regression**
+
+- [x] Keine Medication-/BP-Schwellen geaendert.
+- [x] Keine neue Reminder-Kette.
+- [x] Kein Service-Worker-Umbau.
+- [x] Keine native Android-/FCM-/AlarmManager-Push-Schicht eingefuehrt.
+- [x] Profil bleibt sichtbar push-frei.
+- [x] Touchlog-Push-Health darf spaeter ruhiger als kompakte Pill plus Details gestaltet werden.
+
+---
+## Phase P9 - Push Cadence & Health Visibility Follow-up (2026-04-25)
 
 **Scope:** GitHub-Actions-Kadenz von `*/30` auf gezielte Push-Ticks, Edge-Function-Diagnose, Profil-/Touchlog-Push-Health und mobile Diagnose.
 

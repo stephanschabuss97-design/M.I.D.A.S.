@@ -14,6 +14,7 @@ Nicht Ziel dieses Bereichs:
 - MIDAS als zweite App nachzubauen
 - Business-Logik aus MIDAS zu verschieben
 - das Widget zu einer Eingabe- oder Reminder-Flaeche zu machen
+- Browser-/PWA-Push durch Android-WebView, Widget, FCM oder AlarmManager zu ersetzen
 
 V1-Zielbild:
 
@@ -36,6 +37,14 @@ Android-Auth-Vertrag:
 - der Callback kehrt per Deep Link zur App zurueck
 - die native Session ist Source of Truth fuer Widget-Sync und Android-Shell
 - die `WebView` ist MIDAS-Surface, nicht Login-Surface
+- die `WebView` ist kein Reminder-Push-Master
+
+Push-/Reminder-Vertrag:
+
+- Browser/PWA bleibt der Reminder-Push-Master
+- Android-WebView/Shell und Widget sind Sync-/Auth-/Snapshot-Nodes
+- verlaessliche Push-Erinnerungen werden in MIDAS ueber Chrome/PWA aktiviert und im Touchlog diagnostiziert
+- native Android-Push-, FCM- oder AlarmManager-Reminder brauchen eine separate Roadmap
 
 Build-Hinweis:
 

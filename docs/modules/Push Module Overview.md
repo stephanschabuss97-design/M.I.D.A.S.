@@ -11,6 +11,9 @@ Status-Hinweis:
   - `incident`
 - Lokal und extern sprechen denselben Typ-/Severity-/Tag-Vertrag.
 - Off-App-Push laeuft ueber GitHub Actions plus Edge Function im Backend-Workspace.
+- Browser/PWA ist der Reminder-Push-Master.
+- Android-WebView/Shell ist Widget-/Sync-/Auth-Surface und kein verlaesslicher Reminder-Push-Kanal.
+- Technische Diagnose-Pushes laufen getrennt von Medication-/BP-Dedupe und schalten keine lokale Suppression frei.
 
 Related docs:
 - [Medication Module Overview](Medication Module Overview.md)
@@ -34,6 +37,7 @@ Related docs:
 | Datei | Zweck |
 |------|------|
 | `app/modules/incidents/index.js` | lokale Incident-Engine, Medication-Schwellen, lokale Suppression |
+| `app/modules/push/index.js` | Push-Kontext, sichere Subscription-Metadaten und temporaere Push-Service-Grenze |
 | `service-worker.js` | Severity-Auswertung, Anzeige-Defaults, Click-Handling |
 | `app/modules/profile/index.js` | interne Push-API, Browser-Subscription, Remote-Health-Status |
 | `app/diagnostics/devtools.js` | sichtbare Push-Wartung im Touchlog |
@@ -51,6 +55,8 @@ Related docs:
   - Medication getrennt nach Abschnitt und Severity
 - Remote:
   - `push_subscriptions` fuer Endpoint, Browser-Keys und Remote-Health
+  - `push_subscriptions.endpoint_hash`, `client_context`, `client_display_mode`, `client_platform`, `client_browser`, `client_label` fuer sichere Diagnose-Zuordnung
+  - `push_subscriptions.last_diagnostic_*` fuer technische Test-Push-Health
   - `push_notification_deliveries` fuer persistentes Remote-Dedupe pro `user/day/type/severity/source`
 
 ---
@@ -62,6 +68,8 @@ Related docs:
 - Tageswechsel resettet lokale Sendeflags.
 - Lokaler Intervall-Check laeuft minuetlich.
 - Profil-Modul synchronisiert intern Browser-Push und den letzten bekannten Remote-Health-Stand.
+- `AppModules.push` ergaenzt den Client-Kontext und ist die bevorzugte API-Grenze fuer neue Push-Konsumenten.
+- Das Profil-Modul bleibt vorerst temporaeres technisches Backend fuer Subscription-Upsert und Remote-Health.
 - Sichtbare Bedienung und Health-Anzeige liegen im Touchlog.
 
 ### 4.2 Trigger
@@ -91,6 +99,8 @@ Related docs:
 - Der Workflow laeuft nicht mehr als 30-Minuten-Dauerlauf, sondern gezielt rund um die relevanten Medication-/BP-Schwellen.
 - Die Cron-Zeiten sind in UTC gesetzt und decken CET/CEST fuer `Europe/Vienna` ab.
 - Die Edge Function entscheidet in `Europe/Vienna`, was aktuell faellig ist.
+- Manuelle Workflow-Runs koennen `mode=diagnostic` senden.
+- `mode=diagnostic` sendet einen technischen Test-Push, schreibt nur `last_diagnostic_*` und beruehrt keine fachliche Dedupe-Tabelle.
 - Medication liest slot-/abschnittsbasiert:
   - `health_medications`
   - `health_medication_schedule_slots`
@@ -105,6 +115,8 @@ Related docs:
   - dieselbe Subscription im Backend bekannt ist
   - fuer diese Subscription bereits ein erfolgreicher Remote-Push belegt ist
   - kein spaeterer Failure-Stand darauf liegt
+- `last_diagnostic_success_at` reicht dafuer nicht aus.
+- Diagnose-Pushes duerfen lokale medizinische Fallbacks nicht unterdruecken.
 - Ohne diesen Nachweis bleibt lokal der Fallback aktiv.
 
 ---
@@ -124,6 +136,11 @@ Related docs:
   - `data.severity`
   - `data.dayIso`
   - `data.source`
+- Diagnose-Payload:
+  - `data.type=diagnostic_push`
+  - `data.source=diagnostic`
+  - kein Medication-/BP-Event
+  - kein Eintrag in `push_notification_deliveries`
 
 ---
 
@@ -132,8 +149,10 @@ Related docs:
 - Touchlog:
   - einzige sichtbare Push-Wartungs- und Bedienoberflaeche
   - Push aktivieren/deaktivieren
-  - Statusanzeige fuer Browser-Berechtigung, Browser-Abo, Remote-Status, letzte Remote-Zeitpunkte und Pruefzeit
+  - Statusanzeige fuer Kontext, Geraet, Browser-Berechtigung, Browser-Abo, Remote-Status, Diagnose-Status, letzte Zeitpunkte und Pruefzeit
+  - zeigt nur sichere Diagnosewerte wie gekuerzten Endpoint-Hash, keine Roh-Endpunkte oder Keys
   - Diagnose unterscheidet Browser-Abo, erste faellige Erinnerung, Remote-Erfolg und Zustellproblem
+  - Android-WebView wird als nicht empfohlener Reminder-Push-Kontext markiert; Chrome/PWA bleibt Empfehlung
 - Profil:
   - keine sichtbare Push-Section
   - keine Push-Buttons
@@ -150,6 +169,9 @@ Related docs:
   - Browser-Abo und Backend-Subscription sind vorhanden.
   - Es gab noch keinen faelligen Remote-Push und deshalb noch keine echte Zustellbestaetigung.
   - Lokale Suppression bleibt trotzdem aus, bis ein echter Remote-Erfolg belegt ist.
+- `Health-Check offen` kann bei mehreren oder alten Subscriptions trotz funktionierendem Transport sichtbar bleiben.
+  - Das ist ein Maintenance-/Mapping-Hinweis, kein automatischer Transportfehler.
+  - Der reale Transport wird durch Systemnotification, Edge-Function-Result und Remote-Health-Felder bewertet.
 - `Zustellung noch nicht gesund` ist der Warnzustand fuer echten Failure, Failure-Counter oder deaktivierte Remote-Subscription.
 - Service Worker behaelt Legacy-Fallbacks fuer alte Payloads ohne `data.severity`.
 - Scheduler-Jitter bleibt ein bewusster Tradeoff; die gezielte Kadenz reduziert unnoetige Action-Runs, ohne die fachliche Entscheidung aus der Edge Function zu verschieben.
@@ -166,6 +188,8 @@ Related docs:
   - `visibilitychange`
 - Medication-Read-Model basiert auf offenen `slots[]` und `slot_type`.
 - `AppModules.profile` exportiert den Push-Routing-Stand fuer die Incident-Engine und den Touchlog.
+- Neue Konsumenten sollen bevorzugt `AppModules.push` verwenden.
+- `AppModules.profile` bleibt nur temporaerer Backend-/Fallback-Pfad, solange die vollstaendige Push-Service-Extraction noch offen ist.
 - Output:
   - lokale Reminder-/Incident-Notification
   - externer Off-App-Push
@@ -177,7 +201,8 @@ Related docs:
 - Nutzerindividuelle Reminder-Zeitfenster.
 - Snooze oder bewusste Follow-up-Stufe.
 - zusaetzliche Delivery-/Health-Diagnostik im Touchlog.
-- spaetere technische Migration der internen Push-API aus dem Profil-Modul in ein dediziertes Push-Service-Modul.
+- ruhigere Touchlog-Push-UX, z. B. kompakte Push-Pill plus Detailzeilen im Touchlog.
+- spaetere vollstaendige Migration der internen Push-API aus dem Profil-Modul in ein dediziertes Push-Service-Modul.
 
 ---
 
@@ -203,6 +228,7 @@ Related docs:
   - Schedule-Jitter
   - bei Aenderungen an Medication-/BP-Schwellen muss die GitHub-Action-Kadenz mitgeprueft werden
   - fehlende erste Remote-Erfolgsbestaetigung haelt lokale Push-Suppression aus
+  - mehrere/alte Subscriptions koennen die Touchlog-Health-Anzeige temporaer nervoes wirken lassen, obwohl Push transportseitig funktioniert
   - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
 ---
@@ -218,6 +244,8 @@ Related docs:
   - Nacht-Backup `50 21,22 * * *`
 - Regulaer sind das 17 geplante Runs pro Tag statt vorher 48 Runs pro Tag.
 - Manuelle `workflow_dispatch`-Runs bleiben zusaetzlich fuer Diagnose moeglich:
+  - `mode=incidents`
+  - `mode=diagnostic`
   - `all`
   - `med`
   - `bp`
@@ -237,7 +265,11 @@ Related docs:
 - Lokale Suppression greift nur bei nachweislich gesundem Remote-Pfad.
 - Off-App-Push funktioniert auch ohne geoeffnete App.
 - Manueller Workflow-Smoke mit `window=all` liefert `ok=true` und bei nicht faelligen Ereignissen `status=no-incidents` plus Skip-Gruende.
+- Manueller technischer Smoke mit `mode=diagnostic` liefert `status=diagnostic-sent` ohne `push_notification_deliveries` zu beschreiben.
+- Android Chrome/PWA zeigt Systemnotification fuer Diagnose- oder fachlichen Push.
+- Android-WebView/Shell wird nicht als gesunder Reminder-Push-Master dargestellt.
 - `bereit (wartet auf erste Erinnerung)` darf nicht als Fehler angezeigt werden, wenn noch kein echter Remote-Push faellig war.
+- `Health-Check offen` darf bei funktionierendem Transport als ruhiger Maintenance-Hinweis behandelt werden, wenn mehrere/alte Subscriptions im Spiel sind.
 - Echter Zustellfehler muss als `Zustellung noch nicht gesund` sichtbar werden.
 - Touchlog zeigt Push-Wartung; Profil bleibt sichtbar push-frei.
 - BP bleibt konsistent incident-orientiert.

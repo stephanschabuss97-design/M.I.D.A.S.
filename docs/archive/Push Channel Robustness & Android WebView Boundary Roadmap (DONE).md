@@ -228,8 +228,8 @@ Forbidden:
 | S2 | Zielarchitektur und Push-Kanal-Vertrag | DONE | Option A gewaehlt: PWA/Chrome ist Reminder-Push-Master; Android-WebView wird abgegrenzt; Test-Push ist eigener Diagnosekanal ohne medizinische Dedupe-/Suppression-Freischaltung. |
 | S3 | Bruchrisiko-, Datenschutz-, UI-/Copy- und Migrationsreview | DONE | Risiken, Datenschutz, Copy und Migration geprueft; S4-Pflichtpunkte finalisiert: getrennte Diagnosefelder, WebView-Abgrenzung, keine Suppression durch Test-Push, SW-Root/Mirror-Sync. |
 | S4 | Umsetzung Push-Robustheit und Android-WebView-Abgrenzung | DONE | S4.1-S4.14 erledigt: Push-Service-Boundary, Subscription-Metadaten, SQL-Felder, Touchlog-Diagnose, WebView-Abgrenzung, Diagnosemodus in bestehender Edge Function, Service-Worker-Review, sichere Responses, Suppression-Review, finale Checks und Abnahme sind abgeschlossen; Edge Function deployed. |
-| S5 | Tests, Code Review und Contract Review | IN_PROGRESS | Codex-lokaler Teil erledigt: Syntax-/Static-Checks, Diff-/SW-/Edge-Smokes, echter Diagnose-Push und Contract Review sind sauber; offene User-Checks: neuer Touchlog/WebView-Kontext nach Frontend-Deploy und optionaler Android-Screen-off-Smoke. |
-| S6 | Doku-Sync, QA-Update und Abschlussreview | TODO | Module Overviews, Android-Doku, QA und Roadmap final synchronisieren; Archiv-Entscheidung. |
+| S5 | Tests, Code Review und Contract Review | DONE | Transport und Kontext-Checks bestanden: Android/PC erhalten Push real; Diagnose- und Incident-Smokes sind sauber; akzeptiertes Rest-Finding: Touchlog-Health-Anzeige kann bei bestehenden/mehreren Subscriptions nervoes/offen wirken und wird spaeter im Touchlog-UX-Cleanup entschaerft. |
+| S6 | Doku-Sync, QA-Update und Abschlussreview | DONE | Source-of-Truth-Dokus, Android-Vertrag, QA, finaler Copy-/Contract-Review und Abschlussentscheidung sind erledigt; Roadmap kann ins Archiv. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -2079,13 +2079,15 @@ S5.5 Chrome/PWA Device-Smoke:
 - Realbefund User 28.04.2026:
   - Ohne Frontend-Commit meldeten Live Server, Windows-PWA und Android-PWA, dass BP noch offen ist.
   - Das bestaetigt den produktiven Remote-Push-Transport auf Android grundsaetzlich.
+  - Nach Commit/Deploy wurde Android als `PWA/Standalone` mit `android / chrome / standalone` erkannt.
+  - Ein technischer Diagnose-Push wurde in der Android-Notification-Zeile sichtbar.
 - Codex-lokal:
   - echter Diagnose-Push wurde erfolgreich an aktive Subscriptions gesendet.
 
-Offen fuer User:
+Ergebnis:
 
-- Nach Frontend-Deploy/Commit einmal in Android Chrome/PWA Push-Status und Kontext im neuen Touchlog pruefen.
-- Optional: Screen aus, technischer Diagnose-Push oder naechster natuerlicher Reminder, sichtbare Notification ohne App-Oeffnung bestaetigen.
+- Android-PWA-Kontext und Android-Push-Transport sind bestaetigt.
+- Kein Blocker fuer den medizinischen Reminder-Zweck.
 
 S5.6 Android-WebView Negativ-/Abgrenzungstest:
 
@@ -2106,14 +2108,15 @@ S5.7 Desktop-Smoke:
 
 - Realbefund User 28.04.2026:
   - Windows-PWA/Desktop hat den BP-Offen-Push angezeigt.
+  - Desktop wurde als `PWA/Standalone` mit `windows / edge / standalone` erkannt.
+  - Desktop zeigte zeitweise `remote gesund`, `Diagnose: Test erfolgreich` und `Letzter Test 22:09`.
 - Codex-lokal:
   - echter Diagnose-Push wurde erfolgreich an aktive Subscriptions gesendet.
 
-Offen fuer User:
+Ergebnis:
 
-- Nach Frontend-Deploy/Commit Desktop-PWA/Browser Touchlog pruefen:
-  - Kontext/Hash/Diagnosefelder erscheinen plausibel.
-  - Remote-Health-Anzeige bleibt getrennt von Diagnose-Health.
+- Desktop-PWA-Kontext und Push-Transport sind bestaetigt.
+- Remote-Health und Diagnose-Health bleiben fachlich getrennt.
 
 S5.8 Lokale Suppression Smoke:
 
@@ -2134,6 +2137,8 @@ S5.9 Code Review:
 - Bewusster Restpunkt:
   - Subscription-Kontextdaten werden erst nach neuem Frontend-Upsert vollstaendig aussagekraeftig.
   - Das ist ein erwartetes Migrationsverhalten, kein Blocker.
+  - Die Touchlog-Health-Anzeige kann bei bestehenden/mehreren Subscriptions nach Hard Refresh oder Re-Enable auf `Health-Check offen` zurueckfallen, obwohl Push transportseitig funktioniert.
+  - Das ist fuer S5 ein UX-/Mapping-Restpunkt, kein Push-Transport-Blocker.
 
 S5.10 Contract Review gegen S2/S3:
 
@@ -2151,12 +2156,24 @@ S5.11 Korrektur der Findings:
 
 - Keine neuen Code-Findings aus S5.
 - Keine Korrektur erforderlich.
+- Akzeptiertes Rest-Finding:
+  - Touchlog-Push-Health wirkt aktuell noch zu technisch/nervoes.
+  - Spaeterer Cleanup: Anzeige ruhiger gestalten, z. B. kompakte Push-Pill plus Details im Touchlog statt dominanter Health-Karte.
 
 S5.12 Schritt-Abnahme:
 
-- Codex-lokaler S5-Anteil ist abgeschlossen.
-- S5 bleibt `IN_PROGRESS`, weil die neuen Touchlog-/WebView-UI-Pfade erst nach Frontend-Deploy/Commit real auf den User-Geraeten bestaetigt werden koennen.
-- Commit-Empfehlung bleibt: erst nach den offenen User-Device-Checks oder bewusst mit klar dokumentiertem Restpunkt committen.
+- S5 ist abgeschlossen.
+- Transportziel ist erfuellt:
+  - Android hat Diagnose-Push real sichtbar empfangen.
+  - Desktop/PWA hat Push real empfangen.
+  - Edge Function liefert Diagnose-Smokes ohne Fehler.
+  - Fachlicher Incident-Pfad bleibt erhalten.
+- Akzeptiertes Rest-Risiko:
+  - Touchlog-Health-Mapping/Anzeige ist noch nicht ruhig genug und kann bei mehreren/alten Subscriptions irritieren.
+  - Falls morgen der regulaere Push funktioniert, aber die Anzeige weiter nervoes wirkt, wird das als Touchlog-UX-Cleanup entschaerft statt als Push-Transportfehler behandelt.
+- Commit-Empfehlung:
+  - Commit nach S5 ist vertretbar.
+  - S6 soll die Source-of-Truth-Dokus aktualisieren und den Restpunkt als bekannte Maintenance-UX-Frage einordnen.
 
 ## S6 - Doku-Sync, QA-Update und Abschlussreview
 
@@ -2216,3 +2233,89 @@ Output:
 Exit-Kriterium:
 
 - Push-Robustheit, Android-WebView-Grenze und Testbarkeit sind dokumentiert, umgesetzt und reviewt.
+
+### S6 Ausfuehrung 28.04.2026 - Doku-Sync und Abschlussreview
+
+Aktualisierte Source-of-Truth-Dokus:
+
+- `docs/modules/Push Module Overview.md`
+  - Browser/PWA als Reminder-Push-Master.
+  - Android-WebView/Shell als Widget-/Sync-/Auth-Surface, kein verlaesslicher Reminder-Push-Kanal.
+  - `AppModules.push` als bevorzugte Push-Service-Grenze.
+  - Diagnose-Push-Vertrag mit `mode=diagnostic`, `last_diagnostic_*` und ohne `push_notification_deliveries`.
+  - Suppression bleibt nur bei echtem Remote-Health-Nachweis erlaubt.
+  - Touchlog-Health kann bei mehreren/alten Subscriptions nervoes wirken, ohne dass der Transport kaputt ist.
+- `docs/modules/Touchlog Module Overview.md`
+  - Kontextdiagnose, Geraet, Diagnose, Endpoint-Hash und WebView-Hinweis dokumentiert.
+  - `AppModules.push` statt direkter Profile-Push-Abhaengigkeit als Zielgrenze dokumentiert.
+  - Ruhigere zukuenftige Push-Pill/Detail-UX als Erweiterungspunkt dokumentiert.
+- `docs/modules/Profile Module Overview.md`
+  - Profile bleibt nur temporaeres technisches Push-Backend.
+  - Neue Konsumenten sollen `AppModules.push` nutzen.
+  - `last_diagnostic_*` wird nicht fuer `remoteHealthy` oder lokale Suppression genutzt.
+- `docs/modules/Android Widget Module Overview.md`
+  - Widget/WebView sind kein Reminder-Push-Kanal.
+  - Browser/PWA bleibt Push-Master.
+  - Native Push/FCM/AlarmManager nur mit separater Roadmap.
+- `docs/modules/Android Native Auth Module Overview.md`
+  - Android-WebView bleibt Auth-/Session-Mirror.
+  - Keine Push-/Reminder-Verantwortung.
+- `android/README.md`
+  - Android-WebView/Widget ersetzt Browser-/PWA-Push nicht.
+  - Push-/Reminder-Vertrag ergaenzt.
+- `android/docs/Widget Contract.md`
+  - Widget ist kein Push-System.
+  - Kein Push-Opt-in, keine Push-Health, keine native Reminder-/Alarm-Schicht.
+- `docs/QA_CHECKS.md`
+  - Neue Phase `P11 - Push Channel Robustness & Android WebView Boundary`.
+
+Finaler User-Facing Copy Review:
+
+- Touchlog-Copy bleibt ruhig und technisch ehrlich:
+  - `Push: Android-WebView - Chrome/PWA empfohlen`
+  - `Fuer Erinnerungen MIDAS in Chrome/PWA aktivieren.`
+  - `Health-Check offen`
+  - `Diagnose: Test erfolgreich`
+- Keine Copy behauptet, dass WebView ein verlaesslicher Reminder-Push-Kanal ist.
+- Keine Copy fordert medizinisch falsches Verhalten.
+- Reminder-/Incident-Copy fuer Medication/BP wurde nicht veraendert.
+- Restentscheidung:
+  - Wenn Touchlog-Health im Alltag nervoes wirkt, wird spaeter die Darstellung entschaerft, z. B. kompakte Push-Pill plus Detailzeilen.
+
+Finaler Contract Review:
+
+- PWA/Browser bleibt Reminder-Push-Master.
+- Android-WebView/Shell bleibt Node/Mirror und kein zweites MIDAS.
+- Widget bleibt read-only und kein Reminder-System.
+- Kein Permission-Bypass, keine Force Activation.
+- Kein FCM, kein AlarmManager, keine native Push-Schicht in dieser Roadmap.
+- Keine Medication-/BP-Schwellen geaendert.
+- Keine Reminder-Ketten oder Snooze-Logik eingefuehrt.
+- Diagnose-Push ist technisch, manuell und getrennt von fachlichem Dedupe.
+- Diagnose-Push setzt keine medizinischen Remote-Health-Felder.
+- Lokale Suppression bleibt nur bei echtem Remote-Health-Nachweis erlaubt.
+- Keine sensiblen Rohdaten in Touchlog oder Diagnose-Response.
+- Bekannter Restpunkt ist bewusst UX/Maintenance:
+  - Touchlog-Health-Mapping kann bei mehreren/alten Subscriptions noch offen/nervoes wirken.
+  - Das blockiert den Push-Transport nicht.
+
+Checks S6:
+
+- Doku-Sync per Diff-/Textreview.
+- `git diff --check`
+- `deno check C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts`
+- `node --check app/modules/push/index.js`
+- `node --check app/modules/profile/index.js`
+- `node --check app/modules/incidents/index.js`
+- `node --check app/diagnostics/devtools.js`
+- `node --check service-worker.js`
+- `node --check public/sw/service-worker.js`
+
+Abschlussentscheidung:
+
+- Roadmap ist abgeschlossen.
+- Archivierung als `docs/archive/Push Channel Robustness & Android WebView Boundary Roadmap (DONE).md` ist vorgesehen.
+- Commit-Empfehlung:
+  - MIDAS-Repo: Frontend, SQL, Workflow, Doku und Roadmap gemeinsam committen.
+  - `.env.supabase.local` nicht committen.
+  - Backend-Edge-Function liegt separat im `midas-backend`-Workspace und wurde deployed.

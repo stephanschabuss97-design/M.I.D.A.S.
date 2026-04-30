@@ -3,7 +3,7 @@
 Kurze Einordnung:
 - Zweck: policy-konformer nativer Google-/Supabase-OAuth fuer den Android-Node inkl. Deep Link, Session-Owner, WebView-Handoff und Diagnosepfad.
 - Rolle innerhalb von MIDAS: Android-spezifischer Auth-/Shell-Layer zwischen sicherem Browser-Login, nativer Session und MIDAS-WebView.
-- Abgrenzung: kein Ersatz fuer den browser-first PWA-Login, keine eigene Fachlogik, kein zweites MIDAS-System.
+- Abgrenzung: kein Ersatz fuer den browser-first PWA-Login, keine eigene Fachlogik, kein zweites MIDAS-System, keine Push-/Reminder-Verantwortung.
 
 Related docs:
 - [Android Widget Module Overview](Android Widget Module Overview.md)
@@ -23,6 +23,8 @@ Related docs:
   - das Widget aktivieren koennen
   - die MIDAS-WebView kontrolliert in denselben fachlichen Auth-Zustand bringen
 - Der bestehende Browser-/PWA-Login bleibt funktional unveraendert.
+- Der bestehende Browser-/PWA-Push-Kanal bleibt Reminder-Push-Master.
+- Android-WebView ist Auth-/Session-Mirror und kein verlaesslicher Reminder-Push-Kanal.
 
 ---
 
@@ -138,6 +140,7 @@ Related docs:
 Wichtiger Guardrail:
 - Android repariert keinen kaputten Browser-Login.
 - Android loest nur das native `WebView`-/Secure-Browser-Problem.
+- Android repariert keinen Browser-/PWA-Push und wird nicht als Push-Master aufgewertet.
 
 ---
 
@@ -151,6 +154,8 @@ Wichtiger Guardrail:
 - Die WebView ist nicht:
   - OAuth-Owner
   - policy-konformer Login-Container fuer Google
+  - Reminder-Push-Master
+  - native Push-/FCM-Schicht
 
 Der gemeinsame Login-Button wird deshalb im Android-WebView umgelenkt:
 - Browser/PWA: normaler Web-Login
@@ -214,6 +219,11 @@ Damit hat der Android-Node einen sichtbareren On-Device-Diagnosepfad als frueher
   - manueller Widget-Sync
   - Snapshot-Refresh
   - Placeholder-Reset bei Logout
+- Nicht Teil dieses Moduls:
+  - Browser-/PWA-Web-Push
+  - native Android-Reminder
+  - FCM
+  - AlarmManager-/Exact-Alarm-Fachlogik
 
 ---
 
@@ -243,6 +253,7 @@ Known risks:
 - externer OAuth-Provider-/Redirect-Drift
 - Android-Task-/Intent-Reentry bleibt komplexer als die PWA
 - Android-WebView bleibt ein Mirror-Kontext und darf nicht wieder still zum zweiten Auth-Owner werden
+- Android-WebView bleibt auch kein Reminder-Push-Master; der Touchlog darf Chrome/PWA fuer verlaessliche Erinnerungen empfehlen
 
 ---
 

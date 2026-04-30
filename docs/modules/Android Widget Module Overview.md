@@ -9,6 +9,8 @@ Status-Hinweis:
 - `V1` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
 - MIDAS bleibt Source of Truth.
 - Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag.
+- Browser/PWA bleibt der Reminder-Push-Master.
+- Android-WebView/Shell und Widget sind kein verlaesslicher Reminder-Push-Kanal.
 - Der kurze Widget-Tap ist jetzt der primaere manuelle Sync-Pfad; der harte MIDAS-Einstieg bleibt ueber den Launcher.
 - Der Android-Pfad besitzt jetzt einen eigenen nativen Google-/Supabase-OAuth-Entry:
   - der bestehende Browser-/PWA-Login bleibt unveraendert
@@ -32,6 +34,7 @@ Related docs:
   - `Wasser (Ist)`
   - `Wasser-Soll`
   - `Medikation-Status`
+- Erinnerungen und Push-Health bleiben Aufgabe der Browser-/PWA-Schicht und des Touchlogs.
 - Die native Huelle bleibt bewusst klein:
   - Widget Host
   - minimaler MIDAS-Launcher
@@ -199,6 +202,7 @@ Related docs:
 - `Appointments`
 - Capture-Buttons
 - Reminder-/Push-Interaktion
+- Push-Aktivierung oder Push-Health-Anzeige im Widget
 - Trend-/Analyseflaechen
 
 ### 5.3 Visueller Stand
@@ -226,6 +230,8 @@ Konsequenz:
 - Die Android-Huelle bleibt ein Node.
 - Komplexe Interaktion bleibt in MIDAS.
 - Die `WebView` ist MIDAS-Surface und nicht mehr Login-Source of Truth.
+- Die `WebView` ist auch kein Reminder-Push-Master.
+- Falls MIDAS in Android-WebView laeuft, soll der Touchlog Chrome/PWA fuer verlaessliche Erinnerungen empfehlen.
 - Der gemeinsame Google-Login-Button bleibt im Browser/PWA der Web-Login.
 - Im Android-WebView wird derselbe Button gezielt auf nativen Login umgelenkt und startet keinen eingebetteten Google-OAuth mehr.
 - Der Auth-, Deep-Link- und Session-Handoff-Vertrag ist getrennt dokumentiert, damit dieses Dokument Widget-zentriert bleibt.
@@ -253,6 +259,11 @@ Konsequenz:
   - `USER_PRESENT` / Unlock im lebenden Android-Prozess
   - nativer Realtime-Write-Trigger
   - Widget-Tap
+- Nicht enthalten:
+  - nativer Push-Reminder
+  - FCM
+  - AlarmManager-/Exact-Alarm-Fachlogik
+  - Medication-/BP-Reminder-Bestaetigung im Widget
 - WebView-/MIDAS-Bridge:
   - Android -> WebView:
     - Bootstrap-State
@@ -274,6 +285,7 @@ Konsequenz:
 - spaetere `Salz`-/`Protein`-Expansion
 - verfeinerter Medication-Status
 - andere Widget-Groessen oder Hybrid-Flaechen
+- separate native Push-/FCM-/Alarm-Roadmap, falls MIDAS irgendwann echte Android-native Reminder braucht
 
 Wichtig:
 - diese Zukunftspfade sind bewusst nicht Teil von `V1`
@@ -320,6 +332,7 @@ Known risks:
 - Der Wake-/Unlock-Catch-up ist bewusst nur best effort:
   - kein Weckpfad fuer gekillte Prozesse
   - keine Garantie fuer jeden einzelnen Unlock
+- Android-WebView-/Widget-Pfade duerfen nicht als Ersatz fuer den Browser-/PWA-Push-Master interpretiert werden.
 - Fuer PWA-Aenderungen ohne lebenden Android-Prozess bleibt der manuelle Widget-Tap der verlässlichste Catch-up-Pfad.
 - Zukuenftige Aenderungen an:
   - `Wasser-Soll`-Stuetzpunkten
@@ -333,6 +346,8 @@ Known risks:
 
 - Das Widget ist read-only.
 - Das Widget zeigt `Wasser`, `Wasser-Soll` und `Medikation`.
+- Das Widget zeigt keine Push-Bedienung und keine Reminder-Bestaetigung.
+- Android-WebView wird im Touchlog nicht als gesunder Reminder-Push-Master verkauft.
 - Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
 - Der Widget-Tap zeigt waehrend des manuellen Syncs sichtbar `Synchronisiere...`.
 - Ein Android-App-Start zieht das Widget bei vorhandener Session direkt nach.

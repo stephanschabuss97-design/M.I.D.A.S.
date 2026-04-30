@@ -10,6 +10,7 @@ Es ist:
 - ruhiger Daily-Kompass
 - kein Eingabesystem
 - kein Reminder-System
+- kein Push-System
 
 MIDAS bleibt Hauptsystem und Source of Truth.
 
@@ -83,6 +84,9 @@ Regeln:
 
 - kein Capture am Widget
 - kein direktes Medication-Confirm
+- kein Push-Opt-in
+- keine Push-Health-Anzeige
+- keine native Reminder-/Alarm-Schicht
 - keine `Salz`-/`Protein`-Erweiterung
 - keine `Appointments`
 - keine Trend-/Analyse-Flaeche
@@ -111,6 +115,9 @@ Die Android-Huelle:
   - kein Ersatz fuer Push
   - kein Weckpfad fuer gekillte Prozesse
   - keine Garantie fuer jeden einzelnen Unlock
+- Browser/PWA bleibt der Reminder-Push-Master.
+- Android-WebView/Shell und Widget sind keine verlaesslichen Off-App-Reminder-Kanaele.
+- Native Android-Push-/FCM-/AlarmManager-Reminder sind nur mit separater Roadmap erlaubt.
 
 ## Android Auth / Shell Vertrag
 
