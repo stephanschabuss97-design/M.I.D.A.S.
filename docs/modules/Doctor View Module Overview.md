@@ -1,4 +1,4 @@
-﻿# Doctor View Module - Functional Overview
+# Doctor View Module - Functional Overview
 
 Kurze Einordnung:
 - Zweck: Read-Only Uebersicht fuer Arzt/Patient im Arztmodus.
@@ -30,7 +30,7 @@ Related docs:
 | `app/supabase/api/vitals.js` | Tagesdaten (BP/Body) |
 | `app/supabase/api/trendpilot.js` | Trendpilot Events (fetch/ack/delete) |
 | `app/supabase/api/reports.js` | Edge Function Wrapper fuer Reports |
-| `C:\Users\steph\Projekte\midas-backend\supabase\functions\midas-monthly-report\index.ts` | Report-Aggregation (monthly/range) |
+| `backend/supabase/functions/midas-monthly-report/index.ts` | Report-Aggregation (monthly/range) |
 
 ---
 

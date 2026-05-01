@@ -10,7 +10,7 @@ Status-Hinweis:
   - `reminder`
   - `incident`
 - Lokal und extern sprechen denselben Typ-/Severity-/Tag-Vertrag.
-- Off-App-Push laeuft ueber GitHub Actions plus Edge Function im Backend-Workspace.
+- Off-App-Push laeuft ueber GitHub Actions plus Edge Function im versionierten Backend-Source.
 - Browser/PWA ist der Reminder-Push-Master.
 - Android-WebView/Shell ist Widget-/Sync-/Auth-Surface und kein verlaesslicher Reminder-Push-Kanal.
 - Technische Diagnose-Pushes laufen getrennt von Medication-/BP-Dedupe und schalten keine lokale Suppression frei.
@@ -44,7 +44,7 @@ Related docs:
 | `app/diagnostics/devtools.js` | Thin Bootstrap fuer Touchlog-Initialisierung |
 | `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
 | `.github/workflows/incidents-push.yml` | gezielte UTC-Ticks fuer Off-App-Push rund um die produktiven Schwellen |
-| `C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts` | externer Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
+| `backend/supabase/functions/midas-incident-push/index.ts` | Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
 | `sql/15_Push_Subscriptions.sql` | `push_subscriptions` plus `push_notification_deliveries` |
 
 ---

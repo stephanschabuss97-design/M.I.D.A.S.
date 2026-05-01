@@ -1,4 +1,4 @@
-﻿# Trendpilot Module - Functional Overview
+# Trendpilot Module - Functional Overview
 
 Kurze Einordnung:
 - Zweck: Trendanalyse ueber Wochenfenster (BP/Body/Lab + Combined).
@@ -24,7 +24,7 @@ Related docs:
 |------|------|
 | `app/modules/vitals-stack/trendpilot/data.js` | Trend-Berechnung (Baseline, Window, Deltas) |
 | `app/modules/vitals-stack/trendpilot/index.js` | Orchestrator, Supabase-Integration, Dialoge |
-| `supabase/functions/midas-trendpilot/index.ts` | Edge Function (Trendpilot Engine, Scheduler Target) |
+| `backend/supabase/functions/midas-trendpilot/index.ts` | Edge Function (Trendpilot Engine, Scheduler Target) |
 | `app/supabase/api/trendpilot.js` | API fuer Events + Ack (`fetchTrendpilotEventsRange`, `setTrendpilotAck`) |
 | `sql/14_Trendpilot.sql` | Trendpilot DB Schema (`trendpilot_events`, `trendpilot_state`) |
 | `app/modules/doctor-stack/doctor/index.js` | Trendpilot-Block in Arzt-Ansicht |

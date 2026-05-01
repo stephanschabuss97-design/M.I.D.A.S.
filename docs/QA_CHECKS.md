@@ -1,4 +1,37 @@
-﻿## Phase P12 - Touchlog Module & Push Service Extraction (2026-04-30)
+## Phase P13 - Backend Edge Functions Deno Check Sweep (2026-05-01)
+
+**Scope:** Statischer Deno-/Type-/Syntax-Sweep der produktiven Supabase Edge Functions im versionierten Backend-Source unter `backend/supabase/functions`.
+
+**Static / Local Checks**
+
+- [x] `deno check backend/supabase/functions/midas-tts/index.ts`
+- [x] `deno check backend/supabase/functions/midas-transcribe/index.ts`
+- [x] `deno check backend/supabase/functions/midas-vision/index.ts`
+- [x] `deno check backend/supabase/functions/midas-assistant/index.ts`
+- [x] `deno check backend/supabase/functions/midas-protein-targets/index.ts`
+- [x] `deno check backend/supabase/functions/midas-incident-push/index.ts`
+- [x] `deno check backend/supabase/functions/midas-monthly-report/index.ts`
+- [x] `deno check backend/supabase/functions/midas-trendpilot/index.ts`
+
+**Contract Review**
+
+- [x] Keine offenen Type-/Syntax-/Import-Findings in produktiven `index.ts`-Dateien.
+- [x] Keine verbleibenden `@ts-expect-error`-Direktiven in produktiven Edge-Function-Dateien.
+- [x] Keine SQL-/RLS-/Datenmodell-Aenderung.
+- [x] Keine Frontend-Aenderung.
+- [x] Keine medizinische Schwellen-, Formel-, Dedupe-, Prompt-, Report-, Trendpilot- oder Push-Fachlogik als Teil des Sweeps geaendert.
+- [x] Secret-/PII-Review: Env-Var-Namen und Authorization-Nutzung sind erwarteter Codevertrag; keine Secret-Werte wurden dokumentiert oder ausgegeben.
+
+**Deploy / Runtime**
+
+- [x] Deploy-Stand dokumentiert: `midas-transcribe`, `midas-vision`, `midas-protein-targets`, `midas-monthly-report`, `midas-trendpilot` wurden nach S4-Fixes deployed.
+- [x] Kein weiterer Deploy aus S5/S6 notwendig.
+- [x] Runtime-Smokes fuer OpenAI-/Protein-/Report-/Trendpilot-Schreibpfade bleiben optional und user-gated.
+- [x] Backend-Source liegt versioniert im MIDAS-Git-Repo unter `backend/supabase/...`; der fruehere externe Workspace bleibt nur Import-/Backup-Kontext.
+
+---
+
+## Phase P12 - Touchlog Module & Push Service Extraction (2026-04-30)
 
 **Scope:** UI-freier Refaktor: Touchlog als eigenes Code-Modul, Push-Service als Owner, Profile push-frei, Incidents konsumiert Push ueber `AppModules.push`.
 
@@ -59,7 +92,7 @@
 
 **Static / Local Checks**
 
-- [x] `deno check C:/Users/steph/Projekte/midas-backend/supabase/functions/midas-incident-push/index.ts`
+- [x] `deno check backend/supabase/functions/midas-incident-push/index.ts`
 - [x] `node --check app/modules/push/index.js`
 - [x] `node --check app/modules/profile/index.js`
 - [x] `node --check app/modules/incidents/index.js`
@@ -2262,4 +2295,3 @@ Regression
 - [ ] Keine Produktdatenaktion aus dem Touchlog heraus.
 - [ ] Kein Service-Worker-, Backend- oder Android-Native-Umbau erforderlich.
 - [ ] Boot-Error-Fallback kann weiterhin den Touchlog oder Fallback-Log anzeigen.
-- [x] Profil bleibt push-frei; Touchlog und lokale Suppression nutzen `AppModules.push`.

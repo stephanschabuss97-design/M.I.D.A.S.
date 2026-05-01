@@ -26,7 +26,7 @@ Related docs:
 | `app/modules/doctor-stack/reports/index.js` | Reports-UI/Inbox (entkoppelt vom Doctor-View) |
 | `app/modules/doctor-stack/doctor/index.js` | Doctor-View (ruft Reports-Modul und Inbox-Overlay) |
 | `app/supabase/api/reports.js` | Edge Function Wrapper (`generateMonthlyReportRemote`) |
-| `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-monthly-report\\index.ts` | Report-Engine (monthly + range) |
+| `backend/supabase/functions/midas-monthly-report/index.ts` | Report-Engine (monthly + range) |
 | `app/styles/doctor.css` | Report-Karten + Inbox-Overlay Styling |
 | `public.user_profile` | Patientenkopf + Protein-Ziel (Range-Report) |
 | `public.trendpilot_events_range` | Trendpilot-Liste im Range-Report |

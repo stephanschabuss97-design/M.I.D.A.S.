@@ -30,7 +30,7 @@ Related docs:
 | `sql/10_User_Profile_Ext.sql` | Profile-Spalten (Targets, Doctor-Lock, Derived Fields). |
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
 | `sql/11_Lab_Event_Extension.sql` | CKD-Stufe aus `lab_event`. |
-| `C:\\Users\\steph\\Projekte\\midas-backend\\supabase\\functions\\midas-protein-targets\\index.ts` | Edge Function (Compute + Write). |
+| `backend/supabase/functions/midas-protein-targets/index.ts` | Edge Function (Compute + Write). |
 
 ---
 

@@ -20,6 +20,15 @@ Thumbs.db
 supabase/config.json
 supabase/.temp/
 
+# Backend Supabase artifacts (never commit!)
+backend/supabase/.temp/
+backend/**/*.env
+backend/**/*.exe
+backend/**/*.bak
+backend/**/signing_keys*.json
+backend/**/*.pem
+backend/**/*.key
+
 # IDE / Editor
 .vscode/
 .idea/
