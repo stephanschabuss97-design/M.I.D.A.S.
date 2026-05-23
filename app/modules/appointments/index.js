@@ -85,6 +85,17 @@
 
   const sanitize = (value = '') => String(value ?? '').trim();
   const pad2 = (num) => String(num).padStart(2, '0');
+  const escapeHtml = (value = '') => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+  const repeatLabels = {
+    monthly: 'Monatlich',
+    annual: 'J\u00e4hrlich',
+  };
 
   const toDate = (dateStr, timeStr) => {
     const date = dateStr ? new Date(dateStr) : new Date();
@@ -120,19 +131,27 @@
     };
   };
 
-  const formatDateDisplay = (iso) => {
-    if (!iso) return '--';
+  const formatWeekday = (date) => {
     try {
-      const dt = new Date(iso);
-      return dt.toLocaleDateString('de-AT', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
+      const label = new Intl.DateTimeFormat('de-AT', { weekday: 'short' })
+        .format(date)
+        .replace(/\s+/g, '');
+      return label.endsWith('.') ? label : `${label}.`;
     } catch (_) {
+      return '';
+    }
+  };
+
+  const formatDateDisplay = (iso, { includeWeekday = true } = {}) => {
+    if (!iso) return '--';
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) {
       return iso;
     }
+    const datePart = `${pad2(dt.getDate())}.${pad2(dt.getMonth() + 1)}.${dt.getFullYear()}`;
+    if (!includeWeekday) return datePart;
+    const weekday = formatWeekday(dt);
+    return weekday ? `${weekday}, ${datePart}` : datePart;
   };
 
   const renderOverview = () => {
@@ -141,34 +160,38 @@
     refs.doneColumns.innerHTML = '';
     const openItems = state.items.filter((item) => item.status !== 'done');
     const doneItems = state.items.filter((item) => item.status === 'done');
-    const buildCard = (appt) => {
+    const buildCard = (appt, { isNext = false } = {}) => {
+      const isDone = appt.status === 'done';
+      const metaParts = [`${formatDateDisplay(appt.start_at)} - ${appt.time || '--:--'}`];
+      const repeatLabel = repeatLabels[appt.repeatRule] || '';
+      if (repeatLabel) {
+        metaParts.push(`Wiederholung: ${repeatLabel}`);
+      }
+      const detailLines = [
+        appt.location ? `<p class="appointments-detail muted small">${escapeHtml(appt.location)}</p>` : '',
+        appt.notes ? `<p class="appointments-detail muted small">${escapeHtml(appt.notes)}</p>` : '',
+      ].filter(Boolean).join('');
       const card = doc.createElement('article');
-      card.className = 'appointments-card';
+      card.className = `appointments-card${isDone ? ' is-done' : ''}${isNext ? ' is-next' : ''}`;
       card.dataset.id = appt.id;
       card.innerHTML = `
-        <header>
-          <strong>${appt.title}</strong>
-          <span class="appointments-meta">${formatDateDisplay(appt.start_at)} - ${appt.time || '--:--'}</span>
+        <header class="appointments-card-header">
+          <strong class="appointments-title">${escapeHtml(appt.title)}</strong>
         </header>
-        <p class="muted small">${appt.location || 'Ort folgt'}</p>
-        ${appt.notes ? `<p class="muted small">${appt.notes}</p>` : ''}
-        <div class="appointments-meta">
-          Status: ${appt.status === 'done' ? 'Erledigt' : 'Geplant'}${
-            appt.repeatRule !== 'none' ? ` - Wiederholen: ${appt.repeatRule}` : ''
-          }
-        </div>
-        <div class="appointments-actions">
-          <button class="btn ghost small" data-action="toggle" type="button">
-            ${appt.status === 'done' ? 'Zuruecksetzen' : 'Erledigt'}
+        <div class="appointments-meta appointments-time">${escapeHtml(metaParts.join(' - '))}</div>
+        ${detailLines}
+        <div class="appointments-actions" role="group" aria-label="Terminaktionen">
+          <button class="btn primary small appointments-action-primary" data-action="toggle" type="button">
+            ${isDone ? 'Zur&uuml;cksetzen' : 'Erledigt'}
           </button>
-          <button class="btn ghost small" data-action="delete" type="button">Löschen</button>
+          <button class="btn ghost small appointments-action-secondary" data-action="delete" type="button">Löschen</button>
         </div>
       `;
       return card;
     };
 
-    openItems.forEach((appt) => {
-      refs.columns.appendChild(buildCard(appt));
+    openItems.forEach((appt, index) => {
+      refs.columns.appendChild(buildCard(appt, { isNext: index === 0 }));
     });
 
     doneItems.forEach((appt) => {
@@ -180,11 +203,21 @@
 
   const updateSubtitle = () => {
     if (!refs?.overviewSubtitle || !refs?.doneSubtitle) return;
-    const openCount = state.items.filter((item) => item.status !== 'done').length;
+    if (state.syncing && !state.loaded) {
+      refs.overviewSubtitle.textContent = 'Termine werden geladen';
+      refs.doneSubtitle.textContent = 'Termine werden geladen';
+      return;
+    }
+    const openItems = state.items.filter((item) => item.status !== 'done');
     const doneCount = state.items.filter((item) => item.status === 'done').length;
-    refs.overviewSubtitle.textContent = openCount
-      ? `${openCount} offene Termine - Insgesamt ${state.items.length}`
-      : 'Noch keine Eintraege.';
+    const nextItem = computeUpcomingFromState(1)[0] || null;
+    const countText = `${openItems.length} offen - ${state.items.length} gesamt`;
+    const nextText = nextItem
+      ? `Nächster: ${formatDateDisplay(nextItem.start_at)} - ${nextItem.time || '--:--'}`
+      : '';
+    refs.overviewSubtitle.textContent = openItems.length
+      ? [countText, nextText].filter(Boolean).join(' | ')
+      : (state.items.length ? 'Keine offenen Termine' : 'Noch keine Termine');
     refs.doneSubtitle.textContent = doneCount
       ? `${doneCount} erledigte Termine`
       : 'Noch keine erledigten Termine.';
@@ -211,6 +244,7 @@
     if (state.syncing) return state.syncPromise;
     state.syncing = true;
     setFormDisabled(true);
+    updateSubtitle();
     const promise = (async () => {
       await ensureLocalDb(reason);
       try {
@@ -227,6 +261,8 @@
         notifyChange('sync');
       } catch (err) {
         diag?.add?.(`[appointments] sync failed (${reason}) ${err.message || err}`);
+        if (refs?.overviewSubtitle) refs.overviewSubtitle.textContent = 'Termine konnten nicht geladen werden.';
+        if (refs?.doneSubtitle) refs.doneSubtitle.textContent = 'Termine konnten nicht geladen werden.';
       } finally {
         state.syncing = false;
         state.syncPromise = null;
@@ -313,7 +349,7 @@
       diag?.add?.(`[appointments] save failed ${err.message || err}`);
       saveFeedback?.error({
         button: refs?.form?.querySelector('button[type="submit"]') || null,
-        message: err?.message || 'Speichern fehlgeschlagen.'
+        message: 'Termin konnte nicht gespeichert werden.'
       });
     } finally {
       setFormDisabled(false);
@@ -323,12 +359,13 @@
   const handleCardAction = async (event) => {
     const btn = event.target.closest('[data-action]');
     if (!btn) return;
+    const action = btn.dataset.action;
+    if (action !== 'delete' && action !== 'toggle') return;
     const card = btn.closest('.appointments-card');
     if (!card) return;
     const id = card.dataset.id;
     const idx = state.items.findIndex((item) => item.id === id);
     if (idx === -1) return;
-    const action = btn.dataset.action;
     const panel = refs?.panel || null;
     btn.disabled = true;
     try {
@@ -337,7 +374,7 @@
         state.items.splice(idx, 1);
         notifyChange('delete');
         feedbackApi?.feedback?.('appointments:delete', { intent: true, source: 'user' });
-        saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Termin geloescht' });
+        saveFeedback?.ok({ button: btn, panel, successText: '&#x2705; Termin gel&ouml;scht' });
       } else if (action === 'toggle') {
         const nextStatus = state.items[idx].status === 'done' ? 'scheduled' : 'done';
         const updated = await updateAppointmentRemote(id, { status: nextStatus });
@@ -357,7 +394,9 @@
       diag?.add?.(`[appointments] action ${action} failed ${err.message || err}`);
       saveFeedback?.error({
         button: btn,
-        message: err?.message || 'Speichern fehlgeschlagen.'
+        message: action === 'delete'
+          ? 'Termin konnte nicht gelöscht werden.'
+          : 'Termin konnte nicht aktualisiert werden.'
       });
     } finally {
       btn.disabled = false;
@@ -433,6 +472,7 @@
     }
     panelRefs.form?.addEventListener('submit', handleSubmit);
     panelRefs.columns?.addEventListener('click', handleCardAction);
+    panelRefs.doneColumns?.addEventListener('click', handleCardAction);
     initialized = true;
     log?.('module initialised');
     syncAppointments({ reason: 'init' });

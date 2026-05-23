@@ -390,7 +390,7 @@ http://127.0.0.1:8765
 
 - Supabase ist das produktive Backend fuer Auth, Daten, Realtime und mehrere Edge-Funktionen.
 - SQL-Migrationen liegen in `sql/`.
-- Ein Teil der Edge-Function-Logik liegt in einem separaten Backend-Workspace und nicht vollstaendig in diesem Repo.
+- Produktiver Edge-Function-Source liegt im Repo unter `backend/supabase/...`; alte externe Backend-Kopien sind nur noch Backup-/Archivmaterial.
 
 ### Android Node Kurzvertrag
 
@@ -463,6 +463,7 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 ### Operativer Arbeitsmodus
 
 - Lies zuerst README, dann die betroffenen Dateien in `docs/modules/`, dann erst den Code.
+- Beachte die lokale Tooling-/Check-Dokumentation in [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md), bevor du Annahmen ueber Deno, Supabase CLI, GitHub CLI, Android/ADB oder Deploy-Faehigkeit triffst.
 - Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse beruehrt werden.
 - Wenn eine Aenderung fachlich relevant ist, pruefe nicht nur die UI, sondern auch Seiteneffekte in SQL, Edge Functions, Push, Reports oder Service Worker, falls betroffen.
 - Behandle produktive Alltagsfluesse als wichtiger als formale Schoenheit oder abstrakte Generalisierung.
@@ -474,7 +475,7 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 - Nutze `docs/archive/` nur als historische Referenz.
 - Wenn du ein Modul aenderst, aktualisiere nach Moeglichkeit auch das passende Modul-Overview.
 - Lies README als Produktkarte, nicht als vollstaendige Modulspezifikation.
-- Beachte, dass ein Teil der Edge-Function-Logik in einem separaten Backend-Workspace liegt.
+- Beachte, dass produktiver Edge-Function-Source jetzt im Repo unter `backend/supabase/...` liegt; historische Archivdokus koennen noch alte externe Pfade enthalten.
 
 ### Besonders sensible Bereiche
 

@@ -62,8 +62,32 @@ Related docs:
 
 ## 5. UI-Integration
 
-- Hub-Panel `#hubAppointmentsPanel` mit Formular + Overview.
-- Navigation zwischen Listen erfolgt ueber Tabs (Uebersicht/Erledigt/Neu).
+- Hub-Panel `#hubAppointmentsPanel` mit kompakter Agenda-Liste und Formular.
+- Navigation zwischen Listen erfolgt ueber Tabs:
+  - `Offen`
+  - `Erledigt`
+  - `Neu`
+- Der `Offen`-Tab zeigt eine ruhige MIDAS-Agenda statt Kalender-Grid.
+- Summary-Copy:
+  - `x offen - y gesamt`
+  - optional `Naechster: Mo., 15.06.2026 - 07:00`
+- Datums-/Zeitvertrag im Panel:
+  - Datum sichtbar als `dd.mm.yyyy`
+  - Uhrzeit sichtbar als `HH:mm`
+  - optionaler Wochentag vor dem Datum
+- Termin-Cards zeigen:
+  - Titel
+  - Datum/Uhrzeit als Meta
+  - echten Ort nur wenn vorhanden
+  - Notizen nur wenn vorhanden
+  - Repeat-Copy nur bei `monthly` oder `annual`
+- Termin-Cards zeigen nicht mehr dauerhaft:
+  - `Ort folgt`
+  - `Status: Geplant`
+- Aktionen:
+  - `Erledigt` im Offen-Tab
+  - `Zuruecksetzen` im Erledigt-Tab
+  - `Loeschen` sichtbar, aber sekundaer
 - Assistant-Header zeigt max. zwei Upcoming-Termine.
 
 ---
@@ -89,6 +113,7 @@ Related docs:
 - Constraints: RLS auf `user_id`, `repeat_rule` Werte (none/monthly/annual).
 - `appointments:changed` Event aktualisiert Butler-Header.
 - `appModules.appointments.getUpcoming()` wird vom Assistant genutzt.
+- `getUpcoming()` bleibt ein Read-Kontext fuer kommende offene Termine und fuehrt keine Reminder- oder Kalenderlogik ein.
 
 ---
 
@@ -226,6 +251,13 @@ Related docs:
 - Toggle Done/Reset aktualisiert Status.
 - Delete entfernt Eintrag.
 - Upcoming-Liste zeigt nur geplante Termine.
+- Tabs `Offen`, `Erledigt`, `Neu` wechseln ohne Fehler.
+- Mobile Agenda-Cards bleiben kompakt lesbar und erzeugen keine Appointments-bedingte horizontale Ueberbreite.
+- Datum erscheint im Panel als `dd.mm.yyyy`, Uhrzeit als `HH:mm`.
+- `Ort folgt` und `Status: Geplant` erscheinen nicht als permanente Card-Zeilen.
+- `Loeschen` wirkt visuell sekundaer gegenueber `Erledigt` bzw. `Zuruecksetzen`.
+- Done-Tab-Aktionen funktionieren genauso wie Offen-Tab-Aktionen.
+- `getUpcoming()` liefert weiter kommende offene Termine fuer Assistant/Hub.
 
 ---
 

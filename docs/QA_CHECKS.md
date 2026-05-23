@@ -1,3 +1,42 @@
+## Phase APT-UI - Appointments UI Polish (2026-05-23)
+
+**Scope:** Kompakte MIDAS-Agenda fuer das Appointments-Panel, ohne Kalender-App, Reminder, Push, Voice, SQL/RLS oder neue Dependencies.
+
+**Static / Local Checks**
+
+- [x] `node --check app/modules/appointments/index.js`
+- [x] `git diff --check -- index.html app/modules/appointments/index.js app/styles/hub.css docs/MIDAS Appointments UI Polish Roadmap.md`
+- [x] Scope-Scan: keine SQL-/RLS-/Backend-/Push-/Voice-/Kalenderintegration und keine neue Dependency.
+- [x] Copy-/Encoding-Scan fuer beruehrte Appointments-Dateien ohne neue Mojibake-Artefakte.
+
+**Browser / Device Smokes**
+
+- [x] Lokaler Static Server auf `http://127.0.0.1:8765/index.html` liefert HTTP 200.
+- [x] Playwright Mobile 390x844: Offen-Tab rendert kompakte Cards, Done-Tab rendert erledigte Cards.
+- [x] Playwright Mobile: Summary zeigt `x offen - y gesamt` plus optional `Naechster: Mo., 15.06.2026 - 07:00`.
+- [x] Playwright Mobile: kein `Ort folgt`, kein `Status: Geplant` in den Cards.
+- [x] Playwright Mobile: `Erledigt`/`Zuruecksetzen` ist Primaeraktion, `Loeschen` bleibt sekundaer.
+- [x] Playwright Mobile: `Zuruecksetzen` im Done-Tab verschiebt eine erledigte Card zurueck nach Offen.
+- [x] Playwright Desktop 1280x900: dreispaltige Card-Liste ohne Panel-Ueberbreite.
+- [x] Stubbed CRUD-Smoke: Save, Delete und Reset aktualisieren Listen und Formularzustand.
+
+**Manual / Live**
+
+- [x] Live-Server-Pruefung durch Stephan: Appointments-UI sieht gut aus.
+- [ ] Optionaler echter Supabase/Auth-Smoke bei Bedarf: Save/Done/Delete mit Live-Session nachziehen.
+
+**Regression / Contract**
+
+- [x] Tabs `Offen`, `Erledigt`, `Neu` funktionieren.
+- [x] Datum im Panel folgt `dd.mm.yyyy`, Uhrzeit `HH:mm`.
+- [x] `getUpcoming(2)` liefert weiter kommende offene Termine.
+- [x] `appointments:changed` bleibt an den bestehenden Mutation-Pfaden.
+- [x] Kein Kalender-Grid, keine Reminder- oder Push-Kette.
+- [x] `.hub-panel-scroll` bleibt der einzige Scrollcontainer im Hub-Panel.
+- [x] Residual: Mobile Document-Overflow von 4px wurde Nicht-Appointments-Elementen (`.hub-orb-bg`, `#loginOverlay`) zugeordnet.
+
+---
+
 ## Phase P13 - Backend Edge Functions Deno Check Sweep (2026-05-01)
 
 **Scope:** Statischer Deno-/Type-/Syntax-Sweep der produktiven Supabase Edge Functions im versionierten Backend-Source unter `backend/supabase/functions`.

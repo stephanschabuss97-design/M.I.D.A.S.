@@ -1005,7 +1005,7 @@
         </header>
         <div class="hub-panel-body">
                     <div class="hub-appointments-tabs tabs" role="tablist" aria-label="Termine Bereiche">
-            <button class="btn ghost is-active" id="appointmentsTabOverviewBtn" type="button" data-appointments-tab="overview" aria-controls="hubAppointmentsPanelOverview" aria-selected="true">Übersicht</button>
+            <button class="btn ghost is-active" id="appointmentsTabOverviewBtn" type="button" data-appointments-tab="overview" aria-controls="hubAppointmentsPanelOverview" aria-selected="true">Offen</button>
             <button class="btn ghost" id="appointmentsTabDoneBtn" type="button" data-appointments-tab="done" aria-controls="hubAppointmentsPanelDone" aria-selected="false">Erledigt</button>
             <button class="btn ghost" id="appointmentsTabNewBtn" type="button" data-appointments-tab="new" aria-controls="hubAppointmentsPanelNew" aria-selected="false">Neu</button>
           </div>
@@ -1013,8 +1013,8 @@
             <section class="hub-appointments-panel is-active" id="hubAppointmentsPanelOverview" data-appointments-panel="overview" role="tabpanel" aria-labelledby="appointmentsTabOverviewBtn">
               <section class="appointments-overview card subtle" id="appointmentsOverview" aria-live="polite">
                 <header class="appointments-overview-header">
-                  <h3>Kommende Termine</h3>
-                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Einträge.</p>
+                  <h3>Offene Termine</h3>
+                  <p class="muted small" id="appointmentsOverviewSubtitle">Noch keine Termine.</p>
                 </header>
                 <div class="appointments-columns" id="appointmentsColumns">
                   <!-- dynamische Karten -->
@@ -1024,7 +1024,7 @@
             <section class="hub-appointments-panel" id="hubAppointmentsPanelDone" data-appointments-panel="done" role="tabpanel" aria-labelledby="appointmentsTabDoneBtn" aria-hidden="true" hidden>
               <section class="appointments-overview card subtle" id="appointmentsDone" aria-live="polite">
                 <header class="appointments-overview-header">
-                  <h3>Erledigte Termine</h3>
+                  <h3>Erledigt</h3>
                   <p class="muted small" id="appointmentsDoneSubtitle">Noch keine erledigten Termine.</p>
                 </header>
                 <div class="appointments-columns" id="appointmentsDoneColumns">
@@ -1066,7 +1066,7 @@
                 </label>
                 <div class="appointments-actions">
                   <button class="btn primary" type="submit">
-                    &#x1F4BE; Termin speichern
+                    Termin speichern
                   </button>
                 </div>
               </form>

@@ -37,6 +37,7 @@ Quickstart fuer neue Sessions (Device Scaling):
 
 - Mobile (Hub-Panels): Actions werden vertikal gestapelt, Buttons full-width.
 - Mobile (Intake/Vitals/Appointments/Assistant): Intake-Inputs groesser, Vitals-Controls gestapelt, Appointments-Header vertikal, Assistant-Input sticky.
+- Mobile (Appointments-Cards): Card-Actions sind lokal ausgenommen und bleiben kompakt nebeneinander, damit `Loeschen` nicht wie eine Primaeraktion wirkt. Formular-Actions im Neu-Tab bleiben full-width.
 - Tablet-Portrait (Doctor/Charts): Doctor-Toolbar gestapelt, Reports in 2 Spalten; Chart-Controls 2 Spalten + KPI-Block full-width.
 - Desktop (Profil/Touchlog): Profil-Form 2 Spalten, Diagnostics-Panel breiter.
 
@@ -147,6 +148,7 @@ Quickstart fuer neue Sessions (Device Scaling):
 ### 5.5 Feature-CSS
 Nur modul-spezifische Komponenten:
 - **`hub.css`**: Hub-UI (Aura, Orbit, Panels).
+- **`hub.css` / Appointments**: kompakte Agenda-Cards, Summary-Zeile, `is-next`/`is-done` Card-States und lokale `.appointments-card .appointments-actions` Overrides.
 - **`capture.css`**: Intake-Accordion, Progress, Pills.
 - **`doctor.css`**: Doctor-Ansicht, KPI/Grids, Trends.
 - **`auth.css`**: Login/Unlock/Busy Overlays.
@@ -185,6 +187,7 @@ Nur modul-spezifische Komponenten:
   - Boot error fallback: `.boot-error-fallback-log` (in `base.css`) muss lesbar und scrollbar bleiben.
   - Hub-Scroll: `.hub-panel-scroll` ist der einzige Scroll-Container im Panel (keine `overflow`-Scrolls auf `.hub-panel-body`).
   - Hub-Scroll (Mobile): Kein `height: 100%` auf `.hub-panel-scroll`; nur `max-height` + `min-height` nutzen, sonst blockiert Scroll in der Arzt-Ansicht.
+  - Appointments-Actions: `.appointments-actions` bleibt globaler Form-Action-Alias, aber `.appointments-card .appointments-actions` ist ein lokaler Card-Override in `hub.css`.
 
 ---
 
@@ -221,6 +224,8 @@ Nur modul-spezifische Komponenten:
 - Keine doppelten Pattern-Definitionen zwischen Feature-Dateien.
 - `boot_error`: Diagnostics-Panel ist ueber dem Bootscreen sichtbar/bedienbar (`#diag` > `#bootScreen`).
 - Boot-Error-Fallback-Log (`.boot-error-fallback-log`) ist im Overlay lesbar und vertikal scrollbar.
+- Appointments-Cards: `Erledigt`/`Zuruecksetzen` und `Loeschen` bleiben auf Mobile nebeneinander, waehrend Appointments-Form-Actions im Neu-Tab weiter dem globalen Mobile-Full-width-Pattern folgen.
+- Appointments-Panel erzeugt keine eigene zweite Scrollbox; `.hub-panel-scroll` bleibt der einzige Scroll-Container.
 
 ---
 
@@ -257,3 +262,4 @@ Zusatz (Patterns + Tokens)
 - Globale Form-Pattern: `.field-group`, `.field-group.checkbox`, `.field-hint`, `.field-group .label` in `app/styles/utilities.css`.
 - Subtle Cards: `.card.subtle` in `app/styles/layout.css` (Overview-Optik fuer Profile/Appointments).
 - Actions-Aliases: `.appointments-actions`, `.profile-actions`, `.medication-form-actions`, `.activity-form-actions`, `.capture-card-actions` als Alias auf `.form-actions` in `app/styles/layout.css`.
+- Appointments-Ausnahme: `.appointments-card .appointments-actions` wird in `app/styles/hub.css` bewusst enger gescoped, damit Card-Aktionen die Appointments-Hierarchie abbilden, ohne das globale Form-Action-Pattern zu aendern.
