@@ -182,7 +182,7 @@
         ${detailLines}
         <div class="appointments-actions" role="group" aria-label="Terminaktionen">
           <button class="btn primary small appointments-action-primary" data-action="toggle" type="button">
-            ${isDone ? 'Zur&uuml;cksetzen' : 'Erledigt'}
+            ${isDone ? 'Zurücksetzen' : 'Erledigt'}
           </button>
           <button class="btn ghost small appointments-action-secondary" data-action="delete" type="button">Löschen</button>
         </div>
