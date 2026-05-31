@@ -2334,3 +2334,36 @@ Regression
 - [ ] Keine Produktdatenaktion aus dem Touchlog heraus.
 - [ ] Kein Service-Worker-, Backend- oder Android-Native-Umbau erforderlich.
 - [ ] Boot-Error-Fallback kann weiterhin den Touchlog oder Fallback-Log anzeigen.
+
+---
+
+## Phase P14 - Protein Targets CKD Fallback (2026-05-31)
+
+**Scope:** Edge Function `midas-protein-targets` nutzt CKD konservativ ueber `Lab > Profil > Missing`; kein stiller `G1`-Default.
+
+**Static / Local Checks**
+
+- [x] `deno check backend/supabase/functions/midas-protein-targets/index.ts`
+- [x] `git diff --check` fuer Edge Function, Protein Overview, QA und Roadmap.
+- [x] Kein `parseCkdStage(...) || "G1"` und kein `|| "G1"` in `midas-protein-targets/index.ts`.
+- [x] `ckd_source` ist nur Response-Diagnostik und wird nicht in `updatePayload` persistiert.
+- [x] CKD-Faktorwerte bleiben unveraendert.
+- [x] Activity-Schwellen bleiben unveraendert (`score >= 6`, `score >= 2`).
+- [x] `minFactor` bleibt `roundTo(factorCurrent - 0.1, 2)`.
+
+**Contract Smokes (deployment/runtime-gated)**
+
+- [ ] Latest Lab hat `G3a A1`, Profil-CKD leer -> Function schreibt `protein_ckd_stage_g = G3a`.
+- [ ] Latest Lab ohne `ckd_stage`, Profil `protein_ckd_stage_g = G3a` -> Function bleibt bei `G3a`, kein `G1`-Write.
+- [ ] Latest Lab ohne `ckd_stage`, Profil ohne CKD, Auto -> Function skipped mit `ckd_stage_missing` und schreibt kein `user_profile`-Update.
+- [ ] Doctor-Lock aktiv, valider Doctor-Faktor, Profil `G3a`, latest Lab ohne CKD -> Doctor-Ziele bleiben aus Doctor-Faktor; CKD-Metadaten werden nicht auf `G1` gesetzt.
+- [ ] Doctor-Lock aktiv, valider Doctor-Faktor, Lab/Profile CKD missing -> Zielbereich darf aus Doctor-Faktor entstehen; CKD-Felder bleiben unveraendert.
+- [ ] Cooldown bei unveraendertem Profil-Fallback skipped weiterhin mit `cooldown_unchanged`.
+
+**Regression**
+
+- [ ] Body-Save mit Gewicht triggert Protein-Edge-Aufruf weiterhin.
+- [ ] Scheduler ohne `weight_kg` zieht weiterhin das letzte Body-Gewicht.
+- [ ] Doctor-Lock ohne Doctor-Faktor skipped weiterhin mit `doctor_factor_missing`.
+- [ ] Intake/Assistant konsumieren weiterhin `protein_target_min/max`; keine eigene CKD-Logik.
+- [x] Supabase Deploy wurde erst nach expliziter Freigabe ausgefuehrt: `midas-protein-targets` ACTIVE, Version 17.

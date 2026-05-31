@@ -28,7 +28,7 @@ type TriggerKind = "body_save" | "manual" | "scheduler";
 
 type ProteinTargetInput = {
   trigger?: TriggerKind | null;
-  weight_kg?: number | null;
+  weight_kg?: number | string | null;
   dayIso?: string | null;
   force?: boolean | null;
 };
@@ -308,6 +308,10 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", userId)
       .maybeSingle();
     if (profileErr) throw profileErr;
+    const profileRow = profile as ProfileRow | null;
+    if (!profileRow) {
+      throw new Error("Profil fehlt (user_profile).");
+    }
 
     const todayIso = input.dayIso || viennaTodayIso();
     const fromIso = subDaysIso(todayIso, 27);
@@ -336,13 +340,15 @@ Deno.serve(async (req: Request) => {
       "ckd_stage" in latestLab.payload
         ? String((latestLab.payload as Record<string, unknown>).ckd_stage || "")
         : "";
-    const ckdStage = parseCkdStage(ckdStageRaw) || "G1";
-    const ckdFactor = ckdFactorFor(ckdStage);
-
-    const profileRow = profile as ProfileRow | null;
-    if (!profileRow) {
-      throw new Error("Profil fehlt (user_profile).");
-    }
+    const ckdStageLab = parseCkdStage(ckdStageRaw);
+    const ckdStageProfile = parseCkdStage(profileRow.protein_ckd_stage_g || "");
+    const ckdStage = ckdStageLab || ckdStageProfile;
+    const ckdSource = ckdStageLab
+      ? "lab"
+      : ckdStageProfile
+        ? "profile"
+        : "missing";
+    const ckdFactor = ckdStage ? ckdFactorFor(ckdStage) : null;
 
     const doctorLock = !!profileRow.protein_doctor_lock;
     const doctorFactorRaw =
@@ -359,6 +365,7 @@ Deno.serve(async (req: Request) => {
         skipped: true,
         reason: "doctor_factor_missing",
         user_id: userId,
+        ckd_source: ckdSource,
       });
     }
     const doctorFactor = doctorLock && doctorFactorValid
@@ -373,12 +380,27 @@ Deno.serve(async (req: Request) => {
     if (ageYears === null) {
       throw new Error("birth_date ungueltig.");
     }
+    if (!doctorLock && !ckdStage) {
+      return responseJson({
+        ok: true,
+        skipped: true,
+        reason: "ckd_stage_missing",
+        user_id: userId,
+        input,
+        ckd_source: ckdSource,
+      });
+    }
     const ageBase = ageBaseFor(ageYears);
     const activityScore = Number(activityCount ?? 0);
     const activityMeta = activityLevelFor(activityScore);
     const factorPreCkd = roundTo(ageBase + activityMeta.modifier, 2);
-    const factorAuto = roundTo(factorPreCkd * ckdFactor, 2);
-    const factorCurrent = doctorLock ? (doctorFactor as number) : factorAuto;
+    const factorAuto = ckdFactor !== null
+      ? roundTo(factorPreCkd * ckdFactor, 2)
+      : null;
+    const factorCurrent = doctorLock ? doctorFactor : factorAuto;
+    if (factorCurrent === null) {
+      throw new Error("Protein-Faktor konnte nicht berechnet werden.");
+    }
     const calcSource = doctorLock ? "doctor" : "auto";
     const maxFactor = factorCurrent;
     const minFactor = roundTo(factorCurrent - 0.1, 2);
@@ -392,7 +414,7 @@ Deno.serve(async (req: Request) => {
           (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24);
         if (daysSince < 7) {
           const prevStage = profileRow.protein_ckd_stage_g || null;
-          const stageUnchanged = prevStage === ckdStage;
+          const stageUnchanged = ckdStage !== null && prevStage === ckdStage;
           const prevFactor =
             typeof profileRow.protein_factor_current === "number" &&
             profileRow.protein_factor_current > 0
@@ -417,15 +439,16 @@ Deno.serve(async (req: Request) => {
             (doctorLock || stageUnchanged);
 
           if (shouldSkip) {
-      return responseJson({
-        ok: true,
-        skipped: true,
-        reason: "cooldown_unchanged",
-        user_id: userId,
-        days_since_last: Number(daysSince.toFixed(2)),
-        weight_delta: Number(weightDelta.toFixed(2)),
-        calc_source: calcSource,
-      });
+            return responseJson({
+              ok: true,
+              skipped: true,
+              reason: "cooldown_unchanged",
+              user_id: userId,
+              days_since_last: Number(daysSince.toFixed(2)),
+              weight_delta: Number(weightDelta.toFixed(2)),
+              calc_source: calcSource,
+              ckd_source: ckdSource,
+            });
           }
         }
       }
@@ -441,10 +464,12 @@ Deno.serve(async (req: Request) => {
       protein_activity_level: activityMeta.level,
       protein_activity_score_28d: activityScore,
       protein_factor_pre_ckd: factorPreCkd,
-      protein_ckd_stage_g: ckdStage,
-      protein_ckd_factor: ckdFactor,
       protein_factor_current: factorCurrent,
     };
+    if (ckdStage && ckdFactor !== null) {
+      updatePayload.protein_ckd_stage_g = ckdStage;
+      updatePayload.protein_ckd_factor = ckdFactor;
+    }
     if (doctorLock) {
       updatePayload.protein_doctor_factor = factorCurrent;
       updatePayload.protein_doctor_min = targetMin;
@@ -472,6 +497,7 @@ Deno.serve(async (req: Request) => {
         weight_kg: input.weight_kg,
         ckd_stage_g: ckdStage,
         ckd_factor: ckdFactor,
+        ckd_source: ckdSource,
         factor_pre_ckd: factorPreCkd,
         factor_auto: factorAuto,
         factor_current: factorCurrent,

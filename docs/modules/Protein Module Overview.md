@@ -21,7 +21,7 @@ Related docs:
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|------|------|
+| --- | --- |
 | `app/modules/vitals-stack/protein/index.js` | Modul-API, Edge-Call Bridge (`recomputeTargets`). |
 | `app/modules/vitals-stack/vitals/body.js` | Trigger nach Body-Save. |
 | `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben. |
@@ -42,7 +42,7 @@ Related docs:
   - Derived: `protein_calc_version`, `protein_window_days`, `protein_last_calc_at`,
     `protein_age_base`, `protein_activity_level`, `protein_activity_score_28d`,
     `protein_factor_pre_ckd`, `protein_ckd_stage_g`, `protein_ckd_factor`, `protein_factor_current`.
-  - Optional: `protein_ckd_confirmed_at` (timestamptz) fuer spaetere CKD-Staleness-Prompts.
+  - Future idea, nicht aktuelles Schema: `protein_ckd_confirmed_at` fuer spaetere CKD-Staleness-Prompts.
 - `health_events`:
   - `activity_event` (Count im 28d-Window).
   - `lab_event` (CKD-Stufe, letzte Messung).
@@ -75,12 +75,17 @@ Related docs:
 - Berechnung: Age Base + Activity Modifier, CKD Faktor, Min/Max Target.
 - Doctor-Lock: nutzt `protein_doctor_factor` als Source of Truth (wenn aktiv); fehlt der Faktor, wird der Run skipped.
 - Activity bleibt Count-basiert (bewusste Sessions, keine Minuten).
-- CKD-Stufe kommt aus letztem `lab_event` (Fallback G1, falls kein Wert).
+- CKD-Stufe wird konservativ aufgeloest:
+  - zuerst letztes `lab_event.payload.ckd_stage`
+  - dann bestehendes `user_profile.protein_ckd_stage_g`
+  - wenn beides fehlt: Auto-Berechnung skipped mit `ckd_stage_missing`
+  - Doctor-Lock mit validem Doctor-Faktor darf ohne CKD weiter Zielwerte schreiben, erfindet aber keine CKD-Metadaten.
 
 ### 4.4 Persistenz
 - Edge schreibt Targets + Derived Fields in `user_profile`.
 - Frontend refresht Profil-Snapshot und feuert `profile:changed`.
-- (optional, spaeter) Bestaetigung setzt `protein_ckd_confirmed_at`.
+- Future idea: eine spaetere CKD-Bestaetigung koennte ein eigenes Staleness-Feld setzen; aktuell gibt es keinen solchen Write.
+
 ## 4.5 Berechnungslogik (v1, deterministisch)
 
 - Rolling Window: 28 Tage (inkl. heute, day >= today-27).
@@ -138,7 +143,11 @@ Related docs:
 
 ## 7. Fehler- & Diagnoseverhalten
 
-- Typische Fehler: fehlendes `birth_date`, Edge-Auth, fehlende `protein_doctor_factor` bei aktivem Doctor-Lock.
+- Typische Fehler: fehlendes `birth_date`, Edge-Auth, fehlende `protein_doctor_factor` bei aktivem Doctor-Lock, fehlende CKD-Quelle im Auto-Pfad.
+- Kontrollierte Skips:
+  - `doctor_factor_missing`
+  - `ckd_stage_missing`
+- Diagnose-Responses koennen `ckd_source` enthalten (`lab`, `profile`, `missing`) zur Diagnose; dieser Wert wird nicht in `user_profile` persistiert.
 - Logging: `[protein]` im diag, Edge logs `[midas-protein-targets]`.
 - Fallback: Targets bleiben unveraendert, Intake nutzt Default-Fallback.
 
@@ -181,7 +190,7 @@ Related docs:
 - Status: aktiv (im Aufbau).
 - Dependencies (hard): `user_profile` Spalten, `activity_event`, `lab_event`, Edge Function.
 - Dependencies (soft): Profil-UI, Intake/Assistant Anzeige.
-- Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, CKD-Fallback (G1) wenn kein Lab vorhanden.
+- Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, fehlende CKD-Quelle im Auto-Pfad erzeugt Skip statt stillen Write.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/13_Activity_Event.sql`, `sql/11_Lab_Event_Extension.sql`, Edge `midas-protein-targets`, Workflow `protein-targets.yml`.
 
 ---
@@ -192,6 +201,9 @@ Related docs:
 - Doctor-Lock nutzt Doctor-Faktor; wenn fehlt -> skipped.
 - Activity-Count beeinflusst ACT1/ACT2/ACT3.
 - CKD-Stufe beeinflusst Faktor.
+- Lab ohne CKD-Stufe nutzt `protein_ckd_stage_g` als Fallback.
+- Auto ohne Lab- und Profil-CKD skipped mit `ckd_stage_missing`.
+- Doctor-Lock ohne CKD schreibt keine erfundenen CKD-Metadaten.
 - Profil-Targets aktualisieren Intake/Assistant (Range-only).
 
 ---
@@ -202,4 +214,3 @@ Related docs:
 - Targets werden bei Body-Save aktualisiert.
 - Doctor-Lock wird respektiert.
 - Dokumentation aktuell.
-
