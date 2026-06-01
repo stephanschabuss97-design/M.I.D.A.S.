@@ -41,6 +41,7 @@ Related docs:
 - Events: `trendpilot_events` (info/warning/critical, window_from/window_to, ack/ack_at).
 - View: `trendpilot_events_range` als standardisierte Range-Query (Sortierung + Severity-Filter).
 - State: `trendpilot_state` (Baseline/Normalisierung pro Typ).
+- Edge-Function-Response: Dry-Run und Non-Dry-Run liefern denselben finalen Event-Stand, den die Engine berechnet bzw. persistiert. Im Non-Dry-Run basiert die Response auf dem finalen Upsert-Stand inkl. IDs, erweitertem `window_to` und finalem Payload.
 
 ### 3.1 Event-Shape (Payload)
 Minimaler Kern:
@@ -50,6 +51,8 @@ Minimaler Kern:
 - `payload.rule_id`: eindeutige Regel-ID
 - `payload.*`: Kennzahlen (Baseline, Deltas, Wochen, IDs)
 - `payload.context` (optional): Kontext-Objekt fuer Korrelationen (nur warning/critical, kein info)
+- `payload.continued_after_ack` (optional): Marker, wenn ein bereits bestaetigtes Event durch ein spaeteres `window_to` fortgesetzt wurde.
+- `payload.continued_after_ack_from/to` (optional): altes und neues `window_to` bei ACK-Fortsetzung.
 
 Beispiele:
 - `bp-trend-v1`: baseline_sys/dia, avg_sys/dia, delta_sys/dia, weeks
@@ -92,6 +95,8 @@ Prioritaet (max. 1 Satz):
 - Unique: `user_id + type + window_from + severity`
 - Updates erweitern `window_to`, Payload wird gemerged.
 - Ack bleibt erhalten (ack/ack_at), auch wenn Event spaeter erweitert wird.
+- Wenn ein bereits bestaetigtes Event spaeter wirklich im `window_to` waechst, bleibt ACK erhalten und der Payload bekommt `continued_after_ack`, `continued_after_ack_from` und `continued_after_ack_to`.
+- Stale ACK-Fortsetzungsmarker werden vor jedem Merge entfernt und nur bei echter Fortsetzung neu gesetzt.
 
 ---
 
@@ -104,6 +109,8 @@ Prioritaet (max. 1 Satz):
 ### 4.2 Trigger
 - Scheduler (GitHub Actions Cron) ruft die Edge Function woechentlich auf.
 - Optional manueller Call (z.B. Debug/Dry-Run).
+- Scheduler nutzt Service-Role plus `TRENDPILOT_USER_ID`; User-nahe manuelle Calls koennen ueber User-Bearer laufen.
+- Manuelle Ranges muessen exakt `YYYY-MM-DD` sein. Kalendermuell wie `2026-02-31` wird abgelehnt und nicht still durch JS-Date-Rolling normalisiert.
 
 ### 4.3 Verarbeitung
 - Edge Function berechnet Wochenfenster + Deltas und schreibt Events.
@@ -111,6 +118,9 @@ Prioritaet (max. 1 Satz):
 - `warning/critical` -> Trendpilot-Event + Ack-Dialog.
 - `info` -> Trendpilot-Event fuer System-Kommentare (kein Popup).
 - Kontext wird nur an warning/critical angehaengt.
+- BP-Wochen werden nur gewertet, wenn mindestens 2 valide BP-Samples in der Woche vorhanden sind.
+- Body behaelt das allgemeine 6-Wochen-Auswertungsgate.
+- Lab wird evaluator-spezifisch bewertet: mindestens 2 Wochen und mindestens 2 Samples; es wird nicht mehr durch ein globales 6-Wochen-Handler-Gate blockiert.
 
 ### 4.4 Normalisierung (Baseline Reset)
 - Wenn es Alerts gab und die letzten 6 Wochen stabil sind, wird die Baseline neu gesetzt.
@@ -196,9 +206,9 @@ Prioritaet (max. 1 Satz):
 
 ## 9.1 Aktuelle Schwellen / Gates (v1)
 
-- BP: Warning ab +8 sys oder +5 dia ueber Baseline; Critical ab >=140/90 oder +15/+10 ueber Baseline.
+- BP: Warning ab +8 sys oder +5 dia ueber Baseline. Critical ab absolut >=140 systolisch oder >=90 diastolisch, oder bei Delta-Critical mit Mindestniveau: systolisch >=130 und +15 ueber Baseline, oder diastolisch >=85 und +10 ueber Baseline. BP-Wochen brauchen mindestens 2 valide Samples.
 - Body (Gewicht): Warning ab +1.2 kg, Critical ab +2.0 kg (jeweils Wochenmittel, Trend >= 2 Wochen).
-- Lab: Evaluation nur bei >=2 Messungen (Range) und >=2 Messungen im Baseline-Slice.
+- Lab: Evaluation bei >=2 Wochen und >=2 Messungen in der Range; Baseline-Slice braucht ebenfalls >=2 Wochen und >=2 Samples. Kein globales 6-Wochen-Handler-Gate fuer Lab.
 - Combined (BP x Gewicht): nur wenn weight_delta_kg >= 1.5; Critical bei BP critical oder weight_delta_kg >= 2.0.
 - Normalisierung: 6 stabile Wochen ohne Alerts nach einer Alert-Phase.
 
@@ -235,6 +245,7 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Dependencies (hard): BP-Daten, `trendpilot_events`/`trendpilot_state`, GitHub Actions Cron, Capture/Doctor/Charts Integration.
 - Dependencies (soft): n/a.
 - Known issues / risks: braucht genug Daten; false positives; Flag `TREND_PILOT_ENABLED` deaktivierbar.
+- Review-Stand 2026-06-01: Edge Function `midas-trendpilot` deployed als Version 20; Remote-Dry-Run und GitHub Workflow-Smoke waren erfolgreich.
 - Backend / SQL / Edge: `trendpilot_events`/`trendpilot_state`, Edge Function `midas-trendpilot`.
 - Hinweis: Bei Edge Functions mit Service-Role muss `user_id` explizit gesetzt werden, da `auth.uid()` leer ist.
 - Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
@@ -263,4 +274,3 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Trendpilot erzeugt konsistente Events.
 - UI an allen Stellen synchron.
 - Doku aktuell.
-

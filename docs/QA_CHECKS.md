@@ -1,3 +1,40 @@
+## Phase P15 - Trendpilot Review Findings (2026-06-01)
+
+**Scope:** Edge Function `midas-trendpilot` nach Review-Findings: Response/Persistenzvertrag, BP-Gates, Lab-Gate, Date-Validation, ACK-Fortsetzung und Runtime-Smokes.
+
+**Static / Local Checks**
+
+- [x] `deno check backend/supabase/functions/midas-trendpilot/index.ts`
+- [x] `git diff --check` fuer Edge Function, Dev Environment, Trendpilot Overview, QA und Roadmap.
+- [x] Non-Dry-Run-Response basiert auf finalem Upsert-Stand (`singleUpsert.withIds` + `combinedUpsert.withIds`).
+- [x] Dry-Run schreibt nicht und liefert context-angereicherte Events im Response-Pfad.
+- [x] BP-Critical nutzt absolute Schwellen sowie Delta-Critical mit Mindestniveau.
+- [x] BP-Wochen werden nur ab mindestens 2 validen Samples gewertet.
+- [x] Lab hat ein evaluator-spezifisches Gate: mindestens 2 Wochen und mindestens 2 Samples, kein globales 6-Wochen-Handler-Gate.
+- [x] Invalid-Date-Inputs wie `2026-02-31` werden abgelehnt.
+- [x] ACK bleibt bei Upsert erhalten; echte Fortsetzung nach ACK setzt `continued_after_ack`.
+
+**Deploy / Runtime**
+
+- [x] Supabase Deploy nach Freigabe: `midas-trendpilot` ACTIVE, Version 20.
+- [x] Remote Dry-Run nach Deploy: `ok=true`, `dry_run=true`, `written_count=0`.
+- [x] Remote Invalid-Date-Smoke: `2026-02-31` liefert HTTP 400 mit Range-Validation.
+- [x] GitHub Workflow-Smoke `Trendpilot Weekly` nach Deploy: Run `26778853880`, Ergebnis `success`.
+- [x] Workflow-Log zeigt Edge-Function-Response `ok:true`, `trigger:"scheduler"`, `written:[]`.
+
+**Regression / Contract**
+
+- [x] Scheduler-Run bleibt service-role-faehig und user-gebunden.
+- [x] Non-Dry-Run bleibt idempotent ueber `user_id + type + window_from + severity`.
+- [x] `payload.context` bleibt nur fuer warning/critical.
+- [x] `info` bleibt popup-frei.
+- [x] Combined-Events referenzieren weiterhin Single-Event-IDs.
+- [x] ACK-Dialog bleibt modal und schreibt nur bei expliziter Kenntnisnahme.
+- [x] Arzt-Block und Chart-Bands lesen weiterhin aus `trendpilot_events`.
+- [x] Keine BP-/Body-/Lab-Capture-Regression durch SQL, UI oder Intake-Pfade.
+
+---
+
 ## Phase APT-UI - Appointments UI Polish (2026-05-23)
 
 **Scope:** Kompakte MIDAS-Agenda fuer das Appointments-Panel, ohne Kalender-App, Reminder, Push, Voice, SQL/RLS oder neue Dependencies.

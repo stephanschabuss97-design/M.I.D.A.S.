@@ -29,12 +29,15 @@ const DEFAULT_RANGE_DAYS = 56;
 const MIN_WEEKS_REQUIRED = 6;
 const BASELINE_WEEKS = 8;
 const NORMALIZE_WEEKS = 6;
+const BP_MIN_SAMPLES_PER_WEEK = 2;
 const WARNING_DELTA_SYS = 8;
 const WARNING_DELTA_DIA = 5;
 const CRITICAL_ABS_SYS = 140;
 const CRITICAL_ABS_DIA = 90;
 const CRITICAL_DELTA_SYS = 15;
 const CRITICAL_DELTA_DIA = 10;
+const CRITICAL_DELTA_MIN_SYS = 130;
+const CRITICAL_DELTA_MIN_DIA = 85;
 const BODY_WARNING_DELTA_KG = 1.2;
 const BODY_CRITICAL_DELTA_KG = 2.0;
 const COMBINED_MIN_DELTA_KG = 1.5;
@@ -166,7 +169,7 @@ const getUserIdFromToken = async (token: string | null) => {
 const ISO_DAY_RE = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
 const toISODateUTC = (d: Date) => {
-  const y = d.getUTCFullYear();
+  const y = String(d.getUTCFullYear()).padStart(4, "0");
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
@@ -189,54 +192,62 @@ const viennaTodayIso = () => {
 };
 
 const subDaysIso = (isoDay: string, days: number) => {
-  const dt = new Date(`${isoDay}T00:00:00Z`);
+  const dt = dateFromIsoDayUtc(isoDay);
+  if (!dt) {
+    throw new Error(`invalid iso day: ${isoDay}`);
+  }
   dt.setUTCDate(dt.getUTCDate() - days);
   return toISODateUTC(dt);
 };
 
 const diffDaysInclusive = (from: string, to: string) => {
-  const start = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
+  const start = dateFromIsoDayUtc(from);
+  const end = dateFromIsoDayUtc(to);
+  if (!start || !end) {
+    throw new Error(`invalid iso day range: ${from}..${to}`);
+  }
   const diff = Math.floor((end.getTime() - start.getTime()) / 86400000);
   return diff + 1;
 };
 
 const diffDays = (from: string, to: string) => {
-  const start = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
+  const start = dateFromIsoDayUtc(from);
+  const end = dateFromIsoDayUtc(to);
+  if (!start || !end) {
+    throw new Error(`invalid iso day range: ${from}..${to}`);
+  }
   return Math.floor((end.getTime() - start.getTime()) / 86400000);
 };
 
-const hasMinWeeks = (range: NormalizedInput["range"], weeks: number) => {
-  return diffDaysInclusive(range.from, range.to) >= weeks * 7;
+const utcDateFromIsoParts = (year: number, month: number, day: number) => {
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  dt.setUTCFullYear(year);
+  return dt;
 };
 
 const parseIsoDay = (isoDay: string) => {
-  const parts = isoDay.split("-");
-  if (parts.length !== 3) return null;
-  const year = Number(parts[0]);
-  const month = Number(parts[1]);
-  const day = Number(parts[2]);
-  if (!year || !month || !day) return null;
-  if (month < 1 || month > 12) return null;
-  if (day < 1 || day > 31) return null;
+  const match = ISO_DAY_RE.exec(isoDay);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 1) return null;
+  const dt = utcDateFromIsoParts(year, month, day);
+  if (toISODateUTC(dt) !== isoDay) return null;
   return { year, month, day };
 };
 
 const dateFromIsoDayUtc = (isoDay: string) => {
   const parts = parseIsoDay(isoDay);
   if (!parts) return null;
-  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  return utcDateFromIsoParts(parts.year, parts.month, parts.day);
 };
 
-const addDaysUtc = (date: Date, days: number) =>
-  new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate() + days,
-    ),
-  );
+const addDaysUtc = (date: Date, days: number) => {
+  const dt = new Date(date.getTime());
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt;
+};
 
 const weekWindowForDay = (isoDay: string) => {
   const dt = dateFromIsoDayUtc(isoDay);
@@ -278,6 +289,18 @@ const mergePayload = (
   extra: Record<string, unknown> | undefined,
 ) => {
   return { ...(base || {}), ...(extra || {}) };
+};
+
+const withoutAckContinuationPayload = (
+  payload: Record<string, unknown>,
+) => {
+  const {
+    continued_after_ack: _continuedAfterAck,
+    continued_after_ack_from: _continuedAfterAckFrom,
+    continued_after_ack_to: _continuedAfterAckTo,
+    ...clean
+  } = payload;
+  return clean;
 };
 
 const filterRowsByRange = (
@@ -491,12 +514,12 @@ const attachContextToEvents = (
 };
 
 const normalizeRange = (raw?: TrendpilotInput["range"] | null) => {
-  let from = raw?.from?.slice(0, 10) ?? "";
-  let to = raw?.to?.slice(0, 10) ?? "";
-  if (from && !ISO_DAY_RE.test(from)) {
+  let from = raw?.from ?? "";
+  let to = raw?.to ?? "";
+  if (from && !parseIsoDay(from)) {
     throw new Error("range.from ist ungueltig (YYYY-MM-DD erwartet).");
   }
-  if (to && !ISO_DAY_RE.test(to)) {
+  if (to && !parseIsoDay(to)) {
     throw new Error("range.to ist ungueltig (YYYY-MM-DD erwartet).");
   }
   if (!from || !to) {
@@ -660,6 +683,7 @@ const evaluateBpTrends = async (
       avg_dia: w.diaSum / w.n,
       samples: w.n,
     }))
+    .filter((w) => w.samples >= BP_MIN_SAMPLES_PER_WEEK)
     .sort((a, b) => a.from.localeCompare(b.from));
 
   if (weeks.length < MIN_WEEKS_REQUIRED) return [];
@@ -694,10 +718,15 @@ const evaluateBpTrends = async (
   const classifyWeek = (avgSys: number, avgDia: number) => {
     const deltaSys = avgSys - baselineSys!;
     const deltaDia = avgDia - baselineDia!;
+    const criticalSysDelta =
+      avgSys >= CRITICAL_DELTA_MIN_SYS && deltaSys >= CRITICAL_DELTA_SYS;
+    const criticalDiaDelta =
+      avgDia >= CRITICAL_DELTA_MIN_DIA && deltaDia >= CRITICAL_DELTA_DIA;
     if (
       avgSys >= CRITICAL_ABS_SYS ||
       avgDia >= CRITICAL_ABS_DIA ||
-      (deltaSys >= CRITICAL_DELTA_SYS && deltaDia >= CRITICAL_DELTA_DIA)
+      criticalSysDelta ||
+      criticalDiaDelta
     ) {
       return "critical" as const;
     }
@@ -1303,6 +1332,18 @@ const upsertTrendpilotEvents = async (
       existing?.window_to && existing.window_to > evt.window_to
         ? existing.window_to
         : evt.window_to;
+    const extendsAcknowledgedEvent =
+      existing?.ack === true &&
+      typeof existing.window_to === "string" &&
+      evt.window_to > existing.window_to;
+    const payload = withoutAckContinuationPayload(
+      mergePayload(existing?.payload, evt.payload),
+    );
+    if (extendsAcknowledgedEvent) {
+      payload.continued_after_ack = true;
+      payload.continued_after_ack_from = existing.window_to;
+      payload.continued_after_ack_to = evt.window_to;
+    }
 
     const row: TrendpilotRow = {
       user_id: userId,
@@ -1311,7 +1352,7 @@ const upsertTrendpilotEvents = async (
       window_from: evt.window_from,
       window_to: windowTo,
       source: evt.source ?? "trendpilot-v1",
-      payload: mergePayload(existing?.payload, evt.payload),
+      payload,
     };
 
     if (existing?.ack) {
@@ -1328,7 +1369,12 @@ const upsertTrendpilotEvents = async (
       .maybeSingle();
     if (upErr) throw upErr;
     results.push({ id: up?.id ?? null, type: evt.type, severity: evt.severity });
-    withIds.push({ ...evt, id: up?.id ?? null });
+    withIds.push({
+      ...evt,
+      id: up?.id ?? null,
+      window_to: windowTo,
+      payload,
+    });
   }
   return { results, withIds };
 };
@@ -1357,18 +1403,6 @@ Deno.serve(async (req) => {
         fetchLabEvents(input.userId, contextRange),
         fetchActivityEvents(input.userId, contextRange),
       ]);
-
-    if (!hasMinWeeks(input.range, MIN_WEEKS_REQUIRED)) {
-      return responseJson({
-        ok: true,
-        trigger: input.trigger,
-        range: input.range,
-        events: [],
-        fetched: { bp: bpRows.length, body: bodyRows.length, lab: labRows.length },
-        written: [],
-        note: "insufficient_data",
-      });
-    }
 
     const bpTrend = await evaluateBpTrends(
       input.userId,
@@ -1433,7 +1467,7 @@ Deno.serve(async (req) => {
     const combinedUpsert = combined.length
       ? await upsertTrendpilotEvents(input.userId, combined)
       : { results: [], withIds: [] };
-    const allEvents = [...singleEvents, ...combined];
+    const allEvents = [...singleUpsert.withIds, ...combinedUpsert.withIds];
     const written = [...singleUpsert.results, ...combinedUpsert.results];
     return responseJson({
       ok: true,

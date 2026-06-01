@@ -188,11 +188,38 @@ gh auth status
 gh auth login
 ```
 
+Aktueller MIDAS-Stand:
+
+- `gh auth status` ist auf diesem Rechner eingerichtet.
+- Account: `stephanschabuss97-design`.
+- Relevante Scopes fuer Repo-/Actions-Arbeit sind vorhanden, inklusive `repo` und `workflow`.
+- Tokens oder Secret-Werte werden nicht in Doku, Logs oder Commits uebernommen.
+
 Verwendung:
 
 - GitHub Auth pruefen
 - PR-/Issue-/Actions-Arbeit
 - CI-Logs und Workflow-Status inspizieren
+- GitHub Actions Workflows manuell starten und beobachten
+
+Workflow-Smokes:
+
+```powershell
+gh workflow list
+gh workflow view "Trendpilot Weekly"
+gh run list --workflow "Trendpilot Weekly" --limit 5
+gh workflow run "Trendpilot Weekly" --ref main
+gh run watch <run-id> --exit-status
+gh run view <run-id> --log
+```
+
+Wichtig:
+
+- `gh workflow run` kann produktive Schreibwirkung haben, je nach Workflow.
+- Vor einem manuellen Workflow-Smoke immer zuerst die Workflow-Datei pruefen.
+- `Trendpilot Weekly` ruft produktiv die Edge Function ohne `dry_run` auf.
+- Der Workflow-Smoke ist daher bewusst als Runtime-Aktion zu behandeln, nicht als reiner Lint-/Statuscheck.
+- Der Run gilt nur dann als fachlich plausibel, wenn neben `success` auch die Logs eine erwartete Edge-Function-Response zeigen, z. B. `{"ok":true,...}`.
 
 ### Python
 
