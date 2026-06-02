@@ -46,8 +46,20 @@ Related docs:
   - `payload.text`: Fliesstext (Markdown-Style)
   - `payload.meta`: strukturierte Kennzahlen
   - `payload.generated_at`
+  - `payload.created_at`
 
-Inbox-Filterung erfolgt ausschliesslich ueber `payload.subtype`.
+Report-Zeitvertrag:
+
+- `health_events.ts` ist fuer Reports der Inbox-Anker, nicht die alleinige Erzeugungszeit.
+- `health_events.day` wird aus `ts` in `Europe/Vienna` generated.
+- Die Edge Function setzt `ts` auf `payload.period.to` bei UTC-Mittag.
+- Der Report-Zeitraum bleibt in `payload.period`.
+- Die Erzeugungszeit steht im Payload:
+  - `payload.generated_at`
+  - `payload.created_at`
+- Der Client liest fuer die UI-Erzeugungszeit `created_at || generated_at || row.ts`.
+
+Inbox-Filterung erfolgt ueber `payload.subtype` und den generated `day`-Anker.
 
 ---
 
@@ -75,17 +87,26 @@ Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
 - Monthly via Cron (GitHub Actions).
 
 ### 5.2 Edge Function Verarbeitung
-- Normalisiert Range:
-  - Monthly: voriger Monat (REPORT_TZ Europe/Vienna).
-  - Range: explizit `from/to`.
+- Validiert und normalisiert Request:
+  - `report_type` ist runtime-begrenzt auf `monthly_report` oder `range_report`.
+  - fehlender oder `null`-`report_type` bleibt Monthly-Default.
+  - leerer Request-Body bleibt Monthly-Default.
+  - ungueltiges JSON liefert einen 400-Fehler.
+- Normalisiert Zeitraum:
+  - Monthly: optionales `month` als striktes `YYYY-MM`, sonst voriger Monat in `Europe/Vienna`.
+  - Monthly ignoriert `from/to`.
+  - Range: strikte `from/to`-ISO-Days `YYYY-MM-DD`.
+  - Range ignoriert `month`.
+  - ungueltige Kalenderdaten werden abgelehnt; kein stilles JS-Date-Rolling.
 - Laedt Daten aus den Views.
 - Baut:
   - `summary` (Kurztext)
   - `text` (Narrativ, Markdown)
   - `meta` (Kennzahlen + Kontext)
 - Persistenz:
-  - Monthly: upsert fuer denselben Monat (idempotent).
-  - Range: insert pro Zeitraum (jede Range = eigener Report).
+  - Monthly: Update fuer denselben Monat (idempotent ueber `payload.subtype` + `payload.month`).
+  - Range: Insert pro Erzeugung (keine automatische Dedupe).
+  - Insert und Monthly-Update setzen `health_events.ts` auf den Report-Anker.
 
 ### 5.3 UI / Inbox
 - Inbox-Overlay zeigt Reports, Filter und Aktionen:
@@ -130,18 +151,22 @@ Doctor-View ruft ausschliesslich das Reports-Modul auf und kapselt UI-Overlay.
 
 ## 8. Auth / Sicherheit
 
-- Edge Function laeuft mit User JWT (manual).
-- Cron-Run nutzt Service Role + `MONTHLY_REPORT_USER_ID`.
+- Manuelle Reports laufen mit User-JWT und schreiben fuer den authentifizierten User.
+- Scheduler/Cron nutzt Service Role + `MONTHLY_REPORT_USER_ID`.
+- Service Role ist nur fuer `monthly_report` erlaubt.
 - Cron-Payload: `{"trigger":"scheduler","report_type":"monthly_report"}`.
 - Single-User Betrieb erlaubt vereinfachte Strategien, aber:
   - Scheduler braucht immer definierten User.
   - Keine offenen Endpoints ohne Auth.
+  - Kein unauthentifizierter Default-User-Fallback.
 
 ---
 
 ## 9. Fehler- & Diagnoseverhalten
 
 - Edge Function liefert JSON-Fehler (400).
+- Ungueltiges JSON im Request-Body liefert `Ungueltiges JSON im Request-Body.`.
+- Ungueltiger `report_type`, `month`, `from` oder `to` wird vor Datenbankzugriff abgelehnt.
 - Client:
   - `diag.add` bei Fehlern.
   - Toasts fuer User-Feedback.
@@ -154,6 +179,10 @@ Doctor-View ruft ausschliesslich das Reports-Modul auf und kapselt UI-Overlay.
 - Monthly: upsert fuer denselben Monat (kein Duplikat).
 - Range: insert pro Zeitraum, keine automatische Dedupe.
 - Inbox zeigt immer den aktuellen Stand aus `health_events`.
+- Report-Erstellungszeit und Report-Zeitraum bleiben unterscheidbar:
+  - Zeitraum: `payload.period`.
+  - Inbox-Anker: `health_events.ts/day`.
+  - Erzeugungszeit: `payload.created_at` / `payload.generated_at`.
 
 ---
 
@@ -171,6 +200,11 @@ Status:
 - Monthly Report erzeugt/aktualisiert den gleichen Monat.
 - Range Report nur mit gesetztem Zeitraum.
 - Inbox-Filter (monthly/range) korrekt.
+- Invalid `report_type` wird abgelehnt.
+- Invalid `from/to/month` wird abgelehnt.
+- Invalid JSON wird mit 400 abgelehnt.
+- Report-Anker `ts/day` zeigt in den erwarteten Inbox-Kontext.
+- UI-Erzeugungszeit kommt aus `created_at || generated_at || row.ts`.
 - Delete/Regenerate funktioniert.
 - Clear Inbox loescht Subtype korrekt.
 - Cron-Run erstellt einen Monatsbericht ohne Fehler.

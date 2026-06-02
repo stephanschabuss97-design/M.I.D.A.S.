@@ -15,7 +15,37 @@ Wichtige Regel:
 
 ---
 
-# [Titel der Roadmap]
+## [Titel der Roadmap]
+
+## Roadmap-Metadaten
+
+| Feld | Wert |
+| --- | --- |
+| Status | `DRAFT` / `ACTIVE` / `DONE` |
+| Modul / Bereich | `[Modul oder Bereich]` |
+| Owner / Kontext | `[z. B. Patient, Doctor View, Backend, Android]` |
+| Erstellt am | `[YYYY-MM-DD]` |
+| Letzter Stand | `[YYYY-MM-DD, Kurznotiz]` |
+| Aktueller Schritt | `[S1/S2/S3/S4.x/S5/S6]` |
+| Betroffene Hauptdateien | `[Pfade]` |
+| Deploy relevant | `ja` / `nein` |
+| Runtime-Smoke relevant | `ja` / `nein` |
+| Archivziel | `docs/archive/[Titel] (DONE).md` |
+
+## Current Working State / Handoff
+
+- Aktueller Stand:
+  - `[Was ist bereits erledigt?]`
+- Naechster erlaubter Schritt:
+  - `[Was soll als naechstes gemacht werden?]`
+- Aktuell bekannte Findings:
+  - `[Finding IDs oder none]`
+- Aktuell geaenderte Dateien:
+  - `[Pfade oder none]`
+- Offene User-Freigaben:
+  - `[Deploy / GitHub Workflow / Device Smoke / none]`
+- Wichtige Grenzen fuer den naechsten Chat:
+  - `[z. B. kein Code vor S4, kein Deploy ohne Freigabe, kein SQL]`
 
 ## Ziel (klar und pruefbar)
 
@@ -44,6 +74,12 @@ Kurz erklaeren, warum diese Roadmap existiert.
 - Was ist bereits bekannt?
 
 Wenn das Problem noch unklar ist, hier keine Loesung behaupten. Dann ist die erste Aufgabe Detektivarbeit.
+
+## Entscheidungslog
+
+| Datum | Entscheidung | Begruendung | Betroffene Schritte |
+| --- | --- | --- | --- |
+| `[YYYY-MM-DD]` | `[Entscheidung]` | `[Warum diese Entscheidung gilt]` | `[Sx / Dateien / Module]` |
 
 ## Scope
 
@@ -128,19 +164,36 @@ Forbidden:
 - [welche Architekturpfade sind verboten]
 - [welche Produktgrenzen duerfen nicht verschoben werden]
 
+## Deploy- und Runtime-Status
+
+| Feld | Wert |
+| --- | --- |
+| Lokale Codeaenderung | `ja` / `nein` |
+| Lokale Checks | `[geplant / erledigt / nicht verfuegbar]` |
+| Supabase Deploy | `nicht relevant` / `offen` / `freigegeben` / `erledigt` |
+| GitHub Workflow-Smoke | `nicht relevant` / `offen` / `freigegeben` / `erledigt` |
+| Browser-/Device-Smoke | `nicht relevant` / `offen` / `freigegeben` / `erledigt` |
+| Produktive Schreibwirkung | `ja` / `nein` |
+| Letzter Remote-Nachweis | `[Run-ID, Function-Version, Smoke-Ergebnis oder none]` |
+
 ## Execution Mode
 
 - Sequenziell arbeiten: `S1` bis `S6`.
 - `S1` bis `S3` sind Doku-Detektivarbeit, Systemverstaendnis, Risikoanalyse und Contract Reviews.
+- Nach `S3` und vor `S4` gibt es einen expliziten `S4 Readiness Review`.
 - `S4` ist der Umsetzungsblock mit Code-, Workflow-, UI-, Backend- oder Doku-Aenderungen.
 - `S5` ist der Pruefblock mit lokalen Checks, Smokes, Code Reviews und Contract Reviews.
 - `S6` ist Doku-Sync, QA-Update, finaler Contract Review, Commit-Empfehlung und Archiv-Entscheidung.
 - Nach jedem Hauptschritt Statusmatrix aktualisieren.
 - Nach jedem Hauptschritt mindestens ein Check oder Review dokumentieren.
+- Vor dem ersten S4-Substep muss geprueft werden, ob die S4-Reihenfolge, Substep-Groesse und der Code-/Doku-Scope nach S1-S3 noch stimmen.
+- Wenn S4 Readiness neuen Scope, neue Dateien oder andere Reihenfolge findet, wird die Roadmap zuerst korrigiert und erst danach Code geaendert.
 - Jeder Hauptschritt endet mit:
   - Schritt-Abnahme
   - Doku-Sync-Entscheidung
-  - Commit-Empfehlung
+- Commit-Empfehlungen werden nur nach S5 oder S6 dokumentiert:
+  - nach S5 als technische Commit-Bereitschaft oder `noch nicht committen`
+  - nach S6 als finale Commit-Empfehlung mit Scope
 
 ## Skalierung der Roadmap
 
@@ -189,15 +242,28 @@ Minimalregel:
 ## Statusmatrix
 
 | ID | Schritt | Status | Ergebnis/Notiz |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S1 | System- und Vertragsdetektivarbeit | TODO | Relevante Doku, Codepfade und bestehende Vertraege lesen. |
 | S2 | Fachlicher/technischer Contract Review | TODO | Zielvertrag, Scope und Risiken gegen MIDAS-Guardrails pruefen. |
 | S3 | Bruchrisiko-, UI-/Copy- und Umsetzungsreview | TODO | Bruchrisiken, User-Facing-Texte und konkrete S4-Pflichtpunkte klaeren. |
-| S4 | Umsetzung | TODO | Gefundene Punkte sequenziell umsetzen, je Substep mit Review. |
+| S4 | Umsetzung | TODO | Nach S4 Readiness Review gefundene Punkte sequenziell umsetzen, je Substep mit Review. |
 | S5 | Tests, Code Review und Contract Review | TODO | Lokal moegliche Checks ausfuehren, externe Smokes definieren oder ausfuehren. |
 | S6 | Doku-Sync, QA-Update und finaler Abschlussreview | TODO | Source-of-Truth-Dokus, QA und Roadmap final synchronisieren. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
+
+## Finding-Klassifizierung
+
+| ID | Severity | Typ | Status | Entscheidung / Zielschritt |
+| --- | --- | --- | --- | --- |
+| `[F-1]` | `P0` / `P1` / `P2` / `Watchlist` | `Contract` / `Code` / `Doku` / `QA` / `Copy` | `open` / `fixed` / `deferred` / `not relevant` | `[Sx.y / Begruendung]` |
+
+Severity-Vertrag:
+
+- `P0`: blockiert Umsetzung oder kann produktiv falsche/sensible Writes, Auth-Bruch oder harte Datenfehler erzeugen.
+- `P1`: echter Contract-/Runtime-/User-Facing-Bug, muss in dieser Roadmap adressiert oder explizit abgegrenzt werden.
+- `P2`: Hygiene, Robustheit oder Copy-Verbesserung ohne akuten Blocker.
+- `Watchlist`: erkannt, aber nicht Teil dieser Roadmap; nur dokumentieren, wenn es fuer spaetere Reviews relevant ist.
 
 ---
 
@@ -219,7 +285,7 @@ Typische Substeps:
 - S1.5 aktuelle Datenfluesse und Source-of-Truth-Vertraege dokumentieren.
 - S1.6 erste Findings und offene Fragen dokumentieren.
 - S1.7 Contract Review S1.
-- S1.8 Schritt-Abnahme und Commit-Empfehlung.
+- S1.8 Schritt-Abnahme und Doku-Sync-Entscheidung.
 
 Output:
 
@@ -249,7 +315,7 @@ Typische Substeps:
 - S2.5 finalen Zielvertrag dokumentieren.
 - S2.6 Findings und Pflichtkorrekturen fuer S4 definieren.
 - S2.7 Contract Review S2.
-- S2.8 Schritt-Abnahme und Commit-Empfehlung.
+- S2.8 Schritt-Abnahme und Doku-Sync-Entscheidung.
 
 Output:
 
@@ -287,8 +353,12 @@ Typische Substeps:
   - Touchlog/Maintenance zeigt eher technische Diagnose.
 - S3.3 Tooling und lokal moegliche Checks klaeren.
 - S3.4 S4-Substeps konkretisieren.
-- S3.5 Contract Review S3.
-- S3.6 Schritt-Abnahme und Commit-Empfehlung.
+- S3.5 S4 Readiness Review vorbereiten:
+  - voraussichtliche S4-Reihenfolge notieren
+  - betroffene Code-/Doku-Dateien erneut gegen Scope pruefen
+  - Abhaengigkeiten zwischen Substeps markieren
+- S3.6 Contract Review S3.
+- S3.7 Schritt-Abnahme und Doku-Sync-Entscheidung.
 
 Output:
 
@@ -300,6 +370,72 @@ Exit-Kriterium:
 
 - S4 hat klare Substeps und bekannte Review-Kriterien.
 
+## S4 Readiness Review - Gate nach S3, vor S4
+
+Ziel:
+
+- Direkt vor dem Coding-/Umsetzungsblock pruefen, ob S4 nach S1-S3 noch korrekt geschnitten ist.
+- Verhindern, dass S4 mit falscher Reihenfolge, falschem Scope oder fehlenden Substeps startet.
+- Abhaengigkeiten sichtbar machen, bevor Code geaendert wird.
+
+Wann anwenden:
+
+- Immer nach abgeschlossenem S3.
+- Besonders wichtig bei:
+  - Edge Functions / Backend Contracts
+  - Auth / Scheduler / Service Role
+  - SQL / RLS / Datenmodell
+  - Client-/Backend-Vertraegen
+  - mehr als einer betroffenen Datei
+  - Substeps, die voneinander abhaengen
+
+Prueffragen:
+
+- Muss ein spaeterer S4-Substep eigentlich vor einem frueheren laufen?
+- Braucht ein Substep ein normalisiertes/validiertes Ergebnis aus einem anderen Substep?
+- Ist eine Datei bisher nur Read-only gelistet, muss aber fuer die Umsetzung geaendert werden?
+- Ist ein Finding in S1-S3 noch keinem S4-Substep zugeordnet?
+- Sind mehrere unterschiedliche Themen in einem S4-Substep vermischt?
+- Gibt es einen Persistenz-, Auth-, Date-, Dedupe-, Copy- oder Payload-Vertrag, der separat umgesetzt werden sollte?
+- Sind lokale Checks in S5 vollstaendig fuer alle neu betroffenen Dateien?
+- Sind Deploys, GitHub-Smokes oder produktive Runtime-Smokes weiterhin user-gated?
+
+Typisches Ergebnis:
+
+- S4-Substeps bestaetigen oder neu sortieren.
+- Scope und Tool Permissions korrigieren, falls neue betroffene Dateien entstehen.
+- S5-Checks korrigieren, falls neue Dateitypen oder Subsysteme betroffen sind.
+- Readiness-Findings und Korrekturen dokumentieren.
+
+Beispiel:
+
+```md
+### S4 Readiness Review [Datum]
+
+Review-Frage:
+
+- Passen die S4-Substeps nach erneutem Lesen von S1-S3 noch zur tatsaechlichen Abhaengigkeit zwischen den Vertraegen?
+
+Entscheidung:
+
+- [Ja / Nein, mit Korrekturen]
+
+Findings:
+
+- READY-F1: [...]
+- READY-F2: [...]
+
+Korrektur:
+
+- S4.1 wird zu [...]
+- Scope enthaelt jetzt [...]
+- S5 enthaelt jetzt [...]
+```
+
+Exit-Kriterium:
+
+- S4 kann starten, ohne dass Reihenfolge, Scope, betroffene Dateien oder Pflichtchecks unklar sind.
+
 ## S4 - Umsetzung
 
 Ziel:
@@ -307,6 +443,13 @@ Ziel:
 - Gefundene Punkte sequenziell umsetzen.
 - Nicht alles auf einmal aendern.
 - Nach jedem Substep direkt pruefen und dokumentieren.
+
+S4-Substep-Regel:
+
+- Ein S4-Substep enthaelt genau eine zusammenhaengende Aenderung oder einen eng gekoppelten Contract-Fix.
+- Wenn ein Substep neue Dateien, neue Deploy-Relevanz oder neue Risiken aufdeckt, wird die Roadmap vor der Code-Fortsetzung aktualisiert.
+- Jeder S4-Substep endet mit Code Review, Contract Review, Findings und Korrektur der Findings.
+- Der letzte S4-Substep ist ein Gesamt-Code- und Contract Review, wenn mehr als ein Codepfad betroffen ist.
 
 Typische Substeps:
 
@@ -350,6 +493,8 @@ Wichtig:
   - GitHub/Backend-Smoke
   - Device-Smoke
   - nur definierbar
+- Ein optionaler CodeRabbit Review nach S5 ist sinnvoll, aber nicht automatisch Pflicht.
+- Wenn CodeRabbit oder ein anderer externer Review nach S5 Findings liefert, muessen echte Findings vor Commit oder S6-Abschluss korrigiert oder bewusst abgegrenzt werden.
 
 Typische Substeps:
 
@@ -362,7 +507,13 @@ Typische Substeps:
 - S5.7 User-Facing Copy Review nach realem Smoke.
 - S5.8 Code Review gegen Bruchrisiken.
 - S5.9 Contract Review gegen MIDAS-Guardrails.
-- S5.10 Schritt-Abnahme und Commit-Empfehlung.
+- S5.10 Optionaler externer Review-Gate:
+  - CodeRabbit Review nach User-Freigabe oder User-Hinweis dokumentieren.
+  - Findings klassifizieren.
+  - echte Findings vor Commit-Empfehlung korrigieren oder bewusst abgrenzen.
+- S5.11 Schritt-Abnahme und Commit-Empfehlung:
+  - `commitbereit nach S5`
+  - oder `noch nicht committen, S6/Doku/CodeRabbit offen`
 
 Output:
 
@@ -370,6 +521,9 @@ Output:
 - Klare Liste ausgefuehrter Checks.
 - Klare Liste nicht lokal ausfuehrbarer Smokes.
 - Bekannte Restrisiken.
+- Optionale technische Commit-Empfehlung:
+  - nur wenn S5 gruen ist und keine S6-Doku-/QA-Pflichten offen sind
+  - sonst ausdruecklich `noch nicht committen`
 
 Exit-Kriterium:
 
@@ -383,6 +537,7 @@ Ziel:
 - QA aktualisieren.
 - Roadmap final abschliessen.
 - Commit- und Archiventscheidung dokumentieren.
+- Falls nach S5 ein CodeRabbit- oder externer Review lief, muessen dessen Findings vor S6-Abschluss erledigt oder begruendet abgegrenzt sein.
 
 Typische Substeps:
 

@@ -2,6 +2,8 @@
 
 Dieses Dokument beschreibt die lokale Entwicklungsumgebung fuer MIDAS. Es ist bewusst fuer Stephan und fuer kuenftige LLM-/Coding-Agent-Chats geschrieben: Ein neuer Chat soll schnell erkennen, welche lokalen Werkzeuge vorhanden sind, welche Checks moeglich sind und welche Grenzen gelten.
 
+Dieses Dokument ist kein Produktkonzept und keine vollstaendige Architektur-Doku. Es beschreibt die lokale Werkstatt: verfuegbare Tools, erlaubte Checks, Standardbefehle und klare Grenzen fuer Deploys, Secrets und produktive Runtime-Aktionen.
+
 ## Ziel
 
 - Schnell klaeren, welche Tools lokal verfuegbar sind.
@@ -19,6 +21,23 @@ Dieses Dokument beschreibt die lokale Entwicklungsumgebung fuer MIDAS. Es ist be
 - `.env.supabase.local` ist lokal vorhanden und per `.gitignore` ausgeschlossen.
 - Keine Secret-Werte in Doku, Logs, Commits oder Antworten ausgeben.
 - Kein Supabase Deploy ohne ausdrueckliche Freigabe.
+- Keine produktiven GitHub-Workflow-Runs ohne ausdrueckliche Freigabe.
+
+## Agent-Arbeitsregeln
+
+- Standardshell ist PowerShell.
+- Vor Code-, Doku-, Deploy- oder Archivarbeiten zuerst den Worktree pruefen:
+
+```powershell
+git status --short
+```
+
+- Dirty Worktree respektieren und fremde Aenderungen nicht revertieren.
+- Keine destruktiven Git-Kommandos wie `git reset --hard` oder `git checkout --` ohne klare Freigabe.
+- Deploys, produktive GitHub Workflow-Runs und andere Runtime-Aktionen mit Schreibwirkung nur nach ausdruecklicher Freigabe.
+- Vor einem produktiven Runtime-Smoke immer zuerst die Ziel-Datei oder Workflow-Datei lesen.
+- Bei Doku-/Code-Aenderungen gezielt patchen und danach mindestens `git diff --check` ausfuehren.
+- Bei Backend-Aenderungen immer die relevante Edge Function plus Modul-/Roadmap-Doku gegenlesen.
 
 ## Installierte Kernwerkzeuge
 
@@ -76,6 +95,71 @@ node --check app/modules/push/index.js
 node --check service-worker.js
 ```
 
+### ripgrep
+
+Vorhanden:
+
+```powershell
+rg --version
+```
+
+Verwendung:
+
+- Schnelle Code- und Doku-Suche.
+- Scope-Scans nach unerwuenschten Pfaden oder Begriffen.
+- Contract Reviews gegen konkrete Symbole, Texte und Statusmarker.
+
+Beispiele:
+
+```powershell
+rg -n "TODO|BLOCKED|P0|P1" docs
+rg --files app backend docs
+```
+
+### VS Code / Extensions
+
+VS-Code-CLI ist verfuegbar:
+
+```powershell
+code --version
+code --list-extensions
+```
+
+Fuer MIDAS besonders relevante installierte Extensions:
+
+| Extension | Zweck |
+| --- | --- |
+| `denoland.vscode-deno` | Deno Language Server fuer Supabase Edge Functions und `jsr:`-Imports |
+| `davidanson.vscode-markdownlint` | Markdownlint fuer Roadmaps, Modul-Dokus und Dev-Doku |
+| `github.vscode-github-actions` | GitHub Actions Workflow-Ansicht in VS Code |
+| `coderabbit.coderabbit-vscode` | CodeRabbit Review-Hinweise in VS Code |
+| `yandeu.five-server` | Lokaler Browser-Server fuer einfache PWA-/Frontend-Smokes |
+| `mechatroner.rainbow-csv` | Lesbarkeit fuer CSV-/Tabellen-Dateien |
+| `openai.chatgpt` | ChatGPT-Erweiterung in VS Code |
+
+Weitere installierte Extensions laut `code --list-extensions`:
+
+```text
+donjayamanne.githistory
+dotjoshjohnson.xml
+ms-dotnettools.csdevkit
+ms-dotnettools.csharp
+ms-dotnettools.vscode-dotnet-runtime
+ms-python.debugpy
+ms-python.python
+ms-python.vscode-pylance
+ms-python.vscode-python-envs
+visualstudiotoolsforunity.vstuc
+vscjava.vscode-gradle
+zhucy.project-tree
+```
+
+Wichtig:
+
+- Ein Agent kann die installierten Extensions lokal per `code --list-extensions` abfragen.
+- Die Doku bleibt trotzdem hilfreich, weil neue Chats sofort sehen, welche Editor-Werkzeuge erwartet werden duerfen.
+- Nach Extension-Installationen oder PATH-Aenderungen VS Code mit `Developer: Reload Window` oder komplettem Neustart aktualisieren.
+
 ### Deno
 
 Vorhanden:
@@ -87,6 +171,11 @@ deno --version
 Verwendung:
 
 - Pflichtcheck fuer Supabase Edge Functions.
+- VS-Code-/TypeScript-Server-Hinweis:
+  - Edge Functions nutzen `jsr:`-Imports.
+  - Der normale TypeScript-Server versteht diese Imports nicht zuverlaessig.
+  - `.vscode/settings.json` aktiviert den Deno Language Server gezielt fuer `backend/supabase/functions`.
+  - Keine `@ts-ignore`-/`ts-nocheck`-Workarounds fuer Edge-Function-Imports verwenden.
 
 Backend-Source-of-Truth:
 
@@ -145,7 +234,7 @@ Deploy-Form, nur nach expliziter Freigabe:
 
 ```powershell
 $env:SUPABASE_PROJECT_REF = (Select-String -Path ".env.supabase.local" -Pattern '^SUPABASE_PROJECT_REF\s*=' | Select-Object -First 1).Line -replace '^SUPABASE_PROJECT_REF\s*=\s*',''
-supabase functions deploy midas-incident-push --project-ref $env:SUPABASE_PROJECT_REF --workdir backend/supabase --use-api
+supabase functions deploy midas-incident-push --project-ref $env:SUPABASE_PROJECT_REF --workdir backend --use-api
 ```
 
 Wichtig:
@@ -153,6 +242,8 @@ Wichtig:
 - Der Ordnerumzug allein erfordert keinen Deploy.
 - Deploys sind bewusste Runtime-Aktionen, keine Standardfolge von Refactors.
 - Wenn Code hash-identisch zum bereits deployed Stand ist, ist ein Deploy normalerweise nicht noetig.
+- Fuer die aktuelle Repo-Struktur ist der Supabase-Deploy-Workdir `backend`, weil die CLI darunter `supabase/functions/...` erwartet.
+- Nicht `--workdir backend/supabase` verwenden; das erzeugt einen falschen internen Pfad `supabase/functions/...` unterhalb von `backend/supabase`.
 
 ### GitHub CLI
 
@@ -181,7 +272,7 @@ Direkter Fallback ohne `PATH`:
 & "$env:LOCALAPPDATA\Programs\GitHub CLI\bin\gh.exe" --version
 ```
 
-Login ist nach Installation eventuell noch offen:
+Login pruefen oder bei neuer Maschine einrichten:
 
 ```powershell
 gh auth status
@@ -216,6 +307,7 @@ gh run view <run-id> --log
 Wichtig:
 
 - `gh workflow run` kann produktive Schreibwirkung haben, je nach Workflow.
+- Diese Regel gilt fuer alle manuellen GitHub Actions Runs, nicht nur fuer Trendpilot.
 - Vor einem manuellen Workflow-Smoke immer zuerst die Workflow-Datei pruefen.
 - `Trendpilot Weekly` ruft produktiv die Edge Function ohne `dry_run` auf.
 - Der Workflow-Smoke ist daher bewusst als Runtime-Aktion zu behandeln, nicht als reiner Lint-/Statuscheck.
@@ -371,6 +463,12 @@ Bekannte Nutzung:
 - `SUPABASE_PROJECT_REF`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `INCIDENTS_PUSH_URL`
+- `TRENDPILOT_USER_ID`
+
+Hinweis:
+
+- `.env.supabase.local` enthaelt lokale Arbeitswerte, aber nicht zwingend alle Remote-Secrets.
+- Supabase Function Env und GitHub Actions Secrets koennen zusaetzliche Werte im jeweiligen Dashboard enthalten.
 
 Regeln:
 
@@ -425,7 +523,7 @@ supabase functions list --project-ref $env:SUPABASE_PROJECT_REF
 Deploy nur nach Freigabe:
 
 ```powershell
-supabase functions deploy <function> --project-ref $env:SUPABASE_PROJECT_REF --workdir backend/supabase --use-api
+supabase functions deploy <function> --project-ref $env:SUPABASE_PROJECT_REF --workdir backend --use-api
 ```
 
 ## Backup / Legacy
@@ -513,7 +611,7 @@ rg -n "TODO|BLOCKED|P0|P1" docs/<betroffene-datei>.md
 
 - VS Code muss nach PATH-Aenderungen komplett neu gestartet werden.
 - `npm.ps1` kann in PowerShell durch Execution Policy blockiert sein; `npm.cmd` oder `cmd /c npm ...` verwenden.
-- `gh` muss ggf. noch mit `gh auth login` verbunden werden.
+- `gh` ist eingerichtet; bei neuem Terminal oder neuer Maschine mit `gh auth status` pruefen und nur bei Bedarf `gh auth login` ausfuehren.
 - Android SDK ist projektlokal, nicht zwingend systemweit.
 - Historische Archivdokus koennen alte Pfade enthalten; aktive Dokus sollen neue Repo-Pfade nutzen.
 
@@ -524,7 +622,7 @@ Diese Toolchain reicht fuer die normale MIDAS-Arbeit:
 - Frontend-Syntaxchecks mit Node.
 - Edge-Function-Checks mit Deno.
 - Supabase Remote-Status und Deploys mit Supabase CLI.
-- GitHub-Arbeit mit GitHub CLI nach Login.
+- GitHub-Arbeit mit GitHub CLI nach Auth-Pruefung.
 - Android-Smokes mit Gradle Wrapper und ADB.
 - Git-/Diff-/Doku-Reviews mit lokalen Repo-Tools.
 

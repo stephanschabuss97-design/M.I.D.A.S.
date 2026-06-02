@@ -1,3 +1,48 @@
+## Phase P16 - Monthly Report Edge Contract Hardening (2026-06-02)
+
+**Scope:** Edge Function `midas-monthly-report` nach Review-Findings: Auth-Vertrag, Runtime-Validation, Date-/Month-Validation, Report-Anker, Payload-Zeitstempel und Activity-Copy.
+
+**Static / Local Checks**
+
+- [x] `deno check backend/supabase/functions/midas-monthly-report/index.ts`
+- [x] `node --check app/supabase/api/system-comments.js`
+- [x] `node --check app/supabase/api/reports.js`
+- [x] `node --check app/modules/doctor-stack/reports/index.js`
+- [x] `git diff --check` fuer Edge Function, Client-Fallback, Reports Overview, QA und Roadmap.
+- [x] Kein unauthentifizierter `MONTHLY_REPORT_USER_ID`-Fallback.
+- [x] Service-Role-Pfad nur fuer `monthly_report`.
+- [x] User-JWT-Pfad bleibt fuer manuelle Reports.
+- [x] `report_type` runtime-validiert und auf `monthly_report` / `range_report` begrenzt.
+- [x] Leerer Request-Body bleibt Monthly-Default.
+- [x] Ungueltiges JSON wird mit 400 und klarer Fehlermeldung abgelehnt.
+- [x] `from/to/month` werden strikt validiert; kein stilles JS-Date-Rolling.
+- [x] Monthly ignoriert `from/to`; Range ignoriert `month`.
+- [x] Report-Anker `ts` wird bei Insert und Monthly-Update gesetzt.
+- [x] `health_events.day` bleibt generated aus `ts`.
+- [x] Payload enthaelt `generated_at` und `created_at`.
+- [x] Client liest `created_at || generated_at || row.ts`.
+- [x] Activity-Copy ohne doppelte `Durchschnitt`-Form.
+
+**Deploy / Runtime**
+
+- [x] Supabase Deploy nach Freigabe: `midas-monthly-report` ACTIVE, Version 45.
+- [x] Nicht-schreibender Invalid-JSON-Smoke nach Deploy: HTTP 400 mit `Ungueltiges JSON im Request-Body.`
+- [ ] Remote Monthly Scheduler-Pfad nach Deploy manuell oder via naechstem natuerlichen Workflow-Run pruefen.
+- [ ] Remote Range-Report mit User-JWT nach Deploy bei Bedarf manuell pruefen.
+- [ ] GitHub Workflow-Smoke nach Deploy nur nach Freigabe ausfuehren.
+
+**Regression / Contract**
+
+- [x] Monthly-Report aktualisiert denselben Monat idempotent ueber `payload.subtype` + `payload.month`.
+- [x] Range-Report bleibt Insert-per-run; keine automatische Dedupe.
+- [x] Report-Zeitraum bleibt in `payload.period`.
+- [x] Report-Erzeugungszeit bleibt im Payload, nicht im `ts`-Anker.
+- [x] Inbox-Filter nutzt den generated `day`-Anker.
+- [x] Keine SQL-/RLS-/Schema-Aenderung.
+- [x] Keine neue Diagnose-, Therapie- oder Alert-Logik.
+
+---
+
 ## Phase P15 - Trendpilot Review Findings (2026-06-01)
 
 **Scope:** Edge Function `midas-trendpilot` nach Review-Findings: Response/Persistenzvertrag, BP-Gates, Lab-Gate, Date-Validation, ACK-Fortsetzung und Runtime-Smokes.

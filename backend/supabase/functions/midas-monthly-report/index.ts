@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 declare const Deno: {
@@ -30,8 +30,10 @@ type RangeInput = {
   from?: string | null;
   to?: string | null;
   month?: string | null;
-  report_type?: "monthly_report" | "range_report" | null;
+  report_type?: unknown;
 };
+
+type ReportType = "monthly_report" | "range_report";
 
 type NormalizedRange = {
   from: string;
@@ -138,6 +140,59 @@ const getBearerToken = (req: Request) => {
   return h || null;
 };
 
+const parseRequestPayload = async (req: Request): Promise<unknown> => {
+  const bodyText = await req.text();
+  if (!bodyText.trim()) return {};
+  try {
+    return JSON.parse(bodyText) as unknown;
+  } catch {
+    throw new Error("Ungueltiges JSON im Request-Body.");
+  }
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const normalizeReportType = (raw: unknown): ReportType => {
+  if (raw === undefined || raw === null) return "monthly_report";
+  if (raw === "monthly_report" || raw === "range_report") return raw;
+  throw new Error("report_type ungueltig. Erlaubt: monthly_report oder range_report.");
+};
+
+const isServiceRoleToken = (token: string | null) =>
+  Boolean(token && token === SERVICE_ROLE_KEY);
+
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_MONTH_RE = /^\d{4}-\d{2}$/;
+
+const parseIsoDay = (value: unknown, fieldName: string): string => {
+  if (typeof value !== "string" || !ISO_DAY_RE.test(value)) {
+    throw new Error(`${fieldName} muss ein ISO-Datum YYYY-MM-DD sein.`);
+  }
+  const year = Number(value.slice(0, 4));
+  if (!Number.isInteger(year) || year < 1000) {
+    throw new Error(`${fieldName} ist kein gueltiges Kalenderdatum.`);
+  }
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || toISODate(d) !== value) {
+    throw new Error(`${fieldName} ist kein gueltiges Kalenderdatum.`);
+  }
+  return value;
+};
+
+const parseIsoMonth = (value: unknown): { year: number; month: number } => {
+  if (typeof value !== "string" || !ISO_MONTH_RE.test(value)) {
+    throw new Error("month muss ein ISO-Monat YYYY-MM sein.");
+  }
+  const [yearRaw, monthRaw] = value.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  if (!Number.isInteger(year) || year < 1000 || !Number.isInteger(month) || month < 1 || month > 12) {
+    throw new Error("month ist kein gueltiger Kalendermonat.");
+  }
+  return { year, month };
+};
+
 const monthBoundsUTC = (y: number, m1: number) => {
   const first = new Date(Date.UTC(y, m1 - 1, 1));
   const last = new Date(Date.UTC(y, m1, 0));
@@ -155,12 +210,9 @@ const defaultPreviousMonthBounds = () => {
 };
 
 const previousMonthBounds = (monthTag: string) => {
-  const [yearRaw, monthRaw] = monthTag.split("-");
-  const y = Number(yearRaw);
-  const m = Number(monthRaw);
-  if (!y || !m) return defaultPreviousMonthBounds();
-  const prevM = m === 1 ? 12 : m - 1;
-  const prevY = m === 1 ? y - 1 : y;
+  const { year, month } = parseIsoMonth(monthTag);
+  const prevM = month === 1 ? 12 : month - 1;
+  const prevY = month === 1 ? year - 1 : year;
   return monthBoundsUTC(prevY, prevM);
 };
 
@@ -169,31 +221,35 @@ const formatMonthLabel = (iso: string) => {
   return d.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
 };
 
-const normalizeRange = (input: RangeInput): NormalizedRange => {
-  let from = input.from?.slice(0, 10) ?? "";
-  let to = input.to?.slice(0, 10) ?? "";
-
-  if (input.month && input.month.length === 7) {
-    const [y, m] = input.month.split("-");
-    const b = monthBoundsUTC(Number(y), Number(m));
-    from = b.from;
-    to = b.to;
-  }
-
-  if (!from || !to) {
-    const b = defaultPreviousMonthBounds();
-    from = b.from;
-    to = b.to;
-  }
-
-  if (from > to) throw new Error("Von-Datum muss vor Bis-Datum liegen.");
-
+const buildNormalizedRange = (from: string, to: string): NormalizedRange => {
   const start = new Date(from + "T00:00:00Z");
   const monthTag = `${start.getUTCFullYear()}-${String(
     start.getUTCMonth() + 1,
   ).padStart(2, "0")}`;
 
   return { from, to, monthLabel: formatMonthLabel(from), monthTag };
+};
+
+const buildReportAnchorTs = (range: NormalizedRange): string => {
+  const anchor = new Date(`${range.to}T12:00:00Z`);
+  return anchor.toISOString();
+};
+
+const normalizeMonthlyRange = (input: Pick<RangeInput, "month">): NormalizedRange => {
+  if (input.month === undefined || input.month === null) {
+    const b = defaultPreviousMonthBounds();
+    return buildNormalizedRange(b.from, b.to);
+  }
+  const { year, month } = parseIsoMonth(input.month);
+  const b = monthBoundsUTC(year, month);
+  return buildNormalizedRange(b.from, b.to);
+};
+
+const normalizeExplicitRange = (input: Pick<RangeInput, "from" | "to">): NormalizedRange => {
+  const from = parseIsoDay(input.from, "from");
+  const to = parseIsoDay(input.to, "to");
+  if (from > to) throw new Error("from muss vor oder gleich to liegen.");
+  return buildNormalizedRange(from, to);
 };
 
 const requireUser = async (token: string | null) => {
@@ -204,6 +260,21 @@ const requireUser = async (token: string | null) => {
     throw new Error("Nutzer konnte nicht authentifiziert werden.");
   }
   return data.user;
+};
+
+const resolveUserId = async (token: string | null, reportType: ReportType) => {
+  if (isServiceRoleToken(token)) {
+    if (reportType !== "monthly_report") {
+      throw new Error("Service-Role ist nur fuer monthly_report erlaubt.");
+    }
+    if (!DEFAULT_USER_ID) {
+      throw new Error("MONTHLY_REPORT_USER_ID fehlt fuer Scheduler-Run.");
+    }
+    return DEFAULT_USER_ID;
+  }
+
+  const user = await requireUser(token);
+  return user.id;
 };
 
 const formatDateDE = (iso: string | null) => {
@@ -273,16 +344,6 @@ const classifyWhtr = (v: number | null) => {
   if (v <= 0.6) return { color: "#f59e0b", label: "erhöht" };
   return { color: "#ef4444", label: "hoch" };
 };
-
-const formatDateTimeDE = (d: Date) =>
-  d.toLocaleString("de-AT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: REPORT_TZ,
-  });
 
 const calcAgeYears = (birthDateIso: string, refDateIso: string) => {
   const birth = new Date(`${birthDateIso}T00:00:00Z`);
@@ -646,7 +707,6 @@ const buildNarrative = ({
   activityPrevSeries,
   profile,
   trendpilotEntries,
-  generatedAt,
   reportType,
 }: {
   range: NormalizedRange;
@@ -659,7 +719,6 @@ const buildNarrative = ({
   activityPrevSeries: ActivityEntry[];
   profile: ProfileRow | null;
   trendpilotEntries: TrendpilotEntry[];
-  generatedAt: string;
   reportType: "monthly_report" | "range_report";
 }): NarrativeResult => {
   const isRangeReport = reportType === "range_report";
@@ -924,7 +983,7 @@ const buildNarrative = ({
     const perWeek = activityRangeMeta.per_week;
     const perWeekText = perWeek !== null ? fmtNum(perWeek, 1) : "n. a.";
     const avgText =
-      activity.avgMin !== null ? `Durchschnitt ${fmtNum(activity.avgMin, 0)} Min/Eintrag` : "Durchschnitt n. a.";
+      activity.avgMin !== null ? `${fmtNum(activity.avgMin, 0)} Min/Eintrag` : "n. a.";
     return [
       "**Aktivität**",
       `- Letzte Aktivität: ${formatDateDE(activityRangeMeta.last_day)}`,
@@ -1052,9 +1111,6 @@ const serializeError = (err: unknown) => {
 };
 
 // ---------------------------------------------------------------------------
-// Handler
-// ---------------------------------------------------------------------------
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return responseOk();
   if (req.method !== "POST") {
@@ -1062,29 +1118,21 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const payload = (await req.json().catch(() => ({}))) as RangeInput;
+    const rawPayload = await parseRequestPayload(req);
+    const payload = (isRecord(rawPayload) ? rawPayload : {}) as RangeInput;
+    const reportType = normalizeReportType(payload.report_type);
     const token = getBearerToken(req);
-    let userId = "";
-    if (payload.report_type === "monthly_report" && DEFAULT_USER_ID) {
-      userId = DEFAULT_USER_ID;
-    } else if (token) {
-      const user = await requireUser(token);
-      userId = user.id;
-    } else if (DEFAULT_USER_ID) {
-      userId = DEFAULT_USER_ID;
-    } else {
-      throw new Error("Authorization Header fehlt.");
-    }
+    const userId = await resolveUserId(token, reportType);
 
     if (!userId) {
       throw new Error("user_id fehlt (kein Token und keine Env gesetzt).");
     }
 
-    const reportType = payload.report_type || "monthly_report";
     const range =
       reportType === "monthly_report"
-        ? normalizeRange({ month: payload.month ?? null })
-        : normalizeRange(payload);
+        ? normalizeMonthlyRange({ month: payload.month ?? null })
+        : normalizeExplicitRange({ from: payload.from, to: payload.to });
+    const reportAnchorTs = buildReportAnchorTs(range);
     const prevRange =
       reportType === "monthly_report" ? previousMonthBounds(range.monthTag) : null;
     const bpRange30 =
@@ -1192,7 +1240,6 @@ Deno.serve(async (req: Request) => {
       activityPrevSeries,
       profile,
       trendpilotEntries,
-      generatedAt,
       reportType,
     });
 
@@ -1206,6 +1253,7 @@ Deno.serve(async (req: Request) => {
       text: narrative.text,
       meta: narrative.meta,
       generated_at: generatedAt,
+      created_at: generatedAt,
       bp_series: bpSeries,
       body_series: bodySeries,
       lab_series: labSeries,
@@ -1230,28 +1278,29 @@ Deno.serve(async (req: Request) => {
 
         const { data, error } = await supabase
           .from("health_events")
-          .update({ payload: reportPayload })
+          .update({ ts: reportAnchorTs, payload: reportPayload })
           .eq("id", id)
           .select("id, day, ts, payload")
           .single();
 
         if (error) throw error;
-        return responseJson({ report: data, range }, 200);
+        return responseJson({ report: data, range, report_anchor_ts: reportAnchorTs }, 200);
       }
     }
 
     const { data, error } = await supabase
-        .from("health_events")
-        .insert({
-          user_id: userId,
-          type: "system_comment",
-          payload: reportPayload,
-        })
+      .from("health_events")
+      .insert({
+        user_id: userId,
+        ts: reportAnchorTs,
+        type: "system_comment",
+        payload: reportPayload,
+      })
       .select("id, day, ts, payload")
       .single();
 
     if (error) throw error;
-    return responseJson({ report: data, range }, 200);
+    return responseJson({ report: data, range, report_anchor_ts: reportAnchorTs }, 200);
   } catch (err) {
     const message = serializeError(err);
     console.error("[midas-monthly-report] error:", message);

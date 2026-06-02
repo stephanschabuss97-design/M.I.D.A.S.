@@ -104,7 +104,7 @@ const normalizeSystemCommentRow = (row = {}, fallbackMetric = 'bp') => {
     text: payload.text || '',
     summary: payload.summary || '',
     reportMonth: payload.month || null,
-    reportCreatedAt: payload.created_at || null,
+    reportCreatedAt: payload.created_at || payload.generated_at || row.ts || null,
     subtype: payload.subtype || null,
     period: payload.period || null,
     reportType: payload.report_type || payload.subtype || null,
