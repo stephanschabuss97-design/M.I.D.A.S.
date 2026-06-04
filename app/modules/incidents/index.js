@@ -330,7 +330,7 @@
     if (shouldSuppress) {
       bucket[bucketKey] = day;
       if (appModules.config?.LOG_HUB_DEBUG) {
-        diag?.add?.(`[incidents] local push suppressed type=${type} severity=${severity} reason=remote-healthy`);
+        diag?.add?.(`[incidents] local push suppressed type=${type} severity=${severity} reason=recent-remote-transport`);
       }
       return true;
     }

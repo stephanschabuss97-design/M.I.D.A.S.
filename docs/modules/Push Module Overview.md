@@ -11,9 +11,11 @@ Status-Hinweis:
   - `incident`
 - Lokal und extern sprechen denselben Typ-/Severity-/Tag-Vertrag.
 - Off-App-Push laeuft ueber GitHub Actions plus Edge Function im versionierten Backend-Source.
+- Deployed Stand: `midas-incident-push` Version 16.
 - Browser/PWA ist der Reminder-Push-Master.
 - Android-WebView/Shell ist Widget-/Sync-/Auth-Surface und kein verlaesslicher Reminder-Push-Kanal.
 - Technische Diagnose-Pushes laufen getrennt von Medication-/BP-Dedupe und schalten keine lokale Suppression frei.
+- Letzter Runtime-Smoke: Remote Dry-Run, Diagnose-Push, GitHub Workflow-Smoke sowie Desktop-/Android-Zielgeraet-Smoke am 2026-06-04 erfolgreich.
 
 Related docs:
 - [Medication Module Overview](Medication Module Overview.md)
@@ -108,6 +110,11 @@ Related docs:
   - `health_medication_slot_events`
 - Catch-up sendet pro Typ und Tag immer nur die hoechste aktuell faellige Severity.
 - Remote-Dedupe verhindert Doppelzustellung fuer denselben Fachfall.
+- Remote-Response macht Partial Delivery sichtbar:
+  - `acceptedSubscriptions` fuer technisch angenommene Web-Push-Subscriptions.
+  - `failedSubscriptions` fuer fehlgeschlagene Subscriptions mit redigiertem Fehler.
+  - sichere Subscription-Metadaten ohne Roh-Endpoint oder Keys.
+- `deliveredSubscriptions` bleibt Count aus Kompatibilitaetsgruenden und ist kein Beweis fuer sichtbare Zielgeraet-Zustellung.
 
 ### 4.5 Lokale-vs.-Remote-Suppression
 - Lokal wird nicht blind abgeschaltet.
@@ -116,9 +123,13 @@ Related docs:
   - dieselbe Subscription im Backend bekannt ist
   - fuer diese Subscription bereits ein erfolgreicher Remote-Push belegt ist
   - kein spaeterer Failure-Stand darauf liegt
+  - `consecutive_remote_failures = 0` gilt
+  - der echte Remote-Erfolg maximal 7 Tage alt ist
+  - der echte Remote-Erfolg nicht mehr als 5 Minuten in der Zukunft liegt
 - `last_diagnostic_success_at` reicht dafuer nicht aus.
 - Diagnose-Pushes duerfen lokale medizinische Fallbacks nicht unterdruecken.
 - Ohne diesen Nachweis bleibt lokal der Fallback aktiv.
+- Remote-Health bedeutet Transport-/Subscription-Health, nicht garantierte sichtbare Handy-Notification.
 
 ---
 
@@ -178,6 +189,9 @@ Related docs:
 - Scheduler-Jitter bleibt ein bewusster Tradeoff; die gezielte Kadenz reduziert unnoetige Action-Runs, ohne die fachliche Entscheidung aus der Edge Function zu verschieben.
 - Workflow-HTTP-Fehler schlagen durch `curl --fail-with-body` sichtbar fehl.
 - Die Edge-Function-Response enthaelt Run-Kontext, lokale Bewertungszeit, `results`, `skipped`-Gruende und ausgelieferte bzw. fehlgeschlagene Events.
+- Erfolgreich oder teilweise erfolgreich gesendete Incident-/Reminder-Events enthalten sichere `acceptedSubscriptions`- und `failedSubscriptions`-Listen.
+- Vollstaendig fehlgeschlagene Events werden in der top-level `failed`-Liste mit sicherer Subscription-Zusammenfassung dokumentiert.
+- Response-Diagnose darf Endpoint-Hash, Client-Kontext, Plattform, Browser und Label enthalten, aber keine Roh-Endpunkte, `p256dh`-Keys oder `auth`-Keys.
 
 ---
 
@@ -204,6 +218,7 @@ Related docs:
 - zusaetzliche Delivery-/Health-Diagnostik im Touchlog.
 - ruhigere Touchlog-Push-UX, z. B. kompakte Push-Pill plus Detailzeilen im Touchlog.
 - weitere Push-Service-Erweiterungen bleiben in `AppModules.push`; Profile bleibt push-frei.
+- Per-Device-ACK, native Android Reminder oder ein eigener BP-Reminder-Kanal bleiben separate Architektur-Roadmaps, falls Web Push nach dem aktuellen Hardening weiter unzuverlaessig bleibt.
 
 ---
 
@@ -229,7 +244,9 @@ Related docs:
   - Schedule-Jitter
   - bei Aenderungen an Medication-/BP-Schwellen muss die GitHub-Action-Kadenz mitgeprueft werden
   - fehlende erste Remote-Erfolgsbestaetigung haelt lokale Push-Suppression aus
+  - Remote-Erfolge aelter als 7 Tage unterdruecken lokale Fallbacks nicht mehr
   - mehrere/alte Subscriptions koennen die Touchlog-Health-Anzeige temporaer nervoes wirken lassen, obwohl Push transportseitig funktioniert
+  - technisch akzeptierter Web Push beweist keine sichtbare Zielgeraet-Zustellung
   - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
 ---
@@ -240,10 +257,9 @@ Related docs:
 - `sql/15_Push_Subscriptions.sql` muss produktiv eingespielt sein.
 - Workflow [`.github/workflows/incidents-push.yml`](../../.github/workflows/incidents-push.yml) muss auf dem GitHub-Default-Branch liegen.
 - Der Workflow nutzt gezielte UTC-Ticks statt `*/30`:
-  - Hauptfenster `5 8,9,10,11,12,13,14,15,18,19,20,21 * * *`
-  - Nachtfenster `35 20,21,22 * * *`
-  - Nacht-Backup `50 21,22 * * *`
-- Regulaer sind das 17 geplante Runs pro Tag statt vorher 48 Runs pro Tag.
+  - `17,37 8,9,10,11,12,13,14,15,18,19,20,21,22 * * *`
+- Regulaer sind das 26 geplante Runs pro Tag statt vorher 48 Runs pro Tag.
+- Die zwei versetzten Ticks pro relevanter UTC-Stunde federn Scheduler-Jitter ab; die Edge Function entscheidet weiterhin fachlich in `Europe/Vienna`.
 - Manuelle `workflow_dispatch`-Runs bleiben zusaetzlich fuer Diagnose moeglich:
   - `mode=incidents`
   - `mode=diagnostic`
@@ -254,6 +270,13 @@ Related docs:
 - GitHub-Secrets fuer den Workflow muessen vorhanden sein:
   - `INCIDENTS_PUSH_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
+- Supabase Function Secrets / Runtime-Env muessen vorhanden sein:
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `VAPID_PUBLIC_KEY`
+  - `VAPID_PRIVATE_KEY`
+  - `INCIDENTS_USER_ID`, sofern der Scheduler-Request keine explizite `user_id` sendet
+- `VAPID_SUBJECT` ist optional und nutzt sonst den Function-Default.
 
 ---
 
@@ -272,6 +295,11 @@ Related docs:
 - `bereit (wartet auf erste Erinnerung)` darf nicht als Fehler angezeigt werden, wenn noch kein echter Remote-Push faellig war.
 - `Health-Check offen` darf bei funktionierendem Transport als ruhiger Maintenance-Hinweis behandelt werden, wenn mehrere/alte Subscriptions im Spiel sind.
 - Echter Zustellfehler muss als `Zustellung noch nicht gesund` sichtbar werden.
+- Lokale Suppression greift nur, wenn die aktuelle Subscription einen echten Remote-Erfolg innerhalb von 7 Tagen, keinen spaeteren Failure und `consecutive_remote_failures = 0` hat.
+- Diagnose-Erfolge schalten lokale Suppression nicht frei.
+- Remote-Responses zeigen `acceptedSubscriptions`/`failedSubscriptions` mit sicheren Metadaten, aber keine Roh-Endpunkte oder Keys.
+- Scheduler-Vertrag ist 26 regulaere Runs pro Tag plus manuelle `workflow_dispatch`-Smokes.
+- Produktiver Scheduler braucht `INCIDENTS_USER_ID` als Function Secret oder eine explizite `user_id` im Request.
 - Touchlog zeigt Push-Wartung; Profil bleibt sichtbar push-frei.
 - BP bleibt konsistent incident-orientiert.
 
@@ -283,4 +311,5 @@ Related docs:
 - Lokal und remote sprechen denselben Severity-Vertrag.
 - Service Worker behandelt Reminder und Incident technisch unterschiedlich.
 - Die Rollenverteilung lokal vs. remote erzeugt weder Doppelpushes noch stille Ausfaelle.
+- Desktop und Android haben den Diagnose-Push sichtbar erhalten.
 - Dokumentation und QA entsprechen dem produktiven Vertrag.

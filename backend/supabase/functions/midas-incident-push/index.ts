@@ -1,8 +1,5 @@
-// @ts-ignore - Supabase Edge/Deno resolves this JSR side-effect import at runtime.
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-// @ts-ignore - Local TS servers may not resolve this JSR import; Deno/Supabase does.
+import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-// @ts-ignore - Supabase Edge/Deno supports npm: imports; the local TS server does not.
 import webpush from "npm:web-push@3.6.6";
 
 declare const Deno: {
@@ -32,8 +29,17 @@ const INCIDENT_ACTIONS = [
   },
 ];
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  throw new Error("[midas-incident-push] Supabase env missing");
+const requiredEnv = ([
+  ["SUPABASE_URL", SUPABASE_URL],
+  ["SUPABASE_SERVICE_ROLE_KEY", SERVICE_ROLE_KEY],
+  ["VAPID_PUBLIC_KEY", VAPID_PUBLIC_KEY],
+  ["VAPID_PRIVATE_KEY", VAPID_PRIVATE_KEY],
+] as Array<[string, string]>)
+  .filter(([, value]) => !value)
+  .map(([name]) => name);
+
+if (requiredEnv.length) {
+  throw new Error(`[midas-incident-push] Missing required env: ${requiredEnv.join(", ")}`);
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -53,15 +59,6 @@ type MedicationType =
   | "medication_evening"
   | "medication_night";
 type PushType = MedicationType | "bp_evening";
-
-type IncidentPushInput = {
-  trigger?: TriggerKind | null;
-  user_id?: string | null;
-  window?: WindowKind | null;
-  mode?: ModeKind | null;
-  dry_run?: boolean | null;
-  now?: string | null;
-};
 
 type NormalizedInput = {
   trigger: TriggerKind;
@@ -279,20 +276,113 @@ const toMinutes = (hour: number, minute = 0) => (hour * 60) + minute;
 const formatLocalTime = (hour: number, minute = 0) =>
   `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 
-const normalizeInput = (raw: IncidentPushInput): NormalizedInput => {
-  const trigger = raw.trigger === "manual" || raw.trigger === "scheduler" ? raw.trigger : "scheduler";
-  const window = raw.window === "med" || raw.window === "bp" || raw.window === "all" ? raw.window : "all";
-  const mode = raw.mode === "diagnostic" ? "diagnostic" : "incidents";
-  const dryRun = Boolean(raw.dry_run);
-  const now = raw.now ? new Date(raw.now) : new Date();
+const ISO_NOW_RE = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/;
+
+class InputValidationError extends Error {}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const hasOwn = (obj: Record<string, unknown>, key: string) =>
+  Object.prototype.hasOwnProperty.call(obj, key);
+
+const requireEnum = <T extends string>(
+  raw: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): T => {
+  if (!hasOwn(raw, key)) return fallback;
+  const value = raw[key];
+  if (typeof value !== "string" || !allowed.includes(value as T)) {
+    throw new InputValidationError(`${key} muss einer von ${allowed.join(", ")} sein.`);
+  }
+  return value as T;
+};
+
+const parseNowInput = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
+  }
+
+  const trimmed = value.trim();
+  const match = ISO_NOW_RE.exec(trimmed);
+  if (!match) {
+    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const utcDay = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utcDay.getUTCFullYear() !== year ||
+    utcDay.getUTCMonth() !== month - 1 ||
+    utcDay.getUTCDate() !== day
+  ) {
+    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
+  }
+
+  const now = new Date(trimmed);
+  if (!Number.isFinite(now.getTime())) {
+    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
+  }
+  return now;
+};
+
+const normalizeInput = (raw: Record<string, unknown>): NormalizedInput => {
+  const trigger = requireEnum(raw, "trigger", ["manual", "scheduler"], "scheduler");
+  const window = requireEnum(raw, "window", ["med", "bp", "all"], "all");
+  const mode = requireEnum(raw, "mode", ["diagnostic", "incidents"], "incidents");
+
+  let dryRun = false;
+  if (hasOwn(raw, "dry_run")) {
+    if (typeof raw.dry_run !== "boolean") {
+      throw new InputValidationError("dry_run muss ein Boolean sein.");
+    }
+    dryRun = raw.dry_run;
+  }
+
+  let userId: string | null = null;
+  if (hasOwn(raw, "user_id")) {
+    if (typeof raw.user_id !== "string" || !raw.user_id.trim()) {
+      throw new InputValidationError("user_id muss ein nicht-leerer String sein.");
+    }
+    userId = raw.user_id.trim();
+  }
+
+  let now = new Date();
+  if (hasOwn(raw, "now")) {
+    now = parseNowInput(raw.now);
+  }
+
   return {
     trigger,
-    userId: raw.user_id?.trim() || null,
+    userId,
     window,
     mode,
     dryRun,
     now,
   };
+};
+
+const readInput = async (req: Request): Promise<NormalizedInput> => {
+  const body = await req.text();
+  const trimmed = body.trim();
+  if (!trimmed) return normalizeInput({});
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch (_) {
+    throw new InputValidationError("Ungueltiges JSON im Request-Body.");
+  }
+
+  if (!isRecord(raw)) {
+    throw new InputValidationError("Request-Body muss ein JSON-Object sein.");
+  }
+
+  return normalizeInput(raw);
 };
 
 const normalizeMedicationSection = (value: unknown): MedicationSection | "" => {
@@ -353,20 +443,10 @@ const buildPayload = (event: DueEvent, dayIso: string) => {
   };
 };
 
-const resolveUserIds = async (explicitUserId: string | null) => {
+const resolveUserIds = (explicitUserId: string | null) => {
   if (explicitUserId) return [explicitUserId];
   if (DEFAULT_USER_ID) return [DEFAULT_USER_ID];
-  const { data, error } = await supabase
-    .from("push_subscriptions")
-    .select("user_id")
-    .neq("user_id", "")
-    .neq("disabled", true);
-  if (error) throw new Error(`[push_subscriptions] ${error.message}`);
-  const unique = new Set<string>();
-  (data || []).forEach((row: { user_id?: string | null }) => {
-    if (row.user_id) unique.add(row.user_id);
-  });
-  return Array.from(unique);
+  throw new Error("Missing target user: set user_id or INCIDENTS_USER_ID");
 };
 
 const fetchSubscriptions = async (userId: string) => {
@@ -827,31 +907,24 @@ Deno.serve(async (req) => {
     return responseJson({ error: "Unauthorized" }, 401);
   }
 
-  let raw: IncidentPushInput = {};
   try {
-    raw = await req.json();
-  } catch (_) {
-    raw = {};
-  }
+    const input = await readInput(req);
+    const dayIso = toDayIsoTz(input.now, INCIDENTS_TZ);
+    const parts = getDatePartsInTz(input.now, INCIDENTS_TZ);
+    const minutesNow = toMinutes(parts.hour, parts.minute);
+    const runMedWindow = input.window === "all" || input.window === "med";
+    const runBpWindow = input.window === "all" || input.window === "bp";
+    const results: Record<string, unknown>[] = [];
+    const evaluatedAtUtc = input.now.toISOString();
+    const evaluatedAtLocal = {
+      timeZone: INCIDENTS_TZ,
+      dayIso,
+      time: formatLocalTime(parts.hour, parts.minute),
+      hour: parts.hour,
+      minute: parts.minute,
+    };
 
-  const input = normalizeInput(raw);
-  const dayIso = toDayIsoTz(input.now, INCIDENTS_TZ);
-  const parts = getDatePartsInTz(input.now, INCIDENTS_TZ);
-  const minutesNow = toMinutes(parts.hour, parts.minute);
-  const runMedWindow = input.window === "all" || input.window === "med";
-  const runBpWindow = input.window === "all" || input.window === "bp";
-  const results: Record<string, unknown>[] = [];
-  const evaluatedAtUtc = input.now.toISOString();
-  const evaluatedAtLocal = {
-    timeZone: INCIDENTS_TZ,
-    dayIso,
-    time: formatLocalTime(parts.hour, parts.minute),
-    hour: parts.hour,
-    minute: parts.minute,
-  };
-
-  try {
-    const userIds = await resolveUserIds(input.userId);
+    const userIds = resolveUserIds(input.userId);
     if (input.mode === "diagnostic") {
       if (input.trigger !== "manual") {
         return responseJson({ error: "Diagnostic push requires manual trigger" }, 400);
@@ -946,20 +1019,30 @@ Deno.serve(async (req) => {
       for (const event of dueEvents) {
         const payload = buildPayload(event, dayIso);
         let deliveredSubscriptionCount = 0;
+        const acceptedSubscriptions: Record<string, unknown>[] = [];
+        const failedSubscriptions: Record<string, unknown>[] = [];
 
         for (const { row, sub } of activeSubs) {
           if (row.disabled === true) continue;
+          const subscription = buildSubscriptionDiagnosticSummary(row);
           try {
             await sendPush(sub, payload as Record<string, unknown>);
             deliveredSubscriptionCount += 1;
             await updateSubscriptionSuccess(row);
+            acceptedSubscriptions.push(subscription);
           } catch (err) {
             await updateSubscriptionFailure(row, err);
+            const error = formatSafePushError(err);
+            failedSubscriptions.push({
+              subscription,
+              error,
+            });
             failedEvents.push({
               userId,
               type: event.type,
               severity: event.severity,
-              error: formatSafePushError(err),
+              subscription,
+              error,
             });
           }
         }
@@ -977,6 +1060,8 @@ Deno.serve(async (req) => {
             type: event.type,
             severity: event.severity,
             deliveredSubscriptions: deliveredSubscriptionCount,
+            acceptedSubscriptions,
+            failedSubscriptions,
           });
         }
       }
@@ -990,19 +1075,22 @@ Deno.serve(async (req) => {
         ...(medicationDebug ? { diagnostics: { medication: medicationDebug } } : {}),
       });
     }
+
+    return responseJson({
+      ok: true,
+      trigger: input.trigger,
+      mode: input.mode,
+      window: input.window,
+      dryRun: input.dryRun,
+      evaluatedAtUtc,
+      evaluatedAtLocal,
+      dayIso,
+      results,
+    });
   } catch (err) {
+    if (err instanceof InputValidationError) {
+      return responseJson({ error: err.message }, 400);
+    }
     return responseJson({ error: formatSafePushError(err) }, 500);
   }
-
-  return responseJson({
-    ok: true,
-    trigger: input.trigger,
-    mode: input.mode,
-    window: input.window,
-    dryRun: input.dryRun,
-    evaluatedAtUtc,
-    evaluatedAtLocal,
-    dayIso,
-    results,
-  });
 });

@@ -27,6 +27,9 @@
   const VAPID_PUBLIC_KEY =
     global?.VAPID_PUBLIC_KEY ||
     'BCUnF1w9VYIKZ9KPnEx_TNjpiwVuqGY7CZE2oEijz72tjGUORqZQdcJ_CR7nI-rIxkzHiyjOgsxUwZhbIVP6Bxw';
+  const REMOTE_HEALTH_MAX_AGE_DAYS = 7;
+  const REMOTE_HEALTH_MAX_AGE_MS = REMOTE_HEALTH_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const REMOTE_HEALTH_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
   const state = {
     pushSyncing: false,
@@ -417,7 +420,10 @@
     if (!Number.isFinite(successMs)) return false;
     const failureMs = Date.parse(row.last_remote_failure_at || '');
     if (Number.isFinite(failureMs) && failureMs > successMs) return false;
-    return Number(row.consecutive_remote_failures || 0) <= 0;
+    if (Number(row.consecutive_remote_failures || 0) > 0) return false;
+    const ageMs = Date.now() - successMs;
+    if (ageMs < -REMOTE_HEALTH_FUTURE_TOLERANCE_MS) return false;
+    return ageMs <= REMOTE_HEALTH_MAX_AGE_MS;
   };
 
   const isRemoteSubscriptionAwaitingFirstDelivery = (row) => {

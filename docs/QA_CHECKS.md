@@ -1,3 +1,47 @@
+## Phase P17 - Incident Push Edge Reliability Hardening (2026-06-04)
+
+**Scope:** Edge Function `midas-incident-push` nach Review-Findings: Request-Validation, VAPID fail-fast, Deno-Hygiene, fail-closed Zielnutzer, Remote-Health-Freshness, Partial-Delivery-Diagnose und Push-Doku-Sync.
+
+**Static / Local Checks**
+
+- [x] `deno check backend/supabase/functions/midas-incident-push/index.ts`
+- [x] `deno lint backend/supabase/functions/midas-incident-push/index.ts`
+- [x] `node --check app/modules/push/index.js`
+- [x] `node --check app/modules/incidents/index.js`
+- [x] `git diff --check`
+- [x] Ungueltiges JSON wird mit 400 und klarer Fehlermeldung abgelehnt.
+- [x] Request-Body muss Object sein; Array/String/Number/Null werden abgelehnt.
+- [x] `trigger`, `mode`, `window`, `dry_run`, `user_id`, `now` werden runtime-validiert.
+- [x] Invalides `now` wie `2026-02-31` wird nicht durch JS-Date-Rolling akzeptiert.
+- [x] `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` werden fail-fast als Pflicht-Env geprueft.
+- [x] `functions-js` Import ist versioniert; keine `@ts-ignore` Import-Workarounds.
+- [x] Zielnutzer-Aufloesung ist fail-closed ueber `user_id` oder `INCIDENTS_USER_ID`; kein All-User-Fallback.
+- [x] Remote-Health fuer lokale Suppression braucht echten Remote-Erfolg der aktuellen Subscription, keinen spaeteren Failure, Failure-Counter 0 und maximal 7 Tage Alter.
+- [x] Diagnose-Push schaltet lokale Suppression weiter nicht frei.
+- [x] Partial Delivery Response nutzt `acceptedSubscriptions`/`failedSubscriptions` mit sicheren Metadaten, keine Roh-Endpunkte/Keys.
+- [x] Push Overview dokumentiert 26 regulaere Scheduler-Runs pro Tag und den finalen Health-/Delivery-Vertrag.
+
+**Deploy / Runtime**
+
+- [x] Supabase Deploy nach Freigabe: `midas-incident-push` ACTIVE, Version 16.
+- [x] Vor Deploy/Smoke remote sicherstellen: `INCIDENTS_USER_ID`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` als Function Secrets vorhanden oder Request mit `user_id`.
+- [x] Remote Dry-Run nach Deploy: `ok=true`, `dryRun=true`, `status=no-incidents`, 5 Skip-Gruende.
+- [x] Manueller Diagnose-Push nach Freigabe: `status=diagnostic-sent`, `sentSubscriptions=3`, `failedSubscriptions=0`.
+- [x] GitHub Workflow-Smoke nach Freigabe: Run `26954859805`, Ergebnis `success`, `mode=diagnostic`, `sentSubscriptions=3`, `failedSubscriptions=0`.
+- [x] Zielgeraet-Smoke Desktop und Android: sichtbare Notification userseitig erfolgreich bestaetigt.
+
+**Regression / Contract**
+
+- [x] Keine Medication-/BP-Schwellen geaendert.
+- [x] Keine neue Reminder-Kette.
+- [x] Keine SQL-/RLS-/Schema-Aenderung.
+- [x] Keine neue Touchlog-/Profil-/Hub-UI.
+- [x] Diagnose bleibt getrennt von fachlichem Dedupe.
+- [x] Web-Push-Annahme wird nicht als garantierte sichtbare Zielgeraet-Zustellung dokumentiert.
+- [x] Per-device ACK/native Android/BP-Reminder bleibt S7/Future-Scope.
+
+---
+
 ## Phase P16 - Monthly Report Edge Contract Hardening (2026-06-02)
 
 **Scope:** Edge Function `midas-monthly-report` nach Review-Findings: Auth-Vertrag, Runtime-Validation, Date-/Month-Validation, Report-Anker, Payload-Zeitstempel und Activity-Copy.
