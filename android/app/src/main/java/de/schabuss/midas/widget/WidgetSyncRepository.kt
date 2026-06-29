@@ -44,12 +44,13 @@ class WidgetSyncRepository(private val context: Context) {
         if (!isSessionGenerationCurrent(sessionGeneration)) return true
 
         val waterMl = extractWaterMl(intakeJson)
-        val medicationStatus = deriveMedicationStatus(medicationJson)
+        val medicationSummary = deriveMedicationSummary(medicationJson)
         snapshotStore.save(
             dayIso = dayIso,
             waterCurrentMl = waterMl,
-            medicationStatus = medicationStatus,
+            medicationStatus = medicationSummary.status,
             updatedAt = Instant.now().toString(),
+            medicationSummary = medicationSummary,
         )
         authStore.save(refreshedAuth.copy(updatedAt = Instant.now().toString()))
         MidasWidgetProvider.refreshAll(context.applicationContext)
@@ -171,9 +172,11 @@ class WidgetSyncRepository(private val context: Context) {
         return payload.optInt("water_ml", 0).coerceAtLeast(0)
     }
 
-    private fun deriveMedicationStatus(medicationRows: JSONArray): MedicationStatus {
+    private fun deriveMedicationSummary(medicationRows: JSONArray): MedicationWidgetSummary {
         var totalCount = 0
         var takenCount = 0
+        val plannedSections = mutableListOf<MedicationSection>()
+        val openSections = mutableListOf<MedicationSection>()
 
         for (index in 0 until medicationRows.length()) {
             val med = medicationRows.optJSONObject(index) ?: continue
@@ -183,12 +186,55 @@ class WidgetSyncRepository(private val context: Context) {
             if (!active || !planActive || medTotal <= 0) continue
             totalCount += medTotal.coerceAtLeast(0)
             takenCount += med.optInt("taken_count", 0).coerceAtLeast(0)
+            collectMedicationSections(
+                slots = med.optJSONArray("slots"),
+                plannedSections = plannedSections,
+                openSections = openSections,
+            )
         }
 
+        return MedicationWidgetSummary(
+            status = deriveMedicationStatus(totalCount, takenCount),
+            takenCount = takenCount,
+            totalCount = totalCount,
+            plannedSections = plannedSections.sortedBySection(),
+            openSections = openSections.sortedBySection(),
+        ).normalized()
+    }
+
+    private fun collectMedicationSections(
+        slots: JSONArray?,
+        plannedSections: MutableList<MedicationSection>,
+        openSections: MutableList<MedicationSection>,
+    ) {
+        if (slots == null) return
+        for (slotIndex in 0 until slots.length()) {
+            val slot = slots.optJSONObject(slotIndex) ?: continue
+            val section = MedicationSection.fromWire(slot.optString("slot_type", "")) ?: continue
+            plannedSections.add(section)
+            if (!slot.optBoolean("is_taken", false)) {
+                openSections.add(section)
+            }
+        }
+    }
+
+    private fun deriveMedicationStatus(totalCount: Int, takenCount: Int): MedicationStatus {
         if (totalCount <= 0) return MedicationStatus.NONE
         if (takenCount <= 0) return MedicationStatus.OPEN
         if (takenCount < totalCount) return MedicationStatus.PARTIAL
         return MedicationStatus.DONE
+    }
+
+    private fun List<MedicationSection>.sortedBySection(): List<MedicationSection> {
+        val order = listOf(
+            MedicationSection.MORNING,
+            MedicationSection.NOON,
+            MedicationSection.EVENING,
+            MedicationSection.NIGHT,
+        )
+        return distinct().sortedBy { section ->
+            order.indexOf(section).takeIf { index -> index >= 0 } ?: order.size
+        }
     }
 
     private fun baseUrlFromRest(restUrl: String): String? {

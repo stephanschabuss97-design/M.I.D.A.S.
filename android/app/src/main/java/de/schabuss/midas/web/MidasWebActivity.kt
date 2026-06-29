@@ -168,7 +168,15 @@ class MidasWebActivity : AppCompatActivity() {
                 return `${'$'}{year}-${'$'}{month}-${'$'}{day}`;
               };
 
-              const deriveMedicationStatus = (payload) => {
+              const sectionOrder = ['morning', 'noon', 'evening', 'night'];
+              const normalizeSection = (value) => {
+                const normalized = String(value || '').trim().toLowerCase();
+                return sectionOrder.includes(normalized) ? normalized : '';
+              };
+              const sortSections = (sections) => Array.from(new Set(sections))
+                .sort((a, b) => sectionOrder.indexOf(a) - sectionOrder.indexOf(b));
+
+              const deriveMedicationSummary = (payload) => {
                 const meds = Array.isArray(payload?.medications)
                   ? payload.medications.filter((med) =>
                       med &&
@@ -178,15 +186,49 @@ class MidasWebActivity : AppCompatActivity() {
                     )
                   : [];
 
-                if (!meds.length) return 'none';
+                if (!meds.length) {
+                  return {
+                    status: 'none',
+                    takenCount: 0,
+                    totalCount: 0,
+                    plannedSections: [],
+                    openSections: []
+                  };
+                }
 
                 const totals = meds.reduce((sum, med) => sum + Math.max(0, Number(med.total_count || 0)), 0);
                 const taken = meds.reduce((sum, med) => sum + Math.max(0, Number(med.taken_count || 0)), 0);
+                const plannedSections = [];
+                const openSections = [];
 
-                if (totals <= 0) return 'none';
-                if (taken <= 0) return 'open';
-                if (taken < totals) return 'partial';
-                return 'done';
+                meds.forEach((med) => {
+                  const slots = Array.isArray(med?.slots) ? med.slots : [];
+                  slots.forEach((slot) => {
+                    const section = normalizeSection(slot?.slot_type);
+                    if (!section) return;
+                    plannedSections.push(section);
+                    if (!slot?.is_taken) {
+                      openSections.push(section);
+                    }
+                  });
+                });
+
+                let status = 'done';
+                if (totals <= 0) {
+                  status = 'none';
+                } else if (taken <= 0) {
+                  status = 'open';
+                } else if (taken < totals) {
+                  status = 'partial';
+                }
+
+                return {
+                  status,
+                  takenCount: taken,
+                  totalCount: totals,
+                  plannedSections: sortSections(plannedSections),
+                  openSections: sortSections(openSections)
+                };
               };
 
               const postAuthState = async () => {
@@ -240,13 +282,31 @@ class MidasWebActivity : AppCompatActivity() {
                   const dayIso = todayIsoLocal();
                   const intake = await supa.loadIntakeToday({ user_id: userId, dayIso, reason: `android-widget:${'$'}{reason}` });
                   const medicationPayload = await medication.loadMedicationForDay(dayIso, { reason: `android-widget:${'$'}{reason}` });
+                  const medicationSummary = deriveMedicationSummary(medicationPayload);
+                  const updatedAt = new Date().toISOString();
+                  const rawWaterMl = Number(intake?.water_ml ?? 0);
+                  const waterMl = Number.isFinite(rawWaterMl) ? Math.max(0, rawWaterMl) : 0;
 
-                  window.MidasAndroidWidget?.postWidgetState?.(
-                    dayIso,
-                    Number(intake?.water_ml || 0),
-                    deriveMedicationStatus(medicationPayload),
-                    new Date().toISOString()
-                  );
+                  if (window.MidasAndroidWidget?.postWidgetStateV2) {
+                    window.MidasAndroidWidget.postWidgetStateV2(
+                      dayIso,
+                      waterMl,
+                      medicationSummary.status,
+                      Number(medicationSummary.takenCount || 0),
+                      Number(medicationSummary.totalCount || 0),
+                      medicationSummary.plannedSections.join(','),
+                      medicationSummary.openSections.join(','),
+                      updatedAt
+                    );
+                    );
+                  } else {
+                    window.MidasAndroidWidget?.postWidgetState?.(
+                      dayIso,
+                      waterMl,
+                      medicationSummary.status,
+                      updatedAt
+                    );
+                  }
                 } catch (error) {
                   window.MidasAndroidWidget?.postSyncError?.(
                     String(error?.message || error || 'widget-sync-failed')

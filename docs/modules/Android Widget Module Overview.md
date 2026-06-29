@@ -6,7 +6,7 @@ Kurze Einordnung:
 - Abgrenzung: kein Hauptsystem, keine zweite App, kein Capture-Frontend, keine Reminder-Flaeche.
 
 Status-Hinweis:
-- `V1` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
+- `V2.1` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
 - MIDAS bleibt Source of Truth.
 - Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag.
 - Browser/PWA bleibt der Reminder-Push-Master.
@@ -31,9 +31,8 @@ Related docs:
 
 - Auf dem Android-Homescreen soll ein kompakter MIDAS-Snapshot sichtbar sein, ohne dass die PWA jedes Mal manuell geoeffnet werden muss.
 - Das Widget reduziert Reibung fuer den Blick auf:
-  - `Wasser (Ist)`
-  - `Wasser-Soll`
-  - `Medikation-Status`
+  - `Fluessigkeit` als `Ist / Soll L`
+  - `Medikation` als kompakte Tages-/Abschnitts-Summary
 - Erinnerungen und Push-Health bleiben Aufgabe der Browser-/PWA-Schicht und des Touchlogs.
 - Die native Huelle bleibt bewusst klein:
   - Widget Host
@@ -79,7 +78,25 @@ Related docs:
 - `waterCurrentMl`
 - `waterTargetNowMl`
 - `medicationStatus`
+- `medicationSummary`
 - `updatedAt`
+
+`medicationStatus` bleibt der Legacy-/Fallback-Tagesstatus.
+
+`medicationSummary` ist der V2.1-Vertrag fuer:
+
+- `status`
+- `takenCount`
+- `totalCount`
+- `plannedSections`
+- `openSections`
+
+Abschnitte folgen dem MIDAS-/Medication-Vertrag:
+
+- `morning`
+- `noon`
+- `evening`
+- `night`
 
 ### 3.2 Lokale Stores
 
@@ -158,6 +175,7 @@ Related docs:
 - `WidgetSyncRepository` liest:
   - Intake-Tagesdaten ueber denselben Vertrag wie MIDAS
   - Medication-Tagesstatus ueber `med_list_v2`
+  - Medication-Slots ueber `med_list_v2.slots[]`
 - `Wasser-Soll` wird lokal auf Android berechnet.
 - Der neue Snapshot wird lokal gespeichert und das Widget aktualisiert.
 - Laufende Worker pruefen vor spaeten Auth-/Snapshot-Writes die aktuelle `sessionGeneration`.
@@ -167,9 +185,17 @@ Related docs:
 
 - `MidasWidgetProvider` liest den letzten gueltigen lokalen Snapshot.
 - Das Widget zeigt:
-  - `Wasser`
-  - `Wasser-Soll`
+  - `Fluessigkeit`
   - `Medikation`
+- `Fluessigkeit` fasst Wasser-Ist und Wasser-Soll als Litervergleich zusammen:
+  - Beispiel: `0,6 / 1,7 L`
+  - Platzhalter: `-- / -- L`
+- `Medikation` rendert eine kompakte Summary:
+  - `Kein Plan`
+  - `Morgens erledigt`
+  - `Abends offen`
+  - `Alles erledigt`
+  - `2/4 erledigt`
 - Ein kurzer Tap auf das Widget startet einen manuellen nativen Sync.
 - Waehrend dieses manuellen Syncs zeigt das Widget sichtbar `Synchronisiere...`.
 - Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher erhalten.
@@ -189,17 +215,21 @@ Related docs:
 
 ## 5. UI-Integration
 
-### 5.1 V1-Inhalt
+### 5.1 V2.1-Inhalt
 
-- `Wasser (Ist)`
-- `Wasser-Soll`
-- `Medikation-Status`
+- `Fluessigkeit`
+  - intern weiter `waterCurrentMl` und `waterTargetNowMl`
+  - Anzeige als `Ist / Soll L`
+- `Medikation`
+  - Legacy-Fallback ueber `medicationStatus`
+  - bevorzugt ueber `medicationSummary`
 
-### 5.2 Nicht Teil von `V1`
+### 5.2 Nicht Teil von `V2.1`
 
 - `Salz`
 - `Protein`
 - `Appointments`
+- Blutdruck
 - Capture-Buttons
 - Reminder-/Push-Interaktion
 - Push-Aktivierung oder Push-Health-Anzeige im Widget
@@ -209,7 +239,7 @@ Related docs:
 
 - Der Widget-Look wurde von einem dunklen Block schrittweise auf einen ruhigen textnahen Homescreen-Teststand reduziert.
 - Header/Branding wurden bewusst entfernt.
-- Der aktuelle V1-Stand priorisiert:
+- Der aktuelle V2.1-Stand priorisiert:
   - Zurueckhaltung
   - Homescreen-Kompatibilitaet
   - systemnahe Typografie
@@ -283,12 +313,12 @@ Konsequenz:
 
 - moegliche Datums-/Homescreen-Hybrid-Variante, falls Samsung-/Launcher-Raster die Flaechennutzung spaeter sinnvoller buendeln soll
 - spaetere `Salz`-/`Protein`-Expansion
-- verfeinerter Medication-Status
+- weitere dynamische Zeilen, z. B. Blutdruck oder Termine, nur mit eigener Roadmap
 - andere Widget-Groessen oder Hybrid-Flaechen
 - separate native Push-/FCM-/Alarm-Roadmap, falls MIDAS irgendwann echte Android-native Reminder braucht
 
 Wichtig:
-- diese Zukunftspfade sind bewusst nicht Teil von `V1`
+- diese Zukunftspfade sind bewusst nicht Teil von `V2.1`
 - sie aendern nicht den Grundvertrag:
   - MIDAS bleibt Hauptsystem
   - das Widget bleibt passive Surface
@@ -297,7 +327,7 @@ Wichtig:
 
 ## 10. Feature-Flags / Konfiguration
 
-- Keine dedizierten Feature-Flags in `V1`.
+- Keine dedizierten Feature-Flags in `V2.1`.
 - Android-Verhalten ist aktuell fest ueber:
   - Widget-Konfiguration
   - Sync-Scheduler
@@ -308,7 +338,7 @@ Wichtig:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: `V1` fuer Widget + minimale Android-Huelle ist umgesetzt und dokumentiert.
+- Status: `V2.1` fuer Widget + minimale Android-Huelle ist umgesetzt und dokumentiert.
 - Der native Android-OAuth-/Deep-Link-Nachzug fuer Widget-Aktivierung ist technisch geschlossen; echter Geraete-Smoke bleibt ein manueller End-to-End-Test.
 - Der Widget-Refresh ist jetzt nicht mehr nur Worker-basiert:
   - laufender Android-Prozess -> nativer Realtime-Refresh
@@ -345,7 +375,11 @@ Known risks:
 ## 12. QA-Checkliste
 
 - Das Widget ist read-only.
-- Das Widget zeigt `Wasser`, `Wasser-Soll` und `Medikation`.
+- Das Widget zeigt `Fluessigkeit` und `Medikation`.
+- `Fluessigkeit` zeigt `Ist / Soll L` mit einer Dezimalstelle und deutschem Komma.
+- Es gibt keine separate aktive `Wasser-Soll`-Zeile mehr.
+- `Medikation` nutzt `medicationSummary`, wenn vorhanden, und faellt auf `medicationStatus` zurueck.
+- Abschnittscopy nutzt `Morgens`, `Mittags`, `Abends`, `Nachts`.
 - Das Widget zeigt keine Push-Bedienung und keine Reminder-Bestaetigung.
 - Android-WebView wird im Touchlog nicht als gesunder Reminder-Push-Master verkauft.
 - Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
@@ -354,7 +388,7 @@ Known risks:
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
 - Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.
 - `Wasser-Soll` bleibt vertraglich konsistent zur MIDAS-Hub-Version.
-- Der aktuelle V1-Look ist ruhig genug fuer den Homescreen.
+- Der aktuelle V2.1-Look ist ruhig genug fuer den Homescreen.
 - Verbleibende Leerraeume werden nicht vorschnell als MIDAS-Layoutfehler missdeutet, wenn sie klar launcherbedingt sind.
 
 ---

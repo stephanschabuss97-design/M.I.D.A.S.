@@ -2350,16 +2350,21 @@ Regression
 **Smoke**
 
 - [ ] APK laesst sich lokal installieren; App startet ohne Crash.
-- [ ] Widget laesst sich auf dem Homescreen platzieren und zeigt die drei V1-Zeilen:
-  - `Wasser`
-  - `Wasser-Soll`
+- [ ] Widget laesst sich auf dem Homescreen platzieren und zeigt die V2.1-Zeilen:
+  - `Fluessigkeit`
   - `Medikation`
+- [ ] `Fluessigkeit` zeigt Ist und Soll gemeinsam als Literwert, z. B. `0,6 / 1,7 L`.
+- [ ] Fehlender Snapshot zeigt fuer Fluessigkeit den Platzhalter `-- / -- L`.
+- [ ] Es gibt keine separate aktive `Wasser-Soll`-Zeile mehr.
+- [ ] `Medikation` zeigt eine kompakte Summary, z. B. `Kein Plan`, `Morgens erledigt`, `Abends offen`, `Alles erledigt` oder `2/4 erledigt`.
 - [ ] Ein Tap auf Widget oder Launcher fuehrt in die native MIDAS-Huelle.
 - [ ] Nach einmaligem auth-faehigen Oeffnen der nativen MIDAS-Huelle verschwinden Platzhalter und das Widget zeigt echte Werte.
 
 **Sanity**
 
 - [ ] `Wasser-Soll` im Widget bleibt vertraglich konsistent zur MIDAS-Stuetzpunkt-Tabelle.
+- [ ] `medicationSummary` bleibt konsistent zu `med_list_v2.slots[]` und faellt bei alten Snapshots sauber auf `medicationStatus` zurueck.
+- [ ] Medication-Abschnittscopy nutzt `Morgens`, `Mittags`, `Abends`, `Nachts`.
 - [ ] Das Widget bleibt read-only:
   - keine Capture-Aktionen
   - keine Reminder- oder Confirm-Buttons
@@ -2370,7 +2375,7 @@ Regression
 **Regression**
 
 - [ ] Das Android-Widget fuehrt nicht zu Drift gegen MIDAS als Hauptsystem; Detailinteraktion bleibt in der PWA.
-- [ ] Homescreen-Look ist fuer V1 ruhig genug; verbleibende vertikale Abstaende werden nicht vorschnell als MIDAS-Layoutfehler bewertet, wenn sie klar launcher-/Samsung-gridbedingt sind.
+- [ ] Homescreen-Look ist fuer V2.1 ruhig genug; verbleibende vertikale Abstaende werden nicht vorschnell als MIDAS-Layoutfehler bewertet, wenn sie klar launcher-/Samsung-gridbedingt sind.
 - [ ] README, Modul-Overview und Roadmap sprechen denselben Android-Node-Vertrag.
 
 ---

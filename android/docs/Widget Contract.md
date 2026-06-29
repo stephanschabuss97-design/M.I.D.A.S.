@@ -16,12 +16,13 @@ MIDAS bleibt Hauptsystem und Source of Truth.
 
 ## DailyWidgetState
 
-V1 arbeitet mit diesem kompakten Snapshot:
+V2.1 arbeitet mit diesem kompakten Snapshot:
 
 - `dayIso`
 - `waterCurrentMl`
 - `waterTargetNowMl`
 - `medicationStatus`
+- `medicationSummary`
 - `updatedAt`
 
 ## Feldvertrag
@@ -30,16 +31,18 @@ V1 arbeitet mit diesem kompakten Snapshot:
 
 - heutiger Wasser-Istwert in `ml`
 - wird ueber denselben Read-Vertrag geholt, den MIDAS fuer Intake-Tageswerte nutzt
+- wird vor Persistenz und WebView-Bridge-Write auf endliche Werte `>= 0` normalisiert
 
 ### `waterTargetNowMl`
 
 - aktueller `Wasser-Soll`-Wert in `ml`
 - wird lokal auf dem Geraet berechnet
 - keine Backend-Abhaengigkeit
+- wird gemeinsam mit `waterCurrentMl` als Litervergleich gerendert
 
 ### `medicationStatus`
 
-Moegliche V1-Werte:
+Legacy-/Fallback-Werte:
 
 - `none`
 - `open`
@@ -53,12 +56,72 @@ Bedeutung:
 - `partial`: ein Teil erledigt, ein Teil offen
 - `done`: alle geplanten Slots fuer den Tag erledigt
 
+### `medicationSummary`
+
+V2.1-Summary fuer abschnittsfaehige Widget-Copy:
+
+- `status`: Legacy-kompatibler Tagesstatus
+- `takenCount`: erledigte geplante Slots, normalisiert auf `0..totalCount`
+- `totalCount`: geplante Slots, mindestens `0`
+- `plannedSections`: geplante Tagesabschnitte
+- `openSections`: offene Tagesabschnitte
+
+Abschnittsvertrag:
+
+- `morning`
+- `noon`
+- `evening`
+- `night`
+
+Anzeigereihenfolge:
+
+- `morning`
+- `noon`
+- `evening`
+- `night`
+
+Android-Copy:
+
+- `morning` -> `Morgens`
+- `noon` -> `Mittags`
+- `evening` -> `Abends`
+- `night` -> `Nachts`
+
+Fallback-Regeln:
+
+- Alte Snapshots ohne `medicationSummary` bleiben ueber `medicationStatus` gueltig.
+- Neue Snapshots speichern `medicationSummary` zusaetzlich.
+- Die alte Bridge-Methode darf vorhandene V2.1-Details nicht unabsichtlich durch veraltete Detaildaten ueberstimmen.
+- Wenn ein Legacy-Status bewusst neu eingeht, darf er eine alte Summary ersetzen.
+
+## Widget-Anzeige V2.1
+
+Das Widget zeigt fachlich zwei Daily-Zeilen:
+
+- `Fluessigkeit`
+- `Medikation`
+
+`Fluessigkeit` rendert `waterCurrentMl` und `waterTargetNowMl` gemeinsam:
+
+- Format: `Ist / Soll L`
+- Beispiel: `0,6 / 1,7 L`
+- Platzhalter: `-- / -- L`
+- Literwerte werden mit einer Dezimalstelle und deutschem Komma angezeigt.
+
+`Medikation` rendert die kompakteste sinnvolle Summary:
+
+- kein Plan: `Kein Plan`
+- ein offener Abschnitt: `<Abschnitt> offen`
+- ein erledigter Abschnitt: `<Abschnitt> erledigt`
+- alle erledigt bei mehreren Abschnitten: `Alles erledigt`
+- mehrere gemischte Abschnitte: `<taken>/<total> erledigt`
+
 ## Wasser-Soll Vertrag
 
 `waterTargetNowMl` nutzt dieselbe Stuetzpunkt-Tabelle wie MIDAS:
 
 | Uhrzeit | Soll |
-|---|---|
+| --- | --- |
 | `07:00` | `0 ml` |
 | `08:00` | `180 ml` |
 | `09:00` | `350 ml` |
@@ -80,7 +143,7 @@ Regeln:
 - ab `19:30` hart `2000 ml`
 - dazwischen lineare Interpolation zwischen benachbarten Stuetzpunkten
 
-## V1 Nicht-Ziele
+## Nicht-Ziele
 
 - kein Capture am Widget
 - kein direktes Medication-Confirm
@@ -89,6 +152,7 @@ Regeln:
 - keine native Reminder-/Alarm-Schicht
 - keine `Salz`-/`Protein`-Erweiterung
 - keine `Appointments`
+- keine Blutdruck-Zeile
 - keine Trend-/Analyse-Flaeche
 - kein neuer dedizierter Widget-Snapshot-Backend-Endpoint
 

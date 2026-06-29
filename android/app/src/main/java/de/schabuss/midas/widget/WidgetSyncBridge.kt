@@ -21,11 +21,54 @@ class WidgetSyncBridge(
     fun postWidgetState(dayIso: String?, waterCurrentMl: Int, medicationStatus: String?, updatedAt: String?) {
         val safeDayIso = dayIso?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) } ?: return
         val safeUpdatedAt = updatedAt?.trim().takeUnless { it.isNullOrEmpty() } ?: Instant.now().toString()
+        val legacyStatus = MedicationStatus.fromWire(medicationStatus)
+        val existingSummary = store.load()
+            ?.takeIf { it.dayIso == safeDayIso }
+            ?.medicationSummary
+            ?.takeIf { it.hasV21Details() }
+        val hasIncomingStatus = !medicationStatus.isNullOrBlank()
+        val summary =
+            if (existingSummary != null && (!hasIncomingStatus || existingSummary.status == legacyStatus)) {
+                existingSummary
+            } else {
+                MedicationWidgetSummary.legacy(legacyStatus)
+            }
         store.save(
             dayIso = safeDayIso,
             waterCurrentMl = waterCurrentMl,
-            medicationStatus = MedicationStatus.fromWire(medicationStatus),
+            medicationStatus = summary.status,
             updatedAt = safeUpdatedAt,
+            medicationSummary = summary,
+        )
+        MidasWidgetProvider.refreshAll(context.applicationContext)
+    }
+
+    @JavascriptInterface
+    fun postWidgetStateV2(
+        dayIso: String?,
+        waterCurrentMl: Int,
+        medicationStatus: String?,
+        takenCount: Int,
+        totalCount: Int,
+        plannedSections: String?,
+        openSections: String?,
+        updatedAt: String?,
+    ) {
+        val safeDayIso = dayIso?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) } ?: return
+        val safeUpdatedAt = updatedAt?.trim().takeUnless { it.isNullOrEmpty() } ?: Instant.now().toString()
+        val summary = MedicationWidgetSummary(
+            status = MedicationStatus.fromWire(medicationStatus),
+            takenCount = takenCount,
+            totalCount = totalCount,
+            plannedSections = parseMedicationSections(plannedSections),
+            openSections = parseMedicationSections(openSections),
+        ).normalized()
+        store.save(
+            dayIso = safeDayIso,
+            waterCurrentMl = waterCurrentMl,
+            medicationStatus = summary.status,
+            updatedAt = safeUpdatedAt,
+            medicationSummary = summary,
         )
         MidasWidgetProvider.refreshAll(context.applicationContext)
     }
@@ -78,4 +121,14 @@ class WidgetSyncBridge(
             }
         }
     }
+
+    private fun MedicationWidgetSummary.hasV21Details(): Boolean =
+        totalCount > 0 || plannedSections.isNotEmpty() || openSections.isNotEmpty()
+
+    private fun parseMedicationSections(value: String?): List<MedicationSection> =
+        value
+            ?.split(",")
+            ?.mapNotNull { MedicationSection.fromWire(it) }
+            ?.distinct()
+            ?: emptyList()
 }

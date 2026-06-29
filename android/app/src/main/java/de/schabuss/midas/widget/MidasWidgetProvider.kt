@@ -59,18 +59,13 @@ class MidasWidgetProvider : AppWidgetProvider() {
                 if (isSyncing) {
                     context.getString(R.string.widget_syncing)
                 } else {
-                    snapshot?.let { context.getString(R.string.widget_value_water_ml, it.waterCurrentMl) }
-                        ?: context.getString(R.string.widget_placeholder_water)
+                    snapshot?.let { formatFluidValue(context, it) }
+                        ?: context.getString(R.string.widget_placeholder_fluids)
                 }
             )
             views.setTextViewText(
-                R.id.widgetWaterTargetValue,
-                snapshot?.let { context.getString(R.string.widget_value_water_ml, it.waterTargetNowMl) }
-                    ?: context.getString(R.string.widget_placeholder_water_target)
-            )
-            views.setTextViewText(
                 R.id.widgetMedicationValue,
-                snapshot?.let { formatMedicationStatus(context, it.medicationStatus) }
+                snapshot?.let { formatMedicationSummary(context, it.medicationSummary) }
                     ?: context.getString(R.string.widget_placeholder_medication)
             )
             views.setTextColor(
@@ -91,6 +86,58 @@ class MidasWidgetProvider : AppWidgetProvider() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+        }
+
+        private fun formatFluidValue(context: Context, snapshot: DailyWidgetState): String =
+            context.getString(
+                R.string.widget_value_fluids_liters,
+                formatLiter(snapshot.waterCurrentMl),
+                formatLiter(snapshot.waterTargetNowMl),
+            )
+
+        private fun formatLiter(valueMl: Int): String =
+            String.format(java.util.Locale.GERMANY, "%.1f", valueMl.coerceAtLeast(0) / 1000.0)
+
+        private fun formatMedicationSummary(context: Context, summary: MedicationWidgetSummary): String {
+            val normalized = summary.normalized()
+            if (normalized.status == MedicationStatus.NONE || normalized.totalCount <= 0) {
+                return context.getString(R.string.widget_medication_none)
+            }
+
+            if (normalized.plannedSections.isEmpty()) {
+                return formatMedicationStatus(context, normalized.status)
+            }
+
+            if (normalized.status == MedicationStatus.DONE) {
+                return if (normalized.plannedSections.size == 1) {
+                    context.getString(
+                        R.string.widget_medication_section_done,
+                        formatMedicationSection(context, normalized.plannedSections.first()),
+                    )
+                } else {
+                    context.getString(R.string.widget_medication_all_done)
+                }
+            }
+
+            if (normalized.openSections.size == 1) {
+                return context.getString(
+                    R.string.widget_medication_section_open,
+                    formatMedicationSection(context, normalized.openSections.first()),
+                )
+            }
+
+            return context.getString(
+                R.string.widget_medication_progress_done,
+                normalized.takenCount.coerceAtLeast(0),
+                normalized.totalCount.coerceAtLeast(0),
+            )
+        }
+
+        private fun formatMedicationSection(context: Context, section: MedicationSection): String = when (section) {
+            MedicationSection.MORNING -> context.getString(R.string.widget_medication_section_morning)
+            MedicationSection.NOON -> context.getString(R.string.widget_medication_section_noon)
+            MedicationSection.EVENING -> context.getString(R.string.widget_medication_section_evening)
+            MedicationSection.NIGHT -> context.getString(R.string.widget_medication_section_night)
         }
 
         private fun formatMedicationStatus(context: Context, status: MedicationStatus): String = when (status) {
