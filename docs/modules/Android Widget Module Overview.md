@@ -6,7 +6,7 @@ Kurze Einordnung:
 - Abgrenzung: kein Hauptsystem, keine zweite App, kein Capture-Frontend, keine Reminder-Flaeche.
 
 Status-Hinweis:
-- `V2.1` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
+- `V2.2` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
 - MIDAS bleibt Source of Truth.
 - Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag.
 - Browser/PWA bleibt der Reminder-Push-Master.
@@ -33,6 +33,7 @@ Related docs:
 - Das Widget reduziert Reibung fuer den Blick auf:
   - `Fluessigkeit` als `Ist / Soll L`
   - `Medikation` als kompakte Tages-/Abschnitts-Summary
+  - `Blutdruck` als passiven Tageskontext
 - Erinnerungen und Push-Health bleiben Aufgabe der Browser-/PWA-Schicht und des Touchlogs.
 - Die native Huelle bleibt bewusst klein:
   - Widget Host
@@ -44,7 +45,7 @@ Related docs:
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|------|------|
+| --- | --- |
 | `android/app/src/main/java/de/schabuss/midas/MainActivity.kt` | minimaler nativer Launcher-Einstieg + nativer OAuth-Callback |
 | `android/app/src/main/java/de/schabuss/midas/web/MidasWebActivity.kt` | native WebView-Sitzung fuer MIDAS, Android-gateter MIDAS-Surface mit Session-Import/-Export |
 | `android/app/src/main/java/de/schabuss/midas/auth/AndroidAuthContract.kt` | Deep-Link-/Entry-Vertrag fuer nativen OAuth |
@@ -79,6 +80,7 @@ Related docs:
 - `waterTargetNowMl`
 - `medicationStatus`
 - `medicationSummary`
+- `bloodPressureStatus`
 - `updatedAt`
 
 `medicationStatus` bleibt der Legacy-/Fallback-Tagesstatus.
@@ -97,6 +99,19 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
 - `noon`
 - `evening`
 - `night`
+
+`bloodPressureStatus` ist der V2.2-Vertrag fuer:
+
+- `none`
+- `evening_open`
+
+Ableitung:
+
+- heutige Morgenmessung vorhanden und heutige Abendmessung fehlt -> `evening_open`
+- alle anderen heutigen BP-Konstellationen -> `none`
+- fehlende oder unbekannte Snapshot-Werte -> `none`
+
+Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohwerte, Schwellen, Kommentare und Trendpilot-Events sind nicht Teil des Widget-Snapshots.
 
 ### 3.2 Lokale Stores
 
@@ -176,6 +191,7 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
   - Intake-Tagesdaten ueber denselben Vertrag wie MIDAS
   - Medication-Tagesstatus ueber `med_list_v2`
   - Medication-Slots ueber `med_list_v2.slots[]`
+  - Blutdruck-Tageskontext aus `health_events` mit `type = bp`
 - `Wasser-Soll` wird lokal auf Android berechnet.
 - Der neue Snapshot wird lokal gespeichert und das Widget aktualisiert.
 - Laufende Worker pruefen vor spaeten Auth-/Snapshot-Writes die aktuelle `sessionGeneration`.
@@ -187,6 +203,7 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
 - Das Widget zeigt:
   - `Fluessigkeit`
   - `Medikation`
+  - `Blutdruck`
 - `Fluessigkeit` fasst Wasser-Ist und Wasser-Soll als Litervergleich zusammen:
   - Beispiel: `0,6 / 1,7 L`
   - Platzhalter: `-- / -- L`
@@ -196,6 +213,10 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
   - `Abends offen`
   - `Alles erledigt`
   - `2/4 erledigt`
+- `Blutdruck` rendert einen passiven Tageskontext:
+  - fehlender Snapshot: `Lade...`
+  - Morgenmessung vorhanden und Abendmessung fehlt: `BD Abend offen`
+  - alle anderen vorhandenen Snapshot-Faelle: `Alles ruhig`
 - Ein kurzer Tap auf das Widget startet einen manuellen nativen Sync.
 - Waehrend dieses manuellen Syncs zeigt das Widget sichtbar `Synchronisiere...`.
 - Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher erhalten.
@@ -215,7 +236,7 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
 
 ## 5. UI-Integration
 
-### 5.1 V2.1-Inhalt
+### 5.1 V2.2-Inhalt
 
 - `Fluessigkeit`
   - intern weiter `waterCurrentMl` und `waterTargetNowMl`
@@ -223,13 +244,19 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
 - `Medikation`
   - Legacy-Fallback ueber `medicationStatus`
   - bevorzugt ueber `medicationSummary`
+- `Blutdruck`
+  - passiver Kontext ueber `bloodPressureStatus`
+  - `BD Abend offen`, wenn heute Morgen vorhanden und Abend fehlt
+  - `Alles ruhig`, wenn im vorhandenen Snapshot kein offener V2.2-BP-Kontext besteht
 
-### 5.2 Nicht Teil von `V2.1`
+### 5.2 Nicht Teil von `V2.2`
 
 - `Salz`
 - `Protein`
 - `Appointments`
-- Blutdruck
+- Blutdruck-Rohwerte
+- BP-Schwellen, BP-Bewertung oder Trendpilot-Hinweise
+- BP-Eingabe oder BP-Bestaetigung im Widget
 - Capture-Buttons
 - Reminder-/Push-Interaktion
 - Push-Aktivierung oder Push-Health-Anzeige im Widget
@@ -239,7 +266,7 @@ Abschnitte folgen dem MIDAS-/Medication-Vertrag:
 
 - Der Widget-Look wurde von einem dunklen Block schrittweise auf einen ruhigen textnahen Homescreen-Teststand reduziert.
 - Header/Branding wurden bewusst entfernt.
-- Der aktuelle V2.1-Stand priorisiert:
+- Der aktuelle V2.2-Stand priorisiert:
   - Zurueckhaltung
   - Homescreen-Kompatibilitaet
   - systemnahe Typografie
@@ -303,8 +330,10 @@ Konsequenz:
     - Auth-State
     - Intake-Snapshot
     - Medication-State
+    - Blood-Pressure-State
     - `visibilitychange`
     - `capture:intake-changed`
+    - `bp:changed`
     - `medication:changed`
 
 ---
@@ -313,12 +342,12 @@ Konsequenz:
 
 - moegliche Datums-/Homescreen-Hybrid-Variante, falls Samsung-/Launcher-Raster die Flaechennutzung spaeter sinnvoller buendeln soll
 - spaetere `Salz`-/`Protein`-Expansion
-- weitere dynamische Zeilen, z. B. Blutdruck oder Termine, nur mit eigener Roadmap
+- weitere dynamische Zeilen, z. B. Termine, nur mit eigener Roadmap
 - andere Widget-Groessen oder Hybrid-Flaechen
 - separate native Push-/FCM-/Alarm-Roadmap, falls MIDAS irgendwann echte Android-native Reminder braucht
 
 Wichtig:
-- diese Zukunftspfade sind bewusst nicht Teil von `V2.1`
+- diese Zukunftspfade sind bewusst nicht Teil von `V2.2`
 - sie aendern nicht den Grundvertrag:
   - MIDAS bleibt Hauptsystem
   - das Widget bleibt passive Surface
@@ -327,7 +356,7 @@ Wichtig:
 
 ## 10. Feature-Flags / Konfiguration
 
-- Keine dedizierten Feature-Flags in `V2.1`.
+- Keine dedizierten Feature-Flags in `V2.2`.
 - Android-Verhalten ist aktuell fest ueber:
   - Widget-Konfiguration
   - Sync-Scheduler
@@ -338,7 +367,7 @@ Wichtig:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: `V2.1` fuer Widget + minimale Android-Huelle ist umgesetzt und dokumentiert.
+- Status: `V2.2` fuer Widget + minimale Android-Huelle ist umgesetzt, per User-Device-Smoke bestaetigt und dokumentiert.
 - Der native Android-OAuth-/Deep-Link-Nachzug fuer Widget-Aktivierung ist technisch geschlossen; echter Geraete-Smoke bleibt ein manueller End-to-End-Test.
 - Der Widget-Refresh ist jetzt nicht mehr nur Worker-basiert:
   - laufender Android-Prozess -> nativer Realtime-Refresh
@@ -363,7 +392,7 @@ Known risks:
   - kein Weckpfad fuer gekillte Prozesse
   - keine Garantie fuer jeden einzelnen Unlock
 - Android-WebView-/Widget-Pfade duerfen nicht als Ersatz fuer den Browser-/PWA-Push-Master interpretiert werden.
-- Fuer PWA-Aenderungen ohne lebenden Android-Prozess bleibt der manuelle Widget-Tap der verlässlichste Catch-up-Pfad.
+- Fuer PWA-Aenderungen ohne lebenden Android-Prozess bleibt der manuelle Widget-Tap der verlaesslichste Catch-up-Pfad.
 - Zukuenftige Aenderungen an:
   - `Wasser-Soll`-Stuetzpunkten
   - `DailyWidgetState`
@@ -375,11 +404,16 @@ Known risks:
 ## 12. QA-Checkliste
 
 - Das Widget ist read-only.
-- Das Widget zeigt `Fluessigkeit` und `Medikation`.
+- Das Widget zeigt `Fluessigkeit`, `Medikation` und `Blutdruck`.
 - `Fluessigkeit` zeigt `Ist / Soll L` mit einer Dezimalstelle und deutschem Komma.
 - Es gibt keine separate aktive `Wasser-Soll`-Zeile mehr.
 - `Medikation` nutzt `medicationSummary`, wenn vorhanden, und faellt auf `medicationStatus` zurueck.
 - Abschnittscopy nutzt `Morgens`, `Mittags`, `Abends`, `Nachts`.
+- `Blutdruck` zeigt bei fehlendem Snapshot `Lade...`.
+- `Blutdruck` zeigt `BD Abend offen`, wenn heute eine Morgenmessung vorhanden ist und die Abendmessung fehlt.
+- `Blutdruck` zeigt `Alles ruhig`, wenn ein Snapshot vorhanden ist und kein offener V2.2-BP-Kontext besteht.
+- `Alles ruhig` ist nur Widget-Neutralstatus, keine medizinische Entwarnung.
+- Das Widget zeigt keine BP-Rohwerte, BP-Schwellen, Trendpilot-Hinweise oder BP-Capture-Aktion.
 - Das Widget zeigt keine Push-Bedienung und keine Reminder-Bestaetigung.
 - Android-WebView wird im Touchlog nicht als gesunder Reminder-Push-Master verkauft.
 - Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
@@ -388,7 +422,7 @@ Known risks:
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
 - Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.
 - `Wasser-Soll` bleibt vertraglich konsistent zur MIDAS-Hub-Version.
-- Der aktuelle V2.1-Look ist ruhig genug fuer den Homescreen.
+- Der aktuelle V2.2-Look ist ruhig genug fuer den Homescreen.
 - Verbleibende Leerraeume werden nicht vorschnell als MIDAS-Layoutfehler missdeutet, wenn sie klar launcherbedingt sind.
 
 ---

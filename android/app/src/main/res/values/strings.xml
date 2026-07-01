@@ -26,9 +26,10 @@
     <string name="open_midas">MIDAS oeffnen</string>
     <string name="midas_url">https://stephanschabuss97-design.github.io/M.I.D.A.S./</string>
     <string name="widget_title">MIDAS</string>
-    <string name="widget_description">Passiver MIDAS Daily-Snapshot fuer Wasser und Medikation.</string>
-    <string name="widget_label_fluids">Fluessigkeit</string>
+    <string name="widget_description">Passiver MIDAS Daily-Snapshot fuer Wasser, Medikation und Blutdruck.</string>
+    <string name="widget_label_fluids">Flüssigkeit</string>
     <string name="widget_label_medication">Medikation</string>
+    <string name="widget_label_blood_pressure">Blutdruck</string>
     <string name="widget_placeholder_fluids">-- / -- L</string>
     <string name="widget_placeholder_medication">Lade...</string>
     <string name="widget_syncing">Synchronisiere...</string>
@@ -45,6 +46,8 @@
     <string name="widget_medication_section_noon">Mittags</string>
     <string name="widget_medication_section_evening">Abends</string>
     <string name="widget_medication_section_night">Nachts</string>
+    <string name="widget_blood_pressure_evening_open">BD Abend offen</string>
+    <string name="widget_blood_pressure_neutral">Alles ruhig</string>
     <string name="web_title">MIDAS</string>
     <string name="web_back">Zurueck</string>
     <string name="web_refresh">Neu laden</string>

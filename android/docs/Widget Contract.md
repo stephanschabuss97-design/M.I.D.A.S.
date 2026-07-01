@@ -16,13 +16,14 @@ MIDAS bleibt Hauptsystem und Source of Truth.
 
 ## DailyWidgetState
 
-V2.1 arbeitet mit diesem kompakten Snapshot:
+V2.2 arbeitet mit diesem kompakten Snapshot:
 
 - `dayIso`
 - `waterCurrentMl`
 - `waterTargetNowMl`
 - `medicationStatus`
 - `medicationSummary`
+- `bloodPressureStatus`
 - `updatedAt`
 
 ## Feldvertrag
@@ -94,12 +95,40 @@ Fallback-Regeln:
 - Die alte Bridge-Methode darf vorhandene V2.1-Details nicht unabsichtlich durch veraltete Detaildaten ueberstimmen.
 - Wenn ein Legacy-Status bewusst neu eingeht, darf er eine alte Summary ersetzen.
 
-## Widget-Anzeige V2.1
+### `bloodPressureStatus`
 
-Das Widget zeigt fachlich zwei Daily-Zeilen:
+V2.2-Status fuer den passiven Blutdruck-Tageskontext:
+
+- `none`
+- `evening_open`
+
+Bedeutung:
+
+- `none`: kein offener V2.2-BP-Kontext im heutigen Snapshot
+- `evening_open`: heutige Morgenmessung vorhanden, heutige Abendmessung fehlt
+
+Datenvertrag:
+
+- Quelle ist `health_events` mit `type = bp`.
+- Der Status nutzt nur die Existenz heutiger `ctx`-Werte.
+- `Morgen` / `M` / `morning` zaehlt als Morgenmessung.
+- `Abend` / `A` / `evening` zaehlt als Abendmessung.
+- Es werden keine BP-Rohwerte, Schwellen, Kommentare oder Trendpilot-Events in das Widget uebernommen.
+
+Fallback-Regeln:
+
+- Alte Snapshots ohne `bloodPressureStatus` laden neutral als `none`.
+- Unbekannte Wire-Werte laden neutral als `none`.
+- Bei komplett fehlendem Snapshot zeigt die BP-Zeile denselben Ladeplatzhalter wie Medikation.
+- `Alles ruhig` wird nur bei vorhandenem Snapshot und neutralem BP-Status gerendert.
+
+## Widget-Anzeige V2.2
+
+Das Widget zeigt fachlich drei Daily-Zeilen:
 
 - `Fluessigkeit`
 - `Medikation`
+- `Blutdruck`
 
 `Fluessigkeit` rendert `waterCurrentMl` und `waterTargetNowMl` gemeinsam:
 
@@ -115,6 +144,14 @@ Das Widget zeigt fachlich zwei Daily-Zeilen:
 - ein erledigter Abschnitt: `<Abschnitt> erledigt`
 - alle erledigt bei mehreren Abschnitten: `Alles erledigt`
 - mehrere gemischte Abschnitte: `<taken>/<total> erledigt`
+
+`Blutdruck` rendert den passiven Tageskontext:
+
+- fehlender Snapshot: `Lade...`
+- `evening_open`: `BD Abend offen`
+- `none`: `Alles ruhig`
+
+`Alles ruhig` ist keine medizinische Entwarnung. Es bedeutet nur, dass im vorhandenen Snapshot kein offener V2.2-BP-Kontext erkannt wurde.
 
 ## Wasser-Soll Vertrag
 
@@ -152,7 +189,8 @@ Regeln:
 - keine native Reminder-/Alarm-Schicht
 - keine `Salz`-/`Protein`-Erweiterung
 - keine `Appointments`
-- keine Blutdruck-Zeile
+- keine Blutdruck-Werte, BP-Schwellen oder BP-Bewertung im Widget
+- keine BP-Eingabe oder BP-Bestaetigung im Widget
 - keine Trend-/Analyse-Flaeche
 - kein neuer dedizierter Widget-Snapshot-Backend-Endpoint
 

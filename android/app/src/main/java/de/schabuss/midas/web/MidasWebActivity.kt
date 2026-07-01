@@ -231,6 +231,35 @@ class MidasWebActivity : AppCompatActivity() {
                 };
               };
 
+              const normalizeBloodPressureContext = (value) => {
+                const normalized = String(value || '').trim().toLowerCase();
+                if (normalized === 'm' || normalized === 'morgen' || normalized === 'morning') return 'morning';
+                if (normalized === 'a' || normalized === 'abend' || normalized === 'evening') return 'evening';
+                return '';
+              };
+
+              const deriveBloodPressureStatus = (rows) => {
+                const list = Array.isArray(rows) ? rows : [];
+                const contexts = list.map((row) => normalizeBloodPressureContext(row?.ctx));
+                const hasMorning = contexts.includes('morning');
+                const hasEvening = contexts.includes('evening');
+                return hasMorning && !hasEvening ? 'evening_open' : 'none';
+              };
+
+              const loadBloodPressureStatus = async (supa, userId, dayIso) => {
+                const rows = await supa.sbSelect({
+                  table: 'health_events',
+                  select: 'id,ctx',
+                  filters: [
+                    ['user_id', `eq.${'$'}{userId}`],
+                    ['type', 'eq.bp'],
+                    ['day', `eq.${'$'}{dayIso}`]
+                  ],
+                  order: 'ts.asc'
+                });
+                return deriveBloodPressureStatus(rows);
+              };
+
               const postAuthState = async () => {
                 try {
                   const restUrl = await window.getConf?.('webhookUrl');
@@ -265,7 +294,7 @@ class MidasWebActivity : AppCompatActivity() {
                   const bootFlow = window.AppModules?.bootFlow;
                   const supa = window.AppModules?.supabase;
                   const medication = window.AppModules?.medication;
-                  if (!bootFlow?.isStageAtLeast || !supa?.waitForAuthDecision || !supa?.getUserId || !supa?.loadIntakeToday || !medication?.loadMedicationForDay) {
+                  if (!bootFlow?.isStageAtLeast || !supa?.waitForAuthDecision || !supa?.getUserId || !supa?.loadIntakeToday || !supa?.sbSelect || !medication?.loadMedicationForDay) {
                     throw new Error('widget-sync-prereqs-missing');
                   }
 
@@ -283,6 +312,7 @@ class MidasWebActivity : AppCompatActivity() {
                   const intake = await supa.loadIntakeToday({ user_id: userId, dayIso, reason: `android-widget:${'$'}{reason}` });
                   const medicationPayload = await medication.loadMedicationForDay(dayIso, { reason: `android-widget:${'$'}{reason}` });
                   const medicationSummary = deriveMedicationSummary(medicationPayload);
+                  const bloodPressureStatus = await loadBloodPressureStatus(supa, userId, dayIso);
                   const updatedAt = new Date().toISOString();
                   const rawWaterMl = Number(intake?.water_ml ?? 0);
                   const waterMl = Number.isFinite(rawWaterMl) ? Math.max(0, rawWaterMl) : 0;
@@ -296,8 +326,8 @@ class MidasWebActivity : AppCompatActivity() {
                       Number(medicationSummary.totalCount || 0),
                       medicationSummary.plannedSections.join(','),
                       medicationSummary.openSections.join(','),
+                      bloodPressureStatus,
                       updatedAt
-                    );
                     );
                   } else {
                     window.MidasAndroidWidget?.postWidgetState?.(
@@ -319,7 +349,7 @@ class MidasWebActivity : AppCompatActivity() {
                   const bootFlow = window.AppModules?.bootFlow;
                   const supa = window.AppModules?.supabase;
                   const medication = window.AppModules?.medication;
-                  if (bootFlow?.isStageAtLeast && supa?.waitForAuthDecision && supa?.loadIntakeToday && supa?.getUserId && medication?.loadMedicationForDay) {
+                  if (bootFlow?.isStageAtLeast && supa?.waitForAuthDecision && supa?.loadIntakeToday && supa?.getUserId && supa?.sbSelect && medication?.loadMedicationForDay) {
                     break;
                   }
                   await sleep(500);
@@ -338,6 +368,10 @@ class MidasWebActivity : AppCompatActivity() {
 
                 document.addEventListener('medication:changed', () => {
                   window.setTimeout(() => postSnapshot('medication'), 150);
+                });
+
+                document.addEventListener('bp:changed', () => {
+                  window.setTimeout(() => postSnapshot('bp'), 150);
                 });
 
                 document.addEventListener('visibilitychange', () => {

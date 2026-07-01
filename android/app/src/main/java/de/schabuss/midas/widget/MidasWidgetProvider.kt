@@ -72,6 +72,15 @@ class MidasWidgetProvider : AppWidgetProvider() {
                 R.id.widgetMedicationValue,
                 resolveMedicationColor(context, snapshot?.medicationStatus ?: MedicationStatus.NONE),
             )
+            views.setTextViewText(
+                R.id.widgetBloodPressureValue,
+                snapshot?.let { formatBloodPressureStatus(context, it.bloodPressureStatus) }
+                    ?: context.getString(R.string.widget_placeholder_medication)
+            )
+            views.setTextColor(
+                R.id.widgetBloodPressureValue,
+                resolveBloodPressureColor(context, snapshot?.bloodPressureStatus ?: BloodPressureWidgetStatus.NONE),
+            )
             views.setOnClickPendingIntent(R.id.widgetRoot, buildManualSyncIntent(context))
             return views
         }
@@ -147,12 +156,22 @@ class MidasWidgetProvider : AppWidgetProvider() {
             MedicationStatus.NONE -> context.getString(R.string.widget_medication_none)
         }
 
+        private fun formatBloodPressureStatus(context: Context, status: BloodPressureWidgetStatus): String = when (status) {
+            BloodPressureWidgetStatus.EVENING_OPEN -> context.getString(R.string.widget_blood_pressure_evening_open)
+            BloodPressureWidgetStatus.NONE -> context.getString(R.string.widget_blood_pressure_neutral)
+        }
+
         private fun resolveMedicationColor(context: Context, status: MedicationStatus): Int = when (status) {
             MedicationStatus.OPEN -> context.getColor(R.color.widget_medication_open)
             MedicationStatus.DONE -> context.getColor(R.color.widget_medication_done)
             MedicationStatus.PARTIAL,
             MedicationStatus.NONE,
             -> context.getColor(R.color.widget_medication_neutral)
+        }
+
+        private fun resolveBloodPressureColor(context: Context, status: BloodPressureWidgetStatus): Int = when (status) {
+            BloodPressureWidgetStatus.EVENING_OPEN -> context.getColor(R.color.widget_medication_open)
+            BloodPressureWidgetStatus.NONE -> context.getColor(R.color.widget_medication_neutral)
         }
 
         private const val ACTION_MANUAL_SYNC = "de.schabuss.midas.action.WIDGET_MANUAL_SYNC"

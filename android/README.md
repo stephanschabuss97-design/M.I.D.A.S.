@@ -16,11 +16,11 @@ Nicht Ziel dieses Bereichs:
 - das Widget zu einer Eingabe- oder Reminder-Flaeche zu machen
 - Browser-/PWA-Push durch Android-WebView, Widget, FCM oder AlarmManager zu ersetzen
 
-V1-Zielbild:
+Aktuelles Widget-Zielbild:
 
-- `Wasser (Ist)`
-- `Wasser-Soll`
-- `Medikation-Status`
+- `Fluessigkeit` als `Ist / Soll L`
+- `Medikation` als kompakte Tages-/Abschnitts-Summary
+- weitere Kontextzeilen wie Blutdruck nur mit eigener Roadmap
 
 Aktueller Widget-Refresh-Vertrag:
 

@@ -41,16 +41,25 @@ class WidgetSyncRepository(private val context: Context) {
             body = JSONObject().put("p_day", dayIso).toString(),
         ) ?: return if (isSessionGenerationCurrent(sessionGeneration)) false else true
 
+        val bloodPressureJson = requestJsonArray(
+            url = buildBloodPressureUrl(refreshedAuth.restUrl, refreshedAuth.userId, dayIso),
+            method = "GET",
+            anonKey = refreshedAuth.anonKey,
+            accessToken = refreshedAuth.accessToken,
+        ) ?: return if (isSessionGenerationCurrent(sessionGeneration)) false else true
+
         if (!isSessionGenerationCurrent(sessionGeneration)) return true
 
         val waterMl = extractWaterMl(intakeJson)
         val medicationSummary = deriveMedicationSummary(medicationJson)
+        val bloodPressureStatus = deriveBloodPressureStatus(bloodPressureJson)
         snapshotStore.save(
             dayIso = dayIso,
             waterCurrentMl = waterMl,
             medicationStatus = medicationSummary.status,
             updatedAt = Instant.now().toString(),
             medicationSummary = medicationSummary,
+            bloodPressureStatus = bloodPressureStatus,
         )
         authStore.save(refreshedAuth.copy(updatedAt = Instant.now().toString()))
         MidasWidgetProvider.refreshAll(context.applicationContext)
@@ -165,6 +174,11 @@ class WidgetSyncRepository(private val context: Context) {
         return "$base/rest/v1/rpc/med_list_v2"
     }
 
+    private fun buildBloodPressureUrl(restUrl: String, userId: String, dayIso: String): String {
+        val base = baseUrlFromRest(restUrl) ?: restUrl
+        return "$base/rest/v1/health_events?select=id,ctx&user_id=eq.$userId&type=eq.bp&day=eq.$dayIso&order=ts.asc"
+    }
+
     private fun extractWaterMl(intakeRows: JSONArray): Int {
         if (intakeRows.length() <= 0) return 0
         val row = intakeRows.optJSONObject(0) ?: return 0
@@ -223,6 +237,25 @@ class WidgetSyncRepository(private val context: Context) {
         if (takenCount <= 0) return MedicationStatus.OPEN
         if (takenCount < totalCount) return MedicationStatus.PARTIAL
         return MedicationStatus.DONE
+    }
+
+    private fun deriveBloodPressureStatus(bloodPressureRows: JSONArray): BloodPressureWidgetStatus {
+        var hasMorning = false
+        var hasEvening = false
+
+        for (index in 0 until bloodPressureRows.length()) {
+            val row = bloodPressureRows.optJSONObject(index) ?: continue
+            when (row.optString("ctx", "").trim().lowercase()) {
+                "m", "morgen", "morning" -> hasMorning = true
+                "a", "abend", "evening" -> hasEvening = true
+            }
+        }
+
+        return if (hasMorning && !hasEvening) {
+            BloodPressureWidgetStatus.EVENING_OPEN
+        } else {
+            BloodPressureWidgetStatus.NONE
+        }
     }
 
     private fun List<MedicationSection>.sortedBySection(): List<MedicationSection> {

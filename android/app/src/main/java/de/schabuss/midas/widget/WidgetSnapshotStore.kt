@@ -22,6 +22,9 @@ class WidgetSnapshotStore(context: Context) {
                 json.optJSONObject("medicationSummary"),
                 legacyMedicationStatus,
             )
+            val bloodPressureStatus = BloodPressureWidgetStatus.fromWire(
+                json.optString("bloodPressureStatus", BloodPressureWidgetStatus.NONE.wireValue),
+            )
             val updatedAt = json.optString("updatedAt", "")
             DailyWidgetState(
                 dayIso = dayIso,
@@ -30,6 +33,7 @@ class WidgetSnapshotStore(context: Context) {
                 medicationStatus = medicationSummary.status,
                 updatedAt = updatedAt,
                 medicationSummary = medicationSummary,
+                bloodPressureStatus = bloodPressureStatus,
             )
         }.getOrNull()
     }
@@ -40,6 +44,7 @@ class WidgetSnapshotStore(context: Context) {
         medicationStatus: MedicationStatus,
         updatedAt: String,
         medicationSummary: MedicationWidgetSummary = MedicationWidgetSummary.legacy(medicationStatus),
+        bloodPressureStatus: BloodPressureWidgetStatus = BloodPressureWidgetStatus.NONE,
     ) {
         val normalizedSummary = medicationSummary.normalized()
         val payload = JSONObject()
@@ -47,6 +52,7 @@ class WidgetSnapshotStore(context: Context) {
             .put("waterCurrentMl", waterCurrentMl.coerceAtLeast(0))
             .put("medicationStatus", normalizedSummary.status.name.lowercase())
             .put("medicationSummary", medicationSummaryToJson(normalizedSummary))
+            .put("bloodPressureStatus", bloodPressureStatus.wireValue)
             .put("updatedAt", updatedAt)
         prefs.edit().putString(KEY_STATE, payload.toString()).apply()
     }

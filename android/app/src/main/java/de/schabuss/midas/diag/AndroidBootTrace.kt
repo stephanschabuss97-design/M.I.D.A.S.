@@ -3,6 +3,7 @@ package de.schabuss.midas.diag
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.annotation.TargetApi
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -138,6 +139,7 @@ object AndroidBootTrace {
         File(fallbackDir, filename).writeText(payload)
     }
 
+    @TargetApi(Build.VERSION_CODES.Q)
     private fun writeToMediaStoreDownloads(context: Context, filename: String, payload: String) {
         val resolver = context.contentResolver
         val downloadsUri = MediaStore.Downloads.EXTERNAL_CONTENT_URI

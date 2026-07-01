@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0E1524"
@@ -22,7 +23,7 @@
             android:contentDescription="@string/web_back"
             android:padding="8dp"
             android:src="@android:drawable/ic_media_previous"
-            android:tint="@android:color/white" />
+            app:tint="@android:color/white" />
 
         <TextView
             android:layout_width="0dp"
@@ -42,7 +43,7 @@
             android:contentDescription="@string/web_refresh"
             android:padding="8dp"
             android:src="@android:drawable/ic_popup_sync"
-            android:tint="@android:color/white" />
+            app:tint="@android:color/white" />
 
         <Button
             android:id="@+id/webToolbarLogout"

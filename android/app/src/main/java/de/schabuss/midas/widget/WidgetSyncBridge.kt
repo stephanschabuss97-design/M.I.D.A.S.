@@ -22,8 +22,8 @@ class WidgetSyncBridge(
         val safeDayIso = dayIso?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) } ?: return
         val safeUpdatedAt = updatedAt?.trim().takeUnless { it.isNullOrEmpty() } ?: Instant.now().toString()
         val legacyStatus = MedicationStatus.fromWire(medicationStatus)
-        val existingSummary = store.load()
-            ?.takeIf { it.dayIso == safeDayIso }
+        val existingState = store.load()?.takeIf { it.dayIso == safeDayIso }
+        val existingSummary = existingState
             ?.medicationSummary
             ?.takeIf { it.hasV21Details() }
         val hasIncomingStatus = !medicationStatus.isNullOrBlank()
@@ -39,6 +39,7 @@ class WidgetSyncBridge(
             medicationStatus = summary.status,
             updatedAt = safeUpdatedAt,
             medicationSummary = summary,
+            bloodPressureStatus = existingState?.bloodPressureStatus ?: BloodPressureWidgetStatus.NONE,
         )
         MidasWidgetProvider.refreshAll(context.applicationContext)
     }
@@ -54,8 +55,34 @@ class WidgetSyncBridge(
         openSections: String?,
         updatedAt: String?,
     ) {
+        postWidgetStateV2(
+            dayIso = dayIso,
+            waterCurrentMl = waterCurrentMl,
+            medicationStatus = medicationStatus,
+            takenCount = takenCount,
+            totalCount = totalCount,
+            plannedSections = plannedSections,
+            openSections = openSections,
+            bloodPressureStatus = null,
+            updatedAt = updatedAt,
+        )
+    }
+
+    @JavascriptInterface
+    fun postWidgetStateV2(
+        dayIso: String?,
+        waterCurrentMl: Int,
+        medicationStatus: String?,
+        takenCount: Int,
+        totalCount: Int,
+        plannedSections: String?,
+        openSections: String?,
+        bloodPressureStatus: String?,
+        updatedAt: String?,
+    ) {
         val safeDayIso = dayIso?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) } ?: return
         val safeUpdatedAt = updatedAt?.trim().takeUnless { it.isNullOrEmpty() } ?: Instant.now().toString()
+        val existingState = store.load()?.takeIf { it.dayIso == safeDayIso }
         val summary = MedicationWidgetSummary(
             status = MedicationStatus.fromWire(medicationStatus),
             takenCount = takenCount,
@@ -63,12 +90,19 @@ class WidgetSyncBridge(
             plannedSections = parseMedicationSections(plannedSections),
             openSections = parseMedicationSections(openSections),
         ).normalized()
+        val safeBloodPressureStatus =
+            if (bloodPressureStatus.isNullOrBlank()) {
+                existingState?.bloodPressureStatus ?: BloodPressureWidgetStatus.NONE
+            } else {
+                BloodPressureWidgetStatus.fromWire(bloodPressureStatus)
+            }
         store.save(
             dayIso = safeDayIso,
             waterCurrentMl = waterCurrentMl,
             medicationStatus = summary.status,
             updatedAt = safeUpdatedAt,
             medicationSummary = summary,
+            bloodPressureStatus = safeBloodPressureStatus,
         )
         MidasWidgetProvider.refreshAll(context.applicationContext)
     }

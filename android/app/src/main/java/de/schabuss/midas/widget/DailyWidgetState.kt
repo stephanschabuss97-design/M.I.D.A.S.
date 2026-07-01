@@ -7,6 +7,7 @@ data class DailyWidgetState(
     val medicationStatus: MedicationStatus,
     val updatedAt: String,
     val medicationSummary: MedicationWidgetSummary = MedicationWidgetSummary.legacy(medicationStatus),
+    val bloodPressureStatus: BloodPressureWidgetStatus = BloodPressureWidgetStatus.NONE,
 ) {
     companion object {
         fun empty(nowIso: String = "") = DailyWidgetState(
@@ -15,6 +16,7 @@ data class DailyWidgetState(
             waterTargetNowMl = 0,
             medicationStatus = MedicationStatus.NONE,
             updatedAt = nowIso,
+            bloodPressureStatus = BloodPressureWidgetStatus.NONE,
         )
     }
 }
@@ -70,6 +72,18 @@ enum class MedicationSection(val wireValue: String) {
             "evening" -> EVENING
             "night" -> NIGHT
             else -> null
+        }
+    }
+}
+
+enum class BloodPressureWidgetStatus(val wireValue: String) {
+    NONE("none"),
+    EVENING_OPEN("evening_open");
+
+    companion object {
+        fun fromWire(value: String?): BloodPressureWidgetStatus = when (value?.trim()?.lowercase()) {
+            EVENING_OPEN.wireValue -> EVENING_OPEN
+            else -> NONE
         }
     }
 }

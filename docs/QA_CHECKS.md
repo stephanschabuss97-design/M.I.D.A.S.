@@ -1,3 +1,48 @@
+## Phase A9 - Android Widget V2.2 Blood Pressure Context (2026-07-01)
+
+**Scope:** Android Widget V2.2 mit passiver Blutdruck-Kontextzeile. Das Widget bleibt read-only, zeigt keine BP-Rohwerte und fuehrt keine Reminder-, Push-, Capture- oder Bewertungslogik ein.
+
+**Static / Local Checks**
+
+- [x] `git diff --check`
+- [x] aus `android/`: `.\gradlew.bat :app:compileDebugKotlin`
+- [x] aus `android/`: `.\gradlew.bat :app:assembleDebug`
+- [x] aus `android/`: `.\gradlew.bat :app:testDebugUnitTest` (gruen, `NO-SOURCE`)
+- [x] aus `android/`: `.\gradlew.bat :app:lintDebug`
+- [x] Extrahierter `WIDGET_SYNC_SCRIPT` mit `node --check`
+- [x] Debug-APK gebaut: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+**Widget Contract**
+
+- [x] `DailyWidgetState` enthaelt `bloodPressureStatus`.
+- [x] Alte Snapshots ohne `bloodPressureStatus` laden neutral.
+- [x] Fehlender kompletter Snapshot zeigt fuer die BP-Zeile `Lade...`, nicht `Alles ruhig`.
+- [x] `health_events` mit `type = bp` und heutigem `ctx` ist die Datenquelle.
+- [x] `Morgen` / `M` / `morning` und `Abend` / `A` / `evening` werden toleriert.
+- [x] Morgenmessung vorhanden und Abendmessung fehlt -> `BD Abend offen`.
+- [x] Alle anderen vorhandenen Snapshot-Faelle -> `Alles ruhig`.
+- [x] `Alles ruhig` ist nur Widget-Neutralstatus, keine medizinische Entwarnung.
+
+**Runtime / Device Smoke**
+
+- [x] APK wurde am Android-Geraet installiert.
+- [x] Widget synchronisiert ordentlich.
+- [x] Homescreen-Darstellung mit drei Zeilen ist akzeptiert.
+- [x] V2.2-Logiken laufen wie gewuenscht.
+
+**Regression / Guardrails**
+
+- [x] Widget bleibt read-only.
+- [x] Keine BP-Rohwerte im Widget.
+- [x] Keine BP-Schwellen, Trendpilot-Hinweise oder medizinische Bewertung.
+- [x] Keine BP-Eingabe oder BP-Bestaetigung im Widget.
+- [x] Keine Terminlogik.
+- [x] Keine Push-, Reminder-, FCM- oder AlarmManager-Aenderung.
+- [x] Keine SQL-/RLS-/Backend-/Edge-Function-Aenderung.
+- [x] Browser/PWA bleibt Reminder-Push-Master.
+
+---
+
 ## Phase P17 - Incident Push Edge Reliability Hardening (2026-06-04)
 
 **Scope:** Edge Function `midas-incident-push` nach Review-Findings: Request-Validation, VAPID fail-fast, Deno-Hygiene, fail-closed Zielnutzer, Remote-Health-Freshness, Partial-Delivery-Diagnose und Push-Doku-Sync.
