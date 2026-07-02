@@ -6,7 +6,7 @@ Kurze Einordnung:
 - Abgrenzung: kein Hauptsystem, keine zweite App, kein Capture-Frontend, keine Reminder-Flaeche.
 
 Status-Hinweis:
-- `V2.2` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
+- `V2.3` ist als ruhiges Homescreen-Widget plus minimale native Shell umgesetzt.
 - MIDAS bleibt Source of Truth.
 - Der Android-Pfad spiegelt Daten ueber einen lokalen Snapshot-/Sync-Vertrag.
 - Browser/PWA bleibt der Reminder-Push-Master.
@@ -34,6 +34,7 @@ Related docs:
   - `Fluessigkeit` als `Ist / Soll L`
   - `Medikation` als kompakte Tages-/Abschnitts-Summary
   - `Blutdruck` als passiven Tageskontext
+  - `Termin` als optionalen naechsten geplanten Termin
 - Erinnerungen und Push-Health bleiben Aufgabe der Browser-/PWA-Schicht und des Touchlogs.
 - Die native Huelle bleibt bewusst klein:
   - Widget Host
@@ -81,6 +82,7 @@ Related docs:
 - `medicationStatus`
 - `medicationSummary`
 - `bloodPressureStatus`
+- `appointmentSummary`
 - `updatedAt`
 
 `medicationStatus` bleibt der Legacy-/Fallback-Tagesstatus.
@@ -112,6 +114,22 @@ Ableitung:
 - fehlende oder unbekannte Snapshot-Werte -> `none`
 
 Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohwerte, Schwellen, Kommentare und Trendpilot-Events sind nicht Teil des Widget-Snapshots.
+
+`appointmentSummary` ist der V2.3-Vertrag fuer:
+
+- `hasAppointment`
+- `title`
+- `startAt`
+
+Ableitung:
+
+- naechster eigener Termin aus `appointments_v2`
+- nur `status = scheduled`
+- nur `start_at >= now`
+- Sortierung nach `start_at.asc`
+- `limit=1`
+
+Der Termin-Status nutzt nur Titel und Startzeit. Ort, Notizen, Repeat-Regeln und Termin-CRUD sind nicht Teil des Widget-Snapshots.
 
 ### 3.2 Lokale Stores
 
@@ -172,6 +190,7 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
   - `health_medications`
   - `health_medication_schedule_slots`
   - `health_medication_slot_events`
+  - `appointments_v2`
   triggern einen debouncten nativen Re-Sync.
 - Zusaetzlich darf die Android-WebView bei erfolgreichem Intake-Save den nativen Widget-Sync direkt anstossen.
   - Das ist der pragmatische Sofortpfad fuer `save -> Widget`
@@ -192,6 +211,7 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
   - Medication-Tagesstatus ueber `med_list_v2`
   - Medication-Slots ueber `med_list_v2.slots[]`
   - Blutdruck-Tageskontext aus `health_events` mit `type = bp`
+  - naechsten geplanten Termin direkt aus `appointments_v2`
 - `Wasser-Soll` wird lokal auf Android berechnet.
 - Der neue Snapshot wird lokal gespeichert und das Widget aktualisiert.
 - Laufende Worker pruefen vor spaeten Auth-/Snapshot-Writes die aktuelle `sessionGeneration`.
@@ -204,6 +224,7 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
   - `Fluessigkeit`
   - `Medikation`
   - `Blutdruck`
+  - optional `Termin`
 - `Fluessigkeit` fasst Wasser-Ist und Wasser-Soll als Litervergleich zusammen:
   - Beispiel: `0,6 / 1,7 L`
   - Platzhalter: `-- / -- L`
@@ -217,6 +238,11 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
   - fehlender Snapshot: `Lade...`
   - Morgenmessung vorhanden und Abendmessung fehlt: `BD Abend offen`
   - alle anderen vorhandenen Snapshot-Faelle: `Alles ruhig`
+- `Termin` rendert den naechsten geplanten Termin:
+  - nur wenn ein kommender Termin vorhanden ist
+  - Format: `Titel, Wochentag dd.MM. HH:mm`
+  - Beispiel: `Nephrologie, Mi 22.07. 10:30`
+  - ohne kommenden Termin wird die Zeile ausgeblendet
 - Ein kurzer Tap auf das Widget startet einen manuellen nativen Sync.
 - Waehrend dieses manuellen Syncs zeigt das Widget sichtbar `Synchronisiere...`.
 - Der explizite harte MIDAS-Einstieg bleibt ueber den Launcher erhalten.
@@ -236,7 +262,7 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
 
 ## 5. UI-Integration
 
-### 5.1 V2.2-Inhalt
+### 5.1 V2.3-Inhalt
 
 - `Fluessigkeit`
   - intern weiter `waterCurrentMl` und `waterTargetNowMl`
@@ -248,12 +274,19 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
   - passiver Kontext ueber `bloodPressureStatus`
   - `BD Abend offen`, wenn heute Morgen vorhanden und Abend fehlt
   - `Alles ruhig`, wenn im vorhandenen Snapshot kein offener V2.2-BP-Kontext besteht
+- `Termin`
+  - optionaler Kontext ueber `appointmentSummary`
+  - dauerhaft naechster geplanter Termin ab `now`
+  - Umschaltung nach Terminstart beim naechsten nativen Refresh
+  - kein Termin-Reminder und keine Kalenderliste
 
-### 5.2 Nicht Teil von `V2.2`
+### 5.2 Nicht Teil von `V2.3`
 
 - `Salz`
 - `Protein`
-- `Appointments`
+- Termin-CRUD im Widget
+- Terminliste, Ort, Notizen oder Detailansicht im Widget
+- exakter Terminzeit-Refresh per AlarmManager oder Exact Alarm
 - Blutdruck-Rohwerte
 - BP-Schwellen, BP-Bewertung oder Trendpilot-Hinweise
 - BP-Eingabe oder BP-Bestaetigung im Widget
@@ -266,7 +299,7 @@ Der BP-Status nutzt nur `health_events.type = bp` und den Kontext `ctx`. BP-Rohw
 
 - Der Widget-Look wurde von einem dunklen Block schrittweise auf einen ruhigen textnahen Homescreen-Teststand reduziert.
 - Header/Branding wurden bewusst entfernt.
-- Der aktuelle V2.2-Stand priorisiert:
+- Der aktuelle V2.3-Stand priorisiert:
   - Zurueckhaltung
   - Homescreen-Kompatibilitaet
   - systemnahe Typografie
@@ -335,6 +368,9 @@ Konsequenz:
     - `capture:intake-changed`
     - `bp:changed`
     - `medication:changed`
+    - `appointments:changed`
+
+`appointments:changed` ist nur ein Refresh-Signal. Die WebView liefert keine Appointment-Fachdaten an den Widget-Snapshot.
 
 ---
 
@@ -342,12 +378,12 @@ Konsequenz:
 
 - moegliche Datums-/Homescreen-Hybrid-Variante, falls Samsung-/Launcher-Raster die Flaechennutzung spaeter sinnvoller buendeln soll
 - spaetere `Salz`-/`Protein`-Expansion
-- weitere dynamische Zeilen, z. B. Termine, nur mit eigener Roadmap
+- weitere dynamische Zeilen nur mit eigener Roadmap
 - andere Widget-Groessen oder Hybrid-Flaechen
 - separate native Push-/FCM-/Alarm-Roadmap, falls MIDAS irgendwann echte Android-native Reminder braucht
 
 Wichtig:
-- diese Zukunftspfade sind bewusst nicht Teil von `V2.2`
+- diese Zukunftspfade sind bewusst nicht Teil von `V2.3`
 - sie aendern nicht den Grundvertrag:
   - MIDAS bleibt Hauptsystem
   - das Widget bleibt passive Surface
@@ -356,7 +392,7 @@ Wichtig:
 
 ## 10. Feature-Flags / Konfiguration
 
-- Keine dedizierten Feature-Flags in `V2.2`.
+- Keine dedizierten Feature-Flags in `V2.3`.
 - Android-Verhalten ist aktuell fest ueber:
   - Widget-Konfiguration
   - Sync-Scheduler
@@ -367,7 +403,7 @@ Wichtig:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: `V2.2` fuer Widget + minimale Android-Huelle ist umgesetzt, per User-Device-Smoke bestaetigt und dokumentiert.
+- Status: `V2.3` fuer Widget + minimale Android-Huelle ist umgesetzt; V2.2 wurde per User-Device-Smoke bestaetigt, V2.3 ergaenzt die optionale Terminzeile.
 - Der native Android-OAuth-/Deep-Link-Nachzug fuer Widget-Aktivierung ist technisch geschlossen; echter Geraete-Smoke bleibt ein manueller End-to-End-Test.
 - Der Widget-Refresh ist jetzt nicht mehr nur Worker-basiert:
   - laufender Android-Prozess -> nativer Realtime-Refresh
@@ -404,7 +440,7 @@ Known risks:
 ## 12. QA-Checkliste
 
 - Das Widget ist read-only.
-- Das Widget zeigt `Fluessigkeit`, `Medikation` und `Blutdruck`.
+- Das Widget zeigt `Fluessigkeit`, `Medikation`, `Blutdruck` und optional `Termin`.
 - `Fluessigkeit` zeigt `Ist / Soll L` mit einer Dezimalstelle und deutschem Komma.
 - Es gibt keine separate aktive `Wasser-Soll`-Zeile mehr.
 - `Medikation` nutzt `medicationSummary`, wenn vorhanden, und faellt auf `medicationStatus` zurueck.
@@ -414,6 +450,10 @@ Known risks:
 - `Blutdruck` zeigt `Alles ruhig`, wenn ein Snapshot vorhanden ist und kein offener V2.2-BP-Kontext besteht.
 - `Alles ruhig` ist nur Widget-Neutralstatus, keine medizinische Entwarnung.
 - Das Widget zeigt keine BP-Rohwerte, BP-Schwellen, Trendpilot-Hinweise oder BP-Capture-Aktion.
+- Das Widget zeigt den naechsten geplanten Termin nur als kompakten Kontext.
+- Die Terminzeile wird ausgeblendet, wenn kein kommender Termin vorhanden ist.
+- Die Terminzeile zeigt keine Terminliste, keinen Ort, keine Notizen und keine Termin-Aktionen.
+- Nach Terminstart wechselt die Terminzeile beim naechsten nativen Refresh auf den Folgetermin oder verschwindet.
 - Das Widget zeigt keine Push-Bedienung und keine Reminder-Bestaetigung.
 - Android-WebView wird im Touchlog nicht als gesunder Reminder-Push-Master verkauft.
 - Ein kurzer Tap auf das Widget loest einen nativen Sync aus.
@@ -422,7 +462,7 @@ Known risks:
 - Nach einmaligem nativen Auth-/Bridge-Setup bleibt periodischer nativer Refresh moeglich.
 - Aenderungen an Wasser-/Medikationsdaten spiegeln sich bei laufendem Android-Prozess nahezu sofort im Widget.
 - `Wasser-Soll` bleibt vertraglich konsistent zur MIDAS-Hub-Version.
-- Der aktuelle V2.2-Look ist ruhig genug fuer den Homescreen.
+- Der aktuelle V2.3-Look ist ruhig genug fuer den Homescreen.
 - Verbleibende Leerraeume werden nicht vorschnell als MIDAS-Layoutfehler missdeutet, wenn sie klar launcherbedingt sind.
 
 ---

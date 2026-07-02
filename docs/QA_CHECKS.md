@@ -1,3 +1,54 @@
+## Phase A10 - Android Widget V2.3 Appointments Context (2026-07-02)
+
+**Scope:** Android Widget V2.3 mit optionaler Termin-Kontextzeile und 7-Tage-Ticker-Bar. Das Widget bleibt read-only, zeigt nur den naechsten geplanten Termin und fuehrt keine Kalender-, Reminder-, Push-, Capture- oder Alarm-Logik ein.
+
+**Static / Local Checks**
+
+- [x] `git diff --check`
+- [x] aus `android/`: `.\gradlew.bat :app:compileDebugKotlin`
+- [x] aus `android/`: `.\gradlew.bat :app:assembleDebug`
+- [x] aus `android/`: `.\gradlew.bat :app:testDebugUnitTest` (gruen, `NO-SOURCE`)
+- [x] aus `android/`: `.\gradlew.bat :app:lintDebug`
+- [x] `node --check app/modules/hub/index.js`
+- [x] Debug-APK gebaut: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+**Widget Contract**
+
+- [x] `DailyWidgetState` enthaelt `appointmentSummary`.
+- [x] Alte Snapshots ohne `appointmentSummary` laden neutral ohne Terminzeile.
+- [x] WebView-/Legacy-Saves ohne Appointment-Feld erhalten bestehenden Termin-Kontext fuer denselben Tag.
+- [x] Android liest den naechsten Termin nativ aus `appointments_v2`.
+- [x] Query-Vertrag: eigene `user_id`, `status = scheduled`, `start_at >= now`, `order=start_at.asc`, `limit=1`.
+- [x] Termin-Zeitstempel werden robust als Instant oder Offset-Date-Time geparst.
+- [x] Ohne kommenden Termin wird die Terminzeile ausgeblendet.
+- [x] Mit kommendem Termin zeigt das Widget `Titel, Wochentag dd.MM. HH:mm`, z. B. `Nephrologie, Mi 22.07. 10:30`.
+- [x] Nach Terminstart erfolgt der Wechsel auf den Folgetermin oder das Ausblenden refresh-basiert.
+
+**Ticker / Live Smoke**
+
+- [x] Ticker-Bar-Fenster ist 7 Tage vor Terminstart.
+- [x] Ticker-Bar verschwindet zum Startzeitpunkt beim naechsten UI-Refresh.
+- [x] Live-Server-Smoke 2026-07-02: Termin am 09.07.2026 angelegt; Ticker-Bar erscheint.
+
+**Runtime / Device Smoke**
+
+- [x] APK wurde gebaut und fuer den Android-Test bereitgestellt.
+- [x] Homescreen-Test zeigte die vierte Terminzeile mit naechstem Termin.
+- [x] Widget bleibt ruhig lesbar und ohne Termin-CRUD.
+
+**Regression / Guardrails**
+
+- [x] Widget bleibt read-only.
+- [x] Keine Terminliste im Widget.
+- [x] Kein Ort, keine Notizen und keine Termindetails im Widget.
+- [x] Keine Termin-Anlage, kein Done/Reset und kein Delete im Widget.
+- [x] Kein Push, kein Reminder, kein FCM, kein AlarmManager und kein Exact Alarm.
+- [x] Kein minutengenauer Termin-Umschalt-Timer.
+- [x] Browser/PWA bleibt Reminder-Push-Master.
+- [x] Ticker-Bar bleibt UI-Kontext, kein Incident- oder Push-Kanal.
+
+---
+
 ## Phase A9 - Android Widget V2.2 Blood Pressure Context (2026-07-01)
 
 **Scope:** Android Widget V2.2 mit passiver Blutdruck-Kontextzeile. Das Widget bleibt read-only, zeigt keine BP-Rohwerte und fuehrt keine Reminder-, Push-, Capture- oder Bewertungslogik ein.

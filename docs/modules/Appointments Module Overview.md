@@ -2,11 +2,13 @@
 
 Kurze Einordnung:
 - Zweck: Terminverwaltung im Hub + Butler-Kontext fuer Assistant.
-- Rolle innerhalb von MIDAS: liefert Upcoming-Termine und syncen ins Assistant-Header.
-- Abgrenzung: keine Reminder/Push-Logik (spaeter), keine Arzt-Ansicht.
+- Rolle innerhalb von MIDAS: liefert Upcoming-Termine, syncen ins Assistant-Header und optionalen Android-Widget-Kontext.
+- Abgrenzung: keine Reminder/Push-Logik (spaeter), keine Arzt-Ansicht, keine Widget-Terminbearbeitung.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Android Widget Module Overview](Android Widget Module Overview.md)
+- [Ticker Bar Module Overview](Ticker Bar Module Overview.md)
 
 ---
 
@@ -21,7 +23,7 @@ Related docs:
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|------|------|
+| --- | --- |
 | `app/modules/appointments/index.js` | UI, CRUD, Sync, Upcoming-Liste |
 | `index.html` | Hub-Panel Markup (`#hubAppointmentsPanel`) |
 | `app/styles/hub.css` | Styling fuer Terminpanel |
@@ -89,6 +91,10 @@ Related docs:
   - `Zuruecksetzen` im Erledigt-Tab
   - `Loeschen` sichtbar, aber sekundaer
 - Assistant-Header zeigt max. zwei Upcoming-Termine.
+- Android Widget V2.3 zeigt optional den naechsten geplanten Termin als passive Kontextzeile.
+  - Format im Widget: `Titel, Wochentag dd.MM. HH:mm`.
+  - Ohne kommenden Termin wird die Widget-Zeile ausgeblendet.
+  - Keine Terminliste, kein Ort, keine Notizen, keine Aktionen im Widget.
 
 ---
 
@@ -109,11 +115,19 @@ Related docs:
 
 - Public API / Entry Points: `AppModules.appointments.sync`, `getUpcoming`, Panel Save/Toggle/Delete.
 - Source of Truth: `appointments_v2` + View `v_appointments_v2_upcoming`.
-- Side Effects: feuert `appointments:changed`, Butler-Header aktualisiert.
+- Side Effects: feuert `appointments:changed`, Butler-Header aktualisiert, Android-WebView darf nativen Widget-Refresh anstossen.
 - Constraints: RLS auf `user_id`, `repeat_rule` Werte (none/monthly/annual).
 - `appointments:changed` Event aktualisiert Butler-Header.
+- `appointments:changed` Event aktualisiert die Ticker-Bar.
+- `appointments:changed` Event ist fuer Android nur ein Refresh-Signal; es postet keine Termin-Fachdaten in den Widget-Snapshot.
 - `appModules.appointments.getUpcoming()` wird vom Assistant genutzt.
 - `getUpcoming()` bleibt ein Read-Kontext fuer kommende offene Termine und fuehrt keine Reminder- oder Kalenderlogik ein.
+- Das Android Widget liest den naechsten Termin direkt nativ aus `appointments_v2`:
+  - `status = scheduled`
+  - `start_at >= now`
+  - `order=start_at.asc`
+  - `limit=1`
+  - refresh-basiert, kein AlarmManager und kein Exact Alarm.
 
 ---
 
@@ -226,6 +240,7 @@ Related docs:
 - Reminder/Push (PWA).
 - Wiederholungen via Server-Job.
 - Assistant Actions (Termin oeffnen, Navigation).
+- Fixe Widget-Terminzeile bleibt moegliche spaetere UX-Option, falls die dynamische Zeile im Alltag stoert.
 
 ---
 
@@ -248,6 +263,7 @@ Related docs:
 ## 12. QA-Checkliste
 
 - Termin speichern -> Liste + Butler aktualisiert.
+- Termin speichern -> Android Widget aktualisiert beim naechsten nativen Refresh den Termin-Kontext.
 - Toggle Done/Reset aktualisiert Status.
 - Delete entfernt Eintrag.
 - Upcoming-Liste zeigt nur geplante Termine.
@@ -258,6 +274,7 @@ Related docs:
 - `Loeschen` wirkt visuell sekundaer gegenueber `Erledigt` bzw. `Zuruecksetzen`.
 - Done-Tab-Aktionen funktionieren genauso wie Offen-Tab-Aktionen.
 - `getUpcoming()` liefert weiter kommende offene Termine fuer Assistant/Hub.
+- Widget zeigt nur den naechsten kommenden `scheduled` Termin und bleibt read-only.
 
 ---
 

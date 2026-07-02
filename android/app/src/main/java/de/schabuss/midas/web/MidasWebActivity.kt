@@ -374,6 +374,12 @@ class MidasWebActivity : AppCompatActivity() {
                   window.setTimeout(() => postSnapshot('bp'), 150);
                 });
 
+                document.addEventListener('appointments:changed', () => {
+                  window.setTimeout(() => {
+                    window.MidasAndroidWidget?.requestImmediateRefresh?.('appointments');
+                  }, 150);
+                });
+
                 document.addEventListener('visibilitychange', () => {
                   if (!document.hidden) {
                     window.setTimeout(() => postAuthState(), 150);

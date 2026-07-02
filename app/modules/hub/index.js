@@ -122,7 +122,8 @@
   };
   let trendpilotAuraBound = false;
   const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-  const TICKER_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+  const TICKER_WINDOW_DAYS = 7;
+  const TICKER_WINDOW_MS = TICKER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
   const TICKER_DAY_FORMAT = new Intl.DateTimeFormat('de-AT', { weekday: 'short' });
   const TICKER_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
     hour: '2-digit',
@@ -1740,12 +1741,17 @@
       if (refs.list) {
         if (hasItems) {
           refs.list.hidden = false;
-          refs.list.innerHTML = items
-            .map(
-              (item) =>
-                `<li><span>${item.label || ''}</span><span>${item.detail || ''}</span></li>`,
-            )
-            .join('');
+          refs.list.innerHTML = '';
+          items.forEach((item) => {
+            const li = doc.createElement('li');
+            const label = doc.createElement('span');
+            const detail = doc.createElement('span');
+            label.textContent = item?.label || '';
+            detail.textContent = item?.detail || '';
+            li.appendChild(label);
+            li.appendChild(detail);
+            refs.list.appendChild(li);
+          });
         } else {
           refs.list.hidden = true;
           refs.list.innerHTML = '';
@@ -2329,412 +2335,92 @@
       updateTickerBar({ reason: 'appointments:changed' });
     });
     doc?.addEventListener('profile:changed', (event) => {
-      const detail = event?.detail || {};
-      assistantProfileSnapshot = detail.data || null;
-      refreshAssistantContext({ reason: 'profile:changed', forceRefresh: true });
-    });
-      const runAllowedAction = async (type, payload = {}, { source } = {}) => {
-        const allowedActions = global.AppModules?.assistantAllowedActions;
-        const executeAction = allowedActions?.executeAllowedAction;
-        if (typeof executeAction !== 'function') {
-          diag.add?.('[assistant-actions] allowed helper missing');
-          return false;
-        }
-        const ok = await executeAction(type, payload, {
-          getSupabaseApi: () => appModules.supabase,
-          notify: (msg, level) =>
-            diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
-          source: source || 'hub',
-        });
-        if (!ok) {
-          diag.add?.(
-            `[assistant-actions] action failed type=${type} source=${source || 'unknown'}`,
-          );
-        } else {
-          if (appModules.touchlog?.add) {
-            appModules.touchlog.add(
-              `[assistant-actions] success action=${type} source=${source || 'hub'}`,
-            );
-          }
-          global.dispatchEvent(
-            new CustomEvent('assistant:action-success', {
-              detail: { type, payload, source: source || 'hub' },
-            }),
-          );
-        }
-        return ok;
-      };
-
-      const runUiSafeAction = async (type, payload = {}, { source } = {}) => {
-        const allowedActions = global.AppModules?.assistantAllowedActions;
-        const executeAction = allowedActions?.executeUiSafeAllowedAction;
-        if (typeof executeAction !== 'function') {
-          diag.add?.('[assistant-actions] ui-safe helper missing');
-          return false;
-        }
-        const ok = await executeAction(type, payload, {
-          notify: (msg, level) =>
-            diag.add?.(`[assistant-actions][${level || 'info'}] ${msg}`),
-          source: source || 'hub',
-        });
-        if (!ok) {
-          diag.add?.(
-            `[assistant-actions] ui-safe action failed type=${type} source=${source || 'unknown'}`,
-          );
-        } else {
-          if (appModules.touchlog?.add) {
-            appModules.touchlog.add(
-              `[assistant-actions] success action=${type} source=${source || 'hub'} mode=ui-safe`,
-            );
-          }
-          global.dispatchEvent(
-            new CustomEvent('assistant:action-success', {
-              detail: { type, payload, source: source || 'hub' },
-            }),
-          );
-        }
-        return ok;
-      };
-
-      let suggestionConfirmInFlight = false;
-
-      const handleSuggestionConfirmRequest = async (suggestion) => {
-        if (!suggestion) return { ok: false, reason: 'missing-suggestion' };
-        if (suggestionConfirmInFlight) {
-          diag.add?.('[assistant-suggest] confirm ignored (busy)');
-          return { ok: false, reason: 'busy' };
-        }
-        suggestionConfirmInFlight = true;
-        try {
-          const metrics = suggestion.metrics || {};
-          const payload = {
-            water_ml: Number.isFinite(metrics.water_ml)
-              ? Number(metrics.water_ml)
-              : undefined,
-            salt_g: Number.isFinite(metrics.salt_g)
-              ? Number(metrics.salt_g)
-              : undefined,
-            protein_g: Number.isFinite(metrics.protein_g)
-              ? Number(metrics.protein_g)
-              : undefined,
-            label: suggestion.title || 'Mahlzeit',
-            note: suggestion.recommendation || null,
-          };
-          diag.add?.('[assistant-suggest] confirm flow start');
-          const ok = await runAllowedAction('intake_save', payload, {
-            source: 'suggestion-card',
-          });
-          if (!ok) {
-            appendAssistantMessage(
-              'system',
-              'Es gab ein Problem beim Speichern des Vorschlags.',
-            );
-            global.dispatchEvent(
-              new CustomEvent('assistant:suggest-confirm-reset', {
-                detail: { suggestionId: suggestion.id },
-              }),
-            );
-            return { ok: false, reason: 'save-failed' };
-          }
-          const store = getAssistantSuggestStore();
-          store?.dismissCurrent?.({ reason: 'confirm-success' });
-          appendAssistantMessage(
-            'assistant',
-            buildSuggestionConfirmMessage(payload),
-          );
-          const savedAt = Date.now();
-          const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
-          const followupKey = buildMealFollowupKey({
-            payload,
-            sessionId: assistantChatCtrl?.sessionId,
-            savedAt,
-          });
-          await refreshAssistantContext({
-            reason: 'suggest:confirmed',
-            forceRefresh: true,
-          });
-          renderSuggestionFollowupAdvice(suggestion);
-          createMealFollowupPrompt({
-            source: 'suggestion-card',
-            snapshot,
-            followupKey,
-            savedAt,
-          });
-          return {
-            ok: true,
-            reason: null,
-            savedAt,
-            followupKey,
-          };
-        } finally {
-          suggestionConfirmInFlight = false;
-        }
-      };
-
-      const buildSuggestionConfirmMessage = (payload) => {
-        const parts = [];
-        if (Number.isFinite(payload.water_ml) && payload.water_ml > 0) {
-          parts.push(`${payload.water_ml.toFixed(0)} ml Wasser`);
-        }
-        if (Number.isFinite(payload.salt_g)) {
-          parts.push(`${payload.salt_g.toFixed(1)} g Salz`);
-        }
-        if (Number.isFinite(payload.protein_g)) {
-          parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
-        }
-        const list = parts.length ? parts.join(', ') : 'deine Werte';
-        return `Alles klar - ich habe ${list} fÃ¼r heute vorgemerkt.`;
-      };
-
-      const renderSuggestionFollowupAdvice = (suggestion) => {
-        const store = getAssistantSuggestStore();
-        const snapshot =
-          store?.getState?.().snapshot || assistantChatCtrl?.context || null;
-        if (!snapshot) return;
-        const planner = global.AppModules?.assistantDayPlan;
-        const generator = planner?.generateDayPlan;
-        if (typeof generator !== 'function') return;
-        const { lines } = generator(
-          { ...snapshot, suggestion },
-          {
-            dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
-          },
-        );
-        if (lines?.length) {
-          appendAssistantMessage('assistant', lines.join(' '));
-        }
-      };
-      let mealFollowupPromptActive = false;
-      let mealFollowupLastTriggeredAt = 0;
-      let mealFollowupMessageId = null;
-      let mealFollowupSnapshot = null;
-      let mealFollowupMeta = null;
-      let mealFollowupRequestInFlight = false;
-      const mealFollowupSeenKeys = new Set();
-
-      const setMealFollowupSnapshot = (snapshot) => {
-        mealFollowupSnapshot = snapshot || null;
-      };
-
-      const setMealFollowupMeta = (meta) => {
-        mealFollowupMeta = meta || null;
-      };
-
-      const buildMealFollowupKey = ({ payload, sessionId, savedAt } = {}) => {
-        const saveId = payload?.save_id || payload?.saveId || payload?.id || null;
-        if (saveId) return `save:${saveId}`;
-        const sessionKey = payload?.session_id || payload?.sessionId || sessionId || 'unknown';
-        const stamp = payload?.saved_at || payload?.savedAt || savedAt || Date.now();
-        return `session:${sessionKey}:${stamp}`;
-      };
-
-      const removeAssistantMessage = (messageId) => {
-        if (!assistantChatCtrl || !messageId) return;
-        const nextMessages = assistantChatCtrl.messages.filter(
-          (msg) => msg.id !== messageId,
-        );
-        if (nextMessages.length === assistantChatCtrl.messages.length) return;
-        assistantChatCtrl.messages = nextMessages;
-        renderAssistantChat();
-      };
-
-      const createMealFollowupPrompt = ({ source, snapshot, followupKey, savedAt } = {}) => {
-        if (!assistantChatCtrl) return;
-        if (mealFollowupPromptActive) return;
-        const now = Date.now();
-        if (now - mealFollowupLastTriggeredAt < 500) return;
-        const hasFollowup = assistantChatCtrl.messages.some(
-          (msg) => msg.type === 'followup',
-        );
-        if (hasFollowup) return;
-        const resolvedKey = followupKey || null;
-        if (resolvedKey && mealFollowupSeenKeys.has(resolvedKey)) return;
-        mealFollowupPromptActive = true;
-        mealFollowupLastTriggeredAt = now;
-        setMealFollowupSnapshot(snapshot || buildAssistantContextPayload({ includeTimeSlot: true }));
-        const metaSavedAt = savedAt || Date.now();
-        if (resolvedKey) {
-          mealFollowupSeenKeys.add(resolvedKey);
-        }
-        setMealFollowupMeta({
-          followupKey: resolvedKey,
-          savedAt: metaSavedAt,
-          source: source || 'intake-save',
-        });
-        const promptText =
-          'Soll ich dir basierend auf deinen heutigen Werten und dem nÃ¤chsten Termin einen Essensvorschlag machen?';
-        const message = appendAssistantMessage('assistant', promptText, {
-          type: 'followup',
-          meta: {
-            followupType: 'meal-idea',
-            source: source || 'intake-save',
-            followupKey: followupKey || null,
-            savedAt: savedAt || null,
-            followupVersion: 1,
-          },
-        });
-        mealFollowupMessageId = message?.id || null;
-      };
-
-      const clearMealFollowupPrompt = () => {
-        if (mealFollowupMessageId) {
-          removeAssistantMessage(mealFollowupMessageId);
-        }
-        mealFollowupMessageId = null;
-        mealFollowupPromptActive = false;
-        setMealFollowupSnapshot(null);
-        setMealFollowupMeta(null);
-      };
-      assistantChatCtrl.followup = {
-        clearPrompt: clearMealFollowupPrompt,
-        getSnapshot: () => mealFollowupSnapshot,
-        getMeta: () => mealFollowupMeta,
-      };
-
-      const buildMealFollowupPromptText = (detail = {}) => {
-        const payload = {
-          followup_key: detail.followup_key || null,
-          saved_at: detail.saved_at || null,
-          context: detail.context || null,
-          meta: detail.meta || { followup_version: 1 },
-        };
-        const payloadJson = JSON.stringify(payload);
-        return [
-          'System: Du bist ein hilfreicher ErnÃ¤hrungsassistent fuer kurze Essensideen.',
-          'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
-          'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
-          'Constraints:',
-          '- 1-2 kurze VorschlÃ¤ge, insgesamt 2-4 Saetze.',
-          '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
-          '- BerÃ¼cksichtige appointment_type und time_slot wenn vorhanden.',
-          '- Ton: praktisch, freundlich, knapp.',
-          '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
-          'Follow-up payload:',
-          payloadJson,
-        ].join('\n');
-      };
-
-      const requestMealFollowupSuggestion = async (detail) => {
-        if (!detail || !detail.context) return;
-        if (mealFollowupRequestInFlight) return;
-        mealFollowupRequestInFlight = true;
-        try {
-          const promptText = buildMealFollowupPromptText(detail);
-          const payload = {
-            session_id: assistantChatCtrl?.sessionId || `followup-${Date.now()}`,
-            mode: 'text',
-            text: promptText,
-            messages: [{ role: 'user', content: promptText }],
-            context: detail.context || null,
-            meta: {
-              followup_key: detail.followup_key || null,
-              saved_at: detail.saved_at || null,
-              followup_version: detail.meta?.followup_version || 1,
-            },
-          };
-          const headers = await buildFunctionJsonHeaders();
-          const response = await fetch(MIDAS_ENDPOINTS.assistant, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload),
-          });
-          if (!response.ok) return;
-          const data = await response.json().catch(() => ({}));
-          const reply = (data?.reply || '').trim();
-          if (reply) {
-            appendAssistantMessage('assistant', reply);
-          }
-        } catch (_) {
-          // silent skip on failure
-        } finally {
-          mealFollowupRequestInFlight = false;
-        }
-      };
-
-      global.addEventListener('assistant:meal-followup-request', (event) => {
-        requestMealFollowupSuggestion(event?.detail);
-      });
-
-    doc?.addEventListener('profile:changed', (event) => {
       assistantProfileSnapshot =
         event?.detail?.data || appModules.profile?.getData?.() || null;
-        if (assistantChatCtrl?.context) {
-          assistantChatCtrl.context.profile = assistantProfileSnapshot;
-        }
-        const currentIntake = assistantChatCtrl?.context?.intake || null;
-        renderAssistantContextExtras(assistantProfileSnapshot);
-        renderAssistantContextExpandable(currentIntake, assistantProfileSnapshot);
-        const store = getAssistantSuggestStore();
-        if (store && assistantChatCtrl?.context) {
-          store.setSnapshot(
-            { ...assistantChatCtrl.context, updatedAt: Date.now() },
-            { reason: 'profile:changed' },
-          );
-        }
-      });
-      global.addEventListener('assistant:suggest-confirm', (event) => {
-        const suggestion = event?.detail?.suggestion;
-        if (!suggestion) return;
-        diag.add?.(
-          `[assistant-suggest] confirm requested source=${suggestion.source || 'unknown'}`,
+      if (assistantChatCtrl?.context) {
+        assistantChatCtrl.context.profile = assistantProfileSnapshot;
+      }
+      const currentIntake = assistantChatCtrl?.context?.intake || null;
+      renderAssistantContextExtras(assistantProfileSnapshot);
+      renderAssistantContextExpandable(currentIntake, assistantProfileSnapshot);
+      const store = getAssistantSuggestStore();
+      if (store && assistantChatCtrl?.context) {
+        store.setSnapshot(
+          { ...assistantChatCtrl.context, updatedAt: Date.now() },
+          { reason: 'profile:changed' },
         );
-        handleSuggestionConfirmRequest(suggestion);
+      }
+      refreshAssistantContext({ reason: 'profile:changed', forceRefresh: true })?.catch?.((err) => {
+        diag.add?.('[assistant-chat] profile context refresh err: ' + (err?.message || err));
       });
-      global.addEventListener('assistant:suggest-answer', (event) => {
-        if (event?.detail?.accepted) return;
-        diag.add?.('[assistant-suggest] user dismissed suggestion');
-      });
-      global.addEventListener('assistant:suggest-updated', () => {
-        syncAssistantPendingIntentFromSuggestion();
-      });
-      global.addEventListener('assistant:suggest-dismissed', () => {
-        clearAssistantPendingIntentContext('suggestion-dismissed');
-      });
-      global.addEventListener('assistant:action-request', (event) => {
-        const type = event?.detail?.type;
-        if (!type) return;
-        const payload = event.detail.payload || {};
-        const source = event.detail.source || 'event';
-        diag.add?.(`[assistant-actions] request type=${type} source=${source}`);
-        runAllowedAction(type, payload, { source });
-      });
+    });
+    global.addEventListener('assistant:meal-followup-request', (event) => {
+      requestMealFollowupSuggestion(event?.detail);
+    });
+    ensureAssistantFollowupController();
+    global.addEventListener('assistant:suggest-confirm', (event) => {
+      const suggestion = event?.detail?.suggestion;
+      if (!suggestion) return;
+      diag.add?.(
+        `[assistant-suggest] confirm requested source=${suggestion.source || 'unknown'}`,
+      );
+      handleSuggestionConfirmRequest(suggestion);
+    });
+    global.addEventListener('assistant:suggest-answer', (event) => {
+      if (event?.detail?.accepted) return;
+      diag.add?.('[assistant-suggest] user dismissed suggestion');
+    });
+    global.addEventListener('assistant:suggest-updated', () => {
+      syncAssistantPendingIntentFromSuggestion();
+    });
+    global.addEventListener('assistant:suggest-dismissed', () => {
+      clearAssistantPendingIntentContext('suggestion-dismissed');
+    });
+    global.addEventListener('assistant:action-request', (event) => {
+      const type = event?.detail?.type;
+      if (!type) return;
+      const payload = event.detail.payload || {};
+      const source = event.detail.source || 'event';
+      diag.add?.(`[assistant-actions] request type=${type} source=${source}`);
+      runAllowedAction(type, payload, { source });
+    });
 
-      global.addEventListener('assistant:action-success', (event) => {
-        if (event?.detail?.type !== 'intake_save') return;
-        const detailSource = event?.detail?.source || 'unknown';
-        if (detailSource === 'suggestion-card') return;
-        const payload = event?.detail?.payload || {};
-        const savedAt = payload.saved_at || payload.savedAt || Date.now();
-        global.AppModules?.capture?.refreshCaptureIntake?.({
+    global.addEventListener('assistant:action-success', (event) => {
+      if (event?.detail?.type !== 'intake_save') return;
+      const detailSource = event?.detail?.source || 'unknown';
+      if (detailSource === 'suggestion-card') return;
+      const payload = event?.detail?.payload || {};
+      const savedAt = payload.saved_at || payload.savedAt || Date.now();
+      global.AppModules?.capture?.refreshCaptureIntake?.({
+        reason: `assistant:${detailSource}:intake-save`,
+        forceRefresh: true,
+      })?.catch?.((err) => {
+        diag.add?.('[assistant-actions] intake refresh err: ' + (err?.message || err));
+      });
+      global.setTimeout(() => {
+        refreshAssistantContext({
           reason: `assistant:${detailSource}:intake-save`,
           forceRefresh: true,
         })?.catch?.((err) => {
-          diag.add?.('[assistant-actions] intake refresh err: ' + (err?.message || err));
+          diag.add?.('[assistant-actions] assistant context refresh err: ' + (err?.message || err));
         });
-        global.setTimeout(() => {
-          refreshAssistantContext({
-            reason: `assistant:${detailSource}:intake-save`,
-            forceRefresh: true,
-          })?.catch?.((err) => {
-            diag.add?.('[assistant-actions] assistant context refresh err: ' + (err?.message || err));
-          });
-        }, 0);
-        const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
-        const followupKey = buildMealFollowupKey({
-          payload,
-          sessionId: assistantChatCtrl?.sessionId,
+      }, 0);
+      const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+      const followupKey = buildMealFollowupKey({
+        payload,
+        sessionId: assistantChatCtrl?.sessionId,
+        savedAt,
+      });
+      global.setTimeout(() => {
+        createMealFollowupPrompt({
+          source: detailSource,
+          snapshot,
+          followupKey,
           savedAt,
         });
-        global.setTimeout(() => {
-          createMealFollowupPrompt({
-            source: detailSource,
-            snapshot,
-            followupKey,
-            savedAt,
-          });
-        }, 0);
-      });
-      syncAssistantPendingIntentFromSuggestion();
+      }, 0);
+    });
+    syncAssistantPendingIntentFromSuggestion();
     };
 
   const bindAssistantCameraButton = (btn, input) => {
@@ -3388,6 +3074,266 @@
       );
     }
     return ok;
+  };
+
+  let suggestionConfirmInFlight = false;
+
+  const handleSuggestionConfirmRequest = async (suggestion) => {
+    if (!suggestion) return { ok: false, reason: 'missing-suggestion' };
+    if (suggestionConfirmInFlight) {
+      diag.add?.('[assistant-suggest] confirm ignored (busy)');
+      return { ok: false, reason: 'busy' };
+    }
+    suggestionConfirmInFlight = true;
+    try {
+      const metrics = suggestion.metrics || {};
+      const payload = {
+        water_ml: Number.isFinite(metrics.water_ml)
+          ? Number(metrics.water_ml)
+          : undefined,
+        salt_g: Number.isFinite(metrics.salt_g)
+          ? Number(metrics.salt_g)
+          : undefined,
+        protein_g: Number.isFinite(metrics.protein_g)
+          ? Number(metrics.protein_g)
+          : undefined,
+        label: suggestion.title || 'Mahlzeit',
+        note: suggestion.recommendation || null,
+      };
+      diag.add?.('[assistant-suggest] confirm flow start');
+      const ok = await runAllowedAction('intake_save', payload, {
+        source: 'suggestion-card',
+      });
+      if (!ok) {
+        appendAssistantMessage(
+          'system',
+          'Es gab ein Problem beim Speichern des Vorschlags.',
+        );
+        global.dispatchEvent(
+          new CustomEvent('assistant:suggest-confirm-reset', {
+            detail: { suggestionId: suggestion.id },
+          }),
+        );
+        return { ok: false, reason: 'save-failed' };
+      }
+      const store = getAssistantSuggestStore();
+      store?.dismissCurrent?.({ reason: 'confirm-success' });
+      appendAssistantMessage(
+        'assistant',
+        buildSuggestionConfirmMessage(payload),
+      );
+      const savedAt = Date.now();
+      const snapshot = buildAssistantContextPayload({ includeTimeSlot: true });
+      const followupKey = buildMealFollowupKey({
+        payload,
+        sessionId: assistantChatCtrl?.sessionId,
+        savedAt,
+      });
+      await refreshAssistantContext({
+        reason: 'suggest:confirmed',
+        forceRefresh: true,
+      });
+      renderSuggestionFollowupAdvice(suggestion);
+      createMealFollowupPrompt({
+        source: 'suggestion-card',
+        snapshot,
+        followupKey,
+        savedAt,
+      });
+      return {
+        ok: true,
+        reason: null,
+        savedAt,
+        followupKey,
+      };
+    } finally {
+      suggestionConfirmInFlight = false;
+    }
+  };
+
+  const buildSuggestionConfirmMessage = (payload) => {
+    const parts = [];
+    if (Number.isFinite(payload.water_ml) && payload.water_ml > 0) {
+      parts.push(`${payload.water_ml.toFixed(0)} ml Wasser`);
+    }
+    if (Number.isFinite(payload.salt_g)) {
+      parts.push(`${payload.salt_g.toFixed(1)} g Salz`);
+    }
+    if (Number.isFinite(payload.protein_g)) {
+      parts.push(`${payload.protein_g.toFixed(1)} g Protein`);
+    }
+    const list = parts.length ? parts.join(', ') : 'deine Werte';
+    return `Alles klar - ich habe ${list} fÃ¼r heute vorgemerkt.`;
+  };
+
+  const renderSuggestionFollowupAdvice = (suggestion) => {
+    const store = getAssistantSuggestStore();
+    const snapshot =
+      store?.getState?.().snapshot || assistantChatCtrl?.context || null;
+    if (!snapshot) return;
+    const planner = global.AppModules?.assistantDayPlan;
+    const generator = planner?.generateDayPlan;
+    if (typeof generator !== 'function') return;
+    const { lines } = generator(
+      { ...snapshot, suggestion },
+      {
+        dateFormatter: (date) => formatAppointmentDateTime(date.toISOString?.() || date),
+      },
+    );
+    if (lines?.length) {
+      appendAssistantMessage('assistant', lines.join(' '));
+    }
+  };
+
+  let mealFollowupPromptActive = false;
+  let mealFollowupLastTriggeredAt = 0;
+  let mealFollowupMessageId = null;
+  let mealFollowupSnapshot = null;
+  let mealFollowupMeta = null;
+  let mealFollowupRequestInFlight = false;
+  const mealFollowupSeenKeys = new Set();
+
+  const setMealFollowupSnapshot = (snapshot) => {
+    mealFollowupSnapshot = snapshot || null;
+  };
+
+  const setMealFollowupMeta = (meta) => {
+    mealFollowupMeta = meta || null;
+  };
+
+  const buildMealFollowupKey = ({ payload, sessionId, savedAt } = {}) => {
+    const saveId = payload?.save_id || payload?.saveId || payload?.id || null;
+    if (saveId) return `save:${saveId}`;
+    const sessionKey = payload?.session_id || payload?.sessionId || sessionId || 'unknown';
+    const stamp = payload?.saved_at || payload?.savedAt || savedAt || Date.now();
+    return `session:${sessionKey}:${stamp}`;
+  };
+
+  const removeAssistantMessage = (messageId) => {
+    if (!assistantChatCtrl || !messageId) return;
+    const nextMessages = assistantChatCtrl.messages.filter(
+      (msg) => msg.id !== messageId,
+    );
+    if (nextMessages.length === assistantChatCtrl.messages.length) return;
+    assistantChatCtrl.messages = nextMessages;
+    renderAssistantChat();
+  };
+
+  const createMealFollowupPrompt = ({ source, snapshot, followupKey, savedAt } = {}) => {
+    if (!assistantChatCtrl) return;
+    if (mealFollowupPromptActive) return;
+    const now = Date.now();
+    if (now - mealFollowupLastTriggeredAt < 500) return;
+    const hasFollowup = assistantChatCtrl.messages.some(
+      (msg) => msg.type === 'followup',
+    );
+    if (hasFollowup) return;
+    const resolvedKey = followupKey || null;
+    if (resolvedKey && mealFollowupSeenKeys.has(resolvedKey)) return;
+    mealFollowupPromptActive = true;
+    mealFollowupLastTriggeredAt = now;
+    setMealFollowupSnapshot(snapshot || buildAssistantContextPayload({ includeTimeSlot: true }));
+    const metaSavedAt = savedAt || Date.now();
+    if (resolvedKey) {
+      mealFollowupSeenKeys.add(resolvedKey);
+    }
+    setMealFollowupMeta({
+      followupKey: resolvedKey,
+      savedAt: metaSavedAt,
+      source: source || 'intake-save',
+    });
+    const promptText =
+      'Soll ich dir basierend auf deinen heutigen Werten und dem nÃ¤chsten Termin einen Essensvorschlag machen?';
+    const message = appendAssistantMessage('assistant', promptText, {
+      type: 'followup',
+      meta: {
+        followupType: 'meal-idea',
+        source: source || 'intake-save',
+        followupKey: followupKey || null,
+        savedAt: savedAt || null,
+        followupVersion: 1,
+      },
+    });
+    mealFollowupMessageId = message?.id || null;
+  };
+
+  const clearMealFollowupPrompt = () => {
+    if (mealFollowupMessageId) {
+      removeAssistantMessage(mealFollowupMessageId);
+    }
+    mealFollowupMessageId = null;
+    mealFollowupPromptActive = false;
+    setMealFollowupSnapshot(null);
+    setMealFollowupMeta(null);
+  };
+
+  const ensureAssistantFollowupController = () => {
+    if (!assistantChatCtrl) return;
+    assistantChatCtrl.followup = {
+      clearPrompt: clearMealFollowupPrompt,
+      getSnapshot: () => mealFollowupSnapshot,
+      getMeta: () => mealFollowupMeta,
+    };
+  };
+
+  const buildMealFollowupPromptText = (detail = {}) => {
+    const payload = {
+      followup_key: detail.followup_key || null,
+      saved_at: detail.saved_at || null,
+      context: detail.context || null,
+      meta: detail.meta || { followup_version: 1 },
+    };
+    const payloadJson = JSON.stringify(payload);
+    return [
+      'System: Du bist ein hilfreicher ErnÃ¤hrungsassistent fuer kurze Essensideen.',
+      'System: Nutze nur den bereitgestellten Context-Snapshot. Keine medizinischen Aussagen.',
+      'User: Erstelle einen kurzen Essensvorschlag basierend auf dem Follow-up Payload.',
+      'Constraints:',
+      '- 1-2 kurze VorschlÃ¤ge, insgesamt 2-4 Saetze.',
+      '- Nutze Intake-Totals (Salz/Protein/Wasser) zum Ausbalancieren.',
+      '- BerÃ¼cksichtige appointment_type und time_slot wenn vorhanden.',
+      '- Ton: praktisch, freundlich, knapp.',
+      '- Keine medizinischen Claims, Diagnosen oder Therapiehinweise.',
+      'Follow-up payload:',
+      payloadJson,
+    ].join('\n');
+  };
+
+  const requestMealFollowupSuggestion = async (detail) => {
+    if (!detail || !detail.context) return;
+    if (mealFollowupRequestInFlight) return;
+    mealFollowupRequestInFlight = true;
+    try {
+      const promptText = buildMealFollowupPromptText(detail);
+      const payload = {
+        session_id: assistantChatCtrl?.sessionId || `followup-${Date.now()}`,
+        mode: 'text',
+        text: promptText,
+        messages: [{ role: 'user', content: promptText }],
+        context: detail.context || null,
+        meta: {
+          followup_key: detail.followup_key || null,
+          saved_at: detail.saved_at || null,
+          followup_version: detail.meta?.followup_version || 1,
+        },
+      };
+      const headers = await buildFunctionJsonHeaders();
+      const response = await fetch(MIDAS_ENDPOINTS.assistant, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) return;
+      const data = await response.json().catch(() => ({}));
+      const reply = (data?.reply || '').trim();
+      if (reply) {
+        appendAssistantMessage('assistant', reply);
+      }
+    } catch (_) {
+      // silent skip on failure
+    } finally {
+      mealFollowupRequestInFlight = false;
+    }
   };
 
   const recordAssistantIntentDispatchSuccess = (intentResult, rawText) => {

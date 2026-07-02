@@ -60,6 +60,7 @@ object WidgetRealtimeSync {
         registerTableCollector(scope, channel, "health_medications", auth.userId, triggerFlow)
         registerTableCollector(scope, channel, "health_medication_schedule_slots", auth.userId, triggerFlow)
         registerTableCollector(scope, channel, "health_medication_slot_events", auth.userId, triggerFlow)
+        registerTableCollector(scope, channel, "appointments_v2", auth.userId, triggerFlow)
 
         scope.launch {
             runCatching {

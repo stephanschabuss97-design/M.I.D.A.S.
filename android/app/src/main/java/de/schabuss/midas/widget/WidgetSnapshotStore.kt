@@ -25,6 +25,7 @@ class WidgetSnapshotStore(context: Context) {
             val bloodPressureStatus = BloodPressureWidgetStatus.fromWire(
                 json.optString("bloodPressureStatus", BloodPressureWidgetStatus.NONE.wireValue),
             )
+            val appointmentSummary = parseAppointmentSummary(json.optJSONObject("appointmentSummary"))
             val updatedAt = json.optString("updatedAt", "")
             DailyWidgetState(
                 dayIso = dayIso,
@@ -34,6 +35,7 @@ class WidgetSnapshotStore(context: Context) {
                 updatedAt = updatedAt,
                 medicationSummary = medicationSummary,
                 bloodPressureStatus = bloodPressureStatus,
+                appointmentSummary = appointmentSummary,
             )
         }.getOrNull()
     }
@@ -45,8 +47,14 @@ class WidgetSnapshotStore(context: Context) {
         updatedAt: String,
         medicationSummary: MedicationWidgetSummary = MedicationWidgetSummary.legacy(medicationStatus),
         bloodPressureStatus: BloodPressureWidgetStatus = BloodPressureWidgetStatus.NONE,
+        appointmentSummary: AppointmentWidgetSummary? = null,
     ) {
         val normalizedSummary = medicationSummary.normalized()
+        val normalizedAppointmentSummary = (
+            appointmentSummary
+                ?: load()?.takeIf { it.dayIso == dayIso }?.appointmentSummary
+                ?: AppointmentWidgetSummary.NONE
+            ).normalized()
         val payload = JSONObject()
             .put("dayIso", dayIso)
             .put("waterCurrentMl", waterCurrentMl.coerceAtLeast(0))
@@ -54,6 +62,9 @@ class WidgetSnapshotStore(context: Context) {
             .put("medicationSummary", medicationSummaryToJson(normalizedSummary))
             .put("bloodPressureStatus", bloodPressureStatus.wireValue)
             .put("updatedAt", updatedAt)
+        if (normalizedAppointmentSummary.hasAppointment) {
+            payload.put("appointmentSummary", appointmentSummaryToJson(normalizedAppointmentSummary))
+        }
         prefs.edit().putString(KEY_STATE, payload.toString()).apply()
     }
 
@@ -91,6 +102,15 @@ class WidgetSnapshotStore(context: Context) {
         return sections.distinct()
     }
 
+    private fun parseAppointmentSummary(json: JSONObject?): AppointmentWidgetSummary {
+        if (json == null) return AppointmentWidgetSummary.NONE
+        return AppointmentWidgetSummary(
+            id = json.optString("id", ""),
+            title = json.optString("title", ""),
+            startAt = json.optString("startAt", ""),
+        ).normalized()
+    }
+
     private fun medicationSummaryToJson(summary: MedicationWidgetSummary): JSONObject =
         JSONObject()
             .put("status", summary.status.name.lowercase())
@@ -104,6 +124,12 @@ class WidgetSnapshotStore(context: Context) {
         sections.distinct().forEach { section -> json.put(section.wireValue) }
         return json
     }
+
+    private fun appointmentSummaryToJson(summary: AppointmentWidgetSummary): JSONObject =
+        JSONObject()
+            .put("id", summary.id)
+            .put("title", summary.title)
+            .put("startAt", summary.startAt)
 
     companion object {
         private const val PREFS_NAME = "midas_widget_store"

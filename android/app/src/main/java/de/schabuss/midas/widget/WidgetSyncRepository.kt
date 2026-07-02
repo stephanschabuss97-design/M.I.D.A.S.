@@ -8,6 +8,8 @@ import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -48,11 +50,20 @@ class WidgetSyncRepository(private val context: Context) {
             accessToken = refreshedAuth.accessToken,
         ) ?: return if (isSessionGenerationCurrent(sessionGeneration)) false else true
 
+        val syncInstant = Instant.now()
+        val appointmentJson = requestJsonArray(
+            url = buildAppointmentUrl(refreshedAuth.restUrl, refreshedAuth.userId, syncInstant),
+            method = "GET",
+            anonKey = refreshedAuth.anonKey,
+            accessToken = refreshedAuth.accessToken,
+        )
+
         if (!isSessionGenerationCurrent(sessionGeneration)) return true
 
         val waterMl = extractWaterMl(intakeJson)
         val medicationSummary = deriveMedicationSummary(medicationJson)
         val bloodPressureStatus = deriveBloodPressureStatus(bloodPressureJson)
+        val appointmentSummary = appointmentJson?.let { deriveAppointmentSummary(it, syncInstant) }
         snapshotStore.save(
             dayIso = dayIso,
             waterCurrentMl = waterMl,
@@ -60,6 +71,7 @@ class WidgetSyncRepository(private val context: Context) {
             updatedAt = Instant.now().toString(),
             medicationSummary = medicationSummary,
             bloodPressureStatus = bloodPressureStatus,
+            appointmentSummary = appointmentSummary,
         )
         authStore.save(refreshedAuth.copy(updatedAt = Instant.now().toString()))
         MidasWidgetProvider.refreshAll(context.applicationContext)
@@ -179,6 +191,17 @@ class WidgetSyncRepository(private val context: Context) {
         return "$base/rest/v1/health_events?select=id,ctx&user_id=eq.$userId&type=eq.bp&day=eq.$dayIso&order=ts.asc"
     }
 
+    private fun buildAppointmentUrl(restUrl: String, userId: String, now: Instant): String {
+        val base = baseUrlFromRest(restUrl) ?: restUrl
+        return "$base/rest/v1/appointments_v2" +
+            "?select=${urlEncode("id,title,start_at")}" +
+            "&user_id=${urlEncode("eq.$userId")}" +
+            "&status=${urlEncode("eq.scheduled")}" +
+            "&start_at=${urlEncode("gte.${now}")}" +
+            "&order=${urlEncode("start_at.asc")}" +
+            "&limit=1"
+    }
+
     private fun extractWaterMl(intakeRows: JSONArray): Int {
         if (intakeRows.length() <= 0) return 0
         val row = intakeRows.optJSONObject(0) ?: return 0
@@ -258,6 +281,23 @@ class WidgetSyncRepository(private val context: Context) {
         }
     }
 
+    private fun deriveAppointmentSummary(appointmentRows: JSONArray, now: Instant): AppointmentWidgetSummary {
+        for (index in 0 until appointmentRows.length()) {
+            val row = appointmentRows.optJSONObject(index) ?: continue
+            val id = row.optString("id", "").trim()
+            val title = row.optString("title", "").trim()
+            val startAt = row.optString("start_at", "").trim()
+            val startInstant = parseAppointmentInstant(startAt) ?: continue
+            if (startInstant.isBefore(now)) continue
+            return AppointmentWidgetSummary(
+                id = id,
+                title = title,
+                startAt = startAt,
+            ).normalized()
+        }
+        return AppointmentWidgetSummary.NONE
+    }
+
     private fun List<MedicationSection>.sortedBySection(): List<MedicationSection> {
         val order = listOf(
             MedicationSection.MORNING,
@@ -275,4 +315,7 @@ class WidgetSyncRepository(private val context: Context) {
         val index = restUrl.indexOf(marker)
         return if (index > 0) restUrl.substring(0, index) else null
     }
+
+    private fun urlEncode(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 }

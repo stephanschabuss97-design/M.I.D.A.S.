@@ -6,8 +6,13 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 import de.schabuss.midas.R
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class MidasWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -81,6 +86,16 @@ class MidasWidgetProvider : AppWidgetProvider() {
                 R.id.widgetBloodPressureValue,
                 resolveBloodPressureColor(context, snapshot?.bloodPressureStatus ?: BloodPressureWidgetStatus.NONE),
             )
+            val appointmentText = snapshot?.let { formatAppointmentSummary(it.appointmentSummary) }
+            views.setViewVisibility(
+                R.id.widgetAppointmentRow,
+                if (appointmentText == null) View.GONE else View.VISIBLE,
+            )
+            views.setTextViewText(R.id.widgetAppointmentValue, appointmentText.orEmpty())
+            views.setTextColor(
+                R.id.widgetAppointmentValue,
+                context.getColor(R.color.widget_medication_neutral),
+            )
             views.setOnClickPendingIntent(R.id.widgetRoot, buildManualSyncIntent(context))
             return views
         }
@@ -106,6 +121,40 @@ class MidasWidgetProvider : AppWidgetProvider() {
 
         private fun formatLiter(valueMl: Int): String =
             String.format(java.util.Locale.GERMANY, "%.1f", valueMl.coerceAtLeast(0) / 1000.0)
+
+        private fun formatAppointmentSummary(summary: AppointmentWidgetSummary, now: Instant = Instant.now()): String? {
+            val normalized = summary.normalized()
+            if (!normalized.hasAppointment) return null
+
+            val startInstant = parseAppointmentInstant(normalized.startAt) ?: return null
+            if (startInstant.isBefore(now)) return null
+
+            val title = compactAppointmentTitle(normalized.title)
+            if (title.isBlank()) return null
+
+            return "$title, ${formatAppointmentDateTime(startInstant, now)}"
+        }
+
+        private fun compactAppointmentTitle(title: String): String {
+            val normalizedTitle = title.trim().replace(Regex("\\s+"), " ")
+            if (normalizedTitle.length <= APPOINTMENT_TITLE_MAX_CHARS) return normalizedTitle
+            return normalizedTitle.take(APPOINTMENT_TITLE_MAX_CHARS - 3).trimEnd() + "..."
+        }
+
+        private fun formatAppointmentDateTime(startInstant: Instant, now: Instant): String {
+            val zone = ZoneId.systemDefault()
+            val startDateTime = startInstant.atZone(zone)
+            val currentYear = now.atZone(zone).year
+            val formatter = if (startDateTime.year == currentYear) {
+                APPOINTMENT_DATE_TIME_FORMATTER
+            } else {
+                APPOINTMENT_DATE_TIME_WITH_YEAR_FORMATTER
+            }
+            val formatted = formatter.format(startDateTime)
+            val splitIndex = formatted.indexOf(' ')
+            if (splitIndex <= 0) return formatted
+            return formatted.substring(0, splitIndex).removeSuffix(".") + formatted.substring(splitIndex)
+        }
 
         private fun formatMedicationSummary(context: Context, summary: MedicationWidgetSummary): String {
             val normalized = summary.normalized()
@@ -175,5 +224,10 @@ class MidasWidgetProvider : AppWidgetProvider() {
         }
 
         private const val ACTION_MANUAL_SYNC = "de.schabuss.midas.action.WIDGET_MANUAL_SYNC"
+        private const val APPOINTMENT_TITLE_MAX_CHARS = 12
+        private val APPOINTMENT_DATE_TIME_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEE dd.MM. HH:mm", Locale.GERMAN)
+        private val APPOINTMENT_DATE_TIME_WITH_YEAR_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEE dd.MM.yy HH:mm", Locale.GERMAN)
     }
 }

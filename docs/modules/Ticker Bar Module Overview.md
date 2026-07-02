@@ -1,12 +1,14 @@
 # Ticker Bar Module - Functional Overview
 
 Kurze Einordnung:
+
 - Zweck: ruhige, passive Statusleiste (Ticker) am unteren Rand mit Terminen.
 - Rolle innerhalb von MIDAS: sanfter Hinweis-Kanal, ohne Aktion oder Reminder.
 - Abgrenzung: keine Pushes, keine Incidents, keine Lifestyle-Ziele, keine Persistenz.
- - Status: implementiert (Appointments-only, UI-only).
+- Status: implementiert (Appointments-only, UI-only).
 
 Related docs:
+
 - [MIDAS Ticker Bar Roadmap](../MIDAS Ticker Bar Roadmap.md)
 - [Appointments Module Overview](Appointments Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
@@ -25,7 +27,7 @@ Related docs:
 ## 2. Kernkomponenten & Dateien
 
 | Datei | Zweck |
-|------|------|
+| --- | --- |
 | `index.html` | Ticker-Bar Markup / Slot im Layout |
 | `app/modules/hub/index.js` | UI-Refresh und Events fuer Ticker-Update |
 | `app/modules/appointments/index.js` | Quelle fuer Termine + `appointments:changed` |
@@ -47,22 +49,26 @@ Related docs:
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
+
 - Ticker startet unsichtbar und wird erst bei gueltigen Terminen sichtbar.
 - Initialer Update kommt beim Hub-Init.
 
 ### 4.2 Trigger
+
 - `appointments:changed` triggert Ticker-Update.
 - Hub-Init triggert initialen Ticker-Update.
 
 ### 4.3 Verarbeitung
-- Filter: Termine ab T-2 Tage sichtbar, verschwinden exakt zum Startzeitpunkt.
+
+- Filter: Termine ab 7 Tagen vor Start sichtbar, verschwinden zum Startzeitpunkt beim naechsten UI-Refresh.
 - Status-Filter: nur geplante Termine (done/abgesagt erscheinen nicht).
 - Sortierung: nach Startzeit, fruehester zuerst.
 - Textbildung: Termine zu einem ruhigen Lauftext kombinieren.
 - Separator: `" | "`.
-- Zeitformat: `Heute/Morgen` oder Wochentag (de-AT), Uhrzeit `HH:MM`.
+- Zeitformat: `Heute/Morgen` oder Wochentag (de-AT), Uhrzeit `HH:mm`.
 
 ### 4.4 Persistenz
+
 - Keine Persistenz.
 
 ---
@@ -94,7 +100,7 @@ Related docs:
 
 - Fehler oder fehlende Daten fuehren zu verstecktem Ticker (silent fail).
 - Keine User-Fehlermeldungen.
- - Kein Crash, falls Markup fehlt.
+- Kein Crash, falls Markup fehlt.
 
 ---
 
@@ -112,7 +118,7 @@ Related docs:
 - Medizinische Erwartungen (zeitgebunden), spaeter optional.
 - Incidents/Push als separater Kanal (eigene Roadmap).
 - Personalisierte Prioritaeten oder Stummschaltung.
- - Optional: statischer Text bei kurzen Lauftexten (kein Marquee).
+- Optional: statischer Text bei kurzen Lauftexten (kein Marquee).
 
 ---
 
@@ -133,11 +139,11 @@ Related docs:
 
 ## 12. QA-Checkliste
 
-- T-2 sichtbar, zum Startzeitpunkt weg.
+- Ab 7 Tagen vor Start sichtbar, zum Startzeitpunkt beim naechsten UI-Refresh weg.
 - Mehrere Termine: korrekt kombiniert, ruhiger Text.
 - Kein Ticker wenn keine Termine.
 - Mobile: keine Ueberlappung mit System-Safe-Area.
- - Reduzierte Bewegung: Marquee deaktiviert.
+- Reduzierte Bewegung: Marquee deaktiviert.
 
 ---
 

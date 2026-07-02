@@ -16,7 +16,7 @@ MIDAS bleibt Hauptsystem und Source of Truth.
 
 ## DailyWidgetState
 
-V2.2 arbeitet mit diesem kompakten Snapshot:
+V2.3 arbeitet mit diesem kompakten Snapshot:
 
 - `dayIso`
 - `waterCurrentMl`
@@ -24,6 +24,7 @@ V2.2 arbeitet mit diesem kompakten Snapshot:
 - `medicationStatus`
 - `medicationSummary`
 - `bloodPressureStatus`
+- `appointmentSummary`
 - `updatedAt`
 
 ## Feldvertrag
@@ -122,13 +123,43 @@ Fallback-Regeln:
 - Bei komplett fehlendem Snapshot zeigt die BP-Zeile denselben Ladeplatzhalter wie Medikation.
 - `Alles ruhig` wird nur bei vorhandenem Snapshot und neutralem BP-Status gerendert.
 
-## Widget-Anzeige V2.2
+### `appointmentSummary`
 
-Das Widget zeigt fachlich drei Daily-Zeilen:
+V2.3-Status fuer den passiven Termin-Kontext:
+
+- `hasAppointment`
+- `title`
+- `startAt`
+
+Bedeutung:
+
+- `hasAppointment = true`: ein kommender geplanter Termin ist im Snapshot vorhanden.
+- `hasAppointment = false`: kein kommender geplanter Termin ist im Snapshot vorhanden.
+
+Datenvertrag:
+
+- Quelle ist `appointments_v2`.
+- Es werden nur eigene Termine des aktuellen Users gelesen.
+- Es werden nur Termine mit `status = scheduled` gelesen.
+- Der native Read filtert auf `start_at >= now`, sortiert nach `start_at.asc` und nutzt `limit=1`.
+- `startAt` wird defensiv als Instant- oder Offset-Date-Time-Wert geparst.
+- Ort, Notizen, Repeat-Regeln und vergangene Termine sind nicht Teil der Widget-Anzeige.
+
+Fallback-Regeln:
+
+- Alte Snapshots ohne `appointmentSummary` laden neutral als kein Termin.
+- Save-Pfade ohne Appointment-Feld erhalten bestehenden Termin-Kontext fuer denselben Tag.
+- Ein erfolgreicher nativer Read ohne kommenden Termin speichert explizit keinen Termin.
+- Ein fehlgeschlagener Appointment-Read darf Wasser, Medikation und Blutdruck nicht blockieren.
+
+## Widget-Anzeige V2.3
+
+Das Widget zeigt fachlich drei feste Daily-Zeilen und eine optionale Termin-Zeile:
 
 - `Fluessigkeit`
 - `Medikation`
 - `Blutdruck`
+- `Termin` nur bei kommendem Termin
 
 `Fluessigkeit` rendert `waterCurrentMl` und `waterTargetNowMl` gemeinsam:
 
@@ -152,6 +183,15 @@ Das Widget zeigt fachlich drei Daily-Zeilen:
 - `none`: `Alles ruhig`
 
 `Alles ruhig` ist keine medizinische Entwarnung. Es bedeutet nur, dass im vorhandenen Snapshot kein offener V2.2-BP-Kontext erkannt wurde.
+
+`Termin` rendert den naechsten geplanten Termin:
+
+- fehlender Snapshot: keine Terminzeile
+- kein kommender Termin: keine Terminzeile
+- gueltiger kommender Termin: `Titel, Wochentag dd.MM. HH:mm`
+- Beispiel: `Nephrologie, Mi 22.07. 10:30`
+
+Die Terminzeile ist passiver Kontext. Sie ist kein Reminder, keine Kalenderliste und kein Termin-Editor.
 
 ## Wasser-Soll Vertrag
 
@@ -188,7 +228,9 @@ Regeln:
 - keine Push-Health-Anzeige
 - keine native Reminder-/Alarm-Schicht
 - keine `Salz`-/`Protein`-Erweiterung
-- keine `Appointments`
+- keine Termin-CRUD-Funktion im Widget
+- keine Terminliste, Termindetails, Notizen oder Ortsanzeige im Widget
+- keine exakte Termin-Umschaltung per AlarmManager oder Exact Alarm
 - keine Blutdruck-Werte, BP-Schwellen oder BP-Bewertung im Widget
 - keine BP-Eingabe oder BP-Bestaetigung im Widget
 - keine Trend-/Analyse-Flaeche
@@ -220,6 +262,12 @@ Die Android-Huelle:
 - Browser/PWA bleibt der Reminder-Push-Master.
 - Android-WebView/Shell und Widget sind keine verlaesslichen Off-App-Reminder-Kanaele.
 - Native Android-Push-/FCM-/AlarmManager-Reminder sind nur mit separater Roadmap erlaubt.
+- Appointment-Aenderungen duerfen den nativen Widget-Refresh anstossen.
+  - `appointments_v2` ist Teil des nativen Realtime-Refresh-Musters.
+  - Das WebView-Event `appointments:changed` darf nur einen nativen Refresh triggern.
+  - Die WebView postet keine Appointment-Fachdaten in den Widget-Snapshot.
+- Nach Terminstart wird beim naechsten nativen Refresh auf den Folgetermin gewechselt oder die Terminzeile ausgeblendet.
+- Es gibt keinen minutengenauen Umschalt-Timer fuer Termine.
 
 ## Android Auth / Shell Vertrag
 

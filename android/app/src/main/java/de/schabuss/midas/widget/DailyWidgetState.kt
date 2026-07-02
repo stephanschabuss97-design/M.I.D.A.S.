@@ -8,6 +8,7 @@ data class DailyWidgetState(
     val updatedAt: String,
     val medicationSummary: MedicationWidgetSummary = MedicationWidgetSummary.legacy(medicationStatus),
     val bloodPressureStatus: BloodPressureWidgetStatus = BloodPressureWidgetStatus.NONE,
+    val appointmentSummary: AppointmentWidgetSummary = AppointmentWidgetSummary.NONE,
 ) {
     companion object {
         fun empty(nowIso: String = "") = DailyWidgetState(
@@ -18,6 +19,28 @@ data class DailyWidgetState(
             updatedAt = nowIso,
             bloodPressureStatus = BloodPressureWidgetStatus.NONE,
         )
+    }
+}
+
+data class AppointmentWidgetSummary(
+    val id: String = "",
+    val title: String = "",
+    val startAt: String = "",
+) {
+    val hasAppointment: Boolean
+        get() = id.isNotBlank() && title.isNotBlank() && startAt.isNotBlank()
+
+    fun normalized(): AppointmentWidgetSummary {
+        val normalized = copy(
+            id = id.trim(),
+            title = title.trim(),
+            startAt = startAt.trim(),
+        )
+        return if (normalized.hasAppointment) normalized else NONE
+    }
+
+    companion object {
+        val NONE = AppointmentWidgetSummary()
     }
 }
 
