@@ -245,6 +245,35 @@ Wichtig:
 - Fuer die aktuelle Repo-Struktur ist der Supabase-Deploy-Workdir `backend`, weil die CLI darunter `supabase/functions/...` erwartet.
 - Nicht `--workdir backend/supabase` verwenden; das erzeugt einen falschen internen Pfad `supabase/functions/...` unterhalb von `backend/supabase`.
 
+### Supabase SQL Editor / Security Advisor / RLS Tester
+
+Supabase Dashboard SQL Editor, Security Advisor und RLS Tester sind produktive
+oder produktionsnahe Werkzeuge.
+
+Regeln:
+
+- Produktives SQL nur nach expliziter Freigabe ausfuehren.
+- Vor produktivem SQL immer die betroffene SQL-Datei und den Roadmap-/Contract
+  Review lesen.
+- SQL-Ausgaben und Dashboard-Screenshots duerfen keine Secret-Werte enthalten.
+- Der RLS Tester ist ein Pruefwerkzeug; er ersetzt keine Policies im Repo.
+
+MIDAS-Grant-Vertrag:
+
+- `sql/16_Explicit_Grants.sql` ist das zentrale Nachzieh-/Provisioning-SQL fuer
+  explizite Supabase Data API Grants.
+- Das SQL wird erst nach Anlage der referenzierten Tabellen, Views und RPCs
+  ausgefuehrt.
+- `pg_graphql_anon_table_exposed` im Security Advisor ist fuer private MIDAS-
+  Objekte ein harter Befund.
+- `pg_graphql_authenticated_table_exposed` ist nicht automatisch ein Fehler,
+  wenn das Objekt ein erwarteter authentifizierter MIDAS-Data-API-Pfad ist und
+  durch RLS/Policies kontrolliert wird.
+- `auth_leaked_password_protection` ist Supabase-Auth-Dashboard-Hygiene und kein
+  SQL-Grant-Thema.
+- GraphQL wird von MIDAS aktuell nicht aktiv genutzt. GraphQL-Deaktivierung oder
+  Advisor-Muting bleibt ein separates Hygiene-Thema.
+
 ### GitHub CLI
 
 User-local installiert, aber je nach Terminal-Start eventuell noch nicht direkt im aktuellen `PATH`:

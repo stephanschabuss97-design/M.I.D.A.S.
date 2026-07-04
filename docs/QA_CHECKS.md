@@ -1,3 +1,60 @@
+## Phase S18 - Supabase Explicit Data API Grants (2026-07-04)
+
+**Scope:** Explizite Supabase Data API Grants fuer bestehende MIDAS-`public`-
+Tabellen, Views und Data-API-RPCs. Ziel ist ein reviewbarer Rollenvertrag ohne
+anonyme MIDAS-Objekt-Exposition und ohne RLS-Lockerung.
+
+**Static / Local Checks**
+
+- [x] `git diff --check` fuer `sql/16_Explicit_Grants.sql`, `sql/HOW_TO.md`
+  und Roadmap.
+- [x] Alle aktiven Tabellen aus `sql/` sind in `sql/16_Explicit_Grants.sql`
+  abgedeckt.
+- [x] Alle aktiven Views aus `sql/` sind in `sql/16_Explicit_Grants.sql`
+  abgedeckt.
+- [x] Alle Data-API-RPCs sind mit `grant execute` / `revoke all`-Entscheidung
+  abgedeckt.
+- [x] Keine `grant ... to anon`.
+- [x] Keine `grant ... to public`.
+- [x] Keine `grant all`.
+- [x] Keine `grant ... on all tables/functions in schema public`.
+- [x] Keine `drop`, `truncate`, `delete from`, RLS-Disable- oder
+  Policy-Lockerung im Grant-SQL.
+
+**Role Contract**
+
+- [x] `anon` hat keine Table-/View-Grants und kein `upsert_intake`-Execute.
+- [x] `authenticated` hat nur die fuer PWA, Android, Realtime und User-RPCs
+  benoetigten Data-API-Rechte unter bestehender RLS-/Policy-Grenze.
+- [x] `service_role` ist fuer Edge-, Scheduler-, Report- und Admin-Pfade
+  explizit abgedeckt.
+- [x] `trendpilot_state` bleibt service-role-only.
+- [x] Realtime-relevante Tabellen behalten `authenticated select`.
+
+**Supabase Live / Dashboard**
+
+- [x] CodeRabbit-Review ohne Findings.
+- [x] `sql/16_Explicit_Grants.sql` wurde im Supabase SQL Editor erfolgreich
+  produktiv ausgefuehrt.
+- [x] Security Advisor nach Live-SQL: `pg_graphql_anon_table_exposed = 0`.
+- [x] Security Advisor nach Live-SQL: `pg_graphql_authenticated_table_exposed`
+  bleibt erwartbar fuer authentifizierte MIDAS-Data-API-Pfade.
+- [x] Security Advisor nach Live-SQL: `auth_leaked_password_protection` bleibt
+  separates Auth-Dashboard-Hygiene-Thema.
+- [ ] Optionaler Data-API-Smoke mit echter Session bleibt user-gated und wird
+  nur bei Bedarf nachgezogen.
+
+**Regression / Guardrails**
+
+- [x] Keine App-, Android-, Backend- oder Edge-Function-Logik geaendert.
+- [x] Bestehende Cleanup-/Transition-/Legacy-SQLs wurden nicht rueckwirkend
+  umgebaut.
+- [x] GraphQL wird von MIDAS aktuell nicht aktiv genutzt; GraphQL-Deaktivierung
+  oder Advisor-Muting bleibt separates Hygiene-Thema.
+- [x] Grants ersetzen keine RLS-Policies.
+
+---
+
 ## Phase A10 - Android Widget V2.3 Appointments Context (2026-07-02)
 
 **Scope:** Android Widget V2.3 mit optionaler Termin-Kontextzeile und 7-Tage-Ticker-Bar. Das Widget bleibt read-only, zeigt nur den naechsten geplanten Termin und fuehrt keine Kalender-, Reminder-, Push-, Capture- oder Alarm-Logik ein.
