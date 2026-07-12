@@ -83,7 +83,6 @@ grant select
 revoke all on table public.health_medications from anon, public, authenticated, service_role;
 revoke all on table public.health_medication_schedule_slots from anon, public, authenticated, service_role;
 revoke all on table public.health_medication_slot_events from anon, public, authenticated, service_role;
-revoke all on table public.health_medication_stock_log from anon, public, authenticated, service_role;
 
 grant select, insert, update, delete
   on table public.health_medications
@@ -96,14 +95,6 @@ grant select, insert, update, delete
 grant select, insert, update, delete
   on table public.health_medication_slot_events
   to authenticated, service_role;
-
-grant select, insert, delete
-  on table public.health_medication_stock_log
-  to authenticated;
-
-grant select, insert, update, delete
-  on table public.health_medication_stock_log
-  to service_role;
 
 revoke all on function public.med_reset_all_data_v2() from anon, public, authenticated, service_role;
 revoke all on function public.med_list_v2(date) from anon, public, authenticated, service_role;

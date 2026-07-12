@@ -22,6 +22,7 @@ supabase/.temp/
 
 # Backend Supabase artifacts (never commit!)
 backend/supabase/.temp/
+backend/supabase/.branches/
 backend/**/*.env
 backend/**/*.exe
 backend/**/*.bak

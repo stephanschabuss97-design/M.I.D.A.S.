@@ -5,6 +5,18 @@
 
 begin;
 
+-- Shared trigger helper; provisioned here to keep the module bootstrap-safe.
+create or replace function public.set_current_timestamp_updated_at()
+  returns trigger
+  set search_path = pg_catalog, public
+  language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
 create or replace function public._med_default_slot_type(
   p_sort_order int,
   p_slot_count int
@@ -83,7 +95,8 @@ create table if not exists public.health_medications (
   strength             text,
   leaflet_url          text,
   with_meal            boolean not null default false,
-  stock_count          int  not null default 0,
+  stock_count          int  not null default 0
+    constraint health_medications_stock_count_check check (stock_count >= 0),
   low_stock_days       int  not null default 7  check (low_stock_days between 0 and 365),
   active               boolean not null default true,
   low_stock_ack_day    date,
@@ -104,6 +117,13 @@ alter table public.health_medications
 
 alter table public.health_medications
   add column if not exists with_meal boolean not null default false;
+
+alter table public.health_medications
+  drop constraint if exists health_medications_stock_count_check;
+
+alter table public.health_medications
+  add constraint health_medications_stock_count_check
+    check (stock_count >= 0);
 
 alter table public.health_medications
   drop column if exists dose_per_day;
@@ -256,21 +276,50 @@ create table if not exists public.health_medication_slot_events (
   slot_id    uuid not null references public.health_medication_schedule_slots(id) on delete cascade,
   day        date not null,
   qty        int  not null check (qty > 0 and qty <= 24),
+  stock_decrement_qty int not null default 0,
   taken_at   timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint chk_medication_slot_event_stock_decrement
+    check (stock_decrement_qty >= 0 and stock_decrement_qty <= qty)
 );
+
+alter table public.health_medication_slot_events
+  add column if not exists stock_decrement_qty int;
+
+-- Existing events cannot reconstruct a historically clamped stock delta.
+-- Zero is the safe neutral value until the clean productive transition.
+update public.health_medication_slot_events
+set stock_decrement_qty = 0
+where stock_decrement_qty is null;
+
+alter table public.health_medication_slot_events
+  alter column stock_decrement_qty set default 0,
+  alter column stock_decrement_qty set not null;
+
+alter table public.health_medication_slot_events
+  drop constraint if exists chk_medication_slot_event_stock_decrement;
+
+alter table public.health_medication_slot_events
+  add constraint chk_medication_slot_event_stock_decrement
+    check (stock_decrement_qty >= 0 and stock_decrement_qty <= qty);
 
 alter table public.health_medication_slot_events
   drop constraint if exists fk_medication_slot_events_slot_med;
 
 alter table public.health_medication_slot_events
   add constraint fk_medication_slot_events_slot_med
-    foreign key (slot_id, med_id)
-    references public.health_medication_schedule_slots (id, med_id)
-    on delete cascade;
+  foreign key (slot_id, med_id)
+  references public.health_medication_schedule_slots (id, med_id)
+  on delete cascade;
+
+create index if not exists idx_medication_slot_events_slot_med
+  on public.health_medication_slot_events (slot_id, med_id);
 
 comment on table public.health_medication_slot_events is
   'Bestaetigte Slot-Events je Medication/Slot/Tag im Multi-Dose-Modell.';
+
+comment on column public.health_medication_slot_events.stock_decrement_qty is
+  'Beim Confirm tatsaechlich vom Bestand abgezogene Menge; Undo stellt exakt diesen Wert wieder her.';
 
 create unique index if not exists uq_medication_slot_event_per_day
   on public.health_medication_slot_events (user_id, slot_id, day);
@@ -305,69 +354,6 @@ create policy medication_slot_events_delete_own
   using ((select auth.uid()) = user_id);
 
 -- ---------------------------------------------------------------------------
--- health_medication_stock_log (optional, fuer Korrekturen & Audits)
--- ---------------------------------------------------------------------------
-create table if not exists public.health_medication_stock_log (
-  id         uuid primary key default gen_random_uuid(),
-  med_id     uuid not null references public.health_medications(id) on delete cascade,
-  slot_id    uuid references public.health_medication_schedule_slots(id) on delete set null,
-  day        date,
-  delta      int not null check (delta <> 0),
-  reason     text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.health_medication_stock_log
-  add column if not exists slot_id uuid references public.health_medication_schedule_slots(id) on delete set null;
-
-alter table public.health_medication_stock_log
-  add column if not exists day date;
-
-comment on table public.health_medication_stock_log is
-  'Historisiert Lagerbestaenderaenderungen fuer Diagnostik, inklusive slot-basierter Confirm/Undo-Pfade.';
-
-create index if not exists idx_medication_stock_log_med
-  on public.health_medication_stock_log (med_id, created_at);
-
-alter table public.health_medication_stock_log enable row level security;
-
-drop policy if exists medication_stock_log_select_own on public.health_medication_stock_log;
-create policy medication_stock_log_select_own
-  on public.health_medication_stock_log for select
-  using (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
-
-drop policy if exists medication_stock_log_insert_own on public.health_medication_stock_log;
-create policy medication_stock_log_insert_own
-  on public.health_medication_stock_log for insert
-  with check (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
-
-drop policy if exists medication_stock_log_delete_own on public.health_medication_stock_log;
-create policy medication_stock_log_delete_own
-  on public.health_medication_stock_log for delete
-  using (
-    exists (
-      select 1
-      from public.health_medications m
-      where m.id = med_id
-        and m.user_id = (select auth.uid())
-    )
-  );
-
--- ---------------------------------------------------------------------------
 -- med_reset_all_data_v2 -> kontrollierter Medication-Neustart fuer den Nutzer
 -- ---------------------------------------------------------------------------
 create or replace function public.med_reset_all_data_v2()
@@ -380,7 +366,6 @@ declare
   v_user uuid := auth.uid();
   v_deleted_events int := 0;
   v_deleted_slots int := 0;
-  v_deleted_logs int := 0;
   v_deleted_meds int := 0;
 begin
   if v_user is null then
@@ -395,15 +380,6 @@ begin
    where user_id = v_user;
   get diagnostics v_deleted_slots = row_count;
 
-  delete from public.health_medication_stock_log l
-   where exists (
-     select 1
-       from public.health_medications m
-      where m.id = l.med_id
-        and m.user_id = v_user
-   );
-  get diagnostics v_deleted_logs = row_count;
-
   delete from public.health_medications
    where user_id = v_user;
   get diagnostics v_deleted_meds = row_count;
@@ -411,7 +387,6 @@ begin
   return jsonb_build_object(
     'deleted_slot_events', v_deleted_events,
     'deleted_schedule_slots', v_deleted_slots,
-    'deleted_stock_logs', v_deleted_logs,
     'deleted_medications', v_deleted_meds
   );
 end;
@@ -721,7 +696,7 @@ begin
     public._med_infer_slot_type(
       slot.value->>'slot_type',
       slot.value->>'label',
-      coalesce((slot.value->>'sort_order')::int, slot.ordinality - 1),
+      coalesce((slot.value->>'sort_order')::int, slot.ordinality - 1)::int,
       jsonb_array_length(p_slots)
     ),
     coalesce((slot.value->>'sort_order')::int, slot.ordinality - 1),
@@ -755,6 +730,7 @@ declare
   v_ctx record;
   v_event_id uuid;
   v_prev_stock int;
+  v_stock_decrement_qty int;
   v_row public.health_medications;
 begin
   if v_user is null then
@@ -786,9 +762,26 @@ begin
   end if;
 
   v_prev_stock := v_ctx.stock_count;
+  v_stock_decrement_qty := least(v_prev_stock, v_ctx.slot_qty);
 
-  insert into public.health_medication_slot_events (user_id, med_id, slot_id, day, qty, taken_at)
-  values (v_user, v_ctx.id, v_ctx.slot_id, v_day, v_ctx.slot_qty, now())
+  insert into public.health_medication_slot_events (
+    user_id,
+    med_id,
+    slot_id,
+    day,
+    qty,
+    stock_decrement_qty,
+    taken_at
+  )
+  values (
+    v_user,
+    v_ctx.id,
+    v_ctx.slot_id,
+    v_day,
+    v_ctx.slot_qty,
+    v_stock_decrement_qty,
+    now()
+  )
   on conflict (user_id, slot_id, day) do nothing
   returning id into v_event_id;
 
@@ -802,7 +795,7 @@ begin
   end if;
 
   update public.health_medications
-     set stock_count = greatest(v_prev_stock - v_ctx.slot_qty, 0),
+     set stock_count = v_prev_stock - v_stock_decrement_qty,
          low_stock_ack_day = case
                                when low_stock_ack_stock = v_prev_stock then null
                                else low_stock_ack_day
@@ -814,9 +807,6 @@ begin
    where id = v_ctx.id
      and user_id = v_user
    returning * into v_row;
-
-  insert into public.health_medication_stock_log (med_id, slot_id, day, delta, reason)
-  values (v_ctx.id, v_ctx.slot_id, v_day, -v_ctx.slot_qty, 'slot_confirm');
 
   return v_row;
 end;
@@ -839,8 +829,8 @@ as $$
 declare
   v_user uuid := auth.uid();
   v_day date := coalesce(p_day, public._med_today());
-  v_ctx record;
-  v_qty int;
+  v_med_id uuid;
+  v_stock_decrement_qty int;
   v_row public.health_medications;
 begin
   if v_user is null then
@@ -850,11 +840,8 @@ begin
     raise exception 'slot_id required' using errcode = '23502';
   end if;
 
-  select
-    e.med_id,
-    e.slot_id,
-    e.qty
-  into v_ctx
+  select e.med_id
+  into v_med_id
   from public.health_medication_slot_events e
   where e.user_id = v_user
     and e.slot_id = p_slot_id
@@ -869,20 +856,28 @@ begin
    where user_id = v_user
      and slot_id = p_slot_id
      and day = v_day
-   returning qty into v_qty;
+   returning stock_decrement_qty into v_stock_decrement_qty;
 
   update public.health_medications
-     set stock_count = stock_count + v_qty
-   where id = v_ctx.med_id
+     set stock_count = (
+           stock_count::bigint + v_stock_decrement_qty::bigint
+         )::int
+   where id = v_med_id
      and user_id = v_user
+     and stock_count::bigint + v_stock_decrement_qty::bigint <= 2147483647
    returning * into v_row;
 
   if v_row.id is null then
+    if exists (
+      select 1
+        from public.health_medications
+       where id = v_med_id
+         and user_id = v_user
+    ) then
+      raise exception 'stock target exceeds integer range' using errcode = '22003';
+    end if;
     raise exception 'medication not found' using errcode = 'P0002';
   end if;
-
-  insert into public.health_medication_stock_log (med_id, slot_id, day, delta, reason)
-  values (v_ctx.med_id, v_ctx.slot_id, v_day, v_qty, 'slot_undo');
 
   return v_row;
 end;
@@ -892,6 +887,7 @@ grant execute on function public.med_undo_slot_v2(uuid, date) to authenticated, 
 
 -- ---------------------------------------------------------------------------
 -- med_adjust_stock_v2 -> delta (Restock/Korrektur) im neuen Contract
+-- p_reason bleibt fuer API-Kompatibilitaet erhalten; es wird keine Historie persistiert.
 -- ---------------------------------------------------------------------------
 create or replace function public.med_adjust_stock_v2(
   p_med_id uuid,
@@ -905,27 +901,42 @@ set search_path = public, pg_catalog
 as $$
 declare
   v_user uuid := auth.uid();
+  v_prev_stock int;
+  v_target_stock bigint;
   v_row public.health_medications;
 begin
   if v_user is null then
     raise exception 'not authenticated' using errcode = '42501';
   end if;
-  if p_delta = 0 then
+  if p_delta is null or p_delta = 0 then
     raise exception 'delta must be non-zero' using errcode = '22023';
   end if;
 
-  update public.health_medications
-     set stock_count = stock_count + p_delta
+  select stock_count
+    into v_prev_stock
+    from public.health_medications
    where id = p_med_id
      and user_id = v_user
-   returning * into v_row;
+   for update;
 
-  if v_row.id is null then
+  if not found then
     raise exception 'medication not found' using errcode = 'P0002';
   end if;
 
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (p_med_id, p_delta, coalesce(p_reason, 'stock_adjust'));
+  v_target_stock := v_prev_stock::bigint + p_delta::bigint;
+
+  if v_target_stock < 0 then
+    raise exception 'stock target must be >= 0' using errcode = '22023';
+  end if;
+  if v_target_stock > 2147483647 then
+    raise exception 'stock target exceeds integer range' using errcode = '22003';
+  end if;
+
+  update public.health_medications
+     set stock_count = v_target_stock::int
+   where id = p_med_id
+     and user_id = v_user
+   returning * into v_row;
 
   return v_row;
 end;
@@ -935,6 +946,7 @@ grant execute on function public.med_adjust_stock_v2(uuid, int, text) to authent
 
 -- ---------------------------------------------------------------------------
 -- med_set_stock_v2 -> absolutes Setzen im neuen Contract
+-- p_reason bleibt fuer API-Kompatibilitaet erhalten; es wird keine Historie persistiert.
 -- ---------------------------------------------------------------------------
 create or replace function public.med_set_stock_v2(
   p_med_id uuid,
@@ -948,18 +960,20 @@ set search_path = public, pg_catalog
 as $$
 declare
   v_user uuid := auth.uid();
-  v_prev int;
   v_row public.health_medications;
 begin
   if v_user is null then
     raise exception 'not authenticated' using errcode = '42501';
   end if;
+  if p_stock is null then
+    raise exception 'stock required' using errcode = '23502';
+  end if;
   if p_stock < 0 then
     raise exception 'stock must be >= 0' using errcode = '22023';
   end if;
 
-  select stock_count
-    into v_prev
+  select *
+    into v_row
     from public.health_medications
    where id = p_med_id
      and user_id = v_user
@@ -969,14 +983,15 @@ begin
     raise exception 'medication not found' using errcode = 'P0002';
   end if;
 
+  if v_row.stock_count = p_stock then
+    return v_row;
+  end if;
+
   update public.health_medications
      set stock_count = p_stock
    where id = p_med_id
      and user_id = v_user
    returning * into v_row;
-
-  insert into public.health_medication_stock_log (med_id, delta, reason)
-  values (p_med_id, p_stock - v_prev, coalesce(p_reason, 'stock_set'));
 
   return v_row;
 end;

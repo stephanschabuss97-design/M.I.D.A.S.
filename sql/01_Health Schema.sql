@@ -37,8 +37,8 @@ create policy "profile_delete_own"
 -- Typen:
 --  - 'bp'       : Blutdruck (sys/dia/pulse, pulse optional), ctx ? {Morgen,Abend}
 --  - 'body'     : Gewicht/Bauchumfang (kg/cm), mind. eines Pflicht
--  - 'note'     : Textnotiz (text, 1..2000)
--  - 'intake'   : Lifestyle-Intake (water_ml/salt_g/protein_g), kumulativ je Tag
+--  - 'note'     : Textnotiz (text, 1..2000)
+--  - 'intake'   : Lifestyle-Intake (water_ml/salt_g/protein_g), kumulativ je Tag
 create table public.health_events (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid(),

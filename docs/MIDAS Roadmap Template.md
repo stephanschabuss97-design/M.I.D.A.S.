@@ -195,6 +195,22 @@ Forbidden:
   - nach S5 als technische Commit-Bereitschaft oder `noch nicht committen`
   - nach S6 als finale Commit-Empfehlung mit Scope
 
+## Modell- und Reasoning-Routing
+
+- Standardmodell fuer MIDAS-Roadmaps ist durchgaengig `GPT-5.6 Sol`.
+- Innerhalb einer laufenden Roadmap wird nicht allein zur Verbrauchsoptimierung auf Terra oder Luna gewechselt.
+- Fuer jeden Hauptschritt und jeden S4-Substep wird die Reasoning-Stufe passend zum konkreten Arbeitsaufwand, Risiko und Review-Bedarf individuell festgelegt.
+- Die Roadmap traegt die Empfehlung direkt am jeweiligen Schritt als `Empfohlenes Modell / Reasoning: GPT-5.6 Sol / [Stufe]` ein.
+- Vorlaeufige S4-Empfehlungen werden im S4 Readiness Review gegen die Erkenntnisse aus S1-S3 erneut bewertet und bei Bedarf korrigiert.
+- Es wird die niedrigste noch belastbare Reasoning-Stufe verwendet:
+  - `Low` fuer kleine, rein mechanische Einzeloperationen ohne relevante Mehrdeutigkeit.
+  - `Medium` fuer eng begrenzte, deterministische Scans, Transformationen und Doku-Synchronisation.
+  - `High` fuer Implementierung, Code-/Contract-Review, Cross-File-Arbeit, Security, SQL, Backend und medizinische Logik.
+  - `Extra High` fuer einzelne besonders schwierige oder destruktive Knoten mit P0-Risiko, Concurrency, Migration, Rollback oder mehreren gekoppelten Preconditions.
+- `Max` oder `Ultra` sind keine Standardstufen. Sie duerfen nur fuer einen begruendeten Ausnahmefall eingesetzt werden, wenn Extra High keinen belastbaren Abschluss erreicht oder ein klar parallelisierbarer Red-Team-Sweep erforderlich ist.
+- Die gewaehlte Stufe ist ein Arbeitsvertrag und kein fachliches Exit-Kriterium. Reviews, Checks und User-Gates bleiben unabhaengig davon verpflichtend.
+- Wenn die in der aktuellen Codex-Oberflaeche angebotenen Stufennamen abweichen, wird die naechstliegende verfuegbare Stufe verwendet und in der Roadmap dokumentiert.
+
 ## Skalierung der Roadmap
 
 Dieses Template ist ein Standardgeruest, kein Zwang zu sechs grossen Phasen.
@@ -269,6 +285,8 @@ Severity-Vertrag:
 
 ## S1 - System- und Vertragsdetektivarbeit
 
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
+
 Ziel:
 
 - Bestehendes System verstehen.
@@ -300,6 +318,8 @@ Exit-Kriterium:
 
 ## S2 - Fachlicher/technischer Contract Review
 
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
+
 Ziel:
 
 - Zielidee gegen bestehende MIDAS-Vertraege pruefen.
@@ -328,6 +348,8 @@ Exit-Kriterium:
 - Umsetzung kann starten, ohne dass Grundsatzfragen offen sind.
 
 ## S3 - Bruchrisiko-, UI-/Copy- und Umsetzungsreview
+
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
 
 Ziel:
 
@@ -371,6 +393,8 @@ Exit-Kriterium:
 - S4 hat klare Substeps und bekannte Review-Kriterien.
 
 ## S4 Readiness Review - Gate nach S3, vor S4
+
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
 
 Ziel:
 
@@ -438,6 +462,8 @@ Exit-Kriterium:
 
 ## S4 - Umsetzung
 
+Modell bleibt `GPT-5.6 Sol`; Reasoning wird fuer jeden Substep separat festgelegt und im Readiness Review bestaetigt.
+
 Ziel:
 
 - Gefundene Punkte sequenziell umsetzen.
@@ -453,9 +479,9 @@ S4-Substep-Regel:
 
 Typische Substeps:
 
-- S4.1 [erster konkreter Code-/Workflow-/Doku-Schritt]
-- S4.2 [zweiter konkreter Schritt]
-- S4.3 [weiterer konkreter Schritt]
+- S4.1 `[erster konkreter Code-/Workflow-/Doku-Schritt]` - Reasoning: `[Stufe]`.
+- S4.2 `[zweiter konkreter Schritt]` - Reasoning: `[Stufe]`.
+- S4.3 `[weiterer konkreter Schritt]` - Reasoning: `[Stufe]`.
 - S4.x User-Facing Copy bei betroffenen UI-/Status-Texten umsetzen.
 - S4.y Code Review waehrend der Umsetzung.
 - S4.z Schritt-Abnahme.
@@ -479,6 +505,8 @@ Exit-Kriterium:
 - Alle priorisierten Findings aus S1-S3 sind umgesetzt oder bewusst abgegrenzt.
 
 ## S5 - Tests, Code Review und Contract Review
+
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
 
 Ziel:
 
@@ -530,6 +558,8 @@ Exit-Kriterium:
 - Alle lokal moeglichen Checks sind erledigt oder bewusst als nicht verfuegbar markiert.
 
 ## S6 - Doku-Sync, QA-Update und finaler Abschlussreview
+
+Empfohlenes Modell / Reasoning: `GPT-5.6 Sol / [individuell festlegen]`.
 
 Ziel:
 

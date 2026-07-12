@@ -8,6 +8,25 @@ Kurze Einordnung:
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 
+## Produktiver Data-Hygiene-Vertrag
+
+Stand `2026-07-12`: Der produktive Clean Start und der Wechsel auf den
+langfristig begrenzten Medication-Vertrag sind abgeschlossen:
+
+- drei Medication-Tabellen ohne `health_medication_stock_log`.
+- `health_medications.stock_count` als einzige operative Bestandswahrheit ohne
+  dauerhaften Bewegungsverlauf.
+- `health_medication_slot_events.qty` als dokumentierte Dosis und
+  `stock_decrement_qty` als tatsaechlich angewandte Bestandsreduktion.
+- exakt invertierbares Confirm/Undo auch bei einem ungenauen niedrigen Bestand.
+- ein rollendes Wiener Kalenderjahr Slot-Events; fehlende Events bedeuten
+  `nicht dokumentiert`, nicht beweisbar `vergessen`.
+- datenbankseitige interne Retention mit genau einem taeglichen Supabase-Cron-
+  Job `midas-medication-retention-daily`.
+- keine Aenderung an Slot-Abschnitten, UI, Voice, Widget oder Reminder-Zeiten.
+- produktiver Beobachtungsbeginn fuer die neue Event-Historie ist der
+  `2026-07-12`; fruehere Einzelereignisse wurden bewusst nicht uebernommen.
+
 ---
 
 ## 1. Zielsetzung
@@ -30,6 +49,9 @@ Related docs:
 | `app/modules/incidents/index.js` | gestaffelte lokale Medication-Reminder/Incidents pro Abschnitt (`morning/noon/evening/night`). |
 | `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
 | `sql/12_Medication.sql` | Tabellen plus produktive RPCs fuer Slot-/Progress-Modell und den bereinigten Medication-Contract. |
+| `sql/16_Explicit_Grants.sql` | Expliziter Data-API-Rollenvertrag fuer Medication-Tabellen und RPCs. |
+| `sql/17_Medication_Retention.sql` | Interne Jahres-Retention und taeglicher Supabase-Cron-Job. |
+| `sql/transition_medication_clean_start.sql` | Einmaliges, bereits produktiv ausgefuehrtes Clean-Start-Artefakt; nicht erneut ausfuehren. |
 | `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
 
 ---
@@ -38,8 +60,11 @@ Related docs:
 
 - `health_medications`: Stammdaten, Bestaende, `with_meal`, Low-Stock-Felder, `active`.
 - `health_medication_schedule_slots`: geplanter Tagesplan pro Medication mit `slot_type`, `sort_order`, `qty_per_slot`, `start_date`, `end_date`.
-- `health_medication_slot_events`: bestaetigte Slot-Einnahmen je Nutzer/Medication/Tag.
-- `health_medication_stock_log`: Verlauf fuer Confirm/Undo und Bestandskorrekturen; kann `slot_id` und `day` mitfuehren.
+- `health_medication_slot_events`: bestaetigte Slot-Einnahmen je
+  Nutzer/Medication/Tag. `qty` dokumentiert die Dosis;
+  `stock_decrement_qty` speichert den tatsaechlich angewandten Bestandsabzug.
+- Es gibt keinen dauerhaften Bestandsbewegungsverlauf. Operative
+  Bestandswahrheit ist ausschliesslich `health_medications.stock_count`.
 - `med_list_v2` ist das operative Read-Model fuer Medication im Frontend.
 
 ---
@@ -67,10 +92,28 @@ Related docs:
 ### 4.4 Persistenz
 - `med_list_v2` liefert Medication, Progress (`taken_count`, `total_count`, `state`) und `slots[]` inklusive `slot_type`.
 - `med_upsert_v2` speichert Stammdaten; `med_upsert_schedule_v2` schreibt den aktiven Slot-Plan inklusive normalisiertem `slot_type`.
-- `med_confirm_slot_v2` und `med_undo_slot_v2` buchen genau einen Slot und passen den Bestand an.
-- `med_adjust_stock_v2` und `med_set_stock_v2` loggen in `health_medication_stock_log`.
+- `med_confirm_slot_v2` bucht genau einen Slot, reduziert den Bestand nie unter
+  `0` und speichert den realen Abzug im Event.
+- `med_undo_slot_v2` entfernt das Event und stellt exakt dessen
+  `stock_decrement_qty` wieder her.
+- `med_adjust_stock_v2` und `med_set_stock_v2` aendern nur den aktuellen
+  Bestand und erzeugen keine Historie.
 - `med_ack_low_stock_v2`, `med_set_active_v2`, `med_delete_v2` bilden die restlichen Write-Pfade im neuen Vertrag.
 - clientseitig existiert zusaetzlich `confirmMedicationSection(...)` fuer abschnittsbezogene Sammelbestaetigung offener Slots.
+
+### 4.5 Retention
+
+- `med_retention_cleanup_internal()` loescht Slot-Events vor dem rollenden
+  Wiener Jahres-Cutoff.
+- Alte beendete Schedule-Slots werden erst entfernt, wenn sie ebenfalls vor
+  dem Cutoff liegen und kein erhaltenes Event mehr auf sie verweist.
+- `midas-medication-retention-daily` fuehrt die Bereinigung taeglich um
+  `03:15 UTC` direkt in PostgreSQL aus.
+- Die Funktion ist intern: kein Execute fuer `PUBLIC`, `anon`,
+  `authenticated` oder `service_role`.
+- Laufdetails des eigenen Cron-Jobs werden nach 90 Tagen bereinigt.
+- Das Fehlen eines Events bedeutet fachlich `nicht dokumentiert`, nicht sicher
+  `vergessen`.
 
 ---
 
@@ -87,6 +130,8 @@ Related docs:
 - Aktuell keine dedizierte Arztansicht; spaetere Read-only-Pfade sollten `med_list_v2` oder ein separates Read-Model nutzen.
 - Low-Stock-Box zeigt Arzt-Mail zur Kontaktaufnahme aus dem Profil.
 - Profil-Snapshot rendert bereits lesbare Plan-Zusammenfassungen aus `slots[]`.
+- Historische Einzel-Einnahmen sind bewusst nur fuer das rollende
+  Beobachtungsjahr verfuegbar; es gibt keinen lebenslangen Stock-Audit-Trail.
 
 ---
 
@@ -148,8 +193,9 @@ Related docs:
 
 ## 11. QA-Checkliste
 
-- Siehe `docs/QA_CHECKS.md` Phase E.
-- Fokus: `1x`-Fast-Path, `>1x`-Slot-Confirm/Undo, Low-Stock Box, TAB CRUD, Kartenaktionen, Logging.
+- Siehe `docs/QA_CHECKS.md`, insbesondere Phase M-DH und Phase E.
+- Fokus: `1x`-Fast-Path, `>1x`-Slot-Confirm/Undo, exakter Bestandsabzug,
+  Jahres-Retention, Low-Stock Box, TAB CRUD, Kartenaktionen und Logging.
 
 ---
 

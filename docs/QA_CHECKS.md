@@ -1,3 +1,84 @@
+## Phase M-DH - Medication Data Hygiene (Completed 2026-07-12)
+
+**Scope:** Vorbereitung des schlanken Medication-Datenmodells ohne dauerhaften
+Stock-Log, mit exakt invertierbarem Confirm/Undo, einmaligem Clean Start und
+einem rollenden Kalenderjahr Slot-Events. Produktiver Stichtag ist der
+`2026-07-12`.
+
+### Static / Local Checks
+
+- [x] `git diff --check` fuer SQL, Medication Overview, Future Notes, QA und
+  Roadmap final bestaetigen.
+- [x] Kein Stock-Log-Verweis in kanonischem/operativem SQL, Grants oder
+  Runtime-Code; nur das einmalige Transition-SQL darf ihn referenzieren.
+- [x] Schedule-Upsert, Confirm, Undo, Adjust, Set und Reset sind zwischen
+  Master- und Transition-SQL semantisch identisch.
+- [x] Fresh-Bootstrap `12 + Medication-Grants aus 16 + 17` und fehlerfreier
+  zweiter Lauf auf disposable Supabase pruefen.
+- [x] Erfolgreiche Transition sowie Owner-, Rebase- und Lock-Timeout-Abbruch
+  jeweils ohne unerwartete Teilwirkung pruefen.
+
+### Cutover / Data Contract
+
+- [x] Sicherheits-Snapshot fuer Medication-Stammdaten, Plaene und Bestaende
+  unmittelbar vor Cutover erstellen.
+- [x] Cutover vor erstem Confirm, vor `10:00 Europe/Vienna` und vor jeder
+  Medication-Push-Zustellung des Stichtags ausfuehren.
+- [x] Genau einen gemeinsamen Medication-Owner und kollisionsfreien Rebase
+  direkt vor Ausfuehrung bestaetigen.
+- [x] Transition, Explicit Grants und Retention-SQL in der reviewten Reihenfolge
+  erfolgreich ausfuehren.
+- [x] `health_medication_stock_log` fehlt; drei Medication-Tabellen, RLS und
+  Grants bleiben intakt.
+- [x] Medication-Stammdaten und zukuenftige Plaene bleiben erhalten; aktuelle
+  Plaene beginnen am dokumentierten Stichtag.
+- [x] Alte Slot-Events und Low-Stock-Acknowledgements sind bereinigt.
+- [x] Erhaltene Bestaende gegen die realen Packungen geprueft; nur bei einer
+  Abweichung waere ein manuelles Setzen erforderlich gewesen.
+
+### RPC / Runtime Regression
+
+- [x] Confirm bei ausreichendem, niedrigem und leerem Bestand speichert die
+  richtige dokumentierte Dosis und `stock_decrement_qty`.
+- [x] Doppel-Confirm bleibt No-op; Undo stellt exakt die gespeicherte
+  Bestandsreduktion wieder her.
+- [x] Undo nach zwischenzeitlichem Set auf den maximalen Integer-Bestand
+  bricht kontrolliert mit Range-Fehler und ohne Event-Loeschung ab.
+- [x] Adjust unter `0` und Integer-Ueberlauf werden kontrolliert abgewiesen;
+  Set auf denselben Bestand bleibt erfolgreicher No-op.
+- [x] Restock-/Set-RPC, Medication-TAB, Intake und Abschnitts-Confirm
+  funktionieren ohne Stock-Log; Voice und Low-Stock besitzen laut
+  Consumer-Review keine Stock-Log-Abhaengigkeit.
+- [x] Android und Realtime spiegeln den produktiven Slot-Event ohne weiteren
+  Eingriff korrekt.
+- [x] Incident Push behaelt bestehende Schwellen und erkennt offene sowie
+  bestaetigte Tagesabschnitte unveraendert.
+- [x] Reset liefert nur `deleted_slot_events`, `deleted_schedule_slots` und
+  `deleted_medications`.
+
+### Retention / Security
+
+- [x] Cutoff-Grenzfall: Tag vor Cutoff wird geloescht, Cutoff-Tag bleibt.
+- [x] Aktuelle/zukuenftige Slots bleiben; alte beendete Slots verschwinden erst
+  nach ihren Events.
+- [x] Genau ein aktiver Job `midas-medication-retention-daily` laeuft taeglich
+  um `03:15 UTC`.
+- [x] Retention-Funktion besitzt kein Execute fuer `PUBLIC`, `anon`,
+  `authenticated` oder `service_role`.
+- [x] Nur abgeschlossene Laufdetails der eigenen aktuellen Job-ID aelter als
+  90 Tage sind bereinigbar.
+- [x] Supabase Security Advisor, RLS und Explicit Grants nach Cutover pruefen.
+
+### Final Documentation Gate
+
+- [x] Medication Overview vom Pending- auf den produktiven Zielvertrag
+  umstellen.
+- [x] Future Notes nach finalem Review als ersetzt markieren oder archivieren.
+- [x] Produktiven Stichtag, Ergebniszaehler, Cron-Status und Runtime-Smokes in
+  Roadmap und QA dokumentieren.
+
+---
+
 ## Phase S18 - Supabase Explicit Data API Grants (2026-07-04)
 
 **Scope:** Explizite Supabase Data API Grants fuer bestehende MIDAS-`public`-

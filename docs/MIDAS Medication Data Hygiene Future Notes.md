@@ -6,6 +6,46 @@ Dieses Dokument ist keine Roadmap und kein Umsetzungsplan.
 
 Es haelt die Diskussion zur moeglichen Vereinfachung des Medication-Datenmodells fest, damit ein spaeterer Chat die Motivation, Risiken und offenen Fragen schnell versteht. Eine echte Roadmap soll erst entstehen, wenn die Medication-Logik gezielt reviewt wurde.
 
+## Status 2026-07-12 - Ersetzt
+
+Die offene Diskussion dieses Dokuments wurde durch die umgesetzte
+`MIDAS Medication Data Hygiene Roadmap` ersetzt. Die folgenden Abschnitte
+bleiben als historische Entscheidungsgrundlage erhalten und sind nicht mehr
+der aktuelle Ziel- oder Betriebsvertrag.
+
+Aktuelle Source of Truth:
+
+- `docs/modules/Medication Module Overview.md`
+- `sql/12_Medication.sql`
+- `sql/16_Explicit_Grants.sql`
+- `sql/17_Medication_Retention.sql`
+- `docs/QA_CHECKS.md`, Phase M-DH
+
+Produktiv umgesetzt:
+
+- `health_medication_stock_log` wird vollstaendig und ohne Ersatzhistorie
+  entfernt; auch Restock, Adjust und Set erzeugen keinen Verlauf mehr.
+- aktueller Bestand bleibt ausschliesslich in
+  `health_medications.stock_count`.
+- Slot-Events und Schedule-Slots bleiben wegen Multi-Dose, temporaeren Plaenen,
+  Widget und Reminder erhalten.
+- Slot-Events werden auf ein rollendes Wiener Kalenderjahr begrenzt.
+- Confirm speichert die tatsaechliche Bestandsreduktion im begrenzten
+  Slot-Event; Undo stellt exakt diesen Wert wieder her.
+- bestehende Medication-Historie erhaelt einen einmaligen, explizit
+  user-gated Clean Start.
+- Retention laeuft intern in PostgreSQL ueber einen eindeutig benannten
+  Supabase-Cron-Job.
+
+Abgeschlossen:
+
+- produktiver Clean Start am `2026-07-12`.
+- Abgleich der erhaltenen Bestaende gegen die realen Packungen ohne noetige
+  Korrektur.
+- produktive Aktivierung und Operator-Smoke der Retention.
+- PWA-, Android- und Incident-Push-Smokes.
+- finaler Source-of-Truth-Doku-Sync in S6.
+
 ## Ausgangspunkt
 
 MIDAS nutzt aktuell ein relativ robustes Multi-Dose-Medication-Modell:

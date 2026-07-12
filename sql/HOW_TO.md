@@ -49,6 +49,50 @@ Explain how SQL scripts in `sql/` are structured, how to run them safely, and ho
 4) Explicit grants
 5) Optional helpers
 
+# Medication Data-Hygiene Scripts
+
+The productive Medication target contract is split by responsibility:
+
+1) `12_Medication.sql`
+- Canonical idempotent schema and RPC source for fresh/disposable environments.
+- Not the productive one-time migration for an existing MIDAS database.
+
+2) `16_Explicit_Grants.sql`
+- Central explicit Data API role contract.
+- Run only after all referenced objects exist.
+
+3) `17_Medication_Retention.sql`
+- Idempotently enables `pg_cron`, provisions the internal cleanup function and
+  creates or updates exactly one named Medication retention job.
+- Existing projects run it after the reviewed Medication transition and grants.
+- Fresh/disposable environments run it after `12_Medication.sql` and grants.
+
+4) `transition_medication_clean_start.sql`
+- Destructive, one-time transition used productively on `2026-07-12`.
+- Preserved as an auditable migration artifact, not a reusable maintenance
+  command. Its successful rerun guard is expected to reject another execution.
+
+For the completed existing-project cutover, the reviewed order was:
+
+1) `transition_medication_clean_start.sql`
+2) `16_Explicit_Grants.sql`
+3) `17_Medication_Retention.sql`
+
+# Retention and Cron Rules
+
+- Prefer database-internal retention when cleanup depends only on PostgreSQL
+  data and must remain independent of app logins or external CI availability.
+- Provision extensions, functions and named jobs idempotently.
+- Keep maintenance functions internal and revoke Execute from application
+  roles unless an explicit product API requires access.
+- Use one stable job name and verify owner, database, schedule, command and
+  active state after provisioning.
+- Do not write directly to `cron.job`; use the supported `cron.schedule` and
+  `cron.alter_job` functions.
+- Bound `cron.job_run_details` growth without deleting active or recent runs.
+- Productive Cron activation and destructive transitions remain explicitly
+  user-gated even when their SQL files are idempotent.
+
 # Explicit Data API Grants
 
 Supabase Data API access must be explicit for MIDAS `public` objects. Do not

@@ -23,6 +23,39 @@ Dieses Dokument ist kein Produktkonzept und keine vollstaendige Architektur-Doku
 - Kein Supabase Deploy ohne ausdrueckliche Freigabe.
 - Keine produktiven GitHub-Workflow-Runs ohne ausdrueckliche Freigabe.
 
+## Codex-Startvertrag
+
+Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
+
+- Zuerst `README.md`, dieses Dokument, relevante Module Overviews und aktive
+  Roadmaps lesen.
+- Bei SQL, RLS, Auth, Edge Functions, Android, Push, medizinischer Fachlogik
+  und Source-of-Truth-Dokus gilt die MIDAS-Roadmap-Arbeitsweise:
+  - S1-S3 Detektivarbeit und Contract Review.
+  - S4 Umsetzung erst nach Readiness Review.
+  - S5 Checks und Smokes.
+  - S6 Doku-Sync und Abschlussreview.
+- Fuer kleine, risikoarme Fixes darf die Roadmap-Tiefe schlank sein, aber Code
+  wird trotzdem erst nach einem kurzen Contract Review geaendert.
+- Stephan ist Oesterreicher; sichtbare deutsche UI-/Copy-Texte sollen echte
+  Umlaute verwenden:
+  - `Flüssigkeit`, `Zurücksetzen`, `Öffnen`, `Ändern`.
+  - Keine sichtbaren User-facing Ersatzschreibweisen wie `Fluessigkeit` oder
+    `Zuruecksetzen`, ausser es ist technisch unvermeidbar.
+- Code-Identifier, Dateinamen, SQL-Namen, Log-Keys und technische Marker bleiben
+  bevorzugt ASCII:
+  - `fluessigkeit_label`, `zuruecksetzen_action`, `ckd_stage`.
+- Doku darf ASCII-Umschreibungen verwenden, wenn die Datei bereits so geschrieben
+  ist oder es um technische Vertrage geht.
+- Bei sichtbarer Copy im Zweifel kurz im Review markieren, statt eine
+  unnatuerliche deutsche Schreibweise einzubauen.
+- Produktive Aktionen bleiben user-gated:
+  - Supabase SQL Editor
+  - Supabase Deploy
+  - GitHub Workflow Runs
+  - Android APK Build/Install, wenn das Geraet betroffen ist
+  - Live-Smokes mit Schreibwirkung
+
 ## Agent-Arbeitsregeln
 
 - Standardshell ist PowerShell.
@@ -40,6 +73,28 @@ git status --short
 - Bei Backend-Aenderungen immer die relevante Edge Function plus Modul-/Roadmap-Doku gegenlesen.
 
 ## Installierte Kernwerkzeuge
+
+Letzter verifizierter Toolchain-Abgleich: 11.07.2026.
+
+| Werkzeug | Verifizierter Stand |
+| --- | --- |
+| Git | `2.55.0.windows.2` |
+| Node.js / npm | `24.18.0` / `11.18.0` |
+| ripgrep | `15.1.0` |
+| VS Code | `1.127.0` |
+| Deno | `2.9.2` |
+| Supabase CLI | `2.109.1` |
+| Docker Desktop / Engine | `4.81.0` / `29.6.1` |
+| WSL / Ubuntu | `2.6.1.0` / `24.04.3 LTS` |
+| PostgreSQL Client in WSL | `psql 16.14` |
+| GitHub CLI | `2.96.0` |
+| Python | `3.14.6` |
+| Microsoft OpenJDK | `17.0.19` |
+| Android Command-line Tools / ADB | `21.0` / `37.0.0` |
+| Playwright | `1.61.1` |
+
+Die Befehle in den jeweiligen Abschnitten bleiben die Source of Truth. Die
+Tabelle ist ein datierter Referenzstand und kein Versions-Pin fuer das Repo.
 
 ### Git
 
@@ -77,6 +132,8 @@ Hinweis:
 
 - `node` funktioniert direkt.
 - `npm` ist installiert, aber PowerShell kann `npm.ps1` wegen Execution Policy blocken.
+- npm bleibt bewusst auf der aktuellen 11er-Linie; ein neues npm-Major wird erst
+  nach separater Kompatibilitaetspruefung uebernommen.
 - Sicherer Aufruf in PowerShell:
 
 ```powershell
@@ -176,6 +233,10 @@ Verwendung:
   - Der normale TypeScript-Server versteht diese Imports nicht zuverlaessig.
   - `.vscode/settings.json` aktiviert den Deno Language Server gezielt fuer `backend/supabase/functions`.
   - Keine `@ts-ignore`-/`ts-nocheck`-Workarounds fuer Edge-Function-Imports verwenden.
+- `deno --version` ist fuer den realen Stand massgeblich. Nach einem Deno-
+  Self-Update kann Winget voruebergehend alte Paketmetadaten anzeigen.
+- Fuer ein Winget-Update muss der Deno Language Server die ausfuehrbare Datei
+  freigeben; dafuer VS Code bei Bedarf vollstaendig beenden.
 
 Backend-Source-of-Truth:
 
@@ -196,9 +257,71 @@ deno check backend/supabase/functions/midas-tts/index.ts
 deno check backend/supabase/functions/midas-vision/index.ts
 ```
 
+### Docker Desktop / WSL
+
+Docker Desktop ist mit dem WSL-2-Backend installiert und wurde mit einem
+neutralen `hello-world`-Container verifiziert.
+
+Installationspfade:
+
+```text
+C:\Program Files\Docker\Docker\Docker Desktop.exe
+C:\Program Files\Docker\Docker\resources\bin\docker.exe
+```
+
+Versions- und Daemon-Checks:
+
+```powershell
+docker --version
+docker version
+docker info
+docker context show
+```
+
+Falls ein bereits offenes VS-Code-Terminal den nach der Installation neuen
+PATH noch nicht kennt:
+
+```powershell
+$env:Path = "C:\Program Files\Docker\Docker\resources\bin;$env:Path"
+docker version
+```
+
+Nach einem Neustart von VS Code sollte kein manueller PATH-Zusatz mehr noetig
+sein. Der aktive Docker-Kontext ist `desktop-linux`.
+
+Regeln:
+
+- Docker Desktop darf fuer lokale/disposable Tests gestartet werden.
+- Container- oder Volume-Loeschungen sind vor ihrer Ausfuehrung gegen den
+  konkreten lokalen Test-Scope zu pruefen.
+- Docker-Verfuegbarkeit ist keine Freigabe fuer produktive Supabase-Aktionen.
+- Der lokale Supabase-Stack und das produktive Supabase-Projekt sind getrennte
+  Umgebungen.
+
+### PostgreSQL Client (`psql`)
+
+Der schlanke PostgreSQL-Client ist in Ubuntu unter WSL installiert. Es wurde
+bewusst kein zweiter PostgreSQL-Server als Windows-Dienst angelegt.
+
+Version:
+
+```powershell
+wsl -d Ubuntu -- psql --version
+```
+
+Verifizierter Stand:
+
+```text
+psql (PostgreSQL) 16.14
+```
+
+Der Client kann PostgreSQL-17-Server ansprechen. Verbindungsstrings,
+Passwoerter und lokale Supabase-Statuswerte duerfen nicht in Doku, Logs oder
+Commits uebernommen werden.
+
 ### Supabase CLI
 
-Systemweit/user-local installiert:
+Als gepruefte Standalone-Binary user-local installiert:
 
 ```powershell
 supabase --version
@@ -208,6 +331,16 @@ Installationspfad:
 
 ```text
 C:\Users\steph\AppData\Local\Programs\Supabase\supabase.exe
+C:\Users\steph\AppData\Local\Programs\Supabase\supabase-go.exe
+```
+
+Seit CLI v2.109.1 muessen der Windows-Shim `supabase.exe` und die eigentliche
+Go-CLI `supabase-go.exe` gemeinsam im Installationsordner liegen. Ein reiner
+`supabase --version`-Check kann eine fehlende Go-Binary uebersehen; deshalb
+zusaetzlich einen realen Hilfebefehl pruefen:
+
+```powershell
+supabase start --help
 ```
 
 Falls ein bereits offenes VS-Code-Terminal den PATH noch nicht kennt:
@@ -222,6 +355,7 @@ Verwendung:
 - Remote Functions listen
 - Edge Functions deployen
 - Supabase CLI-Hilfe
+- lokalen Supabase-Stack ueber Docker verwalten
 
 Beispiele:
 
@@ -244,6 +378,58 @@ Wichtig:
 - Wenn Code hash-identisch zum bereits deployed Stand ist, ist ein Deploy normalerweise nicht noetig.
 - Fuer die aktuelle Repo-Struktur ist der Supabase-Deploy-Workdir `backend`, weil die CLI darunter `supabase/functions/...` erwartet.
 - Nicht `--workdir backend/supabase` verwenden; das erzeugt einen falschen internen Pfad `supabase/functions/...` unterhalb von `backend/supabase`.
+- Keine globale npm-Installation von `supabase` verwenden. Fuer MIDAS ist die
+  Standalone-Binary am dokumentierten Pfad massgeblich.
+
+### Lokaler Supabase-Stack
+
+Der lokale Supabase-Stack ist kein separates Programm. Die Supabase CLI startet
+dafuer mehrere Docker-Container, unter anderem fuer PostgreSQL, Auth, REST,
+Realtime und Studio.
+
+Voraussetzungen sind jetzt vorhanden:
+
+- Docker Desktop mit laufendem Linux-Daemon.
+- Supabase CLI.
+- optionaler `psql`-Client fuer direkte PostgreSQL-Pruefungen.
+
+MIDAS-Kontext:
+
+```text
+backend/supabase/config.toml
+```
+
+Die CLI muss vom Repo-Root mit dem Workdir `backend` aufgerufen werden, weil
+dort der Ordner `supabase/` liegt:
+
+```powershell
+supabase start --workdir backend
+```
+
+Wichtig:
+
+- Der lokale Stack wurde am 11.07.2026 mit PostgreSQL `17.6` erfolgreich
+  gestartet und fuer disposable SQL-, RPC-, Transition-, Retention- und
+  Lock-Timeout-Tests verwendet.
+- Vor einem Reset ist die bestehende Seed-Konfiguration zu pruefen:
+  `backend/supabase/config.toml` referenziert `./seed.sql`, die Datei ist im
+  Repo derzeit nicht vorhanden. `supabase start` meldet dies als Warnung,
+  startet den Stack aber ohne Seed; `supabase db reset` bleibt vor Verwendung
+  gesondert zu pruefen.
+- Docker Desktop publiziert die lokalen Supabase-Ports unter Windows trotz
+  eigenem Docker-Netzwerk auf allen Host-Interfaces. Die Windows-Firewall-Regel
+  `MIDAS Local Supabase - Block Remote Inbound` blockiert deshalb Remote-
+  Inbound fuer TCP `54320-54329`; Loopback auf `127.0.0.1` bleibt erlaubt und
+  wurde mit `psql` verifiziert.
+- Die lokale Analytics-/Vector-Komponente ist fuer die Medication-Datenbank-
+  tests nicht erforderlich. Docker Desktop muss dafuer nicht unsicher auf
+  `tcp://localhost:2375` exponiert werden.
+- Ein lokaler Stack darf niemals mit produktiven Secrets oder einem
+  produktiven Datenbank-Passwort gespeist werden.
+- Start, Reset, Stop und Volume-Bereinigung werden vor Verwendung immer ueber
+  `supabase <command> --help` gegen die installierte CLI-Version geprueft.
+- Ein erfolgreicher lokaler Stack ist keine Freigabe fuer einen produktiven
+  Cutover.
 
 ### Supabase SQL Editor / Security Advisor / RLS Tester
 
@@ -271,28 +457,28 @@ MIDAS-Grant-Vertrag:
   durch RLS/Policies kontrolliert wird.
 - `auth_leaked_password_protection` ist Supabase-Auth-Dashboard-Hygiene und kein
   SQL-Grant-Thema.
-- GraphQL wird von MIDAS aktuell nicht aktiv genutzt. GraphQL-Deaktivierung oder
-  Advisor-Muting bleibt ein separates Hygiene-Thema.
+- GraphQL wird von MIDAS aktuell nicht aktiv genutzt; `pg_graphql` ist im
+  produktiven Projekt bewusst deaktiviert. Eine Reaktivierung braucht einen
+  eigenen Contract- und Security-Review.
 
 ### GitHub CLI
 
-User-local installiert, aber je nach Terminal-Start eventuell noch nicht direkt im aktuellen `PATH`:
+Systemweit installiert und direkt im `PATH` verfuegbar:
 
 ```powershell
 gh --version
 ```
 
-Installationspfad:
+Primaerer Installationspfad:
+
+```text
+C:\Program Files\GitHub CLI\gh.exe
+```
+
+Ein synchronisierter user-lokaler Fallback ist ebenfalls vorhanden:
 
 ```text
 C:\Users\steph\AppData\Local\Programs\GitHub CLI\bin\gh.exe
-```
-
-Falls ein offenes VS-Code-Terminal den PATH noch nicht kennt, VS Code neu starten oder temporaer:
-
-```powershell
-$env:Path += ";$env:LOCALAPPDATA\Programs\GitHub CLI\bin"
-gh --version
 ```
 
 Direkter Fallback ohne `PATH`:
@@ -365,16 +551,28 @@ android/
 
 ### JDK / Gradle
 
-`JAVA_HOME` zeigt auf JDK 17:
+Das systemweite `JAVA_HOME` zeigt auf Microsoft OpenJDK 17:
 
 ```powershell
-$env:JAVA_HOME
+[Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
 ```
 
-Gradle wird ueber den Repo-Wrapper verwendet, nicht systemweit:
+Wichtig:
+
+- Der ungequalifizierte Befehl `java -version` kann wegen alter Oracle-PATH-
+  Eintraege noch Java 8 finden.
+- Fuer Android sind das systemweite `JAVA_HOME` und die JVM-Ausgabe des Gradle-
+  Wrappers massgeblich.
+- `android/gradle.properties` darf keinen absoluten, versionsgebundenen
+  `org.gradle.java.home`-Pfad enthalten.
+
+Gradle wird aus dem Android-Arbeitsordner ueber den Repo-Wrapper verwendet, nicht
+systemweit:
 
 ```powershell
-android\gradlew.bat --version
+Push-Location android
+.\gradlew.bat --version
+Pop-Location
 ```
 
 Kein systemweites Gradle notwendig.
@@ -386,6 +584,14 @@ Projektlokales Android SDK:
 ```text
 android/.tools/android-sdk
 ```
+
+Verifizierter SDK-Vertrag:
+
+- `cmdline-tools/latest` ist Version 21.0.
+- `platform-tools` / ADB ist Version 37.0.0.
+- `build-tools;34.0.0` und `platforms;android-34` bleiben projektgebunden.
+- Gradle, Android Gradle Plugin, Kotlin und SDK-Level werden nicht im Zuge einer
+  allgemeinen Toolpflege angehoben.
 
 ADB liegt hier:
 
@@ -436,7 +642,7 @@ playwright.cmd --version
 
 Aktueller Stand:
 
-- `playwright@1.60.0`
+- `playwright@1.61.1`
 - Chromium ist installiert.
 - Globaler Node-Modulpfad:
 
@@ -618,8 +824,10 @@ Kein Deploy ohne Freigabe.
 ### Nach Android-Aenderungen
 
 ```powershell
-android\gradlew.bat --version
-android\gradlew.bat :app:assembleDebug
+Push-Location android
+.\gradlew.bat --version
+.\gradlew.bat :app:assembleDebug
+Pop-Location
 adb devices
 ```
 
@@ -641,6 +849,9 @@ rg -n "TODO|BLOCKED|P0|P1" docs/<betroffene-datei>.md
 - VS Code muss nach PATH-Aenderungen komplett neu gestartet werden.
 - `npm.ps1` kann in PowerShell durch Execution Policy blockiert sein; `npm.cmd` oder `cmd /c npm ...` verwenden.
 - `gh` ist eingerichtet; bei neuem Terminal oder neuer Maschine mit `gh auth status` pruefen und nur bei Bedarf `gh auth login` ausfuehren.
+- Nach einem JDK-Update koennen ein bereits offenes Terminal und laufende Gradle-
+  Daemons noch den alten `JAVA_HOME`-Pfad halten. VS Code neu starten und bei
+  Bedarf im Ordner `android/` einmal `.\gradlew.bat --stop` ausfuehren.
 - Android SDK ist projektlokal, nicht zwingend systemweit.
 - Historische Archivdokus koennen alte Pfade enthalten; aktive Dokus sollen neue Repo-Pfade nutzen.
 
