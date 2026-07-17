@@ -47,6 +47,10 @@ Related docs:
   - Suggest-State
   - Pending Intent Context
   - Pending Intent Guard-Status (`inFlight`, `consumed`)
+- Der Profilkontext wird beim Senden frisch ueber `AppModules.profile.getData()`
+  bezogen. Medikation ist darin nur bei einem erfolgreichen aktuellen
+  strukturierten Snapshot enthalten; Lade-/Fehlerzustand nutzt keinen aelteren
+  Legacy- oder Session-Fallback.
 
 ---
 

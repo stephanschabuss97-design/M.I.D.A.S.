@@ -1,3 +1,150 @@
+## Phase P18 - Push and Medication Data Hygiene (Completed 2026-07-17)
+
+**Scope:** Begrenzte technische Push-Daten, gehärteter historischer
+Incident-Push-Zeitvertrag und `health_medications` als einzige aktive Quelle für
+aktuelle Medikation in Profil, Hub und Range-Arztbericht. Klinische
+`health_events`, Medication-Retention und bestehende Push-Fachregeln bleiben
+unverändert.
+
+### Static / Local Checks
+
+- [x] `node --check app/modules/profile/index.js`
+- [x] `node --check app/modules/hub/index.js`
+- [x] `node --check service-worker.js`
+- [x] `deno check backend/supabase/functions/midas-monthly-report/index.ts`
+- [x] `deno check backend/supabase/functions/midas-incident-push/index.ts`
+- [x] SQL- und Consumer-Scans bestätigen, dass aktive Profil-, Hub- und
+  Report-Pfade `user_profile.medications` weder lesen noch schreiben.
+- [x] SQL-Contract-Scan bestätigt strikte Push-Cutoffs, `SECURITY INVOKER`,
+  fixierten `search_path`, App-ACL-Revoke, Advisory Lock und exakten Cron-
+  Vertrag.
+- [x] `git diff --check` und Roadmap-Markdownlint sind grün. Die bekannten
+  globalen Markdownlint-Altschulden in `QA_CHECKS.md` und `sql/HOW_TO.md`
+  wurden nicht durch diese Phase erzeugt oder ausgeweitet.
+- [x] Optionaler CodeRabbit-Review erfolgt erst nach lokal grünem Stand;
+  Findings werden vor einer Änderung bewertet und betroffene Checks danach
+  wiederholt.
+
+### Disposable Push-Hygiene / Idempotenz
+
+- [x] Relevanter Fresh-Setup läuft in der dokumentierten SQL-Reihenfolge durch.
+- [x] `18_Push_Data_Hygiene.sql` läuft zweimal fehlerfrei und hinterlässt genau
+  einen Job `midas-push-hygiene-weekly`.
+- [x] Job ist aktiv, gehört `postgres`, verwendet die aktuelle Datenbank,
+  Schedule `45 3 * * 0` und den exakt freigegebenen Function-Command.
+- [x] Delivery-Fixtures `-91`, `-90`, heute und Zukunft beweisen: Nur `-91` und
+  älter werden gelöscht.
+- [x] Alte deaktivierte, junge deaktivierte, aktive und reaktivierte
+  Subscription beweisen: Nur alte weiterhin deaktivierte Zeilen werden
+  gelöscht.
+- [x] Exakt 90 Tage alte deaktivierte Subscription bleibt wegen des strikten
+  `<`-Prädikats erhalten.
+- [x] Reaktivierung vor und nach einem simulierten Cleanup wird in getrennten
+  Zustandsfolgen geprüft; keine aktive Subscription bleibt im Löschset.
+- [x] Zukunfts-Deliveries bleiben erhalten und werden im Cleanup-Ergebnis
+  diagnostisch gezählt.
+- [x] Partieller Index auf `push_subscriptions(updated_at)` gilt ausschließlich
+  für `disabled = true`; der vorhandene Delivery-`day`-Index bleibt erhalten.
+
+### ACL / Owner / Cron / Concurrency
+
+- [x] `PUBLIC`, `anon`, `authenticated` und `service_role` können
+  `push_data_hygiene_cleanup_internal()` nicht ausführen.
+- [x] Function-Owner und Jobowner sind `postgres`; der erwartete Owner kann den
+  Cleanup ausführen.
+- [x] Fehlender, inaktiver oder bei Datenbank, Schedule oder Command driftender
+  Job beendet den Cleanup vor jeder Löschwirkung.
+- [x] Fremder Owner und mehrere gleichnamige Jobs werden bei Provisionierung
+  geschlossen abgelehnt.
+- [x] Gehaltener Advisory Lock `(1296647233, 1347769160)` lässt einen parallelen
+  Cleanup mit SQLSTATE `55P03` und ohne Löschwirkung abbrechen.
+- [x] Nur abgeschlossene eigene Cron-Laufdetails älter als 90 Tage werden
+  gelöscht; fremde, laufende, nicht abgeschlossene und exakt 90 Tage alte
+  Laufdetails bleiben.
+
+### Incident-Push Time Guard
+
+- [x] Regulärer aktueller Dry-Run bleibt kompatibel.
+- [x] Historischer Dry-Run mit explizitem `now` bleibt erlaubt.
+- [x] Historischer Non-Dry-Run wird mit HTTP `400` vor User-Auflösung,
+  fachlichen Reads, Push-Send und Delivery-/Subscription-Write abgewiesen.
+- [x] Incident- und Diagnosemodus verwenden denselben Override-Guard.
+- [x] GitHub-Workflow-Payload ohne `now` bleibt mit Scheduler- und manuellem
+  Aufruf kompatibel.
+- [x] Dauerhafte Deno-Regressionstests decken Diagnose mit Scheduler-Trigger,
+  `now` ohne `dry_run`, `now` mit `dry_run: true` und den Default-Pfad ohne
+  `now` ab.
+- [x] Remote-Smokes bleiben auf Dry-Run oder garantierte Pre-Read-Ablehnung
+  begrenzt; kein erfolgreicher Test-Push ohne separates Owner-Gate.
+
+### Medication Source of Truth / Report
+
+- [x] Profil unterscheidet `loading`, erfolgreiche Leere, erfolgreiche Daten und
+  Read-Fehler; alle Medication-Zustände bleiben read-only.
+- [x] Null, ein und mehrere aktive Medikamente werden korrekt projiziert;
+  inaktive Medikamente bleiben ausgeschlossen.
+- [x] Aktuelle Slots und Mengen größer eins erscheinen; beendete und zukünftige
+  Slots werden nicht als aktueller Plan ausgegeben.
+- [x] Aktives Medikament ohne aktuellen Slot bleibt als Medikament sichtbar.
+- [x] Profil-Save enthält keinen Legacy-Medication-Write und erhält die
+  strukturierte Projektion direkt nach `profile:changed`.
+- [x] Hub reicht erfolgreiche leere Medication als `[]` weiter, lässt einen
+  nicht verfügbaren Medication-Kontext dagegen aus.
+- [x] Erfolgreicher Medication-Snapshot ohne vorhandene Profilzeile erzeugt
+  weder im Profil noch im Hub einen erfundenen Raucherstatus.
+- [x] Range-Arztbericht verwendet aktive Medikamente und die am Wiener
+  Berichtstag gültigen Slots mit österreichischer, lesbarer Copy.
+- [x] Wiener Berichtstag bleibt nahe einer UTC-/Wien-Mitternachtsgrenze
+  innerhalb des gesamten Requests konsistent.
+- [x] Null aktive Medication-IDs werden ohne leeren `.in(...)`-Slot-Read als
+  gültige leere Projektion behandelt.
+- [x] Cross-User-Reads liefern keine Medication-Daten.
+- [x] Medication- oder Slot-Query-Fehler erzeugt weder Teilbericht noch
+  `health_events`-Write.
+- [x] Bestehende produktive Legacy-Spalte bleibt während des Rollouts physisch
+  vorhanden, wird von neuen aktiven Consumern aber nicht verwendet.
+
+### Browser / PWA / Cache Regression
+
+- [x] Profil und Medication-Manager zeigen denselben aktiven Stand.
+- [x] Assistant- und Vision-Kontext bleiben mit erfolgreicher Projektion
+  kompatibel, ohne Legacy-Fallback wieder einzuführen.
+- [x] Aktiver Root-Service-Worker installiert Cache-Version `v6`; Update-Banner,
+  Anwenden, Controller-Wechsel und Reload liefern den neuen Profil-/Hub-Vertrag.
+- [x] `public/sw/service-worker.js` wird weiterhin nicht registriert.
+- [x] Alter gecachter Client bricht wegen der vorläufig erhaltenen Legacy-Spalte
+  nicht hart ab.
+
+### Productive Owner Gates
+
+- [x] Read-only Preflight nennt exakte löschbare Delivery-/Subscription-Zahlen
+  und weist alle aktiven Subscriptions außerhalb des Löschsets nach.
+- [x] Cron-Jobs, Rollen, Function-ACL, PostgreSQL-Version und Advisor-Baseline
+  wurden vor produktiver Wirkung geprüft.
+- [x] `midas-incident-push` wurde erst nach Owner-Freigabe deployt und der
+  Zeitguard remote ohne Push-/Write-Wirkung bestätigt.
+- [x] `midas-monthly-report`-Remote-Stand und der freigegebene Range-Bericht-
+  Smoke bestätigen die strukturierte aktuelle Medikation.
+- [x] DDL-, Cron-, Lösch- und Rollback-Wirkung von
+  `18_Push_Data_Hygiene.sql` wurden vor Ausführung erklärt.
+- [x] Push-Hygiene-SQL wurde erst nach ausdrücklicher Owner-Freigabe produktiv
+  provisioniert und vollständig post-verifiziert.
+- [x] Erster manueller Cleanup erfolgte erst nach separater Freigabe; Vorher-/
+  Nachher-Zähler und erhaltene aktive Subscriptions sind dokumentiert.
+- [x] Security und Performance Advisor wurden nach produktivem SQL erneut
+  geprüft.
+
+### Final Documentation Gate
+
+- [x] Module Overviews werden erst nach grünem Runtime-Nachweis auf den
+  produktiven Zielvertrag aktualisiert.
+- [x] `sql/HOW_TO.md`, QA, Roadmap und finale Module Overviews beschreiben
+  dieselben Ausführungsgrenzen und dieselbe Source of Truth.
+- [x] `DH-F14` bleibt als separates Push-Reliability-Thema sichtbar; diese Phase
+  behauptet keine exakt-einmalige Push-Zustellung.
+
+---
+
 ## Phase M-DH - Medication Data Hygiene (Completed 2026-07-12)
 
 **Scope:** Vorbereitung des schlanken Medication-Datenmodells ohne dauerhaften

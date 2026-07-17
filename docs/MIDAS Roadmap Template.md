@@ -77,9 +77,94 @@ Wenn das Problem noch unklar ist, hier keine Loesung behaupten. Dann ist die ers
 
 ## Entscheidungslog
 
+<!-- markdownlint-disable MD013 -->
+
 | Datum | Entscheidung | Begruendung | Betroffene Schritte |
 | --- | --- | --- | --- |
 | `[YYYY-MM-DD]` | `[Entscheidung]` | `[Warum diese Entscheidung gilt]` | `[Sx / Dateien / Module]` |
+
+<!-- markdownlint-enable MD013 -->
+
+## Owner-Verständnis: Wie und warum
+
+Dieser Abschnitt uebersetzt die wesentlichen Roadmap-Entscheidungen in eine
+fuer den Owner verstaendliche Form. Er ist kein vollstaendiger Technik-Guide
+und wird der Groesse und dem Risiko der Roadmap entsprechend skaliert.
+
+Anwendungsgrad:
+
+- Kleine Syntax-, Copy- oder Doku-Fixes duerfen den Block auf wenige Saetze
+  reduzieren oder begruendet als `nicht erforderlich` markieren.
+- Bei SQL, RLS, Migrationen, Auth, Deploys, Hintergrundjobs, neuen Werkzeugen,
+  produktiven Writes oder irreversiblen Aktionen ist der Block verpflichtend.
+- Nach S1-S3 und im S4 Readiness Review wird der anfangs formulierte Stand mit
+  dem tatsaechlich ermittelten Systemvertrag abgeglichen.
+- S6 korrigiert den Block auf das tatsaechlich umgesetzte Ergebnis.
+
+### Was aendern wir fachlich?
+
+- `[Was verhaelt sich nach der Roadmap anders?]`
+- `[Was bleibt bewusst unveraendert?]`
+
+### Warum waehlen wir diesen Weg?
+
+- `[Warum passt diese Loesung zu MIDAS und zum realen Alltag?]`
+- `[Welche naheliegende Alternative wurde warum nicht gewaehlt?]`
+
+### Welche Werkzeuge brauchen wir warum?
+
+<!-- markdownlint-disable MD013 -->
+
+| Werkzeug | Aufgabe in dieser Roadmap | Wichtige Abgrenzung |
+| --- | --- | --- |
+| `[Werkzeug]` | `[Konkreter Zweck]` | `[Was dieses Werkzeug nicht ersetzt oder nicht automatisch erlaubt]` |
+
+<!-- markdownlint-enable MD013 -->
+
+### Wo arbeiten wir?
+
+- Lokal/disposable:
+  - `[Was wird mit Test- oder Wegwerfdaten bewiesen?]`
+- Produktiv read-only:
+  - `[Welche Annahmen werden ohne Schreibwirkung geprueft?]`
+- Produktiv write:
+  - `[Welche echte Aenderung wird spaeter ausgefuehrt?]`
+- User-gated:
+  - `[Wofuer ist unmittelbar vorher eine ausdrueckliche Freigabe noetig?]`
+
+### Was kann schiefgehen?
+
+- `[Wichtigstes fachliches oder technisches Risiko]`
+- `[Stop-Bedingung]`
+- `[Rollback-, Snapshot- oder Rueckfallstrategie]`
+
+### Woran erkennen wir den Erfolg?
+
+- Technischer Nachweis:
+  - `[Check, Query, Test oder Postcondition]`
+- Sichtbarer Nutzer-Nachweis:
+  - `[Browser-, Device- oder Alltags-Smoke]`
+- Owner-Anteil:
+  - `[Was muss der Owner selbst entscheiden, bestaetigen oder real pruefen?]`
+
+### Owner Briefing Gates
+
+Vor einem neuen Werkzeug, einer wichtigen Architekturentscheidung, einem
+produktiven Write, Deploy oder einer irreversiblen Aktion gibt der Agent vor
+der Ausfuehrung ein kurzes Briefing:
+
+```md
+#### Owner Briefing
+
+- Zweck: [Warum ist dieser Schritt jetzt noetig?]
+- Wirkung: [Was wird lokal oder produktiv veraendert?]
+- Risiko: [Was koennte schiefgehen?]
+- Rueckfall: [Wie wird abgebrochen, zurueckgerollt oder wiederhergestellt?]
+- Erfolgsnachweis: [Woran erkennen wir danach den Erfolg?]
+```
+
+Kein eigenes Briefing ist fuer bekannte, risikoarme Syntax-, Formatierungs-
+oder Standardcheck-Schritte erforderlich.
 
 ## Scope
 
@@ -186,6 +271,10 @@ Forbidden:
 - `S6` ist Doku-Sync, QA-Update, finaler Contract Review, Commit-Empfehlung und Archiv-Entscheidung.
 - Nach jedem Hauptschritt Statusmatrix aktualisieren.
 - Nach jedem Hauptschritt mindestens ein Check oder Review dokumentieren.
+- Den Block `Owner-Verständnis: Wie und warum` nach S1-S3 und im S4
+  Readiness Review gegen die neuen Erkenntnisse aktualisieren.
+- Vor jedem zutreffenden Owner Briefing Gate kurz pausieren, den Schritt
+  erklaeren und erst danach gemaess bestehender Freigaberegel fortfahren.
 - Vor dem ersten S4-Substep muss geprueft werden, ob die S4-Reihenfolge, Substep-Groesse und der Code-/Doku-Scope nach S1-S3 noch stimmen.
 - Wenn S4 Readiness neuen Scope, neue Dateien oder andere Reihenfolge findet, wird die Roadmap zuerst korrigiert und erst danach Code geaendert.
 - Jeder Hauptschritt endet mit:
@@ -423,6 +512,10 @@ Prueffragen:
 - Gibt es einen Persistenz-, Auth-, Date-, Dedupe-, Copy- oder Payload-Vertrag, der separat umgesetzt werden sollte?
 - Sind lokale Checks in S5 vollstaendig fuer alle neu betroffenen Dateien?
 - Sind Deploys, GitHub-Smokes oder produktive Runtime-Smokes weiterhin user-gated?
+- Kann der Owner in eigenen Worten erklaeren, was S4 aendert und warum die
+  gewaehlten Werkzeuge dafuer gebraucht werden?
+- Braucht ein neuer, produktiver oder irreversibler S4-/S5-Schritt vor seiner
+  Ausfuehrung ein Owner Briefing?
 
 Typisches Ergebnis:
 
@@ -476,6 +569,8 @@ S4-Substep-Regel:
 - Wenn ein Substep neue Dateien, neue Deploy-Relevanz oder neue Risiken aufdeckt, wird die Roadmap vor der Code-Fortsetzung aktualisiert.
 - Jeder S4-Substep endet mit Code Review, Contract Review, Findings und Korrektur der Findings.
 - Der letzte S4-Substep ist ein Gesamt-Code- und Contract Review, wenn mehr als ein Codepfad betroffen ist.
+- Ein S4-Substep mit neuem Werkzeug, Architekturentscheidung, produktivem Write
+  oder irreversibler Wirkung beginnt vor Ausfuehrung mit einem Owner Briefing.
 
 Typische Substeps:
 
@@ -539,6 +634,8 @@ Typische Substeps:
   - CodeRabbit Review nach User-Freigabe oder User-Hinweis dokumentieren.
   - Findings klassifizieren.
   - echte Findings vor Commit-Empfehlung korrigieren oder bewusst abgrenzen.
+- S5.10a Owner Briefing vor produktivem Deploy, produktivem SQL,
+  Datenloeschung oder anderem irreversiblen Runtime-Gate.
 - S5.11 Schritt-Abnahme und Commit-Empfehlung:
   - `commitbereit nach S5`
   - oder `noch nicht committen, S6/Doku/CodeRabbit offen`
@@ -574,6 +671,8 @@ Typische Substeps:
 - S6.1 betroffene Module Overviews aktualisieren.
 - S6.2 `docs/QA_CHECKS.md` aktualisieren.
 - S6.3 Roadmap mit Ergebnisprotokollen aktualisieren.
+- S6.3a Owner-Verständnis auf den tatsaechlich umgesetzten Weg und das reale
+  Ergebnis korrigieren.
 - S6.4 finaler Contract Review:
   - Roadmap vs. Code
   - Roadmap vs. Module Overviews

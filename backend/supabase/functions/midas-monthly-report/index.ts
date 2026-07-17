@@ -83,7 +83,27 @@ type ProfileRow = {
   birth_date: string | null;
   height_cm: number | null;
   is_smoker: boolean | null;
-  medications: unknown | null;
+};
+
+type MedicationRow = {
+  id: string;
+  name: string | null;
+  strength: string | null;
+  with_meal: boolean | null;
+};
+
+type MedicationSlotRow = {
+  id: string;
+  med_id: string;
+  slot_type: string | null;
+  label: string | null;
+  sort_order: number | null;
+  qty_per_slot: number | null;
+};
+
+type RangeMedicationData = {
+  medications: MedicationRow[];
+  slots: MedicationSlotRow[];
 };
 
 type TrendpilotEntry = {
@@ -132,6 +152,14 @@ const getDatePartsInTz = (date: Date, timeZone: string) => {
     month: Number(pick("month") || "0"),
     day: Number(pick("day") || "0"),
   };
+};
+
+const getIsoDayInTz = (date: Date, timeZone: string) => {
+  const parts = getDatePartsInTz(date, timeZone);
+  const year = String(parts.year).padStart(4, "0");
+  const month = String(parts.month).padStart(2, "0");
+  const day = String(parts.day).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const getBearerToken = (req: Request) => {
@@ -355,22 +383,130 @@ const calcAgeYears = (birthDateIso: string, refDateIso: string) => {
   return age;
 };
 
-const normalizeMedications = (value: unknown) => {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return value
-      .map((entry) => {
-        if (typeof entry === "string") return entry.trim();
-        if (entry && typeof entry === "object") {
-          const raw = JSON.stringify(entry);
-          return raw && raw !== "{}" ? raw : null;
-        }
-        return null;
-      })
-      .filter((entry): entry is string => !!entry);
-  }
-  if (typeof value === "string") return value.trim() ? [value.trim()] : [];
-  return [];
+const MEDICATION_SLOT_LABELS: Record<string, string> = {
+  morning: "Morgens",
+  noon: "Mittags",
+  evening: "Abends",
+  night: "Nachts",
+};
+
+const MEDICATION_SLOT_LABEL_ALIASES: Record<string, string> = {
+  morgen: "Morgens",
+  morgens: "Morgens",
+  früh: "Morgens",
+  frueh: "Morgens",
+  mittag: "Mittags",
+  mittags: "Mittags",
+  abend: "Abends",
+  abends: "Abends",
+  nacht: "Nachts",
+  nachts: "Nachts",
+};
+
+const compactText = (value: unknown, fallback = "") => {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  return normalized || fallback;
+};
+
+const formatMedicationSlot = (slot: MedicationSlotRow) => {
+  const slotType = compactText(slot.slot_type).toLowerCase();
+  const fallbackKey = compactText(slot.label).toLocaleLowerCase("de-AT");
+  const label =
+    MEDICATION_SLOT_LABELS[slotType] ||
+    MEDICATION_SLOT_LABEL_ALIASES[fallbackKey] ||
+    "Einnahme";
+  const qty = Number(slot.qty_per_slot);
+  const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+  return `${label}: ${safeQty}`;
+};
+
+const formatRangeMedicationRows = (data: RangeMedicationData) => {
+  const slotsByMedication = new Map<string, MedicationSlotRow[]>();
+  data.slots.forEach((slot) => {
+    const medId = compactText(slot.med_id);
+    if (!medId) return;
+    const current = slotsByMedication.get(medId) || [];
+    current.push(slot);
+    slotsByMedication.set(medId, current);
+  });
+
+  return data.medications
+    .slice()
+    .sort((a, b) => {
+      const byName = compactText(a.name).localeCompare(
+        compactText(b.name),
+        "de-AT",
+        { sensitivity: "base" },
+      );
+      return byName || compactText(a.id).localeCompare(compactText(b.id));
+    })
+    .map((medication) => {
+      const details: string[] = [];
+      const strength = compactText(medication.strength);
+      if (strength) details.push(strength);
+
+      const slots = (slotsByMedication.get(medication.id) || [])
+        .slice()
+        .sort((a, b) => {
+          const orderA = Number.isFinite(Number(a.sort_order))
+            ? Number(a.sort_order)
+            : 0;
+          const orderB = Number.isFinite(Number(b.sort_order))
+            ? Number(b.sort_order)
+            : 0;
+          return orderA - orderB ||
+            compactText(a.id).localeCompare(compactText(b.id));
+        });
+      details.push(
+        slots.length
+          ? slots.map(formatMedicationSlot).join(", ")
+          : "Einnahmeplan nicht hinterlegt",
+      );
+      if (medication.with_meal) details.push("mit Mahlzeit");
+
+      const name = compactText(medication.name, "Medikation");
+      return `${name} (${details.join("; ")})`;
+    });
+};
+
+const fetchRangeMedicationData = async (
+  userId: string,
+  reportDay: string,
+): Promise<RangeMedicationData> => {
+  const medicationsResult = await supabase
+    .from("health_medications")
+    .select("id,name,strength,with_meal")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .order("name", { ascending: true })
+    .order("id", { ascending: true });
+  if (medicationsResult.error) throw medicationsResult.error;
+
+  const medications = Array.isArray(medicationsResult.data)
+    ? (medicationsResult.data as MedicationRow[])
+    : [];
+  const medicationIds = medications
+    .map((medication) => compactText(medication.id))
+    .filter(Boolean);
+  if (!medicationIds.length) return { medications, slots: [] };
+
+  const slotsResult = await supabase
+    .from("health_medication_schedule_slots")
+    .select("id,med_id,slot_type,label,sort_order,qty_per_slot")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .in("med_id", medicationIds)
+    .lte("start_date", reportDay)
+    .or(`end_date.is.null,end_date.gte.${reportDay}`)
+    .order("med_id", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+  if (slotsResult.error) throw slotsResult.error;
+
+  const slots = Array.isArray(slotsResult.data)
+    ? (slotsResult.data as MedicationSlotRow[])
+    : [];
+  return { medications, slots };
 };
 
 
@@ -706,6 +842,7 @@ const buildNarrative = ({
   activitySeries,
   activityPrevSeries,
   profile,
+  medicationData,
   trendpilotEntries,
   reportType,
 }: {
@@ -718,6 +855,7 @@ const buildNarrative = ({
   activitySeries: ActivityEntry[];
   activityPrevSeries: ActivityEntry[];
   profile: ProfileRow | null;
+  medicationData: RangeMedicationData;
   trendpilotEntries: TrendpilotEntry[];
   reportType: "monthly_report" | "range_report";
 }): NarrativeResult => {
@@ -869,7 +1007,17 @@ const buildNarrative = ({
   };
 
   const formatPatientRange = () => {
-    if (!profile) return "**Patient**\n- Keine Profildaten vorhanden.";
+    const medications = formatRangeMedicationRows(medicationData);
+    const medicationLabel = medications.length
+      ? medications.join("; ")
+      : "keine aktiven Medikamente hinterlegt.";
+    if (!profile) {
+      return [
+        "**Patient**",
+        "- Keine Profildaten vorhanden.",
+        `- Derzeitige Medikation: ${medicationLabel}`,
+      ].join("\n");
+    }
     const birth = profile.birth_date ? formatDateDE(profile.birth_date) : "-";
     const age =
       profile.birth_date ? calcAgeYears(profile.birth_date, range.to) : null;
@@ -883,15 +1031,13 @@ const buildNarrative = ({
         : profile.is_smoker
           ? "Raucher"
           : "Nichtraucher";
-    const meds = normalizeMedications(profile.medications);
-    const medsLabel = meds.length ? meds.join(", ") : "keine";
     return [
       "**Patient**",
       `- Name: ${profile.full_name || "-"}`,
       `- Geburtsdatum: ${birthLabel}`,
       `- Größe: ${height}`,
       `- Raucherstatus: ${smoker}`,
-      `- Derzeitige Medikation: ${medsLabel}`,
+      `- Derzeitige Medikation: ${medicationLabel}`,
     ].join("\n");
   };
 
@@ -1133,6 +1279,7 @@ Deno.serve(async (req: Request) => {
         ? normalizeMonthlyRange({ month: payload.month ?? null })
         : normalizeExplicitRange({ from: payload.from, to: payload.to });
     const reportAnchorTs = buildReportAnchorTs(range);
+    const medicationReportDay = getIsoDayInTz(new Date(), REPORT_TZ);
     const prevRange =
       reportType === "monthly_report" ? previousMonthBounds(range.monthTag) : null;
     const bpRange30 =
@@ -1160,6 +1307,10 @@ Deno.serve(async (req: Request) => {
       reportType === "range_report" && bpRange180
         ? fetchSeries<BpEntry>("v_events_bp", userId, bpRange180)
         : Promise.resolve([]);
+    const medicationDataPromise =
+      reportType === "range_report"
+        ? fetchRangeMedicationData(userId, medicationReportDay)
+        : Promise.resolve({ medications: [], slots: [] } as RangeMedicationData);
 
     const profilePromise =
       reportType === "range_report"
@@ -1171,7 +1322,6 @@ Deno.serve(async (req: Request) => {
                 "birth_date",
                 "height_cm",
                 "is_smoker",
-                "medications",
               ].join(","),
             )
             .eq("user_id", userId)
@@ -1207,6 +1357,7 @@ Deno.serve(async (req: Request) => {
       labSeries,
       activitySeries,
       activityPrevSeries,
+      medicationData,
       profileResult,
       trendpilotResult,
     ] = await Promise.all([
@@ -1217,6 +1368,7 @@ Deno.serve(async (req: Request) => {
       fetchSeries<LabEntry>("v_events_lab", userId, range),
       fetchSeries<ActivityEntry>("v_events_activity", userId, range),
       activityPrevPromise,
+      medicationDataPromise,
       profilePromise,
       trendpilotPromise,
     ]);
@@ -1239,6 +1391,7 @@ Deno.serve(async (req: Request) => {
       activitySeries,
       activityPrevSeries,
       profile,
+      medicationData,
       trendpilotEntries,
       reportType,
     });

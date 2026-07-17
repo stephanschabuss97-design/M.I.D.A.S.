@@ -29,7 +29,7 @@ Related docs:
 | `app/modules/hub/index.js` | oeffnet Panel via Orbit, konsumiert Snapshot im Assistant |
 | `app/modules/intake-stack/medication/index.js` | liefert Tagesliste (`loadMedicationForDay`) fuer den Medication-Snapshot |
 | `app/styles/hub.css` | Formular- und Card-Styling |
-| `sql/10_User_Profile_Ext.sql` | Tabelle plus Spalten inklusive Hausarztfelder |
+| `sql/10_User_Profile_Ext.sql` | Tabelle plus aktive Profilfelder inklusive Hausarztfelder; provisioniert keine Legacy-Medikation mehr |
 | `sql/15_Push_Subscriptions.sql` | Push-Subscriptions, Remote-Health und Delivery-State |
 | `docs/QA_CHECKS.md` | CRUD- und Event-Testfaelle |
 
@@ -38,7 +38,10 @@ Related docs:
 ## 3. Datenmodell / Storage
 
 - Tabelle `public.user_profile` (`user_id` als PK/FK auf `auth.users`).
-- Spalten: `full_name`, `birth_date`, `height_cm`, `medications`, `is_smoker`, `lifestyle_note`, `salt_limit_g`, `protein_target_min/max`, `primary_doctor_name`, `primary_doctor_email`, `updated_at`.
+- Aktive Spalten: `full_name`, `birth_date`, `height_cm`, `is_smoker`, `lifestyle_note`, `salt_limit_g`, `protein_target_min/max`, `primary_doctor_name`, `primary_doctor_email`, `updated_at`.
+- Die produktiv noch vorhandene Spalte `user_profile.medications` ist nur eine
+  ungenutzte Kompatibilitaetsspalte fuer alte Clients. Fresh-Setups legen sie
+  nicht mehr an; Profilcode liest oder schreibt sie nicht.
 - Constraints: Height-Check, `updated_at` Trigger.
 - RLS: select/insert/update/delete nur fuer `auth.uid()`.
 - Keine Soft Deletes; Upsert ersetzt den Datensatz.
@@ -59,17 +62,23 @@ Related docs:
 - Input-Aenderungen bleiben lokal bis Save.
 
 ### 4.3 Verarbeitung
-- `extractFormPayload()` trimmt Strings, parst Zahlen und splittet Legacy-Medikationstext nur noch kompatibel mit.
+- `extractFormPayload()` trimmt Strings und parst Zahlen; Medikation ist kein
+  editierbarer oder persistierter Bestandteil des Profil-Payloads.
 - `profileDoctorEmail` nutzt native HTML5-Validation.
 - CKD-Abzeichen kommt aus `loadLatestLabSnapshot()` und bleibt read-only.
 - Medication-Snapshot: `AppModules.medication.loadMedicationForDay(today)` liefert aktive Medikamente und wird als lesbare Plan-Zusammenfassung gerendert.
+- Der Snapshot unterscheidet `loading`, erfolgreiche Leere, erfolgreiche Daten
+  und `error`. Nur erfolgreiche Leere wird als `Keine aktiven Medikamente`
+  dargestellt; ein Fehler wird neutral als nicht verfuegbar angezeigt.
 - Kein Push-Routing im Profil; Kontext-/Diagnosefelder wie `endpoint_hash`, `client_context`, `client_display_mode`, `client_platform`, `client_browser`, `client_label` und `last_diagnostic_*` werden vom Push-Service fuer die Touchlog-Wartung geliefert.
 
 ### 4.4 Persistenz
 - Save: `supabase.from('user_profile').upsert({ ...payload, user_id }, { onConflict: 'user_id' })`.
 - Select: `.maybeSingle()`.
 - Nach erfolgreichem Save/Sync wird State aktualisiert, Overview gerendert und `profile:changed` gefeuert.
-- Der Medication-Snapshot wird nicht separat gespeichert; Quelle bleibt das Medication-Modul.
+- Profil-Save enthaelt kein Feld `medications`.
+- Der Medication-Snapshot wird nicht separat im Profil gespeichert; einzige
+  aktive Quelle bleibt das strukturierte Medication-Modul.
 - Push-Opt-in/-Opt-out wird sichtbar ueber den Touchlog ausgeloest und laeuft ueber `AppModules.push`; Profile besitzt keine Push-Service-API mehr.
 
 ---
@@ -115,7 +124,12 @@ Related docs:
 
 - Public API / Entry Points: `AppModules.profile.sync`, `AppModules.profile.getData`, `profileSaveBtn`, `profileRefreshBtn`.
 - Push-Konsum laeuft ueber `AppModules.push`; direkte Profile-Push-Abhaengigkeiten sind nicht mehr Zielzustand.
-- Source of Truth: `user_profile`, Lab-Snapshot und Medication-Snapshot.
+- Source of Truth: `user_profile` fuer Profilstammdaten, Lab-Snapshot fuer das
+  CKD-Abzeichen und der strukturierte Medication-Snapshot fuer Medikation.
+- `AppModules.profile.getData()` projiziert Medikation nur bei einem
+  erfolgreichen aktuellen Medication-Read. Bei Lade- oder Fehlerzustand wird
+  die Eigenschaft ausgelassen, damit Assistant und Vision keinen veralteten
+  Legacy- oder Snapshot-Fallback erhalten.
 - Side Effects: `profile:changed`, Updates fuer Assistant, Charts und Medication-Low-Stock.
 - Konsumenten:
   - Charts
@@ -145,7 +159,9 @@ Related docs:
 - Status: aktiv.
 - Dependencies (hard): `user_profile`, Supabase Client, Medication-Snapshot, Lab-Snapshot.
 - Dependencies (soft): Assistant-Kontext.
-- Known issues / risks: stale Snapshots, leeres Profil, ungueltige Mail blockt Save.
+- Known issues / risks: leeres Profil, temporaer nicht verfuegbarer
+  Medication-Snapshot, ungueltige Mail blockt Save. Die physische Legacy-
+  Spalte bleibt bis zu einem separaten Client-Rollout-/Drop-Gate bestehen.
 - Push-Health-Risiken sind im Push Module Overview dokumentiert.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`.
 
@@ -158,6 +174,8 @@ Related docs:
 - `profile:changed` feuert nach Save; Charts und Assistant reagieren.
 - Low-Stock Box aktualisiert Arztkontakt nach Profil-Update.
 - Medication-Snapshot zeigt `1x` und `>1x` Medikation mit lesbarer Plan-Zusammenfassung.
+- Erfolgreiche Leere, Laden und Medication-Read-Fehler bleiben sichtbar
+  unterscheidbar; Save schreibt keine Legacy-Medikation.
 - Profil zeigt keine sichtbare Push-Section, keine Push-Buttons und keinen Push-Kurzstatus.
 - Keine Profile-Push-API fuer Opt-in, Opt-out, Routing-Health oder lokale Suppression.
 

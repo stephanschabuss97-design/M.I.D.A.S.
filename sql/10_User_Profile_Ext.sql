@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 10_User_Profile_Ext.sql  (Phase 4.3 – Health Profile Layer)
--- Ergänzt public.user_profile um die Felder, die für den Butler/Foto-Kontext
--- benötigt werden. Idempotent ausgeführt (ALTER TABLE ... IF NOT EXISTS).
+-- Ergänzt public.user_profile um die fachlichen Profil- und Zielwertfelder.
+-- Idempotent ausgeführt (ALTER TABLE ... IF NOT EXISTS).
 -- ============================================================================
 
 -- Basis-Tabelle muss bereits aus 01_Health Schema.sql existieren.
@@ -9,7 +9,6 @@
 alter table public.user_profile
   add column if not exists full_name text,
   add column if not exists birth_date date,
-  add column if not exists medications jsonb default '[]'::jsonb,
   add column if not exists is_smoker boolean,
   add column if not exists lifestyle_note text,
   add column if not exists salt_limit_g numeric,

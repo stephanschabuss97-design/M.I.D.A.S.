@@ -111,6 +111,8 @@ MIDAS soll innerhalb eines klaren Beobachtungszeitraums ausdruecken koennen:
 
 ## Entscheidungslog
 
+<!-- markdownlint-disable MD013 -->
+
 | Datum | Entscheidung | Begruendung | Betroffene Schritte |
 | --- | --- | --- | --- |
 | `2026-07-10` | Eigene Roadmap statt eines einzelnen Schnell-SQLs | RPCs, Grants, Tabelle, Retention, Clean Start und Runtime-Consumer muessen koordiniert geaendert werden. | `S1-S6` |
@@ -125,6 +127,127 @@ MIDAS soll innerhalb eines klaren Beobachtungszeitraums ausdruecken koennen:
 | `2026-07-10` | Produktive Migration und Clean Start bleiben user-gated | Loeschung und Schemaaenderung haben irreversible produktive Schreibwirkung. | `S5` |
 | `2026-07-10` | Retention soll datenbankseitig ueber Supabase Cron laufen | Der Job ist unabhaengig von PWA, Android, Edge Functions und GitHub und kann SQL/Funktionen direkt ausfuehren. | `S1-S5` |
 | `2026-07-11` | GPT-5.6 Sol bleibt ueber die gesamte Roadmap konstant; nur Reasoning variiert | Modellkontinuitaet und Frontier-Qualitaet wiegen im validierungsnahen Gesundheits-/SQL-Kontext schwerer als ein nicht quantifizierter Verbrauchsvorteil durch Variantenwechsel. | `S1-S6` |
+| `2026-07-12` | Erhaltene Bestaende werden physisch geprueft und nur bei Abweichung korrigiert | Der Cutover veraendert `stock_count` bewusst nicht; ein grundloses Neusetzen bereits korrekter Werte waere unnoetig. | `S5-S6` |
+
+<!-- markdownlint-enable MD013 -->
+
+## Owner-Verständnis: Wie und warum
+
+### Was aendern wir fachlich?
+
+- MIDAS behaelt Medikamente, aktuelle Bestaende, Mehrfach-Slots, Low-Stock,
+  Push und Widget.
+- Der dauerhafte Stock-Log mit einzelnen `+1`-/`-1`-Bewegungen entfaellt.
+- Dokumentierte Einnahmen bleiben fuer ein rollendes Wiener Kalenderjahr
+  erhalten und werden danach automatisch bereinigt.
+- Confirm und Undo bleiben im Alltag gleich, speichern intern aber den
+  tatsaechlich angewandten Bestandsabzug exakt invertierbar im Slot-Event.
+
+### Warum waehlen wir diesen Weg?
+
+- Der alte Stock-Log erzeugte langfristigen Datenmuell, war aber kein
+  verlaesslicher Audit-Trail und hatte keinen aktiven Reader.
+- Der aktuelle Bestand und der beobachtbare Einnahmezeitraum sind fachlich
+  relevant; lebenslange einzelne Bestandsbewegungen sind es nicht.
+- Das bestehende Multi-Dose-Modell bleibt erhalten, weil spaetere oder
+  temporaere Einnahmeabschnitte weiterhin realistisch sind.
+- Ein Clean Start ist ehrlicher als der Versuch, alte unvollstaendige
+  Bestandsbewegungen nachtraeglich zu einer verlaesslichen Historie umzubauen.
+
+### Welche Werkzeuge brauchen wir warum?
+
+<!-- markdownlint-disable MD013 -->
+
+| Werkzeug | Aufgabe in dieser Roadmap | Wichtige Abgrenzung |
+| --- | --- | --- |
+| `rg`, Git und Diff-Checks | Stock-Log-Consumer, Aenderungsscope und Doku-Drift finden | Beweisen noch kein echtes PostgreSQL-Runtimeverhalten |
+| Docker Desktop | Isolierte Container fuer eine lokale Wegwerf-Testumgebung starten | Ist weder das produktive Supabase-Projekt noch selbst die Datenbanklogik |
+| Supabase CLI / lokaler Stack | PostgreSQL 17.6, Auth, REST und Cron lokal gemeinsam bereitstellen | Lokaler Erfolg ist noch keine Freigabe fuer Produktion |
+| `psql` | SQL, RPCs, Transaktionen, Fehlercodes, Locks und Reruns praezise testen | Ist nur der Client fuer einen bereits laufenden PostgreSQL-Server |
+| Supabase MCP | Produktion read-only pruefen und spaeter freigegebene Migrationen anwenden | Werkzeugverfuegbarkeit ersetzt kein User-Gate |
+| REST mit Service Role | Unmittelbaren privaten Pre-Cutover-Snapshot exportieren | War nur Backup-Hilfe, nicht der Migrationspfad |
+| `pg_cron` | Jahres-Retention direkt bei den Daten taeglich ausfuehren | Kein Ersatz fuer externe HTTP-/Repository-Workflows |
+| CodeRabbit / Advisor | Zusaetzliche Review- und Sicherheitsbefunde liefern | Findings werden geprueft und nicht blind umgesetzt |
+
+<!-- markdownlint-enable MD013 -->
+
+### Wo arbeiten wir?
+
+- Lokal/disposable:
+  - Fresh-Bootstrap, Rerun, RPC-Grenzfaelle, Transition, Rollback,
+    Lock-Timeout, Grants und Retention mit Wegwerfdaten beweisen.
+- Produktiv read-only:
+  - Owner, Tabellen, Zeilenzahlen, Bestaende, Plaene, Push-Zustand,
+    Abhaengigkeiten und Cron-Ausgangslage pruefen.
+- Produktiv write:
+  - einmalige Transition, danach Grants und Retention/Cron in reviewter
+    Reihenfolge ausfuehren.
+- User-gated:
+  - Toolinstallation, produktiver Clean Start, Cron-Aktivierung und echte
+    Runtime-Smokes mit Schreibwirkung.
+
+### Was kann schiefgehen?
+
+- Falsche oder parallele Daten koennten waehrend des Cutovers geloescht oder
+  nur teilweise migriert werden.
+- Falsche Grants koennten die App sperren oder Daten zu breit freigeben.
+- Ein falscher Cron-Vertrag koennte aktuelle Events oder fremde Jobdetails
+  loeschen.
+- Stop-Bedingungen waren unter anderem: falscher Owner, heutiges Confirm,
+  heutige Medication-Push-Zustellung, Rebase-Kollision, Lock-Timeout oder
+  Ausfuehrung nach `10:00 Europe/Vienna`.
+- Rueckfallstrategie: unmittelbarer privater Snapshot, eine gemeinsame
+  Transaktion, feste Lock-Reihenfolge und Postconditions vor dem Commit.
+
+### Woran erkennen wir den Erfolg?
+
+- Technisch:
+  - genau drei Medication-Tabellen, kein Stock-Log und keine negativen
+    Bestaende.
+  - drei erhaltene Plaene, korrekte Constraints und explizite Grants/RLS.
+  - genau ein interner Retention-Job ohne Execute fuer App-Rollen.
+- Im Alltag:
+  - reale Einnahme erzeugt drei korrekte Events und reduziert die Bestaende
+    von `133 / 36 / 36` auf `132 / 35 / 35`.
+  - Android uebernimmt den erledigten Status ohne zusaetzlichen Eingriff.
+  - Incident-Dry-Run erkennt keinen offenen Morgenslot.
+- Owner-Anteil:
+  - bestaetigen, dass vor dem Cutover noch keine Tabletten genommen wurden.
+  - reale Packungsbestaende vergleichen.
+  - PWA- und Android-Verhalten mit der echten Einnahme pruefen.
+
+### Rueckblickende Owner Briefings
+
+#### Vor Docker und dem lokalen Supabase-Stack
+
+- Zweck: Die SQL-Dateien gegen echtes PostgreSQL und Supabase beweisen.
+- Wirkung: Nur lokale Wegwerfdaten werden erzeugt und veraendert.
+- Risiko: Lokale Ports oder unvollstaendige Toolinstallation.
+- Rueckfall: Lokalen Stack stoppen oder neu aufbauen; Produktion bleibt
+  unberuehrt.
+- Erfolgsnachweis: Fresh-Bootstrap, Rerun und alle Fixtures sind gruen.
+
+#### Vor dem produktiven Clean Start
+
+- Zweck: Den geprueften Altbestand einmalig in das neue Datenmodell
+  ueberfuehren.
+- Wirkung: Alte Events und Stock-Log werden produktiv entfernt; Medikamente,
+  Bestaende und aktuelle Plaene bleiben erhalten.
+- Risiko: Irreversible Loeschung oder ein paralleler Medication-Write.
+- Rueckfall: Snapshot, Transaktions-Rollback, Locks und harte Preconditions.
+- Erfolgsnachweis: Postconditions, drei Migrationen und reale Runtime-Smokes.
+
+#### Vor der Cron-Aktivierung
+
+- Zweck: Den einjaehrigen Retention-Vertrag ohne App- oder GitHub-Abhaengigkeit
+  dauerhaft ausfuehren.
+- Wirkung: PostgreSQL bereinigt taeglich zu alte Events, entbehrliche alte
+  Plaene und eigene alte Laufdetails.
+- Risiko: Falscher Cutoff, Doppeljob oder zu breite Ausfuehrungsrechte.
+- Rueckfall: Transaktionsabbruch bei falschem Owner/Jobvertrag; idempotente
+  Provisionierung und genau ein stabil benannter Job.
+- Erfolgsnachweis: Operator-Smoke loescht keine aktuelle Zeile, Job ist genau
+  einmal aktiv und App-Rollen haben kein Execute.
 
 ## Scope
 
@@ -206,6 +329,7 @@ MIDAS soll innerhalb eines klaren Beobachtungszeitraums ausdruecken koennen:
 - `docs/DEV_ENVIRONMENT.md`
 - `docs/MIDAS Roadmap Template.md`
 - `docs/MIDAS Medication Data Hygiene Future Notes.md`
+- `docs/MIDAS Medication Data Hygiene Lessons Learned.md`
 - `docs/modules/Medication Module Overview.md`
 - `docs/modules/Intake Module Overview.md`
 - `docs/modules/Push Module Overview.md`

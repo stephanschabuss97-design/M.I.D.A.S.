@@ -1,6 +1,12 @@
 import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.6";
+import {
+  InputValidationError,
+  readInput,
+  type TriggerKind,
+  validateInputGuards,
+} from "./request-contract.ts";
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -20,7 +26,8 @@ const DEFAULT_USER_ID = Deno.env.get("INCIDENTS_USER_ID") ?? "";
 const INCIDENTS_TZ = Deno.env.get("INCIDENTS_TZ") ?? "Europe/Vienna";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@midas.local";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ??
+  "mailto:admin@midas.local";
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
 const INCIDENT_ACTIONS = [
   {
@@ -39,7 +46,9 @@ const requiredEnv = ([
   .map(([name]) => name);
 
 if (requiredEnv.length) {
-  throw new Error(`[midas-incident-push] Missing required env: ${requiredEnv.join(", ")}`);
+  throw new Error(
+    `[midas-incident-push] Missing required env: ${requiredEnv.join(", ")}`,
+  );
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -48,9 +57,6 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-type TriggerKind = "scheduler" | "manual";
-type WindowKind = "med" | "bp" | "all";
-type ModeKind = "incidents" | "diagnostic";
 type Severity = "reminder" | "incident";
 type MedicationSection = "morning" | "noon" | "evening" | "night";
 type MedicationType =
@@ -59,15 +65,6 @@ type MedicationType =
   | "medication_evening"
   | "medication_night";
 type PushType = MedicationType | "bp_evening";
-
-type NormalizedInput = {
-  trigger: TriggerKind;
-  userId: string | null;
-  window: WindowKind;
-  mode: ModeKind;
-  dryRun: boolean;
-  now: Date;
-};
 
 type SubscriptionRow = {
   id?: string | null;
@@ -147,7 +144,12 @@ type SkippedEvent = {
   nextDueLocal?: string;
 };
 
-const MEDICATION_SECTION_ORDER: MedicationSection[] = ["morning", "noon", "evening", "night"];
+const MEDICATION_SECTION_ORDER: MedicationSection[] = [
+  "morning",
+  "noon",
+  "evening",
+  "night",
+];
 
 const MEDICATION_RULES: Record<
   MedicationSection,
@@ -268,122 +270,15 @@ const getDatePartsInTz = (date: Date, timeZone: string) => {
 
 const toDayIsoTz = (date: Date, timeZone: string) => {
   const parts = getDatePartsInTz(date, timeZone);
-  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${
+    String(parts.day).padStart(2, "0")
+  }`;
 };
 
 const toMinutes = (hour: number, minute = 0) => (hour * 60) + minute;
 
 const formatLocalTime = (hour: number, minute = 0) =>
   `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-
-const ISO_NOW_RE = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/;
-
-class InputValidationError extends Error {}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const hasOwn = (obj: Record<string, unknown>, key: string) =>
-  Object.prototype.hasOwnProperty.call(obj, key);
-
-const requireEnum = <T extends string>(
-  raw: Record<string, unknown>,
-  key: string,
-  allowed: readonly T[],
-  fallback: T,
-): T => {
-  if (!hasOwn(raw, key)) return fallback;
-  const value = raw[key];
-  if (typeof value !== "string" || !allowed.includes(value as T)) {
-    throw new InputValidationError(`${key} muss einer von ${allowed.join(", ")} sein.`);
-  }
-  return value as T;
-};
-
-const parseNowInput = (value: unknown) => {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
-  }
-
-  const trimmed = value.trim();
-  const match = ISO_NOW_RE.exec(trimmed);
-  if (!match) {
-    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const utcDay = new Date(Date.UTC(year, month - 1, day));
-  if (
-    utcDay.getUTCFullYear() !== year ||
-    utcDay.getUTCMonth() !== month - 1 ||
-    utcDay.getUTCDate() !== day
-  ) {
-    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
-  }
-
-  const now = new Date(trimmed);
-  if (!Number.isFinite(now.getTime())) {
-    throw new InputValidationError("now muss ein gueltiger ISO-Zeitpunkt sein.");
-  }
-  return now;
-};
-
-const normalizeInput = (raw: Record<string, unknown>): NormalizedInput => {
-  const trigger = requireEnum(raw, "trigger", ["manual", "scheduler"], "scheduler");
-  const window = requireEnum(raw, "window", ["med", "bp", "all"], "all");
-  const mode = requireEnum(raw, "mode", ["diagnostic", "incidents"], "incidents");
-
-  let dryRun = false;
-  if (hasOwn(raw, "dry_run")) {
-    if (typeof raw.dry_run !== "boolean") {
-      throw new InputValidationError("dry_run muss ein Boolean sein.");
-    }
-    dryRun = raw.dry_run;
-  }
-
-  let userId: string | null = null;
-  if (hasOwn(raw, "user_id")) {
-    if (typeof raw.user_id !== "string" || !raw.user_id.trim()) {
-      throw new InputValidationError("user_id muss ein nicht-leerer String sein.");
-    }
-    userId = raw.user_id.trim();
-  }
-
-  let now = new Date();
-  if (hasOwn(raw, "now")) {
-    now = parseNowInput(raw.now);
-  }
-
-  return {
-    trigger,
-    userId,
-    window,
-    mode,
-    dryRun,
-    now,
-  };
-};
-
-const readInput = async (req: Request): Promise<NormalizedInput> => {
-  const body = await req.text();
-  const trimmed = body.trim();
-  if (!trimmed) return normalizeInput({});
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(trimmed);
-  } catch (_) {
-    throw new InputValidationError("Ungueltiges JSON im Request-Body.");
-  }
-
-  if (!isRecord(raw)) {
-    throw new InputValidationError("Request-Body muss ein JSON-Object sein.");
-  }
-
-  return normalizeInput(raw);
-};
 
 const normalizeMedicationSection = (value: unknown): MedicationSection | "" => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -414,7 +309,8 @@ const createMedicationOpenDebug = (): MedicationOpenDebug => ({
   },
 });
 
-const buildDeliveryKey = (type: PushType, severity: Severity) => `${type}::${severity}`;
+const buildDeliveryKey = (type: PushType, severity: Severity) =>
+  `${type}::${severity}`;
 
 const isSlotActiveForDay = (slot: SlotRow, dayIso: string) => {
   const start = String(slot.start_date || "");
@@ -439,7 +335,9 @@ const buildPayload = (event: DueEvent, dayIso: string) => {
     renotify: false,
     silent: false,
     requireInteraction: isIncident,
-    ...(isIncident ? { vibrate: INCIDENT_VIBRATE_PATTERN, actions: INCIDENT_ACTIONS } : {}),
+    ...(isIncident
+      ? { vibrate: INCIDENT_VIBRATE_PATTERN, actions: INCIDENT_ACTIONS }
+      : {}),
   };
 };
 
@@ -453,7 +351,7 @@ const fetchSubscriptions = async (userId: string) => {
   const { data, error } = await supabase
     .from("push_subscriptions")
     .select(
-      "id,user_id,endpoint,p256dh,auth,subscription,disabled,consecutive_remote_failures,endpoint_hash,client_context,client_platform,client_browser,client_label"
+      "id,user_id,endpoint,p256dh,auth,subscription,disabled,consecutive_remote_failures,endpoint_hash,client_context,client_platform,client_browser,client_label",
     )
     .eq("user_id", userId)
     .neq("disabled", true);
@@ -476,11 +374,17 @@ const buildWebPushSub = (row: SubscriptionRow): WebPushSub | null => {
       keys?: { p256dh?: string; auth?: string };
     };
     if (sub.endpoint && sub.keys?.p256dh && sub.keys?.auth) {
-      return { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } };
+      return {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+      };
     }
   }
   if (row.endpoint && row.p256dh && row.auth) {
-    return { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } };
+    return {
+      endpoint: row.endpoint,
+      keys: { p256dh: row.p256dh, auth: row.auth },
+    };
   }
   return null;
 };
@@ -494,7 +398,9 @@ const fetchMedicationOpenBySection = async (userId: string, dayIso: string) => {
     .select("id")
     .eq("user_id", userId)
     .eq("active", true);
-  if (medsResult.error) throw new Error(`[health_medications] ${medsResult.error.message}`);
+  if (medsResult.error) {
+    throw new Error(`[health_medications] ${medsResult.error.message}`);
+  }
   const meds = (medsResult.data || []) as MedicationRow[];
   debug.activeMedCount = meds.length;
   if (!meds.length) return { sections, debug };
@@ -502,7 +408,7 @@ const fetchMedicationOpenBySection = async (userId: string, dayIso: string) => {
   const activeMedIds = new Set(
     meds
       .map((row) => String(row.id || ""))
-      .filter(Boolean)
+      .filter(Boolean),
   );
   if (!activeMedIds.size) return { sections, debug };
 
@@ -512,7 +418,9 @@ const fetchMedicationOpenBySection = async (userId: string, dayIso: string) => {
     .eq("user_id", userId)
     .eq("active", true);
   if (slotsResult.error) {
-    throw new Error(`[health_medication_schedule_slots] ${slotsResult.error.message}`);
+    throw new Error(
+      `[health_medication_schedule_slots] ${slotsResult.error.message}`,
+    );
   }
   const validSlots = ((slotsResult.data || []) as SlotRow[])
     .filter((slot) => {
@@ -527,12 +435,14 @@ const fetchMedicationOpenBySection = async (userId: string, dayIso: string) => {
     .eq("user_id", userId)
     .eq("day", dayIso);
   if (takenResult.error) {
-    throw new Error(`[health_medication_slot_events] ${takenResult.error.message}`);
+    throw new Error(
+      `[health_medication_slot_events] ${takenResult.error.message}`,
+    );
   }
   const takenSet = new Set(
     ((takenResult.data || []) as SlotEventRow[])
       .map((row) => String(row.slot_id || ""))
-      .filter(Boolean)
+      .filter(Boolean),
   );
   debug.takenEventCount = takenSet.size;
 
@@ -574,8 +484,12 @@ const fetchBpState = async (userId: string, dayIso: string) => {
     .eq("day", dayIso);
   if (error) throw new Error(`[v_events_bp] ${error.message}`);
   const rows = data || [];
-  const morning = rows.some((row: { ctx?: string | null }) => (row.ctx || "").toLowerCase().startsWith("m"));
-  const evening = rows.some((row: { ctx?: string | null }) => (row.ctx || "").toLowerCase().startsWith("a"));
+  const morning = rows.some((row: { ctx?: string | null }) =>
+    (row.ctx || "").toLowerCase().startsWith("m")
+  );
+  const evening = rows.some((row: { ctx?: string | null }) =>
+    (row.ctx || "").toLowerCase().startsWith("a")
+  );
   return { morning, evening };
 };
 
@@ -624,7 +538,7 @@ const recordDelivery = async ({
         delivered_subscription_count: deliveredSubscriptionCount,
         sent_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,day,type,severity,source" }
+      { onConflict: "user_id,day,type,severity,source" },
     );
   if (error) throw new Error(`[push_notification_deliveries] ${error.message}`);
 };
@@ -645,12 +559,16 @@ const updateSubscriptionSuccess = async (row: SubscriptionRow) => {
   if (error) throw new Error(`[push_subscriptions] ${error.message}`);
 };
 
-const updateSubscriptionFailure = async (row: SubscriptionRow, err: unknown) => {
+const updateSubscriptionFailure = async (
+  row: SubscriptionRow,
+  err: unknown,
+) => {
   if (!row.id) return;
   const statusCode = Number((err as { statusCode?: number })?.statusCode || 0);
   const disable = statusCode === 404 || statusCode === 410;
   const nowIso = new Date().toISOString();
-  const nextFailures = Math.max(0, Number(row.consecutive_remote_failures || 0)) + 1;
+  const nextFailures =
+    Math.max(0, Number(row.consecutive_remote_failures || 0)) + 1;
   const { error } = await supabase
     .from("push_subscriptions")
     .update({
@@ -666,7 +584,10 @@ const updateSubscriptionFailure = async (row: SubscriptionRow, err: unknown) => 
   if (disable) row.disabled = true;
 };
 
-const updateSubscriptionDiagnosticSuccess = async (row: SubscriptionRow, nowIso: string) => {
+const updateSubscriptionDiagnosticSuccess = async (
+  row: SubscriptionRow,
+  nowIso: string,
+) => {
   if (!row.id) return;
   const { error } = await supabase
     .from("push_subscriptions")
@@ -679,7 +600,11 @@ const updateSubscriptionDiagnosticSuccess = async (row: SubscriptionRow, nowIso:
   if (error) throw new Error(`[push_subscriptions] ${error.message}`);
 };
 
-const updateSubscriptionDiagnosticFailure = async (row: SubscriptionRow, err: unknown, nowIso: string) => {
+const updateSubscriptionDiagnosticFailure = async (
+  row: SubscriptionRow,
+  err: unknown,
+  nowIso: string,
+) => {
   if (!row.id) return;
   const { error } = await supabase
     .from("push_subscriptions")
@@ -725,7 +650,9 @@ const runDiagnosticPush = async ({
     const subscriptions = await fetchSubscriptions(userId);
     const activeSubs = subscriptions
       .map((row) => ({ row, sub: buildWebPushSub(row) }))
-      .filter((entry): entry is { row: SubscriptionRow; sub: WebPushSub } => !!entry.sub);
+      .filter((entry): entry is { row: SubscriptionRow; sub: WebPushSub } =>
+        !!entry.sub
+      );
 
     if (!activeSubs.length) {
       results.push({ userId, status: "no-subscriptions" });
@@ -737,7 +664,9 @@ const runDiagnosticPush = async ({
         userId,
         status: "dry-run",
         targetSubscriptions: activeSubs.length,
-        subscriptions: activeSubs.map(({ row }) => buildSubscriptionDiagnosticSummary(row)),
+        subscriptions: activeSubs.map(({ row }) =>
+          buildSubscriptionDiagnosticSummary(row)
+        ),
       });
       continue;
     }
@@ -799,8 +728,14 @@ const resolveMedicationDueEvents = ({
       });
       continue;
     }
-    const reminderAt = toMinutes(rule.reminderAfter.hour, rule.reminderAfter.minute);
-    const incidentAt = toMinutes(rule.incidentAfter.hour, rule.incidentAfter.minute);
+    const reminderAt = toMinutes(
+      rule.reminderAfter.hour,
+      rule.reminderAfter.minute,
+    );
+    const incidentAt = toMinutes(
+      rule.incidentAfter.hour,
+      rule.incidentAfter.minute,
+    );
     let severity: Severity | "" = "";
     if (minutesNow >= incidentAt) {
       severity = "incident";
@@ -812,7 +747,10 @@ const resolveMedicationDueEvents = ({
         type: rule.type,
         severity: "reminder",
         reason: "before-reminder-threshold",
-        nextDueLocal: formatLocalTime(rule.reminderAfter.hour, rule.reminderAfter.minute),
+        nextDueLocal: formatLocalTime(
+          rule.reminderAfter.hour,
+          rule.reminderAfter.minute,
+        ),
       });
       continue;
     }
@@ -829,19 +767,30 @@ const resolveMedicationDueEvents = ({
         });
         continue;
       }
-    } else if (deliveredKeys.has(reminderKey) || deliveredKeys.has(incidentKey)) {
+    } else if (
+      deliveredKeys.has(reminderKey) || deliveredKeys.has(incidentKey)
+    ) {
       skipped?.push({
         type: rule.type,
         severity,
-        reason: deliveredKeys.has(incidentKey) ? "incident-already-delivered" : "already-delivered",
+        reason: deliveredKeys.has(incidentKey)
+          ? "incident-already-delivered"
+          : "already-delivered",
         ...(minutesNow < incidentAt
-          ? { nextDueLocal: formatLocalTime(rule.incidentAfter.hour, rule.incidentAfter.minute) }
+          ? {
+            nextDueLocal: formatLocalTime(
+              rule.incidentAfter.hour,
+              rule.incidentAfter.minute,
+            ),
+          }
           : {}),
       });
       continue;
     }
 
-    const tagPrefix = severity === "reminder" ? "midas-reminder" : "midas-incident";
+    const tagPrefix = severity === "reminder"
+      ? "midas-reminder"
+      : "midas-incident";
     events.push({
       type: rule.type,
       severity,
@@ -867,26 +816,44 @@ const resolveBpDueEvent = ({
   skipped?: SkippedEvent[];
 }) => {
   if (!bp.morning) {
-    skipped?.push({ type: BP_RULE.type, severity: "incident", reason: "morning-bp-missing" });
+    skipped?.push({
+      type: BP_RULE.type,
+      severity: "incident",
+      reason: "morning-bp-missing",
+    });
     return null;
   }
   if (bp.evening) {
-    skipped?.push({ type: BP_RULE.type, severity: "incident", reason: "evening-bp-already-recorded" });
+    skipped?.push({
+      type: BP_RULE.type,
+      severity: "incident",
+      reason: "evening-bp-already-recorded",
+    });
     return null;
   }
-  const incidentAt = toMinutes(BP_RULE.incidentAfter.hour, BP_RULE.incidentAfter.minute);
+  const incidentAt = toMinutes(
+    BP_RULE.incidentAfter.hour,
+    BP_RULE.incidentAfter.minute,
+  );
   if (minutesNow < incidentAt) {
     skipped?.push({
       type: BP_RULE.type,
       severity: "incident",
       reason: "before-incident-threshold",
-      nextDueLocal: formatLocalTime(BP_RULE.incidentAfter.hour, BP_RULE.incidentAfter.minute),
+      nextDueLocal: formatLocalTime(
+        BP_RULE.incidentAfter.hour,
+        BP_RULE.incidentAfter.minute,
+      ),
     });
     return null;
   }
   const key = buildDeliveryKey(BP_RULE.type, "incident");
   if (deliveredKeys.has(key)) {
-    skipped?.push({ type: BP_RULE.type, severity: "incident", reason: "already-delivered" });
+    skipped?.push({
+      type: BP_RULE.type,
+      severity: "incident",
+      reason: "already-delivered",
+    });
     return null;
   }
   return {
@@ -900,7 +867,9 @@ const resolveBpDueEvent = ({
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return responseOk();
-  if (req.method !== "POST") return responseJson({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") {
+    return responseJson({ error: "Method not allowed" }, 405);
+  }
 
   const token = getBearerToken(req);
   if (!token || token !== SERVICE_ROLE_KEY) {
@@ -909,6 +878,8 @@ Deno.serve(async (req) => {
 
   try {
     const input = await readInput(req);
+    validateInputGuards(input);
+
     const dayIso = toDayIsoTz(input.now, INCIDENTS_TZ);
     const parts = getDatePartsInTz(input.now, INCIDENTS_TZ);
     const minutesNow = toMinutes(parts.hour, parts.minute);
@@ -926,9 +897,6 @@ Deno.serve(async (req) => {
 
     const userIds = resolveUserIds(input.userId);
     if (input.mode === "diagnostic") {
-      if (input.trigger !== "manual") {
-        return responseJson({ error: "Diagnostic push requires manual trigger" }, 400);
-      }
       const diagnosticResults = await runDiagnosticPush({
         userIds,
         evaluatedAtUtc,
@@ -950,7 +918,9 @@ Deno.serve(async (req) => {
       const subscriptions = await fetchSubscriptions(userId);
       const activeSubs = subscriptions
         .map((row) => ({ row, sub: buildWebPushSub(row) }))
-        .filter((entry): entry is { row: SubscriptionRow; sub: WebPushSub } => !!entry.sub);
+        .filter((entry): entry is { row: SubscriptionRow; sub: WebPushSub } =>
+          !!entry.sub
+        );
 
       if (!activeSubs.length) {
         results.push({ userId, status: "no-subscriptions" });
@@ -963,7 +933,10 @@ Deno.serve(async (req) => {
       let medicationDebug: MedicationOpenDebug | null = null;
 
       if (runMedWindow) {
-        const medicationOpenState = await fetchMedicationOpenBySection(userId, dayIso);
+        const medicationOpenState = await fetchMedicationOpenBySection(
+          userId,
+          dayIso,
+        );
         medicationDebug = medicationOpenState.debug;
         dueEvents.push(
           ...resolveMedicationDueEvents({
@@ -972,7 +945,7 @@ Deno.serve(async (req) => {
             deliveredKeys,
             dayIso,
             skipped: skippedEvents,
-          })
+          }),
         );
       }
 
@@ -993,7 +966,9 @@ Deno.serve(async (req) => {
           userId,
           status: "no-incidents",
           skipped: skippedEvents,
-          ...(medicationDebug ? { diagnostics: { medication: medicationDebug } } : {}),
+          ...(medicationDebug
+            ? { diagnostics: { medication: medicationDebug } }
+            : {}),
         });
         continue;
       }
@@ -1008,7 +983,9 @@ Deno.serve(async (req) => {
             tag: event.tag,
           })),
           skipped: skippedEvents,
-          ...(medicationDebug ? { diagnostics: { medication: medicationDebug } } : {}),
+          ...(medicationDebug
+            ? { diagnostics: { medication: medicationDebug } }
+            : {}),
         });
         continue;
       }
@@ -1072,7 +1049,9 @@ Deno.serve(async (req) => {
         sent: sentEvents,
         failed: failedEvents,
         skipped: skippedEvents,
-        ...(medicationDebug ? { diagnostics: { medication: medicationDebug } } : {}),
+        ...(medicationDebug
+          ? { diagnostics: { medication: medicationDebug } }
+          : {}),
       });
     }
 

@@ -10,6 +10,19 @@
   const diag = appModules.diag || global.diag || null;
   const log = (msg) => diag?.add?.(`[profile] ${msg}`);
 
+  const MEDICATION_STATUS = Object.freeze({
+    loading: 'loading',
+    empty: 'empty',
+    ready: 'ready',
+    error: 'error'
+  });
+  const MEDICATION_SLOT_LABELS = Object.freeze({
+    morning: 'Morgens',
+    noon: 'Mittags',
+    evening: 'Abends',
+    night: 'Nachts'
+  });
+
   const selectors = {
     panel: '#hubProfilePanel',
     tabsHost: '.hub-profile-tabs',
@@ -46,7 +59,12 @@
     ready: false,
     syncPromise: null,
     latestLab: null,
-    medicationSummary: null
+    medicationSummary: {
+      status: MEDICATION_STATUS.loading,
+      rows: [],
+      dayIso: null,
+      errorCode: null
+    }
   };
 
   let refs = null;
@@ -107,7 +125,11 @@
   const notifyChange = (reason = 'update') => {
     if (!doc) return;
     try {
-      doc.dispatchEvent(new CustomEvent('profile:changed', { detail: { reason, data: state.data } }));
+      doc.dispatchEvent(
+        new CustomEvent('profile:changed', {
+          detail: { reason, data: getProfileDataSnapshot() }
+        })
+      );
     } catch (_) {
       /* no-op */
     }
@@ -145,32 +167,6 @@
     return uid;
   };
 
-  const parseMedicationsInput = (text) => {
-    if (!text) return [];
-    return text
-      .split(/[\n,;]+/)
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  };
-
-  const formatMedicationsOutput = (value) => {
-    if (Array.isArray(value)) {
-      return value.join('\n');
-    }
-    if (value && typeof value === 'object') {
-      try {
-        const arr = Object.values(value).filter(Boolean);
-        return Array.isArray(arr) ? arr.join('\n') : '';
-      } catch (_) {
-        return '';
-      }
-    }
-    if (typeof value === 'string') {
-      return value;
-    }
-    return '';
-  };
-
   const summarizeMedicationRows = (payload) => {
     const meds = Array.isArray(payload?.medications)
       ? payload.medications.filter((med) => med && med.active !== false)
@@ -179,12 +175,17 @@
     const rows = meds.map((med) => {
       const parts = [med.name || 'Medikation'];
       const detail = [];
-      const slots = Array.isArray(med.slots) ? med.slots.slice().sort((a, b) => a.sort_order - b.sort_order) : [];
+      const slots = Array.isArray(med.slots)
+        ? med.slots
+            .slice()
+            .sort((a, b) => Number(a?.sort_order || 0) - Number(b?.sort_order || 0))
+        : [];
       if (med.strength) detail.push(med.strength);
       if (slots.length) {
         const planSummary = slots
           .map((slot) => {
-            const label = `${slot?.label || ''}`.trim() || 'Einnahme';
+            const slotType = `${slot?.slot_type || ''}`.trim().toLowerCase();
+            const label = MEDICATION_SLOT_LABELS[slotType] || 'Einnahme';
             const qty = Number(slot?.qty) || 1;
             return qty > 1 ? `${label} (${qty})` : label;
           })
@@ -199,16 +200,41 @@
   };
 
   const fetchMedicationSummary = async () => {
+    const dayIso = todayIso();
     try {
       const medModule = getMedicationModule();
-      if (!medModule?.loadMedicationForDay) return null;
-      const snapshot = await medModule.loadMedicationForDay(todayIso(), { reason: 'profile:snapshot' });
-      return summarizeMedicationRows(snapshot);
+      if (!medModule?.loadMedicationForDay) {
+        diag?.add?.('[profile] medication summary failed medication module unavailable');
+        return {
+          status: MEDICATION_STATUS.error,
+          rows: [],
+          dayIso,
+          errorCode: 'medication_module_unavailable'
+        };
+      }
+      const snapshot = await medModule.loadMedicationForDay(dayIso, { reason: 'profile:snapshot' });
+      if (!Array.isArray(snapshot?.medications)) {
+        const error = new Error('Ungültiger Medication-Snapshot');
+        error.code = 'medication_snapshot_invalid';
+        throw error;
+      }
+      const summary = summarizeMedicationRows(snapshot);
+      return {
+        status: summary.rows.length ? MEDICATION_STATUS.ready : MEDICATION_STATUS.empty,
+        rows: summary.rows,
+        dayIso: summary.dayIso,
+        errorCode: null
+      };
     } catch (err) {
       if (err?.code !== 'medication_not_authenticated') {
         diag?.add?.(`[profile] medication summary failed ${err?.message || err}`);
       }
-      return null;
+      return {
+        status: MEDICATION_STATUS.error,
+        rows: [],
+        dayIso,
+        errorCode: err?.code || 'medication_summary_failed'
+      };
     }
   };
 
@@ -238,11 +264,62 @@
     refs.ckdBadge.value = stage || '--';
   };
 
-  const setMedicationsField = (text, { derived = false } = {}) => {
+  const getMedicationDisplayText = () => {
+    const summary = state.medicationSummary;
+    switch (summary?.status) {
+      case MEDICATION_STATUS.ready:
+        return Array.isArray(summary.rows) ? summary.rows.join('\n') : '';
+      case MEDICATION_STATUS.empty:
+        return 'Keine aktiven Medikamente';
+      case MEDICATION_STATUS.error:
+        return 'Medikation derzeit nicht verfügbar';
+      case MEDICATION_STATUS.loading:
+      default:
+        return 'Medikation wird geladen ...';
+    }
+  };
+
+  const setMedicationsField = (text) => {
     if (!refs?.medications) return;
     refs.medications.value = text || '';
-    refs.medications.readOnly = !!derived;
-    refs.medications.classList.toggle('is-derived', !!derived);
+    refs.medications.readOnly = true;
+    refs.medications.classList.add('is-derived');
+    refs.medications.classList.toggle(
+      'has-error',
+      state.medicationSummary?.status === MEDICATION_STATUS.error
+    );
+    refs.medications.setAttribute(
+      'aria-busy',
+      String(state.medicationSummary?.status === MEDICATION_STATUS.loading)
+    );
+  };
+
+  const renderMedicationField = () => {
+    setMedicationsField(getMedicationDisplayText());
+  };
+
+  const applyMedicationProjection = (profile, summary = state.medicationSummary) => {
+    const hasProfile = !!profile && typeof profile === 'object';
+    const hasMedicationContext =
+      summary?.status === MEDICATION_STATUS.ready ||
+      summary?.status === MEDICATION_STATUS.empty;
+    if (!hasProfile && !hasMedicationContext) return null;
+
+    const next = hasProfile ? { ...profile } : {};
+    delete next.medications;
+    if (hasMedicationContext) {
+      next.medications = Array.isArray(summary.rows) ? [...summary.rows] : [];
+    }
+    return next;
+  };
+
+  const getProfileDataSnapshot = () => {
+    const projected = applyMedicationProjection(state.data);
+    if (!projected) return null;
+    if (Array.isArray(projected.medications)) {
+      projected.medications = [...projected.medications];
+    }
+    return projected;
   };
 
   const updateDoctorFieldsVisibility = () => {
@@ -272,7 +349,7 @@
     refs.fullName.value = sanitize(data.full_name);
     refs.birthDate.value = data.birth_date ? String(data.birth_date).slice(0, 10) : '';
     refs.height.value = data.height_cm != null ? String(data.height_cm) : '';
-    setMedicationsField(formatMedicationsOutput(data.medications), { derived: false });
+    renderMedicationField();
     refs.doctorName.value = sanitize(data.primary_doctor_name);
     refs.doctorEmail.value = sanitize(data.primary_doctor_email);
     refs.saltLimit.value = data.salt_limit_g != null ? String(data.salt_limit_g) : '';
@@ -320,12 +397,19 @@
       ['Geburtsdatum', state.data.birth_date],
       ['Groesse (cm)', state.data.height_cm],
       ['CKD-Stufe (Lab)', getDerivedCkdStage()],
-      ['Medikation', Array.isArray(state.data.medications) ? state.data.medications.join(', ') : '--'],
+      ['Medikation', getMedicationDisplayText().split('\n').join(', ')],
       ['Salzlimit (g/Tag)', state.data.salt_limit_g],
       ['Protein Faktor', state.data.protein_factor_current != null ? formatFactor(state.data.protein_factor_current) : null],
       ['Protein Min (g/Tag)', state.data.protein_doctor_lock ? null : state.data.protein_target_min],
       ['Protein Max (g/Tag)', state.data.protein_doctor_lock ? null : state.data.protein_target_max],
-      ['Raucherstatus', state.data.is_smoker ? 'Raucher' : 'Nichtraucher'],
+      [
+        'Raucherstatus',
+        typeof state.data.is_smoker === 'boolean'
+          ? state.data.is_smoker
+            ? 'Raucher'
+            : 'Nichtraucher'
+          : null
+      ],
       ['Lifestyle', state.data.lifestyle_note],
       ['Arzt (Name)', state.data.primary_doctor_name],
       ['Arzt (E-Mail)', state.data.primary_doctor_email],
@@ -351,7 +435,6 @@
 
   const extractFormPayload = () => {
     if (!refs) return null;
-    const medications = parseMedicationsInput(refs.medications?.value);
     const doctorLock = !!refs.proteinDoctorLock?.checked;
     const doctorFactor = toNumberOrNull(refs.proteinDoctorFactor?.value, { precision: 2 });
     const doctorMin = toNumberOrNull(refs.proteinDoctorMin?.value, { precision: 1 });
@@ -364,7 +447,6 @@
       full_name: sanitize(refs.fullName?.value),
       birth_date: refs.birthDate?.value || null,
       height_cm: toNumberOrNull(refs.height?.value),
-      medications: medications.length ? medications : [],
       salt_limit_g: toNumberOrNull(refs.saltLimit?.value, { precision: 1 }),
       protein_doctor_lock: doctorLock,
       protein_doctor_factor: doctorFactor,
@@ -387,6 +469,15 @@
     await ensureLocalDb(reason);
     state.syncing = true;
     setFormDisabled(true);
+    state.medicationSummary = {
+      status: MEDICATION_STATUS.loading,
+      rows: [],
+      dayIso: todayIso(),
+      errorCode: null
+    };
+    state.data = applyMedicationProjection(state.data);
+    renderMedicationField();
+    renderOverview();
     const promise = (async () => {
       try {
         const client = await requireSupabaseClient();
@@ -394,7 +485,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_factor, protein_doctor_min, protein_doctor_max, protein_factor_current, protein_age_base, protein_activity_level, protein_activity_score_28d, protein_factor_pre_ckd, protein_ckd_stage_g, protein_ckd_factor, protein_last_calc_at, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+            'user_id, full_name, birth_date, height_cm, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_factor, protein_doctor_min, protein_doctor_max, protein_factor_current, protein_age_base, protein_activity_level, protein_activity_score_28d, protein_factor_pre_ckd, protein_ckd_stage_g, protein_ckd_factor, protein_last_calc_at, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
@@ -408,27 +499,30 @@
           diag?.add?.(`[profile] loadLatestLabSnapshot failed: ${labErr?.message || labErr}`);
         }
         state.latestLab = latestLab;
-        state.data = data ? { ...data } : null;
-        if (state.data) {
-          state.data.ckd_stage = getDerivedCkdStage();
+        const profileData = data ? { ...data } : null;
+        if (profileData) {
+          profileData.ckd_stage = getDerivedCkdStage();
         }
-        const medSummary = await fetchMedicationSummary();
-        if (medSummary?.rows?.length) {
-          state.medicationSummary = medSummary;
-          if (!state.data) state.data = {};
-          state.data.medications = [...medSummary.rows];
-        } else {
-          state.medicationSummary = null;
-        }
+        state.medicationSummary = await fetchMedicationSummary();
+        state.data = applyMedicationProjection(profileData);
         fillForm(state.data);
-        if (state.medicationSummary?.rows?.length) {
-          setMedicationsField(state.medicationSummary.rows.join('\n'), { derived: true });
-        }
         renderOverview();
         notifyChange('sync');
         log?.(`sync ok reason=${reason}`);
       } catch (err) {
         diag?.add?.(`[profile] sync failed (${reason}) ${err.message || err}`);
+        if (state.medicationSummary?.status === MEDICATION_STATUS.loading) {
+          state.medicationSummary = {
+            status: MEDICATION_STATUS.error,
+            rows: [],
+            dayIso: todayIso(),
+            errorCode: err?.code || 'profile_sync_failed'
+          };
+          state.data = applyMedicationProjection(state.data);
+          fillForm(state.data);
+          renderOverview();
+          notifyChange('sync-error');
+        }
       } finally {
         state.syncing = false;
         state.syncPromise = null;
@@ -458,11 +552,12 @@
         .from('user_profile')
         .upsert(upsertPayload, { onConflict: 'user_id' })
         .select(
-          'user_id, full_name, birth_date, height_cm, medications, salt_limit_g, protein_target_min, protein_target_max, protein_factor_current, protein_doctor_factor, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+          'user_id, full_name, birth_date, height_cm, salt_limit_g, protein_target_min, protein_target_max, protein_factor_current, protein_doctor_factor, protein_doctor_lock, protein_doctor_min, protein_doctor_max, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
         )
         .single();
       if (error) throw error;
-      state.data = data;
+      const savedProfile = { ...data, ckd_stage: getDerivedCkdStage() };
+      state.data = applyMedicationProjection(savedProfile);
       fillForm(state.data);
       renderOverview();
       notifyChange('save');
@@ -534,7 +629,7 @@
   appModules.profile = {
     init,
     sync: syncProfile,
-    getData: () => (state.data ? { ...state.data } : null)
+    getData: getProfileDataSnapshot
   };
 
   if (doc?.readyState === 'complete' || doc?.readyState === 'interactive') {

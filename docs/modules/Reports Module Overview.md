@@ -2,7 +2,8 @@
 
 Kurze Einordnung:
 - Zweck: Monatsbericht + Arztbericht (Range) generieren und in der Inbox bereitstellen.
-- Rolle innerhalb von MIDAS: fasst BP/Body/Lab/Activity fuer Arzt und Patient zusammen.
+- Rolle innerhalb von MIDAS: fasst BP/Body/Lab/Activity sowie im Range-Bericht
+  die aktuelle strukturierte Medikation fuer Arzt und Patient zusammen.
 - Abgrenzung: keine Diagnosen, keine Therapieempfehlungen, keine Echtzeit-Alerts.
 
 Related docs:
@@ -29,6 +30,8 @@ Related docs:
 | `backend/supabase/functions/midas-monthly-report/index.ts` | Report-Engine (monthly + range) |
 | `app/styles/doctor.css` | Report-Karten + Inbox-Overlay Styling |
 | `public.user_profile` | Patientenkopf + Protein-Ziel (Range-Report) |
+| `public.health_medications` | Aktive Medication-Stammdaten im Range-Report |
+| `public.health_medication_schedule_slots` | Am Wiener Berichtstag gueltige Medication-Plaene im Range-Report |
 | `public.trendpilot_events_range` | Trendpilot-Liste im Range-Report |
 
 ---
@@ -72,7 +75,11 @@ Die Report-Engine arbeitet auf Views, nicht auf Roh-Events:
 - `v_events_activity`
 
 Range-Report zieht zusaetzlich:
-- `user_profile` (Name, Birthdate, Height, Smoker, Meds, Protein-Ziel)
+- `user_profile` (Name, Birthdate, Height, Smoker, Protein-Ziel; keine
+  Medication-Legacy-Spalte)
+- `health_medications` (aktive Medikamente)
+- `health_medication_schedule_slots` (aktive und am Wiener Berichtstag
+  gueltige Slots)
 - `trendpilot_events_range` (alle Eintraege, chronologisch)
 
 Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
@@ -99,6 +106,11 @@ Damit bleibt die Report-Logik stabil, auch wenn die Rohdaten wachsen.
   - Range ignoriert `month`.
   - ungueltige Kalenderdaten werden abgelehnt; kein stilles JS-Date-Rolling.
 - Laedt Daten aus den Views.
+- Berechnet den Wiener Berichtstag pro Request einmal und verwendet ihn fuer
+  alle Medication-Slot-Filter konsistent.
+- Begrenzt Medication- und Slot-Reads auch unter Service Role explizit auf den
+  Ziel-User. Ein Fehler in einem der beiden Reads verhindert Report-Write und
+  Teilbericht.
 - Baut:
   - `summary` (Kurztext)
   - `text` (Narrativ, Markdown)
@@ -199,6 +211,11 @@ Status:
 
 - Monthly Report erzeugt/aktualisiert den gleichen Monat.
 - Range Report nur mit gesetztem Zeitraum.
+- Range Report zeigt aktive strukturierte Medikation und aktuell gueltige
+  Tagesabschnitte; keine aktive Medikation wird als erfolgreiche Leere
+  dargestellt.
+- Medication-/Slot-Read-Fehler erzeugt keinen Teilbericht und keinen
+  `health_events`-Write.
 - Inbox-Filter (monthly/range) korrekt.
 - Invalid `report_type` wird abgelehnt.
 - Invalid `from/to/month` wird abgelehnt.

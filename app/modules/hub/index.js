@@ -4137,6 +4137,56 @@
     return inferAppointmentType(parsed[0].item);
   };
 
+  const buildAssistantProfileContext = (profile) => {
+    if (!profile || typeof profile !== 'object') return null;
+    const proteinTarget =
+      profile.protein_target_max ??
+      profile.protein_target_min ??
+      null;
+    const saltTarget =
+      profile.salt_limit_g ??
+      profile.salt_target_g ??
+      profile.salt_target ??
+      null;
+    const payload = {
+      name: profile.full_name || null,
+      birth_date: profile.birth_date || null,
+      height_cm: profile.height_cm ?? null,
+      ckd_stage: profile.ckd_stage || null,
+      salt_limit_g: profile.salt_limit_g ?? null,
+      protein_target_min: profile.protein_target_min ?? null,
+      protein_target_max: profile.protein_target_max ?? null,
+      protein_target: proteinTarget,
+      salt_target: saltTarget,
+      protein_limit_g:
+        profile.protein_target_max ??
+        profile.protein_target_min ??
+        null,
+      lifestyle_note: profile.lifestyle_note || null,
+      smoker_status:
+        typeof profile.is_smoker === 'boolean'
+          ? profile.is_smoker
+            ? 'smoker'
+            : 'non-smoker'
+          : null,
+    };
+    if (Array.isArray(profile.medications)) {
+      payload.medications = profile.medications
+        .filter((entry) => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+    return payload;
+  };
+
+  const getCurrentAssistantProfileContext = (fallbackProfile = null) => {
+    const profileApi = appModules.profile;
+    if (typeof profileApi?.getData === 'function') {
+      return profileApi.getData() || null;
+    }
+    return fallbackProfile;
+  };
+
   const buildAssistantContextPayload = ({ includeTimeSlot = false } = {}) => {
     const ctx = assistantChatCtrl?.context;
     if (!ctx) return null;
@@ -4167,42 +4217,10 @@
         payload.appointment_type = appointmentType;
       }
     }
-    if (ctx.profile) {
-      const meds = Array.isArray(ctx.profile.medications)
-        ? ctx.profile.medications
-        : typeof ctx.profile.medications === 'string'
-          ? ctx.profile.medications
-              .split(/[\n;,]+/)
-              .map((entry) => entry.trim())
-              .filter(Boolean)
-          : [];
-      const proteinTarget =
-        ctx.profile.protein_target_max ??
-        ctx.profile.protein_target_min ??
-        null;
-      const saltTarget =
-        ctx.profile.salt_limit_g ??
-        ctx.profile.salt_target_g ??
-        ctx.profile.salt_target ??
-        null;
-      payload.profile = {
-        name: ctx.profile.full_name || null,
-        birth_date: ctx.profile.birth_date || null,
-        height_cm: ctx.profile.height_cm ?? null,
-        ckd_stage: ctx.profile.ckd_stage || null,
-        medications: meds,
-        salt_limit_g: ctx.profile.salt_limit_g ?? null,
-        protein_target_min: ctx.profile.protein_target_min ?? null,
-        protein_target_max: ctx.profile.protein_target_max ?? null,
-        protein_target: proteinTarget,
-        salt_target: saltTarget,
-        protein_limit_g:
-          ctx.profile.protein_target_max ??
-          ctx.profile.protein_target_min ??
-          null,
-        lifestyle_note: ctx.profile.lifestyle_note || null,
-        smoker_status: ctx.profile.is_smoker ? 'smoker' : 'non-smoker',
-      };
+    const profile = getCurrentAssistantProfileContext(ctx.profile);
+    const profilePayload = buildAssistantProfileContext(profile);
+    if (profilePayload) {
+      payload.profile = profilePayload;
     }
     const hasData = Object.keys(payload).length > 0;
     if (includeTimeSlot || hasData) {

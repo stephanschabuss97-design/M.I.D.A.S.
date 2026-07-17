@@ -7,6 +7,8 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Profile Module Overview](Profile Module Overview.md)
+- [Reports Module Overview](Reports Module Overview.md)
 
 ## Produktiver Data-Hygiene-Vertrag
 
@@ -46,6 +48,7 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 | `app/modules/hub/index.js` | lokaler Text-/Hub-Fast-Path fuer `medication_confirm_section`. |
 | `app/modules/assistant-stack/voice/index.js` | Voice-Fast-Path fuer `medication_confirm_section` plus Low-Stock-Follow-up. |
 | `app/modules/profile/index.js` | Read-only-Zusammenfassung fuer Medikation im Profil. |
+| `backend/supabase/functions/midas-monthly-report/index.ts` | Liest aktive Medikamente und am Wiener Berichtstag gueltige Slots fuer den Range-Arztbericht. |
 | `app/modules/incidents/index.js` | gestaffelte lokale Medication-Reminder/Incidents pro Abschnitt (`morning/noon/evening/night`). |
 | `app/styles/hub.css` | Layout/Styles fuer Medication-Karten, Slot-Liste und TAB-Editor. |
 | `sql/12_Medication.sql` | Tabellen plus produktive RPCs fuer Slot-/Progress-Modell und den bereinigten Medication-Contract. |
@@ -66,6 +69,10 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 - Es gibt keinen dauerhaften Bestandsbewegungsverlauf. Operative
   Bestandswahrheit ist ausschliesslich `health_medications.stock_count`.
 - `med_list_v2` ist das operative Read-Model fuer Medication im Frontend.
+- `health_medications` und `health_medication_schedule_slots` sind zugleich die
+  strukturierte aktuelle Quelle fuer Profil und Range-Arztbericht. Die
+  produktiv noch vorhandene Profil-Legacy-Spalte ist keine aktive Medication-
+  Quelle mehr.
 
 ---
 
@@ -127,7 +134,12 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 
 ## 6. Arzt-Ansicht / Read-Only Views
 
-- Aktuell keine dedizierte Arztansicht; spaetere Read-only-Pfade sollten `med_list_v2` oder ein separates Read-Model nutzen.
+- Der Range-Arztbericht liest aktive Medication-Stammdaten direkt aus
+  `health_medications` und die am einmalig berechneten Wiener Berichtstag
+  gueltigen Plaene aus `health_medication_schedule_slots`.
+- Der Read ist explizit auf den Report-User begrenzt. Medication- oder Slot-
+  Fehler brechen die Report-Erzeugung geschlossen ab, statt eine falsche leere
+  Medikation zu persistieren.
 - Low-Stock-Box zeigt Arzt-Mail zur Kontaktaufnahme aus dem Profil.
 - Profil-Snapshot rendert bereits lesbare Plan-Zusammenfassungen aus `slots[]`.
 - Historische Einzel-Einnahmen sind bewusst nur fuer das rollende

@@ -41,6 +41,8 @@ Related docs:
 - Reads:
   - Views: `v_events_bp`, `v_events_body`, `v_events_lab`, `v_events_activity`
   - `health_events` (Notes + system_comment fuer Reports)
+  - Range-Arztbericht zusaetzlich aus `health_medications` und
+    `health_medication_schedule_slots` fuer die aktuelle Medikation
 - Trendpilot: `trendpilot_events` + `trendpilot_state`
 - Report-Subtypes:
   - `monthly_report`
@@ -91,6 +93,9 @@ Related docs:
 - Lab: Tageskarten mit Nieren- und Stoffwechselwerten + Kommentar.
 - Training: Tageskarten mit Aktivitaet/Dauer/Notiz.
 - Reports: Monatsbericht (Vormonat) und Arzt-Bericht (expliziter Zeitraum).
+- Der Arzt-Bericht zeigt aktive Medikamente und die am Wiener Berichtstag
+  gueltigen Tagesabschnitte aus dem strukturierten Medication-Modell; das
+  Profil ist dafuer keine Medication-Quelle mehr.
 
 ---
 
@@ -145,6 +150,8 @@ Related docs:
 - Unlock-Flow funktioniert.
 - BP/Body/Lab/Training laden fuer gewaehlten Zeitraum.
 - Reports: monthly + range erzeugen, filtern, loeschen.
+- Range-Arztbericht und Profil zeigen dieselbe aktuelle strukturierte
+  Medikation; Medication-Read-Fehler erzeugt keinen Teilbericht.
 - Inbox loeschen entfernt alle Reports.
 
 ---
@@ -155,4 +162,3 @@ Related docs:
 - Reports korrekt typisiert und sichtbar.
 - Keine offenen Logs/Errors.
 - Doku aktuell.
-

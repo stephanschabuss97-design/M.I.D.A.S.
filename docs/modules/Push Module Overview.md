@@ -1,23 +1,28 @@
 # Push Module - Functional Overview
 
 Kurze Einordnung:
+
 - Zweck: gestaffelte Medication-Reminder plus spaetere Incidents und ein klarer BP-Incident-Pfad.
 - Rolle innerhalb von MIDAS: ruhiges Sicherheitsnetz fuer offene Medication-Slots und fehlenden Abend-Blutdruck.
 - Abgrenzung: keine Reminder-Ketten, keine Termine, keine Lifestyle-Motivation.
 
 Status-Hinweis:
+
 - Repo-lokal ist der neue Severity-Vertrag aktiv:
   - `reminder`
   - `incident`
 - Lokal und extern sprechen denselben Typ-/Severity-/Tag-Vertrag.
 - Off-App-Push laeuft ueber GitHub Actions plus Edge Function im versionierten Backend-Source.
-- Deployed Stand: `midas-incident-push` Version 16.
+- Deployed Stand: `midas-incident-push` Version 17.
 - Browser/PWA ist der Reminder-Push-Master.
 - Android-WebView/Shell ist Widget-/Sync-/Auth-Surface und kein verlaesslicher Reminder-Push-Kanal.
 - Technische Diagnose-Pushes laufen getrennt von Medication-/BP-Dedupe und schalten keine lokale Suppression frei.
-- Letzter Runtime-Smoke: Remote Dry-Run, Diagnose-Push, GitHub Workflow-Smoke sowie Desktop-/Android-Zielgeraet-Smoke am 2026-06-04 erfolgreich.
+- Letzter Runtime-Nachweis: aktueller und historischer Remote-Dry-Run,
+  historischer Non-Dry-Run-Guard, produktive Push-Hygiene-Provisionierung und
+  kontrollierter Erst-Cleanup am 2026-07-17 erfolgreich.
 
 Related docs:
+
 - [Medication Module Overview](Medication Module Overview.md)
 - [Intake Module Overview](Intake Module Overview.md)
 - [Profile Module Overview](Profile Module Overview.md)
@@ -47,7 +52,10 @@ Related docs:
 | `app/modules/intake-stack/medication/index.js` | Medication-Read-Model mit offenen `slots[]` und `slot_type` |
 | `.github/workflows/incidents-push.yml` | gezielte UTC-Ticks fuer Off-App-Push rund um die produktiven Schwellen |
 | `backend/supabase/functions/midas-incident-push/index.ts` | Remote-Push-Pfad, Dedupe, Delivery, Health-Updates |
+| `backend/supabase/functions/midas-incident-push/request-contract.ts` | Reiner Request-Parser und Guard-Vertrag fuer Trigger, Modus, Dry-Run und Zeitoverride |
+| `backend/supabase/functions/midas-incident-push/request-contract_test.ts` | Dauerhafte Deno-Regressionstests fuer den Request-Vertrag |
 | `sql/15_Push_Subscriptions.sql` | `push_subscriptions` plus `push_notification_deliveries` |
+| `sql/18_Push_Data_Hygiene.sql` | Interner 90-Tage-Cleanup, partieller Index und eigener Wochen-Cron |
 
 ---
 
@@ -62,11 +70,28 @@ Related docs:
   - `push_subscriptions.last_diagnostic_*` fuer technische Test-Push-Health
   - `push_notification_deliveries` fuer persistentes Remote-Dedupe pro `user/day/type/severity/source`
 
+### 3.1 Produktiver Data-Hygiene-Vertrag
+
+- `push_notification_deliveries` ist technische Dedupe-Historie und wird nach
+  Wiener Kalendertag streng aelter als 90 Tage bereinigt. Der exakte
+  90-Tage-Grenztag und Zukunftszeilen bleiben erhalten.
+- Nur seit mehr als 90 Tagen unveraenderte `disabled = true`-Subscriptions
+  werden geloescht. Aktive und juengst deaktivierte oder reaktivierte
+  Subscriptions bleiben erhalten.
+- Der interne `SECURITY INVOKER`-Cleanup besitzt kein Execute fuer `PUBLIC`,
+  `anon`, `authenticated` oder `service_role` und verlangt Owner `postgres`.
+- Genau ein Job `midas-push-hygiene-weekly` laeuft sonntags um `03:45 UTC`.
+  Advisory Lock und vollstaendige Jobidentitaetspruefung verhindern parallele
+  oder vertragsfremde Cleanup-Laeufe.
+- Nur abgeschlossene eigene Cron-Run-Details werden nach 90 Tagen bereinigt.
+  Medication-Retention ist ein getrennter Job und bleibt unveraendert.
+
 ---
 
 ## 4. Ablauf / Logikfluss
 
 ### 4.1 Initialisierung
+
 - Incident-Engine startet beim App-Load.
 - Tageswechsel resettet lokale Sendeflags.
 - Lokaler Intervall-Check laeuft minuetlich.
@@ -76,6 +101,7 @@ Related docs:
 - Sichtbare Bedienung und Health-Anzeige liegen im Touchlog.
 
 ### 4.2 Trigger
+
 - `medication:changed`
 - `bp:changed`
 - `visibilitychange`
@@ -83,6 +109,7 @@ Related docs:
 - externer GitHub-Action-Tick zu gezielten UTC-Zeitpunkten rund um die produktiven Schwellen
 
 ### 4.3 Verarbeitung lokal
+
 - Medication prueft offene Slots je `morning/noon/evening/night`.
 - Final beschlossene Medication-Schwellen:
   - `morning`: Reminder `10:00`, Incident `12:00`
@@ -98,18 +125,25 @@ Related docs:
 - BP bleibt ein klarer Abend-Incident ab `20:00`, wenn Morgen-BP vorhanden und Abend-BP noch offen ist.
 
 ### 4.4 Verarbeitung remote
+
 - GitHub Actions ist nur Taktgeber.
 - Der Workflow laeuft nicht mehr als 30-Minuten-Dauerlauf, sondern gezielt rund um die relevanten Medication-/BP-Schwellen.
 - Die Cron-Zeiten sind in UTC gesetzt und decken CET/CEST fuer `Europe/Vienna` ab.
 - Die Edge Function entscheidet in `Europe/Vienna`, was aktuell faellig ist.
 - Manuelle Workflow-Runs koennen `mode=diagnostic` senden.
 - `mode=diagnostic` sendet einen technischen Test-Push, schreibt nur `last_diagnostic_*` und beruehrt keine fachliche Dedupe-Tabelle.
+- Ein explizites Request-Feld `now` ist nur zusammen mit `dry_run = true`
+  erlaubt. Der Guard laeuft vor User-Aufloesung, fachlichen Reads, Push-Send
+  und Datenbank-Writes; Scheduler-Payloads ohne `now` bleiben unveraendert.
 - Medication liest slot-/abschnittsbasiert:
   - `health_medications`
   - `health_medication_schedule_slots`
   - `health_medication_slot_events`
 - Catch-up sendet pro Typ und Tag immer nur die hoechste aktuell faellige Severity.
-- Remote-Dedupe verhindert Doppelzustellung fuer denselben Fachfall.
+- Remote-Dedupe verhindert im normalen sequenziellen Pfad wiederholte
+  Zustellung fuer denselben Fachfall. Zwischen erfolgreichem Send und
+  anschliessendem Delivery-Upsert bleibt bei parallelen Edge-Aufrufen ein
+  Duplikatfenster; es besteht keine exakt-einmalige Zustellgarantie.
 - Remote-Response macht Partial Delivery sichtbar:
   - `acceptedSubscriptions` fuer technisch angenommene Web-Push-Subscriptions.
   - `failedSubscriptions` fuer fehlgeschlagene Subscriptions mit redigiertem Fehler.
@@ -117,6 +151,7 @@ Related docs:
 - `deliveredSubscriptions` bleibt Count aus Kompatibilitaetsgruenden und ist kein Beweis fuer sichtbare Zielgeraet-Zustellung.
 
 ### 4.5 Lokale-vs.-Remote-Suppression
+
 - Lokal wird nicht blind abgeschaltet.
 - Lokale Notification-Suppression ist nur erlaubt, wenn:
   - eine aktive Browser-Subscription existiert
@@ -220,6 +255,80 @@ Related docs:
 - weitere Push-Service-Erweiterungen bleiben in `AppModules.push`; Profile bleibt push-frei.
 - Per-Device-ACK, native Android Reminder oder ein eigener BP-Reminder-Kanal bleiben separate Architektur-Roadmaps, falls Web Push nach dem aktuellen Hardening weiter unzuverlaessig bleibt.
 
+### Future Hook: Native Medication Reminder Reliability
+
+Status:
+
+- dokumentierte Zukunftsoption, kein produktiver Contract.
+- nicht Teil der aktuellen Push-/Datenhygiene-Roadmap.
+- keine versteckte Zusage für AlarmManager, Exact Alarm, FCM oder einen
+  Angehörigenzugriff.
+
+Langfristiges Nutzungsziel:
+
+- Eine fällige Medikamenteneinnahme bleibt lokal sichtbar und wird auf dem
+  Android-Gerät verlässlich erinnert, bis sie bestätigt oder bewusst als
+  ausgelassen behandelt wurde.
+- Das Widget zeigt weiterhin unmittelbar, ob ein Medication-Abschnitt offen
+  oder erledigt ist.
+- Ein Angehöriger soll bei Bedarf am Gerät einen klaren offenen Status
+  erkennen können, ohne dafür Datenbank-, GitHub- oder Supabase-Wartung zu
+  verstehen.
+- Blutdruck bleibt für diesen Zukunftspfad zunächst zweitrangig. Der belastbare
+  Medication-Reminder ist der eigentliche Sicherheitsnutzen.
+
+Warum dieser Future Hook existiert:
+
+- GitHub Actions plus Web Push bleiben ein Best-Effort-Fangnetz.
+- Eine Zustellung hängt gleichzeitig von Scheduler, Netzwerk, Push-Dienst,
+  Browser/PWA und Android-Energiesparregeln ab.
+- Die bestehende Android-Shell kann langfristig eine eng begrenzte native
+  Reliability-Schicht tragen, ohne MIDAS vollständig als native App neu zu
+  bauen.
+- PWA und Supabase bleiben Hauptsystem; Android übernimmt nur Fähigkeiten, die
+  lokal zuverlässiger als Web Push erbracht werden können.
+
+Mögliche spätere Architektur, noch nicht entschieden:
+
+- lokaler Android-Reminder auf Basis des synchronisierten Medication-Plans.
+- persistente Notification in einem eigenen Medication-Kanal.
+- Wiederherstellung geplanter Reminder nach Geräte-Neustart.
+- Offline-Verhalten ohne GitHub, Supabase-Request oder geöffnetes MIDAS.
+- Dedupe zwischen lokalem Android-Reminder, bestehendem Web Push und Widget.
+- klarer Übergang von `offen` zu `erledigt`, `bewusst ausgelassen` oder
+  `Status nicht verfügbar`.
+- optionaler Angehörigenmodus erst nach eigenem Privacy-, Auth- und
+  Berechtigungsvertrag.
+
+Vor einer Roadmap zwingend zu klären:
+
+- Welche Android-API passt zum tatsächlichen Zeit- und Zuverlässigkeitsbedarf:
+  WorkManager, AlarmManager oder ein bewusst genehmigter Exact-Alarm-Pfad?
+- Wie gelangen Planänderungen sicher und rechtzeitig in die native Schicht?
+- Was passiert offline, nach Reboot, nach Zeitzonenwechsel oder bei geänderter
+  Systemzeit?
+- Wie werden verspätete, verpasste und bewusst ausgelassene Einnahmen
+  unterschieden?
+- Wie verhindert MIDAS Doppelalarme zwischen PWA, GitHub Push und Android?
+- Wie werden Gerätewechsel und alte lokale Schedules ohne Datenbankfrickelei
+  bereinigt?
+- Welche Notification- und Exact-Alarm-Berechtigungen verlangt die dann
+  aktuelle Android-Version?
+- Darf ein Angehöriger nur den lokalen offenen Status sehen oder benötigt er
+  einen echten, separat abgesicherten Account-/Freigabepfad?
+
+Startkriterium für ein eigenes Teilprojekt:
+
+- Web Push versagt im realen Alltag wiederholt als Backup, oder
+- Alter, Therapiekomplexität beziehungsweise mehrere tägliche Slots machen
+  eine lokal garantiertere Medication-Erinnerung fachlich relevant.
+
+Bis dahin gilt:
+
+- Routine und Widget sind der primäre Alltagspfad.
+- lokaler PWA-Check und Web Push bleiben zusätzliche Fangnetze.
+- Die aktuelle Android-Shell erhält keine Alarm-Fachlogik nebenbei.
+
 ---
 
 ## 10. Feature-Flags / Konfiguration
@@ -247,6 +356,8 @@ Related docs:
   - Remote-Erfolge aelter als 7 Tage unterdruecken lokale Fallbacks nicht mehr
   - mehrere/alte Subscriptions koennen die Touchlog-Health-Anzeige temporaer nervoes wirken lassen, obwohl Push transportseitig funktioniert
   - technisch akzeptierter Web Push beweist keine sichtbare Zielgeraet-Zustellung
+  - Delivery-Dedupe garantiert bei parallelen Edge-Aufrufen keine exakt-
+    einmalige Zustellung; das bleibt ein separates Reliability-Thema
   - Remote-Deployment-Drift zwischen Repo und Backend-Workspace
 
 ---
@@ -255,6 +366,8 @@ Related docs:
 
 - Edge Function `midas-incident-push` muss deployed sein.
 - `sql/15_Push_Subscriptions.sql` muss produktiv eingespielt sein.
+- `sql/18_Push_Data_Hygiene.sql` wird separat und nur nach Owner-Freigabe
+  provisioniert. Es darf nicht Teil eines automatischen App-Bootstraps sein.
 - Workflow [`.github/workflows/incidents-push.yml`](../../.github/workflows/incidents-push.yml) muss auf dem GitHub-Default-Branch liegen.
 - Der Workflow nutzt gezielte UTC-Ticks statt `*/30`:
   - `17,37 8,9,10,11,12,13,14,15,18,19,20,21,22 * * *`
@@ -290,6 +403,8 @@ Related docs:
 - Off-App-Push funktioniert auch ohne geoeffnete App.
 - Manueller Workflow-Smoke mit `window=all` liefert `ok=true` und bei nicht faelligen Ereignissen `status=no-incidents` plus Skip-Gruende.
 - Manueller technischer Smoke mit `mode=diagnostic` liefert `status=diagnostic-sent` ohne `push_notification_deliveries` zu beschreiben.
+- Explizites `now` ohne `dry_run = true` wird mit HTTP `400` vor jeder
+  Nebenwirkung abgelehnt; historischer Dry-Run bleibt moeglich.
 - Android Chrome/PWA zeigt Systemnotification fuer Diagnose- oder fachlichen Push.
 - Android-WebView/Shell wird nicht als gesunder Reminder-Push-Master dargestellt.
 - `bereit (wartet auf erste Erinnerung)` darf nicht als Fehler angezeigt werden, wenn noch kein echter Remote-Push faellig war.
@@ -302,6 +417,9 @@ Related docs:
 - Produktiver Scheduler braucht `INCIDENTS_USER_ID` als Function Secret oder eine explizite `user_id` im Request.
 - Touchlog zeigt Push-Wartung; Profil bleibt sichtbar push-frei.
 - BP bleibt konsistent incident-orientiert.
+- Push-Hygiene-Job, Owner, ACL, Schedule und Command entsprechen dem
+  produktiven Vertrag; alte Deliveries und alte deaktivierte Subscriptions
+  werden bereinigt, aktive Subscriptions bleiben erhalten.
 
 ---
 
@@ -310,6 +428,7 @@ Related docs:
 - Medication fuehlt sich spaeter und sanfter an als der alte `06/11/17/21`-Pfad.
 - Lokal und remote sprechen denselben Severity-Vertrag.
 - Service Worker behandelt Reminder und Incident technisch unterschiedlich.
-- Die Rollenverteilung lokal vs. remote erzeugt weder Doppelpushes noch stille Ausfaelle.
+- Die Rollenverteilung lokal vs. remote reduziert Doppelpushes und laesst
+  bekannte Ausfaelle sichtbar; exakt-einmalige Zustellung ist kein Vertrag.
 - Desktop und Android haben den Diagnose-Push sichtbar erhalten.
 - Dokumentation und QA entsprechen dem produktiven Vertrag.

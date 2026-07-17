@@ -58,6 +58,10 @@ Related docs:
 - Texteingaben laufen im Hub zuerst ueber den Intent-Preflight.
 - Lokale Direct-Matches werden ueber Allowed-Actions oder UI-safe Actions behandelt.
 - Pending-Contexts fuer Confirm-Flows werden hier gesetzt, gelesen, bereinigt und aufgeloest.
+- Der Assistant-Payload bezieht den aktuellen Profil-Snapshot ueber die
+  Profil-API. Eine Medication-Liste wird nur aus der erfolgreichen
+  strukturierten Projektion uebernommen; bei Lade-/Fehlerzustand wird sie
+  ausgelassen und nicht aus einem aelteren Hub-Snapshot rekonstruiert.
 
 ### 3.4 Voice
 

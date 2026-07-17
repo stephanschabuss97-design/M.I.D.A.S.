@@ -48,6 +48,15 @@ Explain how SQL scripts in `sql/` are structured, how to run them safely, and ho
 3) Views and RPCs
 4) Explicit grants
 5) Optional helpers
+6) User-gated retention/Cron scripts after their deployment and owner gates
+
+The numeric filename prefix is an inventory aid, not a guarantee that every
+file belongs to one blind fresh-bootstrap sequence. In particular,
+`06_Security.sql` is a historical Security Advisor patch for an existing
+schema and still references the retired legacy table `public.appointments`.
+Do not run it during a current fresh/disposable bootstrap. Apply only the
+canonical module scripts required by the tested target schema, then grants and
+explicitly owner-gated retention/Cron scripts.
 
 # Medication Data-Hygiene Scripts
 
@@ -77,6 +86,62 @@ For the completed existing-project cutover, the reviewed order was:
 1) `transition_medication_clean_start.sql`
 2) `16_Explicit_Grants.sql`
 3) `17_Medication_Retention.sql`
+
+# Push Data-Hygiene Script
+
+`18_Push_Data_Hygiene.sql` is the canonical, user-gated Push maintenance
+script. It is separate from Medication retention because both jobs have
+different data, cutoffs, schedules, rollback decisions, and runtime risks.
+
+The script:
+
+- enables `pg_cron` if needed;
+- creates the partial index for old disabled subscriptions;
+- provisions the internal `SECURITY INVOKER` cleanup function;
+- revokes function execution from `PUBLIC`, `anon`, `authenticated`, and
+  `service_role`;
+- creates or updates exactly one job named `midas-push-hygiene-weekly` for
+  Sunday `03:45 UTC`;
+- requires the function and job to remain owned by `postgres`;
+- refuses duplicate jobs, a foreign owner, a changed job contract, or a
+  concurrent cleanup run through the documented advisory lock pair
+  `(1296647233, 1347769160)`;
+- leaves existing Push table RLS, policies, and table grants unchanged.
+
+Retention boundaries are intentionally different:
+
+- Delivery rows are deleted only when `day` is strictly older than the Vienna
+  calendar day `today - 90 days`. The `-90` day, today, and future rows remain.
+- Subscriptions are deleted only when `disabled = true` and `updated_at` is
+  strictly older than the execution timestamp minus 90 days. Active or recently
+  reactivated subscriptions remain.
+- Only completed run details of the current Push hygiene job older than 90 days
+  are deleted. Other jobs and unfinished runs remain.
+
+For a fresh or disposable environment, use this order after the normal core
+schema:
+
+1) `15_Push_Subscriptions.sql`
+2) `16_Explicit_Grants.sql`
+3) `18_Push_Data_Hygiene.sql`
+
+For an existing productive MIDAS project:
+
+1) Deploy and verify the reviewed `midas-incident-push` time-override guard.
+2) Perform the read-only deletion-count, active-subscription, Cron, owner, ACL,
+   and advisor preflight.
+3) Explain the expected DDL, job, and future deletion effects to the owner.
+4) Run `18_Push_Data_Hygiene.sql` only after explicit owner approval.
+5) Verify function, index, ACL, exact job contract, and active subscriptions.
+6) Run the first cleanup manually only after a separate explicit approval.
+
+Do not add this file to automatic app bootstrap. Re-running it is designed to
+converge on the same named job, but a conflicting owner or duplicate job is an
+intentional hard stop. The script does not attempt to reassign a foreign job
+through `cron.alter_job`.
+
+Disabling the named job stops future automatic cleanup. It does not restore
+rows already deleted; those require a prior export or database backup.
 
 # Retention and Cron Rules
 
