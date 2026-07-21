@@ -179,7 +179,7 @@
     `docs/MIDAS Roadmap Template.md`,
     `docs/archive/MIDAS Medication Data Hygiene Roadmap (DONE).md`,
     `docs/modules/Push Module Overview.md` und
-    `docs/MIDAS Medication Data Hygiene Lessons Learned.md`.
+    `docs/archive/MIDAS Medication Data Hygiene Lessons Learned.md`.
   - Der geänderte Fresh-Setup-SQL-Vertrag wurde nicht produktiv ausgeführt.
     Beide Edge Functions sind deployt; der Range-Bericht und das produktive
     Push-Hygiene-SQL sind erfolgreich nachgewiesen.
@@ -508,7 +508,7 @@ Briefing mit den zu diesem Zeitpunkt realen Zahlen ausgefüllt:
 - `README.md`
 - `docs/DEV_ENVIRONMENT.md`
 - `docs/MIDAS Roadmap Template.md`
-- `docs/MIDAS Medication Data Hygiene Lessons Learned.md`
+- `docs/archive/MIDAS Medication Data Hygiene Lessons Learned.md`
 - `docs/modules/Profile Module Overview.md`
 - `docs/modules/Medication Module Overview.md`
 - `docs/modules/Push Module Overview.md`

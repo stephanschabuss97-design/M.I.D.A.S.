@@ -1,5 +1,38 @@
 # Medication Daypart Batch & Reminder Roadmap
 
+## Abschlussklarstellung 2026-07-20
+
+Diese Roadmap wurde nach `S8.8` als abgeschlossen behandelt, obwohl die in
+`S7.4` definierte manuelle Browser-/Device-Smoke-Matrix nicht vollständig als
+ausgeführt dokumentiert war. Die damalige Formulierung `S8 = DONE` und das
+ursprüngliche Exit-Kriterium waren deshalb ohne diese Einordnung zu weit.
+
+Verbindliche Auflösung:
+
+- `S8 = DONE` bezeichnet den abgeschlossenen repo-lokalen
+  **Implementierungsblock** aus Datenvertrag, IN-Tab, lokalen Incidents,
+  Service Worker, Voice/Text, Doku und statischer Abnahme.
+- Die damals nicht ausgeführten manuellen Smokes werden nicht rückwirkend als
+  `PASS` behauptet. Ihre Szenarien wurden als wiederholbarer
+  Regressionstest-Vertrag nach `docs/QA_CHECKS.md` übertragen.
+- Der zu diesem Zeitpunkt noch getrennte Remote-Scheduler-/Edge-Function-Pfad
+  wurde später in
+  `docs/archive/Medication Reminder Softening & Push Tuning Roadmap (DONE).md`
+  slot-/abschnittsbasiert umgesetzt.
+- Echte Push-Transport-Smokes auf PC und Android wurden später in
+  `docs/archive/Push Channel Robustness & Android WebView Boundary Roadmap (DONE).md`
+  dokumentiert. Sie belegen den Remote-Transport, ersetzen aber nicht
+  rückwirkend jeden einzelnen UI-/Voice-Fall der ursprünglichen Smoke-Matrix.
+- Der aktuelle produktive Abschnittsvertrag ist in den Medication-, Intake-,
+  Push- und Intent-Module-Overviews sowie im aktuellen Code dokumentiert.
+
+Abschlussentscheidung:
+
+- Kein offener Implementierungsblock dieser Roadmap bleibt bestehen.
+- Die nicht einzeln protokollierten historischen manuellen Fälle bleiben
+  ehrlich als laufende Regressionstest-Matrix erhalten und blockieren die
+  Archivierung dieser Implementierungsroadmap nicht.
+
 ## Ziel (klar und pruefbar)
 Der bestehende Medication-Mehrfach-Einnahme-Flow soll von einem globalen `alle offenen Einnahmen bestaetigen`-Verhalten auf eine saubere Abschnittslogik umgestellt werden, damit Batch-Aktionen, Push und Incident-Logik dieselbe fachliche Semantik teilen.
 
@@ -50,7 +83,7 @@ Pruefbare Zieldefinition:
 - `docs/modules/Push Module Overview.md`
 - `docs/modules/Intent Engine Module Overview.md`
 - `docs/QA_CHECKS.md`
-- `docs/M.I.D.A.S._Implementation_Spec_v1.2.yaml`
+- `docs/archive/M.I.D.A.S._Implementation_Spec_v1.2.yaml`
 - `CHANGELOG.md`
 
 ## Guardrails
@@ -109,7 +142,7 @@ Diese Zeitfenster sind zunaechst Produktdefaults fuer Sichtbarkeit, Priorisierun
 | S5 | Push-/Reminder-Config und Incident-Logik angleichen | DONE | Abschnittszeiten werden als gemeinsame Incident-/Reminder-Source of Truth festgezogen; Medication wechselt fachlich von einem aggregierten Tages-Incident zu abschnittsbezogenen Incidents fuer `morning/noon/evening/night`, lokal wie remote. |
 | S6 | Voice-/Assistant-Pfade auf Abschnittssemantik absichern | DONE | Der alte globale Intent `medication_confirm_all` wird fachlich durch einen abschnittsbezogenen Confirm-Vertrag ersetzt; direkte Voice-/Text-Writes sind nur noch mit explizitem Abschnitt erlaubt, generische Medikationssaetze werden nicht mehr blind lokal ausgefuehrt. |
 | S7 | Migration, Rueckwaertskompatibilitaet und QA definieren | DONE | Altbestand, Label-Mapping, tolerierte Edge-Cases und die verbindliche Smoke-Matrix fuer Abschnitts-CTAs, Push, Voice und Incident-Logik sind festgezogen; offene Migrationen laufen deterministisch ueber `slot_type`-Backfill statt ueber manuelle Neuerfassung. |
-| S8 | Umsetzung des Abschnittsmodells + Endvalidierung | DONE | Der repo-lokale Abschnittsumbau ist geschlossen: SQL-/Read-Contract, IN-CTAs, lokale Incident-/Push-Pfade, Voice-/Text-Vertrag, Doku/QA und statische Abnahme sind synchron. Der externe Remote-Scheduler-/Edge-Function-Vertrag bleibt bewusst ausserhalb dieses Repos. |
+| S8 | Umsetzung des Abschnittsmodells + Endvalidierung | DONE | Der repo-lokale Implementierungsblock ist geschlossen. Die damals nicht vollständig protokollierte manuelle Smoke-Matrix bleibt ohne rückwirkende PASS-Behauptung in QA erhalten; der separate Remote-Vertrag wurde in späteren DONE-Roadmaps geschlossen. |
 
 Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
@@ -189,7 +222,7 @@ Bewertung:
 - `service-worker.js`
   - Incident-Erkennung kennt weiterhin `medication_daily_open` und noch den alten Legacy-Typ `medication_morning`.
   - daraus ist ersichtlich, dass der Notification-Surface historisch bereits Teilzeit-Semantik hatte, aktuell aber aggregiert arbeitet.
-- `docs/M.I.D.A.S._Implementation_Spec_v1.2.yaml`
+- `docs/archive/M.I.D.A.S._Implementation_Spec_v1.2.yaml`
   - enthaelt keine Medication-/Push-/Reminder-Zeitfenster.
   - die Datei ist eine Design-/Brand-Spec, nicht die operative Reminder-Source-of-Truth.
 
@@ -348,7 +381,9 @@ Schritt-Abnahme:
 
 ##### S2.7 Doku-Sync
 - `docs/archive/Medication Management Module Spec.md`
-  - Dokumentstatus ergaenzen: die naechste geplante Ausbaustufe fuer Medication ist die Abschnittslogik gemaess `docs/Medication Daypart Batch & Reminder Roadmap.md`.
+  - Dokumentstatus ergaenzen: die naechste geplante Ausbaustufe fuer
+    Medication ist die Abschnittslogik gemaess
+    `docs/archive/Medication Daypart Batch & Reminder Roadmap (DONE).md`.
 - In den Modul-Overviews ist noch kein weiterer Ist-Stand-Aenderungsbedarf notwendig, weil `S2` einen Zielvertrag definiert, aber noch kein produktives Verhalten aendert.
 
 ##### S2.8 Commit-Empfehlung
@@ -1024,7 +1059,14 @@ Schritt-Abnahme:
 - S8.8 Commit-Empfehlung:
   - finalen Commit-/Merge-Vorschlag dokumentieren
 - Output: produktiv konsistentes Abschnittsmodell ueber UI, Push, Incident und Voice.
-- Exit-Kriterium: Code, Config, Reminder, Doku und Smokechecks sind auf demselben Endstand.
+- Urspruengliches Exit-Kriterium: Code, Config, Reminder, Doku und Smokechecks
+  sind auf demselben Endstand.
+- Retrospektiv tatsaechlich erreicht:
+  - repo-lokaler Code, Datenvertrag, lokale Reminder-/Incident-Pfade, Doku und
+    statische Checks sind synchron,
+  - manuelle Browser-/Device-Smokes wurden als QA-Regression uebertragen, aber
+    nicht vollstaendig als damaliger PASS protokolliert,
+  - der separate Remote-Vertrag wurde nachgelagert umgesetzt und validiert.
 
 #### S8 Checkpoint A - Datenmodell + Medication-Client abgeschlossen
 - Status:
@@ -1159,7 +1201,7 @@ Schritt-Abnahme:
     - trennt jetzt sauber zwischen repo-lokalem Abschnittsmodell und weiterhin separatem Remote-Scheduler-/Backend-Vertrag.
   - `docs/modules/Intent Engine Module Overview.md`
     - fuehrt `medication_confirm_section` als produktiven Medication-Fast-Path.
-  - `docs/Voice Command Semantics.md`
+  - `docs/modules/Voice Command Semantics.md`
     - Medication ist jetzt als abschnittsbezogener Sprachvertrag dokumentiert.
     - generische Tagessaetze ohne Abschnitt sind explizit nicht mehr write-faehig.
   - `docs/QA_CHECKS.md`
@@ -1214,7 +1256,7 @@ Schritt-Abnahme:
   - `S8.8` bleibt nur noch als Commit-Empfehlung offen.
 - Umgesetzt:
   - `docs/modules/*` beschreiben den aktuellen repo-lokalen Medication-Runtime-Stand konsistent.
-  - `docs/Voice Command Semantics.md` und `docs/QA_CHECKS.md` sprechen denselben Abschnittsvertrag wie Code und UI.
+  - `docs/modules/Voice Command Semantics.md` und `docs/QA_CHECKS.md` sprechen denselben Abschnittsvertrag wie Code und UI.
   - `docs/archive/Medication Management Module Spec.md` ist jetzt explizit als historischer Spec-Stand markiert und verweist sauber auf die heutigen Referenzen.
   - diese Roadmap fuehrt `S8` jetzt auf den realen Endstand des Repo-Umbaublocks.
 - Bewusste Grenze:

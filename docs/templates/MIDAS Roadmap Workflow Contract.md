@@ -1,0 +1,278 @@
+# MIDAS Roadmap Workflow Contract
+
+Dieser stabile Vertrag definiert, wie MIDAS-Roadmaps erstellt, fortgesetzt,
+reviewt und abgeschlossen werden. Aktive Roadmaps referenzieren ihn, kopieren
+ihn aber nicht vollständig.
+
+## Geltung
+
+- Beim Erstellen einer neuen Roadmap vollständig lesen.
+- Roadmap-Erstellung und initialer Contract Review erfolgen mit
+  `GPT-5.6 Sol / Extra High`. Erst die spätere Ausführung verwendet die je
+  Schritt festgelegte, risikobasierte Reasoning-Stufe.
+- Bei einer späteren Session nur erneut lesen, wenn diese Datei seit der
+  letzten Roadmap-Aufnahme geändert wurde oder ein Prozess-Finding besteht.
+- Roadmap-spezifische Entscheidungen stehen ausschließlich in der jeweiligen
+  Roadmap.
+- Technische Nachweise stehen bei Bedarf in einer Evidence-Datei.
+- Wiederverwendbare Prozessartefakte verbleiben unter `docs/templates/`.
+  Aktive Roadmaps und ihre optionale Evidence liegen direkt unter `docs/` und
+  werden nach erfolgreichem Abschluss mit `(DONE)` nach `docs/archive/`
+  verschoben.
+
+## Ausführungsmodus
+
+- S1, S2 und S3 werden jeweils als deterministischer Gesamtblock mit Contract
+  Review und Findings-Korrektur abgeschlossen.
+- Bis zum grünen S4 Readiness Review wird kein Produktcode geändert; erlaubt
+  sind Roadmap-, Analyse- und notwendige Vertragsdokumente.
+- S4 bleibt fachlich substepweise nachvollziehbar. Der Readiness Review gibt
+  zusätzlich eine begründete Empfehlung ab, welche benachbarten Substeps als
+  gemeinsamer Ausführungsblock laufen dürfen.
+- Ein S4-Batch ist nur zulässig, wenn Scope und Datenwirkung kompatibel sind,
+  kein Owner-Gate dazwischenliegt, die Reihenfolge eindeutig bleibt und der
+  gemeinsame Review jeden enthaltenen Substep weiterhin einzeln abdeckt.
+- Produktives SQL, Deploys, Workflow-Runs, Device-Installationen und andere
+  irreversible oder extern sichtbare Aktionen bleiben standardmäßig getrennt,
+  sofern der Readiness Review keine gleichwertig sichere Begründung liefert.
+- S5 und S6 laufen grundsätzlich als Gesamtblock. Owner-Gates, externe Reviews
+  und manuelle Smokes dürfen kontrollierte Pausen erzwingen.
+- Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
+- Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen Block
+  aktualisiert.
+
+## Session-Rehydration
+
+Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
+
+1. Roadmap-Metadaten und Session Resume Card.
+2. Entscheidungslog und Findings.
+3. Nur der aktuelle Schritt samt Exit-Kriterium.
+4. `git status --short` und der relevante Diff.
+5. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
+
+Ein breiter Re-Read ist nur erforderlich:
+
+- beim initialen S1,
+- im S4 Readiness Review, soweit S1-S3 betroffen sind,
+- bei einem Contract-Finding mit unklarer Herkunft.
+
+S6 liest die vertragsrelevanten Roadmap-Abschnitte, Findings, Evidence,
+geänderten Dateien und betroffenen Source-of-Truth-Dokus erneut. Historische
+Ergebnisprotokolle werden nur bei einem Widerspruch vollständig gelesen.
+
+Der Session-Handoff:
+
+- bleibt unter ungefähr 35 Zeilen,
+- wird nach jedem Hauptschritt, jedem S4-Substep und vor Pausen ersetzt,
+- enthält nur gültigen Iststand, nächste Aktion, Findings, Nachweise und Gates,
+- wird nicht als chronologisches Arbeitsprotokoll verwendet.
+
+## Evidence-Vertrag
+
+Eine separate Datei nach
+`docs/templates/MIDAS Roadmap Evidence Template.md` ist verpflichtend bei:
+
+- produktivem SQL mit Schreib- oder Löschwirkung,
+- Migration, RLS-, ACL-, Rollen- oder Cron-Änderung,
+- mehreren Deploys oder Remote-Runtime-Gates,
+- Concurrency-, Lock- oder Rollback-Nachweisen,
+- umfangreichen Vorher-/Nachher-Zählern.
+
+Die Roadmap enthält dann nur:
+
+- Evidence-ID,
+- Ergebnis,
+- Restrisiko,
+- Verweis auf das betreffende Gate.
+
+Query-Ausgaben, Logs und große Testmatrizen werden nicht in Roadmap, Handoff,
+QA und Evidence gleichzeitig dupliziert.
+
+Evidence wird nur gelesen:
+
+- am betroffenen Gate,
+- wenn ein Finding den Nachweis berührt,
+- im S5-/S6-Abschlussreview.
+
+## Größen- und Duplikationsgrenzen
+
+- Roadmap-Handoff: ungefähr 35 Zeilen.
+- Ergebnis je Substep: höchstens sechs Kernpunkte.
+- Dieselbe Tatsache besitzt genau einen ausführlichen Ort.
+- Unpassende Template-Abschnitte werden gestrichen oder knapp als
+  `nicht relevant` markiert.
+- Ab ungefähr 80 KB oder 1.200 Zeilen wird vor weiterer Arbeit kompaktiert:
+  - technische Details in Evidence auslagern,
+  - abgeschlossene Protokolle verdichten,
+  - Entscheidungen, Findings und Restrisiken vollständig erhalten.
+
+## Risikoklassen
+
+<!-- markdownlint-disable MD013 -->
+
+| Klasse | Typischer Scope | Arbeitsform |
+| --- | --- | --- |
+| `R1` | Copy, Doku, enger mechanischer Fix | S1-S3-Kurzreview, Delta-Review |
+| `R2` | mehrere Consumer, UI-Flow, normale Edge-/Codeänderung | normale S1-S6-Struktur, Consumer-Review |
+| `R3` | Auth, SQL, RLS, Migration, Löschung, Cron, medizinischer Vertrag | volle Gates, Full-Review, Owner Briefing, meist Evidence |
+
+<!-- markdownlint-enable MD013 -->
+
+- `R1`: S1 bis S3 dürfen kompakt zusammengefasst werden. S4, S5 und S6
+  bleiben erkennbare Umsetzung, Prüfung und Abschluss.
+- `R2`: normale S1-bis-S6-Struktur mit schlanken Ergebnissen.
+- `R3`: S1 bis S3, Readiness, produktive Gates und S6 vollständig.
+
+## Reviewtiefen
+
+`Delta`:
+
+- geänderte Datei,
+- direkt betroffene Vertragsklausel,
+- kleinster belastbarer Check.
+
+`Consumer`:
+
+- Delta-Review,
+- direkte Producer und Consumer,
+- Datenform, Fehlerzustand und sichtbares Verhalten.
+
+`Full`:
+
+- gesamter betroffener Vertrag,
+- Security, Datenwirkung, Rollback, Runtime und Doku,
+- alle relevanten Consumer und Gates.
+
+Full-Reviews sind verpflichtend:
+
+- nach jedem S1-, S2- und S3-Hauptschritt in dessen Scope,
+- im S4 Readiness Review,
+- am Ende des gesamten S4-Blocks,
+- in S5 vor produktiver Wirkung,
+- in S6 als finaler Source-of-Truth-Review.
+
+Ein kleiner S4-Substep benötigt keinen Full-Review, wenn er keinen neuen
+Vertrag oder Risikopfad eröffnet.
+
+Bei einem S4-Ausführungsblock gilt die höchste Reviewtiefe seiner enthaltenen
+Substeps. Findings und Ergebnisse bleiben den ursprünglichen Substep-IDs
+zugeordnet; die Zusammenlegung spart Handoffs, nicht Nachvollziehbarkeit.
+
+## Reasoning-Routing
+
+- Standardmodell: `GPT-5.6 Sol`.
+- Roadmap-Erstellung und initialer Contract Review: immer `Extra High`.
+- Die nachfolgenden Ausführungsschritte verwenden die niedrigste noch
+  belastbare Stufe passend zu Risiko und Arbeitsaufwand.
+- `Low`: rein mechanische, eindeutige Einzeloperation.
+- `Medium`: gezielter Scan, Doku-Sync, Statuspflege oder deterministische
+  Transformation.
+- `High`: Implementierung, Consumer-Review, SQL, Backend, Security oder
+  medizinisch sichtbare Logik.
+- `Extra High`: destruktiver Knoten, Migration, Concurrency, Rollback,
+  produktiver Cutover oder mehrere gekoppelte Preconditions.
+- `Ultra`: nur begründeter Ausnahme- oder Red-Team-Fall.
+- Es gilt die niedrigste noch belastbare Stufe; Reasoning ersetzt kein Gate.
+
+## Test-Invaliderung
+
+Ein grüner Check wird erneut ausgeführt, wenn:
+
+- seine Datei geändert wurde,
+- ein direkter Producer oder Consumer geändert wurde,
+- ein Finding seinen Vertrag betrifft,
+- ein externer Review eine relevante Korrektur auslöste,
+- oder der finale Gesamtcheck erreicht ist.
+
+Unveränderte, weiterhin gültige Nachweise werden über Test- oder Evidence-ID
+referenziert und nicht aus Gewohnheit wiederholt.
+
+## Owner Briefing und Freigaben
+
+Owner Briefing ist verpflichtend vor:
+
+- neuem Werkzeug mit Systemwirkung,
+- wichtiger Architekturentscheidung,
+- produktivem Deploy,
+- produktivem SQL oder Datenwrite,
+- Lösch- oder irreversibler Wirkung,
+- echtem Push oder Workflow mit Runtime-Wirkung.
+
+```md
+#### Owner Briefing [Gate]
+
+- Zweck:
+- Wirkung:
+- Risiko:
+- Rückfall:
+- Erfolgsnachweis:
+- Benötigte Freigabe:
+```
+
+Ohne ausdrückliche Freigabe keine produktive Wirkung.
+
+## Lern- und Erklärvertrag
+
+- Es gibt kein verpflichtendes allgemeines Lessons-Learned-Dokument pro
+  Roadmap.
+- Archivierte `(DONE)`-Roadmaps, `docs/qa/` und die historischen QA-Archive
+  erklären, was, warum und mit welchen Nachweisen geändert wurde.
+  `docs/QA_CHECKS.md` bleibt nur als Kompatibilitätsindex; der Git-Commit
+  bewahrt die exakte Codeänderung.
+- Normale Syntax-, CSS- und JavaScript-Detailarbeit benötigt keine
+  wiederholte Lernerklärung.
+- Neue Werkzeuge, Architekturentscheidungen, produktive Writes und
+  irreversible Wirkungen werden im Owner Briefing vorab erklärt.
+- S6 enthält optional einen kurzen Owner Recap in Alltagssprache:
+  - was geändert wurde,
+  - warum dieser Weg gewählt wurde,
+  - wie sich das System künftig verhält,
+  - was der Owner für ähnliche Aufgaben mitnehmen sollte.
+- Der Recap bleibt bei maximal ungefähr 10 bis 15 Punkten.
+- Bestehende ausführliche Lessons-Learned-Dokumente werden nur bei einer
+  konkreten Verständnisfrage gezielt gelesen.
+
+## Findings-Vertrag
+
+- `P0`: produktive Fehlwirkung, Datenverlust, Auth-/Security-Bruch oder
+  medizinisch riskanter Fehler; blockiert.
+- `P1`: echter Contract-, Runtime- oder Nutzerfehler; in Scope beheben oder
+  ausdrücklich abgrenzen.
+- `P2`: Robustheit, Hygiene oder Copy ohne akuten Blocker.
+- `Watchlist`: erkannt, aber bewusst außerhalb der Roadmap.
+
+Findings werden einmal in der Finding-Tabelle geführt. Ergebnisprotokolle
+referenzieren nur ihre IDs.
+
+## S5-Reihenfolge
+
+1. lokale statische Checks.
+2. disposable Tests und Fixtures.
+3. Code-/SQL-/Security-Review.
+4. optionaler externer Review; Findings bewerten, nicht blind übernehmen.
+5. produktiver read-only Preflight.
+6. Owner Briefing und Freigabe je produktivem Gate.
+7. Deploy, SQL und Runtime-Smoke in freigegebener Reihenfolge.
+8. exakte Postconditions.
+9. finaler Review des tatsächlich geänderten Scopes.
+
+## Abschlussvertrag
+
+- S6 synchronisiert Module Overviews, QA und HOW-TO nur mit tatsächlich
+  bewiesenen Ergebnissen.
+- Ein erforderlicher Owner Recap erklärt das reale Ergebnis ohne
+  Syntax-Nacherzählung.
+- Nicht ausgeführte Smokes werden nicht als bestanden markiert.
+- Watchlists werden nicht still geschlossen.
+- In-Scope-P0/P1 müssen vor `DONE` geschlossen sein. Out-of-Scope-P0/P1
+  dürfen nur mit explizitem Owner, Folgeartefakt und wirksamem Gate als
+  Watchlist bestehen bleiben.
+- Jede Roadmap entscheidet in S6 ihre Changelog-Relevanz. Bemerkenswerte
+  Änderungen werden unter `Unreleased` in `CHANGELOG.md` erfasst;
+  nicht bemerkenswerte Änderungen werden kurz begründet.
+- Ein Changelog-Eintrag ist weder ein Release-Cut noch ein Git-Tag.
+- `DONE` erfordert ein erfülltes S6-Exit-Kriterium.
+- Roadmap und optionale Evidence werden mit `(DONE)` archiviert.
+- Commit und Push bleiben Owner-Aktionen.
+- Temporäre Arbeitsnotizen bleiben keine zweite Source of Truth.

@@ -2253,7 +2253,7 @@ Scope-Check:
   - `sql/16_Explicit_Grants.sql`
   - `sql/HOW_TO.md`
 - Separat vorhandenes Future-Notes-Dokument:
-  - `docs/MIDAS Medication Data Hygiene Future Notes.md`
+  - `docs/archive/MIDAS Medication Data Hygiene Future Notes.md`
   - nicht Teil dieses Grant-Fixes.
 
 Live-SQL und Supabase Security Advisor:

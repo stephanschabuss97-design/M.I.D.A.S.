@@ -6,7 +6,7 @@ Kurze Einordnung:
 - Abgrenzung: keine Dauer-Sounds, keine Trendpilot-Feedbacks, kein Reminder-Loop.
 
 Related docs:
-- [MIDAS Sensory Feedback Roadmap](../MIDAS Sensory Feedback Roadmap.md)
+- [MIDAS Sensory Feedback Roadmap](../archive/MIDAS%20Sensory%20Feedback%20Roadmap.md)
 - [Hub Module Overview](Hub Module Overview.md)
 - [Intake Module Overview](Intake Module Overview.md)
 - [Appointments Module Overview](Appointments Module Overview.md)
@@ -31,7 +31,7 @@ Related docs:
 | `app/modules/intake-stack/intake/index.js` | Save/Confirm/Undo Hooks |
 | `app/modules/vitals-stack/vitals/index.js` | Vitals Save/Reset Hooks |
 | `app/modules/appointments/index.js` | Save/Done/Delete Hooks |
-| `docs/MIDAS Sensory Feedback Roadmap.md` | Regeln + QA |
+| `docs/archive/MIDAS Sensory Feedback Roadmap.md` | Historische Regeln und QA |
 
 ---
 

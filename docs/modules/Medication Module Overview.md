@@ -55,7 +55,7 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 | `sql/16_Explicit_Grants.sql` | Expliziter Data-API-Rollenvertrag fuer Medication-Tabellen und RPCs. |
 | `sql/17_Medication_Retention.sql` | Interne Jahres-Retention und taeglicher Supabase-Cron-Job. |
 | `sql/transition_medication_clean_start.sql` | Einmaliges, bereits produktiv ausgefuehrtes Clean-Start-Artefakt; nicht erneut ausfuehren. |
-| `docs/QA_CHECKS.md` | QA Pack fuer Multi-Dose-Smokes. |
+| `docs/qa/intake-medication.md` | Medication-QA (`IM-006` bis `IM-013`) |
 
 ---
 
@@ -205,7 +205,9 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 
 ## 11. QA-Checkliste
 
-- Siehe `docs/QA_CHECKS.md`, insbesondere Phase M-DH und Phase E.
+- Siehe `docs/qa/intake-medication.md`, insbesondere `IM-006` bis
+  `IM-013`. Historische Phasen M-DH und E bleiben unter
+  `docs/archive/qa/` erhalten.
 - Fokus: `1x`-Fast-Path, `>1x`-Slot-Confirm/Undo, exakter Bestandsabzug,
   Jahres-Retention, Low-Stock Box, TAB CRUD, Kartenaktionen und Logging.
 

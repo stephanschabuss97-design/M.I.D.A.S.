@@ -4,7 +4,10 @@
 Hinweis zum Dokumentstatus:
 - Dieses Dokument ist ein archivierter historischer Spec-Stand des frueheren Single-Dose-Medication-Moduls.
 - Der Multi-Dose-Umbau ist bereits separat in `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md` abgeschlossen dokumentiert.
-- Der nachgelagerte Umbau auf abschnittsbezogene Batch-/Reminder-Logik (`Morgen`, `Mittag`, `Abend`, `Nacht`) ist im Arbeitsstand von `docs/Medication Daypart Batch & Reminder Roadmap.md` dokumentiert.
+- Der nachgelagerte Umbau auf abschnittsbezogene Batch-/Reminder-Logik
+  (`Morgen`, `Mittag`, `Abend`, `Nacht`) ist in
+  `docs/archive/Medication Daypart Batch & Reminder Roadmap (DONE).md`
+  dokumentiert.
 - Die aktuellen nicht-archivierten Modul-Overviews in `docs/modules/*` beschreiben den heutigen Runtime-Stand des Repos und sind fuer die laufende Orientierung die wichtigere Referenz.
 
 Dieses Dokument beschreibt das **finale, vollständige Spec Sheet** für das Medication-Management-Modul in MIDAS.  

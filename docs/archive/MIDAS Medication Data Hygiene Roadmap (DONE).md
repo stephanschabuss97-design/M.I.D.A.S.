@@ -49,7 +49,7 @@
   - `sql/17_Medication_Retention.sql`
   - `sql/transition_medication_clean_start.sql`
   - `docs/modules/Medication Module Overview.md`
-  - `docs/MIDAS Medication Data Hygiene Future Notes.md`
+  - `docs/archive/MIDAS Medication Data Hygiene Future Notes.md`
   - `docs/QA_CHECKS.md`
   - vorbestehend und nicht Teil dieser Roadmap-Erstellung:
     - `android/gradle.properties`
@@ -328,8 +328,8 @@ MIDAS soll innerhalb eines klaren Beobachtungszeitraums ausdruecken koennen:
 - `README.md`
 - `docs/DEV_ENVIRONMENT.md`
 - `docs/MIDAS Roadmap Template.md`
-- `docs/MIDAS Medication Data Hygiene Future Notes.md`
-- `docs/MIDAS Medication Data Hygiene Lessons Learned.md`
+- `docs/archive/MIDAS Medication Data Hygiene Future Notes.md`
+- `docs/archive/MIDAS Medication Data Hygiene Lessons Learned.md`
 - `docs/modules/Medication Module Overview.md`
 - `docs/modules/Intake Module Overview.md`
 - `docs/modules/Push Module Overview.md`
@@ -1098,7 +1098,7 @@ Substeps:
   - Reports/Doctor View.
 - S6.3 `docs/QA_CHECKS.md` um Datenhygiene-, Clean-Start- und Retention-Smokes ergaenzen.
 - S6.4 `sql/HOW_TO.md` aktualisieren, falls Retention-/Transition-/Cron-Konventionen noch nicht ausreichend beschrieben sind.
-- S6.5 `docs/MIDAS Medication Data Hygiene Future Notes.md` als durch diese Roadmap ersetzt markieren oder nach finalem Review sinnvoll archivieren.
+- S6.5 `docs/archive/MIDAS Medication Data Hygiene Future Notes.md` als durch diese Roadmap ersetzt markieren oder nach finalem Review sinnvoll archivieren.
 - S6.6 Roadmap-Ergebnisprotokolle und echten produktiven Stichtag eintragen.
 - S6.7 finaler Contract Review:
   - Roadmap vs. SQL.

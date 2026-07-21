@@ -8,7 +8,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Doctor View Module Overview](Doctor View Module Overview.md)
-- [Reports-Roadmap](../Reports-Roadmap.md)
+- [Reports-Roadmap](../archive/Reports-Roadmap.md)
 
 ---
 

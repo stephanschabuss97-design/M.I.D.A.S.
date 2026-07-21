@@ -294,7 +294,7 @@ Diese Abschluss-Substeps gelten fuer jeden Hauptschritt `S1` bis `S9` und sollen
     - Voice-Fast-Path `medication_confirm_all`
   - `docs/modules/Intake Module Overview.md` beschreibt den Daily Flow weiterhin ueber `Auswahl bestaetigen`, `Alle genommen`, `med_confirm_dose`, `med_undo_dose`.
   - `docs/modules/Profile Module Overview.md` dokumentiert den Snapshot explizit als read-only Ableitung aus `loadMedicationForDay(...)`.
-  - `docs/modules/Intent Engine Module Overview.md`, `docs/Voice Command Semantics.md` und `docs/QA_CHECKS.md` referenzieren den produktiven lokalen Spezialpfad `medication_confirm_all`.
+  - `docs/modules/Intent Engine Module Overview.md`, `docs/modules/Voice Command Semantics.md` und `docs/QA_CHECKS.md` referenzieren den produktiven lokalen Spezialpfad `medication_confirm_all`.
 
 - Abhaengigkeitsbild fuer den Umbau:
   - Downstream haengt nicht nur die UI an Medication, sondern mehrere Produktpfade:

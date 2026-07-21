@@ -13,6 +13,7 @@ Related docs:
 - [Assistant Module Overview](Assistant Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
 - [VAD Module Overview](VAD Module Overview.md)
+- [Voice Command Semantics](Voice Command Semantics.md)
 - [Intent Engine Implementation Roadmap (DONE)](../archive/Intent%20Engine%20Implementation%20Roadmap%20(DONE).md)
 
 ---

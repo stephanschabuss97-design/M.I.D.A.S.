@@ -26,7 +26,7 @@ Related docs:
 | `app/modules/hub/index.js` | gekapselter Hydration-Helper, Dashboard-Render und leichter Refresh-Takt |
 | `index.html` | Dashboard-Pill `WASSER-SOLL` im bestehenden Pill-Block |
 | `app/styles/hub.css` | traegt den zusaetzlichen Pill-Eintrag ueber den bestehenden Hub-/Assistant-Pill-Vertrag |
-| `docs/QA_CHECKS.md` | spaetere Smokechecks fuer Hydration Target |
+| `docs/qa/intake-medication.md` | Aktuelle Hydration-QA (`IM-004`, `IM-005`) |
 
 ---
 

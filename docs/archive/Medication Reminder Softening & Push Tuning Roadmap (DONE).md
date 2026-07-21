@@ -46,7 +46,7 @@ Pruefbare Zieldefinition:
 - `docs/modules/Medication Module Overview.md`
 - `docs/modules/Intake Module Overview.md`
 - `docs/QA_CHECKS.md`
-- `docs/Medication Daypart Batch & Reminder Roadmap.md`
+- `docs/archive/Medication Daypart Batch & Reminder Roadmap (DONE).md`
 - `docs/archive/Medication Multi-Dose Implementation Roadmap (DONE).md`
 
 ## Guardrails

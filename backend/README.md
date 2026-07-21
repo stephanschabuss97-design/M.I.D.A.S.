@@ -1,6 +1,7 @@
 # MIDAS Backend Source
 
-Dieses Verzeichnis enthaelt den versionierten MIDAS-Backend-Source fuer Supabase Edge Functions.
+Dieses Verzeichnis enthaelt den versionierten MIDAS-Backend-Source fuer
+Supabase Edge Functions.
 
 ## Source of Truth
 
@@ -16,7 +17,9 @@ Produktiver Backend-Source liegt im Repo unter:
 - `backend/supabase/functions/midas-tts/index.ts`
 - `backend/supabase/functions/midas-vision/index.ts`
 
-Der fruehere externe Workspace `C:/Users/steph/Projekte/midas-backend` war die Importquelle. Nach dem Import ist dieser Repo-Pfad die technische Source of Truth fuer Backend-Code.
+Der fruehere externe Workspace `C:/Users/steph/Projekte/midas-backend` war die
+Importquelle. Nach dem Import ist dieser Repo-Pfad die technische Source of
+Truth fuer Backend-Code.
 
 ## Deno Checks
 
@@ -33,24 +36,37 @@ deno check backend/supabase/functions/midas-tts/index.ts
 deno check backend/supabase/functions/midas-vision/index.ts
 ```
 
-`deno check` ist ein statischer Source-Check. Runtime-Smokes und echte Supabase-Deploys bleiben separate, bewusst freigegebene Schritte.
+`deno check` ist ein statischer Source-Check. Runtime-Smokes und echte
+Supabase-Deploys bleiben separate, bewusst freigegebene Schritte.
 
 ## Deploy Vertrag
 
-Deploys sind nicht automatisch Teil von Source-Imports oder Roadmap-Checks. Ein Supabase-Deploy wird nur nach expliziter Freigabe ausgefuehrt.
+Deploys sind nicht automatisch Teil von Source-Imports oder Roadmap-Checks.
+Ein Supabase-Deploy wird nur nach expliziter Freigabe ausgefuehrt.
 
-Die Supabase CLI bleibt extern installiert oder im `PATH`. Es wird keine `supabase.exe` im Repo versioniert.
+Die Supabase CLI bleibt extern installiert oder im `PATH`. Es wird keine
+`supabase.exe` im Repo versioniert.
 
-Repo-neutrale Deploy-Form:
+Repo-neutrale Deploy-Form aus dem Repository-Root:
 
 ```powershell
-Set-Location backend/supabase
-supabase functions deploy <function>
+$line = Get-Content .env.supabase.local |
+  Where-Object { $_ -match '^SUPABASE_PROJECT_REF=' } |
+  Select-Object -First 1
+$projectRef = $line.Split('=', 2)[1].Trim()
+supabase functions deploy <function> `
+  --project-ref $projectRef --workdir backend --use-api
 ```
 
-Falls lokal ein absoluter CLI-Pfad genutzt wird, ist das lokale Maschinenkonfiguration und kein Repo-Vertrag.
+Der CLI-Workdir ist `backend`, nicht `backend/supabase`. Die Projekt-Referenz
+wird aus der lokalen, nicht versionierten Environment-Datei gelesen und nicht
+in Logs oder Dokumentation ausgegeben.
 
-GitHub Actions in diesem Repo rufen produktive Function-URLs per Secret auf. Sie sind Scheduler/Caller, nicht der lokale Backend-Source-Pfad.
+Falls lokal ein absoluter CLI-Pfad genutzt wird, ist das lokale
+Maschinenkonfiguration und kein Repo-Vertrag.
+
+GitHub Actions in diesem Repo rufen produktive Function-URLs per Secret auf.
+Sie sind Scheduler/Caller, nicht der lokale Backend-Source-Pfad.
 
 ## Secrets und Artefakte
 
@@ -67,7 +83,9 @@ Secrets bleiben in Supabase, GitHub Secrets oder lokaler Maschinenkonfiguration.
 
 ## Supabase Config Caveat
 
-`backend/supabase/config.toml` ist CLI-/Local-Stack-Konfiguration. Die Datei beweist nicht, dass ein vollstaendiger lokaler Supabase-Stack aus dem Repo sofort startklar ist.
+`backend/supabase/config.toml` ist CLI-/Local-Stack-Konfiguration. Die Datei
+beweist nicht, dass ein vollstaendiger lokaler Supabase-Stack aus dem Repo
+sofort startklar ist.
 
 Die importierte Config referenziert:
 
@@ -75,4 +93,6 @@ Die importierte Config referenziert:
 sql_paths = ["./seed.sql"]
 ```
 
-`backend/supabase/seed.sql` ist nicht Teil des freigegebenen Imports und wurde nicht erzeugt. Diese Seed-Referenz bleibt ein lokaler Supabase-CLI-Caveat, bis ein eigener SQL-/Migration-Scope definiert wird.
+`backend/supabase/seed.sql` ist nicht Teil des freigegebenen Imports und wurde
+nicht erzeugt. Diese Seed-Referenz bleibt ein lokaler Supabase-CLI-Caveat, bis
+ein eigener SQL-/Migration-Scope definiert wird.

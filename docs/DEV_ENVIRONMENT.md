@@ -29,6 +29,38 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
 
 - Zuerst `README.md`, dieses Dokument, relevante Module Overviews und aktive
   Roadmaps lesen.
+- Bei einer neuen Roadmap werden die in S1 genannten Pflichtreferenzen
+  vollständig gelesen.
+- Beim Erstellen einer Roadmap
+  `docs/templates/README.md` sowie
+  `docs/templates/MIDAS Roadmap Workflow Contract.md` vollständig lesen und
+  `docs/templates/MIDAS Roadmap Template.md` als projektspezifischen Vertrag
+  verwenden.
+- Roadmap-Erstellung und initialer Contract Review erfolgen mit
+  `GPT-5.6 Sol / Extra High`. Die spätere Ausführung verwendet die in der
+  Roadmap risikobasiert festgelegten Reasoning-Stufen.
+- In einer Resume-Session den stabilen Workflow-Vertrag nur erneut lesen, wenn
+  er seit der letzten Aufnahme geändert wurde oder ein Prozess-Finding besteht.
+- Bei der Fortsetzung einer laufenden Roadmap zuerst nur Metadaten, Session
+  Resume Card, Entscheidungslog, Findings, aktuellen Schritt und relevanten
+  Git-Diff lesen. Abgeschlossene Schritte und historische Referenzen nur bei
+  einer konkreten Vertragsfrage erneut öffnen.
+- Der Session-Handoff wird verdichtet und ersetzt, nicht über Sessions hinweg
+  fortlaufend erweitert.
+- Umfangreiche produktive Nachweise werden bei Bedarf nach
+  `docs/templates/MIDAS Roadmap Evidence Template.md` als aktive
+  Evidence-Datei unter `docs/` angelegt. Die Roadmap enthält dann nur
+  Evidence-ID, Ergebnis und Restrisiko.
+- Bereits grüne Checks werden nur nach relevanter Code-/Vertragsänderung oder
+  im finalen Gesamtcheck wiederholt.
+- Normale Syntax-, CSS- und JavaScript-Änderungen benötigen keinen eigenen
+  Lernblock. Neue Werkzeuge, Architekturentscheidungen und produktive Wirkung
+  werden vorab im Owner Briefing erklärt und bei Bedarf in S6 mit einem kurzen
+  Owner Recap in Alltagssprache abgeschlossen.
+- Archivierte DONE-Roadmaps, `docs/qa/` und die historischen QA-Archive
+  erklären den technischen Verlauf; `docs/QA_CHECKS.md` bleibt nur als
+  Kompatibilitätsindex. Der Git-Commit bewahrt die exakte Änderung. Ausführliche
+  Lessons-Learned-Dokumente werden nur gezielt gelesen.
 - Bei SQL, RLS, Auth, Edge Functions, Android, Push, medizinischer Fachlogik
   und Source-of-Truth-Dokus gilt die MIDAS-Roadmap-Arbeitsweise:
   - S1-S3 Detektivarbeit und Contract Review.

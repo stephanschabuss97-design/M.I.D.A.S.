@@ -34,7 +34,8 @@ Related docs:
 | `app/modules/profile/index.js` | Stammdaten, Limits, Hausarztkontakt und read-only Medication-Snapshot; keine Push-Service-API |
 | `app/styles/auth.css` | Touchlog-Layout, Mobile-Panel, Maintenance-Sektionen |
 | `app/styles/hub.css` | Profil-Styles; enthaelt keine sichtbare Profile-Push-Surface mehr |
-| `docs/QA_CHECKS.md` | Touchlog-v2-Smokes |
+| `docs/qa/core-runtime.md` | Touchlog-UI-QA (`CORE-011`) |
+| `docs/qa/push-trendpilot.md` | Touchlog-Push-QA (`PT-008`) |
 
 ---
 

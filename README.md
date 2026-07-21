@@ -334,7 +334,10 @@ Wichtige Einstiegspunkte:
 - [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md)
 - [`docs/modules/Hydration Target Module Overview.md`](docs/modules/Hydration%20Target%20Module%20Overview.md)
 - [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md)
-- [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md)
+- [`docs/qa/README.md`](docs/qa/README.md)
+- [`docs/qa/release-readiness.md`](docs/qa/release-readiness.md)
+- [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md) als Kompatibilitätsindex für
+  ältere Links
 
 ---
 
@@ -462,12 +465,24 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 
 ### Operativer Arbeitsmodus
 
-- Lies zuerst README, dann die betroffenen Dateien in `docs/modules/`, dann erst den Code.
-- Beachte die lokale Tooling-/Check-Dokumentation in [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md), bevor du Annahmen ueber Deno, Supabase CLI, GitHub CLI, Android/ADB oder Deploy-Faehigkeit triffst.
-- Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse beruehrt werden.
-- Wenn eine Aenderung fachlich relevant ist, pruefe nicht nur die UI, sondern auch Seiteneffekte in SQL, Edge Functions, Push, Reports oder Service Worker, falls betroffen.
-- Behandle produktive Alltagsfluesse als wichtiger als formale Schoenheit oder abstrakte Generalisierung.
-- Verwende in kuenftigen Chats gerne den Namen Stephan, wenn eine persoenlichere Ansprache hilfreich ist und die fachliche Klarheit erhalten bleibt.
+- Lies zuerst README, dann die betroffenen Dateien in `docs/modules/`, dann erst
+  den Code.
+- Beachte die lokale Tooling-/Check-Dokumentation in
+  [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md), bevor du Annahmen ueber
+  Deno, Supabase CLI, GitHub CLI, Android/ADB oder Deploy-Faehigkeit triffst.
+- Nutze fuer neue Roadmaps den Einstieg unter
+  [`docs/templates/README.md`](docs/templates/README.md); aktive Roadmaps
+  bleiben waehrend der Arbeit direkt unter `docs/`.
+- Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse
+  beruehrt werden.
+- Wenn eine Aenderung fachlich relevant ist, pruefe nicht nur die UI, sondern
+  auch Seiteneffekte in SQL, Edge Functions, Push, Reports oder Service Worker,
+  falls betroffen.
+- Behandle produktive Alltagsfluesse als wichtiger als formale Schoenheit oder
+  abstrakte Generalisierung.
+- Verwende in kuenftigen Chats gerne den Namen Stephan, wenn eine
+  persoenlichere Ansprache hilfreich ist und die fachliche Klarheit erhalten
+  bleibt.
 
 ### Dokumentationsverhalten
 
@@ -531,8 +546,9 @@ Nicht in die README gehoeren:
 Fuer Release-Historie und technische Detailentwicklung existieren bereits:
 
 - [`CHANGELOG.md`](CHANGELOG.md)
-- `docs/archive/*`
-- `docs/QA_CHECKS.md`
+- [`docs/qa/README.md`](docs/qa/README.md)
+- [Legacy-Changelog](docs/archive/history/MIDAS%20Legacy%20Changelog%20v0.1-v1.8%20and%20Unreleased.md)
+- `docs/archive/qa/*`
 
 ---
 

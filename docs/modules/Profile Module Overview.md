@@ -31,7 +31,7 @@ Related docs:
 | `app/styles/hub.css` | Formular- und Card-Styling |
 | `sql/10_User_Profile_Ext.sql` | Tabelle plus aktive Profilfelder inklusive Hausarztfelder; provisioniert keine Legacy-Medikation mehr |
 | `sql/15_Push_Subscriptions.sql` | Push-Subscriptions, Remote-Health und Delivery-State |
-| `docs/QA_CHECKS.md` | CRUD- und Event-Testfaelle |
+| `docs/qa/health-capture-reports.md` | Profil-QA (`HCR-012`, `HCR-013`) |
 
 ---
 

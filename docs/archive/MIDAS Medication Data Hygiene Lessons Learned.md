@@ -14,10 +14,10 @@ allem:
 Es ist kein SQL-Runbook und keine aktuelle Architektur-Source-of-Truth.
 Verbindlich bleiben:
 
-- [Medication Module Overview](<modules/Medication Module Overview.md>)
-- [MIDAS Dev Environment](DEV_ENVIRONMENT.md)
-- [SQL How-To](../sql/HOW_TO.md)
-- [Medication Data Hygiene Roadmap (DONE)](<archive/MIDAS Medication Data Hygiene Roadmap (DONE).md>)
+- [Medication Module Overview](<../modules/Medication Module Overview.md>)
+- [MIDAS Dev Environment](../DEV_ENVIRONMENT.md)
+- [SQL How-To](../../sql/HOW_TO.md)
+- [Medication Data Hygiene Roadmap (DONE)](<MIDAS Medication Data Hygiene Roadmap (DONE).md>)
 
 Stand: `12.07.2026`
 

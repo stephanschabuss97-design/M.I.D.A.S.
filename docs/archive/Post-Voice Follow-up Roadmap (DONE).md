@@ -72,7 +72,7 @@ Pruefbare Zieldefinition:
 - `docs/modules/Activity Module Overview.md`
 - `docs/modules/Trendpilot Module Overview.md`
 - `docs/QA_CHECKS.md`
-- `docs/Voice Command Semantics.md`
+- `docs/modules/Voice Command Semantics.md`
 - `CHANGELOG.md`
 
 ## Guardrails
@@ -1993,7 +1993,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - Failure-Report-Clustering statt Einzelsatz-Patching
   - keine unkontrollierte Parser-Spaghetti
 - F8.10 Doku- und Pflegevertrag festziehen:
-  - `docs/Voice Command Semantics.md` als Pflege-/Betriebsdoku
+  - `docs/modules/Voice Command Semantics.md` als Pflege-/Betriebsdoku
   - Modul-Overviews nur als knapper Produktvertrag
   - keine zweite versteckte Parserlogik in Doku-Dateien
 - F8.11 Implementierungsblock fuer den Semantik-Refactor einziehen und zuschneiden:
@@ -2062,7 +2062,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
     - produktive Matcher und Payload-Mapping
   - `voice/index.js`:
     - Failure-Reports, Touch-Log, operativer Fallback
-  - `docs/Voice Command Semantics.md`:
+  - `docs/modules/Voice Command Semantics.md`:
     - Betriebs-/Pflegedoku, aber keine produktive Parserquelle
 - Wichtigster Architektur-Befund aus `F8.1`:
   - MIDAS hat bereits genug deterministische Bausteine fuer die angedachte Modernisierung
@@ -2076,7 +2076,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Risiko- und Scope-Befund:
   - ein Big-Bang-Ersatz des laufenden Parsers waere unnoetig riskant
   - sinnvoll ist nur ein inkrementeller Umbau oberhalb des bestehenden produktiven Stacks
-  - `docs/Voice Command Semantics.md` darf als Pflegehilfe bleiben, aber nicht zu einer zweiten versteckten Semantikquelle neben dem Code werden
+  - `docs/modules/Voice Command Semantics.md` darf als Pflegehilfe bleiben, aber nicht zu einer zweiten versteckten Semantikquelle neben dem Code werden
 - Durchgefuehrter F8.1-Check:
   - Repo-Review ueber:
     - `app/modules/assistant-stack/intent/normalizers.js`
@@ -2278,7 +2278,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
     - Docs
   - keine heuristische `wenn Satz klingt aehnlich dann wohl Intent X`-Logik
 - Auswirkungen auf den kuenftigen Refactor:
-  - `docs/Voice Command Semantics.md` bleibt Beispiel- und Betriebsdoku
+  - `docs/modules/Voice Command Semantics.md` bleibt Beispiel- und Betriebsdoku
   - produktive Pflege wandert in definierte Schichten:
     - STT-/Surface-Regeln
     - semantische Alias-/Verb-/Filler-Familien
@@ -2416,7 +2416,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - dadurch bleibt MIDAS deterministisch und die Pflege schlank
 - Durchgefuehrter F8.4-Check:
   - Abgleich gegen den aktuellen Produktvertrag in:
-    - `docs/Voice Command Semantics.md`
+    - `docs/modules/Voice Command Semantics.md`
     - `app/modules/assistant-stack/intent/rules.js`
     - `app/modules/assistant-stack/intent/normalizers.js`
   - bestaetigt:
@@ -2777,7 +2777,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
     - Public API / Envelope / Telemetry
   - `voice/index.js`
     - Failure-Review, Touch-Log, Export, operative Nutzung der Parser-Ausgaben
-  - `docs/Voice Command Semantics.md`
+  - `docs/modules/Voice Command Semantics.md`
     - Pflege- und Betriebsdoku, nie produktive Parserquelle
 - Datenstruktur-Grundsatz fuer die Semantikdateien:
   - kein Freitext-Register
@@ -2902,7 +2902,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Durchgefuehrter F8.9-Check:
   - Abgleich gegen:
     - `docs/QA_CHECKS.md`
-    - `docs/Voice Command Semantics.md`
+    - `docs/modules/Voice Command Semantics.md`
     - bestehende Voice-/Intent-Diagnose in `app/modules/assistant-stack/voice/index.js`
   - bestaetigt:
     - ein schlanker, reproduzierbarer Semantik-Review-Vertrag ist fuer MIDAS realistisch
@@ -2911,7 +2911,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 #### F8.10 Ergebnisprotokoll
 - Der Doku- und Pflegevertrag fuer die neue Voice-Semantik ist jetzt explizit geschnitten.
 - Harte Rollen der betroffenen Doku-Orte:
-  - `docs/Voice Command Semantics.md`
+  - `docs/modules/Voice Command Semantics.md`
     - Zweck:
       - Betriebs- und Pflegeueberblick fuer reale produktive Sprachbefehle
     - erlaubt:
@@ -2991,7 +2991,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
   - `F8.12` zieht danach den Abschlusscheck, bevor `F9` gestartet wird
 - Durchgefuehrter F8.10-Check:
   - Review gegen:
-    - `docs/Voice Command Semantics.md`
+    - `docs/modules/Voice Command Semantics.md`
     - `docs/modules/Medication Module Overview.md`
     - `docs/modules/Breath Timer Module Overview.md`
     - `docs/QA_CHECKS.md`
@@ -3087,7 +3087,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
     - Backend-`midas-transcribe` noch nicht auf die neue Schichttrennung nachgezogen
     - `docs/QA_CHECKS.md` noch nicht auf die neue Semantik-Regression erweitert
 - Doku-Drift:
-  - Roadmap und `docs/Voice Command Semantics.md` sind auf dem neuen Pflege-/Codezustand
+  - Roadmap und `docs/modules/Voice Command Semantics.md` sind auf dem neuen Pflege-/Codezustand
   - Modul-Overviews bleiben bewusst beim knappen Produktvertrag; kein weiterer Nachzug noetig fuer diesen `F8`-Block
 - Verifikation:
   - `node --check` gruen fuer:
@@ -3553,7 +3553,7 @@ Status-Legende: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Doku-/QA-Nachzug:
   - `docs/modules/Medication Module Overview.md`
     - auf den neuen engen Voice-Follow-up und denselben lokalen Reorder-Startvertrag nachgezogen
-  - `docs/Voice Command Semantics.md`
+  - `docs/modules/Voice Command Semantics.md`
     - um den produktiven Low-Stock-Nachsatz nach Medikationsbestaetigung erweitert
   - `docs/QA_CHECKS.md`
     - um einen expliziten Check fuer den neuen `ja` / `nein`-Follow-up ergaenzt

@@ -29,7 +29,7 @@ Related docs:
 | `index.html` | Breath-Startbuttons im BP-Panel + Overlay-Markup (`data-breath-*`) |
 | `app/styles/hub.css` | Overlay-Layer, Orb-Visual, Fade-/State-Styles, mobile Lesbarkeit |
 | `assets/js/main.js` | BP-Flow-Guards (Save/Context-Block waehrend aktivem Breath-UI) |
-| `docs/QA_CHECKS.md` | Breath-Timer Regression-Checkliste (Phase F5) |
+| `docs/qa/health-capture-reports.md` | Aktuelle Breath-Timer-QA (`HCR-014`) |
 
 ---
 
@@ -151,7 +151,8 @@ Related docs:
   - Produktiv gilt: `starte timer` startet direkt `3 Minuten`; nur explizite `5 Minuten` starten das `5`-Minuten-Preset.
   - Produktiv akzeptiert der gleiche Contract auch enge hoefliche Oberflaechenformen wie `bitte starte den timer` oder `kannst du mir den 5 minuten timer starten`.
   - Pflegehinweis fuer spaetere Satz-Ergaenzungen:
-    - Beispiele und Betriebsueberblick: `docs/Voice Command Semantics.md`
+    - Beispiele und Betriebsueberblick:
+      `docs/modules/Voice Command Semantics.md`
     - produktive Match-Regeln liegen in `app/modules/assistant-stack/intent/rules.js`
     - robuste Transkript-/Oberflaechen-Normalisierung liegt in `app/modules/assistant-stack/intent/normalizers.js`
   - Der lokale Fast Path nutzt denselben fachlichen Intent-Surface fuer Text und Voice.

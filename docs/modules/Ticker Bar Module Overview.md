@@ -9,7 +9,7 @@ Kurze Einordnung:
 
 Related docs:
 
-- [MIDAS Ticker Bar Roadmap](../MIDAS Ticker Bar Roadmap.md)
+- [MIDAS Ticker Bar Roadmap](../archive/MIDAS%20Ticker%20Bar%20Roadmap.md)
 - [Appointments Module Overview](Appointments Module Overview.md)
 - [Hub Module Overview](Hub Module Overview.md)
 - [CSS Module Overview](CSS Module Overview.md)
@@ -34,7 +34,7 @@ Related docs:
 | `app/styles/ui.css` | Globales Ticker-Pattern (Buttons/Patterns Regeln beachten) |
 | `app/styles/base.css` | Tokens fuer Glass/Glow/Surfaces |
 | `app/styles/hub.css` | Hub-Kontext / Layout-Override falls noetig |
-| `docs/MIDAS Ticker Bar Roadmap.md` | Regeln, Steps, QA |
+| `docs/archive/MIDAS Ticker Bar Roadmap.md` | Historische Roadmap und QA |
 
 ---
 

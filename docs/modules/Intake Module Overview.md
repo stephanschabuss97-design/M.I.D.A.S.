@@ -30,7 +30,7 @@ Related docs:
 | `app/modules/hub/index.js` | oeffnet Intake Panel, verschiebt Status-Pills in den Hub-Header |
 | `app/modules/intake-stack/medication/index.js` | Medication-Datenquelle fuer Daily Flow und Low-Stock |
 | `app/styles/hub.css` | Intake Cards, Grid, Pills, Medication- und Low-Stock-Styles |
-| `docs/QA_CHECKS.md` | Testfaelle fuer Capture/Intake |
+| `docs/qa/intake-medication.md` | Capture-QA (`IM-001` bis `IM-003`) |
 
 ---
 

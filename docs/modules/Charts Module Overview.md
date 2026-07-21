@@ -7,7 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
-- [Body Chart Roadmap](../BodyChart-Roadmap.md)
+- [Body Chart Roadmap](../archive/BodyChart-Roadmap.md)
 
 ---
 
