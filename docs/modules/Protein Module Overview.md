@@ -137,7 +137,7 @@ Related docs:
 
 - Keine dedizierte Arztansicht.
 - Doctor-Lock ist die manuelle Hoheitslogik (UI im Profil).
-- Spaeter: Faktor + Zielbereich im Arzt-/Monatsbericht anzeigen.
+- Später möglich: Faktor und Zielbereich im aktuellen Arztbericht anzeigen.
 
 ---
 

@@ -123,6 +123,8 @@ const chartPanel = {
   currentBodyMeta: null,
   bodyMetaCacheHash: null,
   currentTrendpilotBands: [],
+  activeRange: null,
+  drawVersion: 0,
   _colorCtx: null,
   _colorCache: null,
   SHOW_CHART_ANIMATIONS: true,
@@ -142,6 +144,9 @@ const chartPanel = {
     // Panel initial nicht anzeigen
     if (this.el) {
       this.el.classList.remove('is-open');
+      this.el.hidden = true;
+      this.el.setAttribute('aria-hidden', 'true');
+      this.el.setAttribute('inert', '');
     }
 
     // Close + Metric-Select
@@ -277,30 +282,69 @@ const chartPanel = {
   },
 
   // SUBMODULE: chartPanel.show @internal - öffnet Panel und aktiviert focusTrap
-  show() {
+  show({ range = null, metric = 'bp' } = {}) {
+    const nextRange = range || this.getRange();
+    this.activeRange = nextRange
+      ? { from: nextRange.from, to: nextRange.to, source: nextRange.source || 'chart' }
+      : null;
+    const metricSelect = $("#metricSel");
+    const nextMetric = metric === 'weight' ? 'weight' : 'bp';
+    if (metricSelect) metricSelect.value = nextMetric;
+    this.currentMetric = nextMetric;
+    const rangeLabel = $("#chartRangeLabel");
+    if (rangeLabel) {
+      rangeLabel.textContent = this.activeRange
+        ? `Zeitraum: ${this.activeRange.from} bis ${this.activeRange.to}`
+        : 'Zeitraum nicht verfügbar';
+    }
     this.open = true;
     if (this.el) {
+      this.el.hidden = false;
+      this.el.removeAttribute('inert');
+      this.el.setAttribute('aria-hidden', 'false');
       this.el.classList.add('is-open');
       this.el.style.removeProperty('display');
+      global.document?.body?.classList.add('is-chart-open');
       getFocusTrap()?.activate?.(this.el);
     }
   },
 
   // SUBMODULE: chartPanel.hide @internal - schliesst Panel, deaktiviert focusTrap und Tooltips
   hide() {
+    const wasOpen = this.open;
     this.open = false;
+    this.drawVersion += 1;
+    this.activeRange = null;
     if (this.el) {
       this.el.classList.remove('is-open');
-      getFocusTrap()?.deactivate?.();
+      this.el.hidden = true;
+      this.el.setAttribute('aria-hidden', 'true');
+      this.el.setAttribute('inert', '');
+      global.document?.body?.classList.remove('is-chart-open');
+      if (wasOpen) getFocusTrap()?.deactivate?.();
     }
     this.tipSticky = false;
     this.hideTip();
   },
   // ----- Helpers -----
+  getRange() {
+    if (this.activeRange?.from && this.activeRange?.to) {
+      return this.activeRange;
+    }
+    const from = $("#from")?.value || '';
+    const to = $("#to")?.value || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      return null;
+    }
+    if (from > to) return null;
+    return { from, to, source: 'live_details' };
+  },
+
   // SUBMODULE: chartPanel.getFiltered @extract-candidate - aggregiert Cloud/Local Daten fuer Zeichnung
 async getFiltered() {
-  const from = $("#from")?.value || '';
-  const to   = $("#to")?.value || '';
+  const range = this.getRange();
+  const from = range?.from || '';
+  const to   = range?.to || '';
   if (!from || !to) return [];
   const isDayInRange = (day) => {
     if (!day) return false;
@@ -667,8 +711,9 @@ async getFiltered() {
         const biaNote = "BIA-Schätzung (Trenddarstellung)";
         parts.push(`<div class="chart-tip-value">${esc(biaNote)}</div>`);
         liveParts.push(biaNote);
-        const rangeFrom = $("#from")?.value || "";
-        const rangeTo = $("#to")?.value || "";
+        const range = this.getRange();
+        const rangeFrom = range?.from || "";
+        const rangeTo = range?.to || "";
         const fmt = (isoDate) => {
           if (!isoDate || typeof isoDate !== "string") return "";
           const parts = isoDate.split("-");
@@ -1084,11 +1129,15 @@ async getFiltered() {
   // SUBMODULE: chartPanel.draw @extract-candidate - berechnet Scales, Flags und rendert SVG Layer
   async draw() {
     const t0 = performance.now?.() ?? Date.now();
+const drawVersion = ++this.drawVersion;
+const isCurrentDraw = () => this.open && this.drawVersion === drawVersion;
 if (!(await isLoggedIn())) {
+  if (!isCurrentDraw()) return;
   if (this.svg) this.svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#9aa3af" font-size="14">Bitte anmelden</text>';
   if (this.legend) this.legend.innerHTML = "";
   return;
 }
+if (!isCurrentDraw()) return;
 const metric = $("#metricSel")?.value || "bp";
 this.currentMetric = metric;
 const bodyToggleWrap = this.el?.querySelector?.(".chart-switch") || null;
@@ -1096,8 +1145,16 @@ if (bodyToggleWrap) {
   bodyToggleWrap.style.display = metric === "weight" ? "inline-flex" : "none";
 }
 const BASE_WEIGHT_MIN = 75;
-const rangeFrom = $("#from")?.value;
-const rangeTo = $("#to")?.value;
+const activeRange = this.getRange();
+const rangeFrom = activeRange?.from;
+const rangeTo = activeRange?.to;
+if (!rangeFrom || !rangeTo) {
+  if (this.svg) {
+    this.svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#9aa3af" font-size="14">Kein gültiger Zeitraum</text>';
+  }
+  if (this.legend) this.legend.innerHTML = "";
+  return;
+}
 const toDayTs = (isoDate /* "YYYY-MM-DD" */) => {
   if (!isoDate) return NaN;
   if (isoDate instanceof Date) {
@@ -1122,11 +1179,13 @@ const normalizeDayKey = (value) => {
 };
 if (metric === "bp") {
   await this.loadTrendpilotBands({ from: rangeFrom, to: rangeTo });
+  if (!isCurrentDraw()) return;
 } else {
   this.currentTrendpilotBands = [];
 }
 
     const data   = await this.getFiltered();
+    if (!isCurrentDraw()) return;
     let activityByDate = new Map();
     if (metric === "weight") {
       const activityModule = appModules?.activity || {};
@@ -1134,6 +1193,7 @@ if (metric === "bp") {
       if (typeof activityLoader === "function" && rangeFrom && rangeTo) {
         try {
           let rows = await activityLoader(rangeFrom, rangeTo, { reason: "chart:activity" });
+          if (!isCurrentDraw()) return;
           if ((!Array.isArray(rows) || !rows.length) && typeof activityModule._callActivityRpc === "function") {
             try {
               const fallbackRows = await activityModule._callActivityRpc(
@@ -1141,6 +1201,7 @@ if (metric === "bp") {
                 { p_from: rangeFrom, p_to: rangeTo },
                 { reason: "chart:activity-fallback" }
               );
+              if (!isCurrentDraw()) return;
               rows = Array.isArray(fallbackRows) ? fallbackRows : rows;
             } catch (fallbackErr) {
               appModules?.diag?.add?.(`[chart] activity fallback failed: ${fallbackErr?.message || fallbackErr}`);
@@ -1364,6 +1425,7 @@ if (metric === "bp") {
     }
 
     const heightCm = await this.getHeightCm();
+    if (!isCurrentDraw()) return;
     const hM = heightCm > 0 ? heightCm / 100 : null;
 
     const bmi  = (lastWeight != null && hM)         ? lastWeight / (hM * hM) : null;

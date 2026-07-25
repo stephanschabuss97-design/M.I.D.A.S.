@@ -847,7 +847,7 @@ function setAuthGuard(logged){
 
 // SUBMODULE: setDoctorAccess - toggles doctor tab when auth state changes
 function setDoctorAccess(enabled){
-  // "Werte anzeigen"-Button bleibt erhalten
+  // Der sekundäre Verlauf bleibt sichtbar, benötigt aber eine aktive Sitzung.
   const chartBtn = document.getElementById('doctorChartBtn');
   if (chartBtn){
     chartBtn.disabled = !enabled;
@@ -1774,14 +1774,6 @@ const dateEl = document.getElementById('date');
     });
   }
 
-// Apply Range -> Arztansicht neu rendern
-const applyBtn = $("#applyRange");
-if (applyBtn) {
-  applyBtn.addEventListener("click", async () => {
-    await requestUiRefresh({ reason: 'doctor:range' });
-  });
-}
-
 const doctorChartBtn = document.getElementById('doctorChartBtn');
 if (doctorChartBtn) {
 doctorChartBtn.addEventListener("click", async ()=>{
@@ -1804,10 +1796,20 @@ doctorChartBtn.addEventListener("click", async ()=>{
   const chartPanel = getChartPanel();
   if (!chartPanel) {
     diag.add?.('[doctor] chart panel missing');
+    return;
   }
-  chartPanel?.show?.();
+  const activeRange = getDoctorModule()?.getActiveConsumerRange?.();
+  if (!activeRange) {
+    uiError?.('Für den Verlauf ist kein gültiger Zeitraum verfügbar.');
+    return;
+  }
+  chartPanel.show?.({ range: activeRange, metric: 'bp' });
   diag.add?.('[doctor] chart show requested');
-  await requestUiRefresh({ reason: 'doctor:chart-open', chart: true });
+  await requestUiRefresh({
+    reason: 'doctor:chart-open',
+    doctor: false,
+    chart: true
+  });
 });
   } else {
     diag.add?.('[doctor] chart button missing - hub overlay active?');

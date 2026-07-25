@@ -1,164 +1,178 @@
 # Doctor View Module - Functional Overview
 
-Kurze Einordnung:
-- Zweck: Read-Only Uebersicht fuer Arzt/Patient im Arztmodus.
-- Rolle innerhalb von MIDAS: Konsolidiert Tagesdaten, Trendpilot und bietet Zugang zur Reports-Inbox.
-- Abgrenzung: keine Dateneingabe (ausser Delete/Report-Trigger), keine Charts-Logik.
+## Einordnung
+
+- Zweck: Ruhige, read-only Konsultationsansicht für Arzt und Patient.
+- Primärer Inhalt: der aktuell gespeicherte Arzt-Bericht.
+- Sekundäre Werkzeuge: Einzelwerte, Verlauf und Health Export V2.
+- Nicht Teil des Moduls: Dateneingabe, Diagnosen oder Therapieentscheidungen.
 
 Related docs:
-- [Bootflow Overview](bootflow overview.md)
+
 - [Reports Module Overview](Reports Module Overview.md)
+- [Charts Module Overview](Charts Module Overview.md)
+- [Unlock Flow Overview](Unlock Flow Overview.md)
+- [Health Capture and Reports QA](../qa/health-capture-reports.md)
 
 ---
 
-## 1. Zielsetzung
+## 1. Produktvertrag
 
-- Problem: medizinisch relevante Uebersicht fuer einen Zeitraum.
-- Nutzer: Arzt oder Patient im Arztmodus.
-- Nicht Ziel: Capture/Editing der Tageswerte.
+- Nach erfolgreichem Doctor-Unlock zeigt die Hauptfläche den aktuellen
+  `range_report`.
+- Existiert noch kein Bericht, erscheint ein klarer Zero-State mit
+  `Neuer Bericht`.
+- Es gibt keine Report-Inbox, kein Report-Archiv und keine Monatsberichte.
+- Ein neuer Bericht ersetzt den bisherigen Bericht erst nach vollständiger
+  Berechnung.
+- Einzelwerte und Verlauf bleiben sekundär und werden erst bei Bedarf geöffnet.
+- Der JSON-Export bleibt als manueller, maschinenlesbarer Fallback sichtbar.
 
----
+## 2. Kernkomponenten
 
-## 2. Kernkomponenten & Dateien
+<!-- markdownlint-disable MD013 -->
 
-| Datei | Zweck |
-|------|------|
-| `app/modules/doctor-stack/doctor/index.js` | Render-Flow, Tabs, Trendpilot, Reports Inbox |
-| `app/modules/doctor-stack/reports/index.js` | Reports UI/Inbox (aus Doctor-View ausgelagert) |
-| `app/styles/doctor.css` | Layout/Stil der Arzt-Ansicht |
-| `app/modules/hub/index.js` | Orbit/Panel-Open + Unlock-Flow |
-| `app/supabase/api/vitals.js` | Tagesdaten (BP/Body) |
-| `app/supabase/api/trendpilot.js` | Trendpilot Events (fetch/ack/delete) |
-| `app/supabase/api/reports.js` | Edge Function Wrapper fuer Reports |
-| `backend/supabase/functions/midas-monthly-report/index.ts` | Report-Aggregation (monthly/range) |
+| Datei | Verantwortung |
+| --- | --- |
+| `app/modules/doctor-stack/doctor/index.js` | Hauptansicht, Live-Zeitraum, Einzelwerte und Health Export V2 |
+| `app/modules/doctor-stack/reports/index.js` | Reportvalidierung, Latest-Auswahl, Darstellung und Erzeugungsflow |
+| `app/modules/doctor-stack/charts/index.js` | Sekundäres Vollbild-Diagramm |
+| `app/modules/hub/index.js` | Doctor-Panel und fail-closed Unlock-Einstieg |
+| `app/supabase/auth/guard.js` | Unlock-Resume für Doctor View und Verlauf |
+| `app/supabase/api/reports.js` | Authentifizierter Edge-Function-Aufruf |
+| `app/styles/doctor.css` | Report-first-, Detail- und responsive Darstellung |
+| `backend/supabase/functions/midas-monthly-report/` | Range-only Report-Engine und Singleton-Replacement |
 
----
+<!-- markdownlint-enable MD013 -->
 
-## 3. Datenmodell / Storage
+## 3. Datenquellen
 
-- Tabelle: `health_events`
-- Source of Truth: Supabase (IndexedDB nur Offline-Fallback).
-- Reads:
-  - Views: `v_events_bp`, `v_events_body`, `v_events_lab`, `v_events_activity`
-  - `health_events` (Notes + system_comment fuer Reports)
-  - Range-Arztbericht zusaetzlich aus `health_medications` und
-    `health_medication_schedule_slots` fuer die aktuelle Medikation
-- Trendpilot: `trendpilot_events` + `trendpilot_state`
-- Report-Subtypes:
-  - `monthly_report`
-  - `range_report` (Arzt-Bericht)
-- Wichtige Payload-Felder:
-  - `payload.subtype`, `payload.period`, `payload.summary`, `payload.text`, `payload.meta`
+- `health_events`
+  - BP, Body, Lab, Activity, Notes und aktueller `range_report`.
+- Views:
+  - `v_events_bp`
+  - `v_events_body`
+  - `v_events_lab`
+  - `v_events_activity`
+- `trendpilot_events_range`
+- `user_profile`
+- `health_medications`
+- `health_medication_schedule_slots`
 
----
+Supabase ist die Source of Truth. Lokale Daten sind nur ein begrenzter
+Offline-Fallback für bestehende Read-Pfade.
 
-## 4. Ablauf / Logikfluss
+## 4. Hauptablauf
 
-### 4.1 Initialisierung
-- Arzt-Panel wird ueber Hub-Overlay geoeffnet.
-- Unlock-Guard (PIN/Fingerprint) blockt Zugriff.
+### 4.1 Öffnen
 
-### 4.2 User-Trigger
-- Zeitraum waehlen (Von/Bis) + `Anwenden`.
-- Tabs: BP, Body, Lab, Training, Inbox.
-- Buttons: `Werte anzeigen` (Charts), JSON-Export, Report-Buttons.
+1. Hub oder Shortcut fordert den Doctor-Unlock an.
+2. Fehlt die Guard-API, bleibt der Einstieg geschlossen und zeigt eine
+   verständliche Fehlermeldung.
+3. Nach erfolgreichem Unlock wird der aktuelle Bericht geladen.
+4. Lade-, Zero-, Offline-, Read- und Korruptionszustände bleiben getrennt.
 
-### 4.3 Verarbeitung
-- `renderDoctor` laedt Tagesdaten, Lab, Activity und Trendpilot aus Supabase.
-- Range-Guard im Client: nur `#from/#to` wird gerendert.
-- Offline: fallback auf lokale Daten (BP/Body/Notes/Lab), Training leer.
-- Sortierung absteigend, Render in Domain-Karten.
-- Scroll-Position wird gesichert und nach Refresh restored.
+### 4.2 Aktueller Bericht
 
-### 4.4 Persistenz
-- Loeschen einzelner Domains ueber `deleteRemoteByType`.
-- Reports via Edge Function, gespeichert als `system_comment`.
-- Inbox-Loeschung entfernt alle Reports der Subtypes.
+- Der Client akzeptiert nur gültige `range_report`-Datensätze.
+- Die Auswahl ist deterministisch:
+  1. größtes gültiges `period.to`
+  2. neueste `generated_at`
+  3. stabiler ID-Tie-Break
+- Pagination besitzt Fortschrittsprüfung und eine harte 50-Seiten-Grenze.
+- Berichtstext wird vor HTML-Darstellung escaped.
 
----
+### 4.3 Neuer Bericht
 
-## 5. UI-Integration
+- Erzeugung ist immer eine explizite Nutzeraktion.
+- Standardzeitraum:
+  - `from`: Ende des aktuellen Berichts oder vorhandener Kontext
+  - `to`: aktueller Wiener Kalendertag
+- Beide Datumsfelder bleiben editierbar.
+- Der inklusive Zeitraum ist auf 400 Tage begrenzt.
+- Zukunft, umgekehrte oder ungültige Kalenderdaten werden vor dem Request
+  abgelehnt.
+- Ein erfolgreicher Write wird nicht durch einen nachfolgenden UI-Refresh als
+  fehlgeschlagen dargestellt.
 
-- Arzt-Ansicht als Hub-Panel.
-- Tabs: BP, Body, Lab, Training, Inbox (Overlay).
-- Report-Inbox Overlay mit Filtern (Alle, Monatsberichte, Arzt-Berichte).
-- Buttons: Neuer Monatsbericht, Neuer Arzt-Bericht, Inbox loeschen.
+### 4.4 Einzelwerte
 
----
+- Einzelwerte sind standardmäßig geschlossen.
+- Erst beim Öffnen werden BP, Body, Lab, Training und Trendpilot für den
+  sichtbaren Zeitraum geladen.
+- Gültige Datumsänderungen aktualisieren diese Live-Daten ohne
+  `Anwenden`-Button.
+- Request-Version und DOM-Zeitraum verhindern, dass späte Antworten einen
+  neueren Zustand überschreiben.
+- Ein Löschen einzelner Rohwerte bleibt möglich und ist kein Report-Write.
 
-## 6. Arzt-Ansicht / Read-Only Views
+### 4.5 Verlauf
 
-- BP: Tageskarten mit Messreihen (morgens/abends) + Delete.
-- Body: Tageskarten mit Gewicht/Bauchumfang/Fett/Muskel.
-- Lab: Tageskarten mit Nieren- und Stoffwechselwerten + Kommentar.
-- Training: Tageskarten mit Aktivitaet/Dauer/Notiz.
-- Reports: Monatsbericht (Vormonat) und Arzt-Bericht (expliziter Zeitraum).
-- Der Arzt-Bericht zeigt aktive Medikamente und die am Wiener Berichtstag
-  gueltigen Tagesabschnitte aus dem strukturierten Medication-Modell; das
-  Profil ist dafuer keine Medication-Quelle mehr.
+- `Verlauf` öffnet ein eigenes Vollbild-Panel und startet mit Blutdruck.
+- Das Chart übernimmt beim Öffnen einen unveränderlichen Zeitraum-Snapshot.
+- Änderungen der Doctor-Datumsfelder verändern ein bereits offenes Chart
+  nicht still; der neue Zeitraum gilt nach Schließen und erneutem Öffnen.
+- Fehlt ein gültiger Zeitraum, erhält der Nutzer eine Fehlermeldung.
 
----
+### 4.6 Health Export V2
 
-## 7. Fehler- & Diagnoseverhalten
+- Schema: `midas.health-export.v2`.
+- Der Export verwendet die sichtbare Reportperiode oder den geöffneten
+  Live-Zeitraum.
+- Domains sind getrennt und deterministisch sortiert.
+- BP- und Body-Messungen erhalten keine erfundenen Uhrzeiten.
+- `user_id` wird nicht exportiert.
+- Ein Domainfehler verhindert den Download vollständig.
+- Out-of-Range-Zeilen werden vor der Feldvalidierung verworfen.
 
-- `logDoctorError` schreibt in `diag` + Konsole.
-- UI-Fehler via `uiError`/Toast.
-- Fallbacks: Placeholder bei fehlenden Daten/Range, Offline-Fallback ueber IndexedDB.
+## 5. Zustände und Lifecycle
 
----
+- Öffnen oder Nutzerwechsel startet einen neuen Lifecycle.
+- Logout leert Report- und Detailzustand ohne falschen Ladehinweis.
+- Schließen invalidiert laufende Detail- und Chart-Antworten.
+- Berichtserzeugung besitzt In-flight-Schutz.
+- Responsive Aktionen stapeln sich auf kleinen Viewports und bleiben
+  vollständig bedienbar.
 
-## 8. Events & Integration Points
+## 6. Public API
 
-- Public API / Entry Points: `AppModules.doctor.renderDoctor`, `exportDoctorJson`, Inbox Buttons.
-- Source of Truth: Range `#from/#to`, Daten via Supabase APIs (IndexedDB nur Offline).
-- Side Effects: `requestUiRefresh`, delete actions, report generation.
-- Constraints: Doctor Unlock required, Range muss gesetzt sein.
-- `requestUiRefresh({ doctor: true })` nach Saves/Deletes.
-- Trendpilot-Aktionen via `setTrendpilotAck` und `deleteTrendpilotEvent`.
-- Report-Edge-Function ueber `generateMonthlyReportRemote`.
-- JSON-Export: Supabase-Range-only (BP/Body/Lab/Training).
+- `AppModules.doctor.renderDoctor(...)`
+- `AppModules.doctor.exportDoctorJson(...)`
+- `AppModules.doctor.buildHealthExportV2(...)`
+- `AppModules.doctor.beginDoctorPanelLifecycle()`
+- `AppModules.doctor.resetDoctorState(...)`
+- `AppModules.doctor.getActiveConsumerRange()`
 
----
+## 7. Sicherheit und Fehlergrenzen
 
-## 9. Erweiterungspunkte / Zukunft
+- Alle Doctor-Einstiege bleiben durch den Unlock geschützt.
+- Report-Erzeugung benötigt einen echten User-JWT.
+- Service Role ist als Report-Caller nicht erlaubt.
+- Interne Edge-/PostgREST-Fehler werden geloggt, aber nicht an den Client
+  durchgereicht.
+- Diagnoseausgaben begrenzen öffentliche Fehlertexte.
 
-- Patientenschreiben/PDF-Ausgabe.
-- Zusaetzliche Filter (z. B. nur Tage mit Kommentaren).
-- Report-Templates je Arztbedarf.
+## 8. QA-Kernpunkte
 
----
+- Unlock, Logout und fehlende Guard-API.
+- Current- und Zero-State.
+- Gültige, ungültige, zukünftige und zu lange Zeiträume.
+- Lazy Einzelwerte und Latest-request-wins.
+- Chart-Snapshot, Fokus und Schließen.
+- Health Export V2, Privacy und All-or-error.
+- Mobile, Tablet und Desktop ohne Überlappung.
+- Create-then-replace mit genau einem `range_report`.
 
-## 10. Feature-Flags / Konfiguration
+## 9. Risiken und Zukunft
 
-- Unlock-Flow via Auth-Guard.
-- Dev-Flags ueber `DEV_ALLOW_DEFAULTS` (Debug/Defaults).
+- Der technische Edge-Name `midas-monthly-report` ist historisch; fachlich
+  verarbeitet er ausschließlich Bereichsberichte.
+- MCP darf später den semantischen Health-Export-V2-Vertrag wiederverwenden.
+- Direkter Labor-PDF-Ingest bleibt ein eigenes zukünftiges Thema.
 
----
+## 10. Definition of Done
 
-## 11. Status / Dependencies / Risks
-
-- Status: aktiv (Read-Only + Reports via Reports-Modul).
-- Dependencies (hard): Supabase APIs (vitals/trendpilot/reports), `midas-monthly-report` Edge, Unlock-Flow.
-- Dependencies (soft): Charts, Trendpilot.
-- Known issues / risks: grosse Ranges; Edge downtime; Deletes entfernen Daten; Report-Typ muss korrekt sein; Offline-Fallback nur Teilmenge.
-- Backend / SQL / Edge: `health_events` (bp/body/lab/activity/system_comment), `trendpilot_events`/`trendpilot_state`, Edge `midas-monthly-report`.
-
----
-
-## 12. QA-Checkliste
-
-- Unlock-Flow funktioniert.
-- BP/Body/Lab/Training laden fuer gewaehlten Zeitraum.
-- Reports: monthly + range erzeugen, filtern, loeschen.
-- Range-Arztbericht und Profil zeigen dieselbe aktuelle strukturierte
-  Medikation; Medication-Read-Fehler erzeugt keinen Teilbericht.
-- Inbox loeschen entfernt alle Reports.
-
----
-
-## 13. Definition of Done
-
-- Arzt-Ansicht laedt fehlerfrei.
-- Reports korrekt typisiert und sichtbar.
-- Keine offenen Logs/Errors.
-- Doku aktuell.
+- Der aktuelle Bericht ist unmittelbar sichtbar.
+- Berichterzeugung ist explizit, begrenzt und fehlersicher.
+- Einzelwerte, Verlauf und Export bleiben sekundär verfügbar.
+- Kein aktiver Monthly-, Inbox- oder Archivpfad ist dokumentiert.

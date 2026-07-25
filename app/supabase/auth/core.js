@@ -339,6 +339,7 @@ const clearAuthGrace = () => {
 const clearCachedAuthIdentity = () => {
   callUserUi('');
   supabaseState.lastLoggedIn = false;
+  globalWindow?.AppModules?.doctor?.resetDoctorState?.();
   if (supabaseState.lastUserId) {
     diag.add?.('[auth] session cleared');
     supabaseState.lastUserId = null;
@@ -720,9 +721,12 @@ export function watchAuthState() {
         callUserUi(session?.user?.email || '');
         const newUid = session?.user?.id || null;
         if (newUid) {
-        supabaseState.lastUserId = newUid;
-        diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
-      }
+          if (supabaseState.lastUserId && supabaseState.lastUserId !== newUid) {
+            globalWindow?.AppModules?.doctor?.resetDoctorState?.();
+          }
+          supabaseState.lastUserId = newUid;
+          diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
+        }
       finalizeAuthState(true);
       await afterLoginBoot();
       await (globalWindow?.setupRealtime || defaultSetupRealtime)();

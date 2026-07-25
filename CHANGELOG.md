@@ -16,6 +16,11 @@ erhalten.
 
 - Kanonischer QA-Einstieg mit fachlichen Suites, operativen Runbooks und
   eigenem Release-Readiness-Vertrag.
+- Minimaler manueller Recovery-Vertrag mit verschlüsseltem Supabase-Dump,
+  Android-Keystore, redigiertem Konfigurationsinventar und halbjährlicher
+  Pflege auf der zweiten internen SSD.
+- Versionierter, atomarer Health Export V2 für ChatGPT, Codex und künftige
+  read-only MCP-Consumer.
 
 ### Changed
 
@@ -23,6 +28,20 @@ erhalten.
   getrennte, gezielt lesbare Dokumentationsflächen.
 - Der Roadmap-Readiness-Review empfiehlt sichere S4-Ausführungsblöcke, ohne
   Substep-Abnahmen oder Owner-Gates zusammenzulegen.
+- Die Doctor View öffnet report-first mit genau einem aktuellen Arztbericht;
+  Einzelwerte und Verlauf bleiben sekundäre, explizit geladene Werkzeuge.
+- Arztberichte verwenden einen expliziten Zeitraum bis maximal 400 inklusive
+  Tage und ersetzen den bestehenden Bericht atomar in-place.
+
+### Removed
+
+- Monatsberichte, Report-Inbox, Report-Archiv und der zugehörige
+  GitHub-Scheduler samt exklusiver Konfiguration.
+
+### Security
+
+- Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
+  Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.
 
 ## Pflegevertrag
 

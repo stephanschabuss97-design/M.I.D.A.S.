@@ -1,7 +1,7 @@
 'use strict';
 /**
  * MODULE: supabase/api/select.js
- * Description: Führt autorisierte, generische REST-Abfragen auf Supabase-Tabellen aus (mit Filter-, Order- und Limit-Unterstützung).
+ * Description: Führt autorisierte, generische REST-Abfragen auf Supabase-Tabellen aus (mit Filter-, Order-, Limit- und Offset-Unterstützung).
  * Submodules:
  *  - imports (Core- und Auth-Abhängigkeiten)
  *  - globals (Diagnose- und Config-Zugriff)
@@ -32,7 +32,14 @@ const getConf = (...args) => {
 };
 
 // SUBMODULE: sbSelect @public - generische Supabase-Select-Abfrage (REST)
-export async function sbSelect({ table, select, filters = [], order = null, limit = null }) {
+export async function sbSelect({
+  table,
+  select,
+  filters = [],
+  order = null,
+  limit = null,
+  offset = null
+}) {
   const tableName = typeof table === 'string' ? table.trim() : '';
   if (!tableName) {
     setConfigStatus('Bitte Tabelle konfigurieren.', 'error');
@@ -55,6 +62,13 @@ export async function sbSelect({ table, select, filters = [], order = null, limi
   for (const [key, value] of filters) url.searchParams.set(key, value);
   if (order) url.searchParams.set('order', order);
   if (limit) url.searchParams.set('limit', String(limit));
+  if (offset !== null && offset !== undefined) {
+    const normalizedOffset = Number(offset);
+    if (!Number.isInteger(normalizedOffset) || normalizedOffset < 0) {
+      throw new Error('REST-Offset muss eine nichtnegative Ganzzahl sein');
+    }
+    url.searchParams.set('offset', String(normalizedOffset));
+  }
 
   const res = await fetchWithAuth(
     (headers) => fetch(url.toString(), { headers }),

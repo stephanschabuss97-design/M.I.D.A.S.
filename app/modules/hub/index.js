@@ -109,7 +109,6 @@
   let setSpriteStateFn = null;
   let doctorUnlockWaitCancel = null;
   let openDoctorPanelWithGuard = null;
-  let openDoctorInboxPanelWithGuard = null;
   let assistantSurfaceUnsubscribe = null;
   let hubDashboardCtrl = null;
   let dashboardIntakeRefreshBound = false;
@@ -1193,8 +1192,8 @@
     const supa = getSupabaseApi();
     const unlockFn = supa?.requireDoctorUnlock;
     if (typeof unlockFn !== 'function') {
-      diag.add?.('[hub] doctor unlock bypassed (no guard fn)');
-      return true;
+      diag.add?.('[hub] doctor unlock denied (no guard fn)');
+      return null;
     }
     try {
       diag.add?.('[hub] doctor unlock start');
@@ -1448,6 +1447,12 @@
       const openFlow = async () => {
         diag.add?.('[hub] openDoctorPanel openFlow start', { startMode });
         await doctorPanelHandler(triggerButton);
+        if (activePanel?.dataset?.hubPanel !== 'doctor') return;
+        const doctorApi = appModules.doctor;
+        doctorApi?.beginDoctorPanelLifecycle?.();
+        if (typeof doctorApi?.renderDoctor === 'function') {
+          await doctorApi.renderDoctor('panel-open');
+        }
         if (startMode === 'chart') {
           const chartBtn = doc?.getElementById('doctorChartBtn');
           if (chartBtn) {
@@ -1460,9 +1465,17 @@
           await onOpened();
         }
       };
-      if (await ensureDoctorUnlocked()) {
+      const unlockResult = await ensureDoctorUnlocked();
+      if (unlockResult) {
         await openFlow();
         return true;
+      }
+      if (unlockResult === null) {
+        global.uiError?.(
+          'Arzt-Ansicht ist derzeit nicht verfügbar. Bitte kurz warten und erneut versuchen.'
+        );
+        syncButtonState(null);
+        return false;
       }
       const supa = getSupabaseApi();
       const guardState = supa?.authGuardState;
@@ -1474,34 +1487,6 @@
       return false;
     };
     openDoctorPanelWithGuard = openDoctorPanel;
-    const openDoctorInboxPanel = async ({ onOpened, from, to } = {}) => {
-      const openFlow = async () => {
-        diag.add?.('[hub] openDoctorInboxPanel openFlow start');
-        const doctorApi = appModules.doctor;
-        const renderer = doctorApi?.renderDoctorInboxOverlay;
-        if (typeof renderer !== 'function') {
-          diag.add?.('[hub] doctor inbox renderer missing');
-          return;
-        }
-        await renderer({ from, to });
-        if (typeof onOpened === 'function') {
-          await onOpened();
-        }
-      };
-      if (await ensureDoctorUnlocked()) {
-        await openFlow();
-        return true;
-      }
-      const supa = getSupabaseApi();
-      const guardState = supa?.authGuardState;
-      const unlockedAfter = await waitForDoctorUnlock({ guardState });
-      if (unlockedAfter) {
-        await openFlow();
-        return true;
-      }
-      return false;
-    };
-    openDoctorInboxPanelWithGuard = openDoctorInboxPanel;
     bindButton(
       '[data-hub-module="doctor"]',
       async (btn) => {
@@ -4745,12 +4730,6 @@
     openDoctorPanel: (options) => {
       if (openDoctorPanelWithGuard) {
         return openDoctorPanelWithGuard(options);
-      }
-      return Promise.resolve(false);
-    },
-    openDoctorInboxPanel: (options) => {
-      if (openDoctorInboxPanelWithGuard) {
-        return openDoctorInboxPanelWithGuard(options);
       }
       return Promise.resolve(false);
     },

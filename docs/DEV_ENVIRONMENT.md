@@ -793,6 +793,38 @@ Deploy nur nach Freigabe:
 supabase functions deploy <function> --project-ref $env:SUPABASE_PROJECT_REF --workdir backend --use-api
 ```
 
+## Minimal Recovery
+
+Kanonischer Ablauf:
+
+- [MIDAS Minimal Recovery](qa/runbooks/midas-minimal-recovery.md)
+
+Repo-externer Zielvertrag:
+
+```text
+D:\MIDAS-Recovery\MIDAS-Recovery_YYYY-MM-DD.7z
+D:\MIDAS-Recovery\MIDAS-Recovery_YYYY-MM-DD.7z.sha256
+```
+
+Regeln:
+
+- Das Bundle enthaelt logische Supabase-Dumps, den Android-Keystore,
+  redigierte Konfiguration und Integritaetsnachweise.
+- Das Archiv verwendet AES-256 und verschluesselte Dateinamen.
+- Das Archivkennwort liegt getrennt im synchronisierten Passwortmanager und
+  nie im Repo, in `.env.supabase.local` oder neben dem Archiv.
+- Beide aufbewahrten Generationen verwenden dasselbe Recovery-Passwort. Bei
+  einer bewussten Rotation bleibt der alte Passwortmanager-Eintrag erhalten,
+  bis das letzte damit verschluesselte Archiv geloescht ist.
+- `supabase db dump --dry-run` ist fuer produktive Recovery-Laeufe verboten,
+  weil die CLI temporaere Login-Credentials ausgeben kann.
+- Das Bundle wird im Januar und Juli erneuert; hoechstens zwei gepruefte
+  Generationen bleiben erhalten.
+- Das Klartext-Staging unter `D:\MIDAS-Recovery\.staging\` muss nach einem
+  erfolgreichen oder abgebrochenen Lauf vollstaendig entfernt sein.
+- Der aktuelle Nachweis ist ein plausibilisierter logischer Dump. Ein
+  vollstaendiger Restore wurde bewusst nicht getestet.
+
 ## Backup / Legacy
 
 Der alte externe Backend-Workspace wurde entfernt.

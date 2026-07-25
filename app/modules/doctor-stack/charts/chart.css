@@ -292,3 +292,57 @@
     font-size: 13px;
   }
 }
+
+@media (max-width: 640px) {
+  #chart .controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #chart .controls > *,
+  #chart .controls .half,
+  #chart .controls .compact {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  #chart .controls .kpis {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  #chart .controls .kpis > span:not(.sep) {
+    flex: 1 1 140px;
+  }
+
+  #chart .controls .kpis .sep {
+    display: none;
+  }
+
+  #chart .chart-switch {
+    margin-left: 0;
+  }
+
+  #chart svg {
+    min-height: 220px;
+  }
+
+  .chart-tip {
+    max-width: min(280px, calc(100vw - 32px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chartSvg.chart-refresh {
+    animation: none;
+  }
+
+  #chartSvg path[data-series],
+  #chartSvg .pt,
+  #chartSvg .body-bar,
+  #chart .legend [data-series] {
+    transition: none;
+  }
+}

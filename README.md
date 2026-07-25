@@ -110,7 +110,7 @@ MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem m
 - Voice V1 als command-first Oberflaeche auf demselben Intent-Kern
 - Trendpilot fuer mittelfristige Trends und kontextuelle Warnhinweise
 - Incident-Pushes nur fuer echte Ereignisse wie offene Medikation oder fehlende Abend-BP
-- Arztmodus mit Read-only Zeitraumssicht, Reports-Inbox und Export
+- Arztmodus mit aktuellem Arzt-Bericht, sekundären Zeitraumssichten und Export
 - Profilkontext fuer Limits, Hausarztkontakt und persoenliche Parameter
 - minimale native Android-Huelle als Widget-/Launcher-Node fuer passive Homescreen-Sichtbarkeit inkl. nativer OAuth-Aktivierung fuer Widget und Shell
 
@@ -214,13 +214,17 @@ Voice V1 nutzt denselben fachlichen Kern wie Text. Ziel ist nicht freie Unterhal
 
 ### 5. Doctor View und Reports
 
-Die Arztansicht konsolidiert Zeitraumdaten read-only und bildet die Bruecke zu:
+Die Arztansicht ist report-first aufgebaut:
 
-- Zeitraumssichten fuer BP / Body / Lab / Training
-- Trendpilot-Eintraegen
-- Monatsbericht
-- Arztbericht fuer explizite Ranges
-- Export / Inbox-Verwaltung
+- genau ein aktueller Arztbericht fuer einen expliziten Zeitraum
+- ruhiger Leerzustand, solange noch kein Bericht erzeugt wurde
+- Zeitraumssichten fuer BP / Body / Lab / Training als sekundärer Drilldown
+- Verlaufsgrafik als bewusst geöffneter Zusatzkontext
+- versionierter JSON-Export fuer ChatGPT, Codex und einen künftigen MCP
+
+Der Bericht wird nur nach expliziter Bestätigung erzeugt und ersetzt den
+vorherigen Arztbericht in-place. Es gibt weder Monatsberichte noch eine
+Report-Inbox oder ein Report-Archiv.
 
 ### 6. Trendpilot und Incidents
 
@@ -423,7 +427,10 @@ MIDAS nutzt KI nicht als Selbstausdruck, sondern als kontrollierte Interaktionss
 
 ### Doctor View und Reports
 
-Die Arztansicht ist die konsolidierte Gegenperspektive zum Alltag. Sie liefert keine neue Datenhaltung, sondern liest und strukturiert den Zeitraum. Reports verdichten diesen Zeitraum weiter, ohne Diagnosen oder Therapieentscheidungen zu behaupten.
+Die Arztansicht ist die konsolidierte Gegenperspektive zum Alltag. Ihr
+Primärinhalt ist genau ein aktueller Arztbericht; Einzelwerte, Verlauf und
+JSON-Export bleiben bewusst sekundär. Der Bericht verdichtet einen explizit
+gewählten Zeitraum, ohne Diagnosen oder Therapieentscheidungen zu behaupten.
 
 ### Pushes und Trendpilot
 

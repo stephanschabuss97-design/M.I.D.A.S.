@@ -143,6 +143,57 @@ through `cron.alter_job`.
 Disabling the named job stops future automatic cleanup. It does not restore
 rows already deleted; those require a prior export or database backup.
 
+## Report Lifecycle Scripts
+
+The report singleton contract is split into a non-destructive target-state
+script and a separately approved existing-project transition:
+
+### `19_Report_Lifecycle.sql`
+
+- Creates or verifies the partial unique index that permits at most one
+  `range_report` for the authenticated MIDAS owner. `user_id` remains the
+  technical Auth/RLS ownership boundary of the single-user product.
+- Does not delete or update data.
+- Fails closed when duplicate range reports exist or a same-name index has a
+  different key or predicate.
+- May be used after `public.health_events` exists in fresh or disposable
+  environments and is safe to rerun against the expected schema.
+
+### `transition_report_lifecycle_singleton.sql`
+
+- PSQL-only, destructive, one-time transition for an existing MIDAS project.
+- Deletes all `monthly_report` rows and every invalid or non-canonical
+  `range_report`, then creates the reviewed singleton index in the same
+  transaction.
+- Requires six runtime variables from a fresh, owner-approved recovery
+  snapshot. Productive IDs, counts, and hashes must never be committed to the
+  repository.
+- Uses UTC as the explicit session timezone for the shared
+  `jsonb_build_object` fingerprint contract; the read-only snapshot query must
+  use the same serialization contract.
+- Acquires a short `SHARE ROW EXCLUSIVE` lock and aborts on inventory drift,
+  unexpected canonical IDs, delete-count drift, lock timeout, or index drift.
+- Must not run in the Supabase SQL editor, automatic bootstrap, or an ordinary
+  deployment.
+
+The productive order is owner-gated and belongs to the report-lifecycle
+cutover:
+
+1. Complete local tests and productive read-only inventory.
+1. Create and verify the current recovery bundle and report extract.
+1. Disable the remote monthly workflow and exclude active runs.
+1. Deploy and smoke-test the range-only Edge Function without a write.
+1. Revalidate the approved inventory.
+1. Run `transition_report_lifecycle_singleton.sql` through PSQL with
+   `ON_ERROR_STOP=1` and the approved runtime variables.
+1. Verify RLS, ACL, non-report fingerprints, report counts, and the exact index
+   definition before any product write.
+
+The disposable regression fixture is
+`sql/tests/19_Report_Lifecycle_fixture.sql`. It intentionally recreates
+`public.health_events`; run it only against an isolated PostgreSQL 17 database
+or container.
+
 # Retention and Cron Rules
 
 - Prefer database-internal retention when cleanup depends only on PostgreSQL

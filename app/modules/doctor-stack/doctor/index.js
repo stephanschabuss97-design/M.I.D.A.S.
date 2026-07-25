@@ -34,7 +34,8 @@
       /* noop */
     }
   };
-  const DOCTOR_TABS = ['bp', 'body', 'lab', 'activity', 'inbox'];
+  const DOCTOR_TABS = ['bp', 'body', 'lab', 'activity'];
+  const MAX_DOCTOR_RANGE_DAYS = 400;
   let __doctorActiveTab = DOCTOR_TABS[0];
   let __doctorScrollSnapshot = { top: 0, ratio: 0 };
   const doctorRefreshLogInflight = new Map();
@@ -59,7 +60,7 @@
     doctorRefreshLogInflight.delete(key);
     const count = entry?.count || 1;
     const suffix = count > 1 ? ` (x${count})` : '';
-    const extra = detail ? ` â€“ ${detail}` : '';
+    const extra = detail ? ` – ${detail}` : '';
     const opts = severity ? { severity } : undefined;
     diag.add?.(
       `[doctor] refresh ${status} reason=${reason} range=${from || 'n/a'}..${to || 'n/a'}${extra}${suffix}`,
@@ -67,7 +68,6 @@
     );
   };
   const getSupabaseApi = () => global.AppModules?.supabase || {};
-  const getFocusTrap = () => global.AppModules?.uiCore?.focusTrap || global.focusTrap || null;
   const toast =
     global.toast ||
     appModules.ui?.toast ||
@@ -371,83 +371,362 @@
       bp: doc.getElementById('doctorTabBp'),
       body: doc.getElementById('doctorTabBody'),
       lab: doc.getElementById('doctorTabLab'),
-      activity: doc.getElementById('doctorTabActivity'),
-      inbox: doc.getElementById('doctorTabInbox')
+      activity: doc.getElementById('doctorTabActivity')
     };
   };
 
-  const inboxPanelState = {
-    el: null,
-    closeBound: false,
-    range: { from: '', to: '' },
-    filter: 'all',
-    reports: []
+  const primaryReportState = {
+    userId: null,
+    lifecycle: 0,
+    status: 'idle',
+    result: null,
+    promise: null,
+    createInFlight: false,
+    createVersion: 0
+  };
+  let reportCreateOpener = null;
+
+  const liveRangeState = {
+    version: 0,
+    from: '',
+    to: '',
+    status: 'idle',
+    userSelected: false,
+    loadedKey: '',
+    dirty: true
   };
 
-  function hideDoctorInboxPanel() {
-    const panel = inboxPanelState.el || global.document?.getElementById('doctorInboxPanel');
-    if (!panel) return;
-    panel.hidden = true;
-    panel.setAttribute('aria-hidden', 'true');
-    panel.setAttribute('inert', '');
-    panel.classList.remove('is-open');
-    panel.style.display = 'none';
-    global.document?.body?.classList.remove('is-inbox-open');
-    inboxPanelState.el = panel;
-    getFocusTrap()?.deactivate?.();
-  }
+  const liveRangeKey = (from, to) => `${from || ''}|${to || ''}`;
 
-  const ensureDoctorInboxPanel = () => {
-    if (inboxPanelState.el) return inboxPanelState.el;
-    const doc = global.document;
-    if (!doc) return null;
-    const panel = doc.getElementById('doctorInboxPanel');
-    if (!panel) return null;
-    inboxPanelState.el = panel;
-    if (!inboxPanelState.closeBound) {
-      const closeBtn = doc.getElementById('doctorInboxClose');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', () => hideDoctorInboxPanel());
-        inboxPanelState.closeBound = true;
-      }
+  const validateLiveRange = (from, to) => {
+    const reportsModule = global.AppModules?.reports;
+    if (typeof reportsModule?.validateRangeReportInput === 'function') {
+      return reportsModule.validateRangeReportInput({
+        from,
+        to,
+        today: reportsModule.getViennaToday?.()
+      });
     }
-    return panel;
+    const validIso = (value) => {
+      const raw = String(value || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+      const date = new Date(`${raw}T00:00:00Z`);
+      return !Number.isNaN(date.getTime())
+        && date.toISOString().slice(0, 10) === raw;
+    };
+    const errors = [];
+    if (!validIso(from)) errors.push('from_invalid');
+    if (!validIso(to)) errors.push('to_invalid');
+    if (validIso(from) && validIso(to) && from > to) errors.push('range_reversed');
+    if (validIso(from) && validIso(to) && from <= to) {
+      const spanDays =
+        (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`))
+          / 86_400_000 + 1;
+      if (spanDays > MAX_DOCTOR_RANGE_DAYS) errors.push('range_too_long');
+    }
+    return { valid: errors.length === 0, errors, from, to };
   };
 
-  const isDoctorInboxPanelOpen = () => {
-    const panel = inboxPanelState.el || global.document?.getElementById('doctorInboxPanel');
-    if (!panel) return false;
-    const hiddenAttr = panel.getAttribute('aria-hidden');
-    return panel.classList.contains('is-open') && hiddenAttr === 'false' && panel.hidden !== true;
+  const getLiveRangeErrorMessage = (validation) => {
+    const errors = validation?.errors || [];
+    if (errors.includes('future_to')) {
+      return 'Das Bis-Datum darf nicht in der Zukunft liegen.';
+    }
+    if (errors.includes('range_reversed')) {
+      return 'Das Von-Datum muss vor oder am Bis-Datum liegen.';
+    }
+    if (errors.includes('range_too_long')) {
+      return `Der Zeitraum darf maximal ${MAX_DOCTOR_RANGE_DAYS} Tage umfassen.`;
+    }
+    return 'Bitte einen vollständigen gültigen Zeitraum wählen.';
   };
 
-  const showDoctorInboxPanel = () => {
-    const panel = ensureDoctorInboxPanel();
-    if (!panel) return false;
-    panel.hidden = false;
-    panel.removeAttribute('inert');
-    panel.style.display = 'block';
-    panel.setAttribute('aria-hidden', 'false');
-    panel.classList.add('is-open');
-    global.document?.body?.classList.add('is-inbox-open');
-    getFocusTrap()?.activate?.(panel);
+  const setLiveRangeStatus = (message, state = 'loading') => {
+    const statusEl = global.document?.getElementById('doctorLiveRangeStatus');
+    if (!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.hidden = !message;
+    statusEl.classList.toggle('is-error', state === 'error');
+    statusEl.classList.toggle('is-partial', state === 'partial');
+    statusEl.dataset.state = state;
+  };
+
+  const setLiveRangePanelsMessage = (message) => {
+    Object.values(getDoctorTabPanels()).forEach((panel) => {
+      if (!panel) return;
+      panel.textContent = message;
+      panel.classList.add('u-doctor-placeholder');
+    });
+  };
+
+  const clearLiveRangePanelState = () => {
+    Object.values(getDoctorTabPanels()).forEach((panel) => {
+      panel?.classList.remove('u-doctor-placeholder');
+    });
+  };
+
+  const clearLiveRangePanels = () => {
+    Object.values(getDoctorTabPanels()).forEach((panel) => {
+      if (!panel) return;
+      panel.innerHTML = '';
+      panel.classList.remove('u-doctor-placeholder');
+    });
+  };
+
+  const resetLiveRangeState = () => {
+    liveRangeState.version += 1;
+    liveRangeState.from = '';
+    liveRangeState.to = '';
+    liveRangeState.status = 'idle';
+    liveRangeState.userSelected = false;
+    liveRangeState.loadedKey = '';
+    liveRangeState.dirty = true;
+    setLiveRangeStatus('');
+    clearLiveRangePanels();
+  };
+
+  const invalidateLiveDetails = ({ clear = false } = {}) => {
+    liveRangeState.version += 1;
+    liveRangeState.status = 'idle';
+    liveRangeState.loadedKey = '';
+    liveRangeState.dirty = true;
+    setLiveRangeStatus('');
+    if (clear) clearLiveRangePanels();
+  };
+
+  const closeLiveDetails = () => {
+    liveRangeState.version += 1;
+    if (liveRangeState.status === 'loading' || liveRangeState.status === 'queued') {
+      liveRangeState.loadedKey = '';
+      liveRangeState.dirty = true;
+    }
+    liveRangeState.status = liveRangeState.dirty ? 'idle' : 'ready';
+    setLiveRangeStatus('');
+  };
+
+  const initializeLiveRangeFromReport = (report) => {
+    if (liveRangeState.userSelected) return false;
+    const fromInput = global.document?.getElementById('from');
+    const toInput = global.document?.getElementById('to');
+    if (!fromInput || !toInput) return false;
+    const from = report?.period?.from || report?.payload?.period?.from || '';
+    const to = report?.period?.to || report?.payload?.period?.to || '';
+    const validation = validateLiveRange(from, to);
+    if (!validation.valid) return false;
+    fromInput.value = from;
+    toInput.value = to;
     return true;
   };
 
-  const openInboxOverlay = () => {
-    try {
-      const hub = global.AppModules?.hub;
-      if (typeof hub?.openDoctorInboxPanel !== 'function') {
-        toast('Inbox ist derzeit nicht verfügbar.');
-        return;
-      }
-      const doc = global.document;
-      const from = doc?.getElementById('from')?.value || '';
-      const to = doc?.getElementById('to')?.value || '';
-      hub.openDoctorInboxPanel({ from, to });
-    } catch (err) {
-      logDoctorError('open inbox overlay failed', err);
+  const readLiveDetailRange = () => {
+    const from = global.document?.getElementById('from')?.value || '';
+    const to = global.document?.getElementById('to')?.value || '';
+    const validation = validateLiveRange(from, to);
+    return validation.valid
+      ? { from: validation.from, to: validation.to, source: 'live_details' }
+      : null;
+  };
+
+  const readPrimaryReportRange = () => {
+    const report = primaryReportState.result?.report || null;
+    const from = report?.period?.from || report?.payload?.period?.from || '';
+    const to = report?.period?.to || report?.payload?.period?.to || '';
+    const validation = validateLiveRange(from, to);
+    return validation.valid
+      ? { from: validation.from, to: validation.to, source: 'visible_report' }
+      : null;
+  };
+
+  const getActiveConsumerRange = () => {
+    const details = global.document?.getElementById('doctorDailyWrap');
+    if (details && !details.hidden) {
+      return readLiveDetailRange();
     }
+    return readPrimaryReportRange()
+      || readLiveDetailRange()
+      || null;
+  };
+
+  const queueLiveRangeRefresh = () => {
+    const details = global.document?.getElementById('doctorDailyWrap');
+    if (!details || details.hidden) {
+      invalidateLiveDetails();
+      return Promise.resolve(false);
+    }
+    const from = global.document?.getElementById('from')?.value || '';
+    const to = global.document?.getElementById('to')?.value || '';
+    const validation = validateLiveRange(from, to);
+    liveRangeState.version += 1;
+    const requestVersion = liveRangeState.version;
+    liveRangeState.from = from;
+    liveRangeState.to = to;
+    liveRangeState.userSelected = true;
+    liveRangeState.loadedKey = '';
+    liveRangeState.dirty = true;
+    if (!validation.valid) {
+      liveRangeState.status = 'error';
+      const message = getLiveRangeErrorMessage(validation);
+      setLiveRangeStatus(message, 'error');
+      setLiveRangePanelsMessage(message);
+      return Promise.resolve(false);
+    }
+    liveRangeState.status = 'queued';
+    setLiveRangeStatus(
+      `Einzelwerte ${fmtDateDE(from)} bis ${fmtDateDE(to)} werden geladen ...`,
+      'loading'
+    );
+    setLiveRangePanelsMessage('Einzelwerte werden geladen ...');
+    if (typeof global.requestUiRefresh !== 'function') {
+      liveRangeState.status = 'error';
+      const message =
+        `Einzelwerte ${fmtDateDE(from)} bis ${fmtDateDE(to)} konnten nicht aktualisiert werden.`;
+      setLiveRangeStatus(message, 'error');
+      setLiveRangePanelsMessage(message);
+      return Promise.resolve(false);
+    }
+    const handleRefreshFailure = (err) => {
+      const currentFrom = global.document?.getElementById('from')?.value || '';
+      const currentTo = global.document?.getElementById('to')?.value || '';
+      if (
+        liveRangeState.version !== requestVersion
+        || currentFrom !== from
+        || currentTo !== to
+      ) {
+        return false;
+      }
+      const message =
+        `Einzelwerte ${fmtDateDE(from)} bis ${fmtDateDE(to)} konnten nicht aktualisiert werden.`;
+      liveRangeState.status = 'error';
+      setLiveRangeStatus(message, 'error');
+      setLiveRangePanelsMessage(message);
+      logDoctorError('live range refresh failed', err);
+      return false;
+    };
+    try {
+      return Promise.resolve(global.requestUiRefresh({
+        reason: 'doctor:range-change',
+        doctor: true
+      })).catch(handleRefreshFailure);
+    } catch (err) {
+      return Promise.resolve(handleRefreshFailure(err));
+    }
+  };
+
+  const beginLiveRangeRender = (from, to) => {
+    const reuseQueuedVersion =
+      liveRangeState.status === 'queued'
+      && liveRangeState.from === from
+      && liveRangeState.to === to;
+    if (!reuseQueuedVersion) liveRangeState.version += 1;
+    liveRangeState.from = from;
+    liveRangeState.to = to;
+    liveRangeState.status = 'loading';
+    const version = liveRangeState.version;
+    setLiveRangeStatus(
+      `Einzelwerte ${fmtDateDE(from)} bis ${fmtDateDE(to)} werden geladen ...`,
+      'loading'
+    );
+    setLiveRangePanelsMessage('Einzelwerte werden geladen ...');
+    return { version, from, to };
+  };
+
+  const isLiveRangeRequestCurrent = (request) => {
+    if (!request || liveRangeState.version !== request.version) return false;
+    const currentFrom = global.document?.getElementById('from')?.value || '';
+    const currentTo = global.document?.getElementById('to')?.value || '';
+    return currentFrom === request.from && currentTo === request.to;
+  };
+
+  const finishLiveRangeRequest = (request, { partial = false } = {}) => {
+    if (!isLiveRangeRequestCurrent(request)) return false;
+    liveRangeState.status = 'ready';
+    liveRangeState.loadedKey = partial ? '' : liveRangeKey(request.from, request.to);
+    liveRangeState.dirty = partial;
+    if (partial) {
+      setLiveRangeStatus(
+        `Einzelwerte ${fmtDateDE(request.from)} bis ${fmtDateDE(request.to)}: `
+          + 'Einzelne Datenbereiche konnten nicht geladen werden.',
+        'partial'
+      );
+    } else {
+      setLiveRangeStatus('');
+    }
+    clearLiveRangePanelState();
+    return true;
+  };
+
+  const setPrimaryReportStatus = (message, state = 'loading') => {
+    const doc = global.document;
+    const statusEl = doc?.getElementById('doctorPrimaryReportStatus');
+    if (!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.hidden = !message;
+    statusEl.classList.toggle('is-error', state === 'error');
+    statusEl.classList.toggle('is-partial', state === 'partial');
+    statusEl.dataset.state = state;
+  };
+
+  const closeReportCreatePanel = ({ restoreFocus = true } = {}) => {
+    const doc = global.document;
+    const panel = doc?.getElementById('doctorReportCreatePanel');
+    const opener = doc?.getElementById('doctorNewRangeReportBtn');
+    const errorEl = doc?.getElementById('doctorReportCreateError');
+    if (panel) panel.hidden = true;
+    if (opener) opener.setAttribute('aria-expanded', 'false');
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    }
+    const focusTarget = reportCreateOpener;
+    reportCreateOpener = null;
+    if (
+      restoreFocus
+      && focusTarget?.isConnected
+      && typeof focusTarget.focus === 'function'
+    ) {
+      focusTarget.focus();
+    }
+  };
+
+  const setReportCreateBusy = (busy) => {
+    const doc = global.document;
+    const submitBtn = doc?.getElementById('doctorReportCreateSubmit');
+    const fromInput = doc?.getElementById('doctorReportFrom');
+    const toInput = doc?.getElementById('doctorReportTo');
+    if (submitBtn) submitBtn.disabled = busy;
+    if (fromInput) fromInput.disabled = busy;
+    if (toInput) toInput.disabled = busy;
+  };
+
+  const resetDoctorState = ({ clearDom = true, status = 'loading' } = {}) => {
+    primaryReportState.lifecycle += 1;
+    primaryReportState.createVersion += 1;
+    primaryReportState.userId = null;
+    primaryReportState.status = 'idle';
+    primaryReportState.result = null;
+    primaryReportState.promise = null;
+    primaryReportState.createInFlight = false;
+    setReportCreateBusy(false);
+    resetLiveRangeState();
+    closeReportCreatePanel({ restoreFocus: false });
+    const doc = global.document;
+    const details = doc?.getElementById('doctorDailyWrap');
+    const detailsBtn = doc?.getElementById('doctorDetailsBtn');
+    if (details) details.hidden = true;
+    if (detailsBtn) detailsBtn.setAttribute('aria-expanded', 'false');
+    if (!clearDom) return;
+    const reportHost = doc?.getElementById('doctorPrimaryReport');
+    if (reportHost) reportHost.innerHTML = '';
+    if (status === 'loading') {
+      setPrimaryReportStatus('Bericht wird geladen ...', 'loading');
+    } else {
+      setPrimaryReportStatus('', status);
+    }
+  };
+
+  const beginDoctorPanelLifecycle = () => {
+    resetDoctorState({ clearDom: true });
+    return primaryReportState.lifecycle;
   };
 
   const setDoctorActiveTab = (tab) => {
@@ -459,6 +738,7 @@
       const btnTab = btn.getAttribute('data-doctor-tab');
       const isActive = btnTab === target;
       btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
       if (btn.hasAttribute('aria-selected')) {
         btn.setAttribute('aria-selected', String(isActive));
       }
@@ -475,16 +755,36 @@
     const doc = global.document;
     if (!doc || doc.__doctorTabsBound) return;
     doc.addEventListener('click', (event) => {
-      const btn = event.target.closest('[data-doctor-tab]');
+      const btn = event.target?.closest?.('[data-doctor-tab]');
       if (!btn || !btn.closest('#doctor')) return;
       const tab = btn.getAttribute('data-doctor-tab');
       if (!tab) return;
-      if (tab === 'inbox') {
-        event.preventDefault();
-        openInboxOverlay();
+      setDoctorActiveTab(tab);
+    });
+    doc.addEventListener('keydown', (event) => {
+      const btn = event.target?.closest?.('[data-doctor-tab]');
+      if (!btn || !btn.closest('#doctor')) return;
+      const tabButtons = Array.from(
+        doc.querySelectorAll('#doctor [data-doctor-tab]')
+      );
+      const currentIndex = tabButtons.indexOf(btn);
+      if (currentIndex < 0) return;
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % tabButtons.length;
+      } else if (event.key === 'ArrowLeft') {
+        nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = tabButtons.length - 1;
+      } else {
         return;
       }
-      setDoctorActiveTab(tab);
+      event.preventDefault();
+      const nextButton = tabButtons[nextIndex];
+      setDoctorActiveTab(nextButton.getAttribute('data-doctor-tab'));
+      nextButton.focus();
     });
     setDoctorActiveTab(__doctorActiveTab);
     doc.__doctorTabsBound = true;
@@ -607,6 +907,7 @@ async function renderDoctor(triggerReason = 'manual'){
     loggedIn = false;
   }
   if (!loggedIn && online){
+    resetDoctorState({ clearDom: true, status: 'idle' });
     fillAllPanels(placeholderHtml('Bitte anmelden, um die Arzt-Ansicht zu sehen.'));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
@@ -631,6 +932,15 @@ async function renderDoctor(triggerReason = 'manual'){
 
   const prevScrollTop = (__doctorScrollSnapshot?.top ?? scroller.scrollTop ?? 0) || 0;
   const prevScrollRatio = (__doctorScrollSnapshot?.ratio ?? 0) || 0;
+  bindReportFirstControls();
+  await renderPrimaryDoctorReport();
+
+  const details = document.getElementById('doctorDailyWrap');
+  if (!details || details.hidden) {
+    invalidateLiveDetails();
+    return;
+  }
+
   fillAllPanels('');
 
   // Anzeige-Helper
@@ -639,12 +949,20 @@ async function renderDoctor(triggerReason = 'manual'){
   const toInput = $("#to");
   const from = fromInput?.value || '';
   const to = toInput?.value || '';
-  if (!from || !to){
-    fillAllPanels(placeholderHtml('Bitte Zeitraum wählen.'));
+  const liveRangeValidation = validateLiveRange(from, to);
+  if (!liveRangeValidation.valid){
+    liveRangeState.version += 1;
+    liveRangeState.from = from;
+    liveRangeState.to = to;
+    liveRangeState.status = 'error';
+    const message = getLiveRangeErrorMessage(liveRangeValidation);
+    setLiveRangeStatus(message, 'error');
+    fillAllPanels(placeholderHtml(message));
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
     return;
   }
+  const liveRangeRequest = beginLiveRangeRender(from, to);
   const isDayInRange = (day) => {
     if (!day) return false;
     if (from && day < from) return false;
@@ -775,6 +1093,11 @@ async function renderDoctor(triggerReason = 'manual'){
     doctorRefreshLogClosed = true;
     logDoctorRefreshEnd(triggerReason, from, to, status, detail, severity);
   };
+  const stopIfLiveRangeStale = () => {
+    if (isLiveRangeRequestCurrent(liveRangeRequest)) return false;
+    closeDoctorRefreshLog('stale', 'durch neueren Zeitraum ersetzt');
+    return true;
+  };
 
   const useLocalFallback = !online || !loggedIn;
 
@@ -787,9 +1110,15 @@ async function renderDoctor(triggerReason = 'manual'){
   if (!useLocalFallback) {
     try{
       daysArr = await fetchDailyOverview(from, to);
+      if (stopIfLiveRangeStale()) return;
     }catch(err){
+      if (stopIfLiveRangeStale()) return;
       logDoctorError('fetchDailyOverview failed', err);
-      fillAllPanels(placeholderHtml('Fehler beim Laden aus der Cloud.'));
+      const message =
+        `Einzelwerte ${fmtDateDE(from)} bis ${fmtDateDE(to)} konnten nicht geladen werden.`;
+      liveRangeState.status = 'error';
+      setLiveRangeStatus(message, 'error');
+      fillAllPanels(placeholderHtml(message));
       if (scroller) scroller.scrollTop = 0;
       __doctorScrollSnapshot = { top: 0, ratio: 0 };
       closeDoctorRefreshLog('error', err?.message || err, 'error');
@@ -800,6 +1129,7 @@ async function renderDoctor(triggerReason = 'manual'){
     daysArr.sort((a,b)=> b.date.localeCompare(a.date));
     try {
       labRows = await loadLabEventsSafe(from, to);
+      if (stopIfLiveRangeStale()) return;
       if (Array.isArray(labRows)) {
         labRows = labRows.filter((entry) => isDayInRange(entry?.day));
         labRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
@@ -807,12 +1137,14 @@ async function renderDoctor(triggerReason = 'manual'){
         labRows = [];
       }
     } catch (err) {
+      if (stopIfLiveRangeStale()) return;
       labLoadError = err;
       logDoctorError('lab events fetch failed', err);
     }
 
     try {
       activityRows = await loadActivityEventsSafe(from, to);
+      if (stopIfLiveRangeStale()) return;
       if (Array.isArray(activityRows)) {
         activityRows = activityRows.filter((entry) => isDayInRange(entry?.day));
         activityRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
@@ -820,17 +1152,20 @@ async function renderDoctor(triggerReason = 'manual'){
         activityRows = [];
       }
     } catch (err) {
+      if (stopIfLiveRangeStale()) return;
       activityLoadError = err;
       logDoctorError('activity events fetch failed', err);
     }
   } else {
     try {
       const local = typeof getAllEntries === 'function' ? await getAllEntries() : [];
+      if (stopIfLiveRangeStale()) return;
       const filtered = Array.isArray(local) ? local.filter((entry) => isDayInRange(entry?.date)) : [];
       daysArr = buildDailyFromLocalEntries(filtered);
       labRows = buildLabRowsFromLocalEntries(filtered);
       activityRows = [];
     } catch (err) {
+      if (stopIfLiveRangeStale()) return;
       logDoctorError('local fallback failed', err);
     }
   }
@@ -841,7 +1176,9 @@ async function renderDoctor(triggerReason = 'manual'){
     let trendpilotUnavailable = false;
     try {
       trendpilotEntries = await loadTrendpilotEntries(from, to);
+      if (stopIfLiveRangeStale()) return;
     } catch (err) {
+      if (stopIfLiveRangeStale()) return;
       trendpilotUnavailable = true;
       logDoctorError('trendpilot fetch failed', err);
     }
@@ -850,10 +1187,6 @@ async function renderDoctor(triggerReason = 'manual'){
       trendpilotWrap.addEventListener('click', onTrendpilotAction);
       trendpilotWrap.dataset.tpBound = '1';
     }
-  }
-
-  if (panels.inbox) {
-    panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
   }
 
   const formatNotesHtml = (notes) => {
@@ -889,14 +1222,14 @@ async function renderDoctor(triggerReason = 'manual'){
     const morningPp = calcPulsePressure(day.morning.sys, day.morning.dia);
     const eveningPp = calcPulsePressure(day.evening.sys, day.evening.dia);
     return `
-<section class="doctor-day" data-date="${day.date}">
+<section class="doctor-day" data-date="${escapeAttr(day.date)}">
   <div class="col-date">
     <div class="date-top">
       <span class="date-label">${fmtDateDE(day.date)}</span>
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-bp="${day.date}">Löschen</button>
+      <button class="btn ghost" data-del-bp="${escapeAttr(day.date)}">Löschen</button>
     </div>
   </div>
 
@@ -908,19 +1241,19 @@ async function renderDoctor(triggerReason = 'manual'){
     <div class="measure-grid">
       <div class="measure-row">
         <div class="label">morgens</div>
-        <div class="num ${ (day.morning.sys!=null && day.morning.sys>130) ? 'alert' : '' }">${dash(day.morning.sys)}</div>
-        <div class="num ${ (day.morning.dia!=null && day.morning.dia>90)  ? 'alert' : '' }">${dash(day.morning.dia)}</div>
-        <div class="num">${dash(day.morning.pulse)}</div>
-        <div class="num ${ (day.morning.map!=null && day.morning.map>100) ? 'alert' : '' }">${dash(fmtNum(day.morning.map))}</div>
-        <div class="num">${dash(fmtNum(morningPp))}</div>
+        <div class="num ${ (day.morning.sys!=null && day.morning.sys>130) ? 'alert' : '' }">${escapeAttr(dash(day.morning.sys))}</div>
+        <div class="num ${ (day.morning.dia!=null && day.morning.dia>90)  ? 'alert' : '' }">${escapeAttr(dash(day.morning.dia))}</div>
+        <div class="num">${escapeAttr(dash(day.morning.pulse))}</div>
+        <div class="num ${ (day.morning.map!=null && day.morning.map>100) ? 'alert' : '' }">${escapeAttr(dash(fmtNum(day.morning.map)))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(morningPp)))}</div>
       </div>
       <div class="measure-row">
         <div class="label">abends</div>
-        <div class="num ${ (day.evening.sys!=null && day.evening.sys>130) ? 'alert' : '' }">${dash(day.evening.sys)}</div>
-        <div class="num ${ (day.evening.dia!=null && day.evening.dia>90)  ? 'alert' : '' }">${dash(day.evening.dia)}</div>
-        <div class="num">${dash(day.evening.pulse)}</div>
-        <div class="num ${ (day.evening.map!=null && day.evening.map>100) ? 'alert' : '' }">${dash(fmtNum(day.evening.map))}</div>
-        <div class="num">${dash(fmtNum(eveningPp))}</div>
+        <div class="num ${ (day.evening.sys!=null && day.evening.sys>130) ? 'alert' : '' }">${escapeAttr(dash(day.evening.sys))}</div>
+        <div class="num ${ (day.evening.dia!=null && day.evening.dia>90)  ? 'alert' : '' }">${escapeAttr(dash(day.evening.dia))}</div>
+        <div class="num">${escapeAttr(dash(day.evening.pulse))}</div>
+        <div class="num ${ (day.evening.map!=null && day.evening.map>100) ? 'alert' : '' }">${escapeAttr(dash(fmtNum(day.evening.map)))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(eveningPp)))}</div>
       </div>
     </div>
   </div>
@@ -940,14 +1273,14 @@ async function renderDoctor(triggerReason = 'manual'){
       day.muscle_pct != null;
     if (!hasBody) return '';
     return `
-<section class="doctor-day doctor-body-day" data-date="${day.date}">
+<section class="doctor-day doctor-body-day" data-date="${escapeAttr(day.date)}">
   <div class="col-date">
     <div class="date-top">
       <span class="date-label">${fmtDateDE(day.date)}</span>
       <span class="date-cloud" title="In Cloud gespeichert?">${day.hasCloud ? "&#9729;&#65039;" : ""}</span>
     </div>
     <div class="date-actions">
-      <button class="btn ghost" data-del-body="${day.date}">Löschen</button>
+      <button class="btn ghost" data-del-body="${escapeAttr(day.date)}">Löschen</button>
     </div>
   </div>
   <div class="col-measure doctor-body-metrics">
@@ -959,10 +1292,10 @@ async function renderDoctor(triggerReason = 'manual'){
     </div>
     <div class="measure-grid">
       <div class="measure-row">
-        <div class="num">${dash(fmtNum(day.weight))}</div>
-        <div class="num">${dash(fmtNum(day.waist_cm))}</div>
-        <div class="num">${dash(fmtNum(day.fat_pct))}</div>
-        <div class="num">${dash(fmtNum(day.muscle_pct))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(day.weight)))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(day.waist_cm)))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(day.fat_pct)))}</div>
+        <div class="num">${escapeAttr(dash(fmtNum(day.muscle_pct)))}</div>
       </div>
     </div>
   </div>
@@ -979,7 +1312,7 @@ async function renderDoctor(triggerReason = 'manual'){
     const createLabGroup = (columns) => {
       const head = columns.map((col) => `<div>${escapeAttr(col.label)}</div>`).join('');
       const values = columns
-        .map((col) => `<div class="num">${col.value}</div>`)
+        .map((col) => `<div class="num">${escapeAttr(col.value)}</div>`)
         .join('');
       return `
     <div class="doctor-lab-group">
@@ -998,7 +1331,7 @@ async function renderDoctor(triggerReason = 'manual'){
       commentRaw === '-'
         ? '<span class="doctor-lab-comment-empty">Kein Kommentar</span>'
         : commentRaw;
-    const stageValue = entry.ckd_stage ? escapeAttr(entry.ckd_stage) : '-';
+    const stageValue = entry.ckd_stage || '-';
     return `
 <section class="doctor-day doctor-lab-day" data-date="${escapeAttr(entry.day || '')}">
   <div class="col-date">
@@ -1100,9 +1433,8 @@ async function renderDoctor(triggerReason = 'manual'){
 
     // Rendern / Leerzustand
   if (!daysArr.length){
-    if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Eintraege im Zeitraum.');
+    if (panels.bp) panels.bp.innerHTML = placeholderHtml('Keine Einträge im Zeitraum.');
     if (panels.body) panels.body.innerHTML = placeholderHtml('Keine Körperdaten im Zeitraum.');
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
     if (scroller) scroller.scrollTop = 0;
     __doctorScrollSnapshot = { top: 0, ratio: 0 };
   } else {
@@ -1111,7 +1443,6 @@ async function renderDoctor(triggerReason = 'manual'){
       const bodyHtml = daysArr.map(renderDoctorBodyDay).filter(Boolean).join('');
       panels.body.innerHTML = bodyHtml || placeholderHtml('Keine Körperdaten im Zeitraum.');
     }
-    if (panels.inbox) panels.inbox.innerHTML = placeholderHtml('Inbox Öffnet in einem separaten Fenster.');
 
     const restoreScroll = () => {
       const targetEl = scroller || host;
@@ -1153,166 +1484,638 @@ async function renderDoctor(triggerReason = 'manual'){
       panels.activity.innerHTML = activityRows.map(renderDoctorActivityDay).join('');
       bindDomainDeleteButtons(panels.activity, 'data-del-activity', 'activity_event', 'Training');
     } else {
-      panels.activity.innerHTML = placeholderHtml('Keine Trainingseintraege im Zeitraum.');
+      panels.activity.innerHTML = placeholderHtml('Keine Trainingseinträge im Zeitraum.');
     }
   }
 
-
+  if (stopIfLiveRangeStale()) return;
+  finishLiveRangeRequest(liveRangeRequest, {
+    partial: Boolean(labLoadError || activityLoadError)
+  });
   closeDoctorRefreshLog();
 }
 
 
 // --- Arzt-Export ---
-// SUBMODULE: exportDoctorJson @internal - triggers download (future: route via buildDoctorSummaryJson @extract-candidate @public)
-async function exportDoctorJson(){
-  if (!isStageReady()) return;
-  try {
-    const logged = await isLoggedInFast();
-    if (!logged) {
-      diag.add?.('[doctor] export while auth unknown');
-      // Diagnostics only: export still runs so auth wrapper can trigger re-login if needed.
-    }
-  } catch(err) {
-    diag.add?.('[doctor] export auth check failed: ' + (err?.message || err));
-    logDoctorConsole('error', '[doctor] export auth check failed', err);
+const HEALTH_EXPORT_SCHEMA_VERSION = 'midas.health-export.v2';
+const HEALTH_EXPORT_DOMAINS = [
+  'blood_pressure',
+  'body',
+  'notes',
+  'labs',
+  'activities'
+];
+const HEALTH_EXPORT_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const exportNumberOrNull = (value, field) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Ungültiger Zahlenwert in ${field}.`);
   }
+  return parsed;
+};
+
+const buildHealthExportV2 = ({
+  range,
+  daily,
+  labs,
+  activities,
+  generatedAt = new Date()
+} = {}) => {
+  const validation = validateLiveRange(range?.from || '', range?.to || '');
+  if (!validation.valid) {
+    throw new Error('Ungültiger Exportzeitraum.');
+  }
+  if (!Array.isArray(daily) || !Array.isArray(labs) || !Array.isArray(activities)) {
+    throw new Error('Unvollständige Exportdaten.');
+  }
+
+  const normalizedGeneratedAt = new Date(generatedAt);
+  if (Number.isNaN(normalizedGeneratedAt.getTime())) {
+    throw new Error('Ungültiger Exportzeitpunkt.');
+  }
+
+  const { from, to } = validation;
+  const isCanonicalExportDay = (day) => {
+    const raw = String(day || '');
+    if (!HEALTH_EXPORT_DAY_RE.test(raw)) return false;
+    const date = new Date(`${raw}T00:00:00Z`);
+    return !Number.isNaN(date.getTime())
+      && date.toISOString().slice(0, 10) === raw;
+  };
+  const isDayInRange = (day) =>
+    isCanonicalExportDay(day) && day >= from && day <= to;
+  const assertDay = (day, domain) => {
+    if (!isCanonicalExportDay(day)) {
+      throw new Error(`Ungültiger Tag in ${domain}.`);
+    }
+    return day;
+  };
+
+  const bloodPressure = [];
+  const body = [];
+  const notes = [];
+  daily.forEach((entry) => {
+    const day = assertDay(entry?.date, 'daily');
+    if (!isDayInRange(day)) return;
+    [
+      ['morning', entry?.morning],
+      ['evening', entry?.evening]
+    ].forEach(([daypart, values]) => {
+      const systolic = exportNumberOrNull(values?.sys, `${day}.${daypart}.sys`);
+      const diastolic = exportNumberOrNull(values?.dia, `${day}.${daypart}.dia`);
+      const pulse = exportNumberOrNull(values?.pulse, `${day}.${daypart}.pulse`);
+      if (systolic === null && diastolic === null && pulse === null) return;
+      bloodPressure.push({
+        day,
+        daypart,
+        systolic_mmhg: systolic,
+        diastolic_mmhg: diastolic,
+        pulse_bpm: pulse
+      });
+    });
+
+    const bodyEntry = {
+      day,
+      weight_kg: exportNumberOrNull(entry?.weight, `${day}.weight`),
+      waist_cm: exportNumberOrNull(entry?.waist_cm, `${day}.waist_cm`),
+      fat_kg: exportNumberOrNull(entry?.fat_kg, `${day}.fat_kg`),
+      muscle_kg: exportNumberOrNull(entry?.muscle_kg, `${day}.muscle_kg`)
+    };
+    if (Object.values(bodyEntry).slice(1).some((value) => value !== null)) {
+      body.push(bodyEntry);
+    }
+
+    const text = String(entry?.notes || '').trim();
+    if (text) notes.push({ day, text });
+  });
+
+  const normalizedLabs = labs.filter((entry) => isDayInRange(entry?.day)).map((entry) => {
+    const day = assertDay(entry?.day, 'labs');
+    return {
+      day,
+      egfr: exportNumberOrNull(entry?.egfr, `${day}.egfr`),
+      creatinine: exportNumberOrNull(entry?.creatinine, `${day}.creatinine`),
+      hba1c: exportNumberOrNull(entry?.hba1c, `${day}.hba1c`),
+      ldl: exportNumberOrNull(entry?.ldl, `${day}.ldl`),
+      potassium: exportNumberOrNull(entry?.potassium, `${day}.potassium`),
+      ckd_stage: entry?.ckd_stage == null ? null : String(entry.ckd_stage),
+      doctor_comment:
+        entry?.doctor_comment == null ? null : String(entry.doctor_comment)
+    };
+  });
+
+  const normalizedActivities = activities
+    .filter((entry) => isDayInRange(entry?.day))
+    .map((entry) => {
+      const day = assertDay(entry?.day, 'activities');
+      const id = String(entry?.id || '').trim();
+      const activity = String(entry?.activity || '').trim();
+      const occurredAt = new Date(entry?.ts || entry?.occurred_at || '');
+      if (!id || !activity || Number.isNaN(occurredAt.getTime())) {
+        throw new Error(`Ungültiger Trainingseintrag am ${day}.`);
+      }
+      const durationMin = exportNumberOrNull(
+        entry?.duration_min,
+        `${day}.duration_min`
+      );
+      if (durationMin === null) {
+        throw new Error(`Fehlende Trainingsdauer am ${day}.`);
+      }
+      const normalized = {
+        id,
+        occurred_at: occurredAt.toISOString(),
+        day,
+        activity,
+        duration_min: durationMin
+      };
+      const note = String(entry?.note || '').trim();
+      if (note) normalized.note = note;
+      return normalized;
+    });
+
+  const daypartOrder = { morning: 0, evening: 1 };
+  bloodPressure.sort(
+    (left, right) =>
+      left.day.localeCompare(right.day)
+      || daypartOrder[left.daypart] - daypartOrder[right.daypart]
+  );
+  body.sort((left, right) => left.day.localeCompare(right.day));
+  notes.sort((left, right) => left.day.localeCompare(right.day));
+  normalizedLabs.sort((left, right) => left.day.localeCompare(right.day));
+  normalizedActivities.sort(
+    (left, right) =>
+      left.occurred_at.localeCompare(right.occurred_at)
+      || left.id.localeCompare(right.id)
+  );
+
+  const counts = {
+    blood_pressure: bloodPressure.length,
+    body: body.length,
+    notes: notes.length,
+    labs: normalizedLabs.length,
+    activities: normalizedActivities.length
+  };
+
+  return {
+    schema_version: HEALTH_EXPORT_SCHEMA_VERSION,
+    generated_at: normalizedGeneratedAt.toISOString(),
+    timezone: 'Europe/Vienna',
+    range: { from, to },
+    completeness: {
+      status: 'complete',
+      loaded_domains: [...HEALTH_EXPORT_DOMAINS],
+      counts
+    },
+    blood_pressure: bloodPressure,
+    body,
+    notes,
+    labs: normalizedLabs,
+    activities: normalizedActivities
+  };
+};
+
+// SUBMODULE: exportDoctorJson @internal - creates one complete, versioned health export
+async function exportDoctorJson(){
+  if (!isStageReady()) return false;
   if (!isDoctorUnlockedSafe()) {
     setAuthPendingAfterUnlock('export');
     const ok = await requestDoctorUnlock();
-    if (!ok) return;
+    if (!ok) return false;
     setAuthPendingAfterUnlock(null);
   }
-  const from = $("#from")?.value || '';
-  const to = $("#to")?.value || '';
-  if (!from || !to) {
-    toast('Bitte Zeitraum wählen.');
-    return;
-  }
-  const isDayInRange = (day) => {
-    if (!day) return false;
-    if (from && day < from) return false;
-    if (to && day > to) return false;
-    return true;
-  };
-  const buildEntriesFromDaily = (days = []) => {
-    const out = [];
-    for (const d of days) {
-      const notes = d?.notes || '';
-      const day = d?.date || '';
-      if (!day) continue;
-      const hasMorning =
-        d?.morning?.sys != null || d?.morning?.dia != null || d?.morning?.pulse != null;
-      const hasEvening =
-        d?.evening?.sys != null || d?.evening?.dia != null || d?.evening?.pulse != null;
-      const hasBody =
-        d?.weight != null || d?.waist_cm != null || d?.fat_kg != null || d?.muscle_kg != null;
-      const hasAny = hasMorning || hasEvening || hasBody;
-      const pushEntry = (context, tsHour, patch = {}) => {
-        const ts = Date.parse(`${day}T${tsHour}:00Z`);
-        const dateTime = Number.isFinite(ts) ? new Date(ts).toISOString() : '';
-        out.push({
-          date: day,
-          time: `${tsHour}:00`,
-          dateTime,
-          ts: Number.isFinite(ts) ? ts : null,
-          context,
-          sys: null,
-          dia: null,
-          pulse: null,
-          weight: null,
-          waist_cm: null,
-          fat_kg: null,
-          muscle_kg: null,
-          notes,
-          ...patch
-        });
-      };
-      if (hasMorning) {
-        pushEntry('Morgen', '07', {
-          sys: d.morning.sys ?? null,
-          dia: d.morning.dia ?? null,
-          pulse: d.morning.pulse ?? null
-        });
-      }
-      if (hasEvening) {
-        pushEntry('Abend', '19', {
-          sys: d.evening.sys ?? null,
-          dia: d.evening.dia ?? null,
-          pulse: d.evening.pulse ?? null
-        });
-      }
-      if (hasBody) {
-        pushEntry('Tag', '12', {
-          weight: d.weight ?? null,
-          waist_cm: d.waist_cm ?? null,
-          fat_kg: d.fat_kg ?? null,
-          muscle_kg: d.muscle_kg ?? null
-        });
-      }
-      if (!hasAny && notes) {
-        pushEntry('Tag', '12', {});
-      }
-    }
-    return out;
-  };
-  const payload = {
-    range: { from, to },
-    bp_body_notes: [],
-    lab: [],
-    activity: []
-  };
 
-  const online = global.navigator?.onLine !== false;
-  let useSupabase = false;
+  const range = getActiveConsumerRange();
+  if (!range) {
+    toast('Für den Export ist kein gültiger Zeitraum verfügbar.');
+    return false;
+  }
+  if (global.navigator?.onLine === false) {
+    if (typeof global.uiError === 'function') {
+      global.uiError('Export nicht möglich: MIDAS ist offline.');
+    } else {
+      toast('Export nicht möglich: MIDAS ist offline.');
+    }
+    return false;
+  }
+
+  const exportButton = global.document?.getElementById('doctorExportJson');
+  const previousLabel = exportButton?.textContent || 'Export JSON';
+  if (exportButton) {
+    exportButton.disabled = true;
+    exportButton.textContent = 'Exportiere ...';
+  }
+
   try {
-    useSupabase = online && (await isLoggedInFast());
-  } catch (_) {
-    useSupabase = online;
-  }
+    const loggedIn = await isLoggedInFast();
+    if (!loggedIn) {
+      throw new Error('Keine aktive Supabase-Sitzung.');
+    }
+    const labLoader = resolveLabRangeLoader();
+    const activityLoader = resolveActivityRangeLoader();
+    const userIdFetcher = resolveUserIdFetcher();
+    if (
+      typeof fetchDailyOverview !== 'function'
+      || typeof labLoader !== 'function'
+      || typeof activityLoader !== 'function'
+      || typeof userIdFetcher !== 'function'
+    ) {
+      throw new Error('Ein Export-Datenbereich ist nicht verfügbar.');
+    }
+    const userId = await userIdFetcher();
+    if (!userId) throw new Error('Benutzerkontext ist nicht verfügbar.');
 
-  if (useSupabase) {
-    try {
-      const days = await fetchDailyOverview(from, to);
-      const filtered = Array.isArray(days) ? days.filter((entry) => isDayInRange(entry?.date)) : [];
-      payload.bp_body_notes = buildEntriesFromDaily(filtered);
-    } catch (err) {
-      logDoctorError('export daily overview failed', err);
+    const [daily, labs, activities] = await Promise.all([
+      fetchDailyOverview(range.from, range.to),
+      labLoader({ user_id: userId, from: range.from, to: range.to }),
+      activityLoader(range.from, range.to, { reason: 'doctor:export-v2' })
+    ]);
+    const payload = buildHealthExportV2({
+      range,
+      daily,
+      labs,
+      activities
+    });
+    dl('gesundheitslog.json', JSON.stringify(payload, null, 2), 'application/json');
+    return true;
+  } catch (err) {
+    logDoctorError('health export v2 failed', err);
+    if (typeof global.uiError === 'function') {
+      global.uiError('Export fehlgeschlagen. Es wurde keine Datei erstellt.');
+    } else {
+      toast('Export fehlgeschlagen. Es wurde keine Datei erstellt.');
     }
-    try {
-      const labRows = await loadLabEventsSafe(from, to);
-      payload.lab = Array.isArray(labRows) ? labRows.filter((entry) => isDayInRange(entry?.day)) : [];
-    } catch (err) {
-      logDoctorError('export lab failed', err);
-    }
-    try {
-      const activityRows = await loadActivityEventsSafe(from, to);
-      payload.activity = Array.isArray(activityRows)
-        ? activityRows.filter((entry) => isDayInRange(entry?.day))
-        : [];
-    } catch (err) {
-      logDoctorError('export activity failed', err);
-    }
-  } else {
-    try {
-      const local = typeof getAllEntries === 'function' ? await getAllEntries() : [];
-      payload.bp_body_notes = Array.isArray(local)
-        ? local.filter((entry) => isDayInRange(entry?.date))
-        : [];
-    } catch (err) {
-      logDoctorError('export local entries failed', err);
+    return false;
+  } finally {
+    if (exportButton) {
+      exportButton.disabled = false;
+      exportButton.textContent = previousLabel;
     }
   }
-
-  dl("gesundheitslog.json", JSON.stringify(payload, null, 2), "application/json");
 }
+  const invalidatePrimaryReport = () => {
+    primaryReportState.lifecycle += 1;
+    primaryReportState.createVersion += 1;
+    primaryReportState.status = 'idle';
+    primaryReportState.result = null;
+    primaryReportState.promise = null;
+    primaryReportState.createInFlight = false;
+    setReportCreateBusy(false);
+  };
+
+  const getRangeValidationMessage = (validation) => {
+    const errors = validation?.errors || [];
+    if (errors.includes('future_to')) {
+      return 'Das Bis-Datum darf nicht in der Zukunft liegen.';
+    }
+    if (errors.includes('range_reversed')) {
+      return 'Das Von-Datum muss vor oder am Bis-Datum liegen.';
+    }
+    if (errors.includes('range_too_long')) {
+      return `Der Zeitraum darf maximal ${MAX_DOCTOR_RANGE_DAYS} Tage umfassen.`;
+    }
+    return 'Bitte einen gültigen Zeitraum wählen.';
+  };
+
+  async function renderPrimaryDoctorReport({ force = false } = {}) {
+    const doc = global.document;
+    const reportHost = doc?.getElementById('doctorPrimaryReport');
+    const titleEl = doc?.getElementById('doctorPrimaryReportTitle');
+    if (!reportHost) return null;
+    if (!force && primaryReportState.status === 'ready' && primaryReportState.result) {
+      return primaryReportState.result;
+    }
+    if (!force && primaryReportState.promise) return primaryReportState.promise;
+
+    let requestLifecycle = primaryReportState.lifecycle;
+    const task = (async () => {
+      const userIdFetcher = resolveUserIdFetcher();
+      if (typeof userIdFetcher !== 'function') {
+        throw new Error('doctor report user resolver missing');
+      }
+      const userId = await userIdFetcher();
+      if (!userId) throw new Error('doctor report user unavailable');
+      if (primaryReportState.lifecycle !== requestLifecycle) return null;
+      if (primaryReportState.userId && primaryReportState.userId !== userId) {
+        resetDoctorState({ clearDom: true });
+        requestLifecycle = primaryReportState.lifecycle;
+      }
+      primaryReportState.userId = userId;
+      const activeLifecycle = primaryReportState.lifecycle;
+      primaryReportState.status = 'loading';
+      reportHost.innerHTML = '';
+      if (titleEl) titleEl.textContent = 'Aktueller Bericht';
+      setPrimaryReportStatus('Bericht wird geladen ...', 'loading');
+
+      const reportsModule = getReportsModule();
+      if (typeof reportsModule.loadLatestRangeReport !== 'function') {
+        throw new Error('latest range report loader missing');
+      }
+      const result = await reportsModule.loadLatestRangeReport();
+      if (
+        primaryReportState.lifecycle !== activeLifecycle
+        || primaryReportState.userId !== userId
+      ) {
+        return null;
+      }
+      primaryReportState.result = result;
+      primaryReportState.status = 'ready';
+
+      if (result.status === 'success' && result.report) {
+        initializeLiveRangeFromReport(result.report);
+        reportsModule.renderPrimaryRangeReport?.(reportHost, result.report);
+        const periodTo = result.report.period?.to || result.report.payload?.period?.to || '';
+        if (titleEl) {
+          titleEl.textContent = periodTo
+            ? `Bericht bis ${fmtDateDE(periodTo)}`
+            : 'Aktueller Bericht';
+        }
+        const flags = reportsModule.reportFlags?.(result.report) || [];
+        if (flags.length) {
+          setPrimaryReportStatus(
+            'Eingeschränkte Datengrundlage: Der Bericht enthält Hinweise zur Datenqualität.',
+            'partial'
+          );
+        } else {
+          setPrimaryReportStatus('', 'ready');
+        }
+        return result;
+      }
+
+      reportHost.innerHTML = '';
+      if (result.status === 'empty') {
+        setPrimaryReportStatus('Noch kein Arzt-Bericht vorhanden.', 'empty');
+      } else {
+        setPrimaryReportStatus(
+          'Vorhandene Berichte konnten nicht als gültiger Arzt-Bericht verwendet werden.',
+          'error'
+        );
+      }
+      return result;
+    })()
+      .catch((err) => {
+        if (primaryReportState.lifecycle === requestLifecycle) {
+          primaryReportState.status = 'error';
+          primaryReportState.result = null;
+          reportHost.innerHTML = '';
+          const offline = global.navigator?.onLine === false;
+          setPrimaryReportStatus(
+            offline
+              ? 'Berichte sind offline derzeit nicht erreichbar.'
+              : 'Berichte konnten nicht geladen werden.',
+            'error'
+          );
+          logDoctorError('primary report load failed', err);
+        }
+        return null;
+      })
+      .finally(() => {
+        if (primaryReportState.promise === task) {
+          primaryReportState.promise = null;
+        }
+      });
+    primaryReportState.promise = task;
+    return task;
+  }
+
+  const openReportCreatePanel = () => {
+    const doc = global.document;
+    const reportsModule = global.AppModules?.reports || {};
+    const panel = doc?.getElementById('doctorReportCreatePanel');
+    const fromInput = doc?.getElementById('doctorReportFrom');
+    const toInput = doc?.getElementById('doctorReportTo');
+    const errorEl = doc?.getElementById('doctorReportCreateError');
+    if (!panel || !fromInput || !toInput) return;
+    const today = reportsModule.getViennaToday?.() || '';
+    const latest = primaryReportState.result?.report || null;
+    const latestTo = latest?.period?.to || latest?.payload?.period?.to || '';
+    const fallbackFrom = doc?.getElementById('from')?.value || '';
+    const safeFallback = reportsModule.validateRangeReportInput?.({
+      from: fallbackFrom,
+      to: today,
+      today
+    })?.valid
+      ? fallbackFrom
+      : today;
+    fromInput.value = latestTo && latestTo <= today ? latestTo : safeFallback;
+    toInput.value = today;
+    fromInput.max = today;
+    toInput.max = today;
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    }
+    reportCreateOpener = doc.activeElement;
+    panel.hidden = false;
+    doc.getElementById('doctorNewRangeReportBtn')
+      ?.setAttribute('aria-expanded', 'true');
+    fromInput.focus();
+  };
+
+  async function submitRangeReport(event) {
+    event.preventDefault();
+    if (primaryReportState.createInFlight) return;
+    const doc = global.document;
+    const reportsModule = getReportsModule();
+    const fromInput = doc?.getElementById('doctorReportFrom');
+    const toInput = doc?.getElementById('doctorReportTo');
+    const errorEl = doc?.getElementById('doctorReportCreateError');
+    const today = reportsModule.getViennaToday?.() || '';
+    const validation = reportsModule.validateRangeReportInput?.({
+      from: fromInput?.value || '',
+      to: toInput?.value || '',
+      today
+    });
+    if (!validation?.valid) {
+      if (errorEl) {
+        errorEl.textContent = getRangeValidationMessage(validation);
+        errorEl.hidden = false;
+      }
+      return;
+    }
+
+    primaryReportState.createInFlight = true;
+    const createVersion = ++primaryReportState.createVersion;
+    const createLifecycle = primaryReportState.lifecycle;
+    const createUserId = primaryReportState.userId;
+    setReportCreateBusy(true);
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    }
+    try {
+      if (typeof reportsModule.generateDoctorReport !== 'function') {
+        throw new Error('range report generator missing');
+      }
+      await reportsModule.generateDoctorReport({
+        from: validation.from,
+        to: validation.to,
+        today
+      }, {
+        toast,
+        logError: logDoctorError
+      });
+      if (
+        primaryReportState.createVersion !== createVersion
+        || primaryReportState.lifecycle !== createLifecycle
+        || (createUserId && primaryReportState.userId !== createUserId)
+      ) {
+        return;
+      }
+      invalidatePrimaryReport();
+      closeReportCreatePanel();
+      await renderPrimaryDoctorReport({ force: true });
+    } catch (err) {
+      if (
+        primaryReportState.createVersion !== createVersion
+        || primaryReportState.lifecycle !== createLifecycle
+        || (createUserId && primaryReportState.userId !== createUserId)
+      ) {
+        return;
+      }
+      logDoctorError('range report create failed', err);
+      if (errorEl) {
+        errorEl.textContent = err?.validation
+          ? getRangeValidationMessage(err.validation)
+          : 'Arzt-Bericht konnte nicht erstellt werden.';
+        errorEl.hidden = false;
+      }
+    } finally {
+      if (primaryReportState.createVersion === createVersion) {
+        primaryReportState.createInFlight = false;
+        setReportCreateBusy(false);
+      }
+    }
+  }
+
+  const bindReportFirstControls = () => {
+    const doc = global.document;
+    if (!doc || doc.__doctorReportFirstBound) return;
+    const reportsModule = global.AppModules?.reports || {};
+    const today = reportsModule.getViennaToday?.() || '';
+    const onLiveRangeChange = () => {
+      queueLiveRangeRefresh();
+    };
+    ['from', 'to'].forEach((id) => {
+      const input = doc.getElementById(id);
+      if (!input) return;
+      if (today) input.max = today;
+      input.addEventListener('change', onLiveRangeChange);
+    });
+    doc.getElementById('doctorNewRangeReportBtn')?.addEventListener(
+      'click',
+      openReportCreatePanel
+    );
+    doc.getElementById('doctorReportCreateCancel')?.addEventListener(
+      'click',
+      closeReportCreatePanel
+    );
+    doc.getElementById('doctorReportCreateDismiss')?.addEventListener(
+      'click',
+      closeReportCreatePanel
+    );
+    doc.getElementById('doctorReportCreateForm')?.addEventListener(
+      'submit',
+      submitRangeReport
+    );
+    doc.getElementById('doctorReportCreatePanel')?.addEventListener(
+      'keydown',
+      (event) => {
+        if (event.key !== 'Escape' || primaryReportState.createInFlight) return;
+        event.preventDefault();
+        closeReportCreatePanel();
+      }
+    );
+    doc.getElementById('doctorDetailsBtn')?.addEventListener('click', async (event) => {
+      const details = doc.getElementById('doctorDailyWrap');
+      if (!details) return;
+      const opening = details.hidden;
+      details.hidden = !opening;
+      event.currentTarget.setAttribute('aria-expanded', String(opening));
+      if (!opening) {
+        closeLiveDetails();
+        return;
+      }
+
+      const range = readLiveDetailRange();
+      if (!range) {
+        const from = doc.getElementById('from')?.value || '';
+        const to = doc.getElementById('to')?.value || '';
+        const validation = validateLiveRange(from, to);
+        const message = getLiveRangeErrorMessage(validation);
+        liveRangeState.status = 'error';
+        liveRangeState.dirty = true;
+        setLiveRangeStatus(message, 'error');
+        setLiveRangePanelsMessage(message);
+        return;
+      }
+
+      const key = liveRangeKey(range.from, range.to);
+      if (!liveRangeState.dirty && liveRangeState.loadedKey === key) {
+        liveRangeState.status = 'ready';
+        setLiveRangeStatus('');
+        return;
+      }
+
+      if (typeof global.requestUiRefresh !== 'function') {
+        const message =
+          `Einzelwerte ${fmtDateDE(range.from)} bis ${fmtDateDE(range.to)} konnten nicht aktualisiert werden.`;
+        liveRangeState.status = 'error';
+        liveRangeState.dirty = true;
+        setLiveRangeStatus(message, 'error');
+        setLiveRangePanelsMessage(message);
+        return;
+      }
+
+      setLiveRangeStatus(
+        `Einzelwerte ${fmtDateDE(range.from)} bis ${fmtDateDE(range.to)} werden geladen ...`,
+        'loading'
+      );
+      setLiveRangePanelsMessage('Einzelwerte werden geladen ...');
+      try {
+        await global.requestUiRefresh({
+          reason: 'doctor:details-open',
+          doctor: true
+        });
+      } catch (err) {
+        const currentRange = readLiveDetailRange();
+        if (
+          details.hidden
+          || !currentRange
+          || liveRangeKey(currentRange.from, currentRange.to) !== key
+        ) {
+          return;
+        }
+        const message =
+          `Einzelwerte ${fmtDateDE(range.from)} bis ${fmtDateDE(range.to)} konnten nicht aktualisiert werden.`;
+        liveRangeState.status = 'error';
+        liveRangeState.dirty = true;
+        setLiveRangeStatus(message, 'error');
+        setLiveRangePanelsMessage(message);
+        logDoctorError('details open refresh failed', err);
+      }
+    });
+    doc.__doctorReportFirstBound = true;
+  };
+
 // SUBMODULE: doctorApi @internal - registriert Öffentliche API-Funktionen im globalen Namespace
   const doctorApi = {
     renderDoctor,
     exportDoctorJson,
-    renderDoctorInboxOverlay,
-    showDoctorInboxPanel,
-    hideDoctorInboxPanel,
+    buildHealthExportV2,
+    beginDoctorPanelLifecycle,
+    resetDoctorState,
+    getActiveConsumerRange,
   };
+
+  if (global.document?.readyState === 'loading') {
+    global.document.addEventListener('DOMContentLoaded', bindReportFirstControls, {
+      once: true
+    });
+  } else {
+    bindReportFirstControls();
+  }
 
   function bindHubDoctorCloseButton() {
     try {
@@ -1352,205 +2155,6 @@ async function exportDoctorJson(){
   }
 
   const getReportsModule = () => global.AppModules?.reports || {};
-  const renderMonthlyReportsSection = (panel, reports, fmtDateDE, opts = {}) => {
-    const reportsModule = getReportsModule();
-    if (typeof reportsModule.renderMonthlyReportsSection === 'function') {
-      return reportsModule.renderMonthlyReportsSection(panel, reports, fmtDateDE, opts);
-    }
-    if (!panel) return;
-    panel.innerHTML = '<div class="small u-doctor-placeholder">Reports-Modul nicht geladen.</div>';
-  };
-
-  const filterReportsByType = (reports, filter) => {
-    const reportsModule = getReportsModule();
-    if (typeof reportsModule.filterReportsByType === 'function') {
-      return reportsModule.filterReportsByType(reports, filter);
-    }
-    if (!Array.isArray(reports)) return [];
-    if (!filter || filter === 'all') return reports;
-    return reports.filter((report) => (report.subtype || report.payload?.subtype) === filter);
-  };
-
-  const getFilterEmptyLabel = (filter) => {
-    const reportsModule = getReportsModule();
-    if (typeof reportsModule.getFilterEmptyLabel === 'function') {
-      return reportsModule.getFilterEmptyLabel(filter);
-    }
-    if (filter === 'monthly_report') return 'Keine Monatsberichte vorhanden.';
-    if (filter === 'range_report') return 'Keine Arzt-Berichte vorhanden.';
-    return 'Noch keine Berichte vorhanden.';
-  };
-
-
-  async function renderDoctorInboxOverlay({ from, to } = {}) {
-    if (!showDoctorInboxPanel()) {
-      toast('Inbox ist derzeit nicht verfügbar.');
-      return;
-    }
-    inboxPanelState.range = { from: from || '', to: to || '' };
-    const doc = global.document;
-    const list = doc?.getElementById('doctorInboxList');
-    const rangeEl = doc?.getElementById('doctorInboxRange');
-    const countEl = doc?.getElementById('doctorInboxCount');
-    if (!list) return;
-    const reportsModule = getReportsModule();
-    const reportDeps = {
-      toast,
-      uiError,
-      logError: logDoctorError,
-      refreshAfter: refreshDoctorAfterMonthlyReport
-    };
-    if (!list.dataset.reportActionsBound) {
-      list.addEventListener('click', (event) => {
-        if (typeof reportsModule.handleReportCardAction !== 'function') return;
-        reportsModule.handleReportCardAction(event, reportDeps);
-      });
-      list.dataset.reportActionsBound = '1';
-    }
-    const newReportBtn = doc?.getElementById('doctorInboxNewReportBtn');
-    if (newReportBtn && !newReportBtn.dataset.boundNewReport) {
-      newReportBtn.dataset.boundNewReport = '1';
-      newReportBtn.addEventListener('click', async () => {
-        newReportBtn.disabled = true;
-        try {
-          if (typeof reportsModule.generateMonthlyReport !== 'function') {
-            throw new Error('monthly report generator missing');
-          }
-          await reportsModule.generateMonthlyReport({ report_type: 'monthly_report' }, reportDeps);
-        } catch (err) {
-          logDoctorError('new monthly report button failed', err);
-          uiError?.('Neuer Monatsbericht fehlgeschlagen.');
-        } finally {
-          newReportBtn.disabled = false;
-        }
-      });
-    }
-
-    const newRangeReportBtn = doc?.getElementById('doctorInboxNewRangeReportBtn');
-    if (newRangeReportBtn && !newRangeReportBtn.dataset.boundRangeReport) {
-      newRangeReportBtn.dataset.boundRangeReport = '1';
-      newRangeReportBtn.addEventListener('click', async () => {
-        const range = inboxPanelState.range || {};
-        const opts =
-          range.from && range.to
-            ? { from: range.from, to: range.to }
-            : {};
-        newRangeReportBtn.disabled = true;
-        try {
-          if (typeof reportsModule.generateMonthlyReport !== 'function') {
-            throw new Error('monthly report generator missing');
-          }
-          await reportsModule.generateMonthlyReport({ ...opts, report_type: 'range_report' }, reportDeps);
-        } catch (err) {
-          logDoctorError('new range report button failed', err);
-          uiError?.('Neuer Arzt-Bericht fehlgeschlagen.');
-        } finally {
-          newRangeReportBtn.disabled = false;
-        }
-      });
-    }
-    const clearInboxBtn = doc?.getElementById('doctorInboxClearBtn');
-    if (clearInboxBtn && !clearInboxBtn.dataset.boundClearInbox) {
-      clearInboxBtn.dataset.boundClearInbox = '1';
-      clearInboxBtn.addEventListener('click', async () => {
-        if (typeof reportsModule.clearReportInbox !== 'function') {
-          toast('Inbox kann derzeit nicht geloescht werden.');
-          return;
-        }
-        clearInboxBtn.disabled = true;
-        try {
-          await reportsModule.clearReportInbox({
-            subtypes: ['monthly_report', 'range_report'],
-            ...reportDeps
-          });
-        } catch (err) {
-          logDoctorError('inbox clear failed', err);
-          uiError?.('Inbox konnte nicht geloescht werden.');
-        } finally {
-          clearInboxBtn.disabled = false;
-        }
-      });
-    }
-    if (rangeEl) {
-
-      const fromLabel = from || '-';
-      const toLabel = to || '-';
-      rangeEl.textContent = `Zeitraum: ${fromLabel} bis ${toLabel}`;
-    }
-    const filterButtons = Array.from(
-      doc?.querySelectorAll('[data-report-filter]') || []
-    );
-    const applyFilterState = (filter, reports, { error } = {}) => {
-      inboxPanelState.filter = filter || 'all';
-      filterButtons.forEach((btn) => {
-        const key = btn.getAttribute('data-report-filter');
-        const isActive = key === inboxPanelState.filter;
-        btn.classList.toggle('is-active', isActive);
-        btn.setAttribute('aria-selected', String(isActive));
-      });
-      const filtered = filterReportsByType(reports, inboxPanelState.filter);
-      renderMonthlyReportsSection(list, filtered, fmtDateDE, {
-        error,
-        emptyLabel: getFilterEmptyLabel(inboxPanelState.filter)
-      });
-      if (countEl) {
-        const countText = `${filtered.length} Bericht${filtered.length === 1 ? '' : 'e'}`;
-        countEl.textContent = countText;
-      }
-    };
-    if (!list.dataset.reportFilterBound) {
-      list.dataset.reportFilterBound = '1';
-      filterButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const key = btn.getAttribute('data-report-filter') || 'all';
-          applyFilterState(key, inboxPanelState.reports || []);
-        });
-      });
-    }
-
-    list.innerHTML = `<div class="small u-doctor-placeholder">Berichte werden geladen ...</div>`;
-    if (countEl) countEl.textContent = '';
-    try {
-      const reportsModule = getReportsModule();
-      const reports = typeof reportsModule.loadMonthlyReports === 'function'
-        ? await reportsModule.loadMonthlyReports(from, to)
-        : [];
-      inboxPanelState.reports = reports;
-      applyFilterState(inboxPanelState.filter || 'all', reports, {});
-    } catch (err) {
-      logDoctorError('monthly reports fetch failed', err);
-      applyFilterState(inboxPanelState.filter || 'all', [], { error: err });
-      if (countEl) countEl.textContent = 'Fehler beim Laden';
-    }
-  }
-
-
-  async function refreshDoctorAfterMonthlyReport(range = {}) {
-    const defaultRange =
-      inboxPanelState.range && (inboxPanelState.range.from || inboxPanelState.range.to)
-        ? inboxPanelState.range
-        : null;
-    if (typeof global.requestUiRefresh === 'function') {
-      try {
-        await global.requestUiRefresh({ reason: 'doctor:monthly-report', doctor: true });
-      } catch (err) {
-        logDoctorError('ui refresh after monthly report failed', err);
-      }
-    }
-    if (isDoctorInboxPanelOpen()) {
-      try {
-        const effectiveRange = defaultRange || range || {};
-        await renderDoctorInboxOverlay({
-          from: effectiveRange.from || '',
-          to: effectiveRange.to || ''
-        });
-      } catch (err) {
-        logDoctorError('monthly report inbox refresh failed', err);
-      }
-    }
-  }
-
-
   appModules.doctor = appModules.doctor || {};
   Object.assign(appModules.doctor, doctorApi);
 })(typeof window !== 'undefined' ? window : globalThis);

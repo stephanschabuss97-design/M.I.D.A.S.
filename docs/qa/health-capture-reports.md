@@ -19,6 +19,13 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Reine RLS-, RPC- oder Plattformverträge gehören `BS-`.
 - Produktarchitektur bleibt in den zuständigen Module Overviews.
 
+## Stillgelegte IDs
+
+- `HCR-008`: ehemaliger Monthly-Idempotenzvertrag; Monthly Reports entfernt.
+- `HCR-011`: ehemaliger Report-Inbox-Lifecycle; Inbox und Archiv entfernt.
+
+Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
+
 ## Testfälle
 
 ### HCR-001 - Activity erfassen und aggregieren
@@ -123,20 +130,6 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Daten des gewählten Zeitraums in der vorgesehenen Struktur.
 - Invalidiert durch: Doctor-Unlock, Range-Queries oder Doctor-View-Darstellung.
 
-### HCR-008 - Monatsbericht ist idempotent
-
-- Vertrag: [Reports Module Overview](<../modules/Reports Module Overview.md>)
-- Ebene: remote
-- Ausführung: manual
-- Wirkung: productive
-- Voraussetzung: Owner-Freigabe, gültige Session und ein Berichtsmonat sind
-  vorhanden.
-- Aktion: Den Monatsbericht für denselben Monat zweimal erzeugen.
-- Erwartung: Der bestehende Monatsbericht wird nachvollziehbar aktualisiert;
-  es entsteht kein zweiter logischer Bericht für denselben Monat.
-- Invalidiert durch: Monthly-Report-Edge-Function, Upsert-Key oder Report-Schema.
-- Runbook: [Edge Function Deploy Smoke](runbooks/edge-function-deploy-smoke.md)
-
 ### HCR-009 - Range-Bericht validiert Eingaben atomar
 
 - Vertrag: [Reports Module Overview](<../modules/Reports Module Overview.md>)
@@ -165,20 +158,6 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   noch `health_events`-Write.
 - Invalidiert durch: Medication-Reader, Report-Aufbau oder atomaren Write-Vertrag.
 - Cleanup: Isolierte Testdatenbank beziehungsweise Mocks verwerfen.
-
-### HCR-011 - Report Inbox Lifecycle
-
-- Vertrag: [Reports Module Overview](<../modules/Reports Module Overview.md>)
-- Ebene: browser
-- Ausführung: manual
-- Wirkung: disposable
-- Voraussetzung: Kontrollierte Monats- und Range-Berichte liegen in der Inbox.
-- Aktion: Filtern, Anker öffnen, Erzeugungszeit prüfen, einen Bericht neu
-  erzeugen, einzeln löschen und danach den gewählten Subtype leeren.
-- Erwartung: Filter, `ts/day`-Kontext und Zeit-Fallback sind korrekt; Regenerate,
-  Delete und Clear verändern nur die beabsichtigten Berichte.
-- Invalidiert durch: Report-Inbox, Filter, Zeit-Fallback, Delete oder Clear.
-- Cleanup: Alle für den Test erzeugten Berichte löschen.
 
 ### HCR-012 - Profilzustände und Consumer-Refresh
 
@@ -224,3 +203,37 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   auf und kehrt in denselben BP-Kontext zurück.
 - Invalidiert durch: Atemtimer-State, Zeitquelle, Abbruchfenster, BP-Guards oder
   Animation.
+
+### HCR-015 - Arzt-Bericht bleibt ein atomarer Singleton
+
+- Vertrag: [Reports Module Overview](<../modules/Reports Module Overview.md>)
+- Ebene: remote
+- Ausführung: manual
+- Wirkung: productive
+- Voraussetzung: Owner-Freigabe, gültige Session und ein gesicherter aktueller
+  Bericht oder ein verifizierter Zero-State liegen vor.
+- Aktion: Einen gültigen Zeitraum bis maximal 400 inklusive Tage erzeugen und
+  danach denselben Bericht mit einem anderen gültigen Zeitraum ersetzen.
+- Erwartung: Es existiert höchstens ein `range_report`; ID und `created_at`
+  bleiben beim Replacement stabil, Inhalt und `generated_at` werden erneuert.
+  Ein Build-, Read- oder Updatefehler bewahrt den vorherigen gültigen Bericht.
+- Invalidiert durch: Request-Vertrag, Report-Lifecycle, partiellen
+  Singleton-Index, Edge-Deploy oder Report-Schema.
+- Runbook: [Edge Function Deploy Smoke](runbooks/edge-function-deploy-smoke.md)
+
+### HCR-016 - Doctor View ist report-first und lädt Details sekundär
+
+- Vertrag: [Doctor View Module Overview](<../modules/Doctor View Module Overview.md>)
+- Ebene: browser
+- Ausführung: manual
+- Wirkung: read-only
+- Voraussetzung: Doctor-Unlock ist verfügbar; einmal ein aktueller Bericht und
+  einmal ein verifizierter Zero-State können dargestellt werden.
+- Aktion: Doctor View öffnen, Current-/Zero-State prüfen, Einzelwerte und
+  Verlauf nacheinander öffnen und einen Health Export V2 erzeugen.
+- Erwartung: Der aktuelle Bericht oder der ruhige Zero-State erscheint zuerst.
+  Einzelwerte und Verlauf laden erst nach explizitem Öffnen; das Chart behält
+  seinen Zeitraum-Snapshot. Der Export ist ein atomarer
+  `midas.health-export.v2` ohne Owner-ID oder erfundene Messzeitpunkte.
+- Invalidiert durch: Doctor-Unlock, Current-Read, Lazy-State, Chart-Range,
+  Exportvertrag, responsive Doctor-CSS oder Fokusführung.

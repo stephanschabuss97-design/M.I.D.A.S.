@@ -35,6 +35,8 @@ const defaultTextBySeverity = {
 };
 
 const ALLOWED_DOCTOR_STATUS = new Set(['none', 'planned', 'done']);
+const isRecord = (value) =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 const resolveRestEndpoint = async () => {
   const restUrl = await getConf('webhookUrl');
@@ -91,24 +93,50 @@ const buildPayload = ({ severity, metric, context = {}, text, existing }) => {
 };
 
 const normalizeSystemCommentRow = (row = {}, fallbackMetric = 'bp') => {
-  const payload = row.payload || {};
-  const ctx = payload.context || {};
+  const payload = isRecord(row.payload) ? row.payload : {};
+  const context = isRecord(payload.context) ? payload.context : {};
+  const meta = isRecord(payload.meta) ? payload.meta : {};
+  const period = isRecord(payload.period) ? payload.period : null;
+  const bpSeries = Array.isArray(payload.bp_series) ? payload.bp_series : [];
+  const bodySeries = Array.isArray(payload.body_series) ? payload.body_series : [];
+  const labSeries = Array.isArray(payload.lab_series) ? payload.lab_series : [];
+  const activitySeries = Array.isArray(payload.activity_series)
+    ? payload.activity_series
+    : [];
+  const normalizedPayload = {
+    ...payload,
+    context,
+    meta,
+    period,
+    bp_series: bpSeries,
+    body_series: bodySeries,
+    lab_series: labSeries,
+    activity_series: activitySeries
+  };
   return {
     id: row.id ?? null,
     day: row.day || null,
     ts: row.ts ?? null,
-    ack: Boolean(ctx.ack),
-    doctorStatus: ctx.doctorStatus || 'none',
+    ack: Boolean(context.ack),
+    doctorStatus: context.doctorStatus || 'none',
     metric: payload.metric || fallbackMetric,
     severity: payload.severity || 'info',
     text: payload.text || '',
     summary: payload.summary || '',
     reportMonth: payload.month || null,
+    reportMonthLabel: payload.month_label || null,
     reportCreatedAt: payload.created_at || payload.generated_at || row.ts || null,
+    reportGeneratedAt: payload.generated_at || payload.created_at || row.ts || null,
     subtype: payload.subtype || null,
-    period: payload.period || null,
+    period,
     reportType: payload.report_type || payload.subtype || null,
-    context: ctx
+    context,
+    meta,
+    bpSeries,
+    bodySeries,
+    labSeries,
+    activitySeries,
+    payload: normalizedPayload
   };
 };
 
@@ -169,6 +197,7 @@ export async function fetchSystemCommentsBySubtype({
   to,
   subtype,
   limit,
+  offset,
   order = 'day.asc'
 } = {}) {
   if (!subtype) throw new Error('system-comment subtype fetch: subtype required');
@@ -186,7 +215,8 @@ export async function fetchSystemCommentsBySubtype({
     select: 'id,day,ts,payload',
     filters,
     order,
-    ...(limit ? { limit: Number(limit) } : {})
+    ...(limit ? { limit: Number(limit) } : {}),
+    ...(offset !== null && offset !== undefined ? { offset } : {})
   });
   if (!Array.isArray(rows)) return [];
   return rows.map((row) => normalizeSystemCommentRow(row));
@@ -287,31 +317,6 @@ export async function deleteSystemComment({ id }) {
     throw new Error(`system-comment delete failed ${res.status} ${msg}`);
   }
   return { id, mode: 'delete' };
-}
-
-export async function deleteSystemCommentsBySubtypes({ subtypes } = {}) {
-  const list = Array.isArray(subtypes)
-    ? subtypes.map((value) => String(value).trim()).filter(Boolean)
-    : [];
-  if (!list.length) throw new Error('system-comment bulk delete: subtypes required');
-  const userId = await getUserId();
-  if (!userId) throw new Error('system-comment bulk delete: user not available');
-  const endpoint = await resolveRestEndpoint();
-  const subtypeFilter = `payload->>subtype=in.(${list.join(',')})`;
-  const url = `${endpoint}?user_id=eq.${encodeURIComponent(userId)}&type=eq.system_comment&${subtypeFilter}`;
-  const res = await fetchWithAuth(
-    (headers) =>
-      fetch(url, {
-        method: 'DELETE',
-        headers: { ...headers, Prefer: 'return=minimal' }
-      }),
-    { tag: 'systemComment:bulk-delete', maxAttempts: 1 }
-  );
-  if (!res.ok) {
-    const msg = await safeErrorMessage(res);
-    throw new Error(`system-comment bulk delete failed ${res.status} ${msg}`);
-  }
-  return { mode: 'bulk-delete', subtypes: list };
 }
 
 const safeErrorMessage = async (res) => {

@@ -197,11 +197,22 @@
     </div>
     <button id="installBtn" type="button" class="btn ghost">Installieren</button>
   </div>
-  <!-- Diagramm-Panel (Daily) -->
-  <div id="chart" class="panel chart" role="dialog" aria-modal="false" aria-labelledby="chartTitle">
+  <!-- Verlauf-Panel -->
+  <div
+    id="chart"
+    class="panel chart"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="chartTitle"
+    hidden
+    aria-hidden="true"
+    inert
+  >
     <header>
-      <h4 id="chartTitle">Diagramm (Daily)</h4>
-      <button class="btn ghost" id="chartClose" type="button">x</button>
+      <h4 id="chartTitle">Verlauf</h4>
+      <button class="btn ghost" id="chartClose" type="button" aria-label="Verlauf schließen">
+        &times;
+      </button>
     </header>
     <div class="content">
       <div class="controls">
@@ -227,57 +238,7 @@
       </div>
       <svg id="chartSvg" viewBox="0 0 640 280" preserveAspectRatio="none" role="img" aria-label="Werteverlauf"></svg>
       <div class="legend" id="chartLegend"></div>
-      <div class="small u-opacity70-mt6">Zeitraum: nutzt die <em>Arzt-Ansicht</em> (von/bis).</div>
-    </div>
-  </div>
-  <!-- Doctor Inbox Overlay -->
-  <div
-    id="doctorInboxPanel"
-    class="panel doctor-inbox-panel"
-    role="dialog"
-    aria-modal="false"
-    aria-labelledby="doctorInboxTitle"
-    hidden
-    aria-hidden="true"
-    inert
-  >
-    <header>
-      <h4 id="doctorInboxTitle">Monatsberichte (Inbox)</h4>
-      <button
-        class="btn ghost"
-        id="doctorInboxClose"
-        type="button"
-        aria-label="Fenster schliessen"
-      >
-        &times;
-      </button>
-    </header>
-    <div class="content">
-      <section class="card doctor-panel">
-        <header class="doctor-inbox-header small u-mb-4">
-          <div id="doctorInboxRange">Zeitraum: -</div>
-          <div class="doctor-inbox-actions">
-            <div class="muted" id="doctorInboxCount"></div>
-            <button class="btn ghost" type="button" id="doctorInboxNewReportBtn">
-              Neuen Monatsbericht
-            </button>
-            <button class="btn ghost" type="button" id="doctorInboxNewRangeReportBtn">
-              Neuen Arzt-Bericht
-            </button>
-            <button class="btn ghost" type="button" id="doctorInboxClearBtn">
-              Inbox löschen
-            </button>
-          </div>
-        </header>
-        <div class="doctor-inbox-filters tabs" role="tablist" aria-label="Report Filter">
-          <button class="btn ghost is-active" type="button" data-report-filter="all" aria-selected="true">Alle</button>
-          <button class="btn ghost" type="button" data-report-filter="monthly_report" aria-selected="false">Monatsberichte</button>
-          <button class="btn ghost" type="button" data-report-filter="range_report" aria-selected="false">Arzt-Berichte</button>
-        </div>
-        <div class="doctor-inbox" id="doctorInboxList">
-          <div class="small u-doctor-placeholder">Monatsberichte werden geladen ...</div>
-        </div>
-      </section>
+      <div class="small u-opacity70-mt6" id="chartRangeLabel">Zeitraum nicht verfügbar</div>
     </div>
   </div>
   <div id="err" role="status" aria-live="polite"></div>
@@ -1274,45 +1235,131 @@
           </button>
         </header>
         <div class="hub-panel-body" id="hubDoctorContent">
-          <section class="card doctor-panel" id="doctor" aria-labelledby="doctorHeading">
+          <section class="doctor-panel" id="doctor" aria-labelledby="doctorHeading">
             <h2 class="sr-only" id="doctorHeading">Arzt-Ansicht</h2>
-            <div class="toolbar">
-              <strong id="doctorTitle">Arzt-Ansicht</strong>
-              <div class="center-group">
-                <label class="small">
-                  Von
-                  <input class="u-w-auto" type="date" id="from">
-                </label>
-                <label class="small">
-                  Bis
-                  <input class="u-w-auto" type="date" id="to">
-                </label>
-                <button class="btn ghost" id="applyRange" type="button">Anwenden</button>
-                <button class="btn ghost" id="doctorChartBtn" type="button" title="Werte als Grafik">
-                  Werte anzeigen
-                </button>
-                <button class="btn ghost" id="doctorExportJson" type="button">Export JSON</button>
-                <button class="btn ghost" id="doctorTabInboxBtn" data-doctor-tab="inbox" type="button" role="tab" aria-selected="false" aria-controls="doctorTabInbox">Inbox</button>
+            <div class="doctor-report-shell">
+              <header class="doctor-report-shell-header">
+                <div>
+                  <div class="doctor-report-eyebrow">Arzt-Bericht</div>
+                  <strong id="doctorPrimaryReportTitle">Aktueller Bericht</strong>
+                </div>
+              </header>
+              <div
+                class="doctor-primary-report-status"
+                id="doctorPrimaryReportStatus"
+                role="status"
+                aria-live="polite"
+              >
+                Bericht wird geladen ...
               </div>
+              <div class="doctor-primary-report" id="doctorPrimaryReport"></div>
+              <div class="doctor-report-primary-actions">
+                <button
+                  class="btn primary"
+                  id="doctorNewRangeReportBtn"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="doctorReportCreatePanel"
+                >
+                  Neuer Bericht
+                </button>
+                <button class="btn ghost" id="doctorExportJson" type="button">
+                  Export JSON
+                </button>
+              </div>
+              <div class="doctor-secondary-actions" aria-label="Weitere Arzt-Ansichten">
+                <button
+                  class="btn ghost"
+                  id="doctorDetailsBtn"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="doctorDailyWrap"
+                >
+                  Einzelwerte
+                </button>
+                <button class="btn ghost" id="doctorChartBtn" type="button">
+                  Verlauf
+                </button>
+              </div>
+              <section
+                class="doctor-report-create"
+                id="doctorReportCreatePanel"
+                aria-labelledby="doctorReportCreateTitle"
+                hidden
+              >
+                <form id="doctorReportCreateForm">
+                  <div class="doctor-report-create-head">
+                    <strong id="doctorReportCreateTitle">Neuen Arzt-Bericht erstellen</strong>
+                    <button
+                      class="btn ghost"
+                      id="doctorReportCreateCancel"
+                      type="button"
+                      aria-label="Erstellung schließen"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div class="doctor-report-create-fields">
+                    <label class="small">
+                      Von
+                      <input type="date" id="doctorReportFrom" required>
+                    </label>
+                    <label class="small">
+                      Bis
+                      <input type="date" id="doctorReportTo" required>
+                    </label>
+                  </div>
+                  <div
+                    class="doctor-report-create-error"
+                    id="doctorReportCreateError"
+                    role="alert"
+                    hidden
+                  ></div>
+                  <div class="doctor-report-create-actions">
+                    <button class="btn ghost" id="doctorReportCreateDismiss" type="button">
+                      Abbrechen
+                    </button>
+                    <button class="btn primary" id="doctorReportCreateSubmit" type="submit">
+                      Bericht erstellen
+                    </button>
+                  </div>
+                </form>
+              </section>
             </div>
-            <div class="doctor-trendpilot" id="doctorTrendpilot" aria-live="polite"></div>
-            <div id="doctorDailyWrap">
-              <div class="doctor-tabs tabs" role="tablist" aria-label="Domains">
-                <button class="btn ghost is-active" id="doctorTabBpBtn" data-doctor-tab="bp" role="tab" aria-selected="true" aria-controls="doctorTabBp" type="button">BP</button>
-                <button class="btn ghost" id="doctorTabBodyBtn" data-doctor-tab="body" role="tab" aria-selected="false" aria-controls="doctorTabBody" type="button">Body</button>
-                <button class="btn ghost" id="doctorTabLabBtn" data-doctor-tab="lab" role="tab" aria-selected="false" aria-controls="doctorTabLab" type="button">Lab</button>
-                <button class="btn ghost" id="doctorTabActivityBtn" data-doctor-tab="activity" role="tab" aria-selected="false" aria-controls="doctorTabActivity" type="button">Training</button>
+            <div id="doctorDailyWrap" hidden>
+              <div class="toolbar doctor-detail-toolbar">
+                <strong>Einzelwerte</strong>
+                <div class="center-group">
+                  <label class="small">
+                    Von
+                    <input class="u-w-auto" type="date" id="from">
+                  </label>
+                  <label class="small">
+                    Bis
+                    <input class="u-w-auto" type="date" id="to">
+                  </label>
+                </div>
+              </div>
+              <div
+                class="doctor-live-range-status small"
+                id="doctorLiveRangeStatus"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></div>
+              <div class="doctor-trendpilot" id="doctorTrendpilot" aria-live="polite"></div>
+              <div class="doctor-tabs tabs" role="tablist" aria-label="Datenbereiche">
+                <button class="btn ghost is-active" id="doctorTabBpBtn" data-doctor-tab="bp" role="tab" aria-selected="true" aria-controls="doctorTabBp" tabindex="0" type="button">Blutdruck</button>
+                <button class="btn ghost" id="doctorTabBodyBtn" data-doctor-tab="body" role="tab" aria-selected="false" aria-controls="doctorTabBody" tabindex="-1" type="button">Körper</button>
+                <button class="btn ghost" id="doctorTabLabBtn" data-doctor-tab="lab" role="tab" aria-selected="false" aria-controls="doctorTabLab" tabindex="-1" type="button">Labor</button>
+                <button class="btn ghost" id="doctorTabActivityBtn" data-doctor-tab="activity" role="tab" aria-selected="false" aria-controls="doctorTabActivity" tabindex="-1" type="button">Training</button>
               </div>
               <div class="doctor-view" id="doctorView">
                 <div class="doctor-tab-panel is-active" id="doctorTabBp" data-doctor-panel="bp" role="tabpanel" aria-labelledby="doctorTabBpBtn"></div>
                 <div class="doctor-tab-panel" id="doctorTabBody" data-doctor-panel="body" role="tabpanel" aria-labelledby="doctorTabBodyBtn" hidden></div>
                 <div class="doctor-tab-panel" id="doctorTabLab" data-doctor-panel="lab" role="tabpanel" aria-labelledby="doctorTabLabBtn" hidden></div>
                 <div class="doctor-tab-panel" id="doctorTabActivity" data-doctor-panel="activity" role="tabpanel" aria-labelledby="doctorTabActivityBtn" hidden></div>
-                <div class="doctor-tab-panel" id="doctorTabInbox" data-doctor-panel="inbox" role="tabpanel" aria-labelledby="doctorTabInboxBtn" hidden></div>
               </div>
-            </div>
-            <div class="small u-mt-6">
-              Tipp: "Werte anzeigen" öffnet die passende Grafik zum aktuellen Tab (Daily).
             </div>
           </section>
         </div>

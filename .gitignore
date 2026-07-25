@@ -43,3 +43,14 @@ backend/**/*.key
 twa/android.keystore
 twa/keystore.properties
 twa/keystore.properties.example
+
+# MIDAS recovery artifacts (always outside the repo)
+MIDAS-Recovery_*.7z
+MIDAS-Recovery_*.7z.sha256
+**/.staging/
+**/database/roles.sql
+**/database/schema.sql
+**/database/data.sql
+**/recovery-manifest.json
+**/recovery-config-inventory.md
+**/files.sha256

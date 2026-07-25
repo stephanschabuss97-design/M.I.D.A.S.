@@ -13,6 +13,19 @@ const diag =
     globalWindow?.AppModules?.diag ||
     globalWindow?.AppModules?.diagnostics ||
     { add() {} });
+const MAX_PUBLIC_ERROR_LENGTH = 200;
+
+const readPublicErrorMessage = (raw) => {
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.error === 'string'
+      ? parsed.error.slice(0, MAX_PUBLIC_ERROR_LENGTH)
+      : '';
+  } catch (_) {
+    return '';
+  }
+};
 
 const getConf = (...args) => {
   const fn = globalWindow?.getConf;
@@ -38,13 +51,12 @@ const resolveFunctionsEndpoint = async (functionName) => {
   return `${base}/functions/v1/${safeName}`;
 };
 
-export async function generateMonthlyReportRemote({ from, to, month, report_type } = {}) {
+export async function generateDoctorReportRemote({ from, to } = {}) {
   const endpoint = await resolveFunctionsEndpoint('midas-monthly-report');
   const body = {
-    from: from || null,
-    to: to || null,
-    month: month || null,
-    report_type: report_type || null
+    from,
+    to,
+    report_type: 'range_report'
   };
   const res = await fetchWithAuth(
     (headers) =>
@@ -53,14 +65,23 @@ export async function generateMonthlyReportRemote({ from, to, month, report_type
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       }),
-    { tag: 'monthlyReport:generate', maxAttempts: 1 }
+    { tag: 'doctorReport:generate', maxAttempts: 1 }
   );
   if (!res.ok) {
-    const msg = await res.text().catch(() => '');
-    diag.add?.(`[reports] monthly report failed ${res.status} ${msg || ''}`);
-    throw new Error(msg || `monthly report failed (${res.status})`);
+    const raw = await res.text().catch(() => '');
+    const publicMessage = res.status < 500
+      ? readPublicErrorMessage(raw)
+      : '';
+    diag.add?.(
+      `[reports] doctor report failed ${res.status}`
+        + (publicMessage ? ` ${publicMessage}` : '')
+    );
+    throw new Error(
+      `doctor report failed (${res.status})`
+        + (publicMessage ? `: ${publicMessage}` : '')
+    );
   }
   const data = await res.json().catch(() => ({}));
-  diag.add?.('[reports] monthly report generated');
+  diag.add?.('[reports] doctor report generated');
   return data;
 }

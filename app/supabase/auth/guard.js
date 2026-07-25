@@ -599,8 +599,25 @@ export async function resumeAfterUnlock(intent) {
   __pendingAfterUnlock = null;
   if (target === 'chart') {
     await globalWindow?.setTab?.('doctor');
-    globalWindow?.chartPanel?.show?.();
-    await globalWindow?.requestUiRefresh?.({ reason: 'unlock:chart', chart: true });
+    await globalWindow?.requestUiRefresh?.({
+      reason: 'unlock:chart-context',
+      doctor: true,
+      chart: false
+    });
+    const activeRange =
+      globalWindow?.AppModules?.doctor?.getActiveConsumerRange?.() || null;
+    if (!activeRange) {
+      globalWindow?.uiError?.(
+        'Für den Verlauf ist kein gültiger Zeitraum verfügbar.'
+      );
+      return;
+    }
+    globalWindow?.chartPanel?.show?.({ range: activeRange, metric: 'bp' });
+    await globalWindow?.requestUiRefresh?.({
+      reason: 'unlock:chart',
+      doctor: false,
+      chart: true
+    });
     return;
   }
   if (target === 'export') {

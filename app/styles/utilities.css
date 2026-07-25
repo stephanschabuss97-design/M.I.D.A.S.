@@ -111,9 +111,7 @@
 .assistant-pill .label,
 .assistant-context-item .label,
 .hub-core-trigger.is-voice-locked::after,
-.doctor-report-tag,
-.doctor-report-summary span.report-flag,
-.doctor-report-group-label{
+.doctor-report-summary span.report-flag{
   text-transform:uppercase;
   letter-spacing:0.08em;
   font-weight:600;
@@ -121,8 +119,7 @@
 .u-label-tight,
 .medication-card-grid .medication-card-status,
 .assistant-pill .label,
-.assistant-context-item .label,
-.doctor-report-group-label{
+.assistant-context-item .label{
   letter-spacing:0.06em;
 }
 .u-w100-h48{width:100%;height:48px;}

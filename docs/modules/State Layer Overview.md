@@ -78,7 +78,10 @@ Related docs:
 ## 6. Arzt-Ansicht / Read-Only Views
 
 - `__doctorScrollSnapshot` sichert die Position im Doctor-Panel.
-- Report-Inbox nutzt lokalen Zustand (Filter/Range) in `doctor/index.js`.
+- Doctor View hält den aktuellen Bericht, seinen Zero-State und den
+  sekundären Detailzeitraum lokal in `doctor/index.js`.
+- Das geöffnete Chart übernimmt einen unveränderlichen Zeitraum-Snapshot und
+  verwirft ihn beim Schließen.
 
 ---
 

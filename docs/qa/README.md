@@ -33,6 +33,7 @@ Verfügbare operative Runbooks:
 - [Edge Function Deploy Smoke](runbooks/edge-function-deploy-smoke.md)
 - [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
 - [Android Device Smoke](runbooks/android-device-smoke.md)
+- [MIDAS Minimal Recovery](runbooks/midas-minimal-recovery.md)
 
 ## Artefaktrollen
 

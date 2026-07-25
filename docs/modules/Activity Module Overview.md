@@ -26,7 +26,7 @@ Related docs:
 | `assets/js/main.js` | UI-Handler, Validierung, Save/Reset-Flow |
 | `index.html` | Training-Tab + Form im Vitals-Panel |
 | `app/styles/hub.css` | Training-Panel Layout |
-| `app/modules/doctor-stack/doctor/index.js` | Arztansicht: Training-Tab + Reports Inbox |
+| `app/modules/doctor-stack/doctor/index.js` | Arztansicht: Training-Tab als sekundärer Drilldown |
 | `app/styles/doctor.css` | Training-Tab Layout in Arztansicht |
 | `sql/13_Activity_Event.sql` | Typ-Constraint, View, RPCs |
 | `docs/Training module spec.md` | Spezifikation & Roadmap |
@@ -84,7 +84,7 @@ Related docs:
 - Training-Tab in der Arztansicht neben BP/Body/Lab.
 - Spaltenlayout analog Body (Datum + Delete links, Werte rechts).
 - Anzeige: Aktivitaet, Dauer (Min), Notiz.
-- Berichte: Activity-Aggregation in Monatsbericht und Arzt-Bericht.
+- Berichte: Activity-Aggregation im aktuellen Range-Arztbericht.
 
 ---
 
@@ -150,7 +150,7 @@ Related docs:
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
-- Dependencies (soft): Report-Inbox/Edge-Function fuer Aggregation.
+- Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
 - Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
