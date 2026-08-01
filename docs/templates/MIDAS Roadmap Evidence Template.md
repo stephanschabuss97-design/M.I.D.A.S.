@@ -12,6 +12,10 @@ Sie wird nur gelesen:
 - bei einem Finding, das einen Nachweis infrage stellt,
 - im finalen S5-/S6-Review.
 
+Eng gekoppelte Roadmaps mit denselben produktiven Gates, Runtime-Versionen
+oder Postconditions verwenden dieselbe Evidence-Datei. Die Evidence nennt alle
+zugehörigen Roadmaps, dupliziert aber keine bereits belegten Nachweise.
+
 Keine Secrets, Tokens, vollständigen sensiblen Payloads oder unnötigen
 Terminal-Rohdaten eintragen.
 
@@ -25,7 +29,7 @@ Terminal-Rohdaten eintragen.
 
 | Feld | Wert |
 | --- | --- |
-| Zugehörige Roadmap | `[Pfad]` |
+| Zugehörige Roadmap(s) | `[Pfad; bei Kopplung mehrere]` |
 | Status | `ACTIVE` / `DONE` |
 | Erstellt am | `[YYYY-MM-DD]` |
 | Letzter Stand | `[YYYY-MM-DD]` |
@@ -70,10 +74,13 @@ Nur die vor dem Eingriff erforderlichen Fakten dokumentieren.
 
 Regeln:
 
-- Lange Ausgaben nicht kopieren; relevante Zeile oder Zähler zusammenfassen.
+- Lange Ausgaben lokal in temporären Logs belassen; nur relevante Fehler,
+  Zähler, Versionen, Hashes und Postconditions zusammenfassen.
 - Bei Fehlern Ursache, Korrektur und Wiederholung unter derselben Evidence-ID
   dokumentieren.
 - Disposable Tests müssen ihre Rückfall- oder Wegwerfgrenze nennen.
+- Bereits gültige Evidence-IDs werden referenziert und nicht für eine zweite
+  Roadmap erneut ausgeführt oder ausgeschrieben.
 
 ## Produktiver Read-only Preflight
 

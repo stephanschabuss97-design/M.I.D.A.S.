@@ -19,25 +19,76 @@ Reasoning-Stufen anschließend risikobasiert je Schritt.
 | Status | `DRAFT` / `ACTIVE` / `DONE` |
 | Modul / Bereich | `[Bereich]` |
 | Owner / Kontext | `[Kontext]` |
+| Chat-Lebenszyklus | `Denkraum -> eigener Ausführungs-Chat` |
 | Erstellt am | `[YYYY-MM-DD]` |
 | Letzter Stand | `[YYYY-MM-DD, kurzer Zustand]` |
 | Aktueller Schritt | `[S1/S2/S3/S4R/S4.x/S5/S6]` |
 | Risikoklasse | `R1` / `R2` / `R3` |
 | Standard-Reviewtiefe | `Delta` / `Consumer` / `Full` |
+| Ausführungsmodell | `GPT-5.6 Sol` |
+| Reasoning-Standard | `Medium / High / Extra High` |
+| Reasoning-Ausnahmen | `[Schritt: Stufe + Begründung / keine]` |
 | Owner-Erklärmodus | `none` / `Briefing` / `Briefing + S6-Recap` |
 | Betroffene Hauptdateien | `[Pfade]` |
 | Deploy relevant | `ja` / `nein` |
 | Produktive Schreibwirkung | `ja` / `nein` |
 | Workflow-Vertrag | `docs/templates/MIDAS Roadmap Workflow Contract.md` |
 | Evidence-Datei | `nicht erforderlich` / `docs/[Titel] Evidence.md` |
+| Gekoppelte Roadmaps | `keine` / `[Pfad und Abhängigkeit]` |
+| Evidence-Owner | `diese Roadmap` / `[gekoppelte Roadmap]` |
 | Archivziel | `docs/archive/[Titel] (DONE).md` |
 
 <!-- markdownlint-enable MD013 -->
 
+## Ausführungs-Chat-Startkarte
+
+Diese Karte macht die Roadmap in einem frischen Chat ohne erneutes Erzählen
+der MIDAS-Projektgeschichte ausführbar. Sie verweist auf Sources of Truth und
+dupliziert sie nicht.
+
+- Auftrag:
+  - `Diese Roadmap deterministisch bis zum freigegebenen Gate abarbeiten.`
+- Modell und Reasoning:
+  - `laut Roadmap-Metadaten`
+- Begründete Reasoning-Ausnahmen:
+  - `laut Roadmap-Metadaten und Statusmatrix`
+- Kontextübergabe aus dem Denkraum:
+  - `PASS: alle verbindlichen Entscheidungen stehen im Decision Log oder in
+    referenzierten Sources of Truth`
+  - oder `BLOCKED: [fehlende Entscheidung]`
+- Verbindliche Lesereihenfolge:
+  1. `Diese Startkarte, Roadmap-Metadaten und Session Resume Card`
+  2. `README.md`
+  3. `docs/DEV_ENVIRONMENT.md`
+  4. `docs/templates/MIDAS Roadmap Workflow Contract.md`
+  5. `Pflichtreferenzen aus dem Abschnitt Referenzen`
+  6. `git status --short und nur der relevante Diff`
+- Startschritt:
+  - `[S1 oder aktueller Resume-Schritt]`
+- Erlaubte Autonomie:
+  - `[lokale Reads/Edits/Tests gemäß Tool Permissions]`
+- Owner-Gates:
+  - `[Deploy / produktives SQL / Device / Workflow / none]`
+- Stop-Bedingungen:
+  - `Quellenwiderspruch, fehlender Produktvertrag, Scope-Ausweitung oder
+    nicht erteilte produktive Freigabe`
+- Halluzinationsschutz:
+  - `Fehlende Fakten nicht ergänzen. Reale Implementierung und Sources of
+    Truth prüfen; Widersprüche als Finding behandeln.`
+- Startprompt:
+
+```text
+Arbeite diese MIDAS-Roadmap gemäß ihrer Ausführungs-Chat-Startkarte ab.
+Lies die festgelegten Quellen in der angegebenen Reihenfolge, prüfe den realen
+Git- und Systemstand und beginne mit dem eingetragenen Startschritt. Erfinde
+keine fehlenden Verträge; dokumentiere Widersprüche als Finding und beachte
+alle Owner-Gates.
+```
+
 ## Session Resume Card
 
 Beim Fortsetzen zuerst lesen. Unter ungefähr 35 Zeilen halten und nach jedem
-Hauptschritt, S4-Substep sowie vor Pausen ersetzen.
+Hauptschritt, S4-Ausführungsblock sowie vor Pausen ersetzen.
 
 - Ziel:
   - `[ein Satz]`
@@ -119,6 +170,21 @@ Roadmap-spezifische Guardrails:
 
 - `[Guardrail]`
 - `[Guardrail]`
+
+## Scope-Freeze vor S4
+
+- Bestehende Features:
+  - `[erhalten / entfernen / verändern]`
+- Datenmodell, Lifecycle und Retention:
+  - `[unverändert / exakte Änderung]`
+- Cleanup, Scheduler, Secrets und externe Automationen:
+  - `[nicht betroffen / exakte Änderung]`
+- Kompatible Producer und Consumer:
+  - `[Pfade / Verträge]`
+- Offene Grundsatzfragen:
+  - `none / [blockiert S4]`
+- Umgang mit späterem Scope-Wechsel:
+  - `gezielte S2/S3/S4R-Korrektur / Follow-up-Roadmap`
 
 ## Referenzen
 
@@ -204,7 +270,7 @@ Ergebnis:
 - Offene Fragen:
   - `[IDs oder none]`
 - Doku-Sync:
-  - `jetzt / S6 / nicht erforderlich`
+  - `S6 / jetzt nur bei blockierender Source-of-Truth-Korrektur / nicht erforderlich`
 
 Exit: Betroffene und nicht betroffene Schichten sind eindeutig.
 
@@ -232,7 +298,7 @@ Ergebnis:
 - S4-Pflichtpunkte:
   - `[IDs]`
 - Doku-Sync:
-  - `jetzt / S6 / nicht erforderlich`
+  - `S6 / jetzt nur bei blockierender Source-of-Truth-Korrektur / nicht erforderlich`
 
 Exit: Keine Grundsatzfrage bleibt offen.
 
@@ -260,7 +326,7 @@ Ergebnis:
 - S5-Pflichtchecks:
   - `[T-/EV-IDs]`
 - Doku-Sync:
-  - `jetzt / S6 / nicht erforderlich`
+  - `S6 / jetzt nur bei blockierender Source-of-Truth-Korrektur / nicht erforderlich`
 
 Exit: Risiken sind geschlossen, zugeordnet oder deferred.
 
@@ -282,6 +348,12 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[Finding oder none]`
 - Evidence:
   - `[angelegt / nicht erforderlich]`
+- Scope-Freeze:
+  - `PASS / BLOCKED: [Grund]`
+- Gültig übernommene Nachweise:
+  - `[T-/EV-/QA-IDs; nicht erneut ausführen]`
+- Invalidation Map:
+  - `[Änderung -> erneut nötige Checks]`
 - Owner-Gates:
   - `[Positionen]`
 - Empfohlene S4-Ausführungsblöcke:
@@ -318,7 +390,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 #### Ergebnis S4.x
 
 - Änderung:
-  - `[kurz]`
+  - `[nur Delta, kurz]`
 - Prüfung:
   - `[T-/EV-ID]`
 - Finding/Korrektur:
@@ -326,7 +398,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Restrisiko:
   - `[kurz oder none]`
 - Doku-Sync:
-  - `jetzt / S6 / nicht erforderlich`
+  - `S6 / jetzt nur bei blockierender Source-of-Truth-Korrektur / nicht erforderlich`
 - Status:
   - `DONE / BLOCKED`
 
@@ -352,6 +424,8 @@ Ergebnis:
 
 - Grüne Nachweise:
   - `[T-/EV-IDs]`
+- Wiederverwendete, nicht invalidierte Nachweise:
+  - `[T-/EV-/QA-IDs]`
 - Nicht ausgeführte Smokes:
   - `[mit Grund]`
 - Produktiver Iststand:

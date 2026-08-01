@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./session-shell.css">
+  <title>Activity V2 Session Shell Harness</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      background: #071019;
+      color: #f2f8f9;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .harness-stage {
+      display: grid;
+      min-height: 100vh;
+      place-items: center;
+      padding: 2rem;
+      background:
+        radial-gradient(circle at top, rgba(108, 224, 198, 0.14), transparent 30rem),
+        #071019;
+    }
+
+    .harness-card {
+      width: min(34rem, 100%);
+      padding: 1.5rem;
+      border: 1px solid rgba(173, 202, 218, 0.18);
+      border-radius: 1rem;
+      background: #111f2b;
+    }
+
+    .harness-card button {
+      min-height: 44px;
+      padding: 0.7rem 1rem;
+      border: 1px solid rgba(108, 224, 198, 0.4);
+      border-radius: 0.75rem;
+      color: #061b16;
+      background: #6ce0c6;
+      font: inherit;
+      font-weight: 750;
+    }
+
+    #harness-status {
+      display: block;
+      margin-block: 1rem;
+      color: #9db1bc;
+    }
+  </style>
+</head>
+<body>
+  <main class="harness-stage" id="harness-background">
+    <section class="harness-card" aria-labelledby="harness-title">
+      <p>ISOLIERTER R3-HARNESS</p>
+      <h1 id="harness-title">Activity V2 Session Shell</h1>
+      <p>Diese Seite lädt ausschließlich den lokalen Katalog, Draft und UI-Shell.</p>
+      <output id="harness-status" role="status" aria-live="polite">
+        Initialisierung läuft …
+      </output>
+      <button id="harness-open" type="button">Session öffnen</button>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+    globalThis.AppModules = {
+      activity: { sentinel: 'activity-v1-unchanged' }
+    };
+  </script>
+  <script src="./semantics.js"></script>
+  <script src="./session-draft.js"></script>
+  <script src="./session-shell.js"></script>
+  <script>
+    'use strict';
+
+    (function startActivityV2SessionHarness(root) {
+      const status = document.getElementById('harness-status');
+      const opener = document.getElementById('harness-open');
+
+      try {
+        const semantics = root.AppModules.activityV2.semantics;
+        const draft = root.AppModules.activityV2.sessionDraft.create({ semantics });
+        const shell = root.AppModules.activityV2.sessionShell.mount({
+          host: document.body,
+          draft,
+          semantics
+        });
+        const open = () => shell.open({ opener });
+        opener.addEventListener('click', open);
+
+        Object.defineProperty(root, 'activityV2SessionHarness', {
+          value: Object.freeze({ draft, shell, semantics, opener }),
+          enumerable: true,
+          writable: false,
+          configurable: false
+        });
+        status.textContent = 'Harness bereit.';
+        open();
+      } catch (error) {
+        status.textContent = 'Harness konnte nicht initialisiert werden.';
+        status.dataset.result = 'fail';
+        throw error;
+      }
+    })(globalThis);
+  </script>
+</body>
+</html>

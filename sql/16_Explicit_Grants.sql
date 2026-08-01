@@ -205,4 +205,40 @@ grant execute on function public.activity_list(date, date)
 grant execute on function public.activity_delete(uuid)
   to authenticated, service_role;
 
+-- ---------------------------------------------------------------------------
+-- S4.8 Activity V2 R2 catalog, history, and commit API
+-- ---------------------------------------------------------------------------
+
+revoke all on table public.health_activity_catalog_entries
+  from anon, public, authenticated, service_role;
+revoke all on table public.health_activity_sessions
+  from anon, public, authenticated, service_role;
+revoke all on table public.health_activity_session_items
+  from anon, public, authenticated, service_role;
+revoke all on table public.health_activity_item_sets
+  from anon, public, authenticated, service_role;
+
+grant select
+  on table public.health_activity_catalog_entries
+  to authenticated, service_role;
+grant select
+  on table public.health_activity_sessions
+  to authenticated, service_role;
+grant select
+  on table public.health_activity_session_items
+  to authenticated, service_role;
+grant select
+  on table public.health_activity_item_sets
+  to authenticated, service_role;
+
+revoke all on function public.activity_v2_commit_session(uuid, jsonb)
+  from anon, public, authenticated, service_role;
+revoke all on function public.activity_v2_last_performance(text)
+  from anon, public, authenticated, service_role;
+
+grant execute on function public.activity_v2_commit_session(uuid, jsonb)
+  to authenticated;
+grant execute on function public.activity_v2_last_performance(text)
+  to authenticated;
+
 commit;

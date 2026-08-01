@@ -38,14 +38,77 @@ ihn aber nicht vollständig.
 - S5 und S6 laufen grundsätzlich als Gesamtblock. Owner-Gates, externe Reviews
   und manuelle Smokes dürfen kontrollierte Pausen erzwingen.
 - Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
-- Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen Block
-  aktualisiert.
+- Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen
+  Haupt- oder S4-Ausführungsblock aktualisiert.
+
+## Chat- und Kontextvertrag
+
+- Ein langfristiger MIDAS-Denkraum darf für Vision, Brainstorming,
+  Trade-offs und Roadmap-Erstellung bestehen bleiben.
+- Jede Roadmap wird grundsätzlich in einem eigenen Ausführungs-Chat
+  umgesetzt. Damit bleibt der aktive Kontext auf einen kohärenten Auftrag
+  begrenzt.
+- Der Denkraum ist kein Ausführungsnachweis und keine Source of Truth.
+  Verbindliche Entscheidungen müssen vor Beginn der Umsetzung in Roadmap,
+  Decision Log oder Produktdokumentation stehen.
+- Jede Roadmap enthält eine kompakte Ausführungs-Chat-Startkarte. Sie benennt
+  Referenzreihenfolge, Startschritt, Modell, Reasoning-Standard,
+  Abweichungsknoten, Owner-Gates und Stop-Bedingungen.
+- Der initiale Contract Review enthält einen Fresh-Chat-Test: Ziel,
+  Entscheidungen, Referenzen, Autonomie, Gates und nächster Schritt müssen
+  allein aus Roadmap und verlinkten Sources of Truth eindeutig hervorgehen.
+  Eine notwendige Information, die nur im Denkraum steht, ist ein
+  Contract-Finding.
+- Ein frischer Ausführungs-Chat liest die angegebenen Quellen selbst. Der
+  Owner muss weder die Projektgeschichte neu erzählen noch lange Dokumente in
+  den Startprompt kopieren.
+- Fehlt ein notwendiger Vertrag oder widersprechen sich Quellen, wird nicht
+  geraten. Der Widerspruch wird als Finding dokumentiert und bei
+  sicherheits-, daten- oder produktrelevanter Wirkung blockiert.
+- Eine neue Follow-up-Roadmap erhält einen neuen Ausführungs-Chat. Kleine,
+  vertragstreue Korrekturen innerhalb derselben Roadmap bleiben im bestehenden
+  Ausführungs-Chat.
+- Lange Chatverläufe, vollständige Logs und unnötige Toolausgaben werden
+  vermieden. Entscheidungen, relevante Fehler und Postconditions bleiben
+  erhalten; Rauschen wird lokal abgelegt oder kompakt zusammengefasst.
+- Nur für den aktuellen Schritt benötigte MCP-Server, Plugins und externe
+  Quellen werden aktiv verwendet.
+
+Prompt Caching kann den Verbrauch beeinflussen, ist aber kein garantierter
+MIDAS-Vertrag. Weder die Korrektheit der Umsetzung noch die Wahl notwendiger
+Reasoning-Stufen darf von vermuteten Cache-Laufzeiten oder Cache Hits abhängen.
+
+## Scope-Freeze und spätere Grundsatzänderungen
+
+Vor dem grünen S4 Readiness Review sind ausdrücklich festzulegen:
+
+- welche bestehenden Features erhalten oder entfernt werden,
+- ob Datenmodell, Lifecycle oder Retention verändert werden,
+- ob Cleanup, Scheduler, Secrets oder externe Automationen betroffen sind,
+- welche Producer und Consumer kompatibel bleiben müssen.
+
+Eine offene Grundsatzfrage blockiert S4. Ändert sich der Produktvertrag nach
+S4R dennoch:
+
+1. Umsetzung an der betroffenen Grenze pausieren.
+2. Änderung als kleine Scope-Korrektur oder eigenständigen,
+   supersedierenden Scope klassifizieren.
+3. Bei kleiner Korrektur nur betroffene Teile von S2, S3 und S4R aktualisieren.
+4. Bei eigenständigem R3-Scope eine Follow-up-Roadmap erstellen und die
+   Abhängigkeit zur pausierten Roadmap festhalten.
+5. Gekoppelte Roadmaps verwenden eine gemeinsame Evidence, sofern dieselben
+   produktiven Gates, Runtime-Versionen oder Postconditions belegt werden.
+
+Keine Roadmap dupliziert Nachweise nur, weil sich der Produktentscheid auf zwei
+Arbeitsverträge verteilt. Die Metadaten benennen genau eine Roadmap als
+Evidence-Owner; gekoppelte Roadmaps referenzieren ihre IDs und ändern die
+Evidence nicht parallel.
 
 ## Session-Rehydration
 
 Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
 
-1. Roadmap-Metadaten und Session Resume Card.
+1. Ausführungs-Chat-Startkarte, Roadmap-Metadaten und Session Resume Card.
 2. Entscheidungslog und Findings.
 3. Nur der aktuelle Schritt samt Exit-Kriterium.
 4. `git status --short` und der relevante Diff.
@@ -57,6 +120,11 @@ Ein breiter Re-Read ist nur erforderlich:
 - im S4 Readiness Review, soweit S1-S3 betroffen sind,
 - bei einem Contract-Finding mit unklarer Herkunft.
 
+Vollständige Toolausgaben werden bei Bedarf in temporäre lokale Logs
+geschrieben. In Roadmap, Evidence und Chat gehören nur entscheidungsrelevante
+Fehler, Zähler, Versionen, Hashes und Postconditions. Ein Terminaltranskript ist
+kein zusätzlicher Nachweis.
+
 S6 liest die vertragsrelevanten Roadmap-Abschnitte, Findings, Evidence,
 geänderten Dateien und betroffenen Source-of-Truth-Dokus erneut. Historische
 Ergebnisprotokolle werden nur bei einem Widerspruch vollständig gelesen.
@@ -64,7 +132,8 @@ Ergebnisprotokolle werden nur bei einem Widerspruch vollständig gelesen.
 Der Session-Handoff:
 
 - bleibt unter ungefähr 35 Zeilen,
-- wird nach jedem Hauptschritt, jedem S4-Substep und vor Pausen ersetzt,
+- wird nach jedem Hauptschritt, jedem S4-Ausführungsblock und vor Pausen
+  ersetzt,
 - enthält nur gültigen Iststand, nächste Aktion, Findings, Nachweise und Gates,
 - wird nicht als chronologisches Arbeitsprotokoll verwendet.
 
@@ -78,6 +147,10 @@ Eine separate Datei nach
 - mehreren Deploys oder Remote-Runtime-Gates,
 - Concurrency-, Lock- oder Rollback-Nachweisen,
 - umfangreichen Vorher-/Nachher-Zählern.
+
+Für ein eng gekoppeltes Änderungsprogramm gilt grundsätzlich eine
+Evidence-Datei. Weitere Roadmaps referenzieren deren IDs und ergänzen nur neue,
+nicht bereits belegte Gates.
 
 Die Roadmap enthält dann nur:
 
@@ -152,6 +225,11 @@ Full-Reviews sind verpflichtend:
 - in S5 vor produktiver Wirkung,
 - in S6 als finaler Source-of-Truth-Review.
 
+Ein Full-Review bedeutet vollständige Vertragsabdeckung im betroffenen Scope,
+nicht erneutes Lesen des gesamten Repos und nicht die Wiederholung jedes
+weiterhin gültigen Tests. Frühere Nachweise werden über IDs übernommen, solange
+ihre Invalidation-Bedingung nicht eingetreten ist.
+
 Ein kleiner S4-Substep benötigt keinen Full-Review, wenn er keinen neuen
 Vertrag oder Risikopfad eröffnet.
 
@@ -163,6 +241,10 @@ zugeordnet; die Zusammenlegung spart Handoffs, nicht Nachvollziehbarkeit.
 
 - Standardmodell: `GPT-5.6 Sol`.
 - Roadmap-Erstellung und initialer Contract Review: immer `Extra High`.
+- Bei der Roadmap-Erstellung werden ein Reasoning-Standard für den
+  Ausführungs-Chat und begründete Abweichungsknoten festgelegt.
+- Der Standard bleibt innerhalb eines zusammenhängenden Ausführungsblocks
+  stabil. Kleine Substeps lösen keinen automatischen Reasoning-Wechsel aus.
 - Die nachfolgenden Ausführungsschritte verwenden die niedrigste noch
   belastbare Stufe passend zu Risiko und Arbeitsaufwand.
 - `Low`: rein mechanische, eindeutige Einzeloperation.
@@ -174,6 +256,12 @@ zugeordnet; die Zusammenlegung spart Handoffs, nicht Nachvollziehbarkeit.
   produktiver Cutover oder mehrere gekoppelte Preconditions.
 - `Ultra`: nur begründeter Ausnahme- oder Red-Team-Fall.
 - Es gilt die niedrigste noch belastbare Stufe; Reasoning ersetzt kein Gate.
+- `Extra High` und `Ultra` werden für einen konkreten Entscheidungsknoten
+  begründet und nicht vorsorglich auf lange mechanische Arbeitsblöcke gelegt.
+- Ein begründeter Wechsel bleibt erlaubt, wenn ein Finding, ein produktives
+  Gate oder neue Komplexität ihn erfordert. Cache-Spekulation ist weder Grund,
+  eine notwendige Stufe zu vermeiden, noch eine unnötig hohe Stufe
+  beizubehalten.
 
 ## Test-Invaliderung
 
@@ -183,10 +271,15 @@ Ein grüner Check wird erneut ausgeführt, wenn:
 - ein direkter Producer oder Consumer geändert wurde,
 - ein Finding seinen Vertrag betrifft,
 - ein externer Review eine relevante Korrektur auslöste,
-- oder der finale Gesamtcheck erreicht ist.
+- oder der finale Gesamtcheck seine unveränderte Gültigkeit nicht anderweitig
+  belegen kann.
 
 Unveränderte, weiterhin gültige Nachweise werden über Test- oder Evidence-ID
 referenziert und nicht aus Gewohnheit wiederholt.
+
+Der finale Gesamtcheck wiederholt immer nur universelle günstige Hygienechecks
+wie Syntax, Lint und Diff sowie tatsächlich invalidierte fachliche,
+disposable oder produktive Checks.
 
 ## Owner Briefing und Freigaben
 
@@ -250,17 +343,25 @@ referenzieren nur ihre IDs.
 1. lokale statische Checks.
 2. disposable Tests und Fixtures.
 3. Code-/SQL-/Security-Review.
-4. optionaler externer Review; Findings bewerten, nicht blind übernehmen.
+4. ein geplanter externer Review nach vollständiger lokaler Umsetzung;
+   Findings bewerten, nicht blind übernehmen.
 5. produktiver read-only Preflight.
 6. Owner Briefing und Freigabe je produktivem Gate.
 7. Deploy, SQL und Runtime-Smoke in freigegebener Reihenfolge.
 8. exakte Postconditions.
 9. finaler Review des tatsächlich geänderten Scopes.
 
+Ein zweiter externer Vollreview ist nur nötig, wenn die Korrekturen einen neuen
+Vertrag oder Risikopfad eröffnet haben. Ansonsten werden ausschließlich die
+invalidierten Checks wiederholt.
+
 ## Abschlussvertrag
 
 - S6 synchronisiert Module Overviews, QA und HOW-TO nur mit tatsächlich
   bewiesenen Ergebnissen.
+- Doku-Sync erfolgt gebündelt in S6, außer eine Source-of-Truth-Korrektur ist
+  vor der Umsetzung zwingend nötig. Zwischenstände werden nicht mehrfach in
+  dieselben Dokus übertragen.
 - Ein erforderlicher Owner Recap erklärt das reale Ergebnis ohne
   Syntax-Nacherzählung.
 - Nicht ausgeführte Smokes werden nicht als bestanden markiert.

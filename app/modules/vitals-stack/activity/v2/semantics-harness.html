@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Activity V2 Semantics Contract Harness</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      background: #0e1420;
+      color: #eaf0ff;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+    }
+
+    main {
+      width: min(52rem, 100%);
+      margin: 0 auto;
+    }
+
+    #status {
+      display: block;
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #53627a;
+      border-radius: 0.75rem;
+      background: #192235;
+      font-weight: 700;
+    }
+
+    #status[data-result="pass"] {
+      border-color: #45d38a;
+      color: #8ff0ba;
+    }
+
+    #status[data-result="fail"] {
+      border-color: #ff657a;
+      color: #ff9dab;
+    }
+
+    li {
+      margin-block: 0.45rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Activity V2 Semantics Contract Harness</h1>
+    <output id="status" data-result="pending">Tests laufen …</output>
+    <ol id="results" aria-label="Contract-Testergebnisse"></ol>
+  </main>
+
+  <script>
+    'use strict';
+    globalThis.AppModules = {
+      activity: { sentinel: 'activity-v1-unchanged' }
+    };
+  </script>
+  <script src="./semantics.js"></script>
+  <script>
+    'use strict';
+
+    (function runActivityV2Harness(root) {
+      const results = [];
+
+      function assert(condition, message) {
+        if (!condition) throw new Error(message);
+      }
+
+      function equal(actual, expected, message) {
+        assert(Object.is(actual, expected), message);
+      }
+
+      function deepEqual(actual, expected, message) {
+        assert(
+          JSON.stringify(actual) === JSON.stringify(expected),
+          message
+        );
+      }
+
+      function expectThrow(action, ErrorType, message) {
+        let thrown = null;
+        try {
+          action();
+        } catch (error) {
+          thrown = error;
+        }
+        assert(thrown instanceof ErrorType, message);
+      }
+
+      function check(name, action) {
+        try {
+          action();
+          results.push({ name, pass: true });
+        } catch (error) {
+          results.push({
+            name,
+            pass: false,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      const api = root.AppModules.activityV2.semantics;
+
+      check('klassische Namespace-Ladung und Activity-V1-Isolation', () => {
+        equal(
+          root.AppModules.activity.sentinel,
+          'activity-v1-unchanged',
+          'Activity V1 wurde verändert'
+        );
+        equal(Object.isExtensible(root.AppModules), true, 'AppModules ist gesperrt');
+        equal(
+          Object.isExtensible(root.AppModules.activityV2),
+          true,
+          'activityV2 ist gesperrt'
+        );
+        const descriptor = Object.getOwnPropertyDescriptor(
+          root.AppModules.activityV2,
+          'semantics'
+        );
+        deepEqual(
+          {
+            enumerable: descriptor.enumerable,
+            writable: descriptor.writable,
+            configurable: descriptor.configurable
+          },
+          { enumerable: true, writable: false, configurable: false },
+          'semantics-Propertyvertrag stimmt nicht'
+        );
+      });
+
+      check('öffentliche API und eingebaute Baseline', () => {
+        deepEqual(
+          Object.keys(api),
+          [
+            'getCatalog',
+            'getEntryByKey',
+            'normalizeSearchText',
+            'validateCatalog',
+            'search'
+          ],
+          'API-Oberfläche stimmt nicht'
+        );
+        const catalog = api.getCatalog();
+        equal(catalog.schema_version, 'midas.activity-catalog.v1', 'Schema falsch');
+        equal(catalog.catalog_version, 1, 'Katalogversion falsch');
+        equal(catalog.entries.length, 78, 'Baseline-Zahl falsch');
+        deepEqual(
+          api.validateCatalog(catalog),
+          { valid: true, errors: [] },
+          'Built-in-Katalog ist ungültig'
+        );
+      });
+
+      check('Lookup und neutrale unbekannte Keys', () => {
+        equal(
+          api.getEntryByKey('biceps_curl').key,
+          'biceps_curl',
+          'Lookup liefert falschen Key'
+        );
+        equal(api.getEntryByKey('missing_key'), null, 'Unbekannter Key nicht null');
+        expectThrow(
+          () => api.getEntryByKey(42),
+          TypeError,
+          'Nicht-String-Key wurde akzeptiert'
+        );
+      });
+
+      check('Unicode- und Trennzeichen-Normalisierung', () => {
+        equal(
+          api.normalizeSearchText('  FÜSSE--Straße___Étage  '),
+          'fusse strasse etage',
+          'Unicode-Normalisierung falsch'
+        );
+        equal(api.normalizeSearchText('BICE...'), 'bice', 'Präfix falsch');
+        equal(api.normalizeSearchText('---'), '', 'Leere Query falsch');
+        expectThrow(
+          () => api.normalizeSearchText(null),
+          TypeError,
+          'Nicht-String wurde akzeptiert'
+        );
+      });
+
+      check('Suche, Alias, Mehrtoken, No-Match und Limit', () => {
+        const keys = (entries) => entries.map((entry) => entry.key);
+        deepEqual(keys(api.search('bice...')), ['biceps_curl'], 'Präfixsuche falsch');
+        deepEqual(keys(api.search('Bizepscurl')), ['biceps_curl'], 'Alias falsch');
+        deepEqual(keys(api.search('curl biceps')), ['biceps_curl'], 'Tokens falsch');
+        deepEqual(api.search('---'), [], 'Leere Query nicht leer');
+        deepEqual(api.search('definitely-no-match'), [], 'No-Match nicht leer');
+        equal(api.search('press', { limit: 1 }).length, 1, 'Limit falsch');
+        expectThrow(
+          () => api.search('press', { limit: 0 }),
+          RangeError,
+          'Ungültiges Limit wurde akzeptiert'
+        );
+        expectThrow(
+          () => api.search('press', { extra: true }),
+          TypeError,
+          'Unbekannte Option wurde akzeptiert'
+        );
+      });
+
+      check('tiefer Freeze aller öffentlichen Werte', () => {
+        const catalog = api.getCatalog();
+        equal(Object.isFrozen(api), true, 'API nicht eingefroren');
+        equal(Object.isFrozen(catalog), true, 'Katalog nicht eingefroren');
+        equal(Object.isFrozen(catalog.entries), true, 'Entries nicht eingefroren');
+        equal(Object.isFrozen(catalog.entries[0]), true, 'Entry nicht eingefroren');
+        equal(
+          Object.isFrozen(catalog.entries[0].fields),
+          true,
+          'Feldpolicy nicht eingefroren'
+        );
+        equal(Object.isFrozen(api.search('press')), true, 'Sucharray nicht eingefroren');
+      });
+
+      check('Validatorfehler, Pfade und Eingabemutationsschutz', () => {
+        const candidate = JSON.parse(JSON.stringify(api.getCatalog()));
+        candidate.entries[0].equipment = 'ghost_device';
+        const before = JSON.stringify(candidate);
+        const validation = api.validateCatalog(candidate);
+        equal(JSON.stringify(candidate), before, 'Validator mutierte Eingabe');
+        equal(validation.valid, false, 'Ungültiger Katalog wurde akzeptiert');
+        assert(
+          validation.errors.some(
+            (error) =>
+              error.code === 'unknown_reference' &&
+              error.path === '$.entries[0].equipment'
+          ),
+          'Erwarteter stabiler Fehler fehlt'
+        );
+        equal(Object.isFrozen(validation), true, 'Validierung nicht eingefroren');
+        equal(
+          Object.isFrozen(validation.errors),
+          true,
+          'Fehlerarray nicht eingefroren'
+        );
+      });
+
+      const failures = results.filter((result) => !result.pass);
+      const status = document.getElementById('status');
+      const list = document.getElementById('results');
+      results.forEach((result) => {
+        const item = document.createElement('li');
+        item.dataset.result = result.pass ? 'pass' : 'fail';
+        item.textContent = result.pass
+          ? `PASS – ${result.name}`
+          : `FAIL – ${result.name}: ${result.error}`;
+        list.appendChild(item);
+      });
+
+      const harnessResult = Object.freeze({
+        pass: failures.length === 0,
+        total: results.length,
+        passed: results.length - failures.length,
+        failures: Object.freeze(failures.map((failure) => Object.freeze(failure)))
+      });
+      Object.defineProperty(root, 'activityV2HarnessResult', {
+        value: harnessResult,
+        enumerable: true,
+        writable: false,
+        configurable: false
+      });
+
+      status.dataset.result = harnessResult.pass ? 'pass' : 'fail';
+      status.textContent = harnessResult.pass
+        ? `${harnessResult.passed}/${harnessResult.total} Contract-Fälle PASS`
+        : `${harnessResult.failures.length}/${harnessResult.total} Contract-Fälle FAIL`;
+      document.title = harnessResult.pass
+        ? 'PASS – Activity V2 Semantics Contract Harness'
+        : 'FAIL – Activity V2 Semantics Contract Harness';
+    })(globalThis);
+  </script>
+</body>
+</html>

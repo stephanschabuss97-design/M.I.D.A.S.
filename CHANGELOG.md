@@ -14,6 +14,11 @@ erhalten.
 
 ### Added
 
+- Produktive, additive Activity-V2-Datenbasis mit versioniertem 78er-Katalog,
+  atomarem retry-idempotentem Session-Commit und ownergebundenem
+  Last-Performance-Lookup; Activity V1 und die sichtbare UI bleiben
+  unverändert.
+
 - Kanonischer QA-Einstieg mit fachlichen Suites, operativen Runbooks und
   eigenem Release-Readiness-Vertrag.
 - Minimaler manueller Recovery-Vertrag mit verschlüsseltem Supabase-Dump,
@@ -39,6 +44,11 @@ erhalten.
   GitHub-Scheduler samt exklusiver Konfiguration.
 
 ### Security
+
+- Activity-V2-Tabellen sind RLS-geschützt und clientseitig read-only; Writes
+  laufen ausschließlich über den gehärteten authentifizierten
+  `SECURITY DEFINER`-Commit. `anon`, `service_role` und `PUBLIC` erhalten kein
+  RPC-Execute, und direkte Tabellen-DML ist entzogen.
 
 - Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
   Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.

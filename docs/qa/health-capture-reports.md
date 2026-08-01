@@ -237,3 +237,77 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   `midas.health-export.v2` ohne Owner-ID oder erfundene Messzeitpunkte.
 - Invalidiert durch: Doctor-Unlock, Current-Read, Lazy-State, Chart-Range,
   Exportvertrag, responsive Doctor-CSS oder Fokusführung.
+
+### HCR-017 - Activity V2 Semantikvertrag bleibt deterministisch
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+  und [R1 Catalog Baseline](<../MIDAS Activity V2 R1 Catalog Baseline Contract.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: read-only
+- Voraussetzung: Node ist verfügbar; R1-Katalog, Testdatei und Baseline
+  gehören zum selben Repo-Stand.
+- Aktion:
+  `node --test app/modules/vitals-stack/activity/v2/semantics.contract.test.js`
+  aus dem Repo-Root ausführen.
+- Erwartung: Die 78 Baseline-Entries stimmen vollständig überein; Katalog,
+  Taxonomien, acht Feldpolicies, neun Fehlercodes, Mutationsschutz, Namespace,
+  Normalisierung und die deterministische Suchmatrix einschließlich 565
+  Oracle-Abfragen sind grün.
+- Invalidiert durch: R1-Katalog, Schema, Validator, Normalisierung, Ranking,
+  öffentliche API, Baseline Contract oder Contract-Test.
+
+### HCR-018 - Activity V2 Semantik lädt isoliert im Browser
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+- Ebene: browser
+- Ausführung: manual
+- Wirkung: read-only
+- Voraussetzung: Repo-Root wird über einen lokalen statischen HTTP-Server
+  bereitgestellt; produktive `index.html` bleibt unverändert.
+- Aktion:
+  `app/modules/vitals-stack/activity/v2/semantics-harness.html` öffnen und
+  Ergebnisliste sowie Browserkonsole prüfen.
+- Erwartung: Das klassische Script zeigt `7/7 Contract-Fälle PASS`; die
+  Konsole bleibt fehlerfrei, Activity V1 unverändert und der
+  `AppModules.activityV2.semantics`-Slot korrekt geschützt.
+- Invalidiert durch: Semantikdatei, öffentliche API, Namespacevertrag,
+  Browser-Harness oder Script-Ladeform.
+
+### HCR-019 - Activity V2 Datenzugriff bleibt isoliert und deterministisch
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: read-only
+- Voraussetzung: R1-Semantik, R2-Datenzugriff und beide Contract-Testdateien
+  gehören zum selben Repo-Stand.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  aus dem Repo-Root ausführen und die produktive Script-Reihenfolge prüfen.
+- Erwartung: 20/20 Contract-Fälle sind grün. Commit-Requests behalten ihre
+  Request-ID über Retries, Responses und Fehler werden strikt abgebildet,
+  Lookup liefert einen vollständigen Block oder `null`, und weder
+  `data-access.js` noch V2-Semantik werden produktiv durch `index.html` geladen.
+- Invalidiert durch: R1-/R2-JS, Supabase-HTTP-Bridge, Namespace,
+  Request-/Response-Schema, Fehlertokens oder produktive Script-Reihenfolge.
+
+### HCR-020 - Activity V2 R3 Draft und Shell bleiben isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R3 Roadmap](<../archive/MIDAS Activity V2 R3 Shared Session Draft and UI Shell Roadmap (DONE).md>)
+- Ebene: local-runtime + browser
+- Ausführung: automated + manual
+- Wirkung: read-only; Draft und UI sind flüchtig und lokal
+- Voraussetzung: R1-/R2-/R3-JS und Contract-Tests gehören zum selben Repo-Stand;
+  der Repo-Root wird für den Harness über einen lokalen HTTP-Server angeboten.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  ausführen und `session-shell-harness.html` bei 1440x900, 390x844 sowie
+  320x800 prüfen; danach mindestens 30 Sekunden in einen Fremdtab wechseln.
+- Erwartung: 50/50 Contract-Fälle sind grün. Picker, Items, Reihenfolge, Notiz,
+  Fokus, Timer, Discard und Cleanup funktionieren ohne Konsolen- oder
+  Viewportfehler; Items und Notiz bleiben beim Tabwechsel unverändert, die
+  Zeitstempeluhr läuft fort. `index.html`, Activity V1, Netzwerk, Storage und
+  R2-RPCs bleiben unberührt.
+- Invalidiert durch: R1-/R3-JS oder CSS, Harness, Draft-/Shell-API,
+  Lifecycle-/Fokusvertrag, produktive Script-Reihenfolge oder neue
+  Netzwerk-/Storage-Nutzung.

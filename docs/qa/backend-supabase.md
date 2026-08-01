@@ -117,9 +117,11 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   RLS-Policies sind vorhanden.
 - Aktion: SELECT, INSERT, UPDATE und DELETE als beide User sowie kontrolliert als
   Service Role ausführen.
-- Erwartung: Authenticated sieht und ändert nur eigene Zeilen; fremde Writes
-  scheitern, während der explizite Service-Role-Pfad nur seinen vorgesehenen
-  Backendvertrag erfüllt.
+- Erwartung: Authenticated sieht nur eigene Zeilen. Direkte Änderungen sind
+  nur erlaubt, wenn der jeweilige Tabellenvertrag Client-DML vorsieht;
+  RPC-only-Bereiche wie Activity V2 weisen direkte INSERT/UPDATE/DELETE auch
+  für eigene Zeilen ab. Fremde Writes scheitern, während ein expliziter
+  Service-Role-Pfad nur seinen vorgesehenen Backendvertrag erfüllt.
 - Invalidiert durch: Tabellen, RLS, Policies, Grants oder Service-Role-Nutzung.
 - Cleanup: Beide Testuser und alle zugehörigen Fixtures entfernen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
@@ -201,3 +203,27 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Erwartung: Nur Variablennamen oder redigierte Metadaten sind dokumentiert;
   Secrets liegen ausschließlich lokal, in Supabase oder GitHub Secrets.
 - Invalidiert durch: Env-, Deploy-, Workflow-, Doku- oder Logging-Änderungen.
+
+### BS-013 - Activity V2 besitzt genau eine gehärtete Schreibgrenze
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: `20_Activity_V2.sql`, danach `16_Explicit_Grants.sql`, sind
+  in der guarded PostgreSQL-17-Fixture eingerichtet.
+- Aktion: Vier Tabellen, zwei exakte RPC-Signaturen, Owner, RLS/Policies,
+  ACLs und leere Search Paths prüfen; gültige, ungültige und wiederholte
+  Commits sowie Zwei-User-, Anonymous-Claim-, Direkt-DML- und Race-Pfade
+  ausführen.
+- Erwartung: Katalogversion 1 besitzt exakt 78 aktive Einträge. Nur ein
+  permanenter authentifizierter User darf den `postgres`-owned
+  `SECURITY DEFINER`-Commit aufrufen; der Commit ist atomar und retry-sicher.
+  Tabellen-DML ist für Client- und Service-Rollen entzogen. Lookup und
+  History-SELECT bleiben ownergebunden; `anon`, `PUBLIC` und anonyme JWTs
+  erhalten keinen Zugriff.
+- Invalidiert durch: `20_Activity_V2.sql`, R2-Block in
+  `16_Explicit_Grants.sql`, Rollen/Claims, Function-Owner oder PostgreSQL-
+  Major-Version.
+- Cleanup: Guarded Wegwerf-Datenbank entfernen und lokalen Stack stoppen.
+- Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)

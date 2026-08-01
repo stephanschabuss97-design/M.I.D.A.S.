@@ -282,6 +282,37 @@ For every Data-API RPC:
   create dashboard noise, handle GraphQL disablement or lint muting as a
   separate Supabase hygiene task.
 
+# Activity V2 R2 Database Foundation
+
+`20_Activity_V2.sql` is the canonical additive Activity V2 R2 schema source.
+It provisions the immutable catalog projection, three normalized history
+tables, RLS, constraints/indexes, the atomic retry-idempotent commit RPC and
+the owner-bound last-performance lookup. It does not wire UI consumers, migrate
+Activity V1, create a draft, or insert a productive session.
+
+Run order for a fresh/disposable or reviewed existing project:
+
+1) Ensure the existing objects required by `16_Explicit_Grants.sql` exist.
+2) Run `20_Activity_V2.sql` as the expected `postgres` owner.
+3) Run `16_Explicit_Grants.sql` immediately afterwards.
+4) Verify four RLS-enabled tables, five valid indexes, four SELECT policies,
+   two exact RPC overloads and 78 active catalog-v1 rows.
+5) Verify no direct table DML for `authenticated` or `service_role`, no access
+   for `anon`/`PUBLIC`, and Execute only for permanent `authenticated` users.
+
+The commit RPC is intentionally `SECURITY DEFINER`, owned by `postgres`, with
+an empty `search_path` and explicit permanent-user/owner validation. This is
+the sole Activity V2 write boundary. Do not replace it with browser table DML
+or broaden grants to silence an advisor warning. The lookup remains
+`SECURITY INVOKER`, stable and owner-scoped.
+
+The disposable regression fixture is
+`sql/tests/20_Activity_V2_fixture.sql`. It requires PostgreSQL 17,
+`session_user = postgres` and a database owned by `postgres`; its guard must
+fail before mutation in any other target. It tests exact reruns, rollback,
+idempotency/races, RLS/ACL, time boundaries and lookup, then removes only its
+guarded disposable database.
+
 # Adding a New Module Script
 
 1) Create `sql/NN_Module_Name.sql` (or a final master script once the refactor is done).
