@@ -311,3 +311,25 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 - Invalidiert durch: R1-/R3-JS oder CSS, Harness, Draft-/Shell-API,
   Lifecycle-/Fokusvertrag, produktive Script-Reihenfolge oder neue
   Netzwerk-/Storage-Nutzung.
+
+### HCR-021 - Activity V2 C2 Katalog v2 und Studio-Suche bleiben vertragsgleich
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+  und [C2 Roadmap](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
+- Ebene: local-runtime + static
+- Ausführung: automated
+- Wirkung: read-only
+- Voraussetzung: R1-/R3-/C2-Semantik, maschinenlesbarer C2-Vertrag, SQL 21
+  und Katalog-Inspector gehören zum selben Repo-Stand.
+- Aktion: Gesamte Activity-V2-Contract-Suite ausführen und danach
+  `node tools/activity-catalog.mjs check` sowie die produktive Scriptgrenze
+  prüfen.
+- Erwartung: 56/56 Contract-Fälle sind grün. Katalog v1 bleibt exakt 78;
+  Katalog v2 besitzt 80 aktive Entries, 47 Aliasergänzungen an 24 Basis-Keys
+  und ausschließlich die neuen Keys `high_row`/`total_abdominal`. Alle 58
+  Suchfälle, jede Alias-Rang-1-/Kollisionsprüfung, R3-Injection sowie
+  Contract-/Runtime-/SQL-Parität sind grün. `index.html`, Activity V1,
+  Netzwerk, Storage und R2-RPC-Aufrufe bleiben unberührt.
+- Invalidiert durch: C2-Vertrag, `semantics-v2.js`, C2-Contract-Test, SQL 21,
+  R1-Semantik/API, R3-Injection, Ranking oder produktive Script-Reihenfolge.

@@ -290,7 +290,7 @@ tables, RLS, constraints/indexes, the atomic retry-idempotent commit RPC and
 the owner-bound last-performance lookup. It does not wire UI consumers, migrate
 Activity V1, create a draft, or insert a productive session.
 
-Run order for a fresh/disposable or reviewed existing project:
+Run order for the R2-only foundation:
 
 1) Ensure the existing objects required by `16_Explicit_Grants.sql` exist.
 2) Run `20_Activity_V2.sql` as the expected `postgres` owner.
@@ -312,6 +312,49 @@ The disposable regression fixture is
 fail before mutation in any other target. It tests exact reruns, rollback,
 idempotency/races, RLS/ACL, time boundaries and lookup, then removes only its
 guarded disposable database.
+
+# Activity V2 C2 Catalog Version 2
+
+`21_Activity_V2_Catalog_V2.sql` is the canonical insert-only projection of the
+complete immutable Activity V2 catalog-version-2 snapshot. It does not alter
+schema, constraints, indexes, RLS, policies, grants, ACLs or RPCs, and it never
+updates or deletes catalog version 1.
+
+Fresh/disposable provisioning order for the complete R2+C2 target:
+
+1) Run `20_Activity_V2.sql` against a fresh target to create the R2 foundation
+   and exact 78-row catalog version 1.
+2) Run `21_Activity_V2_Catalog_V2.sql` to add the exact 80-row catalog version
+   2 snapshot.
+3) Run `16_Explicit_Grants.sql` to apply the reviewed final grant boundary.
+4) Verify v1=78, v2=80, no other catalog versions, four RLS-enabled tables,
+   four expected SELECT policies, two exact RPCs and the minimal ACL boundary.
+5) Verify that no Activity-V2 session item references v2 unless a later,
+   separately approved product flow has created real sessions.
+
+Never rerun `20_Activity_V2.sql` productively merely to install C2. Productive
+C2 execution uses only reviewed SQL 21 after a read-only preflight and explicit
+Owner approval.
+
+SQL 21 holds one short transaction with local timeouts and a table lock. Before
+its first persistent write it requires catalog v1 to be fully contract-equal
+and catalog v2 to be either empty or already fully contract-equal. A 79-row
+partial state or any 80-row content drift fails closed. An exact rerun inserts
+nothing and changes nothing; the postcondition repeats the full bidirectional
+set comparison before commit.
+
+The guarded disposable C2 fixture is
+`sql/tests/21_Activity_V2_Catalog_V2_fixture.sql`. It reuses the approved R2
+fixture scaffold and tests fresh `20 -> 21 -> 16`, exact SQL-21 rerun,
+partial/content drift failure, v2 commit and cross-version lookup. It may run
+only against `midas_activity_v2_s45` on PostgreSQL 17 as `postgres` with a
+`postgres`-owned database.
+
+The 2026-08-01 productive C2 postcondition is v1=78 and v2=80, both fully
+repo-contract-equal, with other versions=0 and v2 session references=0. The R2
+table/RLS/policy/RPC/ACL boundary remained unchanged. See the archived C2
+Evidence for the exact gate results; never copy credentials or raw database
+output into this HOW-TO.
 
 # Adding a New Module Script
 

@@ -3,9 +3,9 @@
 Kurze Einordnung:
 - Produktiver Stand: Activity V1 erfasst eine Trainingseinheit pro Tag
   (Aktivitaet + Dauer + Notiz).
-- Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag und die isolierte
-  R3-Draft-/Shell-Grundlage sind bereitgestellt; die sichtbare App und alle
-  Consumer verwenden weiterhin V1.
+- Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
+  R3-Draft-/Shell-Grundlage und C2-Katalogversion 2 sind bereitgestellt; die
+  sichtbare App und alle Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
@@ -17,6 +17,10 @@ Related docs:
 - [Activity V2 R2 Roadmap](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
 - [Activity V2 R2 Evidence](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Evidence (DONE).md>)
 - [Activity V2 R3 Roadmap](<../archive/MIDAS Activity V2 R3 Shared Session Draft and UI Shell Roadmap (DONE).md>)
+- [Activity V2 C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+- [Activity V2 C2 Roadmap](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
+- [Activity V2 C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+- [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
 
@@ -53,6 +57,11 @@ Related docs:
 | `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3-Shell- und Fokusdarstellung |
 | `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3-Shell-, Guard-, Fokus- und Lifecycle-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/session-shell-harness.html` | Isolierter visueller R3-Browser-Harness |
+| `app/modules/vitals-stack/activity/v2/semantics-v2.js` | Additive C2-Semantik mit vollständigem Katalog v2 und Studio-/Freihantelsuche |
+| `app/modules/vitals-stack/activity/v2/semantics-v2.contract.test.js` | C2-Katalog-, Search-, R1- und R3-Kompatibilitätsnachweise |
+| `sql/21_Activity_V2_Catalog_V2.sql` | Insert-only Projektion des unveränderlichen 80er-Katalog-v2-Snapshots |
+| `sql/tests/21_Activity_V2_Catalog_V2_fixture.sql` | Guarded C2-Fixture für Re-Run, Drift-Fail und R2-Kompatibilität |
+| `tools/activity-catalog.mjs` | Read-only Inspector für Katalogparität, Suche und spätere Pflege |
 
 ---
 
@@ -127,6 +136,31 @@ Status: implementiert und lokal sowie im Browser-Harness getestet; weder durch
 - R3 verwendet weder Netzwerk noch Storage oder R2-RPCs und fuehrt keinen Save,
   Commit, Historien-Lookup oder Activity-V1-Cutover aus.
 
+## 2.4 Activity V2 C2 - vollständiger Studiokatalog v2
+
+Status: implementiert, produktiv als unveränderlicher Katalogsnapshot
+bereitgestellt und lokal, disposable sowie produktiv read-only bewiesen; noch
+nicht durch `index.html` oder einen sichtbaren Consumer geladen.
+
+- `catalog_version: 1` bleibt mit 78 Einträgen vollständig unverändert.
+- `catalog_version: 2` enthält einen vollständigen Snapshot mit 80 aktiven
+  Einträgen: alle 78 Baseline-Keys plus `high_row` und `total_abdominal`.
+- 47 Aliasergänzungen an 24 bestehenden Keys bilden reale Studio-, Kurzhantel-,
+  Langhantel- und Kettlebellbegriffe auf stabile Bewegungsidentitäten ab.
+- Aliase ändern keine Historienidentität. Geräte- oder Hantelvarianten teilen
+  weiterhin den klassischen Key; die konkrete Ausrüstung ist dadurch noch kein
+  eigenes gespeichertes Satzmerkmal.
+- 53 Studio-/Normalisierungsfälle und fünf Kompatibilitäts-/Limitfälle frieren
+  Suche und Ranking ein. Alle Aliasergänzungen werden zusätzlich generisch auf
+  eindeutige Normalisierung und Rang 1 geprüft.
+- Der read-only Inspector erkennt vorhandene Übungen vor Planvorschlägen und
+  meldet echte Lücken eindeutig. Spätere produktive Katalogsnapshots werden nie
+  mutiert, sondern als neue vollständige `catalog_version` angelegt; das bleibt
+  Activity V2 und erzeugt keine „Activity V3“.
+- Produktiv stehen exakt 78 v1- und 80 v2-Zeilen; andere Versionen und
+  v2-Sessionreferenzen sind 0. RLS, Policies, ACLs und R2-RPCs blieben
+  unverändert.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -154,6 +188,9 @@ Status: implementiert und lokal sowie im Browser-Harness getestet; weder durch
 - Lookup-RPC: `activity_v2_last_performance(text)`
 - Mehrere abgeschlossene Sessions pro Kalendertag sind erlaubt.
 - R2 fuehrt keine Korrektur, Loeschung, Retention, UI oder Consumer-Migration ein.
+- C2 nutzt dieselbe Tabelle additiv: v1 bleibt 78, v2 ist ein vollständiger
+  80er-Snapshot. Der Commit akzeptiert damit jetzt Katalogversion 2 als höchste
+  Version; echte Sessionnutzung bleibt bis zu den späteren Gates gesperrt.
 
 ### Activity V2 R3 - fluechtiger Draftvertrag
 
@@ -275,9 +312,9 @@ Status: implementiert und lokal sowie im Browser-Harness getestet; weder durch
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1/R2/R3: Semantik, additive produktive Datenbasis sowie lokaler
-  Draft und Vollflaechen-Shell sind implementiert. R3 bleibt isoliert; es gibt
-  noch keinen produktiven UI-, Consumer- oder V1-Cutover.
+- Activity V2 R1/R2/R3/C2: Semantik, additive produktive Datenbasis, lokaler
+  Draft/Vollflaechen-Shell und vollständiger Katalog v2 sind implementiert. Die
+  V2-Runtime bleibt isoliert; es gibt keinen UI-, Consumer- oder V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
 - Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
@@ -297,11 +334,14 @@ Status: implementiert und lokal sowie im Browser-Harness getestet; weder durch
 - Activity V2 R1 Contract-Suite validiert Katalog, Suche, Namespace und
   produktive Isolation.
 - Isoliertes V2-Harness laedt `semantics.js` klassisch ohne Konsolenfehler.
-- Kombinierte R1/R2/R3-Node-Suite validiert 50 Contract-Faelle.
+- Kombinierte R1/R2/R3/C2-Node-Suite validiert 56 Contract-Faelle.
 - Disposable PostgreSQL-17-Fixture validiert Schema/Rerun, Katalog 78/78,
   atomaren Rollback, Retry-Races, Two-User-RLS/ACL und Historien-Lookup.
+- C2-Checks validieren 80 aktive v2-Entries, 47 Aliasergänzungen, 58 Suchfälle,
+  R1-/R3-Kompatibilität und vollständige Contract-/Runtime-/SQL-Parität.
 - Produktive Read-only-Postchecks validieren vier Tabellen, zwei RPCs,
-  RLS/ACL/Owner/Search Path, 78 Katalogzeilen und leere V2-Historie.
+  RLS/ACL/Owner/Search Path, exakt 78 v1- und 80 v2-Katalogzeilen sowie leere
+  V2-Historie.
 - R3-Harness validiert Vollflaeche, Picker, Items, Notiz, Timer, Discard,
   Fokus und Overflow bei 1440x900, 390x844 und 320x800.
 - Ein owner-freigegebener Edge-Smoke validiert nach 32 Sekunden im Fremdtab
@@ -313,8 +353,8 @@ Status: implementiert und lokal sowie im Browser-Harness getestet; weder durch
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1/R2/R3 bleiben bis zu den zustaendigen Folgeroadmaps fuer
-  Consumer unverdrahtet. C2 ist der naechste Rolling-Wave-Schritt; R4 bleibt bis
-  zu dessen Katalog-v2-Gate blockiert.
+- Activity V2 R1/R2/R3/C2 bleiben bis zu den zustaendigen Folgeroadmaps fuer
+  Consumer unverdrahtet. C2 ist DONE; R4 ist als nächster Rolling-Wave-Schritt
+  freigegeben, darf aber noch keinen produktiven V2-Cutover vorwegnehmen.
 - Doku aktuell (Spec + Overview).
 

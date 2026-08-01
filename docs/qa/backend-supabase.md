@@ -227,3 +227,31 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Major-Version.
 - Cleanup: Guarded Wegwerf-Datenbank entfernen und lokalen Stack stoppen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
+
+### BS-014 - Activity V2 C2 projiziert einen unveränderlichen Katalog v2
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+  und [C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+- Ebene: disposable + productive read-only
+- Ausführung: automated + owner-gated SQL
+- Wirkung: disposable write; produktiver Write ausschließlich am freigegebenen
+  C2-Gate, danach read-only
+- Voraussetzung: Für den Fresh-/Fixture-Pfad gilt exakt
+  `20_Activity_V2.sql -> 21_Activity_V2_Catalog_V2.sql -> 16_Explicit_Grants.sql`.
+  Produktiv dürfen R2-Objekte nicht neu provisioniert werden.
+- Aktion: Guarded C2-Fixture auf PostgreSQL 17 vollständig ausführen. Fresh-
+  Stand, exakten SQL-21-Re-Run, 79er-Teilbestand, 80er-Inhaltsdrift sowie
+  v2-Commit/versionsübergreifenden Lookup prüfen. Produktiv nur Zähler,
+  vollständige kanonische Repo-Feldhashes, Referenzen und Security-Grenzen
+  read-only verifizieren.
+- Erwartung: v1 bleibt exakt und vertragsgleich bei 78; v2 ist exakt und
+  vertragsgleich bei 80; andere Versionen und v2-Sessionreferenzen sind 0.
+  Teilbestand und Inhaltsdrift stoppen vor dem ersten Write, exakter Re-Run ist
+  ein No-op. Vier Tabellen/RLS-Flags/SELECT-Policies, zwei RPCs und minimale
+  ACLs bleiben unverändert. C2 erzeugt keine Session und aktiviert keine UI.
+- Invalidiert durch: SQL 20/21, Grants, C2-Vertrag, Katalogdaten, R2-Tabellen/
+  Constraints/RPCs, RLS/Policies/ACLs oder produktive v2-Referenzen.
+- Cleanup: C2 selbst löscht produktiv nichts. Jede Bereinigung benötigt null
+  v2-Referenzen und ein separates Owner-Gate.
+- Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)

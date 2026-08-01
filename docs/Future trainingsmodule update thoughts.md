@@ -5,14 +5,23 @@
 Stand: 2026-08-01
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
-R2-Datenbankgrundlage und die isolierte R3-Draft-/Shell-Grundlage sind
-bereitgestellt; sichtbare Activity-Consumer verwenden weiterhin V1.
+R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage und C2-
+Katalogversion 2 sind bereitgestellt; sichtbare Activity-Consumer verwenden
+weiterhin V1.
 
 Cross-Contract-Stand 2026-08-01: `PASS`. R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
-`item_order` ein. C2 ist der nächste Rolling-Wave-Schritt und bleibt das
-zwingende Gate vor R4; Recovery wird in R7 isoliert und in R8 intern auf
-Android-PWA bewiesen.
+`item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
+produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist der
+nächste Rolling-Wave-Schritt; Recovery wird in R7 isoliert und in R8 intern auf
+Android-PWA bewiesen. Der C2-Nachreview hat zusätzlich den späteren
+Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
+Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
+lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
+Schreibpfad bleibt dabei unverändert. R7 bindet Recovery an die gespeicherte
+Draft-Katalogversion, R8 entscheidet die Commit-Kompatibilität zwischen
+bestehenden Katalogversionen und R11 beweist die produktive
+Aktivierungsreihenfolge einschließlich gecachter PWA-Clients.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -21,8 +30,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R3 stellen nur die noch
-unverdrahtete Semantik-, Speicher-, Draft- und Shell-Grundlage bereit.
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R3/C2 stellen nur die
+noch unverdrahtete Semantik-, Speicher-, Draft-, Shell- und Kataloggrundlage
+bereit.
 
 ---
 
@@ -33,12 +43,18 @@ relevanten sportlichen Aktivitäten ermöglichen.
 
 Die wichtigste Produktidee lautet:
 
-> Eine Session beginnt ohne starren Trainingsplan. Stephan entscheidet während
-> der Session, welche Übung oder Aktivität er heute tatsächlich macht.
+> Eine Session kann leer oder aus einer vorbereiteten Übungsliste beginnen.
+> Stephan entscheidet während der Session weiterhin selbst, welche Übung oder
+> Aktivität er heute tatsächlich macht.
 
 Der Ablauf soll sich an der guten Session- und Satzerfassung von Liftlog
 orientieren, ohne dessen starre Bindung an gespeicherte Trainingspläne zu
 übernehmen.
+
+Eine optionale spätere Session-Vorlage darf lediglich Übungsauswahl und
+Reihenfolge vorbereiten. Sie ist kein verpflichtender Trainingsplan, enthält
+keine Leistungsvorgabe und verändert weder den freien Sessionfluss noch den
+Speichervertrag.
 
 Activity V2 soll zwei Hauptprobleme lösen:
 
@@ -230,6 +246,47 @@ Satzpausen weiter. R3 führt weder Pausenmodus noch Satz-Resttimer oder manuelle
 Zeitkorrektur ein. Eine spätere Speicherintegration friert die Zeit erst beim
 bewussten Abschluss der Session ein.
 
+### 4.5 Vorbereitete Session-Vorlage
+
+Nach dem stabilen Activity-V2-Kern darf Codex aus der Analyse vergangener
+Trainings eine kleine JSON-Übungsliste für die nächste Einheit erstellen. Das
+mentale Modell ist kein Trainingsplan mit Leistungsvorgaben, sondern ein
+vorbereiteter Startzustand:
+
+- Beispiel: `leg_curl` wird in der nächsten Einheit durch
+  `romanian_deadlift` ersetzt.
+- Die Datei enthält nur Metadaten, `catalog_version`, kanonische `item_key`s
+  und deren Reihenfolge.
+- Sie enthält keine Zielgewichte, keine vorgegebenen Wiederholungen, keine
+  Satzanzahl und keine bereits absolvierten Werte.
+- MIDAS validiert jeden Key gegen den tatsächlich geladenen Katalog. Dass
+  Codex Zugriff auf die Semantikdateien hatte, ersetzt diese Laufzeitprüfung
+  nicht.
+- Nach Bestätigung erzeugt der Import denselben normalen Session-Draft wie
+  manuelles Hinzufügen. Mit dem ersten übernommenen Item startet dieselbe
+  Sessionuhr.
+- Für jedes Item lädt R4 weiterhin die letzte vollständige reale Ausführung,
+  damit Gewicht und Wiederholungen nicht aus dem Gedächtnis geschätzt werden
+  müssen. Die aktuellen Eingabefelder bleiben leer.
+- Items dürfen während der Session entfernt, verschoben oder spontan ergänzt
+  werden.
+- Der atomare Save-Pfad unterscheidet nicht zwischen manuell aufgebautem und
+  importiertem Draft. Persistiert wird ausschließlich die tatsächlich
+  absolvierte Session.
+
+Ein Import darf einen bereits veränderten Draft niemals still überschreiben.
+Fehlende, doppelte, inaktive oder zur angegebenen Katalogversion unpassende
+Keys führen zu einem verständlichen Validierungsfehler, bevor Draft oder Uhr
+verändert werden. Eine echte Kataloglücke wird zuerst zu Hause über den
+kontrollierten Katalogpflegeweg geschlossen und danach in einer neu erzeugten
+Vorlage verwendet.
+
+Der minimale maschinenlesbare Vertrag wird erst in R13 endgültig eingefroren.
+Als Ausgangspunkt gilt ein Schema wie
+`midas.activity-session-template.v1` mit `schema_version`,
+`catalog_version`, einem Anzeigenamen und geordneten `items`. R13 benötigt in
+der ersten Ausbaustufe weder eine Supabase-Plantabelle noch MCP-Schreibzugriff.
+
 ---
 
 ## 5. Semantik und Aktivitätskatalog
@@ -251,8 +308,9 @@ football
 hiking
 ```
 
-Dieser Key ist der historische Anker. Labels und Aliase dürfen später gepflegt
-werden, der Key bleibt stabil.
+Dieser Key ist der historische Anker. Labels und Aliase dürfen später nur in
+einer neuen vollständigen Katalogversion gepflegt werden. Ein bereits
+produktiver Snapshot bleibt unverändert und der Key bleibt stabil.
 
 Studio, Hersteller, Gerätemodell sowie Geräte-, Hantel- und Griffvarianten
 teilen den klassischen generischen Übungskey. Geräte- und kabelbasierte Lasten
@@ -377,13 +435,13 @@ Die Quelle ist Inventar- und Suchvokabular, kein Trainingsplan und keine
 medizinische Eignungsfreigabe. Hersteller, Studio und konkrete
 Gerätegeneration werden nicht zur historischen Identität.
 
-Für eine spätere `catalog_version: 2` gelten drei Klassen:
+Der durch C2 umgesetzte `catalog_version: 2`-Vertrag löst die drei Klassen so:
 
 | Klasse | Verifizierte Beispiele | Vertrag |
 | --- | --- | --- |
 | bereits direkt suchbar | Leg Press, Leg Extension, Leg Curl, Pulldown, Chest Press, Shoulder Press, Rotary Torso, SkiErg, Ruderergometer, Crosstrainer | kein neuer Key |
-| klare Alias-Kandidaten | Glute -> `glute_kickback`; Abductor -> `hip_abduction`; Adductor -> `hip_adduction`; Rotary Calf -> `calf_raise`; Pectoral -> `chest_fly`; Delts Machine -> `lateral_raise`; Lower Back -> `back_extension`; Stepmill -> `stair_climber`; Fahrradergometer -> `cycling` | Alias erst mit erhöhter Katalogversion und vollständigem Kollisions-/Suchtest |
-| Owner-Identitätsentscheidung | Upper Back, Low Row, Vertical Traction, Abdominal Crunch, Total Abdominal | vor Umsetzung entscheiden, ob Alias eines bestehenden klassischen Keys oder eigenständige klassische Bewegung |
+| klare Alias-Kandidaten | Glute -> `glute_kickback`; Abductor -> `hip_abduction`; Adductor -> `hip_adduction`; Rotary Calf -> `calf_raise`; Pectoral -> `chest_fly`; Delts Machine -> `lateral_raise`; Lower Back -> `back_extension`; Stepmill -> `stair_climber`; Fahrradergometer -> `cycling` | in v2 mit vollständigem Kollisions-/Suchtest umgesetzt |
+| Owner-Identitätsentscheidung | Upper Back -> neuer Key `high_row`; Low Row -> `seated_row`; Vertical Traction -> `lat_pulldown`; Abdominal Crunch -> `core_press`; Total Abdominal -> neuer Key `total_abdominal` | abgeschlossen; zwei neue Bewegungsidentitäten, drei Aliase bestehender Keys |
 
 `Multi Hip` ist kein einzelner Übungskey. Die ausgeführte Bewegung bestimmt
 die Identität. Kandidaten sind beispielsweise:
@@ -393,16 +451,61 @@ die Identität. Kandidaten sind beispielsweise:
 - `Multi Hip Extension` -> `glute_kickback`
 - ein neuer Hüftflexions-Key nur bei tatsächlichem Erfassungsbedarf
 
-`catalog_version: 1` und die abgeschlossene R1-Roadmap bleiben unverändert.
-Die bestehende `semantics.js` wird nicht still korrigiert. Alias- und
-Entry-Pflege erfolgt in einer begrenzten Katalog-v2-Wartungsroadmap nach dem
-R2-Fundament und zwingend vor der produktnahen R4-Suche.
+`catalog_version: 1` und die abgeschlossene R1-Roadmap blieben unverändert.
+Die bestehende `semantics.js` wurde nicht still korrigiert. C2 ergänzt additiv
+`semanticsV2`, einen vollständigen 80er-Snapshot, 47 Aliasergänzungen an 24
+Keys und 58 Suchfälle. 31 der Aliasergänzungen decken zusätzlich praxistaugliche
+Kurzhantel-, Langhantel- und Kettlebellbegriffe ab.
 
-Vor Beginn dieser Wartungsroadmap muss die derzeit außerhalb des Repos
-liegende Referenz kontrolliert verfügbar gemacht werden. S1 entscheidet mit
-Owner-Freigabe zwischen einer dokumentierten Repo-Referenz und einer anderen
-dauerhaft gesicherten Ablage. Die Fotos werden nicht vom Produkt ausgeliefert
-und sind keine Runtime-Abhängigkeit.
+Die bereinigte Inventarreferenz liegt dauerhaft unter
+`docs/reference/activity-v2/`; Fotos, Trainingsplan und Gesundheitskontext
+werden nicht ausgeliefert und sind keine Runtime-Abhängigkeit. Der kleine
+versionierte Pflegeweg steht im `Catalog Maintenance Runbook`: CODEX prüft
+vor Planvorschlägen den realen Katalog, ergänzt eindeutige Lücken kontrolliert
+und mutiert niemals einen bereits produktiven Snapshot.
+
+### 5.7 Katalogpflege im Realbetrieb
+
+C2 muss nicht jede theoretisch mögliche Übung vorwegnehmen. Der erste reale
+Studioeinsatz prüft deshalb zugleich Suchvokabular und Bedienbarkeit. Fehlt
+eine Übung, gilt dieser Vertrag:
+
+1. Die laufende Session erhält keinen freien oder spontan erfundenen Key.
+2. Zu Hause prüft der read-only Katalog-Inspector, ob bereits ein passender
+   kanonischer Key oder Alias existiert.
+3. Gleiche Bewegungsidentität und Messsemantik ergeben einen Alias; eine
+   fachlich andere Bewegung oder inkompatible Messsemantik benötigt einen
+   neuen kontrollierten Key.
+4. Die Ergänzung erfolgt als nächste vollständige `catalog_version` und bleibt
+   Teil von Activity V2. Sie erzeugt weder Activity V3 noch automatisch eine
+   neue Großroadmap.
+5. Eine kleine Wartung genügt, solange Schema, Tracking-Modi, Security und
+   Consumer-Verträge unverändert bleiben.
+
+R4 muss dafür einen neutralen Kein-Treffer-Zustand besitzen und seine Semantik
+über eine injizierte beziehungsweise ausgewählte Katalogversion beziehen. Eine
+dauerhafte Verdrahtung ausschließlich auf `semanticsV2` wäre kein tragfähiger
+Wartungsvertrag.
+
+Der R2-JS-Lookup löst seine Semantik derzeit noch fest über den v1-Namespace
+auf. R4 erweitert deshalb ausschließlich `loadLastPerformance` um eine
+optionale, explizite Semantikinjektion und behält den bisherigen v1-Aufruf als
+rückwärtskompatiblen Fallback. Die Eingabe wird gegen die ausgewählte aktuelle
+Semantik geprüft; eine historische Antwort wird anhand ihrer unveränderlichen
+Snapshots validiert und darf aus einer älteren Katalogversion stammen.
+`commitSession` und dessen heutige Versionsprüfung werden in R4 nicht
+verändert. Diese Trennung verhindert, dass eine reine Read-UI vorzeitig den
+noch offenen Commit-Rolloutvertrag entscheidet.
+
+Der heutige R2-Commit akzeptiert nur die höchste vorhandene Katalogversion.
+C2 ist dadurch noch nicht gefährdet, weil kein produktiver Activity-V2-
+Consumer schreibt. Vor einer späteren Katalogversion bindet R7 einen
+wiederhergestellten Draft an seinen gespeicherten Katalogsnapshot und R8
+entscheidet, welche bereits vorhandenen unveränderlichen Versionen während
+eines Rollouts weiter commitfähig bleiben. R11 beweist anschließend
+Katalogauswahl, Aktivierungsreihenfolge und das Verhalten gecachter
+PWA-Clients. Bis diese Gates geschlossen sind, wird keine weitere höchste
+Katalogversion beiläufig produktiv eingefügt.
 
 ---
 
@@ -989,17 +1092,19 @@ Bewusste R3-Grenze:
 Warum danach:
 
 Der gemeinsame Container muss stabil sein, bevor unterschiedliche
-Eingabemasken eingebaut werden. R3 ist abgeschlossen; C2 ist jetzt der nächste
-Rolling-Wave-Schritt, bevor R4 die Such- und Historieninteraktion ergänzt.
+Eingabemasken eingebaut werden. R3 und C2 sind abgeschlossen; R4 darf jetzt
+die Such- und Historieninteraktion ergänzen.
 
 ### C2 - Catalog Version 2 Studio Vocabulary Maintenance
+
+Status: `DONE` am 2026-08-01.
 
 Typ:
 
 - begrenzte Katalog-Wartungsroadmap außerhalb der funktionalen
   R1-R12-Nummerierung
 - Ausführungsfenster nach abgeschlossenem R2/R3 und zwingend vor R4
-- R3 ist abgeschlossen; C2 ist der nächste Rolling-Wave-Schritt
+- R3 ist abgeschlossen; C2 wurde vor R4 abgeschlossen
 
 Ziel:
 
@@ -1024,6 +1129,20 @@ Nicht-Ziele:
 - keine Hersteller- oder Studio-ID als Historienidentität
 - keine produktive Activity-V2-Aktivierung
 
+Reales Ergebnis:
+
+- bereinigte 20-Kraftmaschinen-/6-Cardio-/Functional-Referenz im Repo
+- vollständiger Katalog v2 mit 80 aktiven Entries; v1 bleibt exakt 78
+- 47 Aliasergänzungen an 24 bestehenden Keys und zwei neue Keys
+  `high_row`/`total_abdominal`
+- additive tief eingefrorene `semanticsV2`-API, 58 Suchfälle und read-only
+  Katalog-Inspector samt kleinem Wartungsrunbook
+- insert-only SQL 21 produktiv PASS; v1/v2 Repo=Produkt vollständig gleich,
+  andere Versionen und v2-Sessionreferenzen 0, RLS/Policies/ACL/RPC unverändert
+- [C2 Catalog Contract](<MIDAS Activity V2 C2 Catalog Version 2 Contract.md>),
+  [C2 Roadmap](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
+  und [C2 Evidence](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+
 Warum an dieser Stelle:
 
 R2 muss zuerst beweisen, dass vollständige unveränderliche Katalogversionen
@@ -1032,6 +1151,13 @@ synthetischem Vokabular gebaut werden, sondern muss die realen
 Maschinenbezeichnungen aus Stephans Studio deterministisch finden.
 
 ### R4 - Search and Last-Performance Lookup
+
+Status: `ACTIVE`; C2-Eingangsgate PASS, die ausführungsreife R4-Roadmap ist
+angelegt, Implementierung und S1-Ausführung haben noch nicht begonnen.
+
+Roadmap:
+
+- [R4 Search and Last-Performance Lookup Roadmap](<MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap.md>)
 
 Ziel:
 
@@ -1042,6 +1168,16 @@ Ziel:
 - letzte Ausführung aus Supabase
 - neutrale No-History-Anzeige
 - begrenztes und deterministisches Query-Verhalten
+- versionsagnostischer Semantik-Consumer über eine explizit injizierte oder
+  ausgewählte Katalogversion; keine dauerhafte Produktkopplung nur an
+  `semanticsV2`
+- rückwärtskompatible, ausschließlich lookup-spezifische Semantikinjektion in
+  `loadLastPerformance`; historische Snapshotantworten dürfen eine ältere
+  `catalog_version` tragen
+- keine Änderung an `commitSession`, SQL, RLS, Grants oder dem noch offenen
+  Commit-Rolloutvertrag
+- neutraler Kein-Treffer-Zustand ohne freien Key und ohne spontane
+  Katalogmutation im Studio
 
 Warum danach:
 
@@ -1090,6 +1226,9 @@ Ziel:
 - Wiederherstellen
 - Verwerfen
 - Draft-Schema-Version
+- Wiederherstellung mit der im Draft gespeicherten `catalog_version`; ein
+  Versionswechsel darf einen gültigen älteren Draft nicht still gegen den
+  aktuellen Katalog rehydrieren oder unverständlich verwerfen
 - Fehler- und Quota-Verhalten
 - isolierter Browser-/Recovery-Nachweis ohne produktive Feature-Aktivierung
 
@@ -1107,6 +1246,10 @@ Ziel:
 - Draft erst nach bestätigtem Commit entfernen
 - Sessionliste und Detailansicht
 - Korrektur und Löschung
+- explizite Entscheidung und Tests, welche bereits vorhandenen
+  unveränderlichen Katalogversionen während eines Rollouts weiterhin committen
+  dürfen; eine neue höchste Version darf keinen gültigen älteren Draft oder
+  gecachten PWA-Client allein wegen seiner Version unbrauchbar machen
 - interner bzw. testgebundener Android-PWA-Smoke
 - noch keine produktive Feature-Aktivierung
 
@@ -1154,6 +1297,8 @@ Ziel:
 - V1-/V2-Lesepfad
 - keine Doppelzählung
 - unveränderte medizinische Guardrails
+- stabiler produktiver Selektor für die aktuelle Katalogversion und bewiesene
+  Rollout-Reihenfolge für Snapshot, Runtime, Consumer und gecachte PWA-Clients
 - kontrollierter Cutover des alten Activity-Capture-Pfads
 - finaler Android-PWA-Smoke
 - kontrollierte produktive Feature-Aktivierung
@@ -1177,6 +1322,42 @@ Warum zuletzt:
 Löschung und Bereinigung benötigen reale Nutzungserfahrung und dürfen den
 Aufbau nicht vorzeitig verkomplizieren.
 
+### R13 - Prepared Session JSON Import
+
+Status: `POST-CORE`; erst nach stabilem Activity-V2-Kern und realer Nutzung
+planen. R13 hängt fachlich von R4 bis R8 und dem produktiven R11-Cutover ab,
+nicht von einer bestimmten Retention-Entscheidung in R12.
+
+Ziel:
+
+- kleines versioniertes Schema für eine vorbereitete Session-Vorlage
+- JSON-Datei auf Desktop und Android-PWA kontrolliert auswählen
+- exakte Validierung von Schema, `catalog_version`, `item_key` und Reihenfolge
+- keine Zielgewichte, Zielwiederholungen, Satzvorgaben oder vorbefüllten
+  Ist-Leistungen importieren
+- nach Bestätigung einen gewöhnlichen Activity-V2-Draft erzeugen und den
+  bestehenden R4-Historienlookup je Item verwenden
+- vorhandenen veränderten Draft niemals still überschreiben
+- freie Änderung der importierten Übungsliste während der Session
+- identischer R7-Recovery- und R8-Commit-Pfad wie bei einer manuell aufgebauten
+  Session
+- klarer Fehlerpfad für fehlende oder veraltete Katalogeinträge mit Verweis auf
+  den kontrollierten Pflegeweg
+
+Nicht-Ziele der ersten R13-Ausbaustufe:
+
+- keine Trainingsplanverwaltung in Supabase
+- keine automatische Leistungsprogression
+- keine medizinische Trainingsentscheidung in MIDAS
+- kein direkter MCP-Write als Voraussetzung
+- kein zweiter Session- oder Speicherpfad
+
+Warum als Post-Core-Erweiterung:
+
+Die Funktion reduziert Reibung zwischen Codex-Analyse und realem Training,
+ohne den planfreien Kern umzubauen. Erst reale Nutzung von R4 bis R8 zeigt, ob
+Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich bequem genug sind.
+
 ---
 
 ## 19. Roadmap-übergreifende Gates
@@ -1196,9 +1377,20 @@ Aufbau nicht vorzeitig verkomplizieren.
 - Externe Findings werden bewertet und nicht blind umgesetzt.
 - Neue Grundsatzfragen werden in der verursachenden Roadmap entschieden und
   nicht still in späteren Roadmaps erfunden.
+- Ändert eine späte Owner-Entscheidung einen bereits geprüften Vertrag, pausiert
+  das aktuelle Gate. Betroffene Ziel-, Readiness-, Implementierungs- und
+  Testverträge werden sichtbar neu validiert, bevor die Roadmap fortgesetzt
+  wird. Das erzwingt nicht automatisch eine neue Roadmap.
 - R2 wird durch das Studioinventar nicht erweitert oder blockiert.
-- R4 bleibt blockiert, bis C2 die Katalogversion 2, die offenen
-  Maschinenidentitäten und die exakte Studio-Suchmatrix nachgewiesen hat.
+- Das R4-Eingangsgate ist erfüllt: C2 hat Katalogversion 2, alle
+  Maschinenidentitäten und die exakte Studio-Suchmatrix nachgewiesen. R4 darf
+  beginnen, ohne bereits produktive Activity-V2-Nutzung zu aktivieren.
+- Vor dem R11-Cutover muss bewiesen sein, dass eine neue Katalogversion weder
+  einen gültigen älteren Draft noch einen gecachten PWA-Client allein durch den
+  Wechsel der höchsten Version bei Recovery oder Commit blockiert.
+- R13 darf weder Katalogvalidierung noch R7-Recovery oder R8-Commit umgehen.
+  Importierte Vorlagen dürfen nur Auswahl und Reihenfolge vorbereiten; alle
+  gespeicherten Leistungswerte müssen aus der realen Session stammen.
 
 ---
 
@@ -1291,20 +1483,76 @@ Entschieden:
 - Klare Gerätenamen werden frühestens in `catalog_version: 2` als Aliase
   gepflegt.
 - Upper Back, Low Row, Vertical Traction, Abdominal Crunch und Total
-  Abdominal benötigen vor C2-S4 eine Owner-Entscheidung über Alias oder
-  eigenständige klassische Bewegungsidentität.
+  Abdominal wurden in C2 entschieden: `high_row` und `total_abdominal` sind
+  neue Keys; Low Row, Vertical Traction und Abdominal Crunch sind Aliase von
+  `seated_row`, `lat_pulldown` und `core_press`.
 - Multi Hip wird nach ausgeführter Bewegung und nicht als ein einziger
   generischer Gerätekey erfasst.
 
+Zuständig und Ergebnis:
+
+- C2 hat die Katalog-v2-Pflege nach R2 und vor R4 vollständig umgesetzt.
+- Spätere klare Lücken folgen dem kleinen versionierten Wartungsrunbook; ein
+  bereits produktiver Snapshot bleibt unveränderlich.
+
+### O-8 Katalog-Rollout und ältere PWA-Clients
+
+Offen nach dem C2-Nachreview:
+
+- Der R2-Commit akzeptiert derzeit ausschließlich die höchste vorhandene
+  `catalog_version`.
+- Nach produktiver Aktivierung können ein vorhandener Draft oder ein gecachter
+  PWA-Client noch eine ältere, weiterhin unveränderliche Katalogversion tragen.
+- Eine neue höchste Version darf deshalb nicht produktiv eingefügt werden,
+  bevor der Rolloutvertrag feststeht.
+
 Zuständig:
 
-- C2 entscheidet und implementiert die Katalog-v2-Pflege nach R2 und vor R4.
+- R4 hält Suche, UI und den read-only Last-Performance-Lookup durch explizite
+  Semantikinjektion versionsagnostisch. Der bestehende v1-Aufruf bleibt
+  rückwärtskompatibel; der Commitpfad wird nicht geöffnet oder umgedeutet.
+- R7 bindet persistente Recovery an die im Draft gespeicherte
+  Katalogversion.
+- R8 entscheidet und testet die serverseitige Commit-Kompatibilität.
+- R11 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
+  und den finalen Android-PWA-Smoke.
+
+Ziel:
+
+- Spätere klare Kataloglücken bleiben kleine kontrollierte Wartung ohne freie
+  Historienkeys oder Activity V3, verursachen aber auch keinen Commit-Ausfall
+  für einen noch gültigen älteren PWA-Draft.
 
 R1 hat ausschließlich O-1, O-2 und die für Semantik, Suche und spätere
 Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 bis O-6 bleiben
 bis zu ihrer zuständigen Roadmap bewusst offen und dürfen durch frühere
-Implementierung nicht vorweggenommen werden. O-7 ergänzt keine stille
-R1-Korrektur, sondern definiert den späteren versionierten Pflegepfad.
+Implementierung nicht vorweggenommen werden. O-7 hat keine stille
+R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
+umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R11-Gates offen
+und muss vor dem produktiven Cutover geschlossen sein.
+
+### O-9 Vorbereitete Session-Vorlage
+
+Entschieden für die spätere R13:
+
+- Codex darf aus einer gemeinsamen Trainingsanalyse eine JSON-Übungsliste für
+  die nächste Einheit erstellen.
+- Die Vorlage enthält ausschließlich gültige Katalogidentitäten,
+  Katalogversion, Reihenfolge und harmlose Anzeigenmetadaten.
+- Keine Zielgewichte, Zielwiederholungen, Satzanzahl oder Ist-Leistung werden
+  importiert.
+- Der Import erzeugt nach Laufzeitvalidierung einen gewöhnlichen Draft. R4
+  liefert weiterhin die letzte reale Ausführung als Gedächtnisstütze.
+- Die Session bleibt vollständig editierbar und verwendet denselben
+  Recovery-, Korrektur- und Save-Pfad wie ein manuell aufgebauter Draft.
+- Eine Kataloglücke wird vor Erstellung der finalen Vorlage über das
+  Wartungsrunbook geschlossen; es gibt keinen freien Fallback-Key.
+
+Zuständig:
+
+- R13 friert Dateischema, Import-UX, Fehlermeldungen und Desktop-/Android-PWA-
+  Smokes ein. Ein späterer MCP darf dasselbe Schema transportieren, ist aber
+  keine Voraussetzung.
 
 ---
 
@@ -1328,7 +1576,13 @@ Activity V2 ist fachlich erfolgreich, wenn Stephan:
     erzeugen kann,
 11. im Arztbericht nur eine verständliche Aktivitätszusammenfassung sieht,
 12. bestehende Legacy-Aktivitäten weiterhin korrekt und ohne Doppelzählung
-    berücksichtigt bekommt.
+    berücksichtigt bekommt,
+13. eine später fehlende Übung zu Hause kontrolliert ergänzen lassen kann,
+    ohne freien Historienkey, neue Activity-Generation oder Recovery-/Commit-
+    Ausfall für einen weiterhin gültigen älteren PWA-Draft,
+14. eine von Codex vorbereitete JSON-Übungsliste laden, frei verändern und über
+    denselben normalen Draft- und Save-Pfad als tatsächlich absolvierte Session
+    dokumentieren kann.
 
 ---
 
@@ -1346,3 +1600,16 @@ bleiben als IndexedDB-Draft lokal. Abgeschlossene Sessions werden atomar in
 Supabase gespeichert. Arztbericht und Doctor View erhalten nur
 Zusammenfassungen; ein versionierter Activity-Export liefert die vollständigen
 Details für spätere Coaching-Analysen.
+
+Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
+sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte
+Identität in einer vollständigen neuen Katalogversion ergänzt. R4 hält die
+Consumer dafür versionsagnostisch; R7, R8 und R11 müssen vor dem produktiven
+Cutover noch beweisen, dass der Versionswechsel keinen gültigen älteren
+PWA-Draft bei Recovery oder Commit blockiert.
+
+Als optionale Post-Core-Erweiterung kann R13 eine von Codex vorbereitete
+JSON-Übungsliste als normalen Session-Draft laden. Sie enthält nur Katalogkeys
+und Reihenfolge, keine Leistungsvorgaben oder vorgetäuschten Ist-Werte. Letzte
+Leistung, freie Bearbeitung, Recovery und Save bleiben exakt dieselben wie bei
+einer manuell gestarteten Session.
