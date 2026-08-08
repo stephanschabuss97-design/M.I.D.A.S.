@@ -362,3 +362,33 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 - Invalidiert durch: R4-Data-Access-/Shell-JS, Shell-CSS, Harness,
   R4-Contracttests, C2-Semantik/API, R3-Draft-/Lifecyclevertrag, produktive
   Script-Reihenfolge oder neue Netzwerk-/Storage-/SQL-Nutzung.
+
+### HCR-023 - Activity V2 R5 Strength-Set-Editor bleibt isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+  und [R5 Roadmap](<../archive/MIDAS Activity V2 R5 Strength Set Editor Roadmap (DONE).md>)
+- Ebene: local-runtime + browser + static
+- Ausführung: automated + manual
+- Wirkung: read-only; Draft und UI bleiben flüchtig und lokal
+- Voraussetzung: R1-R5-/C2-JS, CSS, Harness und Contract-Tests gehören zum
+  selben Repo-Stand; der Repo-Root wird für den Harness über einen lokalen
+  HTTP-Server angeboten.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  und `node tools/activity-catalog.mjs check` ausführen; danach die Harness-
+  Routen `empty`, `policies`, `history` und `all` bei 1440x900, 390x844 und
+  320x800 prüfen und mindestens 30 Sekunden in einen Fremdtab wechseln.
+- Erwartung: 81/81 Contract-Fälle sind grün. Das Draftschema v2 besitzt die
+  exakte Set-API und die vereinbarten Setkeys; alle acht realen Strength-
+  Feldpolicies sind fail-closed. Strength-Items beginnen mit drei leeren
+  Eingabezeilen, Non-Strength-Items mit `sets: []`; leere Zeilen behaupten
+  keine Leistung. Parser, abgeleitete Zustände, 1-bis-50-Grenze, Fokus-,
+  Close- und Raceguards bleiben deterministisch. Historie bleibt read-only
+  und befüllt den Draft nie vor. Die vier Harness-Fixtures liefern 0/8/4/12
+  Items, alle drei Viewports bleiben ohne horizontalen Overflow und die
+  Touchziele bei 320px mindestens 44 Pixel hoch. Produktiver Scriptload,
+  Netzwerk, Storage, SQL/RPC und `commitSession` bleiben unberührt; Activity
+  V1 und `index.html` bleiben unverändert.
+- Invalidiert durch: R5-Draft-/Shell-JS, Shell-CSS, Harness und Contracttests;
+  R1-/C2-Semantik oder Feldpolicies; R3-/R4-Draft-, Lifecycle- oder
+  Historienvertrag; produktive Script-Reihenfolge oder neue Netzwerk-,
+  Storage-, SQL-/RPC- oder Commitnutzung.

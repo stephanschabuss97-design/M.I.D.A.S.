@@ -428,6 +428,43 @@ function typeSearch(panel, value) {
   return search;
 }
 
+function setInputElement(panel, itemKey, setOrder, fieldKey) {
+  return panel
+    .querySelectorAll('input')
+    .find(
+      (input) =>
+        input.dataset.itemKey === itemKey &&
+        input.dataset.setOrder === String(setOrder) &&
+        input.dataset.fieldKey === fieldKey
+    );
+}
+
+function inputSetField(panel, itemKey, setOrder, fieldKey, value) {
+  const input = setInputElement(panel, itemKey, setOrder, fieldKey);
+  assert.ok(input, `${itemKey} set ${setOrder} field ${fieldKey}`);
+  input.value = value;
+  panel.dispatchEvent({ type: 'input', target: input });
+  return input;
+}
+
+function itemElement(panel, itemKey) {
+  return panel
+    .querySelectorAll('.activity-v2-session-item')
+    .find((item) => item.dataset.itemKey === itemKey);
+}
+
+function editorElement(panel, itemKey) {
+  return itemElement(panel, itemKey)?.querySelector(
+    '.activity-v2-session-strength-editor'
+  );
+}
+
+function setRowElement(panel, itemKey, setOrder) {
+  return itemElement(panel, itemKey)
+    ?.querySelectorAll('.activity-v2-session-set-row')
+    .find((row) => row.dataset.setOrder === String(setOrder));
+}
+
 function pressKey(runtime, target, key, options = {}) {
   const event = { type: 'keydown', target, key, ...options };
   runtime.document.dispatchEvent(event);
@@ -573,6 +610,20 @@ test('mount validates exact options, dependencies and scheduler pairs before DOM
     'INVALID_DRAFT_API'
   );
   runtime = createRuntime();
+  const legacyDraftFacade = Object.freeze({
+    getSnapshot: () => runtime.draft.getSnapshot(),
+    getTimerSnapshot: () => runtime.draft.getTimerSnapshot(),
+    addItem() {},
+    removeItem() {},
+    moveItem() {},
+    setNote() {},
+    discard() {}
+  });
+  assertShellError(
+    () => mountRuntime(runtime, { draft: legacyDraftFacade }),
+    'INVALID_DRAFT_API'
+  );
+  runtime = createRuntime();
   assertShellError(
     () => runtime.shellApi.mount({
       host: runtime.document.body,
@@ -628,6 +679,23 @@ test('mount validates exact options, dependencies and scheduler pairs before DOM
       }
     }),
     'SEMANTICS_MISSING'
+  );
+  runtime = createRuntime();
+  const invalidCatalog = jsonClone(runtime.semantics.getCatalog());
+  invalidCatalog.entries.find(
+    (entry) => entry.key === 'ab_wheel_rollout'
+  ).fields.reps = 'forbidden';
+  const baseSemantics = runtime.semantics;
+  assertShellError(
+    () => mountRuntime(runtime, {
+      semantics: {
+        getCatalog: () => invalidCatalog,
+        getEntryByKey: (key) => baseSemantics.getEntryByKey(key),
+        normalizeSearchText: (query) => baseSemantics.normalizeSearchText(query),
+        search: (query, options) => baseSemantics.search(query, options)
+      }
+    }),
+    'INVALID_DRAFT_STATE'
   );
 });
 
@@ -1150,7 +1218,11 @@ test('lookup races keep late remove, close, guard and destroy settlements cache-
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
-    discard() {}
+    discard() {},
+    addSet: (key) => runtime.draft.addSet(key),
+    removeSet: (key, order) => runtime.draft.removeSet(key, order),
+    setSetField: (key, order, field, value) =>
+      runtime.draft.setSetField(key, order, field, value)
   });
   calls = 0;
   mounted = mountRuntime(runtime, {
@@ -1387,7 +1459,11 @@ test('confirmation and discard failures preserve draft, timer, focus and open sh
     discard() {
       discardCalls += 1;
       throw new Error('private discard detail');
-    }
+    },
+    addSet: (key) => runtime.draft.addSet(key),
+    removeSet: (key, order) => runtime.draft.removeSet(key, order),
+    setSetField: (key, order, field, value) =>
+      runtime.draft.setSetField(key, order, field, value)
   });
   const { shell, panel } = mountRuntime(runtime, {
     draft: failingDraft,
@@ -1410,6 +1486,10 @@ test('confirmation and discard failures preserve draft, timer, focus and open sh
   assert.equal(runtime.draft.getSnapshot(), dirty);
   assert.equal(runtime.document.activeElement, focused);
   assert.equal(runtime.intervals.size, 1);
+  itemElement(panel, 'ab_wheel_rollout')
+    .querySelectorAll('.activity-v2-session-set-input')
+    .forEach((input) => assert.equal(input.disabled, false));
+  assert.equal(actionElement(panel, 'add-set', 'ab_wheel_rollout').disabled, false);
   assert.equal(
     panel.querySelector('.activity-v2-session-status').textContent,
     'Die Session konnte nicht verworfen werden.'
@@ -1436,7 +1516,11 @@ test('destroy invalidates a pending confirmation without late discard or DOM eff
     discard() {
       discardCalls += 1;
       return runtime.draft.discard();
-    }
+    },
+    addSet: (key) => runtime.draft.addSet(key),
+    removeSet: (key, order) => runtime.draft.removeSet(key, order),
+    setSetField: (key, order, field, value) =>
+      runtime.draft.setSetField(key, order, field, value)
   });
   const { shell, panel } = mountRuntime(runtime, {
     draft: guardedDraft,
@@ -1460,9 +1544,11 @@ test('destroy invalidates a pending confirmation without late discard or DOM eff
   assert.equal(runtime.document.listeners.get('visibilitychange').size, 0);
 });
 
-test('invalid draft state and catalog mismatch fail before the existing DOM is patched', () => {
+test('draft-v2 item, set, policy and catalog violations fail before DOM mutation', () => {
   const runtime = createRuntime();
-  let snapshot = runtime.draft.getSnapshot();
+  runtime.draft.addItem('ab_wheel_rollout');
+  const validSnapshot = runtime.draft.getSnapshot();
+  let snapshot = validSnapshot;
   let timer = runtime.draft.getTimerSnapshot();
   const fakeDraft = Object.freeze({
     getSnapshot: () => snapshot,
@@ -1471,28 +1557,40 @@ test('invalid draft state and catalog mismatch fail before the existing DOM is p
     removeItem() {},
     moveItem() {},
     setNote() {},
-    discard() {}
+    discard() {},
+    addSet() {},
+    removeSet() {},
+    setSetField() {}
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
   const originalText = panel.textContent;
 
-  snapshot = deepFreeze({
-    ...snapshot,
-    revision: 1,
-    items: [{ item_key: 'ab_wheel_rollout', item_order: 2 }]
+  const invalidMutations = [
+    (candidate) => { candidate.items[0].item_order = 2; },
+    (candidate) => { delete candidate.items[0].sets[0].reps; },
+    (candidate) => { candidate.items[0].sets[0].set_order = 2; },
+    (candidate) => { candidate.items[0].sets[0].reps = ''; },
+    (candidate) => { candidate.items[0].sets[0].weight_kg = '1'; },
+    (candidate) => { candidate.items[0].sets[0].reps = '😀'.repeat(33); },
+    (candidate) => { candidate.items[0].sets = []; }
+  ];
+  invalidMutations.forEach((mutate) => {
+    const candidate = jsonClone(validSnapshot);
+    mutate(candidate);
+    snapshot = deepFreeze(candidate);
+    assertShellError(() => shell.render(), 'INVALID_DRAFT_STATE');
+    assert.equal(panel.textContent, originalText);
   });
-  assertShellError(() => shell.render(), 'INVALID_DRAFT_STATE');
-  assert.equal(panel.textContent, originalText);
 
   snapshot = deepFreeze({
-    ...runtime.draft.getSnapshot(),
-    catalog_version: runtime.draft.getSnapshot().catalog_version + 1
+    ...validSnapshot,
+    catalog_version: validSnapshot.catalog_version + 1
   });
   assertShellError(() => shell.render(), 'CATALOG_VERSION_MISMATCH');
   assert.equal(panel.textContent, originalText);
 
-  snapshot = runtime.draft.getSnapshot();
-  timer = deepFreeze({ running: false, elapsed_ms: 0, label: '00:01' });
+  snapshot = validSnapshot;
+  timer = deepFreeze({ running: true, elapsed_ms: 0, label: '00:01' });
   assertShellError(() => shell.render(), 'INVALID_DRAFT_STATE');
   assert.equal(panel.textContent, originalText);
 });
@@ -1511,7 +1609,10 @@ test('expected draft failures stay open, preserve state and report a safe status
     removeItem() {},
     moveItem() {},
     setNote() {},
-    discard() {}
+    discard() {},
+    addSet() {},
+    removeSet() {},
+    setSetField() {}
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
   shell.open({ opener: runtime.opener });
@@ -1524,6 +1625,530 @@ test('expected draft failures stay open, preserve state and report a safe status
   assert.equal(runtime.document.activeElement, picker);
   assert.equal(status.textContent, 'Die Aktion konnte nicht ausgeführt werden.');
   assert.doesNotMatch(status.textContent, /private|catalog detail/i);
+});
+
+test('strength editors render all eight policies from Draft while non-strength stays neutral', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  const setFields = [
+    'reps',
+    'duration_sec',
+    'distance_m',
+    'weight_kg',
+    'assistance_kg'
+  ];
+  const labels = {
+    reps: 'Wiederholungen',
+    duration_sec: 'Dauer (Sek.)',
+    distance_m: 'Distanz (m)',
+    weight_kg: 'Gewicht (kg)',
+    assistance_kg: 'Unterstützung (kg)'
+  };
+  const representatives = new Map();
+  runtime.semantics.getCatalog().entries
+    .filter((entry) => entry.status === 'active' && entry.tracking_mode === 'strength_sets')
+    .forEach((entry) => {
+      const signature = setFields.map((key) => entry.fields[key]).join('|');
+      if (!representatives.has(signature)) representatives.set(signature, entry);
+    });
+  assert.equal(representatives.size, 8);
+  representatives.forEach((entry) => runtime.draft.addItem(entry.key));
+  const nonStrength = runtime.semantics.getCatalog().entries.find(
+    (entry) => entry.status === 'active' && entry.tracking_mode !== 'strength_sets'
+  );
+  runtime.draft.addItem(nonStrength.key);
+
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance: () => Promise.resolve(null)
+  });
+  shell.open({ opener: runtime.opener });
+  representatives.forEach((entry) => {
+    const item = itemElement(panel, entry.key);
+    const editor = editorElement(panel, entry.key);
+    assert.ok(editor);
+    assert.equal(editor.dataset.state, 'empty');
+    assert.equal(item.querySelectorAll('.activity-v2-session-set-row').length, 3);
+    assert.equal(item.querySelector('.activity-v2-session-history').querySelectorAll('input').length, 0);
+    const allowed = setFields.filter((key) => entry.fields[key] !== 'forbidden');
+    assert.deepEqual(
+      item.querySelectorAll('.activity-v2-session-set-input')
+        .filter((input) => input.dataset.setOrder === '1')
+        .map((input) => input.dataset.fieldKey),
+      allowed
+    );
+    allowed.forEach((fieldKey) => {
+      const input = setInputElement(panel, entry.key, 1, fieldKey);
+      const label = item.querySelectorAll('label').find(
+        (candidate) => candidate.htmlFor === input.id
+      );
+      assert.equal(label.textContent, labels[fieldKey]);
+      assert.equal(input.type, 'text');
+      assert.equal(input.value, '');
+      assert.equal(input.getAttribute('inputmode'),
+        fieldKey === 'reps' || fieldKey === 'duration_sec' ? 'numeric' : 'decimal');
+      assert.equal(input.maxLength, 32);
+      assert.equal(input.getAttribute('maxlength'), '32');
+      assert.equal(input.getAttribute('autocomplete'), 'off');
+      assert.equal(input.getAttribute('spellcheck'), 'false');
+      assert.equal(input.getAttribute('aria-invalid'), 'false');
+      assert.ok(input.getAttribute('aria-describedby'));
+      assert.equal(input.getAttribute('placeholder'), null);
+    });
+    const add = actionElement(panel, 'add-set', entry.key);
+    assert.equal(add.textContent, '+ Satz');
+    assert.equal(add.getAttribute('aria-label'), 'Satz hinzufügen');
+    assert.equal(add.getAttribute('title'), 'Satz hinzufügen');
+    const removeSets = item.querySelectorAll('button').filter(
+      (button) => button.dataset.action === 'remove-set'
+    );
+    assert.equal(removeSets.length, 3);
+    assert.equal(removeSets[0].getAttribute('aria-label'), 'Satz 1 entfernen');
+    assert.equal(removeSets[0].getAttribute('title'), 'Satz 1 entfernen');
+    assert.equal(item.querySelectorAll('button').filter(
+      (button) => button.dataset.action === 'remove'
+    ).length, 1);
+    const validValues = {
+      reps: '1',
+      duration_sec: '1',
+      distance_m: '0,1',
+      weight_kg: '0,01',
+      assistance_kg: '0,01'
+    };
+    allowed.forEach((fieldKey) => {
+      inputSetField(panel, entry.key, 1, fieldKey, validValues[fieldKey]);
+    });
+    const draftItem = runtime.draft.getSnapshot().items.find(
+      (candidate) => candidate.item_key === entry.key
+    );
+    setFields.forEach((fieldKey) => {
+      assert.equal(
+        draftItem.sets[0][fieldKey],
+        allowed.includes(fieldKey) ? validValues[fieldKey] : null
+      );
+    });
+  });
+
+  const neutralItem = itemElement(panel, nonStrength.key);
+  assert.equal(neutralItem.querySelector('.activity-v2-session-strength-editor'), null);
+  assert.equal(
+    neutralItem.querySelector('.activity-v2-session-editor-neutral-message').textContent,
+    'Die Eingabe für diese Aktivität wird in diesem Editor noch nicht unterstützt.'
+  );
+  assert.equal(neutralItem.querySelectorAll('.activity-v2-session-set-input').length, 0);
+});
+
+test('set field definitions and one-to-fifty UI controls fail closed at their exact boundaries', () => {
+  const mutationCases = [
+    (catalog) => { catalog.field_definitions.reps.max = 1000.5; },
+    (catalog) => { catalog.field_definitions.weight_kg.max_decimals = 0; },
+    (catalog) => { catalog.field_definitions.distance_m.unit = 'km'; },
+    (catalog) => { delete catalog.field_definitions.duration_sec.min; },
+    (catalog) => { catalog.field_definitions.assistance_kg.extra = true; }
+  ];
+  mutationCases.forEach((mutate) => {
+    const runtime = createRuntime({ useSemanticsV2: true });
+    const catalog = jsonClone(runtime.semantics.getCatalog());
+    mutate(catalog);
+    const base = runtime.semantics;
+    assertShellError(
+      () => mountRuntime(runtime, {
+        semantics: {
+          getCatalog: () => catalog,
+          getEntryByKey: (key) => base.getEntryByKey(key),
+          normalizeSearchText: (query) => base.normalizeSearchText(query),
+          search: (query, options) => base.search(query, options)
+        }
+      }),
+      'INVALID_DRAFT_STATE'
+    );
+  });
+
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  runtime.draft.removeSet('bench_press', 3);
+  runtime.draft.removeSet('bench_press', 2);
+  const { shell, panel } = mountRuntime(runtime);
+  shell.open({ opener: runtime.opener });
+  const onlyRemove = itemElement(panel, 'bench_press').querySelectorAll('button').find(
+    (button) => button.dataset.action === 'remove-set'
+  );
+  assert.equal(onlyRemove.disabled, true);
+  assert.equal(actionElement(panel, 'add-set', 'bench_press').disabled, false);
+  for (let count = 1; count < 50; count += 1) runtime.draft.addSet('bench_press');
+  shell.render();
+  const maxAdd = actionElement(panel, 'add-set', 'bench_press');
+  assert.equal(maxAdd.disabled, true);
+  assert.equal(itemElement(panel, 'bench_press').querySelectorAll('button').filter(
+    (button) => button.dataset.action === 'remove-set' && !button.disabled
+  ).length, 50);
+  const stable = runtime.draft.getSnapshot();
+  click(panel, maxAdd);
+  assert.equal(runtime.draft.getSnapshot(), stable);
+});
+
+test('Draft-first parser preserves raw values, node identity and exact R1 error states', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  const { shell, panel } = mountRuntime(runtime);
+  shell.open({ opener: runtime.opener });
+  const reps = setInputElement(panel, 'bench_press', 1, 'reps');
+  const weight = setInputElement(panel, 'bench_press', 1, 'weight_kg');
+  reps.focus();
+
+  const integerCases = [
+    ['', 'empty', ''],
+    ['01', 'valid', ''],
+    ['0', 'invalid', 'Erlaubter Bereich: 1 bis 1000.'],
+    ['1000', 'valid', ''],
+    ['1001', 'invalid', 'Erlaubter Bereich: 1 bis 1000.'],
+    ['1.0', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['-1', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['1e2', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['NaN', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['Infinity', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    [' 1', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['１', 'invalid', 'Nur ganze Zahlen eingeben.']
+  ];
+  integerCases.forEach(([raw, state, message]) => {
+    const same = inputSetField(panel, 'bench_press', 1, 'reps', raw);
+    assert.equal(same, reps);
+    assert.equal(runtime.document.activeElement, reps);
+    assert.equal(reps.value, raw);
+    assert.equal(reps.parentNode.dataset.state, state);
+    assert.equal(panel.querySelector(`#${reps.getAttribute('aria-describedby')}`).textContent, message);
+    assert.equal(
+      runtime.draft.getSnapshot().items[0].sets[0].reps,
+      raw === '' ? null : raw
+    );
+  });
+
+  inputSetField(panel, 'bench_press', 1, 'reps', '8');
+  weight.focus();
+  const decimalCases = [
+    ['', 'empty', ''],
+    ['1,', 'intermediate', ''],
+    ['1.', 'intermediate', ''],
+    ['01,20', 'valid', ''],
+    ['1.2', 'valid', ''],
+    ['0,01', 'valid', ''],
+    ['1000', 'valid', ''],
+    ['0', 'invalid', 'Erlaubter Bereich: 0,01 bis 1000.'],
+    ['1000,01', 'invalid', 'Erlaubter Bereich: 0,01 bis 1000.'],
+    ['1,234', 'invalid', 'Maximal 2 Nachkommastellen.'],
+    [',5', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['.5', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['1,2.3', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['+1', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['1e2', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    [' 1', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['١', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.']
+  ];
+  decimalCases.forEach(([raw, state, message]) => {
+    const same = inputSetField(panel, 'bench_press', 1, 'weight_kg', raw);
+    assert.equal(same, weight);
+    assert.equal(runtime.document.activeElement, weight);
+    assert.equal(weight.value, raw);
+    assert.equal(weight.parentNode.dataset.state, state);
+    assert.equal(panel.querySelector(`#${weight.getAttribute('aria-describedby')}`).textContent, message);
+    assert.equal(
+      runtime.draft.getSnapshot().items[0].sets[0].weight_kg,
+      raw === '' ? null : raw
+    );
+  });
+
+  const beforeForgedEvent = runtime.draft.getSnapshot();
+  const forged = runtime.document.createElement('input');
+  forged.dataset.itemKey = 'bench_press';
+  forged.dataset.setOrder = '1';
+  forged.dataset.fieldKey = 'weight_kg';
+  forged.value = '999';
+  panel.dispatchEvent({ type: 'input', target: forged });
+  assert.equal(runtime.draft.getSnapshot(), beforeForgedEvent);
+
+  const stable = runtime.draft.getSnapshot();
+  inputSetField(panel, 'bench_press', 1, 'weight_kg', '1'.repeat(33));
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(weight.value, stable.items[0].sets[0].weight_kg);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    'Die Satzeingabe konnte nicht aktualisiert werden.'
+  );
+});
+
+test('row and item validity derive partial, complete, invalid and prefix-gap states only', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  const optionalEntry = runtime.semantics.getCatalog().entries.find(
+    (entry) =>
+      entry.status === 'active' &&
+      entry.tracking_mode === 'strength_sets' &&
+      entry.fields.reps === 'required' &&
+      entry.fields.weight_kg === 'optional'
+  );
+  runtime.draft.addItem(optionalEntry.key);
+  const { shell, panel } = mountRuntime(runtime);
+  shell.open({ opener: runtime.opener });
+
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'empty');
+  inputSetField(panel, 'bench_press', 1, 'reps', '8');
+  assert.equal(setRowElement(panel, 'bench_press', 1).dataset.state, 'partial');
+  assert.equal(
+    setRowElement(panel, 'bench_press', 1).querySelector('.activity-v2-session-set-status').textContent,
+    'Satz unvollständig.'
+  );
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'partial');
+  inputSetField(panel, 'bench_press', 1, 'weight_kg', '80');
+  assert.equal(setRowElement(panel, 'bench_press', 1).dataset.state, 'complete');
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'complete');
+  inputSetField(panel, 'bench_press', 3, 'reps', '6');
+  inputSetField(panel, 'bench_press', 3, 'weight_kg', '70');
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'invalid');
+  assert.equal(
+    editorElement(panel, 'bench_press').querySelector('.activity-v2-session-editor-status').textContent,
+    'Leere Sätze sind nur am Ende erlaubt.'
+  );
+  inputSetField(panel, 'bench_press', 2, 'reps', '7');
+  inputSetField(panel, 'bench_press', 2, 'weight_kg', '75');
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'complete');
+  inputSetField(panel, 'bench_press', 2, 'weight_kg', '0');
+  assert.equal(editorElement(panel, 'bench_press').dataset.state, 'invalid');
+  assert.equal(setRowElement(panel, 'bench_press', 2).dataset.state, 'invalid');
+
+  inputSetField(panel, optionalEntry.key, 1, 'reps', '10');
+  assert.equal(setRowElement(panel, optionalEntry.key, 1).dataset.state, 'complete');
+  assert.equal(editorElement(panel, optionalEntry.key).dataset.state, 'complete');
+});
+
+test('set add, remove, item reorder and remove/re-add preserve focus, raw values and lookup cache', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('ab_wheel_rollout');
+  let benchLookups = 0;
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance: (itemKey) => {
+      if (itemKey === 'bench_press') benchLookups += 1;
+      return Promise.resolve(null);
+    }
+  });
+  shell.open({ opener: runtime.opener });
+  await settle();
+  inputSetField(panel, 'bench_press', 1, 'reps', '08');
+  inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,5');
+
+  click(panel, actionElement(panel, 'add-set', 'bench_press'));
+  assert.equal(runtime.draft.getSnapshot().items[0].sets.length, 4);
+  assert.equal(runtime.document.activeElement, setInputElement(panel, 'bench_press', 4, 'reps'));
+  inputSetField(panel, 'bench_press', 2, 'reps', '7');
+  inputSetField(panel, 'bench_press', 2, 'weight_kg', '75');
+  click(panel, itemElement(panel, 'bench_press').querySelectorAll('button').find(
+    (button) => button.dataset.action === 'remove-set' && button.dataset.setOrder === '2'
+  ));
+  assert.equal(runtime.draft.getSnapshot().items[0].sets.length, 3);
+  assert.equal(runtime.document.activeElement, setInputElement(panel, 'bench_press', 2, 'reps'));
+
+  click(panel, actionElement(panel, 'move-down', 'bench_press'));
+  let bench = runtime.draft.getSnapshot().items.find((item) => item.item_key === 'bench_press');
+  assert.equal(bench.item_order, 2);
+  assert.equal(bench.sets[0].reps, '08');
+  assert.equal(bench.sets[0].weight_kg, '80,5');
+  assert.equal(setInputElement(panel, 'bench_press', 1, 'weight_kg').value, '80,5');
+
+  click(panel, actionElement(panel, 'remove', 'bench_press'));
+  typeSearch(panel, 'Bench Press');
+  selectSearchResult(panel, 'bench_press');
+  await settle();
+  bench = runtime.draft.getSnapshot().items.find((item) => item.item_key === 'bench_press');
+  assert.equal(bench.sets.length, 3);
+  bench.sets.forEach((set) => {
+    assert.equal(set.reps, null);
+    assert.equal(set.weight_kg, null);
+  });
+  assert.equal(benchLookups, 1);
+  assert.ok(itemElement(panel, 'bench_press').querySelector('.activity-v2-session-history'));
+});
+
+test('pending close disables only set controls and restores Draft values and focus on cancel', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  let resolveConfirmation;
+  const { shell, panel } = mountRuntime(runtime, {
+    confirmDiscard: () => new Promise((resolve) => {
+      resolveConfirmation = resolve;
+    })
+  });
+  shell.open({ opener: runtime.opener });
+  inputSetField(panel, 'bench_press', 1, 'reps', '8');
+  const weight = inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,');
+  weight.focus();
+  const stable = runtime.draft.getSnapshot();
+  const pending = shell.requestClose('api');
+
+  itemElement(panel, 'bench_press').querySelectorAll('.activity-v2-session-set-input')
+    .forEach((input) => assert.equal(input.disabled, true));
+  assert.equal(actionElement(panel, 'add-set', 'bench_press').disabled, true);
+  itemElement(panel, 'bench_press').querySelectorAll('button')
+    .filter((button) => button.dataset.action === 'remove-set')
+    .forEach((button) => assert.equal(button.disabled, true));
+  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, false);
+  assert.equal(panel.querySelector('.activity-v2-session-search').disabled, false);
+  assert.equal(panel.querySelector('.activity-v2-session-note').disabled, false);
+  assert.equal(actionElement(panel, 'close').disabled, false);
+
+  await Promise.resolve();
+  resolveConfirmation(false);
+  assert.equal(await pending, false);
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(shell.isOpen(), true);
+  assert.equal(weight.disabled, false);
+  assert.equal(weight.value, '80,');
+  assert.equal(runtime.document.activeElement, weight);
+  assert.equal(actionElement(panel, 'add-set', 'bench_press').disabled, false);
+});
+
+test('lookup, timer and background settlements never replace intermediate inputs or focus', async () => {
+  let now = 1_722_509_200_000;
+  const runtime = createRuntime({ useSemanticsV2: true, now: () => now });
+  runtime.draft.addItem('bench_press');
+  const lookup = deferred();
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance: () => lookup.promise
+  });
+  shell.open({ opener: runtime.opener });
+  inputSetField(panel, 'bench_press', 1, 'reps', '8');
+  const weight = inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,');
+  weight.focus();
+  const editor = editorElement(panel, 'bench_press');
+  const revision = runtime.draft.getSnapshot().revision;
+
+  runtime.document.visibilityState = 'hidden';
+  runtime.document.dispatchEvent({ type: 'visibilitychange' });
+  const timer = [...runtime.intervals.values()][0];
+  for (let second = 1; second <= 30; second += 1) {
+    now += 1000;
+    timer.callback();
+  }
+  runtime.document.visibilityState = 'visible';
+  runtime.document.dispatchEvent({ type: 'visibilitychange' });
+  assert.equal(setInputElement(panel, 'bench_press', 1, 'weight_kg'), weight);
+  assert.equal(weight.value, '80,');
+  assert.equal(weight.parentNode.dataset.state, 'intermediate');
+  assert.equal(editorElement(panel, 'bench_press'), editor);
+  assert.equal(runtime.document.activeElement, weight);
+  assert.equal(runtime.draft.getSnapshot().revision, revision);
+
+  lookup.resolve(makeLookupResult(runtime, 'bench_press'));
+  await settle();
+  assert.equal(setInputElement(panel, 'bench_press', 1, 'weight_kg'), weight);
+  assert.equal(weight.value, '80,');
+  assert.equal(weight.parentNode.dataset.state, 'intermediate');
+  assert.equal(runtime.document.activeElement, weight);
+  assert.equal(
+    itemElement(panel, 'bench_press').querySelector('.activity-v2-session-history')
+      .querySelectorAll('input').length,
+    0
+  );
+  const stable = runtime.draft.getSnapshot();
+  shell.destroy();
+  const remounted = mountRuntime(runtime, {
+    loadLastPerformance: () => Promise.resolve(null)
+  });
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(
+    setInputElement(remounted.panel, 'bench_press', 1, 'weight_kg').value,
+    '80,'
+  );
+  assert.equal(
+    setInputElement(remounted.panel, 'bench_press', 1, 'weight_kg')
+      .parentNode.dataset.state,
+    'intermediate'
+  );
+});
+
+test('set mutation failures restore the unchanged snapshot, safe copy and triggering focus', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  const stable = runtime.draft.getSnapshot();
+  const failingDraft = Object.freeze({
+    getSnapshot: () => runtime.draft.getSnapshot(),
+    getTimerSnapshot: () => runtime.draft.getTimerSnapshot(),
+    addItem: (key) => runtime.draft.addItem(key),
+    removeItem: (key) => runtime.draft.removeItem(key),
+    moveItem: (key, order) => runtime.draft.moveItem(key, order),
+    setNote: (note) => runtime.draft.setNote(note),
+    discard: () => runtime.draft.discard(),
+    addSet() { throw new Error('private add detail'); },
+    removeSet() { throw new Error('private remove detail'); },
+    setSetField() { throw new Error('private input detail'); }
+  });
+  const { shell, panel } = mountRuntime(runtime, { draft: failingDraft });
+  shell.open({ opener: runtime.opener });
+  const input = inputSetField(panel, 'bench_press', 1, 'reps', '8');
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(input.value, '');
+  assert.equal(runtime.document.activeElement, input);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    'Die Satzeingabe konnte nicht aktualisiert werden.'
+  );
+
+  const add = actionElement(panel, 'add-set', 'bench_press');
+  click(panel, add);
+  assert.equal(runtime.document.activeElement, add);
+  assert.equal(panel.querySelector('.activity-v2-session-status').textContent,
+    'Satz konnte nicht hinzugefügt werden.');
+  const remove = itemElement(panel, 'bench_press').querySelectorAll('button').find(
+    (button) => button.dataset.action === 'remove-set'
+  );
+  click(panel, remove);
+  assert.equal(runtime.document.activeElement, remove);
+  assert.equal(panel.querySelector('.activity-v2-session-status').textContent,
+    'Satz konnte nicht entfernt werden.');
+  assert.equal(runtime.draft.getSnapshot(), stable);
+});
+
+test('post-mutation shell contract breaches propagate without stale DOM rollback', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  let breakSnapshot = false;
+  const breakingDraft = Object.freeze({
+    getSnapshot() {
+      const snapshot = runtime.draft.getSnapshot();
+      if (!breakSnapshot) return snapshot;
+      return deepFreeze({
+        ...jsonClone(snapshot),
+        draft_schema_version: 'midas.activity-session-draft.invalid'
+      });
+    },
+    getTimerSnapshot: () => runtime.draft.getTimerSnapshot(),
+    addItem: (key) => runtime.draft.addItem(key),
+    removeItem: (key) => runtime.draft.removeItem(key),
+    moveItem: (key, order) => runtime.draft.moveItem(key, order),
+    setNote: (note) => runtime.draft.setNote(note),
+    discard: () => runtime.draft.discard(),
+    addSet: (key) => runtime.draft.addSet(key),
+    removeSet: (key, order) => runtime.draft.removeSet(key, order),
+    setSetField(key, order, field, value) {
+      const snapshot = runtime.draft.setSetField(key, order, field, value);
+      breakSnapshot = true;
+      return snapshot;
+    }
+  });
+  const { shell, panel } = mountRuntime(runtime, { draft: breakingDraft });
+  shell.open({ opener: runtime.opener });
+  const input = setInputElement(panel, 'bench_press', 1, 'reps');
+  input.value = '8';
+  input.focus();
+
+  assertShellError(
+    () => panel.dispatchEvent({ type: 'input', target: input }),
+    'INVALID_DRAFT_STATE'
+  );
+  assert.equal(runtime.draft.getSnapshot().items[0].sets[0].reps, '8');
+  assert.equal(input.value, '8');
+  assert.equal(runtime.document.activeElement, input);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    ''
+  );
 });
 
 test('destroy is idempotent, preserves the draft and releases all local lifecycle state', () => {
@@ -1563,6 +2188,13 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
     /min-width:\s*0/,
     /\.activity-v2-session-search-results/,
     /\.activity-v2-session-history/,
+    /\.activity-v2-session-editor\s*\{[^}]*grid-column:\s*1 \/ -1/s,
+    /\.activity-v2-session-set-row\s*\{[^}]*grid-template-columns:/s,
+    /\.activity-v2-session-set-input\s*\{[^}]*width:\s*100%/s,
+    /\.activity-v2-session-set-input\s*\{[^}]*min-height:\s*44px/s,
+    /\.activity-v2-session-set-field-error:empty/,
+    /\[data-action="remove-set"\]/,
+    /@media \(max-width:\s*640px\)[\s\S]*\.activity-v2-session-set-row\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
     /:is\(button, input, select, textarea\):focus-visible/,
     /prefers-reduced-motion/
   ];
@@ -1576,6 +2208,16 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
   assert.match(harnessSource, /itemKey === 'ski_erg'/);
   assert.match(harnessSource, /itemKey === 'total_abdominal'/);
   assert.match(harnessSource, /itemKey === 'high_row'/);
+  assert.match(harnessSource, /fixture=policies/);
+  assert.match(harnessSource, /fixture=history/);
+  assert.match(harnessSource, /fixture=all/);
+  assert.match(harnessSource, /policyRepresentatives\.size !== 8/);
+  assert.match(harnessSource, /validStressValues/);
+  assert.match(harnessSource, /weight_kg', '1000,001'/);
+  assert.match(harnessSource, /weight_kg', '80,'/);
+  assert.match(harnessSource, /fields\.assistance_kg === 'required'/);
+  assert.match(harnessSource, /fixtureKeys: Object\.freeze/);
+  assert.match(harnessSource, /policyKeys,/);
   assert.match(harnessSource, /getLookupCount:/);
   assert.match(harnessSource, /status\.dataset\.lookupCounts/);
   assert.doesNotMatch(harnessSource, /<script[^>]+index\.js/);

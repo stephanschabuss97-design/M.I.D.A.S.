@@ -6,17 +6,20 @@ Stand: 2026-08-08
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
-Katalogversion 2 sowie die isolierte R4-Suche und Last-Performance-Anzeige sind
-bereitgestellt; sichtbare Activity-Consumer verwenden weiterhin V1.
+Katalogversion 2, R4-Suche/Last-Performance sowie der isolierte
+R5-Strength-Set-Editor sind bereitgestellt. R6 ist der nächste Rolling-Wave-
+Schritt; sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-01: `PASS`. R1, R2 und R3 bleiben unverändert
+Cross-Contract-Stand 2026-08-08: `PASS`. R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
 produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist DONE: die
 lokale Suche, lookup-spezifische Semantikinjektion und read-only historische
-Snapshotanzeige sind isoliert bewiesen. R5 ist der nächste Rolling-Wave-
-Schritt; Recovery wird in R7 isoliert und in R8 intern auf Android-PWA
-bewiesen. Der C2-Nachreview hat zusätzlich den späteren
+Snapshotanzeige sind isoliert bewiesen. R5 ist DONE: Draftschema v2,
+policy-gesteuerte Strength-Sets, Parser, Validität, Lifecycle und responsive
+Harness-Fixtures sind ohne Save oder Produktverdrahtung bewiesen. R6 ist der
+nächste Rolling-Wave-Schritt; Recovery wird in R7 isoliert und in R8 intern auf
+Android-PWA bewiesen. Der C2-Nachreview hat zusätzlich den späteren
 Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
 Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
@@ -32,9 +35,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R4/C2 stellen nur die
-noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such- und
-Historiengrundlage bereit.
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R5/C2 stellen nur die
+noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
+Historien- und Strength-Editor-Grundlage bereit.
 
 ---
 
@@ -360,9 +363,10 @@ Zusätzlich darf die Entry-Feldpolicy höchstens eine Lastart vorsehen:
 - `assistance_kg` für inverse Unterstützungssemantik
 
 Nicht zur R1-Katalogsemantik gehören Satzreihenfolge, Satzabschluss oder
-Zeitpunktfelder. `set_order` wird im R2-Speichervertrag festgelegt;
-Satzabschluss und ein mögliches `completed_at` bleiben der R5-Roadmap
-vorbehalten.
+Zeitpunktfelder. `set_order` wird im R2-Speichervertrag festgelegt. R5 leitet
+Leer-, Teil-, Vollständig- und Ungültigzustand ausschließlich aus Feldpolicy und
+aktuellen Eingaben ab; ein separates Abschlussfeld oder `completed_at` existiert
+nicht.
 
 #### `duration`
 
@@ -439,11 +443,15 @@ Gerätegeneration werden nicht zur historischen Identität.
 
 Der durch C2 umgesetzte `catalog_version: 2`-Vertrag löst die drei Klassen so:
 
+<!-- markdownlint-disable MD013 -->
+
 | Klasse | Verifizierte Beispiele | Vertrag |
 | --- | --- | --- |
 | bereits direkt suchbar | Leg Press, Leg Extension, Leg Curl, Pulldown, Chest Press, Shoulder Press, Rotary Torso, SkiErg, Ruderergometer, Crosstrainer | kein neuer Key |
 | klare Alias-Kandidaten | Glute -> `glute_kickback`; Abductor -> `hip_abduction`; Adductor -> `hip_adduction`; Rotary Calf -> `calf_raise`; Pectoral -> `chest_fly`; Delts Machine -> `lateral_raise`; Lower Back -> `back_extension`; Stepmill -> `stair_climber`; Fahrradergometer -> `cycling` | in v2 mit vollständigem Kollisions-/Suchtest umgesetzt |
 | Owner-Identitätsentscheidung | Upper Back -> neuer Key `high_row`; Low Row -> `seated_row`; Vertical Traction -> `lat_pulldown`; Abdominal Crunch -> `core_press`; Total Abdominal -> neuer Key `total_abdominal` | abgeschlossen; zwei neue Bewegungsidentitäten, drei Aliase bestehender Keys |
+
+<!-- markdownlint-enable MD013 -->
 
 `Multi Hip` ist kein einzelner Übungskey. Die ausgeführte Bewegung bestimmt
 die Identität. Kandidaten sind beispielsweise:
@@ -585,7 +593,8 @@ Der vollständig ausgebaute Draft ab R7 enthält:
 - ausgewählte Items mit kanonischem `item_key`
 - aktuelle Reihenfolge als `item_order`
 - eingegebene Sätze oder Aktivitätswerte
-- Abschlussstatus einzelner Sätze
+- aus der Feldpolicy abgeleiteter Leer-, Teil- oder Vollständigstatus der
+  Satzzeilen; kein separates Abschlussfeld und kein Satzzeitpunkt
 - letzten Autosave-Zeitpunkt
 - Draft-Schema-Version
 
@@ -679,9 +688,9 @@ Bewiesene Kernfelder:
 
 Bewusst nicht vorgesehen sind unklare Felder wie `value_number_1` und
 `value_number_2`. Maschinenlesbare Kerndaten benötigen sprechende Feldnamen.
-Der konkrete Satzabschluss- und Zeitpunktvertrag wird erst in R5 entschieden
-und darf von R2 nicht still durch ein vorweggenommenes `completed_at` festgelegt
-werden.
+R5 hat den Satzabschluss- und Zeitpunktvertrag entschieden: Status bleibt rein
+abgeleitet, und R2 wird nicht durch ein `completed_at` oder ein anderes
+Abschlussfeld erweitert.
 
 ### 8.4 Fachliche Invarianten
 
@@ -1141,9 +1150,11 @@ Reales Ergebnis:
   Katalog-Inspector samt kleinem Wartungsrunbook
 - insert-only SQL 21 produktiv PASS; v1/v2 Repo=Produkt vollständig gleich,
   andere Versionen und v2-Sessionreferenzen 0, RLS/Policies/ACL/RPC unverändert
+<!-- markdownlint-disable MD013 -->
 - [C2 Catalog Contract](<MIDAS Activity V2 C2 Catalog Version 2 Contract.md>),
   [C2 Roadmap](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
   und [C2 Evidence](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+<!-- markdownlint-enable MD013 -->
 
 Warum an dieser Stelle:
 
@@ -1194,7 +1205,7 @@ Reales Ergebnis:
   endete nach einer berechtigten Testhärtung mit 0 Issues.
 - Historische Werte bleiben ausschließlich Gedächtnisstütze und erzeugen keine
   aktuellen Eingaben oder Draftmutation. Activity V1 und der Produktload sind
-  unverändert; R5 darf auf diesem Displayvertrag aufbauen.
+  unverändert; R5 baut auf diesem Displayvertrag auf.
 
 Warum danach:
 
@@ -1202,24 +1213,68 @@ Das ist der zentrale Mehrwert gegenüber starren Trainingsplänen.
 
 ### R5 - Strength Set Editor
 
-Status: `NEXT`; Planung erst nach ausdrücklicher Owner-Freigabe auf Basis des
-abgeschlossenen R4-Vertrags.
+Status: `DONE` am 2026-08-08; vollständig isoliert, ohne Save, Supabase-Write,
+IndexedDB-Recovery oder produktive Aktivierung.
+
+Roadmap:
+
+- [R5 Strength Set Editor Roadmap](<archive/MIDAS Activity V2 R5 Strength Set Editor Roadmap (DONE).md>)
 
 Ziel:
 
 - Übungskarte nach Liftlog-Grundidee
-- Anzeige vorheriger Sätze
+- Anzeige vorheriger Sätze ausschließlich read-only als Orientierung; keine
+  Vorbefüllung aktueller Eingaben
 - feldpolicy-gesteuerte Primärmessung aus R1: `reps`, `duration_sec` oder
   `distance_m`
 - dokumentierte Last als `weight_kg` oder inverse Unterstützung als
   `assistance_kg` nur gemäß Entry-Policy
-- Satz hinzufügen, bearbeiten, erledigen und entfernen
+- bei jeder Strength-Übung genau drei leere Satzzeilen als praktischer
+  Standard, ohne besondere Semantik für den dritten Satz
+- Satz hinzufügen, bearbeiten und entfernen; Hinzufügen und Entfernen hält
+  `set_order` lückenlos
+- Satzabschluss wird automatisch aus den policy-gültigen Eingaben abgeleitet;
+  es gibt weder Abschlusscheckbox noch Satzzeitpunkt
+- vollständig leere nachlaufende Satzzeilen bleiben UI-Platzhalter;
+  Teilzeilen und Lücken sind sichtbar ungültig und blockieren den späteren Save
+- deutsche Dezimaleingabe mit Komma wird kontrolliert normalisiert
 - stabile mobile Bedienung
+
+Bewusst nicht Teil von R5:
+
+- Pausentimer, 1RM-Feld, RPE, Warm-up-Markierung, Dropsets und Supersets
+- Progressions-, Last- oder Wiederholungsempfehlungen sowie Trainingsplanlogik
+- Save, Supabase-Write, IndexedDB-Recovery oder produktive Aktivierung
+
+Die Session dokumentiert ausschließlich die tatsächlich ausgeführte Leistung.
+Ein späteres LLM kann 1RM oder Progression aus den gespeicherten Rohdaten
+ableiten, ohne dass R5 zusätzliche Trainingswissenschaft in den Editor einbaut.
+
+Reales Ergebnis:
+
+- `midas.activity-session-draft.v2` ergänzt pro Item vollständige Setrecords und
+  die drei Methoden `addSet`, `removeSet` und `setSetField`; Strength startet mit
+  drei leeren Zeilen, Non-Strength mit `sets: []`.
+- Alle acht realen R1-Strength-Policykombinationen bestimmen exakt sichtbare
+  Felder, Grenzen und Ganzzahl-/Dezimalregeln. Rohtext bleibt bis zum späteren
+  Commit erhalten; Empty/Partial/Complete/Invalid sind ausschließlich
+  abgeleitete UI-Zustände.
+- Sets bleiben innerhalb `1..50` lückenlos, revisionsgenau und tief
+  eingefroren. Reorder, Remove/Re-Add, Close/Discard, Lookup-, Timer- und
+  Backgroundraces bewahren Draft, Fokus und read-only Historygrenze.
+- Vier lokale Harness-Fixtures decken Empty, acht Policies und alle
+  Historyzustände ab. `81/81` Activity-V2-Contracttests, Katalog
+  `v2 / 80 / 47 / 58`, Syntax `10/10`, drei Viewports und zwei
+  31-Sekunden-Other-Tab-Smokes sind grün; der finale CodeRabbit-Lauf meldete
+  `0` Issues.
+- Activity V1, `index.html`, R2-Commit/API, SQL/RPC/RLS/Grants, Supabase,
+  Storage und produktive Navigation blieben unverändert.
 
 Warum danach:
 
-Der komplexeste Item-Typ wird auf dem bereits bewiesenen Session- und
-Historienvertrag aufgebaut.
+Der komplexeste Item-Typ wurde auf dem bewiesenen Session- und
+Historienvertrag aufgebaut. R6 ergänzt als nächste eigene Roadmap Duration- und
+Cardio-Editoren, ohne den R5-Strength-Vertrag umzudeuten.
 
 ### R6 - Duration and Cardio Editor
 
@@ -1438,15 +1493,23 @@ Entschieden durch R1:
 
 ### O-3 Satzabschluss
 
-Zu klären:
+Entschieden und umgesetzt durch R5:
 
-- Checkbox pro Satz
-- automatischer Abschluss nach gültiger Eingabe
-- Rolle des Satzzeitpunkts
+- Es gibt keine Checkbox pro Satz.
+- Der Status `leer`, `teilweise` oder `vollständig` wird ausschließlich aus der
+  R1-Feldpolicy und den aktuellen Eingaben abgeleitet.
+- Vollständig leere nachlaufende Standardzeilen sind keine ausgeführten Sätze.
+- Teilweise befüllte Zeilen und Lücken zwischen vollständigen Sätzen sind
+  ungültig und müssen vor einem späteren Save korrigiert oder entfernt werden.
+- Ein Satz erhält weder `completed_at` noch ein anderes Zeitpunktfeld.
+- Drei leere Satzzeilen sind der UI-Standard; weitere Zeilen können hinzugefügt
+  und nicht benötigte Zeilen entfernt werden. Der dritte Satz besitzt keine
+  technische Sonderrolle.
 
 Zuständig:
 
-- R5 entscheidet diesen UI- und Interaktionsvertrag.
+- R5 implementiert und beweist diesen UI- und Interaktionsvertrag; R6 darf ihn
+  nur als bestehenden Mixed-Session-Consumer verwenden.
 
 ### O-4 Sessiontimer
 
@@ -1545,8 +1608,9 @@ Ziel:
   für einen noch gültigen älteren PWA-Draft.
 
 R1 hat ausschließlich O-1, O-2 und die für Semantik, Suche und spätere
-Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 bis O-6 bleiben
-bis zu ihrer zuständigen Roadmap bewusst offen und dürfen durch frühere
+Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 ist durch R5
+entschieden und umgesetzt. O-4 ist für R3 entschieden; O-5 und O-6 bleiben bis
+zu ihrer zuständigen Roadmap bewusst offen und dürfen durch frühere
 Implementierung nicht vorweggenommen werden. O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
 umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R11-Gates offen

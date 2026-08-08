@@ -48,6 +48,36 @@
       font-weight: 750;
     }
 
+    .harness-fixtures {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-block: 1rem;
+    }
+
+    .harness-fixtures a {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.65rem 0.8rem;
+      border: 1px solid rgba(108, 224, 198, 0.3);
+      border-radius: 0.7rem;
+      color: #bdeee3;
+      text-decoration: none;
+    }
+
+    .harness-fixtures a[aria-current="page"] {
+      color: #061b16;
+      background: #6ce0c6;
+    }
+
+    #harness-fixture {
+      margin: 0;
+      color: #bdeee3;
+      font-size: 0.85rem;
+      overflow-wrap: anywhere;
+    }
+
     #harness-status {
       display: block;
       margin-block: 1rem;
@@ -58,9 +88,16 @@
 <body>
   <main class="harness-stage" id="harness-background">
     <section class="harness-card" aria-labelledby="harness-title">
-      <p>ISOLIERTER R4-HARNESS</p>
+      <p>ISOLIERTER R5-HARNESS</p>
       <h1 id="harness-title">Activity V2 Session Shell</h1>
       <p>Diese Seite lädt ausschließlich lokale Semantik, Draft, UI-Shell und deterministische Historien-Fakes.</p>
+      <nav class="harness-fixtures" aria-label="Harness-Szenario">
+        <a data-fixture="empty" href="./session-shell-harness.html?fixture=empty">Leer</a>
+        <a data-fixture="policies" href="./session-shell-harness.html?fixture=policies">Policy-Matrix</a>
+        <a data-fixture="history" href="./session-shell-harness.html?fixture=history">Historyzustände</a>
+        <a data-fixture="all" href="./session-shell-harness.html?fixture=all">Gesamtstress</a>
+      </nav>
+      <p id="harness-fixture">Fixture wird bestimmt …</p>
       <output id="harness-status" role="status" aria-live="polite">
         Initialisierung läuft …
       </output>
@@ -84,18 +121,110 @@
     (function startActivityV2SessionHarness(root) {
       const status = document.getElementById('harness-status');
       const opener = document.getElementById('harness-open');
+      const fixtureOutput = document.getElementById('harness-fixture');
+      const fixtureName =
+        new URLSearchParams(root.location.search).get('fixture') || 'empty';
+      const fixtureNames = Object.freeze(['empty', 'policies', 'history', 'all']);
+      const setFieldKeys = Object.freeze([
+        'reps',
+        'duration_sec',
+        'distance_m',
+        'weight_kg',
+        'assistance_kg'
+      ]);
 
       try {
+        if (!fixtureNames.includes(fixtureName)) {
+          throw new Error('invalid deterministic harness fixture');
+        }
         const semantics = root.AppModules.activityV2.semanticsV2;
         const draft = root.AppModules.activityV2.sessionDraft.create({ semantics });
+        const catalog = semantics.getCatalog();
+        const policyRepresentatives = new Map();
+        catalog.entries
+          .filter(
+            (entry) =>
+              entry.status === 'active' && entry.tracking_mode === 'strength_sets'
+          )
+          .forEach((entry) => {
+            const signature = setFieldKeys
+              .map((fieldKey) => entry.fields[fieldKey])
+              .join('|');
+            if (!policyRepresentatives.has(signature)) {
+              policyRepresentatives.set(signature, entry.key);
+            }
+          });
+        if (policyRepresentatives.size !== 8) {
+          throw new Error('invalid deterministic policy fixture');
+        }
+        const policyKeys = Object.freeze([...policyRepresentatives.values()]);
+        const historyKeys = Object.freeze([
+          'bench_press',
+          'ski_erg',
+          'total_abdominal',
+          'high_row'
+        ]);
+        const selectedKeys = [];
+        const addSelectedKey = (itemKey) => {
+          if (!selectedKeys.includes(itemKey)) selectedKeys.push(itemKey);
+        };
+        if (fixtureName === 'policies' || fixtureName === 'all') {
+          policyKeys.forEach(addSelectedKey);
+        }
+        if (fixtureName === 'history' || fixtureName === 'all') {
+          historyKeys.forEach(addSelectedKey);
+        }
+        if (fixtureName === 'all') addSelectedKey('straight_arm_pulldown');
+        selectedKeys.forEach((itemKey) => draft.addItem(itemKey));
+
+        const validStressValues = Object.freeze({
+          reps: '1000',
+          duration_sec: '3600',
+          distance_m: '10000,00',
+          weight_kg: '1000,00',
+          assistance_kg: '1000,00'
+        });
+        selectedKeys.forEach((itemKey) => {
+          const entry = semantics.getEntryByKey(itemKey);
+          if (entry.tracking_mode !== 'strength_sets') return;
+          setFieldKeys.forEach((fieldKey) => {
+            if (entry.fields[fieldKey] !== 'forbidden') {
+              draft.setSetField(
+                itemKey,
+                1,
+                fieldKey,
+                validStressValues[fieldKey]
+              );
+            }
+          });
+        });
+        if (selectedKeys.includes('bench_press')) {
+          draft.setSetField('bench_press', 1, 'reps', '12');
+          draft.setSetField('bench_press', 1, 'weight_kg', '77,50');
+          draft.setSetField('bench_press', 2, 'reps', '13');
+          draft.setSetField('bench_press', 2, 'weight_kg', '1000,001');
+          draft.setSetField('bench_press', 3, 'reps', '8');
+          draft.setSetField('bench_press', 3, 'weight_kg', '80,');
+        }
         const lookupCounts = new Map();
         status.dataset.lookupCounts = '{}';
+        status.dataset.fixture = fixtureName;
+        status.dataset.fixtureKeys = JSON.stringify(selectedKeys);
+        status.dataset.policyKeys = JSON.stringify(policyKeys);
+        document.querySelectorAll('[data-fixture]').forEach((link) => {
+          if (link.dataset.fixture === fixtureName) {
+            link.setAttribute('aria-current', 'page');
+          }
+        });
+        fixtureOutput.textContent =
+          `Fixture: ${fixtureName} · ${selectedKeys.length} Einträge · ` +
+          `${policyKeys.length} Policykombinationen`;
         const makeHistory = (itemKey) => {
           const entry = semantics.getEntryByKey(itemKey);
           const fields = entry.fields;
           const item = {
             id: '00000000-0000-4000-8000-000000000801',
-            catalog_version: semantics.getCatalog().catalog_version,
+            catalog_version: catalog.catalog_version,
             item_key: itemKey,
             item_order: 1,
             item_label_snapshot: entry.label,
@@ -124,7 +253,8 @@
               duration_sec: fields.duration_sec === 'required' ? 45 + index : null,
               distance_m: fields.distance_m === 'required' ? 30 + index : null,
               weight_kg: fields.weight_kg === 'forbidden' ? null : index === 2 ? 80 : 77.5,
-              assistance_kg: null,
+              assistance_kg:
+                fields.assistance_kg === 'required' ? 45 - index * 2.5 : null,
               created_at: '2026-08-01T10:00:00.000000Z'
             }));
           }
@@ -167,6 +297,9 @@
             shell,
             semantics,
             opener,
+            fixture: fixtureName,
+            fixtureKeys: Object.freeze(selectedKeys.slice()),
+            policyKeys,
             getLookupCount: (itemKey) => lookupCounts.get(itemKey) || 0
           }),
           enumerable: true,

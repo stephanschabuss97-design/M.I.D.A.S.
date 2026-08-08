@@ -338,7 +338,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
 | Substep | Änderung | Findings | Dateien | Review | Checks / Evidence | Gate |
 | --- | --- | --- | --- | --- | --- | --- |
-| S4.1 | `[Änderung]` | `[IDs]` | `[Pfade]` | `Delta/Consumer/Full` | `[T-/EV-IDs]` | `none/User` |
+| S4.1 | `[Änderung]` | `[IDs]` | `[Pfade]` | `Delta/Consumer` | `[T-/EV-IDs]` | `none/User` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -370,6 +370,10 @@ Ausführungsblöcke und notwendige Einzelgates sind festgelegt.
 
 ## S4 - Umsetzung
 
+S4 ist ausschließlich der Implementierungsblock. Substeps erhalten den für
+ihr Delta erforderlichen Review und invalidierte Checks. Ein separater
+S4.5-Abschlussreview oder CodeRabbit-Lauf gehört nicht in S4.
+
 ### S4.x - [Name]
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
@@ -381,7 +385,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Umsetzung:
   - `[Änderung]`
 - Review:
-  - `Delta / Consumer / Full`
+  - `Delta / Consumer`
 - Invalidation:
   - `[erneut nötige T-/EV-IDs]`
 - Gate:
@@ -407,6 +411,22 @@ Exit: Alle In-Scope-Findings sind umgesetzt oder abgegrenzt.
 ## S5 - Tests, Runtime-Gates und Abschlussreview
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
+
+Deterministische Reihenfolge:
+
+1. Vollständige relevante lokale, statische und gegebenenfalls
+   Browser-/Device-Testmatrix ausführen.
+2. Nativen Full Code und Contract Review des finalen Gesamtdiffs durchführen.
+3. Bei Codeänderungen CodeRabbit gegen denselben finalen Diff ausführen.
+4. Jedes externe Finding gegen Roadmap, Produktvertrag und reale
+   Implementierung bewerten; nichts blind korrigieren.
+5. Nur berechtigte Findings minimal korrigieren und alle dadurch invalidierten
+   Checks wiederholen.
+6. CodeRabbit erneut ausführen, sobald eine berechtigte Korrektur Code im
+   geprüften Diff ändert. Reine Dokumentationskorrekturen invalidieren den
+   CodeRabbit-Lauf nicht.
+7. Mehrdeutige Produktentscheidungen als Owner-Gate behandeln. Einen nicht
+   verfügbaren externen Review mit Grund dokumentieren und nicht ersetzen.
 
 <!-- markdownlint-disable MD013 -->
 

@@ -1,9 +1,11 @@
 'use strict';
 
 (function initActivityV2SessionShell(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v1';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v2';
   const NOTE_LIMIT = 500;
   const ITEM_LIMIT = 50;
+  const SET_LIMIT = 50;
+  const SET_VALUE_LIMIT = 32;
   const ITEM_KEY_RE = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
   const UUID_RE =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -24,7 +26,10 @@
     'removeItem',
     'moveItem',
     'setNote',
-    'discard'
+    'discard',
+    'addSet',
+    'removeSet',
+    'setSetField'
   ]);
   const SNAPSHOT_KEYS = Object.freeze([
     'catalog_version',
@@ -35,6 +40,62 @@
     'revision',
     'started_at'
   ]);
+  const DRAFT_ITEM_KEYS = Object.freeze(['item_key', 'item_order', 'sets']);
+  const DRAFT_SET_KEYS = Object.freeze([
+    'set_order',
+    'reps',
+    'duration_sec',
+    'distance_m',
+    'weight_kg',
+    'assistance_kg'
+  ]);
+  const SET_FIELD_KEYS = Object.freeze([
+    'reps',
+    'duration_sec',
+    'distance_m',
+    'weight_kg',
+    'assistance_kg'
+  ]);
+  const FIELD_POLICIES = Object.freeze(['forbidden', 'optional', 'required']);
+  const TRACKING_MODES = Object.freeze([
+    'duration',
+    'duration_distance',
+    'strength_sets'
+  ]);
+  const STRENGTH_POLICY_SIGNATURES = new Set([
+    'required|forbidden|forbidden|forbidden|forbidden',
+    'required|forbidden|forbidden|required|forbidden',
+    'required|forbidden|forbidden|optional|forbidden',
+    'required|forbidden|forbidden|forbidden|required',
+    'forbidden|required|forbidden|forbidden|forbidden',
+    'forbidden|required|forbidden|optional|forbidden',
+    'forbidden|forbidden|required|required|forbidden',
+    'forbidden|forbidden|required|optional|forbidden'
+  ]);
+  const SET_FIELD_UI = Object.freeze({
+    reps: Object.freeze({ label: 'Wiederholungen', inputMode: 'numeric' }),
+    duration_sec: Object.freeze({ label: 'Dauer (Sek.)', inputMode: 'numeric' }),
+    distance_m: Object.freeze({ label: 'Distanz (m)', inputMode: 'decimal' }),
+    weight_kg: Object.freeze({ label: 'Gewicht (kg)', inputMode: 'decimal' }),
+    assistance_kg: Object.freeze({
+      label: 'Unterstützung (kg)',
+      inputMode: 'decimal'
+    })
+  });
+  const SET_FIELD_UNITS = Object.freeze({
+    reps: 'count',
+    duration_sec: 's',
+    distance_m: 'm',
+    weight_kg: 'kg',
+    assistance_kg: 'kg'
+  });
+  const INTEGER_INPUT_MESSAGE = 'Nur ganze Zahlen eingeben.';
+  const DECIMAL_INPUT_MESSAGE =
+    'Ziffern mit optionalem Komma oder Punkt eingeben.';
+  const PARTIAL_SET_MESSAGE = 'Satz unvollständig.';
+  const GAP_MESSAGE = 'Leere Sätze sind nur am Ende erlaubt.';
+  const NON_STRENGTH_MESSAGE =
+    'Die Eingabe für diese Aktivität wird in diesem Editor noch nicht unterstützt.';
   const TIMER_KEYS = Object.freeze(['elapsed_ms', 'label', 'running']);
   const CLOSE_SOURCES = Object.freeze(['api', 'close_button', 'escape']);
   const DISCARD_MESSAGE =
@@ -249,10 +310,47 @@
       !isRecord(catalog) ||
       !Number.isSafeInteger(catalog.catalog_version) ||
       catalog.catalog_version < 1 ||
-      !Array.isArray(catalog.entries)
+      !Array.isArray(catalog.entries) ||
+      !isRecord(catalog.field_definitions)
     ) {
       fail('INVALID_DRAFT_STATE');
     }
+
+    const fieldDefinitions = {};
+    SET_FIELD_KEYS.forEach((fieldKey) => {
+      const definition = catalog.field_definitions[fieldKey];
+      const integer = fieldKey === 'reps' || fieldKey === 'duration_sec';
+      if (
+        !isRecord(definition) ||
+        !hasExactKeys(
+          definition,
+          integer
+            ? ['scope', 'value_type', 'unit', 'min', 'max']
+            : ['scope', 'value_type', 'unit', 'min', 'max', 'max_decimals']
+        ) ||
+        definition.scope !== 'set' ||
+        definition.value_type !== (integer ? 'integer' : 'number') ||
+        definition.unit !== SET_FIELD_UNITS[fieldKey] ||
+        !Number.isFinite(definition.min) ||
+        !Number.isFinite(definition.max) ||
+        definition.min <= 0 ||
+        definition.max < definition.min ||
+        (integer &&
+          (!Number.isSafeInteger(definition.min) ||
+            !Number.isSafeInteger(definition.max))) ||
+        (!integer &&
+          (!Number.isSafeInteger(definition.max_decimals) ||
+            definition.max_decimals < 1))
+      ) {
+        fail('INVALID_DRAFT_STATE');
+      }
+      fieldDefinitions[fieldKey] = Object.freeze({
+        valueType: definition.value_type,
+        min: definition.min,
+        max: definition.max,
+        maxDecimals: integer ? null : definition.max_decimals
+      });
+    });
 
     const entries = [];
     const byKey = new Map();
@@ -264,6 +362,12 @@
         typeof entry.label !== 'string' ||
         entry.label.trim() === '' ||
         (entry.status !== 'active' && entry.status !== 'deprecated') ||
+        !TRACKING_MODES.includes(entry.tracking_mode) ||
+        !hasExactKeys(entry.fields, LOOKUP_FIELD_KEYS) ||
+        LOOKUP_FIELD_KEYS.some(
+          (key) => !FIELD_POLICIES.includes(entry.fields[key])
+        ) ||
+        !isValidCatalogPolicy(entry.tracking_mode, entry.fields) ||
         byKey.has(entry.key)
       ) {
         fail('INVALID_DRAFT_STATE');
@@ -274,8 +378,37 @@
     return {
       catalogVersion: catalog.catalog_version,
       entries,
-      byKey
+      byKey,
+      fieldDefinitions: Object.freeze(fieldDefinitions)
     };
+  }
+
+  function isValidCatalogPolicy(trackingMode, fields) {
+    if (fields.note !== 'optional') return false;
+    const setFieldsForbidden = SET_FIELD_KEYS.every(
+      (key) => fields[key] === 'forbidden'
+    );
+    if (trackingMode === 'duration') {
+      return (
+        fields.duration_min === 'required' &&
+        fields.distance_km === 'forbidden' &&
+        setFieldsForbidden
+      );
+    }
+    if (trackingMode === 'duration_distance') {
+      return (
+        fields.duration_min === 'required' &&
+        fields.distance_km === 'optional' &&
+        setFieldsForbidden
+      );
+    }
+    return (
+      fields.duration_min === 'forbidden' &&
+      fields.distance_km === 'forbidden' &&
+      STRENGTH_POLICY_SIGNATURES.has(
+        SET_FIELD_KEYS.map((key) => fields[key]).join('|')
+      )
+    );
   }
 
   function assertFrozenTree(value, seen = new WeakSet()) {
@@ -343,12 +476,14 @@
     const seenKeys = new Set();
     snapshot.items.forEach((item, index) => {
       if (
-        !hasExactKeys(item, ['item_key', 'item_order']) ||
+        !hasExactKeys(item, DRAFT_ITEM_KEYS) ||
         !Object.isFrozen(item) ||
         typeof item.item_key !== 'string' ||
         !ITEM_KEY_RE.test(item.item_key) ||
         item.item_order !== index + 1 ||
-        seenKeys.has(item.item_key)
+        seenKeys.has(item.item_key) ||
+        !Array.isArray(item.sets) ||
+        !Object.isFrozen(item.sets)
       ) {
         fail('INVALID_DRAFT_STATE');
       }
@@ -356,6 +491,34 @@
       if (!catalogEntry || catalogEntry.status !== 'active') {
         fail('INVALID_DRAFT_STATE');
       }
+      if (catalogEntry.tracking_mode === 'strength_sets') {
+        if (item.sets.length < 1 || item.sets.length > SET_LIMIT) {
+          fail('INVALID_DRAFT_STATE');
+        }
+      } else if (item.sets.length !== 0) {
+        fail('INVALID_DRAFT_STATE');
+      }
+      item.sets.forEach((set, setIndex) => {
+        if (
+          !hasExactKeys(set, DRAFT_SET_KEYS) ||
+          !Object.isFrozen(set) ||
+          set.set_order !== setIndex + 1
+        ) {
+          fail('INVALID_DRAFT_STATE');
+        }
+        SET_FIELD_KEYS.forEach((fieldKey) => {
+          const value = set[fieldKey];
+          if (
+            (value !== null &&
+              (typeof value !== 'string' ||
+                value === '' ||
+                Array.from(value).length > SET_VALUE_LIMIT)) ||
+            (catalogEntry.fields[fieldKey] === 'forbidden' && value !== null)
+          ) {
+            fail('INVALID_DRAFT_STATE');
+          }
+        });
+      });
       seenKeys.add(item.item_key);
     });
     return snapshot;
@@ -409,6 +572,118 @@
     button.textContent = label;
     button.setAttribute('aria-label', accessibleName);
     return button;
+  }
+
+  function formatGermanNumber(value) {
+    return String(value).replace('.', ',');
+  }
+
+  function parseSetField(rawValue, definition) {
+    if (rawValue === '') return Object.freeze({ state: 'empty', error: '' });
+    if (definition.valueType === 'integer') {
+      if (!/^[0-9]+$/.test(rawValue)) {
+        return Object.freeze({ state: 'invalid', error: INTEGER_INPUT_MESSAGE });
+      }
+      const value = Number(rawValue);
+      if (
+        !Number.isSafeInteger(value) ||
+        value < definition.min ||
+        value > definition.max
+      ) {
+        return Object.freeze({
+          state: 'invalid',
+          error: `Erlaubter Bereich: ${formatGermanNumber(definition.min)} bis ${formatGermanNumber(definition.max)}.`
+        });
+      }
+      return Object.freeze({ state: 'valid', error: '' });
+    }
+
+    if (/^[0-9]+[,.]$/.test(rawValue)) {
+      return Object.freeze({ state: 'intermediate', error: '' });
+    }
+    if (!/^[0-9]+(?:[,.][0-9]+)?$/.test(rawValue)) {
+      return Object.freeze({ state: 'invalid', error: DECIMAL_INPUT_MESSAGE });
+    }
+    const separatorIndex = Math.max(rawValue.indexOf(','), rawValue.indexOf('.'));
+    if (
+      separatorIndex !== -1 &&
+      rawValue.length - separatorIndex - 1 > definition.maxDecimals
+    ) {
+      return Object.freeze({
+        state: 'invalid',
+        error: `Maximal ${definition.maxDecimals} Nachkommastellen.`
+      });
+    }
+    const value = Number(rawValue.replace(',', '.'));
+    if (
+      !Number.isFinite(value) ||
+      value < definition.min ||
+      value > definition.max
+    ) {
+      return Object.freeze({
+        state: 'invalid',
+        error: `Erlaubter Bereich: ${formatGermanNumber(definition.min)} bis ${formatGermanNumber(definition.max)}.`
+      });
+    }
+    return Object.freeze({ state: 'valid', error: '' });
+  }
+
+  function deriveStrengthState(item, entry, fieldDefinitions) {
+    const fieldKeys = SET_FIELD_KEYS.filter(
+      (fieldKey) => entry.fields[fieldKey] !== 'forbidden'
+    );
+    const rows = item.sets.map((set) => {
+      const fields = {};
+      let hasInvalid = false;
+      let hasNonEmpty = false;
+      let complete = true;
+      fieldKeys.forEach((fieldKey) => {
+        const rawValue = set[fieldKey] || '';
+        const parsed = parseSetField(rawValue, fieldDefinitions[fieldKey]);
+        fields[fieldKey] = parsed;
+        if (parsed.state !== 'empty') hasNonEmpty = true;
+        if (parsed.state === 'invalid') hasInvalid = true;
+        const policy = entry.fields[fieldKey];
+        if (
+          (policy === 'required' && parsed.state !== 'valid') ||
+          (policy === 'optional' &&
+            parsed.state !== 'empty' &&
+            parsed.state !== 'valid')
+        ) {
+          complete = false;
+        }
+      });
+      const state = hasInvalid
+        ? 'invalid'
+        : !hasNonEmpty
+          ? 'empty'
+          : complete
+            ? 'complete'
+            : 'partial';
+      return Object.freeze({
+        setOrder: set.set_order,
+        state,
+        fields: Object.freeze(fields)
+      });
+    });
+
+    let seenEmpty = false;
+    let gap = false;
+    rows.forEach((row) => {
+      if (row.state === 'empty') seenEmpty = true;
+      else if (seenEmpty) gap = true;
+    });
+    let state;
+    if (rows.every((row) => row.state === 'empty')) state = 'empty';
+    else if (gap || rows.some((row) => row.state === 'invalid')) state = 'invalid';
+    else if (rows.some((row) => row.state === 'partial')) state = 'partial';
+    else state = 'complete';
+    return Object.freeze({
+      state,
+      gap,
+      fieldKeys: Object.freeze(fieldKeys),
+      rows: Object.freeze(rows)
+    });
   }
 
   function invalidLookupModel() {
@@ -1224,6 +1499,225 @@
       });
     }
 
+    function applyEditorState(refs, item, derived, restoreValues = false) {
+      if (!refs?.editor) return;
+      refs.editor.dataset.state = derived.state;
+      refs.editorStatus.textContent = derived.gap ? GAP_MESSAGE : '';
+      derived.rows.forEach((rowState) => {
+        const rowRefs = refs.setRows.get(rowState.setOrder);
+        if (!rowRefs) return;
+        rowRefs.row.dataset.state = rowState.state;
+        rowRefs.status.textContent =
+          rowState.state === 'partial' ? PARTIAL_SET_MESSAGE : '';
+        derived.fieldKeys.forEach((fieldKey) => {
+          const fieldRefs = rowRefs.fields.get(fieldKey);
+          const fieldState = rowState.fields[fieldKey];
+          if (!fieldRefs || !fieldState) return;
+          fieldRefs.wrapper.dataset.state = fieldState.state;
+          fieldRefs.input.setAttribute(
+            'aria-invalid',
+            fieldState.state === 'invalid' ? 'true' : 'false'
+          );
+          fieldRefs.error.textContent = fieldState.error;
+          if (restoreValues) {
+            fieldRefs.input.value =
+              item.sets[rowState.setOrder - 1]?.[fieldKey] || '';
+          }
+        });
+      });
+    }
+
+    function createItemEditor(item, entry, catalogState) {
+      if (entry.tracking_mode !== 'strength_sets') {
+        const neutral = makeElement(
+          document,
+          'section',
+          'activity-v2-session-editor activity-v2-session-editor-neutral'
+        );
+        neutral.dataset.itemKey = item.item_key;
+        neutral.appendChild(
+          makeElement(
+            document,
+            'p',
+            'activity-v2-session-editor-neutral-message',
+            NON_STRENGTH_MESSAGE
+          )
+        );
+        return { node: neutral, refs: null };
+      }
+
+      const derived = deriveStrengthState(
+        item,
+        entry,
+        catalogState.fieldDefinitions
+      );
+      const editor = makeElement(
+        document,
+        'section',
+        'activity-v2-session-editor activity-v2-session-strength-editor'
+      );
+      editor.dataset.itemKey = item.item_key;
+      editor.dataset.state = derived.state;
+      editor.setAttribute('aria-label', `Aktuelle Sätze für ${entry.label}`);
+      editor.appendChild(
+        makeElement(
+          document,
+          'h3',
+          'activity-v2-session-editor-title',
+          'Aktuelle Sätze'
+        )
+      );
+      const setList = makeElement(document, 'ol', 'activity-v2-session-set-list');
+      const setRows = new Map();
+      item.sets.forEach((set, setIndex) => {
+        const rowState = derived.rows[setIndex];
+        const setRow = makeElement(
+          document,
+          'li',
+          'activity-v2-session-set-row'
+        );
+        setRow.dataset.itemKey = item.item_key;
+        setRow.dataset.setOrder = String(set.set_order);
+        setRow.dataset.state = rowState.state;
+        setRow.appendChild(
+          makeElement(
+            document,
+            'h4',
+            'activity-v2-session-set-title',
+            `Satz ${set.set_order}`
+          )
+        );
+        const fields = new Map();
+        derived.fieldKeys.forEach((fieldKey) => {
+          const uiDefinition = SET_FIELD_UI[fieldKey];
+          const fieldState = rowState.fields[fieldKey];
+          const fieldId =
+            `activity-v2-session-set-${shellSequence}-${item.item_key}-` +
+            `${set.set_order}-${fieldKey}`;
+          const errorId = `${fieldId}-error`;
+          const wrapper = makeElement(
+            document,
+            'div',
+            'activity-v2-session-set-field'
+          );
+          wrapper.dataset.state = fieldState.state;
+          const label = makeElement(document, 'label', '', uiDefinition.label);
+          label.htmlFor = fieldId;
+          const input = makeElement(
+            document,
+            'input',
+            'activity-v2-session-set-input'
+          );
+          input.id = fieldId;
+          input.type = 'text';
+          input.value = set[fieldKey] || '';
+          input.maxLength = SET_VALUE_LIMIT;
+          input.dataset.itemKey = item.item_key;
+          input.dataset.setOrder = String(set.set_order);
+          input.dataset.fieldKey = fieldKey;
+          input.setAttribute('inputmode', uiDefinition.inputMode);
+          input.setAttribute('maxlength', String(SET_VALUE_LIMIT));
+          input.setAttribute('autocomplete', 'off');
+          input.setAttribute('spellcheck', 'false');
+          input.setAttribute('aria-describedby', errorId);
+          input.setAttribute(
+            'aria-invalid',
+            fieldState.state === 'invalid' ? 'true' : 'false'
+          );
+          input.disabled = closeGuardPromise !== null;
+          const error = makeElement(
+            document,
+            'p',
+            'activity-v2-session-set-field-error',
+            fieldState.error
+          );
+          error.id = errorId;
+          wrapper.append(label, input, error);
+          setRow.appendChild(wrapper);
+          fields.set(fieldKey, { wrapper, input, error });
+        });
+        const status = makeElement(
+          document,
+          'p',
+          'activity-v2-session-set-status',
+          rowState.state === 'partial' ? PARTIAL_SET_MESSAGE : ''
+        );
+        const removeSet = setButton(
+          makeElement(document, 'button', 'activity-v2-session-secondary'),
+          'remove-set',
+          'Satz entfernen',
+          `Satz ${set.set_order} entfernen`
+        );
+        removeSet.title = `Satz ${set.set_order} entfernen`;
+        removeSet.setAttribute('title', removeSet.title);
+        removeSet.dataset.itemKey = item.item_key;
+        removeSet.dataset.setOrder = String(set.set_order);
+        removeSet.disabled = item.sets.length === 1 || closeGuardPromise !== null;
+        setRow.append(status, removeSet);
+        setList.appendChild(setRow);
+        setRows.set(set.set_order, { row: setRow, fields, status, removeSet });
+      });
+      const editorStatus = makeElement(
+        document,
+        'p',
+        'activity-v2-session-editor-status',
+        derived.gap ? GAP_MESSAGE : ''
+      );
+      const addSet = setButton(
+        makeElement(document, 'button', 'activity-v2-session-secondary'),
+        'add-set',
+        '+ Satz',
+        'Satz hinzufügen'
+      );
+      addSet.title = 'Satz hinzufügen';
+      addSet.setAttribute('title', addSet.title);
+      addSet.dataset.itemKey = item.item_key;
+      addSet.disabled = item.sets.length >= SET_LIMIT || closeGuardPromise !== null;
+      editor.append(setList, editorStatus, addSet);
+      return {
+        node: editor,
+        refs: { editor, editorStatus, setRows, addSet }
+      };
+    }
+
+    function patchEditorState(itemKey, restoreValues = false) {
+      const nextState = readState(draft, semantics);
+      const item = nextState.snapshot.items.find(
+        (candidate) => candidate.item_key === itemKey
+      );
+      const entry = nextState.catalogState.byKey.get(itemKey);
+      const refs = itemActionRefs.get(itemKey);
+      if (!item || entry?.tracking_mode !== 'strength_sets' || !refs?.editor) {
+        fail('INVALID_DRAFT_STATE');
+      }
+      const derived = deriveStrengthState(
+        item,
+        entry,
+        nextState.catalogState.fieldDefinitions
+      );
+      applyEditorState(refs.editor, item, derived, restoreValues);
+      currentState = nextState;
+      return nextState.snapshot;
+    }
+
+    function syncSetControlsDisabled() {
+      itemActionRefs.forEach((refs, itemKey) => {
+        if (!refs.editor) return;
+        const item = currentState?.snapshot.items.find(
+          (candidate) => candidate.item_key === itemKey
+        );
+        if (!item) return;
+        const guarded = closeGuardPromise !== null;
+        refs.editor.addSet.disabled = guarded || item.sets.length >= SET_LIMIT;
+        refs.editor.setRows.forEach((rowRefs) => {
+          rowRefs.fields.forEach(({ input }) => {
+            input.disabled = guarded;
+          });
+          rowRefs.removeSet.disabled = guarded || item.sets.length === 1;
+        });
+      });
+    }
+
     function render() {
       assertUsable();
       const nextState = readState(draft, semantics);
@@ -1294,11 +1788,20 @@
           history.setAttribute('aria-label', `Letzte Ausführung für ${entry.label}`);
           renderLookupRegion(history, item.item_key, lookupStates.get(item.item_key));
         }
+        const editor = createItemEditor(item, entry, nextState.catalogState);
         row.append(identity);
         if (history) row.append(history);
+        row.append(editor.node);
         row.append(actions);
         listFragment.appendChild(row);
-        nextActionRefs.set(item.item_key, { row, up, down, remove, history });
+        nextActionRefs.set(item.item_key, {
+          row,
+          up,
+          down,
+          remove,
+          history,
+          editor: editor.refs
+        });
       });
 
       ui.itemList.replaceChildren(listFragment);
@@ -1387,6 +1890,15 @@
             : refs.remove;
       if (focusElement(preferred)) return true;
       return [refs.up, refs.down, refs.remove].some(focusElement) || focusPicker();
+    }
+
+    function focusSetInput(itemKey, setOrder) {
+      const rowRefs = itemActionRefs.get(itemKey)?.editor?.setRows.get(setOrder);
+      if (!rowRefs) return focusItemRow(itemKey);
+      for (const fieldRefs of rowRefs.fields.values()) {
+        if (focusElement(fieldRefs.input)) return true;
+      }
+      return focusItemRow(itemKey);
     }
 
     function getFocusableElements() {
@@ -1566,6 +2078,54 @@
         return;
       }
       const itemKey = target.dataset.itemKey;
+      if (action === 'add-set') {
+        if (closeGuardPromise) return;
+        if (itemActionRefs.get(itemKey)?.editor?.addSet !== target) return;
+        const item = currentState?.snapshot.items.find(
+          (candidate) => candidate.item_key === itemKey
+        );
+        if (!item) return;
+        try {
+          draft.addSet(itemKey);
+          render();
+          focusSetInput(itemKey, item.sets.length + 1);
+        } catch {
+          setStatus('Satz konnte nicht hinzugefügt werden.', 'error');
+          focusElement(target);
+        }
+        return;
+      }
+      if (action === 'remove-set') {
+        if (closeGuardPromise) return;
+        const item = currentState?.snapshot.items.find(
+          (candidate) => candidate.item_key === itemKey
+        );
+        const setOrder = Number(target.dataset.setOrder);
+        if (
+          !item ||
+          !Number.isSafeInteger(setOrder) ||
+          setOrder < 1 ||
+          setOrder > item.sets.length
+        ) {
+          return;
+        }
+        if (
+          itemActionRefs.get(itemKey)?.editor?.setRows.get(setOrder)
+            ?.removeSet !== target
+        ) {
+          return;
+        }
+        const nextOrder = Math.min(setOrder, item.sets.length - 1);
+        try {
+          draft.removeSet(itemKey, setOrder);
+          render();
+          focusSetInput(itemKey, nextOrder);
+        } catch {
+          setStatus('Satz konnte nicht entfernt werden.', 'error');
+          focusElement(target);
+        }
+        return;
+      }
       if (action === 'move-up' || action === 'move-down') {
         const item = currentState?.snapshot.items.find(
           (candidate) => candidate.item_key === itemKey
@@ -1599,6 +2159,65 @@
     function handleInput(event) {
       if (event.target === ui.search) {
         runSearch();
+        return;
+      }
+      const setInput = event.target;
+      const fieldKey = setInput?.dataset?.fieldKey;
+      if (
+        setInput?.nodeType === 1 &&
+        setInput.tagName === 'INPUT' &&
+        SET_FIELD_KEYS.includes(fieldKey)
+      ) {
+        const itemKey = setInput.dataset.itemKey;
+        const setOrder = Number(setInput.dataset.setOrder);
+        const item = currentState?.snapshot.items.find(
+          (candidate) => candidate.item_key === itemKey
+        );
+        const entry = currentState?.catalogState.byKey.get(itemKey);
+        if (
+          closeGuardPromise ||
+          setInput.disabled ||
+          !item ||
+          entry?.tracking_mode !== 'strength_sets' ||
+          entry.fields[fieldKey] === 'forbidden' ||
+          !Number.isSafeInteger(setOrder) ||
+          setOrder < 1 ||
+          setOrder > item.sets.length
+        ) {
+          return;
+        }
+        if (
+          itemActionRefs.get(itemKey)?.editor?.setRows.get(setOrder)
+            ?.fields.get(fieldKey)?.input !== setInput
+        ) {
+          return;
+        }
+        try {
+          draft.setSetField(itemKey, setOrder, fieldKey, setInput.value);
+        } catch {
+          const stableItem = currentState?.snapshot.items.find(
+            (candidate) => candidate.item_key === itemKey
+          );
+          const stableEntry = currentState?.catalogState.byKey.get(itemKey);
+          if (stableItem && stableEntry?.tracking_mode === 'strength_sets') {
+            const stableDerived = deriveStrengthState(
+              stableItem,
+              stableEntry,
+              currentState.catalogState.fieldDefinitions
+            );
+            applyEditorState(
+              itemActionRefs.get(itemKey)?.editor,
+              stableItem,
+              stableDerived,
+              true
+            );
+          }
+          setStatus('Die Satzeingabe konnte nicht aktualisiert werden.', 'error');
+          focusElement(setInput);
+          return;
+        }
+        patchEditorState(itemKey);
+        setStatus('');
         return;
       }
       if (event.target !== ui.note) return;
@@ -1742,6 +2361,7 @@
         .finally(() => {
           if (closeGuardPromise === guard) {
             closeGuardPromise = null;
+            if (!destroyed && openState) syncSetControlsDisabled();
             if (reconcileAfterGuard && !destroyed && openState) {
               reconcileLookupDom();
               restoreOpener(previousFocus);
@@ -1749,6 +2369,7 @@
           }
         });
       closeGuardPromise = guard;
+      syncSetControlsDisabled();
       return guard;
     }
 

@@ -252,7 +252,7 @@ test('semanticsV2 fails closed without the exact valid v1 boundary', () => {
   );
 });
 
-test('real R3 draft and shell accept injected v2 and both new keys', () => {
+test('real draft-v2 and shell accept injected catalog v2 and both new keys', () => {
   const FakeDocument = getFakeDocumentClass();
   const document = new FakeDocument();
   const intervals = new Map();
@@ -281,11 +281,42 @@ test('real R3 draft and shell accept injected v2 and both new keys', () => {
   });
   draft.addItem('high_row');
   draft.addItem('total_abdominal');
-  assert.equal(draft.getSnapshot().catalog_version, 2);
+  const snapshot = draft.getSnapshot();
+  assert.deepEqual(Object.keys(draft), [
+    'getSnapshot',
+    'getTimerSnapshot',
+    'addItem',
+    'removeItem',
+    'moveItem',
+    'setNote',
+    'discard',
+    'addSet',
+    'removeSet',
+    'setSetField'
+  ]);
+  assert.equal(snapshot.draft_schema_version, 'midas.activity-session-draft.v2');
+  assert.equal(snapshot.catalog_version, 2);
   assert.deepEqual(
-    plain(draft.getSnapshot().items.map((item) => item.item_key)),
+    plain(snapshot.items.map((item) => item.item_key)),
     ['high_row', 'total_abdominal']
   );
+  snapshot.items.forEach((item, itemIndex) => {
+    assert.deepEqual(Object.keys(item), ['item_key', 'item_order', 'sets']);
+    assert.equal(item.item_order, itemIndex + 1);
+    assert.equal(item.sets.length, 3);
+    item.sets.forEach((set, setIndex) => {
+      assert.deepEqual(Object.keys(set), [
+        'set_order',
+        'reps',
+        'duration_sec',
+        'distance_m',
+        'weight_kg',
+        'assistance_kg'
+      ]);
+      assert.equal(set.set_order, setIndex + 1);
+      assert.deepEqual(plain(Object.values(set).slice(1)), [null, null, null, null, null]);
+    });
+  });
 
   const background = document.createElement('main');
   const opener = document.createElement('button');
@@ -325,7 +356,7 @@ test('real R3 draft and shell accept injected v2 and both new keys', () => {
   assert.equal(intervals.size, 0);
 });
 
-test('R3 fallback and product index remain v1-only and C2 has no side effects', () => {
+test('draft fallback and product index remain catalog-v1-only without C2 side effects', () => {
   assert.match(draftSource, /root\.AppModules\?\.activityV2\?\.semantics/);
   assert.match(shellSource, /root\.AppModules\?\.activityV2\?\.semantics/);
   assert.doesNotMatch(draftSource, /semanticsV2/);

@@ -175,10 +175,14 @@ Evidence wird nur gelesen:
 - Dieselbe Tatsache besitzt genau einen ausführlichen Ort.
 - Unpassende Template-Abschnitte werden gestrichen oder knapp als
   `nicht relevant` markiert.
-- Ab ungefähr 80 KB oder 1.200 Zeilen wird vor weiterer Arbeit kompaktiert:
-  - technische Details in Evidence auslagern,
-  - abgeschlossene Protokolle verdichten,
-  - Entscheidungen, Findings und Restrisiken vollständig erhalten.
+- Ungefähr 80 KB oder 1.200 Zeilen sind ein Prüfpunkt, kein hartes Limit. Ab
+  dort wird kontrolliert, ob echte Duplikate, abgeschlossene Protokolle oder
+  technische Evidence verlustfrei ausgelagert beziehungsweise verdichtet
+  werden können.
+- Eine Roadmap darf den Richtwert überschreiten, wenn eine Kürzung
+  Entscheidungen, Gates, Findings, Invalidation oder den Fresh-Chat-Kontext
+  schwächen würde. Es wird nur gekürzt, wenn die kompaktere Fassung denselben
+  ausführbaren Vertrag vollständig bewahrt.
 
 ## Risikoklassen
 
@@ -196,6 +200,19 @@ Evidence wird nur gelesen:
   bleiben erkennbare Umsetzung, Prüfung und Abschluss.
 - `R2`: normale S1-bis-S6-Struktur mit schlanken Ergebnissen.
 - `R3`: S1 bis S3, Readiness, produktive Gates und S6 vollständig.
+
+## Phasentrennung S4 und S5
+
+- S4 ist der Umsetzungsblock. Seine Substeps erhalten nur den unmittelbar
+  nötigen Delta- oder Consumer-Review sowie invalidierte Checks. Es gibt keinen
+  separaten S4.5-Abschlussreview und keinen CodeRabbit-Lauf in S4.
+- S5 prüft den finalen Gesamtdiff. Die Reihenfolge lautet: vollständige
+  relevante Testmatrix, nativer Code- und Contract Review, bei Codeänderungen
+  CodeRabbit, fachliche Bewertung der Findings, minimale Korrektur berechtigter
+  Findings und Wiederholung aller dadurch invalidierten Prüfungen.
+- CodeRabbit ist eine zusätzliche unabhängige Kontrolle und keine Source of
+  Truth. Mehrdeutige Produkt- oder Vertragsfindings bleiben Owner-Gates;
+  Ausfall oder Nichtverfügbarkeit werden sichtbar dokumentiert.
 
 ## Reviewtiefen
 
@@ -221,8 +238,7 @@ Full-Reviews sind verpflichtend:
 
 - nach jedem S1-, S2- und S3-Hauptschritt in dessen Scope,
 - im S4 Readiness Review,
-- am Ende des gesamten S4-Blocks,
-- in S5 vor produktiver Wirkung,
+- in S5 nach der relevanten Testmatrix und vor produktiver Wirkung,
 - in S6 als finaler Source-of-Truth-Review.
 
 Ein Full-Review bedeutet vollständige Vertragsabdeckung im betroffenen Scope,

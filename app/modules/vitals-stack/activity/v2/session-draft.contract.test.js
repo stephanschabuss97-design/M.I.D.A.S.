@@ -18,14 +18,71 @@ const UUIDS = [
   '00000000-0000-4000-8000-000000000003'
 ];
 
+function makeFields(overrides = {}) {
+  return {
+    assistance_kg: 'forbidden',
+    distance_km: 'forbidden',
+    distance_m: 'forbidden',
+    duration_min: 'forbidden',
+    duration_sec: 'forbidden',
+    note: 'optional',
+    reps: 'required',
+    weight_kg: 'forbidden',
+    ...overrides
+  };
+}
+
+function makeEntry(
+  key,
+  status = 'active',
+  trackingMode = 'strength_sets',
+  fields = makeFields()
+) {
+  return { key, status, tracking_mode: trackingMode, fields };
+}
+
 function makeCatalog(version = 7, entries = null) {
   return {
     catalog_version: version,
     entries: entries || [
-      { key: 'alpha_item', status: 'active' },
-      { key: 'beta_item', status: 'active' },
-      { key: 'old_item', status: 'deprecated' }
+      makeEntry('alpha_item'),
+      makeEntry(
+        'beta_item',
+        'active',
+        'strength_sets',
+        makeFields({ weight_kg: 'optional' })
+      ),
+      makeEntry(
+        'run_item',
+        'active',
+        'duration_distance',
+        makeFields({
+          distance_km: 'optional',
+          duration_min: 'required',
+          reps: 'forbidden'
+        })
+      ),
+      makeEntry('old_item', 'deprecated')
     ]
+  };
+}
+
+function emptySet(setOrder) {
+  return {
+    set_order: setOrder,
+    reps: null,
+    duration_sec: null,
+    distance_m: null,
+    weight_kg: null,
+    assistance_kg: null
+  };
+}
+
+function strengthItem(itemKey, itemOrder, setCount = 3) {
+  return {
+    item_key: itemKey,
+    item_order: itemOrder,
+    sets: Array.from({ length: setCount }, (_, index) => emptySet(index + 1))
   };
 }
 
@@ -151,10 +208,13 @@ test('create returns the exact pristine immutable draft with dynamic catalog dat
     'removeItem',
     'moveItem',
     'setNote',
-    'discard'
+    'discard',
+    'addSet',
+    'removeSet',
+    'setSetField'
   ]);
   assert.deepEqual(plain(snapshot), {
-    draft_schema_version: 'midas.activity-session-draft.v1',
+    draft_schema_version: 'midas.activity-session-draft.v2',
     request_id: UUIDS[0],
     catalog_version: 23,
     revision: 0,
@@ -185,9 +245,68 @@ test('default semantics dependency consumes the real R1 catalog without hardcodi
     now: () => 0
   });
   assert.equal(controller.getSnapshot().catalog_version, catalog.catalog_version);
-  assert.deepEqual(plain(controller.addItem(firstActive.key).items), [
-    { item_key: firstActive.key, item_order: 1 }
-  ]);
+  assert.deepEqual(
+    plain(controller.addItem(firstActive.key).items),
+    [strengthItem(firstActive.key, 1)]
+  );
+});
+
+test('all eight real R1 strength policies initialize and expose only allowed fields', () => {
+  const context = vm.createContext({});
+  vm.runInContext(semanticsSource, context, { filename: semanticsPath });
+  vm.runInContext(source, context, { filename: draftPath });
+  const semantics = context.AppModules.activityV2.semantics;
+  const catalog = semantics.getCatalog();
+  const setFields = [
+    'reps',
+    'duration_sec',
+    'distance_m',
+    'weight_kg',
+    'assistance_kg'
+  ];
+  const representatives = new Map();
+  catalog.entries
+    .filter(
+      (entry) => entry.status === 'active' && entry.tracking_mode === 'strength_sets'
+    )
+    .forEach((entry) => {
+      const signature = setFields.map((key) => entry.fields[key]).join('|');
+      if (!representatives.has(signature)) representatives.set(signature, entry);
+    });
+  assert.equal(representatives.size, 8);
+
+  const controller = context.AppModules.activityV2.sessionDraft.create({
+    semantics,
+    now: () => 0,
+    createRequestId: () => UUIDS[0]
+  });
+  for (const entry of representatives.values()) controller.addItem(entry.key);
+  const nonStrength = catalog.entries.find(
+    (entry) => entry.status === 'active' && entry.tracking_mode !== 'strength_sets'
+  );
+  controller.addItem(nonStrength.key);
+  assert.deepEqual(
+    plain(controller.getSnapshot().items.at(-1).sets),
+    []
+  );
+
+  for (const entry of representatives.values()) {
+    for (const fieldKey of setFields) {
+      const before = controller.getSnapshot();
+      if (entry.fields[fieldKey] === 'forbidden') {
+        assertDraftError(
+          () => controller.setSetField(entry.key, 1, fieldKey, '1e2'),
+          'FORBIDDEN_SET_FIELD'
+        );
+        assert.equal(controller.getSnapshot(), before);
+      } else {
+        const next = controller.setSetField(entry.key, 1, fieldKey, '1e2');
+        const item = next.items.find((candidate) => candidate.item_key === entry.key);
+        assert.equal(item.sets[0][fieldKey], '1e2');
+      }
+    }
+  }
+  assertFrozenTree(controller.getSnapshot());
 });
 
 test('options, dependencies, catalog, request ID and clock fail closed', () => {
@@ -235,12 +354,20 @@ test('options, dependencies, catalog, request ID and clock fail closed', () => {
     null,
     { catalog_version: 0, entries: [] },
     { catalog_version: 2, entries: {} },
-    makeCatalog(2, [{ key: 'Bad Key', status: 'active' }]),
+    makeCatalog(2, [makeEntry('Bad Key')]),
     makeCatalog(2, [
-      { key: 'duplicate', status: 'active' },
-      { key: 'duplicate', status: 'active' }
+      makeEntry('duplicate'),
+      makeEntry('duplicate')
     ]),
-    makeCatalog(2, [{ key: 'alpha_item', status: 'unknown' }])
+    makeCatalog(2, [makeEntry('alpha_item', 'unknown')]),
+    makeCatalog(2, [{ ...makeEntry('alpha_item'), tracking_mode: 'unknown' }]),
+    makeCatalog(2, [{ ...makeEntry('alpha_item'), fields: { reps: 'required' } }]),
+    makeCatalog(2, [makeEntry(
+      'alpha_item',
+      'active',
+      'strength_sets',
+      makeFields({ reps: 'forbidden' })
+    )])
   ];
   invalidCatalogs.forEach((catalog) => {
     assertDraftError(
@@ -271,7 +398,7 @@ test('item mutations are atomic, ordered and keep identity and start time stable
   assert.equal(first.revision, 1);
   assert.equal(first.started_at, '2026-08-01T10:20:30.456Z');
   assert.deepEqual(plain(first.items), [
-    { item_key: 'alpha_item', item_order: 1 }
+    strengthItem('alpha_item', 1)
   ]);
 
   let before = controller.getSnapshot();
@@ -288,8 +415,8 @@ test('item mutations are atomic, ordered and keep identity and start time stable
   const moved = controller.moveItem('beta_item', 1);
   assert.equal(moved.revision, second.revision + 1);
   assert.deepEqual(plain(moved.items), [
-    { item_key: 'beta_item', item_order: 1 },
-    { item_key: 'alpha_item', item_order: 2 }
+    strengthItem('beta_item', 1),
+    strengthItem('alpha_item', 2)
   ]);
   assert.equal(controller.moveItem('beta_item', 1), moved);
 
@@ -307,6 +434,162 @@ test('item mutations are atomic, ordered and keep identity and start time stable
   assert.equal(empty.started_at, first.started_at);
   assert.equal(empty.request_id, pristine.request_id);
   assertFrozenTree(empty);
+});
+
+test('catalog policy drives exact strength defaults and keeps non-strength sets empty', () => {
+  const { controller } = createController();
+  const strength = controller.addItem('alpha_item');
+  assert.deepEqual(plain(strength.items[0]), strengthItem('alpha_item', 1));
+  assertFrozenTree(strength.items[0]);
+
+  const mixed = controller.addItem('run_item');
+  assert.deepEqual(plain(mixed.items[1]), {
+    item_key: 'run_item',
+    item_order: 2,
+    sets: []
+  });
+  assertFrozenTree(mixed.items[1]);
+
+  const before = controller.getSnapshot();
+  assertDraftError(() => controller.addSet('run_item'), 'SETS_UNAVAILABLE');
+  assertDraftError(() => controller.removeSet('run_item', 1), 'SETS_UNAVAILABLE');
+  assertDraftError(
+    () => controller.setSetField('run_item', 1, 'reps', '12'),
+    'SETS_UNAVAILABLE'
+  );
+  assert.equal(controller.getSnapshot(), before);
+});
+
+test('set field mutations preserve raw text, canonical no-ops and safe error precedence', () => {
+  const { controller } = createController();
+  const initial = controller.addItem('beta_item');
+  const untouchedSet = initial.items[0].sets[1];
+
+  const reps = controller.setSetField('beta_item', 1, 'reps', '0012');
+  assert.equal(reps.items[0].sets[0].reps, '0012');
+  assert.equal(reps.items[0].sets[1], untouchedSet);
+  assert.equal(reps.revision, initial.revision + 1);
+  assert.equal(controller.setSetField('beta_item', 1, 'reps', '0012'), reps);
+
+  const weight = controller.setSetField('beta_item', 1, 'weight_kg', '77,50');
+  assert.equal(weight.items[0].sets[0].weight_kg, '77,50');
+  const unicode = controller.setSetField('beta_item', 2, 'reps', '😀'.repeat(32));
+  assert.equal(Array.from(unicode.items[0].sets[1].reps).length, 32);
+  const cleared = controller.setSetField('beta_item', 1, 'weight_kg', '');
+  assert.equal(cleared.items[0].sets[0].weight_kg, null);
+  assert.equal(controller.setSetField('beta_item', 1, 'weight_kg', ''), cleared);
+
+  const cases = [
+    [() => controller.addSet('Bad Key'), 'INVALID_ITEM_KEY'],
+    [() => controller.addSet('missing_item'), 'ITEM_NOT_FOUND'],
+    [() => controller.removeSet('beta_item', 0), 'INVALID_SET_ORDER'],
+    [() => controller.removeSet('beta_item', 1.5), 'INVALID_SET_ORDER'],
+    [() => controller.removeSet('beta_item', 51), 'INVALID_SET_ORDER'],
+    [() => controller.removeSet('beta_item', 4), 'SET_NOT_FOUND'],
+    [() => controller.setSetField('beta_item', 0, 'unknown', null), 'INVALID_SET_ORDER'],
+    [() => controller.setSetField('beta_item', 4, 'unknown', null), 'SET_NOT_FOUND'],
+    [() => controller.setSetField('beta_item', 1, 'unknown', '12'), 'INVALID_SET_FIELD'],
+    [() => controller.setSetField('beta_item', 1, 'duration_sec', '12'), 'FORBIDDEN_SET_FIELD'],
+    [() => controller.setSetField('beta_item', 1, 'reps', null), 'INVALID_SET_VALUE'],
+    [() => controller.setSetField('beta_item', 1, 'reps', '😀'.repeat(33)), 'INVALID_SET_VALUE']
+  ];
+  cases.forEach(([action, code]) => {
+    const before = controller.getSnapshot();
+    assertDraftError(action, code);
+    assert.equal(controller.getSnapshot(), before);
+  });
+  assertFrozenTree(controller.getSnapshot());
+});
+
+test('set add and remove enforce 1..50, reindex exactly and keep values', () => {
+  let controller = createController().controller;
+  controller.addItem('alpha_item');
+  controller.setSetField('alpha_item', 2, 'reps', '20');
+  const beforeAdd = controller.getSnapshot();
+  const added = controller.addSet('alpha_item');
+  assert.equal(added.items[0].sets.length, 4);
+  assert.equal(added.items[0].sets[0], beforeAdd.items[0].sets[0]);
+  assert.deepEqual(plain(added.items[0].sets[3]), emptySet(4));
+
+  const removed = controller.removeSet('alpha_item', 1);
+  assert.deepEqual(
+    plain(removed.items[0].sets).map((set) => [set.set_order, set.reps]),
+    [[1, '20'], [2, null], [3, null]]
+  );
+  controller.removeSet('alpha_item', 3);
+  const minimum = controller.removeSet('alpha_item', 2);
+  assert.equal(minimum.items[0].sets.length, 1);
+  const beforeMinimumError = controller.getSnapshot();
+  assertDraftError(
+    () => controller.removeSet('alpha_item', 1),
+    'SET_MINIMUM_REACHED'
+  );
+  assert.equal(controller.getSnapshot(), beforeMinimumError);
+
+  controller = createController().controller;
+  controller.addItem('alpha_item');
+  for (let index = 3; index < 50; index += 1) controller.addSet('alpha_item');
+  const full = controller.getSnapshot();
+  assert.equal(full.items[0].sets.length, 50);
+  assert.deepEqual(
+    plain(full.items[0].sets).map((set) => set.set_order),
+    Array.from({ length: 50 }, (_, index) => index + 1)
+  );
+  assertDraftError(() => controller.addSet('alpha_item'), 'SET_LIMIT_REACHED');
+  assert.equal(controller.getSnapshot(), full);
+});
+
+test('all snapshot rebuilds preserve complete set records until explicit removal', () => {
+  const { controller } = createController();
+  controller.addItem('alpha_item');
+  controller.setSetField('alpha_item', 1, 'reps', '12');
+  const alphaBeforeAdd = controller.getSnapshot().items[0];
+  controller.addItem('beta_item');
+  assert.equal(controller.getSnapshot().items[0], alphaBeforeAdd);
+  controller.setSetField('beta_item', 2, 'reps', '9');
+  controller.setSetField('beta_item', 2, 'weight_kg', '42,5');
+
+  const beforeNote = controller.getSnapshot();
+  const noted = controller.setNote('stable');
+  assert.equal(noted.items[0], beforeNote.items[0]);
+  assert.equal(noted.items[1], beforeNote.items[1]);
+
+  const alphaSets = noted.items[0].sets;
+  const betaSets = noted.items[1].sets;
+  const moved = controller.moveItem('beta_item', 1);
+  assert.equal(moved.items[0].sets, betaSets);
+  assert.equal(moved.items[1].sets, alphaSets);
+  assert.equal(moved.items[0].sets[1].reps, '9');
+  assert.equal(moved.items[0].sets[1].weight_kg, '42,5');
+  assert.equal(moved.items[1].sets[0].reps, '12');
+
+  controller.addItem('run_item');
+  controller.removeItem('run_item');
+  assert.equal(controller.getSnapshot().items[0].sets[1].weight_kg, '42,5');
+  controller.removeItem('alpha_item');
+  const readded = controller.addItem('alpha_item');
+  const freshAlpha = readded.items.find((item) => item.item_key === 'alpha_item');
+  assert.deepEqual(plain(freshAlpha.sets), [emptySet(1), emptySet(2), emptySet(3)]);
+  assert.equal(readded.items[0].sets[1].weight_kg, '42,5');
+});
+
+test('captured catalog policy rejects live semantic drift before item creation', () => {
+  const { controller, holder } = createController();
+  holder.catalog = makeCatalog(7, [
+    makeEntry(
+      'alpha_item',
+      'active',
+      'strength_sets',
+      makeFields({ weight_kg: 'optional' })
+    )
+  ]);
+  const pristine = controller.getSnapshot();
+  assertDraftError(() => controller.addItem('alpha_item'), 'INVALID_CATALOG');
+  assert.equal(controller.getSnapshot(), pristine);
+
+  holder.catalog = makeCatalog(7, [makeEntry('alpha_item', 'deprecated')]);
+  assertDraftError(() => controller.addItem('alpha_item'), 'INVALID_CATALOG');
+  assert.equal(controller.getSnapshot(), pristine);
 });
 
 test('notes normalize by trim, count Unicode codepoints and preserve no-op references', () => {
@@ -403,10 +686,37 @@ test('invalid first-start clock and revision ceiling leave the snapshot unchange
   assert.equal(controller.getSnapshot(), atLimit);
 });
 
+test('set mutations honor the revision ceiling after canonical no-op detection', () => {
+  function TestNumber(value) {
+    return Number(value);
+  }
+  TestNumber.isFinite = Number.isFinite;
+  TestNumber.isSafeInteger = Number.isSafeInteger;
+  TestNumber.MAX_SAFE_INTEGER = 2;
+  const semantics = makeSemantics(() => makeCatalog());
+  const { api } = loadDraft({ semantics, number: TestNumber });
+  const controller = api.create({
+    semantics,
+    now: () => 0,
+    createRequestId: () => UUIDS[0]
+  });
+  controller.addItem('alpha_item');
+  const atLimit = controller.setSetField('alpha_item', 1, 'reps', '12');
+  assert.equal(atLimit.revision, 2);
+  assert.equal(controller.setSetField('alpha_item', 1, 'reps', '12'), atLimit);
+  for (const action of [
+    () => controller.setSetField('alpha_item', 1, 'reps', '13'),
+    () => controller.addSet('alpha_item'),
+    () => controller.removeSet('alpha_item', 1)
+  ]) {
+    assertDraftError(action, 'REVISION_LIMIT_REACHED');
+    assert.equal(controller.getSnapshot(), atLimit);
+  }
+});
+
 test('the 50-item boundary rejects overflow without changing the draft', () => {
   const entries = Array.from({ length: 51 }, (_, index) => ({
-    key: `item_${String(index + 1).padStart(2, '0')}`,
-    status: 'active'
+    ...makeEntry(`item_${String(index + 1).padStart(2, '0')}`)
   }));
   const { controller } = createController({
     catalog: makeCatalog(31, entries),
@@ -427,16 +737,17 @@ test('the 50-item boundary rejects overflow without changing the draft', () => {
 test('discard is atomic and replaces only request identity and captured catalog state', () => {
   const { controller, holder, getIdReads } = createController();
   controller.addItem('alpha_item');
+  controller.setSetField('alpha_item', 1, 'reps', '12');
   controller.setNote('note');
   const dirty = controller.getSnapshot();
 
   holder.catalog = makeCatalog(9, [
-    { key: 'gamma_item', status: 'active' }
+    makeEntry('gamma_item')
   ]);
   const discarded = controller.discard();
   assert.equal(getIdReads(), 2);
   assert.deepEqual(plain(discarded), {
-    draft_schema_version: 'midas.activity-session-draft.v1',
+    draft_schema_version: 'midas.activity-session-draft.v2',
     request_id: UUIDS[1],
     catalog_version: 9,
     revision: 0,
