@@ -58,9 +58,9 @@
 <body>
   <main class="harness-stage" id="harness-background">
     <section class="harness-card" aria-labelledby="harness-title">
-      <p>ISOLIERTER R3-HARNESS</p>
+      <p>ISOLIERTER R4-HARNESS</p>
       <h1 id="harness-title">Activity V2 Session Shell</h1>
-      <p>Diese Seite lädt ausschließlich den lokalen Katalog, Draft und UI-Shell.</p>
+      <p>Diese Seite lädt ausschließlich lokale Semantik, Draft, UI-Shell und deterministische Historien-Fakes.</p>
       <output id="harness-status" role="status" aria-live="polite">
         Initialisierung läuft …
       </output>
@@ -75,6 +75,7 @@
     };
   </script>
   <script src="./semantics.js"></script>
+  <script src="./semantics-v2.js"></script>
   <script src="./session-draft.js"></script>
   <script src="./session-shell.js"></script>
   <script>
@@ -85,18 +86,89 @@
       const opener = document.getElementById('harness-open');
 
       try {
-        const semantics = root.AppModules.activityV2.semantics;
+        const semantics = root.AppModules.activityV2.semanticsV2;
         const draft = root.AppModules.activityV2.sessionDraft.create({ semantics });
+        const lookupCounts = new Map();
+        status.dataset.lookupCounts = '{}';
+        const makeHistory = (itemKey) => {
+          const entry = semantics.getEntryByKey(itemKey);
+          const fields = entry.fields;
+          const item = {
+            id: '00000000-0000-4000-8000-000000000801',
+            catalog_version: semantics.getCatalog().catalog_version,
+            item_key: itemKey,
+            item_order: 1,
+            item_label_snapshot: entry.label,
+            tracking_mode_snapshot: entry.tracking_mode,
+            equipment_snapshot: entry.equipment,
+            load_comparability_snapshot: entry.load_comparability,
+            field_policy_snapshot: fields,
+            duration_min: entry.tracking_mode === 'strength_sets' ? null : 45,
+            distance_km: entry.tracking_mode === 'duration_distance' ? 5.25 : null,
+            note: 'Lokaler R4-Harnesswert – nur zur Ansicht.',
+            created_at: '2026-08-01T10:00:00.000000Z',
+            sets: []
+          };
+          if (itemKey === 'high_row') {
+            item.item_label_snapshot =
+              'High Row / Sitzendes Rudern – historischer Gerätename mit langer Bezeichnung';
+            item.note =
+              'Lange historische Notiz: kontrollierte Bewegung, ruhige Exzentrik und vollständiger Bewegungsumfang. Literal <img src=x onerror=alert(1)> bleibt Text; English cue: keep the chest supported and the shoulders relaxed.';
+          }
+          if (entry.tracking_mode === 'strength_sets') {
+            item.sets = [12, 13, 12].map((reps, index) => ({
+              id: `00000000-0000-4000-8000-00000000080${index + 2}`,
+              set_order: index + 1,
+              tracking_mode: 'strength_sets',
+              reps: fields.reps === 'required' ? reps : null,
+              duration_sec: fields.duration_sec === 'required' ? 45 + index : null,
+              distance_m: fields.distance_m === 'required' ? 30 + index : null,
+              weight_kg: fields.weight_kg === 'forbidden' ? null : index === 2 ? 80 : 77.5,
+              assistance_kg: null,
+              created_at: '2026-08-01T10:00:00.000000Z'
+            }));
+          }
+          return {
+            schema_version: 'midas.activity-last-performance.v1',
+            session: {
+              id: '00000000-0000-4000-8000-000000000800',
+              started_at: '2026-08-01T09:00:00.000000Z',
+              day: '2026-08-01'
+            },
+            item
+          };
+        };
+        const loadLastPerformance = (itemKey) => {
+          lookupCounts.set(itemKey, (lookupCounts.get(itemKey) || 0) + 1);
+          status.dataset.lookupCounts = JSON.stringify(Object.fromEntries(lookupCounts));
+          if (itemKey === 'total_abdominal') {
+            return Promise.reject(new Error('deterministic harness error'));
+          }
+          if (itemKey === 'ski_erg') return Promise.resolve(null);
+          if (itemKey === 'bench_press') {
+            return new Promise((resolve) => {
+              root.setTimeout(() => resolve(makeHistory(itemKey)), 1500);
+            });
+          }
+          return Promise.resolve(makeHistory(itemKey));
+        };
         const shell = root.AppModules.activityV2.sessionShell.mount({
           host: document.body,
           draft,
-          semantics
+          semantics,
+          loadLastPerformance
         });
         const open = () => shell.open({ opener });
         opener.addEventListener('click', open);
 
         Object.defineProperty(root, 'activityV2SessionHarness', {
-          value: Object.freeze({ draft, shell, semantics, opener }),
+          value: Object.freeze({
+            draft,
+            shell,
+            semantics,
+            opener,
+            getLookupCount: (itemKey) => lookupCounts.get(itemKey) || 0
+          }),
           enumerable: true,
           writable: false,
           configurable: false

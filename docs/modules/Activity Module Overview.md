@@ -4,8 +4,9 @@ Kurze Einordnung:
 - Produktiver Stand: Activity V1 erfasst eine Trainingseinheit pro Tag
   (Aktivitaet + Dauer + Notiz).
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
-  R3-Draft-/Shell-Grundlage und C2-Katalogversion 2 sind bereitgestellt; die
-  sichtbare App und alle Consumer verwenden weiterhin V1.
+  R3-Draft-/Shell-Grundlage, C2-Katalogversion 2 sowie die isolierte R4-Suche
+  und Last-Performance-Anzeige sind bereitgestellt; die sichtbare App und alle
+  produktiven Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
@@ -20,6 +21,7 @@ Related docs:
 - [Activity V2 C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
 - [Activity V2 C2 Roadmap](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
 - [Activity V2 C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+- [Activity V2 R4 Roadmap](<../archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -47,16 +49,16 @@ Related docs:
 | `app/modules/vitals-stack/activity/v2/semantics.js` | Isolierter V2-Katalog, Validator, Normalisierung und lokale Suche |
 | `app/modules/vitals-stack/activity/v2/semantics.contract.test.js` | Lokale R1-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/semantics-harness.html` | Isolierter klassischer Browser-Ladenachweis |
-| `app/modules/vitals-stack/activity/v2/data-access.js` | Isolierte R2-Commit- und Historienzugriffsschicht |
+| `app/modules/vitals-stack/activity/v2/data-access.js` | Isolierte R2-Commit- und Historienzugriffsschicht mit additiver R4-Semantikinjektion nur für Lookup |
 | `app/modules/vitals-stack/activity/v2/data-access.contract.test.js` | Lokale R2-Request-, Response-, Retry- und Fehler-Contract-Tests |
 | `sql/20_Activity_V2.sql` | Additives R2-Schema, Katalogprojektion, RLS und RPCs |
 | `sql/tests/20_Activity_V2_fixture.sql` | Guarded disposable PostgreSQL-17-Contract-Fixture |
 | `app/modules/vitals-stack/activity/v2/session-draft.js` | Isolierte R3-In-Memory-Draft-Factory |
 | `app/modules/vitals-stack/activity/v2/session-draft.contract.test.js` | Lokale R3-Draft-, Timer- und Mutations-Contract-Tests |
-| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-Vollflaechen-Shell und kontrollierte Iteminteraktionen |
-| `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3-Shell- und Fokusdarstellung |
-| `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3-Shell-, Guard-, Fokus- und Lifecycle-Contract-Tests |
-| `app/modules/vitals-stack/activity/v2/session-shell-harness.html` | Isolierter visueller R3-Browser-Harness |
+| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-Vollflaechen-Shell mit additiver R4-Suche, optionaler Historienanzeige und Raceguards |
+| `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3/R4-Shell-, Such-, Historien- und Fokusdarstellung |
+| `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3/R4-Shell-, Search-, Lookup-, Guard-, Fokus- und Lifecycle-Contract-Tests |
+| `app/modules/vitals-stack/activity/v2/session-shell-harness.html` | Isolierter visueller R4-Browser-Harness mit deterministischen Historien-Fakes |
 | `app/modules/vitals-stack/activity/v2/semantics-v2.js` | Additive C2-Semantik mit vollständigem Katalog v2 und Studio-/Freihantelsuche |
 | `app/modules/vitals-stack/activity/v2/semantics-v2.contract.test.js` | C2-Katalog-, Search-, R1- und R3-Kompatibilitätsnachweise |
 | `sql/21_Activity_V2_Catalog_V2.sql` | Insert-only Projektion des unveränderlichen 80er-Katalog-v2-Snapshots |
@@ -161,6 +163,39 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
   v2-Sessionreferenzen sind 0. RLS, Policies, ACLs und R2-RPCs blieben
   unverändert.
 
+## 2.5 Activity V2 R4 - lokale Suche und read-only letzte Ausführung
+
+Status: implementiert und lokal sowie im isolierten Browser-Harness bewiesen;
+weder durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
+
+- `loadLastPerformance(itemKey)` bleibt als v1-kompatibler Aufruf erhalten.
+  Additiv akzeptiert ausschließlich der Lookup
+  `loadLastPerformance(itemKey, { semantics })`; `commitSession` und seine
+  Validierung blieben unverändert.
+- Der angefragte Key wird gegen die ausgewählte aktuelle Semantik geprüft. Eine
+  historische Antwort wird streng anhand ihrer gespeicherten Label-,
+  Equipment-, Tracking-, Field-Policy- und Werte-Snapshots validiert und nicht
+  gegen den heutigen Katalog umgeschrieben.
+- Die Shell sucht synchron und requestfrei über
+  `semantics.search(query, { limit: 8 })`. Nur ein kanonischer Katalogtreffer
+  darf als `item_key` in den Draft gelangen; leere Suche, kein Treffer und
+  Suchfehler bleiben getrennte lokale Zustände.
+- Der optionale Mount-Callback `loadLastPerformance` startet erst bei einer
+  sichtbaren offenen Shell. Ohne Callback funktioniert der bisherige R3-
+  Consumer ohne Historienbereich weiter.
+- Loading, keine Historie, Error und Success sind getrennt. Eine erfolgreiche
+  Kraft-Historie zeigt den vollständigen, geordneten historischen Satzblock;
+  Dauer, Distanz, Unterstützung und Notiz folgen ausschließlich den
+  historischen Snapshots.
+- Historie bleibt eine read-only Gedächtnisstütze. Sie erzeugt keine aktuellen
+  Eingaben, keinen Erledigtzustand und keine Draftmutation.
+- Lookupzustand und Cache sind flüchtig und außerhalb des Draftschemas. Pro Key
+  gibt es höchstens einen automatischen Lookup je Shell-Mount; Fehler werden
+  nur durch explizites Retry erneut geladen. Remove, Re-Add, Close, Guard und
+  Destroy sind gegen verspätete Promise-Antworten abgesichert.
+- R4 änderte weder SQL/RPC/RLS/ACL/Grants noch Storage, Save, Activity V1 oder
+  den produktiven Scriptload.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -224,11 +259,14 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 - Speicherung per RPC `activity_add(day, payload)`.
 - Datum kommt aus dem Haupt-Datum im Vitals-Panel.
 
-### 4.5 Isolierter R3-Harness
+### 4.5 Isolierter R4-Harness
 
-- Der Harness laedt R1-Semantik, R3-Draft und R3-Shell ausserhalb der App.
-- Oeffnen, Picker, Itemreihenfolge, Notiz, Timer, Discard und Cleanup bleiben
-  lokal; die produktive `index.html` und Activity V1 werden nicht beruehrt.
+- Der Harness laedt C2-Semantik, R3-Draft und die R4-erweiterte Shell ausserhalb
+  der App. Historie kommt aus lokalen deterministischen Success-, Empty-,
+  Error- und Slow-Fakes; der reale RPC wird nicht aufgerufen.
+- Oeffnen, lokale Suche, kanonische Auswahl, Historienanzeige, Itemreihenfolge,
+  Notiz, Timer, Discard und Cleanup bleiben isoliert; die produktive
+  `index.html` und Activity V1 werden nicht beruehrt.
 
 ---
 
@@ -237,7 +275,7 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 - Training-Tab im Vitals-Panel (Hub Overlay).
 - Inline-Form: Aktivitaet, Dauer, Notiz.
 - Kein separates Modal.
-- Die R3-Vollflaechen-Shell ist nur im isolierten Harness sichtbar und noch kein
+- Die R4-erweiterte Vollflaechen-Shell ist nur im isolierten Harness sichtbar und noch kein
   Bestandteil des Vitals-Moduls oder Training-Tabs.
 
 ---
@@ -312,13 +350,14 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1/R2/R3/C2: Semantik, additive produktive Datenbasis, lokaler
-  Draft/Vollflaechen-Shell und vollständiger Katalog v2 sind implementiert. Die
-  V2-Runtime bleibt isoliert; es gibt keinen UI-, Consumer- oder V1-Cutover.
+- Activity V2 R1/R2/R3/C2/R4: Semantik, additive produktive Datenbasis, lokaler
+  Draft/Vollflaechen-Shell, vollständiger Katalog v2 sowie lokale Suche und
+  read-only Historienanzeige sind implementiert. Die V2-Runtime bleibt
+  isoliert; es gibt keinen produktiven UI-, Consumer- oder V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
 - Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
-- Activity-V2-Risiko: normaler Tabwechsel ist fuer R3 bewiesen, Reload- und
+- Activity-V2-Risiko: normaler Tabwechsel ist fuer R3/R4 bewiesen, Reload- und
   Prozess-Recovery bleiben bis R7/R8 bewusst gesperrt.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
@@ -334,7 +373,7 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 - Activity V2 R1 Contract-Suite validiert Katalog, Suche, Namespace und
   produktive Isolation.
 - Isoliertes V2-Harness laedt `semantics.js` klassisch ohne Konsolenfehler.
-- Kombinierte R1/R2/R3/C2-Node-Suite validiert 56 Contract-Faelle.
+- Kombinierte R1/R2/R3/C2/R4-Node-Suite validiert 65 Contract-Faelle.
 - Disposable PostgreSQL-17-Fixture validiert Schema/Rerun, Katalog 78/78,
   atomaren Rollback, Retry-Races, Two-User-RLS/ACL und Historien-Lookup.
 - C2-Checks validieren 80 aktive v2-Entries, 47 Aliasergänzungen, 58 Suchfälle,
@@ -342,10 +381,12 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 - Produktive Read-only-Postchecks validieren vier Tabellen, zwei RPCs,
   RLS/ACL/Owner/Search Path, exakt 78 v1- und 80 v2-Katalogzeilen sowie leere
   V2-Historie.
-- R3-Harness validiert Vollflaeche, Picker, Items, Notiz, Timer, Discard,
-  Fokus und Overflow bei 1440x900, 390x844 und 320x800.
-- Ein owner-freigegebener Edge-Smoke validiert nach 32 Sekunden im Fremdtab
-  unveraenderte Items/Notiz und eine fortgeschrittene Zeitstempeluhr.
+- R4-Harness validiert Vollflaeche, lokale 8er-Suche, kanonische Auswahl, vier
+  Historienzustaende, vollständige read-only Satzblöcke, Items, Notiz, Timer,
+  Discard, Fokus und Overflow bei 1440x900, 390x844 und 320x800.
+- Ein lokaler Browser-Smoke validiert nach 32 Sekunden im Fremdtab
+  unveraenderte Items, Notiz und Historie, genau einen Lookup je Key und eine
+  fortgeschrittene Zeitstempeluhr.
 
 ---
 
@@ -353,8 +394,9 @@ nicht durch `index.html` oder einen sichtbaren Consumer geladen.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1/R2/R3/C2 bleiben bis zu den zustaendigen Folgeroadmaps fuer
-  Consumer unverdrahtet. C2 ist DONE; R4 ist als nächster Rolling-Wave-Schritt
-  freigegeben, darf aber noch keinen produktiven V2-Cutover vorwegnehmen.
+- Activity V2 R1/R2/R3/C2/R4 bleiben bis zu den zustaendigen Folgeroadmaps fuer
+  produktive Consumer unverdrahtet. R4 ist DONE; R5 ist der nächste
+  Rolling-Wave-Schritt und darf weiterhin keinen produktiven V2-Cutover
+  vorwegnehmen.
 - Doku aktuell (Spec + Overview).
 

@@ -7,8 +7,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const semanticsPath = path.join(__dirname, 'semantics.js');
+const semanticsV2Path = path.join(__dirname, 'semantics-v2.js');
 const dataAccessPath = path.join(__dirname, 'data-access.js');
 const semanticsSource = fs.readFileSync(semanticsPath, 'utf8');
+const semanticsV2Source = fs.readFileSync(semanticsV2Path, 'utf8');
 const dataAccessSource = fs.readFileSync(dataAccessPath, 'utf8');
 const REQUEST_ID = 'aaaaaaaa-0000-4000-8000-000000000001';
 const RESPONSE_TIME = '2026-07-31T12:34:56.123456Z';
@@ -72,6 +74,7 @@ function makeHarness() {
     }
   });
   new vm.Script(semanticsSource, { filename: semanticsPath }).runInContext(context);
+  new vm.Script(semanticsV2Source, { filename: semanticsV2Path }).runInContext(context);
   new vm.Script(dataAccessSource, { filename: dataAccessPath }).runInContext(context);
   return {
     activityV1,
@@ -193,6 +196,61 @@ function makeLookupResult(commitResult) {
       day: commitResult.session.day
     },
     item: jsonClone(commitResult.session.items[0])
+  };
+}
+
+function makeHistoricalLookupResult(context, itemKey, values = {}) {
+  const entry = context.AppModules.activityV2.semantics.getEntryByKey(itemKey);
+  assert.ok(entry, `missing v1 fixture entry: ${itemKey}`);
+  const item = {
+    id: uuidFor(700),
+    catalog_version: 1,
+    item_key: itemKey,
+    item_order: 1,
+    item_label_snapshot: entry.label,
+    tracking_mode_snapshot: entry.tracking_mode,
+    equipment_snapshot: entry.equipment,
+    load_comparability_snapshot: entry.load_comparability,
+    field_policy_snapshot: jsonClone(entry.fields),
+    duration_min: null,
+    distance_km: null,
+    note: null,
+    created_at: RESPONSE_TIME,
+    sets: [],
+    ...values
+  };
+  if (entry.tracking_mode === 'strength_sets' && values.sets === undefined) {
+    item.sets = [
+      {
+        id: uuidFor(701),
+        set_order: 1,
+        tracking_mode: 'strength_sets',
+        reps: 12,
+        duration_sec: null,
+        distance_m: null,
+        weight_kg: entry.fields.weight_kg === 'forbidden' ? null : 77.5,
+        assistance_kg: null,
+        created_at: RESPONSE_TIME
+      }
+    ];
+  }
+  if (entry.tracking_mode !== 'strength_sets' && values.duration_min === undefined) {
+    item.duration_min = 45;
+  }
+  if (
+    entry.tracking_mode === 'duration_distance' &&
+    values.distance_km === undefined
+  ) {
+    item.distance_km = 5.25;
+  }
+  return {
+    schema_version: 'midas.activity-last-performance.v1',
+    session: {
+      id: uuidFor(699),
+      started_at: '2026-07-31T10:00:00.000000Z',
+      day: '2026-07-31'
+    },
+    item
   };
 }
 
@@ -504,6 +562,242 @@ test('lookup trims only the SQL btrim space, returns null, and validates full bl
     retryable: false
   });
   assert.equal(invalidHarness.state.calls.length, 0);
+});
+
+test('lookup injects current semantics while validating historical snapshots independently', async () => {
+  const v2OnlyHarness = makeHarness();
+  const semanticsV2 = v2OnlyHarness.context.AppModules.activityV2.semanticsV2;
+  v2OnlyHarness.state.fetchImpl = async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), { p_item_key: 'high_row' });
+    return makeResponse(200, null);
+  };
+  assert.equal(
+    await v2OnlyHarness.api.loadLastPerformance('high_row', { semantics: semanticsV2 }),
+    null
+  );
+  assert.equal(v2OnlyHarness.state.calls.length, 1);
+
+  const historyHarness = makeHarness();
+  const baseV2 = historyHarness.context.AppModules.activityV2.semanticsV2;
+  let catalogReads = 0;
+  let entryReads = 0;
+  const currentSemantics = {
+    getCatalog() {
+      catalogReads += 1;
+      return baseV2.getCatalog();
+    },
+    getEntryByKey(itemKey) {
+      entryReads += 1;
+      return baseV2.getEntryByKey(itemKey);
+    }
+  };
+  const historical = makeHistoricalLookupResult(
+    historyHarness.context,
+    'bench_press',
+    { item_label_snapshot: 'Historisches Bankdrücken' }
+  );
+  historyHarness.state.fetchImpl = async () => makeResponse(200, historical);
+  const loaded = await historyHarness.api.loadLastPerformance('bench_press', {
+    semantics: currentSemantics
+  });
+  assert.deepEqual(loaded, historical);
+  assert.equal(catalogReads, 1);
+  assert.equal(entryReads, 1);
+});
+
+test('lookup options and selected semantics fail locally with stable domain errors', async () => {
+  const cases = [
+    (harness) => ['running', undefined],
+    () => ['running', null],
+    () => ['running', {}],
+    () => ['running', { semantics: undefined }],
+    (harness) => [
+      'running',
+      { semantics: harness.context.AppModules.activityV2.semanticsV2, extra: true }
+    ],
+    (harness) => {
+      const options = {
+        semantics: harness.context.AppModules.activityV2.semanticsV2
+      };
+      options[Symbol('unexpected')] = true;
+      return ['running', options];
+    },
+    () => ['running', { semantics: {} }],
+    () => [
+      'running',
+      {
+        semantics: {
+          getCatalog() {
+            throw new Error('catalog-secret');
+          },
+          getEntryByKey() {
+            return null;
+          }
+        }
+      }
+    ],
+    () => [
+      'running',
+      {
+        semantics: {
+          getCatalog() {
+            return { catalog_version: 0 };
+          },
+          getEntryByKey() {
+            return null;
+          }
+        }
+      }
+    ],
+    () => [
+      'running',
+      {
+        semantics: {
+          getCatalog() {
+            return { catalog_version: 2 };
+          },
+          getEntryByKey() {
+            throw new Error('entry-secret');
+          }
+        }
+      }
+    ],
+    () => [
+      'running',
+      {
+        semantics: {
+          getCatalog() {
+            return { catalog_version: 2 };
+          },
+          getEntryByKey() {
+            return { key: 'walking' };
+          }
+        }
+      }
+    ]
+  ];
+
+  for (const makeArgs of cases) {
+    const harness = makeHarness();
+    const error = await captureError(
+      harness.api.loadLastPerformance(...makeArgs(harness))
+    );
+    assertDomainError(error, {
+      code: 'REQUEST_FAILED',
+      operation: 'loadLastPerformance',
+      retryable: false
+    });
+    assert.equal(harness.state.calls.length, 0);
+  }
+
+  const missingKeyHarness = makeHarness();
+  const missingKeySemantics = {
+    getCatalog() {
+      return { catalog_version: 2 };
+    },
+    getEntryByKey() {
+      return null;
+    }
+  };
+  const missingKeyError = await captureError(
+    missingKeyHarness.api.loadLastPerformance('running', {
+      semantics: missingKeySemantics
+    })
+  );
+  assertDomainError(missingKeyError, {
+    code: 'INVALID_ITEM_KEY',
+    operation: 'loadLastPerformance',
+    retryable: false
+  });
+  assert.equal(missingKeyHarness.state.calls.length, 0);
+});
+
+test('historical lookup validator accepts all modes and rejects snapshot drift', async () => {
+  for (const itemKey of ['bench_press', 'football', 'running']) {
+    const harness = makeHarness();
+    const result = makeHistoricalLookupResult(harness.context, itemKey);
+    harness.state.fetchImpl = async () => makeResponse(200, result);
+    assert.deepEqual(
+      await harness.api.loadLastPerformance(itemKey, {
+        semantics: harness.context.AppModules.activityV2.semanticsV2
+      }),
+      result
+    );
+  }
+
+  for (const configureSnapshot of [
+    (result) => {
+      result.item.field_policy_snapshot.weight_kg = 'forbidden';
+      result.item.field_policy_snapshot.assistance_kg = 'optional';
+      result.item.load_comparability_snapshot = 'device_relative';
+      result.item.sets[0].weight_kg = null;
+      result.item.sets[0].assistance_kg = 40;
+    },
+    (result) => {
+      result.item.equipment_snapshot = 'dumbbell';
+      result.item.load_comparability_snapshot = 'standardized';
+    }
+  ]) {
+    const harness = makeHarness();
+    const result = makeHistoricalLookupResult(harness.context, 'bench_press');
+    configureSnapshot(result);
+    harness.state.fetchImpl = async () => makeResponse(200, result);
+    assert.deepEqual(
+      await harness.api.loadLastPerformance('bench_press', {
+        semantics: harness.context.AppModules.activityV2.semanticsV2
+      }),
+      result
+    );
+  }
+
+  const mutations = [
+    (result) => { result.extra = true; },
+    (result) => { result.schema_version = 'midas.activity-last-performance.v2'; },
+    (result) => { result.session.id = 'not-a-uuid'; },
+    (result) => { result.session.started_at = '2026-07-31T10:00:00Z'; },
+    (result) => { result.session.day = '2026-02-30'; },
+    (result) => { result.item.catalog_version = 0; },
+    (result) => { result.item.catalog_version = 2147483648; },
+    (result) => { result.item.item_key = 'running'; },
+    (result) => { result.item.item_order = 0; },
+    (result) => { result.item.item_label_snapshot = ' Bench Press '; },
+    (result) => { result.item.item_label_snapshot = 'x'.repeat(81); },
+    (result) => { result.item.tracking_mode_snapshot = 'unknown'; },
+    (result) => { result.item.equipment_snapshot = 'unknown'; },
+    (result) => { result.item.load_comparability_snapshot = 'not_applicable'; },
+    (result) => { result.item.field_policy_snapshot.note = 'required'; },
+    (result) => { result.item.field_policy_snapshot.extra = 'forbidden'; },
+    (result) => {
+      result.item.equipment_snapshot = 'machine';
+      result.item.load_comparability_snapshot = 'standardized';
+    },
+    (result) => { result.item.duration_min = 10; },
+    (result) => { result.item.note = ' historical note '; },
+    (result) => { result.item.sets = []; },
+    (result) => { result.item.sets[0].set_order = 2; },
+    (result) => { result.item.sets[0].tracking_mode = 'duration'; },
+    (result) => { result.item.sets[0].reps = null; },
+    (result) => { result.item.sets[0].weight_kg = 77.555; },
+    (result) => { result.item.sets[0].assistance_kg = 20; },
+    (result) => { result.item.sets[0].extra = true; }
+  ];
+
+  for (const mutate of mutations) {
+    const harness = makeHarness();
+    const result = makeHistoricalLookupResult(harness.context, 'bench_press');
+    mutate(result);
+    harness.state.fetchImpl = async () => makeResponse(200, result);
+    const error = await captureError(
+      harness.api.loadLastPerformance('bench_press', {
+        semantics: harness.context.AppModules.activityV2.semanticsV2
+      })
+    );
+    assertDomainError(error, {
+      code: 'REQUEST_FAILED',
+      operation: 'loadLastPerformance',
+      retryable: true
+    });
+  }
 });
 
 test('strict response validation rejects wrong request IDs and item order', async () => {

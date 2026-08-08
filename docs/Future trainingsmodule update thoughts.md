@@ -2,19 +2,21 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-01
+Stand: 2026-08-08
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
-R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage und C2-
-Katalogversion 2 sind bereitgestellt; sichtbare Activity-Consumer verwenden
-weiterhin V1.
+R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
+Katalogversion 2 sowie die isolierte R4-Suche und Last-Performance-Anzeige sind
+bereitgestellt; sichtbare Activity-Consumer verwenden weiterhin V1.
 
 Cross-Contract-Stand 2026-08-01: `PASS`. R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
-produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist der
-nächste Rolling-Wave-Schritt; Recovery wird in R7 isoliert und in R8 intern auf
-Android-PWA bewiesen. Der C2-Nachreview hat zusätzlich den späteren
+produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist DONE: die
+lokale Suche, lookup-spezifische Semantikinjektion und read-only historische
+Snapshotanzeige sind isoliert bewiesen. R5 ist der nächste Rolling-Wave-
+Schritt; Recovery wird in R7 isoliert und in R8 intern auf Android-PWA
+bewiesen. Der C2-Nachreview hat zusätzlich den späteren
 Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
 Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
@@ -30,9 +32,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R3/C2 stellen nur die
-noch unverdrahtete Semantik-, Speicher-, Draft-, Shell- und Kataloggrundlage
-bereit.
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R4/C2 stellen nur die
+noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such- und
+Historiengrundlage bereit.
 
 ---
 
@@ -1152,12 +1154,12 @@ Maschinenbezeichnungen aus Stephans Studio deterministisch finden.
 
 ### R4 - Search and Last-Performance Lookup
 
-Status: `ACTIVE`; C2-Eingangsgate PASS, die ausführungsreife R4-Roadmap ist
-angelegt, Implementierung und S1-Ausführung haben noch nicht begonnen.
+Status: `DONE` am 2026-08-08; vollständig isoliert, kein Produktload und kein
+SQL-/RPC-/Commit-/Draftschema-Delta.
 
 Roadmap:
 
-- [R4 Search and Last-Performance Lookup Roadmap](<MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap.md>)
+- [R4 Search and Last-Performance Lookup Roadmap](<archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
 
 Ziel:
 
@@ -1179,11 +1181,29 @@ Ziel:
 - neutraler Kein-Treffer-Zustand ohne freien Key und ohne spontane
   Katalogmutation im Studio
 
+Reales Ergebnis:
+
+- `loadLastPerformance(itemKey)` bleibt v1-kompatibel; additiv kann der Lookup
+  exakt `{ semantics }` erhalten. Historische Antworten werden unabhängig vom
+  heutigen Katalog anhand ihrer gespeicherten Snapshots validiert.
+- Die isolierte Shell nutzt lokale Suche mit Limit acht, kanonische Auswahl,
+  optionale Lookup-Injektion, vier eindeutige Historienzustände, vollständige
+  read-only Satzblöcke sowie flüchtigen Cache, Retry und Lifecycle-Raceguards.
+- 65/65 Activity-V2-Contracttests, Katalogcheck `v2 / 80 / 47 / 58`, drei
+  Browserviewports und ein 32-Sekunden-Backgroundcheck sind grün. CodeRabbit
+  endete nach einer berechtigten Testhärtung mit 0 Issues.
+- Historische Werte bleiben ausschließlich Gedächtnisstütze und erzeugen keine
+  aktuellen Eingaben oder Draftmutation. Activity V1 und der Produktload sind
+  unverändert; R5 darf auf diesem Displayvertrag aufbauen.
+
 Warum danach:
 
 Das ist der zentrale Mehrwert gegenüber starren Trainingsplänen.
 
 ### R5 - Strength Set Editor
+
+Status: `NEXT`; Planung erst nach ausdrücklicher Owner-Freigabe auf Basis des
+abgeschlossenen R4-Vertrags.
 
 Ziel:
 
@@ -1508,9 +1528,10 @@ Offen nach dem C2-Nachreview:
 
 Zuständig:
 
-- R4 hält Suche, UI und den read-only Last-Performance-Lookup durch explizite
-  Semantikinjektion versionsagnostisch. Der bestehende v1-Aufruf bleibt
-  rückwärtskompatibel; der Commitpfad wird nicht geöffnet oder umgedeutet.
+- R4-Verantwortung `DONE`: Suche, UI und read-only Last-Performance-Lookup sind
+  durch explizite Semantikinjektion versionsagnostisch; der bestehende v1-
+  Aufruf bleibt rückwärtskompatibel und der Commitpfad wurde nicht geöffnet
+  oder umgedeutet.
 - R7 bindet persistente Recovery an die im Draft gespeicherte
   Katalogversion.
 - R8 entscheidet und testet die serverseitige Commit-Kompatibilität.

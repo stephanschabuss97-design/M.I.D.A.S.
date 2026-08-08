@@ -12,6 +12,7 @@
     'confirmDiscard',
     'draft',
     'host',
+    'loadLastPerformance',
     'semantics',
     'setIntervalFn'
   ]);
@@ -38,6 +39,43 @@
   const CLOSE_SOURCES = Object.freeze(['api', 'close_button', 'escape']);
   const DISCARD_MESSAGE =
     'Session verwerfen? Deine bisherigen Änderungen gehen verloren.';
+  const SEARCH_LIMIT = 8;
+  const SEARCH_START_MESSAGE =
+    'Suche nach einer Übung oder Aktivität im lokalen Katalog.';
+  const SEARCH_EMPTY_MESSAGE =
+    'Keine passende Übung oder Aktivität gefunden.';
+  const SEARCH_ERROR_MESSAGE = 'Suche ist derzeit nicht verfügbar.';
+  const LOOKUP_LOADING_MESSAGE = 'Letzte Ausführung wird geladen ...';
+  const LOOKUP_EMPTY_MESSAGE = 'Noch kein vorheriger Eintrag.';
+  const LOOKUP_ERROR_MESSAGE =
+    'Letzte Ausführung ist derzeit nicht verfügbar. Du kannst die Übung trotzdem erfassen.';
+  const LOOKUP_SCHEMA = 'midas.activity-last-performance.v1';
+  const LOOKUP_UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const LOOKUP_TIMESTAMP_RE =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.\d{6}Z$/;
+  const LOOKUP_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const EQUIPMENT_LABELS = Object.freeze({
+    barbell: 'Langhantel',
+    bodyweight: 'Körpergewicht',
+    cable: 'Kabelzug',
+    cardio_machine: 'Cardiogerät',
+    dumbbell: 'Kurzhantel',
+    kettlebell: 'Kettlebell',
+    machine: 'Maschine',
+    none: 'Ohne Gerät',
+    variable: 'Variable Ausstattung'
+  });
+  const LOOKUP_FIELD_KEYS = Object.freeze([
+    'assistance_kg',
+    'distance_km',
+    'distance_m',
+    'duration_min',
+    'duration_sec',
+    'note',
+    'reps',
+    'weight_kg'
+  ]);
   const SAFE_MESSAGE = 'The activity session shell operation could not be completed.';
   const mountedHosts = new WeakMap();
   const activeDocuments = new WeakMap();
@@ -146,11 +184,26 @@
     if (
       !isRecord(semantics) ||
       typeof semantics.getCatalog !== 'function' ||
-      typeof semantics.getEntryByKey !== 'function'
+      typeof semantics.getEntryByKey !== 'function' ||
+      typeof semantics.normalizeSearchText !== 'function' ||
+      typeof semantics.search !== 'function'
     ) {
       fail('SEMANTICS_MISSING');
     }
     return semantics;
+  }
+
+  function resolveLookup(options) {
+    if (
+      !hasOwn(options, 'loadLastPerformance') ||
+      options.loadLastPerformance === undefined
+    ) {
+      return null;
+    }
+    if (typeof options.loadLastPerformance !== 'function') {
+      fail('INVALID_OPTIONS');
+    }
+    return options.loadLastPerformance;
   }
 
   function resolveConfirmation(options) {
@@ -358,10 +411,307 @@
     return button;
   }
 
+  function invalidLookupModel() {
+    throw new Error('invalid-lookup-model');
+  }
+
+  function isLookupUuid(value) {
+    return typeof value === 'string' && LOOKUP_UUID_RE.test(value);
+  }
+
+  function isLookupTimestamp(value) {
+    if (typeof value !== 'string') return false;
+    const match = LOOKUP_TIMESTAMP_RE.exec(value);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6]);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return (
+      year >= 1 &&
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= monthDays[month - 1] &&
+      hour <= 23 &&
+      minute <= 59 &&
+      second <= 59
+    );
+  }
+
+  function formatLookupDay(value) {
+    if (typeof value !== 'string') invalidLookupModel();
+    const match = LOOKUP_DAY_RE.exec(value);
+    if (!match) invalidLookupModel();
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > monthDays[month - 1]) {
+      invalidLookupModel();
+    }
+    return `${match[3]}.${match[2]}.${match[1]}`;
+  }
+
+  function hasAtMostTwoDecimals(value) {
+    const text = String(value).toLowerCase();
+    const [coefficient, exponentText] = text.split('e');
+    const fractionLength = (coefficient.split('.')[1] || '').length;
+    const exponent = exponentText === undefined ? 0 : Number(exponentText);
+    return Number.isInteger(exponent) && Math.max(0, fractionLength - exponent) <= 2;
+  }
+
+  function assertLookupNumber(value, min, max, integer = false) {
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < min ||
+      value > max ||
+      (integer ? !Number.isSafeInteger(value) : !hasAtMostTwoDecimals(value))
+    ) {
+      invalidLookupModel();
+    }
+    return value;
+  }
+
+  function lookupOptionalNumber(value, min, max, integer = false) {
+    return value === null ? null : assertLookupNumber(value, min, max, integer);
+  }
+
+  function formatLookupNumber(value) {
+    return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1').replace('.', ',');
+  }
+
+  function assertLookupRule(policy, key, value) {
+    if (
+      (policy[key] === 'required' && value === null) ||
+      (policy[key] === 'forbidden' && value !== null)
+    ) {
+      invalidLookupModel();
+    }
+  }
+
+  function assertLookupPolicySnapshot(policy, trackingMode, equipment, comparability) {
+    const primaryPolicies = [policy.reps, policy.duration_sec, policy.distance_m];
+    const activeLoads = [policy.weight_kg, policy.assistance_kg].filter(
+      (rule) => rule !== 'forbidden'
+    ).length;
+    const hasWeight = policy.weight_kg !== 'forbidden';
+    const hasAssistance = policy.assistance_kg !== 'forbidden';
+    if (policy.note !== 'optional') invalidLookupModel();
+    if (trackingMode === 'strength_sets') {
+      if (
+        primaryPolicies.filter((rule) => rule === 'required').length !== 1 ||
+        primaryPolicies.some((rule) => rule !== 'required' && rule !== 'forbidden') ||
+        policy.duration_min !== 'forbidden' ||
+        policy.distance_km !== 'forbidden' ||
+        activeLoads > 1
+      ) {
+        invalidLookupModel();
+      }
+    } else if (trackingMode === 'duration') {
+      if (
+        policy.duration_min !== 'required' ||
+        policy.distance_km !== 'forbidden' ||
+        policy.reps !== 'forbidden' ||
+        policy.duration_sec !== 'forbidden' ||
+        policy.distance_m !== 'forbidden' ||
+        activeLoads !== 0
+      ) {
+        invalidLookupModel();
+      }
+    } else if (
+      policy.duration_min !== 'required' ||
+      policy.distance_km !== 'optional' ||
+      policy.reps !== 'forbidden' ||
+      policy.duration_sec !== 'forbidden' ||
+      policy.distance_m !== 'forbidden' ||
+      activeLoads !== 0
+    ) {
+      invalidLookupModel();
+    }
+    if (!hasWeight && !hasAssistance) {
+      if (comparability !== 'not_applicable') invalidLookupModel();
+    } else if (hasAssistance) {
+      if (comparability !== 'device_relative') invalidLookupModel();
+    } else if (
+      !['device_relative', 'standardized'].includes(comparability) ||
+      (['cable', 'machine', 'variable'].includes(equipment) &&
+        comparability !== 'device_relative')
+    ) {
+      invalidLookupModel();
+    }
+  }
+
+  function projectLookupDisplay(value, itemKey) {
+    if (!hasExactKeys(value, ['item', 'schema_version', 'session'])) {
+      invalidLookupModel();
+    }
+    if (value.schema_version !== LOOKUP_SCHEMA) invalidLookupModel();
+    if (!hasExactKeys(value.session, ['day', 'id', 'started_at'])) {
+      invalidLookupModel();
+    }
+    if (!isLookupUuid(value.session.id) || !isLookupTimestamp(value.session.started_at)) {
+      invalidLookupModel();
+    }
+    const dateLabel = formatLookupDay(value.session.day);
+    const item = value.item;
+    if (!hasExactKeys(item, [
+      'catalog_version',
+      'created_at',
+      'distance_km',
+      'duration_min',
+      'equipment_snapshot',
+      'field_policy_snapshot',
+      'id',
+      'item_key',
+      'item_label_snapshot',
+      'item_order',
+      'load_comparability_snapshot',
+      'note',
+      'sets',
+      'tracking_mode_snapshot'
+    ])) {
+      invalidLookupModel();
+    }
+    if (
+      !isLookupUuid(item.id) ||
+      !isLookupTimestamp(item.created_at) ||
+      !Number.isSafeInteger(item.catalog_version) ||
+      item.catalog_version < 1 ||
+      item.catalog_version > 2147483647 ||
+      !Number.isSafeInteger(item.item_order) ||
+      item.item_order < 1 ||
+      item.item_order > 50 ||
+      item.item_key !== itemKey ||
+      typeof item.item_label_snapshot !== 'string' ||
+      item.item_label_snapshot === '' ||
+      item.item_label_snapshot.replace(/^ +| +$/g, '') !== item.item_label_snapshot ||
+      Array.from(item.item_label_snapshot).length > 80 ||
+      !['strength_sets', 'duration', 'duration_distance'].includes(
+        item.tracking_mode_snapshot
+      ) ||
+      !hasOwn(EQUIPMENT_LABELS, item.equipment_snapshot) ||
+      !['device_relative', 'not_applicable', 'standardized'].includes(
+        item.load_comparability_snapshot
+      ) ||
+      !Array.isArray(item.sets)
+    ) {
+      invalidLookupModel();
+    }
+    const policy = item.field_policy_snapshot;
+    if (!hasExactKeys(policy, LOOKUP_FIELD_KEYS)) invalidLookupModel();
+    LOOKUP_FIELD_KEYS.forEach((key) => {
+      if (!['forbidden', 'optional', 'required'].includes(policy[key])) {
+        invalidLookupModel();
+      }
+    });
+    assertLookupPolicySnapshot(
+      policy,
+      item.tracking_mode_snapshot,
+      item.equipment_snapshot,
+      item.load_comparability_snapshot
+    );
+    const durationMin = lookupOptionalNumber(item.duration_min, 1, 1440, true);
+    const distanceKm = lookupOptionalNumber(item.distance_km, 0.01, 1000);
+    let note = item.note;
+    if (
+      note !== null &&
+      (typeof note !== 'string' ||
+        note === '' ||
+        note.replace(/^ +| +$/g, '') !== note ||
+        Array.from(note).length > NOTE_LIMIT)
+    ) {
+      invalidLookupModel();
+    }
+    assertLookupRule(policy, 'duration_min', durationMin);
+    assertLookupRule(policy, 'distance_km', distanceKm);
+    assertLookupRule(policy, 'note', note);
+
+    const lines = [];
+    if (item.tracking_mode_snapshot === 'strength_sets') {
+      if (item.sets.length < 1 || item.sets.length > 50) invalidLookupModel();
+      item.sets.forEach((set, index) => {
+        if (!hasExactKeys(set, [
+          'assistance_kg',
+          'created_at',
+          'distance_m',
+          'duration_sec',
+          'id',
+          'reps',
+          'set_order',
+          'tracking_mode',
+          'weight_kg'
+        ])) {
+          invalidLookupModel();
+        }
+        if (
+          !isLookupUuid(set.id) ||
+          !isLookupTimestamp(set.created_at) ||
+          set.set_order !== index + 1 ||
+          set.tracking_mode !== 'strength_sets'
+        ) {
+          invalidLookupModel();
+        }
+        const reps = lookupOptionalNumber(set.reps, 1, 1000, true);
+        const durationSec = lookupOptionalNumber(set.duration_sec, 1, 3600, true);
+        const distanceM = lookupOptionalNumber(set.distance_m, 0.1, 10000);
+        const weightKg = lookupOptionalNumber(set.weight_kg, 0.01, 1000);
+        const assistanceKg = lookupOptionalNumber(set.assistance_kg, 0.01, 1000);
+        const primary = [reps, durationSec, distanceM].filter(
+          (candidate) => candidate !== null
+        );
+        if (primary.length !== 1 || (weightKg !== null && assistanceKg !== null)) {
+          invalidLookupModel();
+        }
+        [
+          ['reps', reps],
+          ['duration_sec', durationSec],
+          ['distance_m', distanceM],
+          ['weight_kg', weightKg],
+          ['assistance_kg', assistanceKg]
+        ].forEach(([key, candidate]) => assertLookupRule(policy, key, candidate));
+
+        let primaryText;
+        if (reps !== null) primaryText = `${reps} Wiederholungen`;
+        else if (durationSec !== null) primaryText = `${durationSec} s`;
+        else primaryText = `${formatLookupNumber(distanceM)} m`;
+        if (weightKg !== null) {
+          primaryText = reps !== null
+            ? `${reps} × ${formatLookupNumber(weightKg)} kg`
+            : `${primaryText} · ${formatLookupNumber(weightKg)} kg`;
+        } else if (assistanceKg !== null) {
+          primaryText = reps !== null
+            ? `${reps} × ${formatLookupNumber(assistanceKg)} kg Unterstützung`
+            : `${primaryText} · ${formatLookupNumber(assistanceKg)} kg Unterstützung`;
+        }
+        lines.push(primaryText);
+      });
+    } else {
+      if (item.sets.length !== 0 || durationMin === null) invalidLookupModel();
+      lines.push(`${durationMin} min`);
+      if (distanceKm !== null) lines.push(`${formatLookupNumber(distanceKm)} km`);
+    }
+
+    return deepFreeze({
+      dateLabel,
+      equipmentLabel: EQUIPMENT_LABELS[item.equipment_snapshot],
+      itemLabel: item.item_label_snapshot,
+      lines,
+      note
+    });
+  }
+
   function createStructure(document) {
     shellSequence += 1;
     const titleId = `activity-v2-session-title-${shellSequence}`;
-    const pickerId = `activity-v2-session-picker-${shellSequence}`;
+    const searchId = `activity-v2-session-search-${shellSequence}`;
+    const searchResultsId = `activity-v2-session-search-results-${shellSequence}`;
     const noteId = `activity-v2-session-note-${shellSequence}`;
 
     const panel = makeElement(document, 'section', 'activity-v2-session-shell');
@@ -442,29 +792,40 @@
       'activity-v2-session-section-title',
       'Übung oder Aktivität'
     );
-    const pickerControls = makeElement(
-      document,
-      'div',
-      'activity-v2-session-picker-controls'
-    );
     const pickerField = makeElement(
       document,
       'div',
       'activity-v2-session-field'
     );
-    const pickerLabel = makeElement(document, 'label', '', 'Aus Katalog auswählen');
-    pickerLabel.htmlFor = pickerId;
-    const picker = makeElement(document, 'select', 'activity-v2-session-select');
-    picker.id = pickerId;
-    pickerField.append(pickerLabel, picker);
-    const add = setButton(
-      makeElement(document, 'button', 'activity-v2-session-primary'),
-      'add',
-      'Hinzufügen',
-      'Ausgewählte Übung oder Aktivität hinzufügen'
+    const pickerLabel = makeElement(
+      document,
+      'label',
+      '',
+      'Katalog lokal durchsuchen'
     );
-    pickerControls.append(pickerField, add);
-    pickerCard.append(pickerHeading, pickerControls);
+    pickerLabel.htmlFor = searchId;
+    const search = makeElement(document, 'input', 'activity-v2-session-search');
+    search.id = searchId;
+    search.type = 'search';
+    search.placeholder = 'Zum Beispiel Leg Curl oder Romanian Deadlift';
+    search.setAttribute('autocomplete', 'off');
+    search.setAttribute('aria-controls', searchResultsId);
+    search.setAttribute('aria-expanded', 'false');
+    const searchStatus = makeElement(
+      document,
+      'p',
+      'activity-v2-session-search-status',
+      SEARCH_START_MESSAGE
+    );
+    const searchResults = makeElement(
+      document,
+      'ul',
+      'activity-v2-session-search-results'
+    );
+    searchResults.id = searchResultsId;
+    searchResults.hidden = true;
+    pickerField.append(pickerLabel, search, searchStatus, searchResults);
+    pickerCard.append(pickerHeading, pickerField);
 
     const itemsSection = makeElement(
       document,
@@ -535,8 +896,9 @@
       panel,
       timer,
       close,
-      picker,
-      add,
+      search,
+      searchStatus,
+      searchResults,
       empty,
       itemList,
       itemCount,
@@ -550,6 +912,7 @@
     const document = assertHost(options.host);
     const draft = assertDraft(options.draft);
     const semantics = resolveSemantics(options);
+    const loadLastPerformance = resolveLookup(options);
     const confirmDiscard = resolveConfirmation(options);
     const scheduler = resolveScheduler(options);
     if (mountedHosts.has(options.host)) fail('SHELL_ALREADY_MOUNTED');
@@ -567,6 +930,9 @@
     let intervalId;
     let closeGuardPromise = null;
     let closeGuardGeneration = 0;
+    let searchState = { mode: 'closed', entries: [] };
+    let lookupGeneration = 0;
+    let lookupStates = new Map();
     let controller;
 
     function setStatus(message, tone = '') {
@@ -579,28 +945,295 @@
       if (destroyed) fail('SHELL_DESTROYED');
     }
 
+    function renderSearchState() {
+      const included = new Set(
+        currentState?.snapshot.items.map((item) => item.item_key) || []
+      );
+      const fragment = document.createDocumentFragment();
+      if (searchState.mode === 'results') {
+        searchState.entries.forEach((entry) => {
+          const listItem = makeElement(
+            document,
+            'li',
+            'activity-v2-session-search-result-item'
+          );
+          const button = setButton(
+            makeElement(
+              document,
+              'button',
+              'activity-v2-session-search-result'
+            ),
+            'select-search-result',
+            '',
+            `${entry.label} auswählen`
+          );
+          button.dataset.itemKey = entry.key;
+          button.append(
+            makeElement(
+              document,
+              'span',
+              'activity-v2-session-search-result-label',
+              entry.label
+            ),
+            makeElement(
+              document,
+              'span',
+              'activity-v2-session-search-result-equipment',
+              EQUIPMENT_LABELS[entry.equipment]
+            )
+          );
+          if (included.has(entry.key)) {
+            button.append(
+              makeElement(
+                document,
+                'span',
+                'activity-v2-session-search-result-present',
+                'Bereits in Session'
+              )
+            );
+          }
+          listItem.appendChild(button);
+          fragment.appendChild(listItem);
+        });
+      }
+      ui.searchResults.replaceChildren(fragment);
+      const open = searchState.mode !== 'closed';
+      ui.searchResults.hidden = searchState.mode !== 'results';
+      ui.search.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (searchState.mode === 'empty') {
+        ui.searchStatus.textContent = SEARCH_EMPTY_MESSAGE;
+      } else if (searchState.mode === 'search_error') {
+        ui.searchStatus.textContent = SEARCH_ERROR_MESSAGE;
+      } else if (searchState.mode === 'results') {
+        ui.searchStatus.textContent = `${searchState.entries.length} ${
+          searchState.entries.length === 1 ? 'Treffer' : 'Treffer'
+        }`;
+      } else {
+        ui.searchStatus.textContent = SEARCH_START_MESSAGE;
+      }
+    }
+
+    function closeSearch(clearQuery) {
+      if (clearQuery) ui.search.value = '';
+      searchState = { mode: 'closed', entries: [] };
+      renderSearchState();
+    }
+
+    function runSearch() {
+      let normalized;
+      try {
+        normalized = semantics.normalizeSearchText(ui.search.value);
+        if (typeof normalized !== 'string') throw new TypeError('invalid search');
+      } catch {
+        searchState = { mode: 'search_error', entries: [] };
+        renderSearchState();
+        return;
+      }
+      if (normalized === '') {
+        closeSearch(false);
+        return;
+      }
+      try {
+        const result = semantics.search(ui.search.value, { limit: SEARCH_LIMIT });
+        if (!Array.isArray(result) || result.length > SEARCH_LIMIT) {
+          throw new TypeError('invalid search result');
+        }
+        const seen = new Set();
+        const entries = result.map((candidate) => {
+          if (
+            !isRecord(candidate) ||
+            typeof candidate.key !== 'string' ||
+            seen.has(candidate.key)
+          ) {
+            throw new TypeError('invalid search result');
+          }
+          const entry = semantics.getEntryByKey(candidate.key);
+          if (
+            !isRecord(entry) ||
+            entry.key !== candidate.key ||
+            entry.status !== 'active' ||
+            typeof entry.label !== 'string' ||
+            !hasOwn(EQUIPMENT_LABELS, entry.equipment) ||
+            currentState?.catalogState.byKey.get(entry.key) !== entry
+          ) {
+            throw new TypeError('invalid search result');
+          }
+          seen.add(entry.key);
+          return entry;
+        });
+        searchState = {
+          mode: entries.length === 0 ? 'empty' : 'results',
+          entries
+        };
+      } catch {
+        searchState = { mode: 'search_error', entries: [] };
+      }
+      renderSearchState();
+    }
+
+    function renderLookupRegion(region, itemKey, state) {
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(
+        makeElement(
+          document,
+          'p',
+          'activity-v2-session-history-title',
+          'Letzte Ausführung'
+        )
+      );
+      if (!state) {
+        region.replaceChildren(fragment);
+        return;
+      }
+      if (state.status === 'loading') {
+        fragment.appendChild(
+          makeElement(document, 'p', 'activity-v2-session-history-message', LOOKUP_LOADING_MESSAGE)
+        );
+      } else if (state.status === 'empty') {
+        fragment.appendChild(
+          makeElement(document, 'p', 'activity-v2-session-history-message', LOOKUP_EMPTY_MESSAGE)
+        );
+      } else if (state.status === 'error') {
+        fragment.appendChild(
+          makeElement(document, 'p', 'activity-v2-session-history-message', LOOKUP_ERROR_MESSAGE)
+        );
+        const retry = setButton(
+          makeElement(document, 'button', 'activity-v2-session-secondary'),
+          'retry-lookup',
+          'Erneut versuchen',
+          'Letzte Ausführung erneut laden'
+        );
+        retry.dataset.itemKey = itemKey;
+        fragment.appendChild(retry);
+      } else if (state.status === 'success') {
+        const model = state.model;
+        fragment.append(
+          makeElement(
+            document,
+            'p',
+            'activity-v2-session-history-summary',
+            `Zuletzt am ${model.dateLabel}`
+          ),
+          makeElement(
+            document,
+            'p',
+            'activity-v2-session-history-snapshot',
+            `${model.itemLabel} · ${model.equipmentLabel}`
+          )
+        );
+        const values = makeElement(document, 'ul', 'activity-v2-session-history-values');
+        model.lines.forEach((line) => {
+          values.appendChild(
+            makeElement(document, 'li', 'activity-v2-session-history-value', line)
+          );
+        });
+        fragment.appendChild(values);
+        if (model.note !== null) {
+          fragment.appendChild(
+            makeElement(
+              document,
+              'p',
+              'activity-v2-session-history-note',
+              model.note
+            )
+          );
+        }
+      }
+      region.replaceChildren(fragment);
+    }
+
+    function canPatchLookup(itemKey) {
+      return (
+        !destroyed &&
+        openState &&
+        closeGuardPromise === null &&
+        currentState?.snapshot.items.some((item) => item.item_key === itemKey) &&
+        itemActionRefs.has(itemKey)
+      );
+    }
+
+    function patchLookup(itemKey) {
+      if (!canPatchLookup(itemKey)) return;
+      const refs = itemActionRefs.get(itemKey);
+      if (refs?.history) {
+        renderLookupRegion(refs.history, itemKey, lookupStates.get(itemKey));
+      }
+    }
+
+    function settleLookup(itemKey, generation, outcome, rawValue) {
+      if (destroyed) return;
+      const current = lookupStates.get(itemKey);
+      if (!current || current.generation !== generation || current.status !== 'loading') {
+        return;
+      }
+      let next;
+      if (outcome === 'error') {
+        next = { status: 'error', generation };
+      } else if (rawValue === null) {
+        next = { status: 'empty', generation };
+      } else {
+        try {
+          next = {
+            status: 'success',
+            generation,
+            model: projectLookupDisplay(rawValue, itemKey)
+          };
+        } catch {
+          next = { status: 'error', generation };
+        }
+      }
+      lookupStates.set(itemKey, deepFreeze(next));
+      patchLookup(itemKey);
+    }
+
+    function startLookup(itemKey, retry = false) {
+      if (!loadLastPerformance || destroyed) return;
+      const existing = lookupStates.get(itemKey);
+      if ((!retry && existing) || (retry && existing?.status !== 'error')) return;
+      lookupGeneration += 1;
+      const generation = lookupGeneration;
+      lookupStates.set(itemKey, deepFreeze({ status: 'loading', generation }));
+      patchLookup(itemKey);
+
+      let pending;
+      try {
+        pending = loadLastPerformance(itemKey);
+        const kind = typeof pending;
+        if (
+          pending === null ||
+          (kind !== 'object' && kind !== 'function') ||
+          typeof pending.then !== 'function'
+        ) {
+          throw new TypeError('lookup callback must return a thenable');
+        }
+      } catch {
+        settleLookup(itemKey, generation, 'error');
+        return;
+      }
+      Promise.resolve(pending).then(
+        (value) => settleLookup(itemKey, generation, 'success', value),
+        () => settleLookup(itemKey, generation, 'error')
+      );
+    }
+
+    function reconcileLookupDom() {
+      if (!loadLastPerformance || destroyed || !openState || closeGuardPromise) return;
+      currentState.snapshot.items.forEach((item) => {
+        if (!lookupStates.has(item.item_key)) startLookup(item.item_key);
+        else patchLookup(item.item_key);
+      });
+    }
+
     function render() {
       assertUsable();
       const nextState = readState(draft, semantics);
-      const included = new Set(
-        nextState.snapshot.items.map((item) => item.item_key)
-      );
-      const optionFragment = document.createDocumentFragment();
-      let firstAvailable = null;
-      nextState.catalogState.entries.forEach((entry) => {
-        const option = makeElement(document, 'option', '', entry.label);
-        option.value = entry.key;
-        option.disabled = included.has(entry.key);
-        if (!option.disabled && firstAvailable === null) firstAvailable = entry.key;
-        optionFragment.appendChild(option);
-      });
-
       const listFragment = document.createDocumentFragment();
       const nextActionRefs = new Map();
       nextState.snapshot.items.forEach((item, index) => {
         const entry = nextState.catalogState.byKey.get(item.item_key);
         const row = makeElement(document, 'li', 'activity-v2-session-item');
         row.dataset.itemKey = item.item_key;
+        row.setAttribute('tabindex', '-1');
         const identity = makeElement(
           document,
           'div',
@@ -649,20 +1282,25 @@
         down.dataset.itemKey = item.item_key;
         remove.dataset.itemKey = item.item_key;
         actions.append(up, down, remove);
-        row.append(identity, actions);
+        let history = null;
+        if (loadLastPerformance) {
+          history = makeElement(
+            document,
+            'section',
+            'activity-v2-session-history'
+          );
+          history.dataset.itemKey = item.item_key;
+          history.setAttribute('aria-live', 'polite');
+          history.setAttribute('aria-label', `Letzte Ausführung für ${entry.label}`);
+          renderLookupRegion(history, item.item_key, lookupStates.get(item.item_key));
+        }
+        row.append(identity);
+        if (history) row.append(history);
+        row.append(actions);
         listFragment.appendChild(row);
-        nextActionRefs.set(item.item_key, { row, up, down, remove });
+        nextActionRefs.set(item.item_key, { row, up, down, remove, history });
       });
 
-      ui.picker.replaceChildren(optionFragment);
-      if (firstAvailable === null) {
-        ui.picker.selectedIndex = -1;
-        ui.picker.value = '';
-      } else {
-        ui.picker.value = firstAvailable;
-      }
-      ui.picker.disabled = firstAvailable === null;
-      ui.add.disabled = firstAvailable === null;
       ui.itemList.replaceChildren(listFragment);
       ui.empty.hidden = nextState.snapshot.items.length > 0;
       ui.itemList.hidden = nextState.snapshot.items.length === 0;
@@ -673,8 +1311,10 @@
       ui.timer.textContent = nextState.timer.label;
       currentState = nextState;
       itemActionRefs = nextActionRefs;
+      renderSearchState();
       syncTimerScheduler();
       setStatus('');
+      if (openState && closeGuardPromise === null) reconcileLookupDom();
       return nextState.snapshot;
     }
 
@@ -729,7 +1369,11 @@
     }
 
     function focusPicker() {
-      return focusElement(ui.picker) || focusElement(ui.close);
+      return focusElement(ui.search) || focusElement(ui.close);
+    }
+
+    function focusItemRow(itemKey) {
+      return focusElement(itemActionRefs.get(itemKey)?.row) || focusPicker();
     }
 
     function focusItemAction(itemKey, preferredAction) {
@@ -746,8 +1390,13 @@
     }
 
     function getFocusableElements() {
-      return Array.from(ui.panel.querySelectorAll('button, select, textarea')).filter(
-        (element) => !element.disabled && !element.hidden
+      return Array.from(
+        ui.panel.querySelectorAll('button, input, select, textarea')
+      ).filter(
+        (element) =>
+          !element.disabled &&
+          !element.hidden &&
+          element.getAttribute('tabindex') !== '-1'
       );
     }
 
@@ -789,7 +1438,37 @@
 
     function handleKeydown(event) {
       if (!openState) return;
+      const keyTarget = event.target || document.activeElement;
+      if (event.key === 'ArrowDown' && keyTarget === ui.search) {
+        if (searchState.mode === 'closed' && ui.search.value !== '') runSearch();
+        const firstResult = ui.searchResults.querySelector('button');
+        if (searchState.mode === 'results' && firstResult) {
+          event.preventDefault();
+          firstResult.focus();
+        }
+        return;
+      }
+      if (event.key === 'Enter' && searchState.mode === 'results') {
+        const actionTarget = findActionButton(keyTarget);
+        const selected =
+          actionTarget?.dataset.action === 'select-search-result'
+            ? actionTarget
+            : keyTarget === ui.search
+              ? ui.searchResults.querySelector('button')
+              : null;
+        if (selected) {
+          event.preventDefault();
+          selectSearchResult(selected.dataset.itemKey);
+          return;
+        }
+      }
       if (event.key === 'Escape') {
+        if (searchState.mode !== 'closed') {
+          event.preventDefault();
+          event.stopPropagation?.();
+          closeSearch(false);
+          return;
+        }
         event.preventDefault();
         controller.requestClose('escape');
         return;
@@ -812,6 +1491,21 @@
       }
     }
 
+    function findActionButton(target) {
+      let candidate = target;
+      while (candidate && candidate !== ui.panel) {
+        if (
+          candidate.nodeType === 1 &&
+          candidate.tagName === 'BUTTON' &&
+          candidate.dataset?.action
+        ) {
+          return candidate;
+        }
+        candidate = candidate.parentNode;
+      }
+      return null;
+    }
+
     function handleVisibilityChange() {
       if (openState && document.visibilityState === 'visible') {
         refreshTimerSafely();
@@ -831,22 +1525,44 @@
       }
     }
 
+    function selectSearchResult(itemKey) {
+      const selected = searchState.entries.find((entry) => entry.key === itemKey);
+      if (!selected) return;
+      const alreadyIncluded = currentState?.snapshot.items.some(
+        (item) => item.item_key === itemKey
+      );
+      if (alreadyIncluded) {
+        closeSearch(true);
+        setStatus('Eintrag ist bereits in der Session.', 'notice');
+        focusItemRow(itemKey);
+        return;
+      }
+      try {
+        draft.addItem(itemKey);
+        closeSearch(true);
+        render();
+        setStatus('Eintrag hinzugefügt.', 'success');
+        focusItemRow(itemKey);
+      } catch {
+        setStatus('Die Aktion konnte nicht ausgeführt werden.', 'error');
+        focusElement(ui.search);
+      }
+    }
+
     function handleClick(event) {
-      const target = event.target;
+      const target = findActionButton(event.target);
       const action = target?.dataset?.action;
       if (!action || target.disabled) return;
       if (action === 'close') {
         controller.requestClose('close_button');
         return;
       }
-      if (action === 'add') {
-        const itemKey = ui.picker.value;
-        runDraftAction(
-          () => draft.addItem(itemKey),
-          'Eintrag hinzugefügt.',
-          focusPicker,
-          ui.picker
-        );
+      if (action === 'select-search-result') {
+        selectSearchResult(target.dataset.itemKey);
+        return;
+      }
+      if (action === 'retry-lookup') {
+        startLookup(target.dataset.itemKey, true);
         return;
       }
       const itemKey = target.dataset.itemKey;
@@ -881,6 +1597,10 @@
     }
 
     function handleInput(event) {
+      if (event.target === ui.search) {
+        runSearch();
+        return;
+      }
       if (event.target !== ui.note) return;
       try {
         draft.setNote(ui.note.value);
@@ -948,6 +1668,7 @@
         activeDocuments.set(document, controller);
         syncTimerScheduler();
         focusPicker();
+        reconcileLookupDom();
       } catch (error) {
         stopTimerScheduler();
         unbindListeners();
@@ -977,6 +1698,7 @@
 
       const previousFocus = document.activeElement;
       const generation = closeGuardGeneration;
+      let reconcileAfterGuard = false;
       const context = deepFreeze({
         message: DISCARD_MESSAGE,
         source,
@@ -994,14 +1716,14 @@
           }
           if (confirmed !== true) {
             setStatus('Session wurde nicht verworfen.', 'notice');
-            restoreOpener(previousFocus);
+            reconcileAfterGuard = true;
             return false;
           }
           try {
             draft.discard();
           } catch {
             setStatus('Die Session konnte nicht verworfen werden.', 'error');
-            restoreOpener(previousFocus);
+            reconcileAfterGuard = true;
             return false;
           }
           return closeTechnical();
@@ -1013,12 +1735,18 @@
             openState
           ) {
             setStatus('Die Session konnte nicht verworfen werden.', 'error');
-            restoreOpener(previousFocus);
+            reconcileAfterGuard = true;
           }
           return false;
         })
         .finally(() => {
-          if (closeGuardPromise === guard) closeGuardPromise = null;
+          if (closeGuardPromise === guard) {
+            closeGuardPromise = null;
+            if (reconcileAfterGuard && !destroyed && openState) {
+              reconcileLookupDom();
+              restoreOpener(previousFocus);
+            }
+          }
         });
       closeGuardPromise = guard;
       return guard;
@@ -1041,6 +1769,9 @@
       destroyed = true;
       currentState = null;
       itemActionRefs = new Map();
+      lookupStates.clear();
+      lookupStates = new Map();
+      searchState = { mode: 'closed', entries: [] };
     }
 
     controller = deepFreeze({

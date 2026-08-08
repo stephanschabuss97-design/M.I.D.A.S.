@@ -48,6 +48,27 @@
     'set_order',
     'weight_kg'
   ]);
+  const HISTORICAL_TRACKING_MODES = Object.freeze([
+    'duration',
+    'duration_distance',
+    'strength_sets'
+  ]);
+  const HISTORICAL_EQUIPMENT = Object.freeze([
+    'barbell',
+    'bodyweight',
+    'cable',
+    'cardio_machine',
+    'dumbbell',
+    'kettlebell',
+    'machine',
+    'none',
+    'variable'
+  ]);
+  const HISTORICAL_LOAD_COMPARABILITY = Object.freeze([
+    'device_relative',
+    'not_applicable',
+    'standardized'
+  ]);
   const SQL_TOKEN_CODES = Object.freeze({
     MIDAS_ACTIVITY_AUTH_REQUIRED: 'AUTH_REQUIRED',
     MIDAS_ACTIVITY_IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
@@ -403,18 +424,59 @@
     };
   }
 
-  function normalizeLookupKey(value, semantics) {
+  function resolveLookupSemantics(optionsProvided, optionsValue) {
+    let semantics;
+    if (!optionsProvided) {
+      semantics = getSemantics();
+    } else {
+      if (!isRecord(optionsValue)) violation();
+      const optionKeys = Reflect.ownKeys(optionsValue);
+      if (
+        optionKeys.length !== 1 ||
+        optionKeys[0] !== 'semantics' ||
+        !Object.prototype.hasOwnProperty.call(optionsValue, 'semantics')
+      ) {
+        violation();
+      }
+      semantics = optionsValue.semantics;
+    }
+    if (
+      !isRecord(semantics) ||
+      typeof semantics.getCatalog !== 'function' ||
+      typeof semantics.getEntryByKey !== 'function'
+    ) {
+      violation();
+    }
+    const catalog = semantics.getCatalog();
+    if (
+      !isRecord(catalog) ||
+      !Number.isSafeInteger(catalog.catalog_version) ||
+      catalog.catalog_version < 1 ||
+      catalog.catalog_version > 2147483647
+    ) {
+      violation();
+    }
+    return semantics;
+  }
+
+  function normalizeLookupKey(value) {
     if (typeof value !== 'string') violation();
     const itemKey = asciiBtrim(value);
     if (
       textLength(itemKey) < 1 ||
       textLength(itemKey) > 64 ||
-      !ITEM_KEY_RE.test(itemKey) ||
-      !semantics.getEntryByKey(itemKey)
+      !ITEM_KEY_RE.test(itemKey)
     ) {
       violation();
     }
     return itemKey;
+  }
+
+  function selectedSemanticsHasKey(semantics, itemKey) {
+    const entry = semantics.getEntryByKey(itemKey);
+    if (entry === null || entry === undefined) return false;
+    if (!isRecord(entry) || entry.key !== itemKey) violation();
+    return true;
   }
 
   function assertCanonicalOptionalText(value, maxLength) {
@@ -595,6 +657,167 @@
     return value;
   }
 
+  function assertHistoricalPolicySnapshot(
+    policyValue,
+    trackingMode,
+    equipment,
+    loadComparability
+  ) {
+    const policy = assertFieldPolicy(policyValue);
+    const primaryPolicies = [
+      policy.reps,
+      policy.duration_sec,
+      policy.distance_m
+    ];
+    const activeLoads = [policy.weight_kg, policy.assistance_kg].filter(
+      (rule) => rule !== 'forbidden'
+    ).length;
+    const hasWeight = policy.weight_kg !== 'forbidden';
+    const hasAssistance = policy.assistance_kg !== 'forbidden';
+
+    if (policy.note !== 'optional') violation();
+    if (trackingMode === 'strength_sets') {
+      if (
+        primaryPolicies.filter((rule) => rule === 'required').length !== 1 ||
+        primaryPolicies.some(
+          (rule) => rule !== 'required' && rule !== 'forbidden'
+        ) ||
+        policy.duration_min !== 'forbidden' ||
+        policy.distance_km !== 'forbidden' ||
+        activeLoads > 1
+      ) {
+        violation();
+      }
+    } else if (trackingMode === 'duration') {
+      if (
+        policy.duration_min !== 'required' ||
+        policy.distance_km !== 'forbidden' ||
+        policy.reps !== 'forbidden' ||
+        policy.duration_sec !== 'forbidden' ||
+        policy.distance_m !== 'forbidden' ||
+        activeLoads !== 0
+      ) {
+        violation();
+      }
+    } else if (
+      policy.duration_min !== 'required' ||
+      policy.distance_km !== 'optional' ||
+      policy.reps !== 'forbidden' ||
+      policy.duration_sec !== 'forbidden' ||
+      policy.distance_m !== 'forbidden' ||
+      activeLoads !== 0
+    ) {
+      violation();
+    }
+
+    if (!hasWeight && !hasAssistance) {
+      if (loadComparability !== 'not_applicable') violation();
+    } else if (hasAssistance) {
+      if (loadComparability !== 'device_relative') violation();
+    } else if (
+      !['device_relative', 'standardized'].includes(loadComparability) ||
+      (['cable', 'machine', 'variable'].includes(equipment) &&
+        loadComparability !== 'device_relative')
+    ) {
+      violation();
+    }
+    return policy;
+  }
+
+  function validateHistoricalSetResponse(value, policy, expectedOrder) {
+    assertExactKeys(value, [
+      'assistance_kg',
+      'created_at',
+      'distance_m',
+      'duration_sec',
+      'id',
+      'reps',
+      'set_order',
+      'tracking_mode',
+      'weight_kg'
+    ]);
+    assertUuid(value.id);
+    assertResponseTimestamp(value.created_at);
+    if (
+      value.tracking_mode !== 'strength_sets' ||
+      value.set_order !== expectedOrder
+    ) {
+      violation();
+    }
+    normalizeSet(
+      {
+        set_order: value.set_order,
+        reps: value.reps,
+        duration_sec: value.duration_sec,
+        distance_m: value.distance_m,
+        weight_kg: value.weight_kg,
+        assistance_kg: value.assistance_kg
+      },
+      policy
+    );
+  }
+
+  function validateHistoricalItemResponse(value, itemKey) {
+    assertExactKeys(value, [
+      'catalog_version',
+      'created_at',
+      'distance_km',
+      'duration_min',
+      'equipment_snapshot',
+      'field_policy_snapshot',
+      'id',
+      'item_key',
+      'item_label_snapshot',
+      'item_order',
+      'load_comparability_snapshot',
+      'note',
+      'sets',
+      'tracking_mode_snapshot'
+    ]);
+    assertUuid(value.id);
+    assertResponseTimestamp(value.created_at);
+    assertInteger(value.catalog_version, 1, 2147483647);
+    assertInteger(value.item_order, 1, 50);
+    if (value.item_key !== itemKey) violation();
+    if (
+      typeof value.item_label_snapshot !== 'string' ||
+      value.item_label_snapshot !== asciiBtrim(value.item_label_snapshot) ||
+      textLength(value.item_label_snapshot) < 1 ||
+      textLength(value.item_label_snapshot) > 80 ||
+      !HISTORICAL_TRACKING_MODES.includes(value.tracking_mode_snapshot) ||
+      !HISTORICAL_EQUIPMENT.includes(value.equipment_snapshot) ||
+      !HISTORICAL_LOAD_COMPARABILITY.includes(
+        value.load_comparability_snapshot
+      )
+    ) {
+      violation();
+    }
+    const policy = assertHistoricalPolicySnapshot(
+      value.field_policy_snapshot,
+      value.tracking_mode_snapshot,
+      value.equipment_snapshot,
+      value.load_comparability_snapshot
+    );
+    const durationMin = normalizeOptionalInteger(value.duration_min, 1, 1440);
+    const distanceKm = normalizeOptionalDecimal(value.distance_km, 0.01, 1000);
+    const note = assertCanonicalOptionalText(value.note, 500);
+    assertPolicyValue(policy, 'duration_min', durationMin);
+    assertPolicyValue(policy, 'distance_km', distanceKm);
+    assertPolicyValue(policy, 'note', note);
+    if (!Array.isArray(value.sets)) violation();
+    if (
+      (value.tracking_mode_snapshot === 'strength_sets' &&
+        (value.sets.length < 1 || value.sets.length > 50)) ||
+      (value.tracking_mode_snapshot !== 'strength_sets' &&
+        value.sets.length !== 0)
+    ) {
+      violation();
+    }
+    value.sets.forEach((set, index) =>
+      validateHistoricalSetResponse(set, policy, index + 1)
+    );
+  }
+
   function validateLookupResponse(value, itemKey) {
     if (value === null) return null;
     assertExactKeys(value, ['item', 'schema_version', 'session']);
@@ -603,10 +826,7 @@
     assertUuid(value.session.id);
     assertResponseTimestamp(value.session.started_at);
     assertDay(value.session.day);
-    const semantics = getSemantics();
-    if (!semantics) violation();
-    const item = validateItemResponse(value.item, semantics);
-    if (item.item_key !== itemKey) violation();
+    validateHistoricalItemResponse(value.item, itemKey);
     return value;
   }
 
@@ -802,14 +1022,18 @@
     );
   }
 
-  async function loadLastPerformance(itemKeyValue) {
-    const semantics = getSemantics();
-    if (!semantics) {
-      throw domainError('REQUEST_FAILED', 'loadLastPerformance', false);
+  async function loadLastPerformance(itemKeyValue, optionsValue) {
+    let semantics;
+    try {
+      semantics = resolveLookupSemantics(arguments.length > 1, optionsValue);
+    } catch (error) {
+      throw domainError('REQUEST_FAILED', 'loadLastPerformance', false, undefined, {
+        detail: error?.message
+      });
     }
     let itemKey;
     try {
-      itemKey = normalizeLookupKey(itemKeyValue, semantics);
+      itemKey = normalizeLookupKey(itemKeyValue);
     } catch (error) {
       if (error instanceof ContractViolation) {
         throw domainError('INVALID_ITEM_KEY', 'loadLastPerformance', false);
@@ -817,6 +1041,17 @@
       throw domainError('REQUEST_FAILED', 'loadLastPerformance', false, undefined, {
         detail: error?.message
       });
+    }
+    let keyExists;
+    try {
+      keyExists = selectedSemanticsHasKey(semantics, itemKey);
+    } catch (error) {
+      throw domainError('REQUEST_FAILED', 'loadLastPerformance', false, undefined, {
+        detail: error?.message
+      });
+    }
+    if (!keyExists) {
+      throw domainError('INVALID_ITEM_KEY', 'loadLastPerformance', false);
     }
     return await callRpc(
       'activity_v2_last_performance',

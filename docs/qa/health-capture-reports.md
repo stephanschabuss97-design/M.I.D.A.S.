@@ -333,3 +333,32 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Netzwerk, Storage und R2-RPC-Aufrufe bleiben unberührt.
 - Invalidiert durch: C2-Vertrag, `semantics-v2.js`, C2-Contract-Test, SQL 21,
   R1-Semantik/API, R3-Injection, Ranking oder produktive Script-Reihenfolge.
+
+### HCR-022 - Activity V2 R4 Suche und letzte Ausführung bleiben isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+  und [R4 Roadmap](<../archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
+- Ebene: local-runtime + browser + static
+- Ausführung: automated
+- Wirkung: read-only; Shellcache und Draft bleiben flüchtig und lokal
+- Voraussetzung: R1-R4-/C2-JS, CSS, Harness und Contract-Tests gehören zum
+  selben Repo-Stand; der Repo-Root wird für den Harness über einen lokalen
+  HTTP-Server angeboten.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  und `node tools/activity-catalog.mjs check` ausführen; danach
+  `session-shell-harness.html` bei 1440x900, 390x844 und 320x800 prüfen und
+  mindestens 30 Sekunden in einen Fremdtab wechseln.
+- Erwartung: 65/65 Contract-Fälle sind grün. Suche bleibt lokal und auf acht
+  kanonische Treffer begrenzt; Hidden Mount und Tippen erzeugen keinen Lookup.
+  Loading, Success, Empty und Error sind getrennt, historische Snapshots und
+  vollständige Satzreihenfolge erscheinen ausschließlich read-only. Pro Key
+  erfolgt höchstens ein automatischer Lookup je Mount, Retry nur explizit;
+  verspätete Antworten respektieren Remove, Close, Guard und Destroy. Drei
+  Viewports bleiben ohne horizontalen Overflow, hostile Markup bleibt Text,
+  Konsole und Remote-Requestlog sind leer. Nach dem Fremdtab bleiben Draft,
+  Notiz und Historie identisch, der Timer ist fortgeschritten und der
+  Lookupzähler unverändert. `index.html`, Activity V1, SQL/RPC/RLS/ACL/Grants,
+  `commitSession`, Draftschema, Storage und Save bleiben unverändert.
+- Invalidiert durch: R4-Data-Access-/Shell-JS, Shell-CSS, Harness,
+  R4-Contracttests, C2-Semantik/API, R3-Draft-/Lifecyclevertrag, produktive
+  Script-Reihenfolge oder neue Netzwerk-/Storage-/SQL-Nutzung.

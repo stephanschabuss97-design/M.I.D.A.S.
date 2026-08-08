@@ -313,10 +313,14 @@ test('real R3 draft and shell accept injected v2 and both new keys', () => {
     ),
     ['High Row', 'Total Abdominal']
   );
-  assert.equal(
-    panel.querySelectorAll('option').find((option) => option.value === 'high_row').disabled,
-    true
-  );
+  const search = panel.querySelector('input');
+  search.value = 'High Row';
+  panel.dispatchEvent({ type: 'input', target: search });
+  const result = panel
+    .querySelectorAll('[data-action="select-search-result"]')
+    .find((button) => button.dataset.itemKey === 'high_row');
+  assert.ok(result);
+  assert.match(result.textContent, /Bereits in Session/);
   shell.destroy();
   assert.equal(intervals.size, 0);
 });

@@ -53,6 +53,10 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
   Evidence-ID, Ergebnis und Restrisiko.
 - Bereits grüne Checks werden nur nach relevanter Code-/Vertragsänderung oder
   im finalen Gesamtcheck wiederholt.
+- Zukünftige Roadmaps erhalten keinen separaten S4.5-Schritt. Der native
+  Abschlussreview und die optionale externe CodeRabbit-Prüfung werden als
+  sequenzielle Gates in S5 geplant; CodeRabbit folgt erst nach der vollständigen
+  lokalen, statischen und gegebenenfalls Browser-Testmatrix.
 - Normale Syntax-, CSS- und JavaScript-Änderungen benötigen keinen eigenen
   Lernblock. Neue Werkzeuge, Architekturentscheidungen und produktive Wirkung
   werden vorab im Owner Briefing erklärt und bei Bedarf in S6 mit einem kurzen
@@ -106,7 +110,8 @@ git status --short
 
 ## Installierte Kernwerkzeuge
 
-Letzter verifizierter Toolchain-Abgleich: 11.07.2026.
+Letzter verifizierter Basis-Toolchain-Abgleich: 11.07.2026. CodeRabbit wurde
+separat am 08.08.2026 verifiziert.
 
 | Werkzeug | Verifizierter Stand |
 | --- | --- |
@@ -124,6 +129,7 @@ Letzter verifizierter Toolchain-Abgleich: 11.07.2026.
 | Microsoft OpenJDK | `17.0.19` |
 | Android Command-line Tools / ADB | `21.0` / `37.0.0` |
 | Playwright | `1.61.1` |
+| CodeRabbit CLI in WSL | `0.7.2` |
 
 Die Befehle in den jeweiligen Abschnitten bleiben die Source of Truth. Die
 Tabelle ist ein datierter Referenzstand und kein Versions-Pin fuer das Repo.
@@ -248,6 +254,102 @@ Wichtig:
 - Ein Agent kann die installierten Extensions lokal per `code --list-extensions` abfragen.
 - Die Doku bleibt trotzdem hilfreich, weil neue Chats sofort sehen, welche Editor-Werkzeuge erwartet werden duerfen.
 - Nach Extension-Installationen oder PATH-Aenderungen VS Code mit `Developer: Reload Window` oder komplettem Neustart aktualisieren.
+
+### CodeRabbit Reviews
+
+CodeRabbit besitzt in der MIDAS-Werkstatt drei getrennte Oberflaechen:
+
+- VS-Code-Extension `coderabbit.coderabbit-vscode` fuer interaktive Hinweise
+  im Editor.
+- Codex-Plugin/Skill `coderabbit:code-review` fuer agentisch gefuehrte
+  Review- und Fixzyklen.
+- CodeRabbit CLI in Ubuntu/WSL fuer deterministische Reviews lokaler Git-Diffs.
+
+Der kanonische CLI-Pfad auf diesem Rechner ist:
+
+```text
+/root/.local/bin/coderabbit
+```
+
+Verifizierter Stand am 08.08.2026:
+
+- CLI `0.7.2` ist in WSL installiert.
+- Agent-Authentifizierung ueber GitHub ist eingerichtet.
+- Die VS-Code-Extension und der Codex-Skill sind vorhanden.
+- Es gibt bewusst keine zweite Windows-CLI und keine CodeRabbit-Dependency im
+  MIDAS-Repo.
+
+Installationszustand pruefen, ohne Account- oder Tokenwerte zu dokumentieren:
+
+```powershell
+code --list-extensions | Select-String -Pattern '^coderabbit\.coderabbit-vscode$'
+wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit --version
+$codeRabbitStatus = wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth status --agent | ConvertFrom-Json
+$codeRabbitStatus.authenticated
+```
+
+Nur wenn die WSL-CLI auf einer neuen oder neu eingerichteten Maschine fehlt:
+
+```powershell
+wsl.exe -d Ubuntu -u root -- bash -lc "curl -fsSL https://cli.coderabbit.ai/install.sh | sh"
+wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit --version
+```
+
+Fehlt danach die Agent-Authentifizierung, den Browser-Login starten und den
+Status erneut pruefen:
+
+```powershell
+wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth login --agent
+$codeRabbitStatus = wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth status --agent | ConvertFrom-Json
+$codeRabbitStatus.authenticated
+```
+
+Kanonischer Review eines noch nicht committeten MIDAS-Diffs:
+
+```powershell
+wsl.exe -d Ubuntu -u root -- bash -lc "cd /mnt/c/Users/steph/Projekte/M.I.D.A.S && /root/.local/bin/coderabbit review --agent -t uncommitted"
+```
+
+Weitere unterstuetzte Scopes werden nur verwendet, wenn die Roadmap sie
+explizit verlangt:
+
+```text
+coderabbit review --agent
+coderabbit review --agent -t committed
+coderabbit review --agent --base main
+coderabbit review --agent --base-commit <sha>
+```
+
+MIDAS-Reviewvertrag:
+
+1. Zuerst den vorgesehenen lokalen, statischen und Browser-S5-Checkblock
+   vollstaendig ausfuehren.
+2. Den nativen Code-/Contractreview abschliessen.
+3. CodeRabbit danach als zusaetzlichen externen Review des realen finalen Diffs
+   ausfuehren; es ersetzt weder Contract Review noch Tests.
+4. Jede NDJSON-Zeile einzeln auswerten. Nur `finding`-Events als Issues
+   sammeln; Status-/Heartbeat-Events sind kein Finding.
+5. Issues technisch und fachlich gegen Roadmap, Masterplan und reale
+   Implementierung pruefen. Nicht blind korrigieren.
+6. Nur berechtigte Issues minimal beheben und alle dadurch invalidierten
+   lokalen oder Browserchecks wiederholen.
+7. Einen erneuten CodeRabbit-Review ausfuehren, wenn die Korrektur dies laut
+   Roadmap verlangt oder Code-/Vertragsgrenzen veraendert hat.
+8. Waehrend eines aktiven Reviews bis zu zehn Minuten ohne Zwischenmeldungen
+   warten. Bei Auth-, Netzwerk-, CLI-Fehler oder Timeout keinen manuellen
+   Review als CodeRabbit-Ergebnis ausgeben.
+
+Wichtig:
+
+- CodeRabbit ist ein externer Reviewhelfer, keine Source of Truth und kein
+  Ersatz fuer gruene MIDAS-Contracttests.
+- Accountmetadaten, E-Mail-Adressen, Tokens und Auth-Callbacks gehoeren nicht
+  in Roadmaps, Logs, Commits oder Abschlussberichte.
+- `npx skills add coderabbitai/skills` ist fuer MIDAS nicht erforderlich, weil
+  der Codex-CodeRabbit-Skill bereits ueber das installierte Plugin verfuegbar
+  ist.
+- Keine `package.json`-, Lockfile- oder Repository-Dependency nur fuer diesen
+  Reviewpfad erzeugen.
 
 ### Deno
 

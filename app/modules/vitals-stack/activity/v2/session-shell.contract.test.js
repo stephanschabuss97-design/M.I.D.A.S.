@@ -7,12 +7,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const semanticsPath = path.join(__dirname, 'semantics.js');
+const semanticsV2Path = path.join(__dirname, 'semantics-v2.js');
 const draftPath = path.join(__dirname, 'session-draft.js');
 const shellPath = path.join(__dirname, 'session-shell.js');
 const cssPath = path.join(__dirname, 'session-shell.css');
 const harnessPath = path.join(__dirname, 'session-shell-harness.html');
 const indexPath = path.resolve(__dirname, '../../../../..', 'index.html');
 const semanticsSource = fs.readFileSync(semanticsPath, 'utf8');
+const semanticsV2Source = fs.readFileSync(semanticsV2Path, 'utf8');
 const draftSource = fs.readFileSync(draftPath, 'utf8');
 const shellSource = fs.readFileSync(shellPath, 'utf8');
 const cssSource = fs.readFileSync(cssPath, 'utf8');
@@ -190,6 +192,12 @@ class FakeElement {
         event.defaultPrevented = true;
       };
     }
+    if (typeof event.stopPropagation !== 'function') {
+      event.propagationStopped = false;
+      event.stopPropagation = () => {
+        event.propagationStopped = true;
+      };
+    }
     [...(this.listeners.get(event.type) || [])].forEach((listener) => listener(event));
     return !event.defaultPrevented;
   }
@@ -280,6 +288,12 @@ class FakeDocument {
         event.defaultPrevented = true;
       };
     }
+    if (typeof event.stopPropagation !== 'function') {
+      event.propagationStopped = false;
+      event.stopPropagation = () => {
+        event.propagationStopped = true;
+      };
+    }
     [...(this.listeners.get(event.type) || [])].forEach((listener) => listener(event));
   }
 }
@@ -344,6 +358,7 @@ function createRuntime(options = {}) {
     }
   });
   vm.runInContext(semanticsSource, context, { filename: semanticsPath });
+  vm.runInContext(semanticsV2Source, context, { filename: semanticsV2Path });
   vm.runInContext(draftSource, context, { filename: draftPath });
   vm.runInContext(shellSource, context, { filename: shellPath });
 
@@ -355,7 +370,9 @@ function createRuntime(options = {}) {
   document.body.appendChild(background);
   opener.focus();
 
-  const semantics = context.AppModules.activityV2.semantics;
+  const semantics = options.useSemanticsV2
+    ? context.AppModules.activityV2.semanticsV2
+    : context.AppModules.activityV2.semantics;
   const draft = context.AppModules.activityV2.sessionDraft.create({
     semantics,
     now,
@@ -404,6 +421,95 @@ function click(panel, target) {
   panel.dispatchEvent({ type: 'click', target });
 }
 
+function typeSearch(panel, value) {
+  const search = panel.querySelector('input');
+  search.value = value;
+  panel.dispatchEvent({ type: 'input', target: search });
+  return search;
+}
+
+function pressKey(runtime, target, key, options = {}) {
+  const event = { type: 'keydown', target, key, ...options };
+  runtime.document.dispatchEvent(event);
+  return event;
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolveValue, rejectValue) => {
+    resolve = resolveValue;
+    reject = rejectValue;
+  });
+  return { promise, resolve, reject };
+}
+
+async function settle() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+function jsonClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function makeLookupResult(runtime, itemKey, overrides = {}) {
+  const entry = runtime.semantics.getEntryByKey(itemKey);
+  assert.ok(entry, `missing fixture entry: ${itemKey}`);
+  const fields = jsonClone(entry.fields);
+  const item = {
+    id: '00000000-0000-4000-8000-000000000701',
+    catalog_version: runtime.semantics.getCatalog().catalog_version,
+    item_key: itemKey,
+    item_order: 1,
+    item_label_snapshot: entry.label,
+    tracking_mode_snapshot: entry.tracking_mode,
+    equipment_snapshot: entry.equipment,
+    load_comparability_snapshot: entry.load_comparability,
+    field_policy_snapshot: fields,
+    duration_min: null,
+    distance_km: null,
+    note: null,
+    created_at: '2026-08-01T10:00:00.000000Z',
+    sets: []
+  };
+  if (entry.tracking_mode === 'strength_sets') {
+    item.sets.push({
+      id: '00000000-0000-4000-8000-000000000702',
+      set_order: 1,
+      tracking_mode: 'strength_sets',
+      reps: fields.reps === 'required' ? 12 : null,
+      duration_sec: fields.duration_sec === 'required' ? 45 : null,
+      distance_m: fields.distance_m === 'required' ? 30 : null,
+      weight_kg: fields.weight_kg === 'forbidden' ? null : 77.5,
+      assistance_kg: fields.assistance_kg === 'forbidden' ? null : 40,
+      created_at: '2026-08-01T10:00:00.000000Z'
+    });
+  } else {
+    item.duration_min = 45;
+    if (entry.tracking_mode === 'duration_distance') item.distance_km = 5.25;
+  }
+  Object.assign(item, overrides.item || {});
+  return {
+    schema_version: 'midas.activity-last-performance.v1',
+    session: {
+      id: '00000000-0000-4000-8000-000000000700',
+      started_at: '2026-08-01T09:00:00.000000Z',
+      day: '2026-08-01',
+      ...(overrides.session || {})
+    },
+    item,
+    ...(overrides.top || {})
+  };
+}
+
+function selectSearchResult(panel, itemKey, childSelector = null) {
+  const button = actionElement(panel, 'select-search-result', itemKey);
+  assert.ok(button, `missing search result: ${itemKey}`);
+  click(panel, childSelector ? button.querySelector(childSelector) : button);
+}
+
 test('namespace, mount and hidden dialog structure are immutable and fail closed', () => {
   const runtime = createRuntime();
   const { shell, panel } = mountRuntime(runtime);
@@ -430,6 +536,11 @@ test('namespace, mount and hidden dialog structure are immutable and fail closed
   assert.ok(panel.getAttribute('aria-labelledby'));
   assert.equal(panel.querySelector('.activity-v2-session-title').textContent, 'Training erfassen');
   assert.equal(panel.querySelector('.activity-v2-session-status').getAttribute('role'), 'status');
+  const search = panel.querySelector('input');
+  assert.equal(search.type, 'search');
+  assert.ok(search.getAttribute('aria-controls'));
+  assert.equal(search.getAttribute('aria-expanded'), 'false');
+  assert.equal(panel.querySelector('.activity-v2-session-search-results').tagName, 'UL');
   assertShellError(
     () => runtime.shellApi.mount({ host: runtime.document.body, draft: runtime.draft }),
     'SHELL_ALREADY_MOUNTED'
@@ -496,6 +607,28 @@ test('mount validates exact options, dependencies and scheduler pairs before DOM
     }),
     'INVALID_SCHEDULER'
   );
+  runtime = createRuntime();
+  assertShellError(
+    () => mountRuntime(runtime, { loadLastPerformance: null }),
+    'INVALID_OPTIONS'
+  );
+  runtime = createRuntime();
+  assertShellError(
+    () => mountRuntime(runtime, { loadLastPerformance: 'lookup' }),
+    'INVALID_OPTIONS'
+  );
+  runtime = createRuntime();
+  assert.doesNotThrow(() => mountRuntime(runtime, { loadLastPerformance: undefined }));
+  runtime = createRuntime();
+  assertShellError(
+    () => mountRuntime(runtime, {
+      semantics: {
+        getCatalog: runtime.semantics.getCatalog,
+        getEntryByKey: runtime.semantics.getEntryByKey
+      }
+    }),
+    'SEMANTICS_MISSING'
+  );
 });
 
 test('open is idempotent, traps focus and restores background, overflow and opener', async () => {
@@ -508,7 +641,7 @@ test('open is idempotent, traps focus and restores background, overflow and open
       return true;
     }
   });
-  const picker = panel.querySelector('select');
+  const picker = panel.querySelector('input');
   const note = panel.querySelector('textarea');
   const pristine = runtime.draft.getSnapshot();
 
@@ -554,7 +687,7 @@ test('open focus failure rolls lifecycle effects back and releases the document 
   preserved.setAttribute('inert', '');
   runtime.document.body.appendChild(preserved);
   const { shell, panel } = mountRuntime(runtime);
-  const picker = panel.querySelector('select');
+  const picker = panel.querySelector('input');
   const originalFocus = picker.focus.bind(picker);
   picker.focus = () => {
     throw new Error('focus failed');
@@ -634,42 +767,456 @@ test('only one shell per document can be open at a time', () => {
   assert.doesNotThrow(() => second.open());
 });
 
-test('picker follows active catalog order and add disables included keys', () => {
-  const runtime = createRuntime();
-  const catalog = runtime.semantics.getCatalog();
-  const activeEntries = catalog.entries.filter((entry) => entry.status === 'active');
+test('local search is limited, canonical, nested-click safe and duplicate aware', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
   const { shell, panel } = mountRuntime(runtime);
   shell.open({ opener: runtime.opener });
-  const picker = panel.querySelector('select');
+  const search = typeSearch(panel, 'Multi Hip');
+  const results = panel.querySelectorAll('[data-action="select-search-result"]');
 
-  assert.equal(picker.options.length, activeEntries.length);
+  assert.equal(search.getAttribute('aria-expanded'), 'true');
+  assert.equal(results.length, 3);
   assert.deepEqual(
-    picker.options.map((option) => option.value),
-    Array.from(activeEntries, (entry) => entry.key)
+    results.map((button) => button.dataset.itemKey),
+    ['glute_kickback', 'hip_abduction', 'hip_adduction']
   );
-  assert.deepEqual(
-    picker.options.map((option) => option.textContent),
-    Array.from(activeEntries, (entry) => entry.label)
-  );
-  const firstKey = picker.value;
-  click(panel, actionElement(panel, 'add'));
-  assert.equal(runtime.draft.getSnapshot().items[0].item_key, firstKey);
-  assert.equal(runtime.document.activeElement, picker);
-  assert.equal(picker.options.find((option) => option.value === firstKey).disabled, true);
-  assert.notEqual(picker.value, firstKey);
+  assert.match(results[0].textContent, /Variable Ausstattung/);
+  selectSearchResult(panel, 'glute_kickback', '.activity-v2-session-search-result-label');
+  assert.equal(runtime.draft.getSnapshot().items[0].item_key, 'glute_kickback');
+  assert.equal(search.value, '');
+  assert.equal(search.getAttribute('aria-expanded'), 'false');
+  assert.equal(runtime.document.activeElement.dataset.itemKey, 'glute_kickback');
+  assert.equal(runtime.document.activeElement.getAttribute('tabindex'), '-1');
+
+  typeSearch(panel, 'Multi Hip');
+  const duplicate = actionElement(panel, 'select-search-result', 'glute_kickback');
+  assert.match(duplicate.textContent, /Bereits in Session/);
+  selectSearchResult(panel, 'glute_kickback');
+  assert.equal(runtime.draft.getSnapshot().items.length, 1);
+  assert.equal(runtime.document.activeElement.dataset.itemKey, 'glute_kickback');
   assert.equal(panel.querySelector('.activity-v2-session-empty').hidden, true);
   assert.equal(panel.querySelector('.activity-v2-session-count').textContent, '1 Eintrag');
+});
+
+test('search start, empty, malformed, keyboard and Escape states are deterministic', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  let confirmCalls = 0;
+  const base = runtime.semantics;
+  let searchMode = 'valid';
+  let lookupCalls = 0;
+  const semantics = {
+    getCatalog: () => base.getCatalog(),
+    getEntryByKey: (key) => base.getEntryByKey(key),
+    normalizeSearchText: (query) => base.normalizeSearchText(query),
+    search(query, options) {
+      assert.equal(options.limit, 8);
+      assert.deepEqual(Object.keys(options), ['limit']);
+      if (searchMode === 'throw') throw new Error('private-search-error');
+      if (searchMode === 'duplicate') {
+        const entry = base.getEntryByKey('running');
+        return [entry, entry];
+      }
+      return base.search(query, options);
+    }
+  };
+  const { shell, panel } = mountRuntime(runtime, {
+    semantics,
+    confirmDiscard() {
+      confirmCalls += 1;
+      return false;
+    },
+    loadLastPerformance() {
+      lookupCalls += 1;
+      return Promise.resolve(null);
+    }
+  });
+  shell.open({ opener: runtime.opener });
+  const search = panel.querySelector('input');
+  const hint = panel.querySelector('.activity-v2-session-search-status');
+  assert.match(hint.textContent, /Suche/);
+  assert.equal(search.getAttribute('aria-expanded'), 'false');
+
+  typeSearch(panel, '---');
+  assert.equal(search.getAttribute('aria-expanded'), 'false');
+  assert.equal(lookupCalls, 0);
+  typeSearch(panel, 'kein-sicherer-treffer-xyz');
+  assert.equal(
+    hint.textContent,
+    'Keine passende Übung oder Aktivität gefunden.'
+  );
+  assert.equal(search.getAttribute('aria-expanded'), 'true');
+
+  searchMode = 'duplicate';
+  typeSearch(panel, 'running');
+  assert.match(hint.textContent, /Suche ist derzeit nicht verfügbar/);
+  assert.equal(runtime.draft.getSnapshot().items.length, 0);
+  searchMode = 'throw';
+  typeSearch(panel, 'running');
+  assert.match(hint.textContent, /Suche ist derzeit nicht verfügbar/);
+  assert.doesNotMatch(hint.textContent, /private-search-error/);
+
+  searchMode = 'valid';
+  typeSearch(panel, 'High Row');
+  const arrow = pressKey(runtime, search, 'ArrowDown');
+  assert.equal(arrow.defaultPrevented, true);
+  assert.equal(
+    runtime.document.activeElement.dataset.itemKey,
+    'high_row'
+  );
+  runtime.document.activeElement = search;
+  pressKey(runtime, search, 'Enter');
+  assert.equal(runtime.draft.getSnapshot().items[0].item_key, 'high_row');
+  assert.equal(lookupCalls, 1);
+
+  typeSearch(panel, 'Leg Curl');
+  const firstEscape = pressKey(runtime, search, 'Escape');
+  assert.equal(firstEscape.defaultPrevented, true);
+  assert.equal(firstEscape.propagationStopped, true);
+  assert.equal(search.value, 'Leg Curl');
+  assert.equal(search.getAttribute('aria-expanded'), 'false');
+  assert.equal(confirmCalls, 0);
+  const reopen = pressKey(runtime, search, 'ArrowDown');
+  assert.equal(reopen.defaultPrevented, true);
+  assert.equal(search.getAttribute('aria-expanded'), 'true');
+  assert.equal(runtime.document.activeElement.dataset.itemKey, 'leg_curl');
+  pressKey(runtime, runtime.document.activeElement, 'Escape');
+  const secondEscape = pressKey(runtime, search, 'Escape');
+  await settle();
+  assert.equal(secondEscape.defaultPrevented, true);
+  assert.equal(confirmCalls, 1);
+  assert.equal(shell.isOpen(), true);
+});
+
+test('lookup callback is request-free while hidden and cached once per key and mount', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('running');
+  const calls = [];
+  const pending = new Map();
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance(itemKey) {
+      calls.push(itemKey);
+      const wait = deferred();
+      pending.set(itemKey, wait);
+      return wait.promise;
+    }
+  });
+  assert.deepEqual(calls, []);
+  shell.open({ opener: runtime.opener });
+  assert.deepEqual(calls, ['bench_press', 'running']);
+  assert.equal(
+    panel.querySelectorAll('.activity-v2-session-history').every(
+      (region) => /wird geladen/.test(region.textContent)
+    ),
+    true
+  );
+
+  shell.render();
+  panel.querySelector('textarea').value = 'Ruhig';
+  panel.dispatchEvent({ type: 'input', target: panel.querySelector('textarea') });
+  click(panel, actionElement(panel, 'move-down', 'bench_press'));
+  assert.deepEqual(calls, ['bench_press', 'running']);
+
+  pending.get('bench_press').resolve(null);
+  pending.get('running').resolve(makeLookupResult(runtime, 'running'));
+  await settle();
+  typeSearch(panel, 'Bench Press');
+  selectSearchResult(panel, 'bench_press');
+  assert.deepEqual(calls, ['bench_press', 'running']);
+  click(panel, actionElement(panel, 'remove', 'bench_press'));
+  typeSearch(panel, 'Bench Press');
+  selectSearchResult(panel, 'bench_press');
+  assert.deepEqual(calls, ['bench_press', 'running']);
+  assert.match(
+    panel.querySelectorAll('.activity-v2-session-history').find(
+      (region) => region.dataset.itemKey === 'bench_press'
+    ).textContent,
+    /Noch kein vorheriger Eintrag/
+  );
+});
+
+test('lookup renders immutable read-only success, empty, error and explicit retry', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  const raw = makeLookupResult(runtime, 'bench_press', {
+    item: { item_label_snapshot: '<b>Historisches Bankdrücken</b>', note: '<img src=x onerror=alert(1)>' }
+  });
+  raw.item.sets.push({
+    ...jsonClone(raw.item.sets[0]),
+    id: '00000000-0000-4000-8000-000000000703',
+    set_order: 2,
+    reps: 13,
+    weight_kg: 80
+  });
+  const attempts = new Map();
+  const waits = new Map();
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance(itemKey) {
+      attempts.set(itemKey, (attempts.get(itemKey) || 0) + 1);
+      const wait = deferred();
+      waits.set(`${itemKey}:${attempts.get(itemKey)}`, wait);
+      return wait.promise;
+    }
+  });
+  shell.open({ opener: runtime.opener });
+  for (const key of ['bench_press', 'football', 'running']) {
+    typeSearch(panel, runtime.semantics.getEntryByKey(key).label);
+    selectSearchResult(panel, key);
+  }
+  const draftBefore = runtime.draft.getSnapshot();
+  waits.get('bench_press:1').resolve(raw);
+  waits.get('football:1').resolve(null);
+  waits.get('running:1').reject(new Error('private lookup error'));
+  await settle();
+
+  const regions = panel.querySelectorAll('.activity-v2-session-history');
+  const success = regions.find((region) => region.dataset.itemKey === 'bench_press');
+  const empty = regions.find((region) => region.dataset.itemKey === 'football');
+  const error = regions.find((region) => region.dataset.itemKey === 'running');
+  assert.match(success.textContent, /Zuletzt am 01\.08\.2026/);
+  const dayStart = shellSource.indexOf('function formatLookupDay');
+  const dayEnd = shellSource.indexOf('function hasAtMostTwoDecimals');
+  assert.ok(dayStart >= 0 && dayEnd > dayStart, 'formatLookupDay must be present');
+  const dayFormatter = shellSource.slice(dayStart, dayEnd);
+  assert.doesNotMatch(dayFormatter, /\bDate\b/);
+  assert.match(success.textContent, /12 × 77,5 kg/);
+  assert.match(success.textContent, /13 × 80 kg/);
+  assert.match(success.textContent, /<b>Historisches Bankdrücken<\/b>/);
+  assert.match(success.textContent, /<img src=x onerror=alert\(1\)>/);
+  assert.equal(success.querySelectorAll('input').length, 0);
+  assert.equal(success.querySelectorAll('[type="checkbox"]').length, 0);
+  assert.match(empty.textContent, /Noch kein vorheriger Eintrag/);
+  assert.match(error.textContent, /derzeit nicht verfügbar/);
+  assert.ok(actionElement(panel, 'retry-lookup', 'running'));
+  assert.equal(runtime.draft.getSnapshot(), draftBefore);
+
+  raw.item.sets[0].reps = 999;
+  raw.item.note = 'mutiert';
+  assert.doesNotMatch(success.textContent, /999|mutiert/);
+  shell.render();
+  const rerendered = panel.querySelectorAll('.activity-v2-session-history').find(
+    (region) => region.dataset.itemKey === 'bench_press'
+  );
+  assert.doesNotMatch(rerendered.textContent, /999|mutiert/);
+
+  const retry = actionElement(panel, 'retry-lookup', 'running');
+  click(panel, retry);
+  click(panel, retry);
+  assert.equal(attempts.get('running'), 2);
+  assert.match(
+    panel.querySelectorAll('.activity-v2-session-history').find(
+      (region) => region.dataset.itemKey === 'running'
+    ).textContent,
+    /wird geladen/
+  );
+  waits.get('running:2').resolve(makeLookupResult(runtime, 'running'));
+  await settle();
+  assert.match(
+    panel.querySelectorAll('.activity-v2-session-history').find(
+      (region) => region.dataset.itemKey === 'running'
+    ).textContent,
+    /45 min.*5,25 km/
+  );
+});
+
+test('lookup callback protocol handles disabled, throw, non-thenable, thenable and malformed success', async () => {
+  let runtime = createRuntime({ useSemanticsV2: true });
+  let mounted = mountRuntime(runtime);
+  mounted.shell.open({ opener: runtime.opener });
+  typeSearch(mounted.panel, 'Bench Press');
+  selectSearchResult(mounted.panel, 'bench_press');
+  assert.equal(mounted.panel.querySelectorAll('.activity-v2-session-history').length, 0);
+
+  const cases = [
+    () => { throw new Error('private sync throw'); },
+    () => null,
+    () => ({ then(resolve) { resolve(null); } }),
+    (activeRuntime) => Promise.resolve({
+      ...makeLookupResult(activeRuntime, 'bench_press'),
+      extra: true
+    })
+  ];
+  for (let index = 0; index < cases.length; index += 1) {
+    runtime = createRuntime({ useSemanticsV2: true });
+    let calls = 0;
+    mounted = mountRuntime(runtime, {
+      loadLastPerformance(itemKey) {
+        calls += 1;
+        assert.equal(itemKey, 'bench_press');
+        return cases[index](runtime);
+      }
+    });
+    mounted.shell.open({ opener: runtime.opener });
+    typeSearch(mounted.panel, 'Bench Press');
+    selectSearchResult(mounted.panel, 'bench_press');
+    await settle();
+    const region = mounted.panel.querySelector('.activity-v2-session-history');
+    assert.equal(calls, 1);
+    if (index === 2) assert.match(region.textContent, /Noch kein vorheriger Eintrag/);
+    else assert.match(region.textContent, /derzeit nicht verfügbar/);
+    assert.doesNotMatch(region.textContent, /private sync throw/);
+  }
+
+  runtime = createRuntime({ useSemanticsV2: true });
+  const invalidPolicy = makeLookupResult(runtime, 'bench_press');
+  invalidPolicy.item.field_policy_snapshot.note = 'forbidden';
+  mounted = mountRuntime(runtime, {
+    loadLastPerformance: () => Promise.resolve(invalidPolicy)
+  });
+  mounted.shell.open({ opener: runtime.opener });
+  typeSearch(mounted.panel, 'Bench Press');
+  selectSearchResult(mounted.panel, 'bench_press');
+  await settle();
+  assert.match(
+    mounted.panel.querySelector('.activity-v2-session-history').textContent,
+    /derzeit nicht verfügbar/
+  );
+
+  const invalidTimestampMutations = [
+    (result) => { result.session.started_at = '2026-13-01T09:00:00.000000Z'; },
+    (result) => { result.item.created_at = '2026-02-30T10:00:00.000000Z'; },
+    (result) => { result.item.sets[0].created_at = '2026-08-01T24:00:00.000000Z'; }
+  ];
+  for (const mutate of invalidTimestampMutations) {
+    runtime = createRuntime({ useSemanticsV2: true });
+    const invalidTimestamp = makeLookupResult(runtime, 'bench_press');
+    mutate(invalidTimestamp);
+    mounted = mountRuntime(runtime, {
+      loadLastPerformance: () => Promise.resolve(invalidTimestamp)
+    });
+    mounted.shell.open({ opener: runtime.opener });
+    typeSearch(mounted.panel, 'Bench Press');
+    selectSearchResult(mounted.panel, 'bench_press');
+    await settle();
+    assert.match(
+      mounted.panel.querySelector('.activity-v2-session-history').textContent,
+      /derzeit nicht verfügbar/
+    );
+  }
+});
+
+test('lookup formats set duration, set distance and assistance from snapshots', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  for (const key of ['assisted_pull_up', 'plank', 'farmer_carry']) {
+    runtime.draft.addItem(key);
+  }
+  const { shell, panel } = mountRuntime(runtime, {
+    loadLastPerformance: (itemKey) => Promise.resolve(makeLookupResult(runtime, itemKey))
+  });
+  shell.open({ opener: runtime.opener });
+  await settle();
+  const byKey = new Map(
+    panel.querySelectorAll('.activity-v2-session-history').map((region) => [
+      region.dataset.itemKey,
+      region.textContent
+    ])
+  );
+  assert.match(byKey.get('assisted_pull_up'), /12 × 40 kg Unterstützung/);
+  assert.match(byKey.get('plank'), /45 s/);
+  assert.match(byKey.get('farmer_carry'), /30 m/);
+});
+
+test('lookup races keep late remove, close, guard and destroy settlements cache-only', async () => {
+  let runtime = createRuntime({ useSemanticsV2: true });
+  let wait = deferred();
+  let calls = 0;
+  let mounted = mountRuntime(runtime, {
+    loadLastPerformance() {
+      calls += 1;
+      return wait.promise;
+    }
+  });
+  mounted.shell.open({ opener: runtime.opener });
+  typeSearch(mounted.panel, 'Bench Press');
+  selectSearchResult(mounted.panel, 'bench_press');
+  click(mounted.panel, actionElement(mounted.panel, 'remove', 'bench_press'));
+  wait.resolve(makeLookupResult(runtime, 'bench_press'));
+  await settle();
+  assert.equal(mounted.panel.querySelectorAll('.activity-v2-session-history').length, 0);
+  typeSearch(mounted.panel, 'Bench Press');
+  selectSearchResult(mounted.panel, 'bench_press');
+  assert.equal(calls, 1);
+  assert.match(
+    mounted.panel.querySelector('.activity-v2-session-history').textContent,
+    /Zuletzt am/
+  );
+
+  runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  wait = deferred();
+  const draftFacade = Object.freeze({
+    getSnapshot: () => runtime.draft.getSnapshot(),
+    getTimerSnapshot: () => runtime.draft.getTimerSnapshot(),
+    addItem: (key) => runtime.draft.addItem(key),
+    removeItem: (key) => runtime.draft.removeItem(key),
+    moveItem: (key, order) => runtime.draft.moveItem(key, order),
+    setNote: (note) => runtime.draft.setNote(note),
+    discard() {}
+  });
+  calls = 0;
+  mounted = mountRuntime(runtime, {
+    draft: draftFacade,
+    confirmDiscard: () => true,
+    loadLastPerformance() {
+      calls += 1;
+      return wait.promise;
+    }
+  });
+  mounted.shell.open({ opener: runtime.opener });
+  assert.equal(await mounted.shell.requestClose(), true);
+  assert.equal(mounted.shell.isOpen(), false);
+  wait.resolve(makeLookupResult(runtime, 'bench_press'));
+  await settle();
+  assert.equal(mounted.panel.hidden, true);
+  mounted.shell.open({ opener: runtime.opener });
+  assert.equal(calls, 1);
+  assert.match(mounted.panel.querySelector('.activity-v2-session-history').textContent, /Zuletzt am/);
+
+  runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('running');
+  const lookupWait = deferred();
+  const guardWait = deferred();
+  mounted = mountRuntime(runtime, {
+    confirmDiscard: () => guardWait.promise,
+    loadLastPerformance: () => lookupWait.promise
+  });
+  mounted.shell.open({ opener: runtime.opener });
+  const close = actionElement(mounted.panel, 'close');
+  close.focus();
+  const closing = mounted.shell.requestClose('close_button');
+  await settle();
+  lookupWait.resolve(makeLookupResult(runtime, 'running'));
+  await settle();
+  assert.match(mounted.panel.querySelector('.activity-v2-session-history').textContent, /wird geladen/);
+  assert.equal(runtime.document.activeElement, close);
+  guardWait.resolve(false);
+  assert.equal(await closing, false);
+  assert.match(mounted.panel.querySelector('.activity-v2-session-history').textContent, /Zuletzt am/);
+  assert.equal(runtime.document.activeElement, close);
+  assert.match(mounted.panel.querySelector('.activity-v2-session-status').textContent, /nicht verworfen/);
+
+  runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('running');
+  wait = deferred();
+  mounted = mountRuntime(runtime, { loadLastPerformance: () => wait.promise });
+  mounted.shell.open({ opener: runtime.opener });
+  const panel = mounted.panel;
+  mounted.shell.destroy();
+  wait.resolve(makeLookupResult(runtime, 'running'));
+  await settle();
+  assert.equal(panel.isConnected, false);
+  assert.equal(runtime.document.activeElement, runtime.opener);
 });
 
 test('move, remove and note interactions keep DOM order, draft order and focus aligned', async () => {
   const runtime = createRuntime();
   const { shell, panel } = mountRuntime(runtime);
   shell.open({ opener: runtime.opener });
-  const picker = panel.querySelector('select');
-  const firstKey = picker.value;
-  click(panel, actionElement(panel, 'add'));
-  const secondKey = picker.value;
-  click(panel, actionElement(panel, 'add'));
+  const firstKey = 'ab_wheel_rollout';
+  const secondKey = 'back_extension';
+  typeSearch(panel, runtime.semantics.getEntryByKey(firstKey).label);
+  selectSearchResult(panel, firstKey);
+  typeSearch(panel, runtime.semantics.getEntryByKey(secondKey).label);
+  selectSearchResult(panel, secondKey);
   assert.deepEqual(
     Array.from(runtime.draft.getSnapshot().items, (item) => item.item_key),
     [firstKey, secondKey]
@@ -717,7 +1264,8 @@ test('timer uses epoch reads, one scheduler and visible-only repaint triggers', 
 
   assert.equal(timer.textContent, '00:00');
   assert.equal(runtime.intervals.size, 0);
-  click(panel, actionElement(panel, 'add'));
+  typeSearch(panel, 'Ab Wheel Rollout');
+  selectSearchResult(panel, 'ab_wheel_rollout');
   assert.equal(runtime.intervals.size, 1);
   const interval = [...runtime.intervals.values()][0];
   assert.equal(interval.delay, 1000);
@@ -750,7 +1298,8 @@ test('dirty close coalesces confirmation, restores focus on cancel and discards 
     }
   });
   shell.open({ opener: runtime.opener });
-  click(panel, actionElement(panel, 'add'));
+  typeSearch(panel, 'Ab Wheel Rollout');
+  selectSearchResult(panel, 'ab_wheel_rollout');
   const dirty = runtime.draft.getSnapshot();
   const focused = actionElement(panel, 'remove', dirty.items[0].item_key);
   focused.focus();
@@ -807,7 +1356,8 @@ test('Escape uses the shared discard guard and the default confirm receives its 
     child.className.split(/\s+/).includes('activity-v2-session-shell')
   );
   shell.open({ opener: runtime.opener });
-  click(panel, actionElement(panel, 'add'));
+  typeSearch(panel, 'Ab Wheel Rollout');
+  selectSearchResult(panel, 'ab_wheel_rollout');
   const escape = { type: 'keydown', key: 'Escape' };
   runtime.document.dispatchEvent(escape);
   await Promise.resolve();
@@ -924,8 +1474,7 @@ test('invalid draft state and catalog mismatch fail before the existing DOM is p
     discard() {}
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
-  const picker = panel.querySelector('select');
-  const originalOptions = [...picker.options];
+  const originalText = panel.textContent;
 
   snapshot = deepFreeze({
     ...snapshot,
@@ -933,19 +1482,19 @@ test('invalid draft state and catalog mismatch fail before the existing DOM is p
     items: [{ item_key: 'ab_wheel_rollout', item_order: 2 }]
   });
   assertShellError(() => shell.render(), 'INVALID_DRAFT_STATE');
-  assert.deepEqual(picker.options, originalOptions);
+  assert.equal(panel.textContent, originalText);
 
   snapshot = deepFreeze({
     ...runtime.draft.getSnapshot(),
     catalog_version: runtime.draft.getSnapshot().catalog_version + 1
   });
   assertShellError(() => shell.render(), 'CATALOG_VERSION_MISMATCH');
-  assert.deepEqual(picker.options, originalOptions);
+  assert.equal(panel.textContent, originalText);
 
   snapshot = runtime.draft.getSnapshot();
   timer = deepFreeze({ running: false, elapsed_ms: 0, label: '00:01' });
   assertShellError(() => shell.render(), 'INVALID_DRAFT_STATE');
-  assert.deepEqual(picker.options, originalOptions);
+  assert.equal(panel.textContent, originalText);
 });
 
 test('expected draft failures stay open, preserve state and report a safe status', () => {
@@ -966,8 +1515,8 @@ test('expected draft failures stay open, preserve state and report a safe status
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
   shell.open({ opener: runtime.opener });
-  const picker = panel.querySelector('select');
-  click(panel, actionElement(panel, 'add'));
+  const picker = typeSearch(panel, 'Ab Wheel Rollout');
+  selectSearchResult(panel, 'ab_wheel_rollout');
 
   const status = panel.querySelector('.activity-v2-session-status');
   assert.equal(shell.isOpen(), true);
@@ -981,8 +1530,8 @@ test('destroy is idempotent, preserves the draft and releases all local lifecycl
   const runtime = createRuntime();
   const { shell, panel } = mountRuntime(runtime);
   shell.open({ opener: runtime.opener });
-  const picker = panel.querySelector('select');
-  click(panel, actionElement(panel, 'add'));
+  const picker = typeSearch(panel, 'Ab Wheel Rollout');
+  selectSearchResult(panel, 'ab_wheel_rollout');
   const dirty = runtime.draft.getSnapshot();
 
   shell.destroy();
@@ -1009,15 +1558,26 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
     /position:\s*sticky/,
     /overflow-y:\s*auto/,
     /@media \(max-width:\s*640px\)/,
+    /\.activity-v2-session-shell \.activity-v2-session-close\s*\{/,
     /min-height:\s*44px/,
     /min-width:\s*0/,
+    /\.activity-v2-session-search-results/,
+    /\.activity-v2-session-history/,
+    /:is\(button, input, select, textarea\):focus-visible/,
     /prefers-reduced-motion/
   ];
   requiredCss.forEach((pattern) => assert.match(cssSource, pattern));
   assert.match(harnessSource, /<script src="\.\/semantics\.js"><\/script>/);
+  assert.match(harnessSource, /<script src="\.\/semantics-v2\.js"><\/script>/);
   assert.match(harnessSource, /<script src="\.\/session-draft\.js"><\/script>/);
   assert.match(harnessSource, /<script src="\.\/session-shell\.js"><\/script>/);
   assert.match(harnessSource, /<link rel="stylesheet" href="\.\/session-shell\.css">/);
+  assert.match(harnessSource, /itemKey === 'bench_press'/);
+  assert.match(harnessSource, /itemKey === 'ski_erg'/);
+  assert.match(harnessSource, /itemKey === 'total_abdominal'/);
+  assert.match(harnessSource, /itemKey === 'high_row'/);
+  assert.match(harnessSource, /getLookupCount:/);
+  assert.match(harnessSource, /status\.dataset\.lookupCounts/);
   assert.doesNotMatch(harnessSource, /<script[^>]+index\.js/);
 });
 
@@ -1033,9 +1593,8 @@ test('runtime and harness have no product, persistence, network or unsafe DOM pa
     /\bsessionStorage\b/,
     /\bcaches\b/,
     /serviceWorker/,
-    /\bdataAccess\b/,
+    /AppModules(?:\?|\.)[^\n]*dataAccess/,
     /commitSession/,
-    /loadLastPerformance/,
     /activity_v2_commit_session/,
     /activity_v2_last_performance/,
     /beforeunload/,
