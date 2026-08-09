@@ -447,6 +447,25 @@ function inputSetField(panel, itemKey, setOrder, fieldKey, value) {
   return input;
 }
 
+function itemInputElement(panel, itemKey, fieldKey) {
+  return panel
+    .querySelectorAll('input, textarea')
+    .find(
+      (input) =>
+        input.dataset.itemKey === itemKey &&
+        input.dataset.fieldKey === fieldKey &&
+        input.dataset.setOrder === undefined
+    );
+}
+
+function inputItemField(panel, itemKey, fieldKey, value) {
+  const input = itemInputElement(panel, itemKey, fieldKey);
+  assert.ok(input, `${itemKey} item field ${fieldKey}`);
+  input.value = value;
+  panel.dispatchEvent({ type: 'input', target: input });
+  return input;
+}
+
 function itemElement(panel, itemKey) {
   return panel
     .querySelectorAll('.activity-v2-session-item')
@@ -617,7 +636,10 @@ test('mount validates exact options, dependencies and scheduler pairs before DOM
     removeItem() {},
     moveItem() {},
     setNote() {},
-    discard() {}
+    discard() {},
+    addSet() {},
+    removeSet() {},
+    setSetField() {}
   });
   assertShellError(
     () => mountRuntime(runtime, { draft: legacyDraftFacade }),
@@ -710,7 +732,7 @@ test('open is idempotent, traps focus and restores background, overflow and open
     }
   });
   const picker = panel.querySelector('input');
-  const note = panel.querySelector('textarea');
+  const note = panel.querySelector('.activity-v2-session-note');
   const pristine = runtime.draft.getSnapshot();
 
   assert.equal(shell.open({ opener: runtime.opener }), shell);
@@ -980,8 +1002,11 @@ test('lookup callback is request-free while hidden and cached once per key and m
   );
 
   shell.render();
-  panel.querySelector('textarea').value = 'Ruhig';
-  panel.dispatchEvent({ type: 'input', target: panel.querySelector('textarea') });
+  panel.querySelector('.activity-v2-session-note').value = 'Ruhig';
+  panel.dispatchEvent({
+    type: 'input',
+    target: panel.querySelector('.activity-v2-session-note')
+  });
   click(panel, actionElement(panel, 'move-down', 'bench_press'));
   assert.deepEqual(calls, ['bench_press', 'running']);
 
@@ -1084,6 +1109,16 @@ test('lookup renders immutable read-only success, empty, error and explicit retr
     ).textContent,
     /45 min.*5,25 km/
   );
+  for (const key of ['football', 'running']) {
+    assert.equal(itemInputElement(panel, key, 'duration_min').value, '');
+    assert.equal(itemInputElement(panel, key, 'note').value, '');
+    assert.equal(
+      itemInputElement(panel, key, 'duration_min').getAttribute('placeholder'),
+      null
+    );
+  }
+  assert.equal(itemInputElement(panel, 'running', 'distance_km').value, '');
+  assert.equal(runtime.draft.getSnapshot(), draftBefore);
 });
 
 test('lookup callback protocol handles disabled, throw, non-thenable, thenable and malformed success', async () => {
@@ -1222,7 +1257,9 @@ test('lookup races keep late remove, close, guard and destroy settlements cache-
     addSet: (key) => runtime.draft.addSet(key),
     removeSet: (key, order) => runtime.draft.removeSet(key, order),
     setSetField: (key, order, field, value) =>
-      runtime.draft.setSetField(key, order, field, value)
+      runtime.draft.setSetField(key, order, field, value),
+    setItemField: (key, field, value) =>
+      runtime.draft.setItemField(key, field, value)
   });
   calls = 0;
   mounted = mountRuntime(runtime, {
@@ -1313,7 +1350,7 @@ test('move, remove and note interactions keep DOM order, draft order and focus a
   );
   assert.equal(runtime.document.activeElement.dataset.itemKey, firstKey);
 
-  const note = panel.querySelector('textarea');
+  const note = panel.querySelector('.activity-v2-session-note');
   note.value = '  Ruhig und sauber  ';
   panel.dispatchEvent({ type: 'input', target: note });
   assert.equal(runtime.draft.getSnapshot().note, 'Ruhig und sauber');
@@ -1463,7 +1500,9 @@ test('confirmation and discard failures preserve draft, timer, focus and open sh
     addSet: (key) => runtime.draft.addSet(key),
     removeSet: (key, order) => runtime.draft.removeSet(key, order),
     setSetField: (key, order, field, value) =>
-      runtime.draft.setSetField(key, order, field, value)
+      runtime.draft.setSetField(key, order, field, value),
+    setItemField: (key, field, value) =>
+      runtime.draft.setItemField(key, field, value)
   });
   const { shell, panel } = mountRuntime(runtime, {
     draft: failingDraft,
@@ -1520,7 +1559,9 @@ test('destroy invalidates a pending confirmation without late discard or DOM eff
     addSet: (key) => runtime.draft.addSet(key),
     removeSet: (key, order) => runtime.draft.removeSet(key, order),
     setSetField: (key, order, field, value) =>
-      runtime.draft.setSetField(key, order, field, value)
+      runtime.draft.setSetField(key, order, field, value),
+    setItemField: (key, field, value) =>
+      runtime.draft.setItemField(key, field, value)
   });
   const { shell, panel } = mountRuntime(runtime, {
     draft: guardedDraft,
@@ -1544,9 +1585,15 @@ test('destroy invalidates a pending confirmation without late discard or DOM eff
   assert.equal(runtime.document.listeners.get('visibilitychange').size, 0);
 });
 
-test('draft-v2 item, set, policy and catalog violations fail before DOM mutation', () => {
-  const runtime = createRuntime();
-  runtime.draft.addItem('ab_wheel_rollout');
+test('draft-v3 item, set, policy and catalog violations fail before DOM mutation', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('cross_trainer');
+  runtime.draft.addItem('running');
+  runtime.draft.setItemField('cross_trainer', 'duration_min', '1e2');
+  runtime.draft.setItemField('running', 'duration_min', '000');
+  runtime.draft.setItemField('running', 'distance_km', '05,20');
+  runtime.draft.setItemField('running', 'note', '  raw note  ');
   const validSnapshot = runtime.draft.getSnapshot();
   let snapshot = validSnapshot;
   let timer = runtime.draft.getTimerSnapshot();
@@ -1560,17 +1607,37 @@ test('draft-v2 item, set, policy and catalog violations fail before DOM mutation
     discard() {},
     addSet() {},
     removeSet() {},
-    setSetField() {}
+    setSetField() {},
+    setItemField() {}
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
   const originalText = panel.textContent;
 
   const invalidMutations = [
     (candidate) => { candidate.items[0].item_order = 2; },
+    (candidate) => { delete candidate.items[0].duration_min; },
+    (candidate) => { candidate.items[0].duration_min = '12'; },
+    (candidate) => { candidate.items[0].note = ''; },
+    (candidate) => { candidate.items[0].note = '\u{1F600}'.repeat(501); },
+    (candidate) => { candidate.items[1].distance_km = '5'; },
+    (candidate) => { candidate.items[1].duration_min = ''; },
+    (candidate) => { candidate.items[2].duration_min = 12; },
+    (candidate) => { candidate.items[2].distance_km = '\u{1F600}'.repeat(33); },
+    (candidate) => {
+      const item = candidate.items[2];
+      candidate.items[2] = {
+        item_key: item.item_key,
+        duration_min: item.duration_min,
+        item_order: item.item_order,
+        distance_km: item.distance_km,
+        note: item.note,
+        sets: item.sets
+      };
+    },
     (candidate) => { delete candidate.items[0].sets[0].reps; },
     (candidate) => { candidate.items[0].sets[0].set_order = 2; },
     (candidate) => { candidate.items[0].sets[0].reps = ''; },
-    (candidate) => { candidate.items[0].sets[0].weight_kg = '1'; },
+    (candidate) => { candidate.items[0].sets[0].assistance_kg = '1'; },
     (candidate) => { candidate.items[0].sets[0].reps = '😀'.repeat(33); },
     (candidate) => { candidate.items[0].sets = []; }
   ];
@@ -1612,7 +1679,8 @@ test('expected draft failures stay open, preserve state and report a safe status
     discard() {},
     addSet() {},
     removeSet() {},
-    setSetField() {}
+    setSetField() {},
+    setItemField() {}
   });
   const { shell, panel } = mountRuntime(runtime, { draft: fakeDraft });
   shell.open({ opener: runtime.opener });
@@ -1627,7 +1695,7 @@ test('expected draft failures stay open, preserve state and report a safe status
   assert.doesNotMatch(status.textContent, /private|catalog detail/i);
 });
 
-test('strength editors render all eight policies from Draft while non-strength stays neutral', () => {
+test('strength editors retain all eight policies and expose only the shared item note', () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   const setFields = [
     'reps',
@@ -1725,24 +1793,120 @@ test('strength editors render all eight policies from Draft while non-strength s
         allowed.includes(fieldKey) ? validValues[fieldKey] : null
       );
     });
+    const note = itemInputElement(panel, entry.key, 'note');
+    assert.equal(note.tagName, 'TEXTAREA');
+    assert.equal(note.maxLength, 500);
+    assert.equal(note.getAttribute('autocomplete'), 'off');
+    assert.equal(note.getAttribute('placeholder'), null);
+    inputItemField(panel, entry.key, 'note', `  ${entry.key}  `);
+    assert.equal(
+      runtime.draft.getSnapshot().items.find(
+        (candidate) => candidate.item_key === entry.key
+      ).note,
+      `  ${entry.key}  `
+    );
   });
 
   const neutralItem = itemElement(panel, nonStrength.key);
   assert.equal(neutralItem.querySelector('.activity-v2-session-strength-editor'), null);
-  assert.equal(
-    neutralItem.querySelector('.activity-v2-session-editor-neutral-message').textContent,
-    'Die Eingabe für diese Aktivität wird in diesem Editor noch nicht unterstützt.'
-  );
+  const itemEditor = neutralItem.querySelector('.activity-v2-session-item-editor');
+  assert.ok(itemEditor);
+  assert.equal(itemEditor.dataset.state, 'empty');
+  assert.equal(itemInputElement(panel, nonStrength.key, 'duration_min').value, '');
+  assert.equal(itemInputElement(panel, nonStrength.key, 'distance_km'), undefined);
+  assert.equal(itemInputElement(panel, nonStrength.key, 'note').value, '');
   assert.equal(neutralItem.querySelectorAll('.activity-v2-session-set-input').length, 0);
 });
 
-test('set field definitions and one-to-fifty UI controls fail closed at their exact boundaries', () => {
+test('all eleven real non-strength policies render exact accessible item controls', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  const entries = runtime.semantics.getCatalog().entries.filter(
+    (entry) =>
+      entry.status === 'active' && entry.tracking_mode !== 'strength_sets'
+  );
+  assert.equal(entries.length, 11);
+  assert.equal(
+    entries.filter((entry) => entry.tracking_mode === 'duration').length,
+    4
+  );
+  assert.equal(
+    entries.filter((entry) => entry.tracking_mode === 'duration_distance').length,
+    7
+  );
+  entries.forEach((entry) => runtime.draft.addItem(entry.key));
+  const { shell, panel } = mountRuntime(runtime);
+  shell.open({ opener: runtime.opener });
+
+  entries.forEach((entry) => {
+    const item = itemElement(panel, entry.key);
+    const editor = item.querySelector('.activity-v2-session-item-editor');
+    const duration = itemInputElement(panel, entry.key, 'duration_min');
+    const distance = itemInputElement(panel, entry.key, 'distance_km');
+    const note = itemInputElement(panel, entry.key, 'note');
+    assert.equal(item.dataset.state, 'empty');
+    assert.equal(editor.dataset.state, 'empty');
+    assert.equal(duration.type, 'text');
+    assert.equal(duration.getAttribute('inputmode'), 'numeric');
+    assert.equal(duration.getAttribute('aria-required'), 'true');
+    assert.equal(duration.getAttribute('aria-invalid'), 'false');
+    assert.equal(duration.getAttribute('maxlength'), '32');
+    assert.equal(duration.getAttribute('autocomplete'), 'off');
+    assert.equal(duration.getAttribute('spellcheck'), 'false');
+    assert.ok(duration.getAttribute('aria-describedby'));
+    assert.equal(duration.getAttribute('placeholder'), null);
+    if (entry.tracking_mode === 'duration_distance') {
+      assert.equal(distance.type, 'text');
+      assert.equal(distance.getAttribute('inputmode'), 'decimal');
+      assert.equal(distance.getAttribute('aria-required'), null);
+      assert.equal(distance.getAttribute('maxlength'), '32');
+      assert.equal(distance.getAttribute('placeholder'), null);
+    } else {
+      assert.equal(distance, undefined);
+    }
+    assert.equal(note.tagName, 'TEXTAREA');
+    assert.equal(note.getAttribute('maxlength'), '500');
+    assert.equal(note.getAttribute('autocomplete'), 'off');
+    assert.equal(note.getAttribute('placeholder'), null);
+    [duration, ...(distance ? [distance] : []), note].forEach((control) => {
+      const label = item.querySelectorAll('label').find(
+        (candidate) => candidate.htmlFor === control.id
+      );
+      assert.ok(label);
+    });
+
+    inputItemField(panel, entry.key, 'duration_min', '0045');
+    if (distance) inputItemField(panel, entry.key, 'distance_km', '5,25');
+    inputItemField(panel, entry.key, 'note', `  ${entry.key}  `);
+    assert.equal(item.dataset.state, 'complete');
+    assert.equal(editor.dataset.state, 'complete');
+    const draftItem = runtime.draft.getSnapshot().items.find(
+      (candidate) => candidate.item_key === entry.key
+    );
+    assert.equal(draftItem.duration_min, '0045');
+    assert.equal(draftItem.distance_km, distance ? '5,25' : null);
+    assert.equal(draftItem.note, `  ${entry.key}  `);
+    assert.equal(draftItem.sets.length, 0);
+  });
+});
+
+test('set and item field definitions fail closed at their exact catalog boundaries', () => {
   const mutationCases = [
     (catalog) => { catalog.field_definitions.reps.max = 1000.5; },
     (catalog) => { catalog.field_definitions.weight_kg.max_decimals = 0; },
     (catalog) => { catalog.field_definitions.distance_m.unit = 'km'; },
     (catalog) => { delete catalog.field_definitions.duration_sec.min; },
-    (catalog) => { catalog.field_definitions.assistance_kg.extra = true; }
+    (catalog) => { catalog.field_definitions.assistance_kg.extra = true; },
+    (catalog) => { catalog.field_definitions.duration_min.min = 2; },
+    (catalog) => { catalog.field_definitions.duration_min.max = 2000; },
+    (catalog) => { catalog.field_definitions.duration_min.max = 1440.5; },
+    (catalog) => { catalog.field_definitions.distance_km.min = 0.1; },
+    (catalog) => { catalog.field_definitions.distance_km.max = 2000; },
+    (catalog) => { catalog.field_definitions.distance_km.max_decimals = 0; },
+    (catalog) => { catalog.field_definitions.distance_km.max_decimals = 3; },
+    (catalog) => { catalog.field_definitions.distance_km.unit = 'm'; },
+    (catalog) => { catalog.field_definitions.note.trim = false; },
+    (catalog) => { catalog.field_definitions.note.max_length = 499; },
+    (catalog) => { catalog.field_definitions.note.extra = true; }
   ];
   mutationCases.forEach((mutate) => {
     const runtime = createRuntime({ useSemanticsV2: true });
@@ -1874,6 +2038,120 @@ test('Draft-first parser preserves raw values, node identity and exact R1 error 
   );
 });
 
+test('item parser preserves raw duration, distance and note with exact states and copy', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('running');
+  const { shell, panel } = mountRuntime(runtime);
+  shell.open({ opener: runtime.opener });
+  const item = itemElement(panel, 'running');
+  const duration = itemInputElement(panel, 'running', 'duration_min');
+  const distance = itemInputElement(panel, 'running', 'distance_km');
+  const note = itemInputElement(panel, 'running', 'note');
+  duration.focus();
+
+  const durationCases = [
+    ['', 'empty', ''],
+    ['0001', 'valid', ''],
+    ['1440', 'valid', ''],
+    ['0', 'invalid', 'Erlaubter Bereich: 1 bis 1440.'],
+    ['1441', 'invalid', 'Erlaubter Bereich: 1 bis 1440.'],
+    ['1,', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['1.0', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['-1', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['1e2', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    [' 1', 'invalid', 'Nur ganze Zahlen eingeben.'],
+    ['\uFF11', 'invalid', 'Nur ganze Zahlen eingeben.']
+  ];
+  durationCases.forEach(([raw, state, message]) => {
+    const same = inputItemField(panel, 'running', 'duration_min', raw);
+    assert.equal(same, duration);
+    assert.equal(runtime.document.activeElement, duration);
+    assert.equal(duration.value, raw);
+    assert.equal(duration.parentNode.dataset.state, state);
+    assert.equal(
+      duration.getAttribute('aria-invalid'),
+      state === 'invalid' ? 'true' : 'false'
+    );
+    assert.equal(
+      panel.querySelector(`#${duration.getAttribute('aria-describedby')}`)
+        .textContent,
+      message
+    );
+    assert.equal(
+      runtime.draft.getSnapshot().items[0].duration_min,
+      raw === '' ? null : raw
+    );
+  });
+
+  inputItemField(panel, 'running', 'duration_min', '45');
+  distance.focus();
+  const distanceCases = [
+    ['', 'empty', ''],
+    ['1,', 'intermediate', ''],
+    ['1.', 'intermediate', ''],
+    ['01,20', 'valid', ''],
+    ['0,01', 'valid', ''],
+    ['1000,00', 'valid', ''],
+    ['0', 'invalid', 'Erlaubter Bereich: 0,01 bis 1000.'],
+    ['0,00', 'invalid', 'Erlaubter Bereich: 0,01 bis 1000.'],
+    ['1000,01', 'invalid', 'Erlaubter Bereich: 0,01 bis 1000.'],
+    ['1,234', 'invalid', 'Maximal 2 Nachkommastellen.'],
+    [',5', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['.5', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['1,2.3', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['1.2,3', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['+1', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['1e2', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    [' 1', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.'],
+    ['\u0661', 'invalid', 'Ziffern mit optionalem Komma oder Punkt eingeben.']
+  ];
+  distanceCases.forEach(([raw, state, message]) => {
+    const same = inputItemField(panel, 'running', 'distance_km', raw);
+    assert.equal(same, distance);
+    assert.equal(runtime.document.activeElement, distance);
+    assert.equal(distance.value, raw);
+    assert.equal(distance.parentNode.dataset.state, state);
+    assert.equal(
+      distance.getAttribute('aria-invalid'),
+      state === 'invalid' ? 'true' : 'false'
+    );
+    assert.equal(
+      panel.querySelector(`#${distance.getAttribute('aria-describedby')}`)
+        .textContent,
+      message
+    );
+  });
+
+  inputItemField(panel, 'running', 'distance_km', '5,25');
+  inputItemField(panel, 'running', 'note', '  <img src=x>  ');
+  assert.equal(note.value, '  <img src=x>  ');
+  assert.equal(runtime.draft.getSnapshot().items[0].note, '  <img src=x>  ');
+  assert.equal(item.dataset.state, 'complete');
+  const fiveHundred = '\u{1F600}'.repeat(500);
+  inputItemField(panel, 'running', 'note', fiveHundred);
+  assert.equal(Array.from(note.value).length, 500);
+  const stable = runtime.draft.getSnapshot();
+  inputItemField(panel, 'running', 'note', '\u{1F600}'.repeat(501));
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(note.value, fiveHundred);
+  assert.equal(runtime.document.activeElement, note);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    'Die Aktivitätseingabe konnte nicht aktualisiert werden.'
+  );
+  inputItemField(panel, 'running', 'duration_min', '\u{1F600}'.repeat(33));
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(duration.value, '45');
+  assert.equal(runtime.document.activeElement, duration);
+
+  const forged = runtime.document.createElement('input');
+  forged.dataset.itemKey = 'running';
+  forged.dataset.fieldKey = 'duration_min';
+  forged.value = '90';
+  panel.dispatchEvent({ type: 'input', target: forged });
+  assert.equal(runtime.draft.getSnapshot(), stable);
+});
+
 test('row and item validity derive partial, complete, invalid and prefix-gap states only', () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   runtime.draft.addItem('bench_press');
@@ -1885,6 +2163,9 @@ test('row and item validity derive partial, complete, invalid and prefix-gap sta
       entry.fields.weight_kg === 'optional'
   );
   runtime.draft.addItem(optionalEntry.key);
+  runtime.draft.addItem('ab_wheel_rollout');
+  runtime.draft.addItem('cross_trainer');
+  runtime.draft.addItem('running');
   const { shell, panel } = mountRuntime(runtime);
   shell.open({ opener: runtime.opener });
 
@@ -1916,12 +2197,53 @@ test('row and item validity derive partial, complete, invalid and prefix-gap sta
   inputSetField(panel, optionalEntry.key, 1, 'reps', '10');
   assert.equal(setRowElement(panel, optionalEntry.key, 1).dataset.state, 'complete');
   assert.equal(editorElement(panel, optionalEntry.key).dataset.state, 'complete');
+  assert.equal(itemElement(panel, optionalEntry.key).dataset.state, 'complete');
+  inputItemField(panel, optionalEntry.key, 'note', 'optional note');
+  assert.equal(editorElement(panel, optionalEntry.key).dataset.state, 'complete');
+  assert.equal(itemElement(panel, optionalEntry.key).dataset.state, 'complete');
+
+  inputItemField(panel, 'ab_wheel_rollout', 'note', 'note only');
+  assert.equal(editorElement(panel, 'ab_wheel_rollout').dataset.state, 'empty');
+  assert.equal(itemElement(panel, 'ab_wheel_rollout').dataset.state, 'partial');
+  assert.equal(
+    itemElement(panel, 'ab_wheel_rollout')
+      .querySelector('.activity-v2-session-item-status').textContent,
+    'Aktivität unvollständig.'
+  );
+  inputItemField(panel, 'ab_wheel_rollout', 'note', '');
+  assert.equal(
+    runtime.draft.getSnapshot().items.find(
+      (item) => item.item_key === 'ab_wheel_rollout'
+    ).note,
+    null
+  );
+  assert.equal(itemElement(panel, 'ab_wheel_rollout').dataset.state, 'empty');
+
+  const running = itemElement(panel, 'running');
+  inputItemField(panel, 'running', 'note', 'note only');
+  assert.equal(running.dataset.state, 'partial');
+  inputItemField(panel, 'running', 'distance_km', '5');
+  assert.equal(running.dataset.state, 'partial');
+  inputItemField(panel, 'running', 'duration_min', '45');
+  assert.equal(running.dataset.state, 'complete');
+  inputItemField(panel, 'running', 'distance_km', '5,');
+  assert.equal(running.dataset.state, 'partial');
+  inputItemField(panel, 'running', 'distance_km', '0');
+  assert.equal(running.dataset.state, 'invalid');
+  inputItemField(panel, 'running', 'distance_km', '');
+  assert.equal(running.dataset.state, 'complete');
+
+  const durationOnly = itemElement(panel, 'cross_trainer');
+  assert.equal(itemInputElement(panel, 'cross_trainer', 'distance_km'), undefined);
+  inputItemField(panel, 'cross_trainer', 'duration_min', '30');
+  assert.equal(durationOnly.dataset.state, 'complete');
 });
 
 test('set add, remove, item reorder and remove/re-add preserve focus, raw values and lookup cache', async () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   runtime.draft.addItem('bench_press');
   runtime.draft.addItem('ab_wheel_rollout');
+  runtime.draft.addItem('running');
   let benchLookups = 0;
   const { shell, panel } = mountRuntime(runtime, {
     loadLastPerformance: (itemKey) => {
@@ -1933,6 +2255,10 @@ test('set add, remove, item reorder and remove/re-add preserve focus, raw values
   await settle();
   inputSetField(panel, 'bench_press', 1, 'reps', '08');
   inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,5');
+  inputItemField(panel, 'bench_press', 'note', 'bench note');
+  inputItemField(panel, 'running', 'duration_min', '45');
+  inputItemField(panel, 'running', 'distance_km', '7,25');
+  inputItemField(panel, 'running', 'note', 'run note');
 
   click(panel, actionElement(panel, 'add-set', 'bench_press'));
   assert.equal(runtime.draft.getSnapshot().items[0].sets.length, 4);
@@ -1950,7 +2276,12 @@ test('set add, remove, item reorder and remove/re-add preserve focus, raw values
   assert.equal(bench.item_order, 2);
   assert.equal(bench.sets[0].reps, '08');
   assert.equal(bench.sets[0].weight_kg, '80,5');
+  assert.equal(bench.note, 'bench note');
   assert.equal(setInputElement(panel, 'bench_press', 1, 'weight_kg').value, '80,5');
+  assert.equal(itemInputElement(panel, 'bench_press', 'note').value, 'bench note');
+  assert.equal(itemInputElement(panel, 'running', 'duration_min').value, '45');
+  assert.equal(itemInputElement(panel, 'running', 'distance_km').value, '7,25');
+  assert.equal(itemInputElement(panel, 'running', 'note').value, 'run note');
 
   click(panel, actionElement(panel, 'remove', 'bench_press'));
   typeSearch(panel, 'Bench Press');
@@ -1962,11 +2293,23 @@ test('set add, remove, item reorder and remove/re-add preserve focus, raw values
     assert.equal(set.reps, null);
     assert.equal(set.weight_kg, null);
   });
+  assert.equal(bench.note, null);
+  const running = runtime.draft.getSnapshot().items.find(
+    (item) => item.item_key === 'running'
+  );
+  assert.equal(running.duration_min, '45');
+  assert.equal(running.distance_km, '7,25');
+  assert.equal(running.note, 'run note');
+  click(panel, actionElement(panel, 'move-up', 'running'));
+  assert.equal(runtime.document.activeElement, actionElement(panel, 'move-down', 'running'));
+  assert.equal(itemInputElement(panel, 'running', 'duration_min').value, '45');
+  assert.equal(itemInputElement(panel, 'running', 'distance_km').value, '7,25');
+  assert.equal(itemInputElement(panel, 'running', 'note').value, 'run note');
   assert.equal(benchLookups, 1);
   assert.ok(itemElement(panel, 'bench_press').querySelector('.activity-v2-session-history'));
 });
 
-test('pending close disables only set controls and restores Draft values and focus on cancel', async () => {
+test('pending close disables every draft mutation and restores controls and focus on cancel', async () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   runtime.draft.addItem('bench_press');
   let resolveConfirmation;
@@ -1976,6 +2319,7 @@ test('pending close disables only set controls and restores Draft values and foc
     })
   });
   shell.open({ opener: runtime.opener });
+  typeSearch(panel, 'Running');
   inputSetField(panel, 'bench_press', 1, 'reps', '8');
   const weight = inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,');
   weight.focus();
@@ -1988,10 +2332,28 @@ test('pending close disables only set controls and restores Draft values and foc
   itemElement(panel, 'bench_press').querySelectorAll('button')
     .filter((button) => button.dataset.action === 'remove-set')
     .forEach((button) => assert.equal(button.disabled, true));
-  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, false);
-  assert.equal(panel.querySelector('.activity-v2-session-search').disabled, false);
-  assert.equal(panel.querySelector('.activity-v2-session-note').disabled, false);
+  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, true);
+  assert.equal(panel.querySelector('.activity-v2-session-search').disabled, true);
+  assert.equal(panel.querySelector('.activity-v2-session-note').disabled, true);
+  assert.equal(itemInputElement(panel, 'bench_press', 'note').disabled, true);
+  panel.querySelectorAll('.activity-v2-session-search-result').forEach(
+    (button) => assert.equal(button.disabled, true)
+  );
   assert.equal(actionElement(panel, 'close').disabled, false);
+  click(panel, actionElement(panel, 'remove', 'bench_press'));
+  const guardedItemNote = itemInputElement(panel, 'bench_press', 'note');
+  guardedItemNote.value = 'blocked item note';
+  panel.dispatchEvent({ type: 'input', target: guardedItemNote });
+  const guardedSessionNote = panel.querySelector('.activity-v2-session-note');
+  guardedSessionNote.value = 'blocked session note';
+  panel.dispatchEvent({ type: 'input', target: guardedSessionNote });
+  weight.value = '99';
+  panel.dispatchEvent({ type: 'input', target: weight });
+  click(panel, panel.querySelector('.activity-v2-session-search-result'));
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  guardedItemNote.value = '';
+  guardedSessionNote.value = '';
+  weight.value = '80,';
 
   await Promise.resolve();
   resolveConfirmation(false);
@@ -2002,12 +2364,21 @@ test('pending close disables only set controls and restores Draft values and foc
   assert.equal(weight.value, '80,');
   assert.equal(runtime.document.activeElement, weight);
   assert.equal(actionElement(panel, 'add-set', 'bench_press').disabled, false);
+  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, false);
+  assert.equal(panel.querySelector('.activity-v2-session-search').disabled, false);
+  assert.equal(panel.querySelector('.activity-v2-session-note').disabled, false);
+  assert.equal(itemInputElement(panel, 'bench_press', 'note').disabled, false);
+  panel.querySelectorAll('.activity-v2-session-search-result').forEach(
+    (button) => assert.equal(button.disabled, false)
+  );
 });
 
 test('lookup, timer and background settlements never replace intermediate inputs or focus', async () => {
   let now = 1_722_509_200_000;
   const runtime = createRuntime({ useSemanticsV2: true, now: () => now });
   runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('running');
+  const startedAt = runtime.draft.getSnapshot().started_at;
   const lookup = deferred();
   const { shell, panel } = mountRuntime(runtime, {
     loadLastPerformance: () => lookup.promise
@@ -2015,6 +2386,9 @@ test('lookup, timer and background settlements never replace intermediate inputs
   shell.open({ opener: runtime.opener });
   inputSetField(panel, 'bench_press', 1, 'reps', '8');
   const weight = inputSetField(panel, 'bench_press', 1, 'weight_kg', '80,');
+  inputItemField(panel, 'running', 'duration_min', '45');
+  const distance = inputItemField(panel, 'running', 'distance_km', '7,');
+  assert.equal(runtime.draft.getSnapshot().started_at, startedAt);
   weight.focus();
   const editor = editorElement(panel, 'bench_press');
   const revision = runtime.draft.getSnapshot().revision;
@@ -2032,14 +2406,21 @@ test('lookup, timer and background settlements never replace intermediate inputs
   assert.equal(weight.value, '80,');
   assert.equal(weight.parentNode.dataset.state, 'intermediate');
   assert.equal(editorElement(panel, 'bench_press'), editor);
+  assert.equal(itemInputElement(panel, 'running', 'distance_km'), distance);
+  assert.equal(distance.value, '7,');
+  assert.equal(distance.parentNode.dataset.state, 'intermediate');
   assert.equal(runtime.document.activeElement, weight);
   assert.equal(runtime.draft.getSnapshot().revision, revision);
+  assert.equal(runtime.draft.getSnapshot().started_at, startedAt);
 
   lookup.resolve(makeLookupResult(runtime, 'bench_press'));
   await settle();
   assert.equal(setInputElement(panel, 'bench_press', 1, 'weight_kg'), weight);
   assert.equal(weight.value, '80,');
   assert.equal(weight.parentNode.dataset.state, 'intermediate');
+  assert.equal(itemInputElement(panel, 'running', 'distance_km'), distance);
+  assert.equal(distance.value, '7,');
+  assert.equal(distance.parentNode.dataset.state, 'intermediate');
   assert.equal(runtime.document.activeElement, weight);
   assert.equal(
     itemElement(panel, 'bench_press').querySelector('.activity-v2-session-history')
@@ -2061,11 +2442,21 @@ test('lookup, timer and background settlements never replace intermediate inputs
       .parentNode.dataset.state,
     'intermediate'
   );
+  assert.equal(
+    itemInputElement(remounted.panel, 'running', 'distance_km').value,
+    '7,'
+  );
+  assert.equal(
+    itemInputElement(remounted.panel, 'running', 'distance_km')
+      .parentNode.dataset.state,
+    'intermediate'
+  );
 });
 
-test('set mutation failures restore the unchanged snapshot, safe copy and triggering focus', () => {
+test('set and item mutation failures restore stable Draft values, copy and focus', () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('running');
   const stable = runtime.draft.getSnapshot();
   const failingDraft = Object.freeze({
     getSnapshot: () => runtime.draft.getSnapshot(),
@@ -2077,7 +2468,8 @@ test('set mutation failures restore the unchanged snapshot, safe copy and trigge
     discard: () => runtime.draft.discard(),
     addSet() { throw new Error('private add detail'); },
     removeSet() { throw new Error('private remove detail'); },
-    setSetField() { throw new Error('private input detail'); }
+    setSetField() { throw new Error('private input detail'); },
+    setItemField() { throw new Error('private item detail'); }
   });
   const { shell, panel } = mountRuntime(runtime, { draft: failingDraft });
   shell.open({ opener: runtime.opener });
@@ -2088,6 +2480,23 @@ test('set mutation failures restore the unchanged snapshot, safe copy and trigge
   assert.equal(
     panel.querySelector('.activity-v2-session-status').textContent,
     'Die Satzeingabe konnte nicht aktualisiert werden.'
+  );
+
+  const duration = inputItemField(panel, 'running', 'duration_min', '45');
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(duration.value, '');
+  assert.equal(runtime.document.activeElement, duration);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    'Die Aktivitätseingabe konnte nicht aktualisiert werden.'
+  );
+  const itemNote = inputItemField(panel, 'running', 'note', 'private note');
+  assert.equal(runtime.draft.getSnapshot(), stable);
+  assert.equal(itemNote.value, '');
+  assert.equal(runtime.document.activeElement, itemNote);
+  assert.doesNotMatch(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    /private note|private item/i
   );
 
   const add = actionElement(panel, 'add-set', 'bench_press');
@@ -2105,12 +2514,15 @@ test('set mutation failures restore the unchanged snapshot, safe copy and trigge
   assert.equal(runtime.draft.getSnapshot(), stable);
 });
 
-test('post-mutation shell contract breaches propagate without stale DOM rollback', () => {
+test('item no-ops stay DOM-free and post-mutation breaches never stale-rollback', () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   runtime.draft.addItem('bench_press');
+  runtime.draft.addItem('running');
   let breakSnapshot = false;
+  let snapshotReads = 0;
   const breakingDraft = Object.freeze({
     getSnapshot() {
+      snapshotReads += 1;
       const snapshot = runtime.draft.getSnapshot();
       if (!breakSnapshot) return snapshot;
       return deepFreeze({
@@ -2130,10 +2542,23 @@ test('post-mutation shell contract breaches propagate without stale DOM rollback
       const snapshot = runtime.draft.setSetField(key, order, field, value);
       breakSnapshot = true;
       return snapshot;
+    },
+    setItemField(key, field, value) {
+      const before = runtime.draft.getSnapshot();
+      const snapshot = runtime.draft.setItemField(key, field, value);
+      if (snapshot !== before) breakSnapshot = true;
+      return snapshot;
     }
   });
   const { shell, panel } = mountRuntime(runtime, { draft: breakingDraft });
   shell.open({ opener: runtime.opener });
+  snapshotReads = 0;
+  const pristine = runtime.draft.getSnapshot();
+  let duration = itemInputElement(panel, 'running', 'duration_min');
+  panel.dispatchEvent({ type: 'input', target: duration });
+  assert.equal(runtime.draft.getSnapshot(), pristine);
+  assert.equal(snapshotReads, 0);
+
   const input = setInputElement(panel, 'bench_press', 1, 'reps');
   input.value = '8';
   input.focus();
@@ -2145,6 +2570,25 @@ test('post-mutation shell contract breaches propagate without stale DOM rollback
   assert.equal(runtime.draft.getSnapshot().items[0].sets[0].reps, '8');
   assert.equal(input.value, '8');
   assert.equal(runtime.document.activeElement, input);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    ''
+  );
+
+  breakSnapshot = false;
+  shell.render();
+  duration = itemInputElement(panel, 'running', 'duration_min');
+  snapshotReads = 0;
+  duration.value = '45';
+  duration.focus();
+  assertShellError(
+    () => panel.dispatchEvent({ type: 'input', target: duration }),
+    'INVALID_DRAFT_STATE'
+  );
+  assert.equal(runtime.draft.getSnapshot().items[1].duration_min, '45');
+  assert.equal(duration.value, '45');
+  assert.equal(runtime.document.activeElement, duration);
+  assert.equal(snapshotReads, 1);
   assert.equal(
     panel.querySelector('.activity-v2-session-status').textContent,
     ''
@@ -2193,8 +2637,14 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
     /\.activity-v2-session-set-input\s*\{[^}]*width:\s*100%/s,
     /\.activity-v2-session-set-input\s*\{[^}]*min-height:\s*44px/s,
     /\.activity-v2-session-set-field-error:empty/,
+    /\.activity-v2-session-item-fields\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s,
+    /\.activity-v2-session-item-input,\s*\.activity-v2-session-item-note\s*\{[^}]*width:\s*100%/s,
+    /\.activity-v2-session-item-input,\s*\.activity-v2-session-item-note\s*\{[^}]*min-height:\s*44px/s,
+    /\.activity-v2-session-item-note-field\s*\{[^}]*grid-column:\s*1 \/ -1/s,
+    /\.activity-v2-session-item-field-error:empty/,
     /\[data-action="remove-set"\]/,
     /@media \(max-width:\s*640px\)[\s\S]*\.activity-v2-session-set-row\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    /@media \(max-width:\s*640px\)[\s\S]*\.activity-v2-session-item-fields\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
     /:is\(button, input, select, textarea\):focus-visible/,
     /prefers-reduced-motion/
   ];
@@ -2203,7 +2653,10 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
   assert.match(harnessSource, /<script src="\.\/semantics-v2\.js"><\/script>/);
   assert.match(harnessSource, /<script src="\.\/session-draft\.js"><\/script>/);
   assert.match(harnessSource, /<script src="\.\/session-shell\.js"><\/script>/);
-  assert.match(harnessSource, /<link rel="stylesheet" href="\.\/session-shell\.css">/);
+  assert.match(
+    harnessSource,
+    /<link rel="stylesheet" href="\.\/session-shell\.css\?v=r6-s4-4">/
+  );
   assert.match(harnessSource, /itemKey === 'bench_press'/);
   assert.match(harnessSource, /itemKey === 'ski_erg'/);
   assert.match(harnessSource, /itemKey === 'total_abdominal'/);
@@ -2212,12 +2665,19 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
   assert.match(harnessSource, /fixture=history/);
   assert.match(harnessSource, /fixture=all/);
   assert.match(harnessSource, /policyRepresentatives\.size !== 8/);
+  assert.match(harnessSource, /const itemPolicyKeys = Object\.freeze\(\['cross_trainer', 'running'\]\)/);
+  assert.match(harnessSource, /const itemPolicyModes = Object\.freeze\(\['duration', 'duration_distance'\]\)/);
+  assert.match(harnessSource, /entry\.fields\.duration_min !== 'required'/);
+  assert.match(harnessSource, /draft\.setItemField\('running', 'distance_km', '5,25'\)/);
+  assert.match(harnessSource, /Gemeinsame R6-Itemnotiz am Strength-Editor/);
   assert.match(harnessSource, /validStressValues/);
   assert.match(harnessSource, /weight_kg', '1000,001'/);
   assert.match(harnessSource, /weight_kg', '80,'/);
   assert.match(harnessSource, /fields\.assistance_kg === 'required'/);
   assert.match(harnessSource, /fixtureKeys: Object\.freeze/);
   assert.match(harnessSource, /policyKeys,/);
+  assert.match(harnessSource, /strengthPolicyKeys,/);
+  assert.match(harnessSource, /itemPolicyKeys,/);
   assert.match(harnessSource, /getLookupCount:/);
   assert.match(harnessSource, /status\.dataset\.lookupCounts/);
   assert.doesNotMatch(harnessSource, /<script[^>]+index\.js/);

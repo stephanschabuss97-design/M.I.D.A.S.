@@ -1,7 +1,7 @@
 'use strict';
 
 (function initActivityV2SessionDraft(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v2';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
   const ITEM_LIMIT = 50;
   const NOTE_LIMIT = 500;
   const SET_LIMIT = 50;
@@ -31,6 +31,11 @@
     'distance_m',
     'weight_kg',
     'assistance_kg'
+  ]);
+  const ITEM_FIELD_KEYS = Object.freeze([
+    'duration_min',
+    'distance_km',
+    'note'
   ]);
   const FIELD_POLICIES = Object.freeze(['forbidden', 'optional', 'required']);
   const TRACKING_MODES = Object.freeze([
@@ -305,17 +310,37 @@
           (_, index) => createSetRecord(index + 1)
         )
       : [];
-    return { item_key: itemKey, item_order: itemOrder, sets };
+    return {
+      item_key: itemKey,
+      item_order: itemOrder,
+      duration_min: null,
+      distance_km: null,
+      note: null,
+      sets
+    };
+  }
+
+  function rebuildItemRecord(item, changes = {}) {
+    return {
+      item_key: item.item_key,
+      item_order: hasOwn(changes, 'item_order')
+        ? changes.item_order
+        : item.item_order,
+      duration_min: hasOwn(changes, 'duration_min')
+        ? changes.duration_min
+        : item.duration_min,
+      distance_km: hasOwn(changes, 'distance_km')
+        ? changes.distance_km
+        : item.distance_km,
+      note: hasOwn(changes, 'note') ? changes.note : item.note,
+      sets: hasOwn(changes, 'sets') ? changes.sets : item.sets
+    };
   }
 
   function withItemOrder(item, itemOrder) {
     return item.item_order === itemOrder
       ? item
-      : {
-          item_key: item.item_key,
-          item_order: itemOrder,
-          sets: item.sets
-        };
+      : rebuildItemRecord(item, { item_order: itemOrder });
   }
 
   function withSetOrder(set, setOrder) {
@@ -539,14 +564,12 @@
       if (item.sets.length >= SET_LIMIT) fail('SET_LIMIT_REACHED');
       assertRevisionAvailable(snapshot);
 
-      const nextItem = {
-        item_key: item.item_key,
-        item_order: item.item_order,
+      const nextItem = rebuildItemRecord(item, {
         sets: [
           ...item.sets,
           createSetRecord(item.sets.length + 1)
         ]
-      };
+      });
       snapshot = createSnapshot({
         requestId: snapshot.request_id,
         catalogVersion: snapshot.catalog_version,
@@ -571,11 +594,9 @@
 
       const sets = [...item.sets];
       sets.splice(setIndex, 1);
-      const nextItem = {
-        item_key: item.item_key,
-        item_order: item.item_order,
+      const nextItem = rebuildItemRecord(item, {
         sets: sets.map((set, index) => withSetOrder(set, index + 1))
-      };
+      });
       snapshot = createSnapshot({
         requestId: snapshot.request_id,
         catalogVersion: snapshot.catalog_version,
@@ -616,11 +637,46 @@
         ...sets[setIndex],
         [fieldKey]: canonicalValue
       });
-      const nextItem = {
-        item_key: item.item_key,
-        item_order: item.item_order,
-        sets
-      };
+      const nextItem = rebuildItemRecord(item, { sets });
+      snapshot = createSnapshot({
+        requestId: snapshot.request_id,
+        catalogVersion: snapshot.catalog_version,
+        revision: snapshot.revision + 1,
+        startedAt: snapshot.started_at,
+        note: snapshot.note,
+        items: replaceItem(snapshot.items, itemIndex, nextItem)
+      });
+      return snapshot;
+    }
+
+    function setItemField(itemKey, fieldKey, value) {
+      const { item, itemIndex } = findItem(itemKey, snapshot);
+      const catalogEntry = catalogState.entries.get(item.item_key);
+      if (!catalogEntry) fail('INVALID_CATALOG');
+      if (
+        typeof fieldKey !== 'string' ||
+        !ITEM_FIELD_KEYS.includes(fieldKey)
+      ) {
+        fail('INVALID_ITEM_FIELD');
+      }
+      const fieldPolicy = catalogEntry.fields[fieldKey];
+      if (fieldPolicy !== 'required' && fieldPolicy !== 'optional') {
+        fail('FORBIDDEN_ITEM_FIELD');
+      }
+      const valueLimit = fieldKey === 'note' ? NOTE_LIMIT : SET_VALUE_LIMIT;
+      if (
+        typeof value !== 'string' ||
+        Array.from(value).length > valueLimit
+      ) {
+        fail('INVALID_ITEM_VALUE');
+      }
+      const canonicalValue = value === '' ? null : value;
+      if (item[fieldKey] === canonicalValue) return snapshot;
+      assertRevisionAvailable(snapshot);
+
+      const nextItem = rebuildItemRecord(item, {
+        [fieldKey]: canonicalValue
+      });
       snapshot = createSnapshot({
         requestId: snapshot.request_id,
         catalogVersion: snapshot.catalog_version,
@@ -642,7 +698,8 @@
       discard,
       addSet,
       removeSet,
-      setSetField
+      setSetField,
+      setItemField
     });
   }
 

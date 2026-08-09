@@ -252,7 +252,7 @@ test('semanticsV2 fails closed without the exact valid v1 boundary', () => {
   );
 });
 
-test('real draft-v2 and shell accept injected catalog v2 and both new keys', () => {
+test('real draft-v3 and shell accept injected catalog v2 and both new keys', () => {
   const FakeDocument = getFakeDocumentClass();
   const document = new FakeDocument();
   const intervals = new Map();
@@ -292,17 +292,28 @@ test('real draft-v2 and shell accept injected catalog v2 and both new keys', () 
     'discard',
     'addSet',
     'removeSet',
-    'setSetField'
+    'setSetField',
+    'setItemField'
   ]);
-  assert.equal(snapshot.draft_schema_version, 'midas.activity-session-draft.v2');
+  assert.equal(snapshot.draft_schema_version, 'midas.activity-session-draft.v3');
   assert.equal(snapshot.catalog_version, 2);
   assert.deepEqual(
     plain(snapshot.items.map((item) => item.item_key)),
     ['high_row', 'total_abdominal']
   );
   snapshot.items.forEach((item, itemIndex) => {
-    assert.deepEqual(Object.keys(item), ['item_key', 'item_order', 'sets']);
+    assert.deepEqual(Object.keys(item), [
+      'item_key',
+      'item_order',
+      'duration_min',
+      'distance_km',
+      'note',
+      'sets'
+    ]);
     assert.equal(item.item_order, itemIndex + 1);
+    assert.equal(item.duration_min, null);
+    assert.equal(item.distance_km, null);
+    assert.equal(item.note, null);
     assert.equal(item.sets.length, 3);
     item.sets.forEach((set, setIndex) => {
       assert.deepEqual(Object.keys(set), [

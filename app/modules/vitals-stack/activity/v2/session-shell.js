@@ -1,11 +1,12 @@
 'use strict';
 
 (function initActivityV2SessionShell(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v2';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
   const NOTE_LIMIT = 500;
   const ITEM_LIMIT = 50;
   const SET_LIMIT = 50;
   const SET_VALUE_LIMIT = 32;
+  const ITEM_VALUE_LIMIT = 32;
   const ITEM_KEY_RE = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
   const UUID_RE =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -29,7 +30,8 @@
     'discard',
     'addSet',
     'removeSet',
-    'setSetField'
+    'setSetField',
+    'setItemField'
   ]);
   const SNAPSHOT_KEYS = Object.freeze([
     'catalog_version',
@@ -40,7 +42,14 @@
     'revision',
     'started_at'
   ]);
-  const DRAFT_ITEM_KEYS = Object.freeze(['item_key', 'item_order', 'sets']);
+  const DRAFT_ITEM_KEYS = Object.freeze([
+    'item_key',
+    'item_order',
+    'duration_min',
+    'distance_km',
+    'note',
+    'sets'
+  ]);
   const DRAFT_SET_KEYS = Object.freeze([
     'set_order',
     'reps',
@@ -55,6 +64,15 @@
     'distance_m',
     'weight_kg',
     'assistance_kg'
+  ]);
+  const ITEM_FIELD_KEYS = Object.freeze([
+    'duration_min',
+    'distance_km',
+    'note'
+  ]);
+  const ITEM_NUMERIC_FIELD_KEYS = Object.freeze([
+    'duration_min',
+    'distance_km'
   ]);
   const FIELD_POLICIES = Object.freeze(['forbidden', 'optional', 'required']);
   const TRACKING_MODES = Object.freeze([
@@ -89,13 +107,27 @@
     weight_kg: 'kg',
     assistance_kg: 'kg'
   });
+  const ITEM_FIELD_UI = Object.freeze({
+    duration_min: Object.freeze({
+      label: 'Dauer (Min.)',
+      inputMode: 'numeric'
+    }),
+    distance_km: Object.freeze({
+      label: 'Distanz (km)',
+      inputMode: 'decimal'
+    }),
+    note: Object.freeze({ label: 'Notiz' })
+  });
+  const ITEM_FIELD_UNITS = Object.freeze({
+    duration_min: 'min',
+    distance_km: 'km'
+  });
   const INTEGER_INPUT_MESSAGE = 'Nur ganze Zahlen eingeben.';
   const DECIMAL_INPUT_MESSAGE =
     'Ziffern mit optionalem Komma oder Punkt eingeben.';
   const PARTIAL_SET_MESSAGE = 'Satz unvollständig.';
+  const PARTIAL_ITEM_MESSAGE = 'Aktivität unvollständig.';
   const GAP_MESSAGE = 'Leere Sätze sind nur am Ende erlaubt.';
-  const NON_STRENGTH_MESSAGE =
-    'Die Eingabe für diese Aktivität wird in diesem Editor noch nicht unterstützt.';
   const TIMER_KEYS = Object.freeze(['elapsed_ms', 'label', 'running']);
   const CLOSE_SOURCES = Object.freeze(['api', 'close_button', 'escape']);
   const DISCARD_MESSAGE =
@@ -179,6 +211,15 @@
     return (
       keys.length === expected.length &&
       keys.every((key) => typeof key === 'string' && expected.includes(key))
+    );
+  }
+
+  function hasExactOrderedKeys(value, expected) {
+    if (!isRecord(value)) return false;
+    const keys = Reflect.ownKeys(value);
+    return (
+      keys.length === expected.length &&
+      keys.every((key, index) => key === expected[index])
     );
   }
 
@@ -351,6 +392,65 @@
         maxDecimals: integer ? null : definition.max_decimals
       });
     });
+    ITEM_NUMERIC_FIELD_KEYS.forEach((fieldKey) => {
+      const definition = catalog.field_definitions[fieldKey];
+      const integer = fieldKey === 'duration_min';
+      if (
+        !isRecord(definition) ||
+        !hasExactKeys(
+          definition,
+          integer
+            ? ['scope', 'value_type', 'unit', 'min', 'max']
+            : ['scope', 'value_type', 'unit', 'min', 'max', 'max_decimals']
+        ) ||
+        definition.scope !== 'item' ||
+        definition.value_type !== (integer ? 'integer' : 'number') ||
+        definition.unit !== ITEM_FIELD_UNITS[fieldKey] ||
+        !Number.isFinite(definition.min) ||
+        !Number.isFinite(definition.max) ||
+        definition.min !== (integer ? 1 : 0.01) ||
+        definition.max !== (integer ? 1440 : 1000) ||
+        definition.min <= 0 ||
+        definition.max < definition.min ||
+        (integer &&
+          (!Number.isSafeInteger(definition.min) ||
+            !Number.isSafeInteger(definition.max))) ||
+        (!integer &&
+          (!Number.isSafeInteger(definition.max_decimals) ||
+            definition.max_decimals !== 2))
+      ) {
+        fail('INVALID_DRAFT_STATE');
+      }
+      fieldDefinitions[fieldKey] = Object.freeze({
+        valueType: definition.value_type,
+        min: definition.min,
+        max: definition.max,
+        maxDecimals: integer ? null : definition.max_decimals
+      });
+    });
+    const noteDefinition = catalog.field_definitions.note;
+    if (
+      !isRecord(noteDefinition) ||
+      !hasExactKeys(noteDefinition, [
+        'scope',
+        'value_type',
+        'trim',
+        'min_length',
+        'max_length'
+      ]) ||
+      noteDefinition.scope !== 'item' ||
+      noteDefinition.value_type !== 'string' ||
+      noteDefinition.trim !== true ||
+      noteDefinition.min_length !== 1 ||
+      noteDefinition.max_length !== NOTE_LIMIT
+    ) {
+      fail('INVALID_DRAFT_STATE');
+    }
+    fieldDefinitions.note = Object.freeze({
+      minLength: noteDefinition.min_length,
+      maxLength: noteDefinition.max_length,
+      trim: noteDefinition.trim
+    });
 
     const entries = [];
     const byKey = new Map();
@@ -476,7 +576,7 @@
     const seenKeys = new Set();
     snapshot.items.forEach((item, index) => {
       if (
-        !hasExactKeys(item, DRAFT_ITEM_KEYS) ||
+        !hasExactOrderedKeys(item, DRAFT_ITEM_KEYS) ||
         !Object.isFrozen(item) ||
         typeof item.item_key !== 'string' ||
         !ITEM_KEY_RE.test(item.item_key) ||
@@ -491,6 +591,19 @@
       if (!catalogEntry || catalogEntry.status !== 'active') {
         fail('INVALID_DRAFT_STATE');
       }
+      ITEM_FIELD_KEYS.forEach((fieldKey) => {
+        const value = item[fieldKey];
+        const valueLimit = fieldKey === 'note' ? NOTE_LIMIT : ITEM_VALUE_LIMIT;
+        if (
+          (value !== null &&
+            (typeof value !== 'string' ||
+              value === '' ||
+              Array.from(value).length > valueLimit)) ||
+          (catalogEntry.fields[fieldKey] === 'forbidden' && value !== null)
+        ) {
+          fail('INVALID_DRAFT_STATE');
+        }
+      });
       if (catalogEntry.tracking_mode === 'strength_sets') {
         if (item.sets.length < 1 || item.sets.length > SET_LIMIT) {
           fail('INVALID_DRAFT_STATE');
@@ -578,7 +691,7 @@
     return String(value).replace('.', ',');
   }
 
-  function parseSetField(rawValue, definition) {
+  function parseNumericField(rawValue, definition) {
     if (rawValue === '') return Object.freeze({ state: 'empty', error: '' });
     if (definition.valueType === 'integer') {
       if (!/^[0-9]+$/.test(rawValue)) {
@@ -639,7 +752,7 @@
       let complete = true;
       fieldKeys.forEach((fieldKey) => {
         const rawValue = set[fieldKey] || '';
-        const parsed = parseSetField(rawValue, fieldDefinitions[fieldKey]);
+        const parsed = parseNumericField(rawValue, fieldDefinitions[fieldKey]);
         fields[fieldKey] = parsed;
         if (parsed.state !== 'empty') hasNonEmpty = true;
         if (parsed.state === 'invalid') hasInvalid = true;
@@ -683,6 +796,66 @@
       gap,
       fieldKeys: Object.freeze(fieldKeys),
       rows: Object.freeze(rows)
+    });
+  }
+
+  function deriveItemState(item, entry, fieldDefinitions) {
+    if (entry.tracking_mode === 'strength_sets') {
+      const strength = deriveStrengthState(item, entry, fieldDefinitions);
+      const state = strength.state === 'invalid'
+        ? 'invalid'
+        : strength.state === 'partial'
+          ? 'partial'
+          : strength.state === 'complete'
+            ? 'complete'
+            : item.note === null
+              ? 'empty'
+              : 'partial';
+      return Object.freeze({
+        state,
+        fieldKeys: Object.freeze(['note']),
+        fields: Object.freeze({}),
+        strength
+      });
+    }
+
+    const fieldKeys = ITEM_NUMERIC_FIELD_KEYS.filter(
+      (fieldKey) => entry.fields[fieldKey] !== 'forbidden'
+    );
+    const fields = {};
+    let hasInvalid = false;
+    let hasNumericValue = false;
+    let complete = true;
+    fieldKeys.forEach((fieldKey) => {
+      const parsed = parseNumericField(
+        item[fieldKey] || '',
+        fieldDefinitions[fieldKey]
+      );
+      fields[fieldKey] = parsed;
+      if (parsed.state !== 'empty') hasNumericValue = true;
+      if (parsed.state === 'invalid') hasInvalid = true;
+      const policy = entry.fields[fieldKey];
+      if (
+        (policy === 'required' && parsed.state !== 'valid') ||
+        (policy === 'optional' &&
+          parsed.state !== 'empty' &&
+          parsed.state !== 'valid')
+      ) {
+        complete = false;
+      }
+    });
+    const state = hasInvalid
+      ? 'invalid'
+      : !hasNumericValue && item.note === null
+        ? 'empty'
+        : complete
+          ? 'complete'
+          : 'partial';
+    return Object.freeze({
+      state,
+      fieldKeys: Object.freeze(fieldKeys),
+      fields: Object.freeze(fields),
+      strength: null
     });
   }
 
@@ -1243,6 +1416,7 @@
             `${entry.label} auswählen`
           );
           button.dataset.itemKey = entry.key;
+          button.disabled = closeGuardPromise !== null;
           button.append(
             makeElement(
               document,
@@ -1527,30 +1701,152 @@
       });
     }
 
-    function createItemEditor(item, entry, catalogState) {
-      if (entry.tracking_mode !== 'strength_sets') {
-        const neutral = makeElement(
-          document,
-          'section',
-          'activity-v2-session-editor activity-v2-session-editor-neutral'
-        );
-        neutral.dataset.itemKey = item.item_key;
-        neutral.appendChild(
-          makeElement(
+    function appendItemFields(editor, item, entry, derived) {
+      const fields = makeElement(
+        document,
+        'div',
+        'activity-v2-session-item-fields'
+      );
+      const itemFields = new Map();
+      derived.fieldKeys
+        .filter((fieldKey) => fieldKey !== 'note')
+        .forEach((fieldKey) => {
+          const uiDefinition = ITEM_FIELD_UI[fieldKey];
+          const fieldState = derived.fields[fieldKey];
+          const fieldId =
+            `activity-v2-session-item-${shellSequence}-${item.item_key}-` +
+            fieldKey;
+          const errorId = `${fieldId}-error`;
+          const wrapper = makeElement(
+            document,
+            'div',
+            'activity-v2-session-item-field'
+          );
+          wrapper.dataset.state = fieldState.state;
+          const label = makeElement(document, 'label', '', uiDefinition.label);
+          label.htmlFor = fieldId;
+          const input = makeElement(
+            document,
+            'input',
+            'activity-v2-session-item-input'
+          );
+          input.id = fieldId;
+          input.type = 'text';
+          input.value = item[fieldKey] || '';
+          input.maxLength = ITEM_VALUE_LIMIT;
+          input.dataset.itemKey = item.item_key;
+          input.dataset.fieldKey = fieldKey;
+          input.setAttribute('inputmode', uiDefinition.inputMode);
+          input.setAttribute('maxlength', String(ITEM_VALUE_LIMIT));
+          input.setAttribute('autocomplete', 'off');
+          input.setAttribute('spellcheck', 'false');
+          input.setAttribute('aria-describedby', errorId);
+          if (entry.fields[fieldKey] === 'required') {
+            input.setAttribute('aria-required', 'true');
+          }
+          input.setAttribute(
+            'aria-invalid',
+            fieldState.state === 'invalid' ? 'true' : 'false'
+          );
+          input.disabled = closeGuardPromise !== null;
+          const error = makeElement(
             document,
             'p',
-            'activity-v2-session-editor-neutral-message',
-            NON_STRENGTH_MESSAGE
-          )
-        );
-        return { node: neutral, refs: null };
-      }
+            'activity-v2-session-item-field-error',
+            fieldState.error
+          );
+          error.id = errorId;
+          wrapper.append(label, input, error);
+          fields.appendChild(wrapper);
+          itemFields.set(fieldKey, { wrapper, input, error });
+        });
 
-      const derived = deriveStrengthState(
+      const noteId =
+        `activity-v2-session-item-${shellSequence}-${item.item_key}-note`;
+      const noteWrapper = makeElement(
+        document,
+        'div',
+        'activity-v2-session-item-field activity-v2-session-item-note-field'
+      );
+      noteWrapper.dataset.state = item.note === null ? 'empty' : 'valid';
+      const noteLabel = makeElement(
+        document,
+        'label',
+        '',
+        ITEM_FIELD_UI.note.label
+      );
+      noteLabel.htmlFor = noteId;
+      const note = makeElement(
+        document,
+        'textarea',
+        'activity-v2-session-item-note'
+      );
+      note.id = noteId;
+      note.rows = 3;
+      note.value = item.note || '';
+      note.maxLength = NOTE_LIMIT;
+      note.dataset.itemKey = item.item_key;
+      note.dataset.fieldKey = 'note';
+      note.setAttribute('maxlength', String(NOTE_LIMIT));
+      note.setAttribute('autocomplete', 'off');
+      note.disabled = closeGuardPromise !== null;
+      noteWrapper.append(noteLabel, note);
+      fields.appendChild(noteWrapper);
+      itemFields.set('note', { wrapper: noteWrapper, input: note, error: null });
+
+      const itemStatus = makeElement(
+        document,
+        'p',
+        'activity-v2-session-item-status',
+        derived.state === 'partial' ? PARTIAL_ITEM_MESSAGE : ''
+      );
+      editor.append(fields, itemStatus);
+      return { itemFields, itemStatus };
+    }
+
+    function createItemEditor(item, entry, catalogState) {
+      const itemDerived = deriveItemState(
         item,
         entry,
         catalogState.fieldDefinitions
       );
+      if (entry.tracking_mode !== 'strength_sets') {
+        const editor = makeElement(
+          document,
+          'section',
+          'activity-v2-session-editor activity-v2-session-item-editor'
+        );
+        editor.dataset.itemKey = item.item_key;
+        editor.dataset.state = itemDerived.state;
+        editor.setAttribute('aria-label', `Aktuelle Leistung für ${entry.label}`);
+        editor.appendChild(
+          makeElement(
+            document,
+            'h3',
+            'activity-v2-session-editor-title',
+            'Aktuelle Leistung'
+          )
+        );
+        const itemRefs = appendItemFields(
+          editor,
+          item,
+          entry,
+          itemDerived
+        );
+        return {
+          node: editor,
+          state: itemDerived.state,
+          refs: {
+            editor,
+            editorStatus: null,
+            setRows: null,
+            addSet: null,
+            ...itemRefs
+          }
+        };
+      }
+
+      const derived = itemDerived.strength;
       const editor = makeElement(
         document,
         'section',
@@ -1674,47 +1970,95 @@
       addSet.dataset.itemKey = item.item_key;
       addSet.disabled = item.sets.length >= SET_LIMIT || closeGuardPromise !== null;
       editor.append(setList, editorStatus, addSet);
+      const itemRefs = appendItemFields(editor, item, entry, itemDerived);
       return {
         node: editor,
-        refs: { editor, editorStatus, setRows, addSet }
+        state: itemDerived.state,
+        refs: { editor, editorStatus, setRows, addSet, ...itemRefs }
       };
     }
 
-    function patchEditorState(itemKey, restoreValues = false) {
+    function applyItemState(refs, item, entry, derived, restoreValues = false) {
+      if (!refs?.row || !refs.editor?.itemFields) {
+        fail('INVALID_DRAFT_STATE');
+      }
+      refs.row.dataset.state = derived.state;
+      if (entry.tracking_mode !== 'strength_sets') {
+        refs.editor.editor.dataset.state = derived.state;
+      }
+      refs.editor.itemStatus.textContent =
+        derived.state === 'partial' ? PARTIAL_ITEM_MESSAGE : '';
+      derived.fieldKeys
+        .filter((fieldKey) => fieldKey !== 'note')
+        .forEach((fieldKey) => {
+          const fieldRefs = refs.editor.itemFields.get(fieldKey);
+          const fieldState = derived.fields[fieldKey];
+          if (!fieldRefs || !fieldState) fail('INVALID_DRAFT_STATE');
+          fieldRefs.wrapper.dataset.state = fieldState.state;
+          fieldRefs.input.setAttribute(
+            'aria-invalid',
+            fieldState.state === 'invalid' ? 'true' : 'false'
+          );
+          fieldRefs.error.textContent = fieldState.error;
+          if (restoreValues) fieldRefs.input.value = item[fieldKey] || '';
+        });
+      const noteRefs = refs.editor.itemFields.get('note');
+      if (!noteRefs) fail('INVALID_DRAFT_STATE');
+      noteRefs.wrapper.dataset.state = item.note === null ? 'empty' : 'valid';
+      if (restoreValues) noteRefs.input.value = item.note || '';
+    }
+
+    function patchItemState(itemKey, restoreValues = false) {
       const nextState = readState(draft, semantics);
       const item = nextState.snapshot.items.find(
         (candidate) => candidate.item_key === itemKey
       );
       const entry = nextState.catalogState.byKey.get(itemKey);
       const refs = itemActionRefs.get(itemKey);
-      if (!item || entry?.tracking_mode !== 'strength_sets' || !refs?.editor) {
-        fail('INVALID_DRAFT_STATE');
-      }
-      const derived = deriveStrengthState(
+      if (!item || !entry || !refs?.editor) fail('INVALID_DRAFT_STATE');
+      const derived = deriveItemState(
         item,
         entry,
         nextState.catalogState.fieldDefinitions
       );
-      applyEditorState(refs.editor, item, derived, restoreValues);
+      if (entry.tracking_mode === 'strength_sets') {
+        applyEditorState(refs.editor, item, derived.strength, restoreValues);
+      }
+      applyItemState(refs, item, entry, derived, restoreValues);
       currentState = nextState;
       return nextState.snapshot;
     }
 
-    function syncSetControlsDisabled() {
+    function syncDraftControlsDisabled() {
+      const guarded = closeGuardPromise !== null;
+      ui.search.disabled = guarded;
+      ui.note.disabled = guarded;
+      ui.searchResults.querySelectorAll('button').forEach((button) => {
+        if (button.dataset.action === 'select-search-result') {
+          button.disabled = guarded;
+        }
+      });
       itemActionRefs.forEach((refs, itemKey) => {
-        if (!refs.editor) return;
         const item = currentState?.snapshot.items.find(
           (candidate) => candidate.item_key === itemKey
         );
         if (!item) return;
-        const guarded = closeGuardPromise !== null;
-        refs.editor.addSet.disabled = guarded || item.sets.length >= SET_LIMIT;
-        refs.editor.setRows.forEach((rowRefs) => {
-          rowRefs.fields.forEach(({ input }) => {
-            input.disabled = guarded;
-          });
-          rowRefs.removeSet.disabled = guarded || item.sets.length === 1;
+        refs.up.disabled = guarded || item.item_order === 1;
+        refs.down.disabled =
+          guarded || item.item_order === currentState.snapshot.items.length;
+        refs.remove.disabled = guarded;
+        refs.editor.itemFields.forEach(({ input }) => {
+          input.disabled = guarded;
         });
+        if (refs.editor.setRows) {
+          refs.editor.addSet.disabled = guarded || item.sets.length >= SET_LIMIT;
+          refs.editor.setRows.forEach((rowRefs) => {
+            rowRefs.fields.forEach(({ input }) => {
+              input.disabled = guarded;
+            });
+            rowRefs.removeSet.disabled = guarded || item.sets.length === 1;
+          });
+        }
       });
     }
 
@@ -1789,6 +2133,7 @@
           renderLookupRegion(history, item.item_key, lookupStates.get(item.item_key));
         }
         const editor = createItemEditor(item, entry, nextState.catalogState);
+        row.dataset.state = editor.state;
         row.append(identity);
         if (history) row.append(history);
         row.append(editor.node);
@@ -1815,6 +2160,7 @@
       currentState = nextState;
       itemActionRefs = nextActionRefs;
       renderSearchState();
+      syncDraftControlsDisabled();
       syncTimerScheduler();
       setStatus('');
       if (openState && closeGuardPromise === null) reconcileLookupDom();
@@ -1951,7 +2297,14 @@
     function handleKeydown(event) {
       if (!openState) return;
       const keyTarget = event.target || document.activeElement;
+      if (event.key === 'Escape' && closeGuardPromise) {
+        event.preventDefault();
+        event.stopPropagation?.();
+        controller.requestClose('escape');
+        return;
+      }
       if (event.key === 'ArrowDown' && keyTarget === ui.search) {
+        if (closeGuardPromise || ui.search.disabled) return;
         if (searchState.mode === 'closed' && ui.search.value !== '') runSearch();
         const firstResult = ui.searchResults.querySelector('button');
         if (searchState.mode === 'results' && firstResult) {
@@ -1961,6 +2314,7 @@
         return;
       }
       if (event.key === 'Enter' && searchState.mode === 'results') {
+        if (closeGuardPromise) return;
         const actionTarget = findActionButton(keyTarget);
         const selected =
           actionTarget?.dataset.action === 'select-search-result'
@@ -2038,6 +2392,7 @@
     }
 
     function selectSearchResult(itemKey) {
+      if (closeGuardPromise) return;
       const selected = searchState.entries.find((entry) => entry.key === itemKey);
       if (!selected) return;
       const alreadyIncluded = currentState?.snapshot.items.some(
@@ -2069,17 +2424,17 @@
         controller.requestClose('close_button');
         return;
       }
-      if (action === 'select-search-result') {
-        selectSearchResult(target.dataset.itemKey);
-        return;
-      }
       if (action === 'retry-lookup') {
         startLookup(target.dataset.itemKey, true);
         return;
       }
+      if (closeGuardPromise) return;
+      if (action === 'select-search-result') {
+        selectSearchResult(target.dataset.itemKey);
+        return;
+      }
       const itemKey = target.dataset.itemKey;
       if (action === 'add-set') {
-        if (closeGuardPromise) return;
         if (itemActionRefs.get(itemKey)?.editor?.addSet !== target) return;
         const item = currentState?.snapshot.items.find(
           (candidate) => candidate.item_key === itemKey
@@ -2096,7 +2451,6 @@
         return;
       }
       if (action === 'remove-set') {
-        if (closeGuardPromise) return;
         const item = currentState?.snapshot.items.find(
           (candidate) => candidate.item_key === itemKey
         );
@@ -2158,6 +2512,7 @@
 
     function handleInput(event) {
       if (event.target === ui.search) {
+        if (closeGuardPromise || ui.search.disabled) return;
         runSearch();
         return;
       }
@@ -2216,11 +2571,69 @@
           focusElement(setInput);
           return;
         }
-        patchEditorState(itemKey);
+        patchItemState(itemKey);
+        setStatus('');
+        return;
+      }
+      const itemInput = event.target;
+      const itemFieldKey = itemInput?.dataset?.fieldKey;
+      const expectedTag = itemFieldKey === 'note' ? 'TEXTAREA' : 'INPUT';
+      if (
+        itemInput?.nodeType === 1 &&
+        itemInput.tagName === expectedTag &&
+        ITEM_FIELD_KEYS.includes(itemFieldKey)
+      ) {
+        const itemKey = itemInput.dataset.itemKey;
+        const item = currentState?.snapshot.items.find(
+          (candidate) => candidate.item_key === itemKey
+        );
+        const entry = currentState?.catalogState.byKey.get(itemKey);
+        const fieldPolicy = entry?.fields[itemFieldKey];
+        if (
+          closeGuardPromise ||
+          itemInput.disabled ||
+          !item ||
+          !entry ||
+          (fieldPolicy !== 'required' && fieldPolicy !== 'optional') ||
+          itemActionRefs.get(itemKey)?.editor?.itemFields.get(itemFieldKey)
+            ?.input !== itemInput
+        ) {
+          return;
+        }
+        let nextSnapshot;
+        try {
+          nextSnapshot = draft.setItemField(
+            itemKey,
+            itemFieldKey,
+            itemInput.value
+          );
+        } catch {
+          const stableDerived = deriveItemState(
+            item,
+            entry,
+            currentState.catalogState.fieldDefinitions
+          );
+          applyItemState(
+            itemActionRefs.get(itemKey),
+            item,
+            entry,
+            stableDerived,
+            true
+          );
+          setStatus(
+            'Die Aktivitätseingabe konnte nicht aktualisiert werden.',
+            'error'
+          );
+          focusElement(itemInput);
+          return;
+        }
+        if (nextSnapshot === currentState.snapshot) return;
+        patchItemState(itemKey);
         setStatus('');
         return;
       }
       if (event.target !== ui.note) return;
+      if (closeGuardPromise || ui.note.disabled) return;
       try {
         draft.setNote(ui.note.value);
         const nextState = readState(draft, semantics);
@@ -2361,7 +2774,7 @@
         .finally(() => {
           if (closeGuardPromise === guard) {
             closeGuardPromise = null;
-            if (!destroyed && openState) syncSetControlsDisabled();
+            if (!destroyed && openState) syncDraftControlsDisabled();
             if (reconcileAfterGuard && !destroyed && openState) {
               reconcileLookupDom();
               restoreOpener(previousFocus);
@@ -2369,7 +2782,7 @@
           }
         });
       closeGuardPromise = guard;
-      syncSetControlsDisabled();
+      syncDraftControlsDisabled();
       return guard;
     }
 

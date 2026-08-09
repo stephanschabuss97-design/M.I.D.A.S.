@@ -2,24 +2,26 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-08
+Stand: 2026-08-09
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
-Katalogversion 2, R4-Suche/Last-Performance sowie der isolierte
-R5-Strength-Set-Editor sind bereitgestellt. R6 ist der nächste Rolling-Wave-
-Schritt; sichtbare Activity-Consumer verwenden weiterhin V1.
+Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-
+und R6-Duration-/Distance-Editoren sind bereitgestellt. R7 ist der nächste
+Rolling-Wave-Schritt; sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-08: `PASS`. R1, R2 und R3 bleiben unverändert
+Cross-Contract-Stand 2026-08-09: `PASS`. R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
 produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist DONE: die
 lokale Suche, lookup-spezifische Semantikinjektion und read-only historische
 Snapshotanzeige sind isoliert bewiesen. R5 ist DONE: Draftschema v2,
 policy-gesteuerte Strength-Sets, Parser, Validität, Lifecycle und responsive
-Harness-Fixtures sind ohne Save oder Produktverdrahtung bewiesen. R6 ist der
-nächste Rolling-Wave-Schritt; Recovery wird in R7 isoliert und in R8 intern auf
-Android-PWA bewiesen. Der C2-Nachreview hat zusätzlich den späteren
+Harness-Fixtures sind ohne Save oder Produktverdrahtung bewiesen. R6 ist DONE:
+Draftschema v3, itemweite Dauer, optionale Distanz und gemeinsame Itemnotiz
+sind für alle elf realen Non-Strength-Einträge isoliert bewiesen; Intensität
+bleibt bewusst ausgeschlossen. Recovery wird in R7 isoliert vorbereitet. Der
+C2-Nachreview hat zusätzlich den späteren
 Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
 Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
@@ -35,9 +37,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R5/C2 stellen nur die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R6/C2 stellen nur die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien- und Strength-Editor-Grundlage bereit.
+Historien-, Strength-, Duration- und Distance-Editor-Grundlage bereit.
 
 ---
 
@@ -551,8 +553,9 @@ Für `swimming` oder `cycling` liefert der Lookup:
 - optionale Distanz
 - optionale Notiz
 
-Eine mögliche Intensität gehört noch nicht zum R2-Speicher- oder
-Lookup-Vertrag. R6 entscheidet diese spätere Erweiterung.
+Eine Intensität gehört nicht zum R2-Speicher- oder Lookup-Vertrag. R6 hat O-6
+für die erste produktive Activity-V2-Ausbaustufe mit `keine Intensität`
+geschlossen; ein späterer neuer Vertrag wird nicht vorweggenommen.
 
 ### 6.3 Kein vorheriger Eintrag
 
@@ -667,9 +670,9 @@ Bewiesene Kernfelder:
 
 Der Label-Snapshot erhält die historische Lesbarkeit, falls sich die
 Repo-Bezeichnung später ändert.
-R2 darf die in R1 festgelegten Messfelder speichern, legt aber weder
-Intensitätssemantik noch deren Eingabeform vor R6 fest. Ein Intensitätsfeld ist
-im R2-Schema noch nicht vorhanden.
+R2 darf die in R1 festgelegten Messfelder speichern. Ein Intensitätsfeld ist im
+R2-Schema nicht vorhanden; R6 hat für die erste produktive Activity-V2-
+Ausbaustufe ausdrücklich keine Intensitätssemantik oder Eingabeform ergänzt.
 
 ### 8.3 `health_activity_item_sets`
 
@@ -1273,25 +1276,54 @@ Reales Ergebnis:
 Warum danach:
 
 Der komplexeste Item-Typ wurde auf dem bewiesenen Session- und
-Historienvertrag aufgebaut. R6 ergänzt als nächste eigene Roadmap Duration- und
-Cardio-Editoren, ohne den R5-Strength-Vertrag umzudeuten.
+Historienvertrag aufgebaut. R6 hat darauf Duration- und Distance-Editoren
+ergänzt, ohne den R5-Strength-Vertrag umzudeuten.
 
-### R6 - Duration and Cardio Editor
+### R6 - Duration and Distance Editor
+
+Status: `DONE` am 2026-08-09; vollständig isoliert, ohne Save, Supabase-Write,
+IndexedDB-Recovery oder produktive Aktivierung.
+
+Roadmap:
+
+- [R6 Duration and Distance Editor Roadmap](<archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
 
 Ziel:
 
-- Daueraktivitäten
-- optionale Distanz
-- optionale Notiz
-- Intensität nur nach expliziter O-6-Entscheidung; bei Aufnahme zuerst
-  versionierten Datenbank-, Commit-, Lookup- und Exportvertrag erweitern
-- gemischte Sessions
-- Hallenfußball, Schwimmen, Radfahren und ähnliche Aktivitäten
+- itemweite Dauer für alle `duration`- und `duration_distance`-Einträge
+- optionale Distanz ausschließlich für `duration_distance`
+- gemeinsame optionale Itemnotiz
+- gemischte Sessions ohne Umdeutung der R5-Strength-Sätze
+- keine Intensität in der ersten produktiven Activity-V2-Ausbaustufe
+
+Reales Ergebnis:
+
+- `midas.activity-session-draft.v3` besitzt pro Item exakt `item_key`,
+  `item_order`, `duration_min`, `distance_km`, `note` und `sets`; die elfte
+  Methode `setItemField` mutiert ausschließlich policy-erlaubte Itemfelder.
+- Vier reale `duration`-Entries verlangen Dauer und verbieten Distanz. Sieben
+  reale `duration_distance`-Entries verlangen Dauer und erlauben Distanz
+  optional. Beide Modi behalten `sets: []`.
+- `duration_min` folgt exakt `1..1440` als Integer; `distance_km` folgt
+  `0.01..1000` mit höchstens zwei Dezimalstellen. Itemnotizen bewahren bis 500
+  Codepoints Rohtext; `''` wird als `null` geführt.
+- Sessionuhr und manuelle Itemdauer bleiben unabhängige Wahrheiten. Die
+  read-only R4-Historie befüllt aktuelle Werte nie vor; R5-Strength-Sätze samt
+  `duration_sec` und `distance_m` bleiben unverändert.
+- Mixed Sessions, vollständige Snapshot-Rebuilds, abgeleitete Itemzustände,
+  Fokus-, Close-, Background- und Raceguards sowie responsive Darstellung sind
+  isoliert bewiesen.
+- `85/85` Activity-V2-Contracttests, Katalog `v2 / 80 / 47 / 58`, Syntax
+  `10/10`, statische Isolation, `12/12` Harnesskombinationen, ein 41-Sekunden-
+  Backgroundlauf und CodeRabbit mit `0 issues` sind grün.
+- Activity V1, `index.html`, R2-Commit/API, SQL/RPC/RLS/Grants, Supabase,
+  Netzwerk, Storage/IndexedDB und produktive Navigation blieben unverändert.
 
 Warum danach:
 
-Der zweite Item-Typ nutzt denselben Sessionpfad, ohne einen separaten
-Speicherweg zu erzeugen.
+Beide Tracking-Modusgruppen besitzen nun eine gemeinsame finale flüchtige
+Draftform. R7 kann Recovery gegen genau diesen v3-Vertrag bauen, ohne einen
+separaten Speicherweg für Non-Strength-Items zu erzeugen.
 
 ### R7 - IndexedDB Draft Recovery
 
@@ -1543,15 +1575,17 @@ Zuständig:
 
 ### O-6 Intensität
 
-Zu klären:
+Entschieden für die erste produktive Activity-V2-Ausbaustufe:
 
-- kontrollierte Skala
-- optionaler Freitext
-- in der ersten produktiven Activity-V2-Ausbaustufe ganz weglassen
+- keine Intensität
+- kein RPE, keine kontrollierte Skala und kein Intensitätsfreitext
+- kein Intensitätsfeld in Draft, UI, R2-Schema, Commit oder Lookup
+- eine mögliche spätere Einführung benötigt einen eigenen versionierten
+  Daten-, Commit-, Lookup-, Export- und UI-Vertrag
 
-Zuständig:
+Zuständig und Ergebnis:
 
-- R6 entscheidet diesen Feld- und UI-Vertrag.
+- R6 hat O-6 geschlossen, ohne Persistenz- oder Produktintegration vorzuziehen.
 
 ### O-7 Verifiziertes Studioinventar
 
@@ -1609,9 +1643,9 @@ Ziel:
 
 R1 hat ausschließlich O-1, O-2 und die für Semantik, Suche und spätere
 Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 ist durch R5
-entschieden und umgesetzt. O-4 ist für R3 entschieden; O-5 und O-6 bleiben bis
-zu ihrer zuständigen Roadmap bewusst offen und dürfen durch frühere
-Implementierung nicht vorweggenommen werden. O-7 hat keine stille
+entschieden und umgesetzt. O-4 ist für R3 entschieden; O-6 ist durch R6 mit
+`keine Intensität` für die erste produktive Ausbaustufe geschlossen. O-5 bleibt
+bis R8 bewusst offen und darf nicht vorweggenommen werden. O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
 umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R11-Gates offen
 und muss vor dem produktiven Cutover geschlossen sein.
@@ -1678,13 +1712,14 @@ mit freier Übungsauswahl, planunabhängiger Historie und eigener strukturierter
 Supabase-Datenhaltung.
 
 Die Session ist der gemeinsame Container. Jedes ausgewählte Item besitzt einen
-stabilen kanonischen Key und einen Tracking-Modus. Kraftübungen speichern
-benannte Satzdaten; Daueraktivitäten speichern passende Sessionwerte. Die
-Historie wird nach Key und nicht nach Trainingsplan gesucht. Unfertige Sessions
-bleiben als IndexedDB-Draft lokal. Abgeschlossene Sessions werden atomar in
-Supabase gespeichert. Arztbericht und Doctor View erhalten nur
-Zusammenfassungen; ein versionierter Activity-Export liefert die vollständigen
-Details für spätere Coaching-Analysen.
+stabilen kanonischen Key und einen Tracking-Modus. Kraftübungen verwenden
+benannte Satzdaten; Daueraktivitäten verwenden itemweite Dauer, optionale
+Distanz und Notiz. R6 bearbeitet diese Werte ausschließlich im flüchtigen
+Draft. Die Historie wird nach Key und nicht nach Trainingsplan gesucht. R7 soll
+unfertige Sessions als IndexedDB-Draft absichern; R8 soll abgeschlossene
+Sessions atomar in Supabase integrieren. Arztbericht und Doctor View erhalten
+nur Zusammenfassungen; ein versionierter Activity-Export liefert die
+vollständigen Details für spätere Coaching-Analysen.
 
 Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
 sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte

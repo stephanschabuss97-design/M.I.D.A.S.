@@ -8,9 +8,11 @@ const vm = require('node:vm');
 
 const draftPath = path.join(__dirname, 'session-draft.js');
 const semanticsPath = path.join(__dirname, 'semantics.js');
+const semanticsV2Path = path.join(__dirname, 'semantics-v2.js');
 const indexPath = path.resolve(__dirname, '../../../../..', 'index.html');
 const source = fs.readFileSync(draftPath, 'utf8');
 const semanticsSource = fs.readFileSync(semanticsPath, 'utf8');
+const semanticsV2Source = fs.readFileSync(semanticsV2Path, 'utf8');
 const SAFE_MESSAGE = 'The activity session draft operation could not be completed.';
 const UUIDS = [
   '00000000-0000-4000-8000-000000000001',
@@ -82,6 +84,9 @@ function strengthItem(itemKey, itemOrder, setCount = 3) {
   return {
     item_key: itemKey,
     item_order: itemOrder,
+    duration_min: null,
+    distance_km: null,
+    note: null,
     sets: Array.from({ length: setCount }, (_, index) => emptySet(index + 1))
   };
 }
@@ -211,10 +216,20 @@ test('create returns the exact pristine immutable draft with dynamic catalog dat
     'discard',
     'addSet',
     'removeSet',
-    'setSetField'
+    'setSetField',
+    'setItemField'
+  ]);
+  assert.deepEqual(Object.keys(snapshot), [
+    'draft_schema_version',
+    'request_id',
+    'catalog_version',
+    'revision',
+    'started_at',
+    'note',
+    'items'
   ]);
   assert.deepEqual(plain(snapshot), {
-    draft_schema_version: 'midas.activity-session-draft.v2',
+    draft_schema_version: 'midas.activity-session-draft.v3',
     request_id: UUIDS[0],
     catalog_version: 23,
     revision: 0,
@@ -306,6 +321,101 @@ test('all eight real R1 strength policies initialize and expose only allowed fie
       }
     }
   }
+  assertFrozenTree(controller.getSnapshot());
+});
+
+test('all eleven real catalog-v2 non-strength entries obey their item policies', () => {
+  const context = vm.createContext({});
+  vm.runInContext(semanticsSource, context, { filename: semanticsPath });
+  vm.runInContext(semanticsV2Source, context, { filename: semanticsV2Path });
+  vm.runInContext(source, context, { filename: draftPath });
+  const semantics = context.AppModules.activityV2.semanticsV2;
+  const entries = semantics.getCatalog().entries.filter(
+    (entry) =>
+      entry.status === 'active' && entry.tracking_mode !== 'strength_sets'
+  );
+  assert.deepEqual(
+    plain(entries.map((entry) => [entry.key, entry.tracking_mode])),
+    [
+      ['cross_trainer', 'duration'],
+      ['cycling', 'duration_distance'],
+      ['football', 'duration'],
+      ['hiking', 'duration_distance'],
+      ['jump_rope', 'duration'],
+      ['rowing', 'duration_distance'],
+      ['running', 'duration_distance'],
+      ['ski_erg', 'duration_distance'],
+      ['stair_climber', 'duration'],
+      ['swimming', 'duration_distance'],
+      ['walking', 'duration_distance']
+    ]
+  );
+
+  const controller = context.AppModules.activityV2.sessionDraft.create({
+    semantics,
+    now: () => 0,
+    createRequestId: () => UUIDS[0]
+  });
+  entries.forEach((entry) => controller.addItem(entry.key));
+
+  entries.forEach((entry, index) => {
+    const initialItem = controller.getSnapshot().items[index];
+    assert.deepEqual(Object.keys(initialItem), [
+      'item_key',
+      'item_order',
+      'duration_min',
+      'distance_km',
+      'note',
+      'sets'
+    ]);
+    assert.equal(entry.fields.duration_min, 'required');
+    assert.equal(entry.fields.note, 'optional');
+    [
+      'assistance_kg',
+      'distance_m',
+      'duration_sec',
+      'reps',
+      'weight_kg'
+    ].forEach((fieldKey) => {
+      assert.equal(entry.fields[fieldKey], 'forbidden');
+    });
+    assert.deepEqual(plain(initialItem), {
+      item_key: entry.key,
+      item_order: index + 1,
+      duration_min: null,
+      distance_km: null,
+      note: null,
+      sets: []
+    });
+
+    controller.setItemField(entry.key, 'duration_min', '1e2');
+    controller.setItemField(entry.key, 'note', `  ${entry.key}  `);
+    if (entry.tracking_mode === 'duration_distance') {
+      assert.equal(entry.fields.distance_km, 'optional');
+      controller.setItemField(entry.key, 'distance_km', '05,20');
+    } else {
+      assert.equal(entry.fields.distance_km, 'forbidden');
+      const before = controller.getSnapshot();
+      assertDraftError(
+        () => controller.setItemField(entry.key, 'distance_km', '5'),
+        'FORBIDDEN_ITEM_FIELD'
+      );
+      assert.equal(controller.getSnapshot(), before);
+    }
+  });
+
+  entries.forEach((entry) => {
+    const item = controller.getSnapshot().items.find(
+      (candidate) => candidate.item_key === entry.key
+    );
+    assert.equal(item.duration_min, '1e2');
+    assert.equal(item.note, `  ${entry.key}  `);
+    assert.equal(
+      item.distance_km,
+      entry.tracking_mode === 'duration_distance' ? '05,20' : null
+    );
+    assert.deepEqual(plain(item.sets), []);
+  });
   assertFrozenTree(controller.getSnapshot());
 });
 
@@ -446,6 +556,9 @@ test('catalog policy drives exact strength defaults and keeps non-strength sets 
   assert.deepEqual(plain(mixed.items[1]), {
     item_key: 'run_item',
     item_order: 2,
+    duration_min: null,
+    distance_km: null,
+    note: null,
     sets: []
   });
   assertFrozenTree(mixed.items[1]);
@@ -458,6 +571,77 @@ test('catalog policy drives exact strength defaults and keeps non-strength sets 
     'SETS_UNAVAILABLE'
   );
   assert.equal(controller.getSnapshot(), before);
+});
+
+test('item field mutations preserve raw text, canonical no-ops and error precedence', () => {
+  const { controller } = createController();
+  controller.addItem('run_item');
+  controller.addItem('beta_item');
+  const initial = controller.getSnapshot();
+  const runSets = initial.items[0].sets;
+
+  const duration = controller.setItemField('run_item', 'duration_min', '1e2');
+  assert.equal(duration.items[0].duration_min, '1e2');
+  assert.equal(duration.items[0].sets, runSets);
+  assert.equal(duration.revision, initial.revision + 1);
+  assert.equal(
+    controller.setItemField('run_item', 'duration_min', '1e2'),
+    duration
+  );
+
+  const distance = controller.setItemField('run_item', 'distance_km', '05,20');
+  assert.equal(distance.items[0].distance_km, '05,20');
+  const whitespaceNote = controller.setItemField('run_item', 'note', '  note  ');
+  assert.equal(whitespaceNote.items[0].note, '  note  ');
+  const unicodeNote = controller.setItemField(
+    'run_item',
+    'note',
+    '\u{1F600}'.repeat(500)
+  );
+  assert.equal(Array.from(unicodeNote.items[0].note).length, 500);
+  const unicode = controller.setItemField(
+    'run_item',
+    'duration_min',
+    '\u{1F600}'.repeat(32)
+  );
+  assert.equal(Array.from(unicode.items[0].duration_min).length, 32);
+  const cleared = controller.setItemField('run_item', 'duration_min', '');
+  assert.equal(cleared.items[0].duration_min, null);
+  assert.equal(controller.setItemField('run_item', 'duration_min', ''), cleared);
+
+  const cases = [
+    [() => controller.setItemField('Bad Key', 'note', 'x'), 'INVALID_ITEM_KEY'],
+    [
+      () => controller.setItemField('missing_item', 'note', 'x'),
+      'ITEM_NOT_FOUND'
+    ],
+    [
+      () => controller.setItemField('run_item', 'unknown', null),
+      'INVALID_ITEM_FIELD'
+    ],
+    [
+      () => controller.setItemField('beta_item', 'duration_min', null),
+      'FORBIDDEN_ITEM_FIELD'
+    ],
+    [
+      () => controller.setItemField('run_item', 'duration_min', null),
+      'INVALID_ITEM_VALUE'
+    ],
+    [
+      () => controller.setItemField('run_item', 'distance_km', '\u{1F600}'.repeat(33)),
+      'INVALID_ITEM_VALUE'
+    ],
+    [
+      () => controller.setItemField('run_item', 'note', '\u{1F600}'.repeat(501)),
+      'INVALID_ITEM_VALUE'
+    ]
+  ];
+  cases.forEach(([action, code]) => {
+    const before = controller.getSnapshot();
+    assertDraftError(action, code);
+    assert.equal(controller.getSnapshot(), before);
+  });
+  assertFrozenTree(controller.getSnapshot());
 });
 
 test('set field mutations preserve raw text, canonical no-ops and safe error precedence', () => {
@@ -539,13 +723,15 @@ test('set add and remove enforce 1..50, reindex exactly and keep values', () => 
   assert.equal(controller.getSnapshot(), full);
 });
 
-test('all snapshot rebuilds preserve complete set records until explicit removal', () => {
+test('all snapshot rebuilds preserve complete item and set records until removal', () => {
   const { controller } = createController();
   controller.addItem('alpha_item');
+  controller.setItemField('alpha_item', 'note', 'alpha note');
   controller.setSetField('alpha_item', 1, 'reps', '12');
   const alphaBeforeAdd = controller.getSnapshot().items[0];
   controller.addItem('beta_item');
   assert.equal(controller.getSnapshot().items[0], alphaBeforeAdd);
+  controller.setItemField('beta_item', 'note', 'beta note');
   controller.setSetField('beta_item', 2, 'reps', '9');
   controller.setSetField('beta_item', 2, 'weight_kg', '42,5');
 
@@ -562,14 +748,51 @@ test('all snapshot rebuilds preserve complete set records until explicit removal
   assert.equal(moved.items[0].sets[1].reps, '9');
   assert.equal(moved.items[0].sets[1].weight_kg, '42,5');
   assert.equal(moved.items[1].sets[0].reps, '12');
+  assert.equal(moved.items[0].note, 'beta note');
+  assert.equal(moved.items[1].note, 'alpha note');
+  assert.equal(moved.items[0].duration_min, null);
+  assert.equal(moved.items[0].distance_km, null);
 
   controller.addItem('run_item');
+  controller.setItemField('run_item', 'duration_min', '45');
+  controller.setItemField('run_item', 'distance_km', '7,25');
+  controller.setItemField('run_item', 'note', 'run note');
+  const runBeforeSetRebuild = controller.getSnapshot().items[2];
+  controller.addSet('beta_item');
+  assert.equal(controller.getSnapshot().items[2], runBeforeSetRebuild);
+  controller.removeSet('beta_item', 4);
+  assert.equal(controller.getSnapshot().items[2], runBeforeSetRebuild);
+  const runMoved = controller.moveItem('run_item', 1);
+  assert.deepEqual(plain(runMoved.items[0]), {
+    item_key: 'run_item',
+    item_order: 1,
+    duration_min: '45',
+    distance_km: '7,25',
+    note: 'run note',
+    sets: []
+  });
   controller.removeItem('run_item');
   assert.equal(controller.getSnapshot().items[0].sets[1].weight_kg, '42,5');
+  const freshRun = controller.addItem('run_item');
+  assert.deepEqual(
+    plain(freshRun.items.find((item) => item.item_key === 'run_item')),
+    {
+      item_key: 'run_item',
+      item_order: 3,
+      duration_min: null,
+      distance_km: null,
+      note: null,
+      sets: []
+    }
+  );
+  controller.removeItem('run_item');
   controller.removeItem('alpha_item');
   const readded = controller.addItem('alpha_item');
   const freshAlpha = readded.items.find((item) => item.item_key === 'alpha_item');
   assert.deepEqual(plain(freshAlpha.sets), [emptySet(1), emptySet(2), emptySet(3)]);
+  assert.equal(freshAlpha.note, null);
+  assert.equal(freshAlpha.duration_min, null);
+  assert.equal(freshAlpha.distance_km, null);
   assert.equal(readded.items[0].sets[1].weight_kg, '42,5');
 });
 
@@ -686,7 +909,7 @@ test('invalid first-start clock and revision ceiling leave the snapshot unchange
   assert.equal(controller.getSnapshot(), atLimit);
 });
 
-test('set mutations honor the revision ceiling after canonical no-op detection', () => {
+test('set and item mutations honor the revision ceiling after canonical no-ops', () => {
   function TestNumber(value) {
     return Number(value);
   }
@@ -704,8 +927,10 @@ test('set mutations honor the revision ceiling after canonical no-op detection',
   const atLimit = controller.setSetField('alpha_item', 1, 'reps', '12');
   assert.equal(atLimit.revision, 2);
   assert.equal(controller.setSetField('alpha_item', 1, 'reps', '12'), atLimit);
+  assert.equal(controller.setItemField('alpha_item', 'note', ''), atLimit);
   for (const action of [
     () => controller.setSetField('alpha_item', 1, 'reps', '13'),
+    () => controller.setItemField('alpha_item', 'note', 'note'),
     () => controller.addSet('alpha_item'),
     () => controller.removeSet('alpha_item', 1)
   ]) {
@@ -747,7 +972,7 @@ test('discard is atomic and replaces only request identity and captured catalog 
   const discarded = controller.discard();
   assert.equal(getIdReads(), 2);
   assert.deepEqual(plain(discarded), {
-    draft_schema_version: 'midas.activity-session-draft.v2',
+    draft_schema_version: 'midas.activity-session-draft.v3',
     request_id: UUIDS[1],
     catalog_version: 9,
     revision: 0,

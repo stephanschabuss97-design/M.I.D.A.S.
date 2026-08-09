@@ -392,3 +392,37 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   R1-/C2-Semantik oder Feldpolicies; R3-/R4-Draft-, Lifecycle- oder
   Historienvertrag; produktive Script-Reihenfolge oder neue Netzwerk-,
   Storage-, SQL-/RPC- oder Commitnutzung.
+
+### HCR-024 - Activity V2 R6 Duration-/Distance-Editor bleibt isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
+  und [R6 Roadmap](<../archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
+- Ebene: local-runtime + browser + static
+- Ausführung: automated + manual
+- Wirkung: Draft-mutierend nur in flüchtiger isolierter Runtime und Harness;
+  keine produktive Schreibwirkung
+- Voraussetzung: R1-R6-/C2-JS, CSS, Harness und Contract-Tests gehören zum
+  selben Repo-Stand; der Repo-Root wird für den Harness über einen lokalen
+  HTTP-Server angeboten.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  und `node tools/activity-catalog.mjs check` ausführen; die zehn Activity-V2-
+  JS-Dateien mit `node --check` prüfen. Danach die Harness-Routen `empty`,
+  `policies`, `history` und `all` bei 1440x900, 390x844 und 320x800 prüfen und
+  mindestens 30 Sekunden in einen Fremdtab wechseln.
+- Erwartung: 85/85 Contract-Fälle sind grün. Draftschema v3 besitzt exakt sechs
+  Itemkeys und elf Methoden; alle vier realen `duration`- und sieben
+  `duration_distance`-Policies sind fail-closed. Pflichtdauer `1..1440`,
+  optionale Distanz `0.01..1000` mit höchstens zwei Dezimalstellen und die
+  optionale 500-Codepoint-Itemnotiz bewahren Rohtext und erzeugen ausschließlich
+  abgeleitete ungespeicherte Itemzustände. R5-Strength-Sätze einschließlich
+  `duration_sec` und `distance_m` bleiben unverändert. Historie bleibt read-only
+  und befüllt den Draft nie vor; Sessionuhr und Itemdauer bleiben getrennt.
+  Mixed Sessions, Rebuilds, Fokus-, Close-, Background- und Raceguards sind
+  deterministisch. Die zwölf Fixture-/Viewportkombinationen bleiben ohne
+  horizontalen Overflow, 320px-Touchziele mindestens 44 Pixel hoch. Produktiver
+  Scriptload, Activity V1, `index.html`, Netzwerk, Storage/IndexedDB, SQL/RPC,
+  Intensität und `commitSession` bleiben unberührt.
+- Invalidiert durch: R6-Draft-/Shell-JS, Shell-CSS, Harness und Contracttests;
+  R1-/C2-Semantik oder Non-Strength-Feldpolicies; R3-R5-Draft-, Set-,
+  Lifecycle- oder Historienvertrag; produktive Script-Reihenfolge oder neue
+  Netzwerk-, Storage-, SQL-/RPC-, Intensitäts- oder Commitnutzung.
