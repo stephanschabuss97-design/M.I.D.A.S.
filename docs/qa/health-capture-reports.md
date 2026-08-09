@@ -426,3 +426,43 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   R1-/C2-Semantik oder Non-Strength-Feldpolicies; R3-R5-Draft-, Set-,
   Lifecycle- oder Historienvertrag; produktive Script-Reihenfolge oder neue
   Netzwerk-, Storage-, SQL-/RPC-, Intensitäts- oder Commitnutzung.
+
+### HCR-025 - Activity V2 R7 IndexedDB-Draft-Recovery bleibt isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R7 Roadmap](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
+  und [R7 Evidence](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
+- Ebene: local-runtime + disposable IndexedDB + browser + static
+- Ausführung: automated + manual
+- Wirkung: lokaler Write ausschließlich in der getrennten Activity-V2-
+  IndexedDB des isolierten Harness; keine produktive Schreibwirkung
+- Voraussetzung: R1-R7-/C2-JS, CSS, beide Harnesses und Contracttests gehören
+  zum selben Repo-Stand; der Repo-Root wird für den Recovery-Harness über einen
+  lokalen HTTP-Server angeboten. Keine echten Gesundheitsdaten verwenden.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  und `node tools/activity-catalog.mjs check` ausführen; alle zwölf Activity-
+  V2-JS-Dateien mit `node --check` prüfen. Danach
+  `session-recovery-harness.html` mit den kontrollierten Empty-, Recoverable-,
+  Malformed-, Unavailable-, Saving-, Lifecycle-, Degraded-, Conflict- und
+  Discard-Fixtures prüfen. Save -> Reload -> Continue sowie Discard ->
+  Tombstone -> Reload in realer IndexedDB ausführen; Desktop, 390x844 und
+  320x800 sowie Alertdialog, Fokus, Touchziele, Overflow und Konsole prüfen.
+- Erwartung: 119/119 Contract-Fälle, Katalog `v2 / 80 / 47 / 58` und Syntax
+  `12/12` sind grün. Draft v3 rehydriert exakt mit gespeicherter
+  `catalog_version`; die feste DB `midas_activity_v2_recovery` v1 enthält nur
+  Store `session_recovery` und Slot `active_session`. Vollständiger Token-/
+  Lease-CAS serialisiert höchstens einen Write und hält nur den neuesten
+  Pending-Snapshot. Save gilt erst nach Transaction Complete. Discard schreibt
+  einen tokenrotierten Generationstombstone; ein alter Tab kann den Draft nicht
+  wiederbeleben. Storage-/Discardfehler schließen die RAM-Session nicht.
+  Unknown, corrupt und nicht auflösbare Katalogstände bleiben fail-closed; es
+  gibt kein stilles Resume, Upgrade oder Delete. Der Recovery-Harness bleibt in
+  allen drei Viewports ohne horizontalen Overflow, Touchziele mindestens 44
+  Pixel hoch und die Browserkonsole frei von Fehlern. Activity V1,
+  `index.html`, `healthlog_db`, Service Worker, Netzwerk, Supabase, SQL/RPC/
+  RLS/Grants, `commitSession`, Android und Produktnavigation bleiben unverändert.
+- Invalidiert durch: R7-Draft-Restore, Recovery-/Shell-JS, Shell-CSS,
+  Recovery-Harness oder Contracttests; Semantik-/Katalogresolver; IDB-Name,
+  Version, Store, Slot, Envelope, CAS, Autosave, Lifecycle oder Discardvertrag;
+  produktive Script-Reihenfolge oder neue Netzwerk-, Supabase-, SQL-/RPC-,
+  Commit-, Service-Worker-, Android- oder Legacy-Storage-Nutzung.

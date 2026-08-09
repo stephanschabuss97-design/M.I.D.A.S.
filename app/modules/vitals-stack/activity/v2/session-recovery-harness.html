@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./session-shell.css?v=r7-s4-5">
+  <title>Activity V2 Recovery Harness</title>
+</head>
+<body class="activity-v2-recovery-harness">
+  <main class="activity-v2-recovery-stage" id="recovery-background">
+    <section class="activity-v2-recovery-card" aria-labelledby="recovery-title">
+      <p class="activity-v2-recovery-eyebrow">ISOLIERTER R7-HARNESS</p>
+      <h1 id="recovery-title" tabindex="-1">Lokale Recovery wird vorbereitet</h1>
+      <p id="recovery-message">Der lokale Zustand wird geprüft …</p>
+
+      <dl class="activity-v2-recovery-metadata" id="recovery-metadata" hidden>
+        <div>
+          <dt>Beginn</dt>
+          <dd id="recovery-started-at">–</dd>
+        </div>
+        <div>
+          <dt>Zuletzt lokal gesichert</dt>
+          <dd id="recovery-saved-at">–</dd>
+        </div>
+        <div>
+          <dt>Ausgewählte Einträge</dt>
+          <dd id="recovery-item-count">0</dd>
+        </div>
+      </dl>
+
+      <div class="activity-v2-recovery-actions" id="recovery-actions"></div>
+      <output
+        class="activity-v2-recovery-harness-status"
+        id="recovery-harness-status"
+        role="status"
+        aria-live="polite"
+      >Initialisierung läuft …</output>
+
+      <details class="activity-v2-recovery-fixtures">
+        <summary>Deterministische Browserfixtures</summary>
+        <nav aria-label="Recovery-Fixture">
+          <a href="./session-recovery-harness.html?fixture=live">Live / Reload</a>
+          <a href="./session-recovery-harness.html?fixture=empty">Empty</a>
+          <a href="./session-recovery-harness.html?fixture=recoverable">Recoverable</a>
+          <a href="./session-recovery-harness.html?fixture=malformed">Malformed</a>
+          <a href="./session-recovery-harness.html?fixture=unavailable">Unavailable</a>
+          <a href="./session-recovery-harness.html?fixture=saving">Saving</a>
+          <a href="./session-recovery-harness.html?fixture=lifecycle">Lifecycle</a>
+          <a href="./session-recovery-harness.html?fixture=degraded">Degraded</a>
+          <a href="./session-recovery-harness.html?fixture=conflict">Conflict</a>
+          <a href="./session-recovery-harness.html?fixture=discard">Discard / stale writer</a>
+        </nav>
+      </details>
+    </section>
+  </main>
+
+  <section
+    class="activity-v2-recovery-confirm"
+    id="recovery-confirm"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="recovery-confirm-title"
+    aria-describedby="recovery-confirm-message"
+    aria-hidden="true"
+    inert
+    hidden
+  >
+    <div class="activity-v2-recovery-confirm-card">
+      <h2 id="recovery-confirm-title">Lokale Session verwerfen?</h2>
+      <p id="recovery-confirm-message"></p>
+      <div class="activity-v2-recovery-actions">
+        <button id="recovery-confirm-cancel" type="button" data-tone="secondary">
+          Abbrechen
+        </button>
+        <button id="recovery-confirm-accept" type="button" data-tone="danger">
+          Verwerfen bestätigen
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    'use strict';
+    globalThis.AppModules = {
+      activity: { sentinel: 'activity-v1-unchanged' }
+    };
+  </script>
+  <script src="./semantics.js"></script>
+  <script src="./semantics-v2.js"></script>
+  <script src="./session-draft.js"></script>
+  <script src="./session-recovery.js"></script>
+  <script src="./session-shell.js"></script>
+  <script>
+    'use strict';
+
+    (function startActivityV2RecoveryHarness(root) {
+      const DATABASE_NAME = 'midas_activity_v2_recovery';
+      const DATABASE_VERSION = 1;
+      const STORE_NAME = 'session_recovery';
+      const SLOT_KEY = 'active_session';
+      const FIXTURES = Object.freeze([
+        'live',
+        'empty',
+        'recoverable',
+        'malformed',
+        'unavailable',
+        'saving',
+        'lifecycle',
+        'degraded',
+        'conflict',
+        'discard'
+      ]);
+      const UNAVAILABLE_HARNESS_RESULT = Object.freeze({ state: 'unavailable' });
+      const fixture =
+        new URLSearchParams(root.location.search).get('fixture') || 'live';
+      let recoveryApi = null;
+      let shellApi = null;
+      let semantics = null;
+      const background = document.getElementById('recovery-background');
+      const title = document.getElementById('recovery-title');
+      const message = document.getElementById('recovery-message');
+      const metadata = document.getElementById('recovery-metadata');
+      const startedAt = document.getElementById('recovery-started-at');
+      const savedAt = document.getElementById('recovery-saved-at');
+      const itemCount = document.getElementById('recovery-item-count');
+      const actions = document.getElementById('recovery-actions');
+      const harnessStatus = document.getElementById('recovery-harness-status');
+      const confirmPanel = document.getElementById('recovery-confirm');
+      const confirmMessage = document.getElementById('recovery-confirm-message');
+      const confirmCancel = document.getElementById('recovery-confirm-cancel');
+      const confirmAccept = document.getElementById('recovery-confirm-accept');
+      const dateTime = new Intl.DateTimeFormat('de-AT', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+      let controller = null;
+      let shell = null;
+      let unsubscribe = null;
+      let delayedWrite = null;
+      let discardProbeController = null;
+      let pendingConfirmation = null;
+
+      function resolveModuleFacade() {
+        const activityV2 = root.AppModules?.activityV2;
+        const nextRecoveryApi = activityV2?.sessionRecovery;
+        const nextShellApi = activityV2?.sessionShell;
+        const nextSemantics = activityV2?.semanticsV2;
+        if (
+          typeof nextRecoveryApi?.createIndexedDbStore !== 'function' ||
+          typeof nextRecoveryApi?.open !== 'function' ||
+          typeof nextShellApi?.mount !== 'function' ||
+          typeof nextSemantics?.getCatalog !== 'function' ||
+          typeof nextSemantics?.getEntryByKey !== 'function'
+        ) {
+          throw new Error('RECOVERY_MODULE_FACADE_MISSING');
+        }
+        recoveryApi = nextRecoveryApi;
+        shellApi = nextShellApi;
+        semantics = nextSemantics;
+      }
+
+      function setHarnessStatus(text, tone = '') {
+        harnessStatus.textContent = text;
+        if (tone) harnessStatus.dataset.tone = tone;
+        else delete harnessStatus.dataset.tone;
+      }
+
+      function getHarnessErrorCode(error) {
+        if (typeof error?.code === 'string' && error.code !== '') {
+          return error.code;
+        }
+        if (
+          typeof error?.message === 'string' &&
+          /^RECOVERY_[A-Z0-9_]+$/.test(error.message)
+        ) {
+          return error.message;
+        }
+        return 'HARNESS_INITIALIZATION_FAILED';
+      }
+
+      function requestConfirmation(prompt) {
+        if (pendingConfirmation) return pendingConfirmation.promise;
+        let resolveConfirmation;
+        const promise = new Promise((resolve) => {
+          resolveConfirmation = resolve;
+        });
+        const previousFocus = document.activeElement;
+        const backgroundRecords = Array.from(document.body.children)
+          .filter((element) => element !== confirmPanel && element.tagName !== 'SCRIPT')
+          .map((element) => ({
+            element,
+            wasInert: element.hasAttribute('inert'),
+            ariaHidden: element.getAttribute('aria-hidden')
+          }));
+        backgroundRecords.forEach(({ element }) => {
+          element.setAttribute('inert', '');
+          element.setAttribute('aria-hidden', 'true');
+        });
+        pendingConfirmation = {
+          promise,
+          resolve: resolveConfirmation,
+          previousFocus,
+          backgroundRecords
+        };
+        confirmMessage.textContent = prompt;
+        confirmPanel.hidden = false;
+        confirmPanel.removeAttribute('inert');
+        confirmPanel.setAttribute('aria-hidden', 'false');
+        confirmAccept.focus();
+        return promise;
+      }
+
+      function settleConfirmation(confirmed) {
+        if (!pendingConfirmation) return;
+        const current = pendingConfirmation;
+        pendingConfirmation = null;
+        confirmPanel.hidden = true;
+        confirmPanel.setAttribute('aria-hidden', 'true');
+        confirmPanel.setAttribute('inert', '');
+        current.backgroundRecords.forEach((record) => {
+          if (!record.wasInert) record.element.removeAttribute('inert');
+          if (record.ariaHidden === null) record.element.removeAttribute('aria-hidden');
+          else record.element.setAttribute('aria-hidden', record.ariaHidden);
+        });
+        current.resolve(confirmed === true);
+        if (confirmed !== true) current.previousFocus?.focus();
+        else if (!background.hasAttribute('inert')) title.focus();
+      }
+
+      function setGate(titleText, messageText, tone = '') {
+        title.textContent = titleText;
+        message.textContent = messageText;
+        if (tone) message.dataset.tone = tone;
+        else delete message.dataset.tone;
+      }
+
+      function makeAction(label, action, tone = '') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.dataset.action = action;
+        if (tone) button.dataset.tone = tone;
+        return button;
+      }
+
+      function formatTimestamp(value) {
+        if (value === null || value === undefined) return 'Nicht vorhanden';
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime())
+          ? 'Nicht vorhanden'
+          : dateTime.format(parsed);
+      }
+
+      function showMetadata(state) {
+        metadata.hidden = false;
+        startedAt.textContent = formatTimestamp(state.started_at);
+        savedAt.textContent = formatTimestamp(state.saved_at);
+        itemCount.textContent = String(state.item_count);
+      }
+
+      function clearMetadata() {
+        metadata.hidden = true;
+        startedAt.textContent = '–';
+        savedAt.textContent = '–';
+        itemCount.textContent = '0';
+      }
+
+      function renderCleanedState() {
+        document.body.dataset.recoveryState = 'cleaned';
+        actions.replaceChildren(
+          makeAction('Harness neu laden', 'reload-harness')
+        );
+        clearMetadata();
+        setGate(
+          'R7-Testdaten gelöscht',
+          'Die isolierte Activity-V2-Recovery-Datenbank wurde gezielt entfernt.'
+        );
+        setHarnessStatus('Nur die R7-Testdatenbank wurde gelöscht.', 'success');
+      }
+
+      function renderState(state) {
+        document.body.dataset.recoveryState = state.state;
+        document.body.dataset.fixture = fixture;
+        actions.replaceChildren();
+        clearMetadata();
+
+        if (state.state === 'empty') {
+          setGate(
+            'Lokale Recovery bereit',
+            'Es ist keine unvollständige lokale Session vorhanden.'
+          );
+          actions.append(makeAction('Neue Session starten', 'start'));
+        } else if (state.state === 'recoverable') {
+          setGate(
+            'Unvollständige Session gefunden',
+            'Du entscheidest bewusst, ob diese lokale Session fortgesetzt oder verworfen wird.'
+          );
+          showMetadata(state);
+          actions.append(
+            makeAction('Session fortsetzen', 'continue'),
+            makeAction('Session verwerfen', 'discard', 'danger')
+          );
+        } else if (state.state === 'blocked') {
+          setGate(
+            'Lokale Session nicht wiederherstellbar',
+            'Die lokale Session kann nicht sicher wiederhergestellt werden. Es wurde keine leere Ersatzsession gestartet.',
+            'error'
+          );
+          actions.append(
+            makeAction('Lokale Session verwerfen', 'discard-blocked', 'danger')
+          );
+        } else if (state.state === 'degraded' && controller.getDraft() === null) {
+          setGate(
+            'Lokale Wiederherstellung eingeschränkt',
+            'Lokale Wiederherstellung derzeit nicht garantiert. Eine neue RAM-Session bleibt möglich.',
+            'error'
+          );
+          actions.append(makeAction('Neue RAM-Session starten', 'start'));
+        } else if (state.state === 'destroyed') {
+          setGate(
+            'Lokale Session verworfen',
+            'Der persistente Tombstone wurde bestätigt. Der alte Controller ist beendet.'
+          );
+          setHarnessStatus(
+            'Lokale Session wurde persistent verworfen.',
+            'success'
+          );
+          actions.append(makeAction('Recovery neu laden', 'reopen'));
+        } else {
+          const stateCopy = {
+            active: 'Die Session ist im RAM aktiv und noch nicht lokal geschrieben.',
+            saving: 'Wird lokal gesichert …',
+            saved: 'Lokal gesichert',
+            degraded: 'Lokale Wiederherstellung derzeit nicht garantiert.',
+            conflict:
+              'Die Session wurde in einem anderen Tab verändert. Bitte neu laden, bevor du sie lokal weiter sicherst oder verwirfst.',
+            discarding: 'Lokale Session wird verworfen …'
+          }[state.state] || 'Recoveryzustand wird verarbeitet.';
+          setGate(
+            state.state === 'conflict' ? 'Lokaler Konflikt' : 'Aktive lokale Session',
+            stateCopy,
+            ['degraded', 'conflict'].includes(state.state) ? 'error' : ''
+          );
+          if (controller.getDraft()) {
+            actions.append(makeAction('Session anzeigen', 'show-session'));
+          }
+          if (state.state === 'saving' && delayedWrite) {
+            actions.append(makeAction('Test-Write freigeben', 'release-write'));
+          }
+          if (fixture === 'lifecycle' && controller.getDraft()) {
+            actions.append(makeAction('Pagehide-Flush auslösen', 'lifecycle-flush'));
+          }
+        }
+        actions.append(
+          makeAction('R7-Testdaten löschen', 'cleanup', 'secondary')
+        );
+      }
+
+      function teardownRuntime() {
+        try {
+          shell?.destroy();
+        } catch {
+          // Harness cleanup must continue.
+        }
+        shell = null;
+        try {
+          unsubscribe?.();
+        } catch {
+          // Harness cleanup must continue.
+        }
+        unsubscribe = null;
+        try {
+          controller?.destroy();
+        } catch {
+          // Harness cleanup must continue.
+        }
+        controller = null;
+        try {
+          discardProbeController?.destroy();
+        } catch {
+          // Harness cleanup must continue.
+        }
+        discardProbeController = null;
+        const pendingWrite = delayedWrite;
+        delayedWrite = null;
+        pendingWrite?.reject(new Error('RECOVERY_FIXTURE_TEARDOWN'));
+        settleConfirmation(false);
+      }
+
+      function deleteRecoveryDatabase() {
+        teardownRuntime();
+        return new Promise((resolve, reject) => {
+          const request = root.indexedDB.deleteDatabase(DATABASE_NAME);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(new Error('RECOVERY_CLEANUP_FAILED'));
+          request.onblocked = () => reject(new Error('RECOVERY_CLEANUP_BLOCKED'));
+        });
+      }
+
+      function openRawDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = root.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+          request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+              database.createObjectStore(STORE_NAME, { keyPath: 'slot_key' });
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(new Error('RECOVERY_FIXTURE_OPEN_FAILED'));
+          request.onblocked = () => reject(new Error('RECOVERY_FIXTURE_OPEN_BLOCKED'));
+        });
+      }
+
+      async function writeMalformedRecord() {
+        const database = await openRawDatabase();
+        try {
+          await new Promise((resolve, reject) => {
+            const transaction = database.transaction(STORE_NAME, 'readwrite');
+            transaction.objectStore(STORE_NAME).put({
+              slot_key: SLOT_KEY,
+              recovery_schema_version: 17
+            });
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(new Error('RECOVERY_FIXTURE_WRITE_FAILED'));
+            transaction.onabort = () => reject(new Error('RECOVERY_FIXTURE_WRITE_ABORTED'));
+          });
+        } finally {
+          database.close();
+        }
+      }
+
+      function createUnavailableStore() {
+        const fail = () => Promise.reject(new Error('RECOVERY_FIXTURE_UNAVAILABLE'));
+        return Object.freeze({
+          read: fail,
+          save: fail,
+          discard: fail,
+          close() {}
+        });
+      }
+
+      function createDelayedStore() {
+        const base = recoveryApi.createIndexedDbStore();
+        return Object.freeze({
+          read: () => base.read(),
+          save(options) {
+            return new Promise((resolve, reject) => {
+              if (delayedWrite) {
+                reject(new Error('RECOVERY_FIXTURE_WRITE_OVERLAP'));
+                return;
+              }
+              delayedWrite = Object.freeze({
+                release: () => base.save(options).then(resolve, reject),
+                reject
+              });
+              renderState(controller.getState());
+            });
+          },
+          discard: (options) => base.discard(options),
+          close: () => base.close()
+        });
+      }
+
+      function releaseDelayedWrite() {
+        const pendingWrite = delayedWrite;
+        delayedWrite = null;
+        pendingWrite?.release();
+      }
+
+      async function openRecovery(
+        storage = recoveryApi.createIndexedDbStore(),
+        options = {}
+      ) {
+        controller = await recoveryApi.open({ storage, semantics, ...options });
+        unsubscribe = controller.subscribe(renderState);
+        return controller;
+      }
+
+      function mountShell(draft) {
+        if (shell) {
+          if (!shell.isOpen()) shell.open({ opener: actions.querySelector('button') });
+          return;
+        }
+        shell = shellApi.mount({
+          host: document.body,
+          draft,
+          recovery: controller,
+          semantics,
+          confirmDiscard: (context) => requestConfirmation(context.message)
+        });
+        shell.open({ opener: title });
+      }
+
+      async function seedRecoverableDraft() {
+        const seed = await recoveryApi.open({
+          storage: recoveryApi.createIndexedDbStore(),
+          semantics
+        });
+        const draft = seed.startNew();
+        draft.addItem('running');
+        await seed.flush();
+        seed.destroy();
+      }
+
+      async function prepareConflictFixture() {
+        await seedRecoverableDraft();
+        const first = await recoveryApi.open({
+          storage: recoveryApi.createIndexedDbStore(),
+          semantics
+        });
+        await openRecovery();
+        const firstDraft = first.continueSession();
+        const secondDraft = controller.continueSession();
+        firstDraft.addItem('cross_trainer');
+        await first.flush();
+        secondDraft.addItem('rowing');
+        await controller.flush();
+        first.destroy();
+      }
+
+      async function prepareDiscardFixture() {
+        await seedRecoverableDraft();
+        discardProbeController = await recoveryApi.open({
+          storage: recoveryApi.createIndexedDbStore(),
+          semantics
+        });
+        await openRecovery();
+      }
+
+      async function verifyStaleWriterFence() {
+        const staleDraft = discardProbeController.continueSession();
+        staleDraft.addItem('cross_trainer');
+        await discardProbeController.flush();
+        const staleState = discardProbeController.getState();
+        const probeStore = recoveryApi.createIndexedDbStore();
+        let observation;
+        try {
+          observation = await probeStore.read();
+        } finally {
+          probeStore.close();
+        }
+        const tombstoneConfirmed =
+          observation.kind === 'record' && observation.value.draft === null;
+        const fenced = staleState.state === 'conflict' && tombstoneConfirmed;
+        setHarnessStatus(
+          fenced
+            ? 'Discard bestätigt: Tombstone vorhanden, alter Writer abgewehrt.'
+            : 'Discard-Fixture konnte die erwartete Postcondition nicht bestätigen.',
+          fenced ? 'success' : 'error'
+        );
+        harnessStatus.dataset.discardProbe = fenced ? 'pass' : 'fail';
+        discardProbeController.destroy();
+        discardProbeController = null;
+      }
+
+      async function reopenAfterDiscard() {
+        try {
+          unsubscribe?.();
+        } catch {
+          // Controller is already terminal.
+        }
+        unsubscribe = null;
+        controller = null;
+        await openRecovery();
+      }
+
+      async function handleAction(event) {
+        const action = event.target?.dataset?.action;
+        if (!action) return;
+        const buttons = actions.querySelectorAll('button');
+        buttons.forEach((button) => {
+          button.disabled = true;
+        });
+        try {
+          if (action === 'start') {
+            mountShell(controller.startNew());
+          } else if (action === 'continue') {
+            mountShell(controller.continueSession());
+          } else if (action === 'show-session') {
+            mountShell(controller.getDraft());
+          } else if (action === 'release-write') {
+            releaseDelayedWrite();
+            await controller.flush();
+          } else if (action === 'lifecycle-flush') {
+            root.dispatchEvent(new Event('pagehide'));
+            await controller.flush();
+            setHarnessStatus('Pagehide-Flush wurde bestmöglich verarbeitet.', 'success');
+          } else if (action === 'discard' || action === 'discard-blocked') {
+            const confirmed = await requestConfirmation(
+              action === 'discard-blocked'
+                ? 'Lokale nicht wiederherstellbare Session wirklich verwerfen?'
+                : 'Lokale Session wirklich verwerfen?'
+            );
+            if (confirmed !== true) {
+              setHarnessStatus('Lokale Session wurde nicht verworfen.', 'notice');
+              renderState(controller.getState());
+              actions.querySelector(`[data-action="${action}"]`)?.focus();
+              return;
+            }
+            await controller.discard();
+            if (discardProbeController) await verifyStaleWriterFence();
+            else {
+              setHarnessStatus(
+                'Lokale Session wurde persistent verworfen.',
+                'success'
+              );
+            }
+          } else if (action === 'reopen') {
+            await reopenAfterDiscard();
+          } else if (action === 'cleanup') {
+            await deleteRecoveryDatabase();
+            renderCleanedState();
+          } else if (action === 'reload-harness') {
+            root.location.reload();
+          }
+        } catch {
+          setHarnessStatus(
+            'Die Recovery-Aktion konnte nicht sicher abgeschlossen werden.',
+            'error'
+          );
+          if (controller) renderState(controller.getState());
+        } finally {
+          actions.querySelectorAll('button').forEach((button) => {
+            button.disabled = false;
+          });
+        }
+      }
+
+      async function inspectSlot() {
+        const store = recoveryApi.createIndexedDbStore();
+        try {
+          const observation = await store.read();
+          if (observation.kind === 'missing') {
+            return Object.freeze({ kind: 'missing', has_payload: false });
+          }
+          const value = observation.value;
+          return Object.freeze({
+            kind: value.draft === null ? 'tombstone' : 'active',
+            has_payload: value.draft !== null,
+            slot_generation: value.slot_generation,
+            write_sequence: value.write_sequence
+          });
+        } finally {
+          store.close();
+        }
+      }
+
+      async function initialize() {
+        resolveModuleFacade();
+        if (!FIXTURES.includes(fixture)) {
+          throw new Error('RECOVERY_FIXTURE_INVALID');
+        }
+        setHarnessStatus(`Fixture ${fixture} wird vorbereitet …`);
+        if (fixture !== 'live') await deleteRecoveryDatabase();
+
+        if (fixture === 'recoverable') {
+          await seedRecoverableDraft();
+          await openRecovery();
+        } else if (fixture === 'malformed') {
+          await writeMalformedRecord();
+          await openRecovery();
+        } else if (fixture === 'unavailable') {
+          await openRecovery(createUnavailableStore());
+        } else if (fixture === 'saving') {
+          await openRecovery(createDelayedStore());
+          const draft = controller.startNew();
+          draft.addItem('running');
+        } else if (fixture === 'lifecycle') {
+          await openRecovery(recoveryApi.createIndexedDbStore(), {
+            enqueue() {}
+          });
+          const draft = controller.startNew();
+          draft.addItem('running');
+        } else if (fixture === 'degraded') {
+          await openRecovery(createUnavailableStore());
+          mountShell(controller.startNew());
+        } else if (fixture === 'conflict') {
+          await prepareConflictFixture();
+        } else if (fixture === 'discard') {
+          await prepareDiscardFixture();
+        } else {
+          await openRecovery();
+        }
+        if (fixture !== 'degraded') {
+          setHarnessStatus(`Fixture ${fixture} bereit.`, 'success');
+        }
+      }
+
+      actions.addEventListener('click', handleAction);
+      confirmCancel.addEventListener('click', () => settleConfirmation(false));
+      confirmAccept.addEventListener('click', () => settleConfirmation(true));
+      confirmPanel.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          settleConfirmation(false);
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        event.preventDefault();
+        event.stopPropagation();
+        const target =
+          event.shiftKey && document.activeElement === confirmCancel
+            ? confirmAccept
+            : !event.shiftKey && document.activeElement === confirmAccept
+              ? confirmCancel
+              : event.shiftKey
+                ? confirmCancel
+                : confirmAccept;
+        target.focus();
+      });
+      root.ActivityV2RecoveryHarness = Object.freeze({
+        cleanup: async () => {
+          await deleteRecoveryDatabase();
+          renderCleanedState();
+          return Object.freeze({ state: 'cleaned' });
+        },
+        flush: async () => {
+          if (!controller) return UNAVAILABLE_HARNESS_RESULT;
+          return controller.flush();
+        },
+        getSummary: () => Object.freeze({
+          fixture,
+          state: controller?.getState().state || 'initializing',
+          reason: controller?.getState().reason || null,
+          shell_open: shell?.isOpen() || false,
+          title: title.textContent,
+          status: harnessStatus.textContent,
+          discard_probe: harnessStatus.dataset.discardProbe || null
+        }),
+        inspectSlot,
+        releaseWrite: async () => {
+          releaseDelayedWrite();
+          if (!controller) return UNAVAILABLE_HARNESS_RESULT;
+          return controller.flush();
+        },
+        triggerPagehideFlush: async () => {
+          root.dispatchEvent(new Event('pagehide'));
+          if (!controller) return UNAVAILABLE_HARNESS_RESULT;
+          return controller.flush();
+        }
+      });
+
+      initialize().catch((error) => {
+        document.body.dataset.recoveryState = 'harness-error';
+        document.body.dataset.harnessError = getHarnessErrorCode(error);
+        setGate(
+          'Recovery-Harness nicht verfügbar',
+          'Die isolierte Browserfixture konnte nicht sicher initialisiert werden.',
+          'error'
+        );
+        setHarnessStatus('Initialisierung fehlgeschlagen.', 'error');
+      });
+    })(globalThis);
+  </script>
+</body>
+</html>

@@ -6,9 +6,10 @@ Stand: 2026-08-09
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
-Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-
-und R6-Duration-/Distance-Editoren sind bereitgestellt. R7 ist der nächste
-Rolling-Wave-Schritt; sichtbare Activity-Consumer verwenden weiterhin V1.
+Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-,
+R6-Duration-/Distance- und R7-Recovery-Bausteine sind bereitgestellt. R8 ist
+das nächste Rolling-Wave-Gate; sichtbare Activity-Consumer verwenden weiterhin
+V1.
 
 Cross-Contract-Stand 2026-08-09: `PASS`. R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
@@ -20,14 +21,17 @@ policy-gesteuerte Strength-Sets, Parser, Validität, Lifecycle und responsive
 Harness-Fixtures sind ohne Save oder Produktverdrahtung bewiesen. R6 ist DONE:
 Draftschema v3, itemweite Dauer, optionale Distanz und gemeinsame Itemnotiz
 sind für alle elf realen Non-Strength-Einträge isoliert bewiesen; Intensität
-bleibt bewusst ausgeschlossen. Recovery wird in R7 isoliert vorbereitet. Der
+bleibt bewusst ausgeschlossen. R7 ist DONE: Der unveränderte Draft v3 wird in
+einer getrennten Activity-V2-IndexedDB mit vollständigem Token-/Lease-CAS,
+serialisiertem Autosave, bewusstem Restore-Gate und Generationstombstone
+isoliert abgesichert. Der
 C2-Nachreview hat zusätzlich den späteren
 Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
 Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
 Schreibpfad bleibt dabei unverändert. R7 bindet Recovery an die gespeicherte
 Draft-Katalogversion, R8 entscheidet die Commit-Kompatibilität zwischen
-bestehenden Katalogversionen und R11 beweist die produktive
+bestehenden Katalogversionen und R12 beweist die produktive
 Aktivierungsreihenfolge einschließlich gecachter PWA-Clients.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
@@ -37,9 +41,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R6/C2 stellen nur die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R7/C2 stellen nur die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Strength-, Duration- und Distance-Editor-Grundlage bereit.
+Historien-, Editor- und lokale Recovery-Grundlage bereit.
 
 ---
 
@@ -288,7 +292,8 @@ verändert werden. Eine echte Kataloglücke wird zuerst zu Hause über den
 kontrollierten Katalogpflegeweg geschlossen und danach in einer neu erzeugten
 Vorlage verwendet.
 
-Der minimale maschinenlesbare Vertrag wird erst in R13 endgültig eingefroren.
+Der minimale maschinenlesbare Vorlagenvertrag wird erst in R13 endgültig
+eingefroren.
 Als Ausgangspunkt gilt ein Schema wie
 `midas.activity-session-template.v1` mit `schema_version`,
 `catalog_version`, einem Anzeigenamen und geordneten `items`. R13 benötigt in
@@ -514,7 +519,7 @@ C2 ist dadurch noch nicht gefährdet, weil kein produktiver Activity-V2-
 Consumer schreibt. Vor einer späteren Katalogversion bindet R7 einen
 wiederhergestellten Draft an seinen gespeicherten Katalogsnapshot und R8
 entscheidet, welche bereits vorhandenen unveränderlichen Versionen während
-eines Rollouts weiter commitfähig bleiben. R11 beweist anschließend
+eines Rollouts weiter commitfähig bleiben. R12 beweist anschließend
 Katalogauswahl, Aktivierungsreihenfolge und das Verhalten gecachter
 PWA-Clients. Bis diese Gates geschlossen sind, wird keine weitere höchste
 Katalogversion beiläufig produktiv eingefügt.
@@ -583,7 +588,7 @@ Reclaim wird in R7 zunächst isoliert implementiert und bewiesen. R8 übernimmt
 danach dieselbe Recovery in die interne Produktintegration und führt den
 Android-PWA-Smoke aus. Activity V2 wird nicht für echte Sessions verwendet,
 bevor beide Grenzen grün sind; die produktive Aktivierung bleibt zusätzlich
-bis R11 gesperrt. R3 darf das Risiko diagnostisch sichtbar machen, aber keine
+bis R12 gesperrt. R3 darf das Risiko diagnostisch sichtbar machen, aber keine
 halbe IndexedDB-Lösung vorwegnehmen.
 
 Der vollständig ausgebaute Draft ab R7 enthält:
@@ -598,8 +603,11 @@ Der vollständig ausgebaute Draft ab R7 enthält:
 - eingegebene Sätze oder Aktivitätswerte
 - aus der Feldpolicy abgeleiteter Leer-, Teil- oder Vollständigstatus der
   Satzzeilen; kein separates Abschlussfeld und kein Satzzeitpunkt
-- letzten Autosave-Zeitpunkt
 - Draft-Schema-Version
+
+Der letzte erfolgreiche Autosave-Zeitpunkt ist kein fachliches Draftfeld und
+erzwingt deshalb keine Draft-v4-Version. Er gehört ausschließlich in den
+versionierten Recovery-Envelope neben den unveränderten vollständigen Draft v3.
 
 IndexedDB dient ausschließlich:
 
@@ -609,12 +617,67 @@ IndexedDB dient ausschließlich:
 
 IndexedDB ist weder historische Wahrheit noch primäre Analysequelle.
 
+Für R7 gilt folgender Recovery-Vertrag:
+
+- Activity V2 erhält eine getrennte IndexedDB-Grenze. R7 erhöht weder die
+  Version der produktiven `healthlog_db` noch verändert es deren Stores oder
+  Bootvertrag.
+- MIDAS hält als Single-User-App genau einen logischen Slot pro lokalem
+  Browserprofil und Origin für eine aktive Activity-V2-Session. Desktop,
+  Android-PWA, ein anderes Browserprofil oder gelöschte Site-Daten teilen
+  diesen Slot nicht. Es entsteht weder Cloud-Sync noch ein Draftarchiv oder
+  unbegrenztes lokales Wachstum.
+- Der gespeicherte Datensatz verwendet einen eigenen versionierten Recovery-
+  Envelope und enthält den vollständigen Draft v3 sowie mindestens
+  `slot_generation`, eine monotone lokale Schreibsequenz, `request_id`,
+  persistierte `revision` und den letzten erfolgreichen Speicherzeitpunkt.
+- Gespeichert werden nur fachlich veränderte Drafts. Ein vollständig leerer,
+  unberührter Startzustand erzeugt keinen wiederherstellbaren Datensatz.
+- Erfolgreiche Draftmutationen stoßen ein serialisiertes, zusammenfassbares
+  Autosave an. Es gibt höchstens einen aktiven Schreibpfad. Ein Write darf nur
+  auf der zuvor beobachteten Slotgeneration und Schreibsequenz aufsetzen;
+  `request_id` und persistierte `revision` müssen ebenfalls zum erwarteten
+  Branch passen. Eine lediglich höhere lokale Revision gewinnt nicht, weil
+  zwei Tabs denselben Request unabhängig verzweigen können.
+- Beim Wechsel in den Hintergrund und bei `pagehide` wird ein ausstehender
+  Snapshot bestmöglich sofort geschrieben. Die UI darf dabei nicht auf einen
+  langen Netzwerk- oder Speicherablauf warten.
+- Eine andere `request_id`, eine ältere Revision oder ein noch laufender Write
+  nach bewusstem Verwerfen darf den aktiven Draft niemals still überschreiben
+  oder wiederauferstehen lassen.
+- Bewusstes Verwerfen invalidiert die beobachtete Slotgeneration atomar und
+  entfernt den Draftinhalt. Ein kleiner leerer Generationstombstone darf als
+  Konfliktschutz bestehen bleiben; er ist weder ein Draft noch Historie. Kann
+  diese Invalidierung nicht bestätigt werden, bleibt die Session geöffnet und
+  wird nicht als verworfen behauptet.
+- Nach bestätigtem Tombstone wird der verworfene Recoverycontroller terminal
+  beendet und nicht erneut verwendet. Eine spätere neue Session erhält einen
+  frischen Draft und Controller; ihr Erfolg hängt nicht von einem zweiten,
+  potenziell fehlschlagenden Reset des alten RAM-Drafts ab.
+- Recovery verwendet die im Draft gespeicherte `catalog_version`. Sie darf
+  weder still auf die aktuell höchste Version angehoben noch allein wegen
+  ihres Alters verworfen werden.
+- Unbekannte Recovery-/Draftschemata, beschädigte Datensätze oder unauflösbare
+  Katalogversionen werden nicht still migriert oder gelöscht. MIDAS zeigt
+  einen verständlichen, fail-closed Zustand und erlaubt erst danach bewusstes
+  Verwerfen.
+- Quota-, IndexedDB- und Schreibfehler beenden die In-Memory-Session nicht.
+  MIDAS zeigt sichtbar, dass die lokale Wiederherstellung derzeit nicht
+  garantiert ist, und versucht bei einer späteren Mutation erneut zu sichern.
+- Ein aktiver Draft besitzt kein automatisches Ablaufdatum. Eine ungewöhnlich
+  lange verstrichene Sessionzeit wird beim expliziten Fortsetzen sichtbar,
+  aber nicht automatisch korrigiert oder gelöscht.
+
 Beim Modulstart mit vorhandenem Draft werden genau diese Optionen angeboten:
 
 - Session fortsetzen
 - Session verwerfen
 
-Ein Draft wird erst nach bestätigtem erfolgreichem Supabase-Commit entfernt.
+R7 entfernt den aktiven Recovery-Draft nur nach bewusstem, atomar bestätigtem
+Verwerfen; der Generationstombstone darf zum Schutz vor stale Writes bestehen
+bleiben. R8 ergänzt die zweite zulässige Löschgrenze: erst nach einem
+bestätigten erfolgreichen Supabase-Commit. Ein fehlgeschlagener oder unklarer
+Commit behält den Draft.
 
 ---
 
@@ -1007,7 +1070,7 @@ ersetzt nicht die ausführlichen Arbeitsverträge der einzelnen Roadmaps.
 - Die Folgeroadmap wird erst aus dem bewiesenen Abschlussstand ihrer
   Vorgängerin abgeleitet. Maximal eine Roadmap darf als grober Ausblick
   vorbereitet werden.
-- Die R1-R12-Beschreibungen bleiben bis dahin Zielkorridore. Sie dürfen keine
+- Die R1-R14-Beschreibungen bleiben bis dahin Zielkorridore. Sie dürfen keine
   noch unbewiesenen Tabellen-, API-, UI- oder Migrationsdetails erzwingen.
 - Jede Roadmap erhält gemäß `docs/templates/` einen eigenen
   Ausführungs-Chat, eine vollständige Startkarte und einen Fresh-Chat-Test.
@@ -1019,6 +1082,39 @@ ersetzt nicht die ausführlichen Arbeitsverträge der einzelnen Roadmaps.
   abgeschlossene Vorgänger-Roadmap, aktuelle Module Overviews und der reale
   Code-/Datenstand. Der lange Denkraum ist keine zusätzliche
   Ausführungsvoraussetzung.
+
+### 18.2 Rebaseline nach R6
+
+Die Reihenfolge ab R7 wurde am 2026-08-09 nach dem bewiesenen R6-Abschluss
+erneut gegen Recovery-, Commit-, Consumer- und Coaching-Verträge geprüft.
+
+- Die bisherige R8 wurde wegen unterschiedlicher Risiko- und Testgrenzen in
+  R8 `Core Commit and Android Recovery Integration` und R9 `Session History,
+  Detail, Correction and Deletion` geteilt.
+- Die bisherige R9 wird R10 `Completed Activity Coaching Export V1`.
+- Die bisherige R10 wird R11 `Doctor View and Report Integration`.
+- Die bisherige R11 wird R12 `Protein Target, Trendpilot, Legacy
+  Compatibility and Product Cutover`.
+- Der vorbereitete Sessionimport bleibt als R13 bestehen, wird aber eindeutig
+  als `Prepared Session Template Import V1` vom R10-Ist-Datenexport getrennt.
+- Die bisherige R12 wird als optionale R14 `Retention and Legacy Cleanup` ans
+  Ende verschoben und blockiert R13 nicht.
+
+Diese Rebaseline verändert keine abgeschlossene R1-R6-/C2-Implementierung.
+Sie trennt den atomaren Write, destruktive Historienoperationen,
+maschinenlesbaren Ist-Export, medizinische Consumer und optionalen
+Vorlagenimport in eigenständig prüfbare Verträge.
+
+Verbindlichkeit der verbleibenden Folge:
+
+- R7 bis R12 bilden den Core-Pfad. Sie sind für verlustsichere reale Nutzung,
+  vollständige V1-Consumer-Parität und den kontrollierten produktiven Cutover
+  notwendig.
+- R13 ist eine gewünschte Post-Core-Komfortfunktion für den Coaching-
+  Kreislauf, aber keine Voraussetzung für den produktiven Activity-V2-Kern.
+- R14 ist eine optionale Hygieneentscheidung. Eine eigene R14-Roadmap wird nur
+  erstellt, wenn reale Datenmenge, Wartungsaufwand oder Speicherverbrauch
+  einen Bedarf belegen.
 
 ### R1 - Activity V2 Semantics and Product Contract
 
@@ -1116,7 +1212,7 @@ Status: `DONE` am 2026-08-01.
 Typ:
 
 - begrenzte Katalog-Wartungsroadmap außerhalb der funktionalen
-  R1-R12-Nummerierung
+  R1-R14-Nummerierung
 - Ausführungsfenster nach abgeschlossenem R2/R3 und zwingend vor R4
 - R3 ist abgeschlossen; C2 wurde vor R4 abgeschlossen
 
@@ -1327,60 +1423,148 @@ separaten Speicherweg für Non-Strength-Items zu erzeugen.
 
 ### R7 - IndexedDB Draft Recovery
 
+Status: `DONE` am 2026-08-09; vollständig isoliert, ohne Supabase-Commit,
+Produktload, Deploy oder Android-Prozess-Reclaim.
+
+Roadmap und Evidence:
+
+- [R7 IndexedDB Draft Recovery Roadmap](<archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
+- [R7 IndexedDB Draft Recovery Evidence](<archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
+
+Bewiesener Iststand:
+
+- Der fachliche Draft bleibt `midas.activity-session-draft.v3`; Restore bindet
+  exakt die gespeicherte `catalog_version` und migriert weder Draft noch
+  Katalog still.
+- Die feste lokale DB `midas_activity_v2_recovery` v1 besitzt ausschließlich
+  Store `session_recovery` und Slot `active_session`; `healthlog_db` bleibt
+  unverändert.
+- Der Recovery-Envelope v1 hält Generation, Schreibsequenz, UUID-Lease-Token,
+  Request-ID, persistierte Revision, Savezeit und Draft oder `null`.
+- Save und Discard vergleichen die vollständige geschützte Observation und
+  bestätigen Erfolg erst nach Transaktionscommit. Autosave serialisiert einen
+  aktiven Write und koalesziert nur den neuesten Pending-Snapshot.
+- Bewusstes Verwerfen rotiert Token und Generation. Der leere Tombstone wehrt
+  alte Tabs ab; ein persistenter Discardfehler lässt die RAM-Session offen.
+- Das separate Recovery-Gate und die optionale Shellintegration beweisen
+  Save/Reload/Continue, Discard/Reload, stale Writer, Conflict, Lifecycle,
+  Degradation, Fokus und responsive Darstellung in realer Edge-IndexedDB.
+- Final grün: Draft `24/24`, Recovery `28/28`, Shell `38/38`, vollständig
+  `119/119`, Katalog `v2 / 80 / 47 / 58`, Syntax `12/12`, statische Isolation,
+  Full Review und CodeRabbit-Re-Review `0 Findings`.
+
 Ziel:
 
-- Autosave
-- Wiederherstellen
-- Verwerfen
-- Draft-Schema-Version
+- getrennte Activity-V2-IndexedDB ohne Änderung der produktiven
+  `healthlog_db`
+- genau ein logischer Slot je Browserprofil und Origin für die aktive
+  Single-User-Session; kein Cross-Device-Sync, Draftarchiv oder Retention
+- versionierter Recovery-Envelope für den unveränderten vollständigen Draft v3;
+  Autosavezeit und Konfliktmetadaten bleiben außerhalb des Draftschemas
+- serialisiertes und zusammenfassbares Autosave nach erfolgreichen Mutationen
+  sowie bestmögliches Flush bei `visibilitychange: hidden` und `pagehide`
+- explizites Wiederherstellen oder Verwerfen; kein stilles Resume und keine
+  automatische Löschung
+- transaktionaler Compare-and-Swap-Vertrag über UUID-Lease-Token,
+  Slotgeneration, Schreibsequenz, `request_id`, persistierte `revision` und die
+  vollständige geschützte Observation, einschließlich Schutz vor verzweigten
+  Same-Request-Drafts, stale Writes, Mehrtab-Konflikten und Wiederauferstehen
+  nach Verwerfen
+- atomarer Generationstombstone nach Verwerfen; bei fehlgeschlagener
+  Invalidierung bleibt die In-Memory-Session geöffnet
 - Wiederherstellung mit der im Draft gespeicherten `catalog_version`; ein
   Versionswechsel darf einen gültigen älteren Draft nicht still gegen den
   aktuellen Katalog rehydrieren oder unverständlich verwerfen
-- Fehler- und Quota-Verhalten
-- isolierter Browser-/Recovery-Nachweis ohne produktive Feature-Aktivierung
+- fail-closed Verhalten für unbekannte Schemata, beschädigte Records und nicht
+  auflösbare Katalogversionen; keine stille Migration
+- Fehler- und Quota-Verhalten, bei dem die In-Memory-Session bedienbar bleibt
+  und das verlorene Recovery-Versprechen sichtbar wird
+- deterministische Contracttests mit kontrollierbarem Storage, Zeitgeber und
+  Scheduler sowie realer IndexedDB-Browsernachweis für Save, Reload, Resume,
+  Verwerfen, Lifecycle-Flush, Konflikte und Fehlerfälle
+- noch kein Supabase-Commit und kein Android-Prozess-Reclaim-Nachweis; diese
+  Grenzen bleiben R8 vorbehalten. Die produktive Feature-Aktivierung bleibt
+  bis R12 gesperrt
 
 Warum danach:
 
-Recovery wird gegen die finalen Draft-Formen beider Tracking-Modi gebaut.
+Recovery ist gegen die finalen Draft-Formen beider Tracking-Modi bewiesen. R8
+kann nun denselben isolierten Controller an Commit und Android-PWA-Smokes
+anbinden, ohne den R7-Speichervertrag umzudeuten.
 
-### R8 - Core Commit Integration, History and Correction
+### R8 - Core Commit and Android Recovery Integration
 
 Ziel:
 
 - vollständiger atomarer End-to-End-Commit
 - eindeutige Abbildung der R3-Uhr auf `started_at`, `ended_at` und die
   ganzzahlige bestätigte `duration_min` einschließlich Rundungsregel
-- Draft erst nach bestätigtem Commit entfernen
-- Sessionliste und Detailansicht
-- Korrektur und Löschung
+- idempotenter Retry über die bestehende `request_id`; unklare oder
+  fehlgeschlagene Writes behalten den lokalen Draft
+- Recovery-Datensatz erst nach eindeutig bestätigtem Commit entfernen
 - explizite Entscheidung und Tests, welche bereits vorhandenen
   unveränderlichen Katalogversionen während eines Rollouts weiterhin committen
   dürfen; eine neue höchste Version darf keinen gültigen älteren Draft oder
   gecachten PWA-Client allein wegen seiner Version unbrauchbar machen
-- interner bzw. testgebundener Android-PWA-Smoke
+- interne, weiterhin nicht produktiv aktivierte Verbindung von R7-Draft,
+  R2-Commit und bestätigtem Abschlusszustand
+- testgebundener Android-PWA-Smoke für Backgrounding, Reload und realistischen
+  Prozess-Reclaim einschließlich Resume und erfolgreichem Commit
 - noch keine produktive Feature-Aktivierung
 
 Warum danach:
 
-Erst jetzt ist der Activity-V2-Kern vollständig und fehlertolerant genug für
-die nachfolgenden Export- und Consumer-Integrationen.
+Erst jetzt kann eine reale Session ohne Verlust lokal überleben und atomar in
+Supabase abgeschlossen werden. Destruktive Historienoperationen bleiben aus
+diesem Write- und Device-Sicherheitsgate herausgelöst.
 
-### R9 - Machine-Readable Activity Export Schema V1
+### R9 - Session History, Detail, Correction and Deletion
 
 Ziel:
 
-- versioniertes Export-Schema
+- deterministisch paginierte Activity-V2-Sessionliste
+- read-only Detailansicht aus den unveränderlichen Session-, Item- und
+  Satzsnapshots
+- bewusste Entscheidung des O-5-Korrekturvertrags: atomarer Ersatz einer
+  vollständigen Session oder klar begrenzte gezielte Mutation
+- Korrektur ohne Änderung kanonischer Katalogidentitäten oder Erfindung neuer
+  Historiensemantik
+- kontrollierte Löschung mit Ownership-, RLS-, Bestätigungs- und
+  Wiederholungsnachweis
+- konsistente Reaktion von Historie und Last-Performance-Lookup auf Korrektur
+  oder Löschung
+- keine produktive Feature-Aktivierung
+
+Warum danach:
+
+Commit und Device-Recovery müssen stabil sein, bevor bereits abgeschlossene
+Daten angezeigt, verändert oder gelöscht werden. R9 isoliert die destruktive
+Lebenszykluslogik vom R8-Save-Gate.
+
+### R10 - Completed Activity Coaching Export V1
+
+Ziel:
+
+- eigenständiges versioniertes Export-Schema für tatsächlich abgeschlossene
+  Activity-V2-Sessions
 - drei und sechs Monate sowie freier Zeitraum
 - deterministische Sortierung
 - Vollständigkeits- und Qualitätsmetadaten
-- JSON-Smokes mit realistischen Sessions
+- vollständige Ist-Daten für Coaching einschließlich Session-, Item-, Satz-,
+  Dauer- und Distanzwerten, soweit sie im gespeicherten Vertrag existieren
+- keine Importsemantik und keine Umdeutung historischer Ist-Werte zu
+  Zielwerten oder Trainingsvorgaben
+- JSON-Smokes mit realistischen Strength-, Duration-, Distance- und Mixed-
+  Sessions
+- bis R12 weiterhin verborgen oder testgebunden; kein vorgezogener
+  produktiver Activity-V2-Cutover
 
 Warum danach:
 
 Der Export wird auf dem final gespeicherten Datenvertrag aufgebaut und ist
 danach sofort für Coaching-Analysen nutzbar.
 
-### R10 - Doctor View and Report Integration
+### R11 - Doctor View and Report Integration
 
 Ziel:
 
@@ -1388,7 +1572,19 @@ Ziel:
 - optionaler Session-Drilldown
 - keine Satzdetails im Arztbericht
 - V1-/V2-Kompatibilität ohne Doppelzählung
-- Integration bis R11 verborgen beziehungsweise feature-gated halten; noch
+- einen gemeinsamen read-only V1-/V2-Kompatibilitätsvertrag auf
+  Event-/Session-Zusammenfassungsebene vorbereiten, den R12 für Protein Target
+  und Trendpilot wiederverwendet; die konkrete View-/RPC-/Helper-Form wird
+  erst in R11 nach Readiness Review festgelegt
+- bestehendes Report-first-Design der Doctor View beibehalten; Activity V2
+  verändert die Datenquelle und Zusammenfassung, nicht die
+  Informationshierarchie
+- bestehende Arztberichte bleiben gespeicherte Snapshots; erst ein neu
+  erzeugter Bericht verwendet die kompatible V1-/V2-Auswertung
+- Health Export nur über einen expliziten Schema- und
+  Rückwärtskompatibilitätsvertrag erweitern; der vollständige R10-Coaching-
+  Export bleibt ein eigenständiges Artefakt
+- Integration bis R12 verborgen beziehungsweise feature-gated halten; noch
   kein produktiver Activity-V2-Cutover
 
 Warum danach:
@@ -1396,44 +1592,42 @@ Warum danach:
 Der medizinische Consumer erhält erst bewiesene, stabil gespeicherte
 Activity-V2-Daten.
 
-### R11 - Protein Target, Trendpilot and Legacy Compatibility
+### R12 - Protein Target, Trendpilot, Legacy Compatibility and Product Cutover
 
 Ziel:
 
-- Aktivtag- und Zählvertrag
-- V1-/V2-Lesepfad
-- keine Doppelzählung
-- unveränderte medizinische Guardrails
+- gemeinsamer V1-/V2-Aktivtagvertrag: unterschiedliche aktive Kalendertage im
+  relevanten Zeitraum zählen; mehrere Sessions oder Items desselben Tages
+  erhöhen den Count nicht mehrfach
+- den in R11 bewiesenen read-only Kompatibilitätsvertrag wiederverwenden und
+  keine zweite unabhängige V1-/V2-Union pro Consumer erfinden
+- Protein Target vereinigt V1 und V2 über aktive Tage, behält das bestehende
+  28-Tage-Fenster sowie ACT1-/ACT2-/ACT3-Schwellen und medizinische Formel
+  unverändert und leitet nichts aus Sätzen, Gewichten oder Volumen ab
+- Trendpilot verwendet einen kompatiblen Aktivitätskontext ohne
+  Doppelzählung; neue medizinische Aussagen oder Schwellwerte sind kein Ziel
+- R11-Doctor-/Report-Integration kontrolliert aktivieren
 - stabiler produktiver Selektor für die aktuelle Katalogversion und bewiesene
   Rollout-Reihenfolge für Snapshot, Runtime, Consumer und gecachte PWA-Clients
 - kontrollierter Cutover des alten Activity-Capture-Pfads
+- bestehende Activity-V1-Daten und ihre historische Lesbarkeit erhalten; kein
+  Dual Write neuer V2-Sessions und keine Migration erfundener Detaildaten
 - finaler Android-PWA-Smoke
 - kontrollierte produktive Feature-Aktivierung
 
 Warum danach:
 
 Diese Consumer besitzen fachliche Wirkung und werden getrennt vom
-Darstellungsumbau geprüft.
+Darstellungsumbau geprüft. Erst R12 macht Activity V2 für reale Sessions
+produktiv sichtbar.
 
-### R12 - Optional Retention and Legacy Cleanup
-
-Ziel:
-
-- reale Datenmenge auswerten
-- Retention bewusst entscheiden
-- mögliche Langzeitaggregate
-- nicht mehr benötigte Legacy-Pfade entfernen
-
-Warum zuletzt:
-
-Löschung und Bereinigung benötigen reale Nutzungserfahrung und dürfen den
-Aufbau nicht vorzeitig verkomplizieren.
-
-### R13 - Prepared Session JSON Import
+### R13 - Prepared Session Template Import V1
 
 Status: `POST-CORE`; erst nach stabilem Activity-V2-Kern und realer Nutzung
-planen. R13 hängt fachlich von R4 bis R8 und dem produktiven R11-Cutover ab,
-nicht von einer bestimmten Retention-Entscheidung in R12.
+planen. R13 hängt fachlich von R4, R7-R9 und dem produktiven R12-Cutover ab,
+nicht von einer bestimmten Retention-Entscheidung in R14. R10 liefert den
+Coaching-Ist-Export, ist aber nicht dasselbe Schema und kein direkter
+Importvertrag.
 
 Ziel:
 
@@ -1446,8 +1640,8 @@ Ziel:
   bestehenden R4-Historienlookup je Item verwenden
 - vorhandenen veränderten Draft niemals still überschreiben
 - freie Änderung der importierten Übungsliste während der Session
-- identischer R7-Recovery- und R8-Commit-Pfad wie bei einer manuell aufgebauten
-  Session
+- identischer R7-Recovery-, R8-Commit- und R9-Historien-/Korrekturpfad wie bei
+  einer manuell aufgebauten Session
 - klarer Fehlerpfad für fehlende oder veraltete Katalogeinträge mit Verweis auf
   den kontrollierten Pflegeweg
 
@@ -1462,14 +1656,34 @@ Nicht-Ziele der ersten R13-Ausbaustufe:
 Warum als Post-Core-Erweiterung:
 
 Die Funktion reduziert Reibung zwischen Codex-Analyse und realem Training,
-ohne den planfreien Kern umzubauen. Erst reale Nutzung von R4 bis R8 zeigt, ob
-Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich bequem genug sind.
+ohne den planfreien Kern umzubauen. Erst reale Nutzung des produktiven
+R12-Flows zeigt, ob Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich
+bequem genug sind.
+
+### R14 - Optional Retention and Legacy Cleanup
+
+Status: `OPTIONAL`; blockiert weder den produktiven R12-Cutover noch R13.
+
+Ziel:
+
+- reale Datenmenge und tatsächliches Wachstum nach längerer Nutzung auswerten
+- Retention bewusst entscheiden statt vorsorglich löschen
+- mögliche Langzeitaggregate nur bei nachgewiesenem Bedarf
+- nicht mehr benötigte Legacy-Codepfade nach bewiesener Consumer-Parität
+  entfernen, ohne Activity-V1-Historie zu vernichten
+
+Warum zuletzt:
+
+Löschung und Bereinigung benötigen reale Nutzungserfahrung und dürfen weder
+den Aufbau noch den Coaching- und Vorlagenfluss vorzeitig verkomplizieren. R14
+kann dauerhaft aufgeschoben werden, solange kein realer Hygiene- oder
+Speicherdruck besteht.
 
 ---
 
 ## 19. Roadmap-übergreifende Gates
 
-- Kein produktiver V2-Cutover vor erfolgreichem Abschluss von R11.
+- Kein produktiver V2-Cutover vor erfolgreichem Abschluss von R12.
 - Keine Entfernung von Activity V1 vor bewiesener Consumer-Parität.
 - Keine produktive SQL-Wirkung ohne Owner Briefing und Freigabe.
 - Jede UI-Roadmap endet mit einem Live-Server-Smoke.
@@ -1492,12 +1706,15 @@ Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich bequem genug sind.
 - Das R4-Eingangsgate ist erfüllt: C2 hat Katalogversion 2, alle
   Maschinenidentitäten und die exakte Studio-Suchmatrix nachgewiesen. R4 darf
   beginnen, ohne bereits produktive Activity-V2-Nutzung zu aktivieren.
-- Vor dem R11-Cutover muss bewiesen sein, dass eine neue Katalogversion weder
+- Vor dem R12-Cutover muss bewiesen sein, dass eine neue Katalogversion weder
   einen gültigen älteren Draft noch einen gecachten PWA-Client allein durch den
   Wechsel der höchsten Version bei Recovery oder Commit blockiert.
-- R13 darf weder Katalogvalidierung noch R7-Recovery oder R8-Commit umgehen.
+- R13 darf weder Katalogvalidierung noch R7-Recovery, R8-Commit oder den
+  normalen R9-Historien-/Korrekturpfad umgehen.
   Importierte Vorlagen dürfen nur Auswahl und Reihenfolge vorbereiten; alle
   gespeicherten Leistungswerte müssen aus der realen Session stammen.
+- R14 ist optional und darf weder R12 noch R13 blockieren. Activity-V1-Daten
+  werden nicht allein wegen des V2-Cutovers gelöscht.
 
 ---
 
@@ -1571,7 +1788,7 @@ Zu klären:
 
 Zuständig:
 
-- R8 entscheidet den produktiven Korrektur- und Löschvertrag.
+- R9 entscheidet den produktiven Korrektur- und Löschvertrag.
 
 ### O-6 Intensität
 
@@ -1629,10 +1846,10 @@ Zuständig:
   durch explizite Semantikinjektion versionsagnostisch; der bestehende v1-
   Aufruf bleibt rückwärtskompatibel und der Commitpfad wurde nicht geöffnet
   oder umgedeutet.
-- R7 bindet persistente Recovery an die im Draft gespeicherte
-  Katalogversion.
+- R7-Verantwortung `DONE`: persistente Recovery ist exakt an die im Draft
+  gespeicherte Katalogversion gebunden.
 - R8 entscheidet und testet die serverseitige Commit-Kompatibilität.
-- R11 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
+- R12 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
   und den finalen Android-PWA-Smoke.
 
 Ziel:
@@ -1645,9 +1862,9 @@ R1 hat ausschließlich O-1, O-2 und die für Semantik, Suche und spätere
 Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 ist durch R5
 entschieden und umgesetzt. O-4 ist für R3 entschieden; O-6 ist durch R6 mit
 `keine Intensität` für die erste produktive Ausbaustufe geschlossen. O-5 bleibt
-bis R8 bewusst offen und darf nicht vorweggenommen werden. O-7 hat keine stille
+bis R9 bewusst offen und darf nicht vorweggenommen werden. O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
-umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R11-Gates offen
+umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R12-Gates offen
 und muss vor dem produktiven Cutover geschlossen sein.
 
 ### O-9 Vorbereitete Session-Vorlage
@@ -1715,18 +1932,21 @@ Die Session ist der gemeinsame Container. Jedes ausgewählte Item besitzt einen
 stabilen kanonischen Key und einen Tracking-Modus. Kraftübungen verwenden
 benannte Satzdaten; Daueraktivitäten verwenden itemweite Dauer, optionale
 Distanz und Notiz. R6 bearbeitet diese Werte ausschließlich im flüchtigen
-Draft. Die Historie wird nach Key und nicht nach Trainingsplan gesucht. R7 soll
-unfertige Sessions als IndexedDB-Draft absichern; R8 soll abgeschlossene
-Sessions atomar in Supabase integrieren. Arztbericht und Doctor View erhalten
-nur Zusammenfassungen; ein versionierter Activity-Export liefert die
-vollständigen Details für spätere Coaching-Analysen.
+Draft. Die Historie wird nach Key und nicht nach Trainingsplan gesucht. R7
+sichert unfertige Sessions im isolierten Harness als IndexedDB-Draft ab; R8
+soll abgeschlossene Sessions atomar in Supabase integrieren. R9 ergänzt
+Historie, Details, Korrektur und Löschung. Arztbericht und Doctor View erhalten in R11 nur
+Zusammenfassungen; der versionierte R10-Activity-Export liefert die
+vollständigen Details für spätere Coaching-Analysen. R12 aktiviert die neue
+Erfassung und alle produktiven Consumer kontrolliert.
 
 Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
 sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte
 Identität in einer vollständigen neuen Katalogversion ergänzt. R4 hält die
-Consumer dafür versionsagnostisch; R7, R8 und R11 müssen vor dem produktiven
-Cutover noch beweisen, dass der Versionswechsel keinen gültigen älteren
-PWA-Draft bei Recovery oder Commit blockiert.
+Consumer dafür versionsagnostisch. R7 hat versionsgebundene Recovery bewiesen;
+R8 und R12 müssen vor dem produktiven Cutover noch beweisen, dass der
+Versionswechsel keinen gültigen älteren PWA-Draft beim Commit oder in einem
+gecachten produktiven Client blockiert.
 
 Als optionale Post-Core-Erweiterung kann R13 eine von Codex vorbereitete
 JSON-Übungsliste als normalen Session-Draft laden. Sie enthält nur Katalogkeys

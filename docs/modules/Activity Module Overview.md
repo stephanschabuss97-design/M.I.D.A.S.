@@ -5,8 +5,9 @@ Kurze Einordnung:
   (Aktivitaet + Dauer + Notiz).
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
   R3-Draft-/Shell-Grundlage, C2-Katalogversion 2, R4-Suche/Last-Performance,
-  R5-Strength-Set-Editor und R6-Duration-/Distance-Editor sind bereitgestellt;
-  die sichtbare App und alle produktiven Consumer verwenden weiterhin V1.
+  R5-Strength-Set-Editor, R6-Duration-/Distance-Editor und R7-IndexedDB-Draft-
+  Recovery sind bereitgestellt; die sichtbare App und alle produktiven
+  Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
@@ -24,6 +25,8 @@ Related docs:
 - [Activity V2 R4 Roadmap](<../archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
 - [Activity V2 R5 Roadmap](<../archive/MIDAS Activity V2 R5 Strength Set Editor Roadmap (DONE).md>)
 - [Activity V2 R6 Roadmap](<../archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
+- [Activity V2 R7 Roadmap](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
+- [Activity V2 R7 Evidence](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -55,11 +58,14 @@ Related docs:
 | `app/modules/vitals-stack/activity/v2/data-access.contract.test.js` | Lokale R2-Request-, Response-, Retry- und Fehler-Contract-Tests |
 | `sql/20_Activity_V2.sql` | Additives R2-Schema, Katalogprojektion, RLS und RPCs |
 | `sql/tests/20_Activity_V2_fixture.sql` | Guarded disposable PostgreSQL-17-Contract-Fixture |
-| `app/modules/vitals-stack/activity/v2/session-draft.js` | Isolierte R3-R6-In-Memory-Draft-Factory mit policy-gesteuerten Strength-Sets und Itemwerten |
-| `app/modules/vitals-stack/activity/v2/session-draft.contract.test.js` | Lokale R3-R6-Draft-, Timer-, Set-, Item- und Mutations-Contract-Tests |
-| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-R6-Vollflaechen-Shell mit Suche, read-only Historie, Strength-/Duration-/Distance-Editor und Raceguards |
-| `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3-R6-Shell-, Such-, Historien-, Editor- und Fokusdarstellung |
-| `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3-R6-Shell-, Search-, Lookup-, Editor-, Guard-, Fokus- und Lifecycle-Contract-Tests |
+| `app/modules/vitals-stack/activity/v2/session-draft.js` | Isolierte R3-R7-In-Memory-Draft-Factory mit strikter Draft-v3-Rehydration, policy-gesteuerten Strength-Sets und Itemwerten |
+| `app/modules/vitals-stack/activity/v2/session-draft.contract.test.js` | Lokale R3-R7-Draft-, Restore-, Timer-, Set-, Item- und Mutations-Contract-Tests |
+| `app/modules/vitals-stack/activity/v2/session-recovery.js` | Isolierte R7-Recovery-Fassade mit eigenem IndexedDB-Slot, vollständigem Lease-CAS, Autosave-Coordinator und Tombstone-Discard |
+| `app/modules/vitals-stack/activity/v2/session-recovery.contract.test.js` | Disposable R7-IDB-, Envelope-, CAS-, Autosave-, Retry-, Conflict-, Lifecycle- und Discard-Contract-Tests |
+| `app/modules/vitals-stack/activity/v2/session-recovery-harness.html` | Separater R7-Browser-Harness für bewusstes Recovery-Gate und reale IndexedDB-Fixtures |
+| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-R7-Vollflaechen-Shell mit Suche, read-only Historie, Editoren, optionalem Recoverystatus und persistent-first Discard |
+| `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3-R7-Shell-, Such-, Historien-, Editor-, Recovery-, Dialog- und Fokusdarstellung |
+| `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3-R7-Shell-, Search-, Lookup-, Editor-, Recovery-, Guard-, Fokus- und Lifecycle-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/session-shell-harness.html` | Isolierter visueller R6-Browser-Harness mit Strength-, Duration-, Distance- und Historien-Fixtures |
 | `app/modules/vitals-stack/activity/v2/semantics-v2.js` | Additive C2-Semantik mit vollständigem Katalog v2 und Studio-/Freihantelsuche |
 | `app/modules/vitals-stack/activity/v2/semantics-v2.contract.test.js` | C2-Katalog-, Search-, R1- sowie R3-R6-Kompatibilitätsnachweise |
@@ -273,6 +279,44 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
   Write, Netzwerk, Storage/IndexedDB, Activity V1, Produktnavigation oder
   Scriptload.
 
+## 2.8 Activity V2 R7 - isolierte IndexedDB-Draft-Recovery
+
+Status: implementiert, lokal und im separaten Browser-Harness mit realer
+IndexedDB bewiesen; weder durch `index.html` geladen noch mit einem produktiven
+Consumer verbunden.
+
+- `sessionDraft.restore(snapshot, options?)` rehydriert ausschließlich den
+  unveränderten Draft `midas.activity-session-draft.v3`. Identität, Revision,
+  Startzeit, Reihenfolge und Rohwerte bleiben exakt; die Semantik wird über die
+  gespeicherte `catalog_version` aufgelöst, nie still migriert.
+- R7 verwendet ausschließlich `midas_activity_v2_recovery` Version 1 mit Store
+  `session_recovery` und Slot `active_session`. `healthlog_db` Version 5 sowie
+  deren Stores `entries` und `config` bleiben unverändert.
+- Der Envelope `midas.activity-session-recovery.v1` hält Slotgeneration,
+  Schreibsequenz, UUID-Lease-Token, Request-ID, persistierte Revision,
+  Speicherzeit und Draft oder `null`. Diese Metadaten ändern Draft v3 nicht.
+- Save und Discard vergleichen die vollständige geschützte Observation und
+  gelten erst nach Transaktionscommit als bestätigt. Eine höhere Revision
+  allein ist kein Schreibrecht.
+- Autosave hält höchstens einen aktiven Write und nur den neuesten Pending-
+  Snapshot. Echte Mutationen und expliziter Flush können nach Storagefehlern
+  erneut sichern; `visibilitychange: hidden` und `pagehide` bleiben best effort.
+- Bewusstes Verwerfen rotiert Token und Generation und schreibt einen leeren
+  Tombstone. Alte Tabs können den Draft danach nicht wiederbeleben. Scheitert
+  der persistente Discard, bleiben RAM-Draft, Shell und Eingaben offen.
+- Das Recovery-Gate startet nie still. Gültige Drafts bieten Fortsetzen oder
+  Verwerfen; unbekannte, beschädigte oder nicht auflösbare Zustände bleiben
+  fail-closed und können nur bewusst observation-geschützt verworfen werden.
+- Die bestehende Shell akzeptiert den Recoverycontroller nur optional. Status
+  erscheint in einer eigenen polite Live-Region; Legacy-Mounts und der
+  storagefreie R6-Harness bleiben unverändert.
+- Der separate R7-Harness beweist Save/Reload/Continue, Tombstone/Reload,
+  stale Writer, Konflikt, Lifecycle, Degradation, Alertdialog, Fokus,
+  Desktop/Mobile, Touchziele, Overflow und saubere Browserkonsole.
+- R7 ergänzt weder Supabase-Commit noch SQL/RPC/RLS/Grants, Netzwerk, Service
+  Worker, Android-Prozess-Reclaim, Produktnavigation, Activity V1 oder
+  produktiven Scriptload. Commitintegration und Android-PWA-Nachweis gehören R8.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -304,14 +348,17 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
   80er-Snapshot. Der Commit akzeptiert damit jetzt Katalogversion 2 als höchste
   Version; echte Sessionnutzung bleibt bis zu den späteren Gates gesperrt.
 
-### Activity V2 R3-R6 - fluechtiger Draftvertrag
+### Activity V2 R3-R7 - Draft- und Recoveryvertrag
 
-- Der Draft existiert ausschliesslich im Arbeitsspeicher und ist kein
-  abgeschlossener R2-Datensatz.
+- Der fachliche Draft existiert im Arbeitsspeicher und ist kein abgeschlossener
+  R2-Datensatz; R7 speichert nur seinen vollständigen unveränderten v3-Snapshot
+  in einem getrennten lokalen Recovery-Envelope.
 - `request_id` und `catalog_version` sind bereits R2-kompatibel; Items besitzen
   eindeutige `item_key` und lueckenlose, einsbasierte `item_order`.
-- Reload oder Browser-Prozessverlust darf R3 noch verlieren. R7 implementiert
-  Recovery isoliert; R8 beweist sie intern auf Android-PWA vor realer Nutzung.
+- Reload-Recovery ist im isolierten R7-Harness bewiesen. Site-Datenlöschung,
+  anderes Browserprofil oder anderes Gerät besitzen keinen gemeinsamen Slot.
+- R8 verbindet dieselbe Recovery intern mit Commit und Android-PWA-Prozess-
+  Reclaim; bis dahin bleibt sie außerhalb des Produkts.
 
 ---
 
@@ -427,16 +474,17 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1-R6/C2: Semantik, additive produktive Datenbasis, lokaler
+- Activity V2 R1-R7/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
-  Historie sowie Strength-, Duration- und Distance-Editor sind implementiert.
-  Die V2-Runtime bleibt isoliert; es gibt keinen produktiven UI-, Consumer-
-  oder V1-Cutover.
+  Historie, Strength-/Duration-/Distance-Editor und lokale Draft-Recovery sind
+  implementiert. Die V2-Runtime bleibt isoliert; es gibt keinen produktiven
+  UI-, Consumer- oder V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
 - Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
-- Activity-V2-Risiko: normaler Tabwechsel ist fuer R3-R6 bewiesen, Reload- und
-  Prozess-Recovery bleiben bis R7/R8 bewusst gesperrt.
+- Activity-V2-Risiko: Reload-Recovery ist im lokalen R7-Harness bewiesen;
+  produktive Commitintegration, Android-PWA-Prozess-Reclaim und Gerätewechsel
+  bleiben bis R8 beziehungsweise außerhalb des lokalen Recoveryvertrags gesperrt.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -451,7 +499,7 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
 - Activity V2 R1 Contract-Suite validiert Katalog, Suche, Namespace und
   produktive Isolation.
 - Isoliertes V2-Harness laedt `semantics.js` klassisch ohne Konsolenfehler.
-- Kombinierte R1-R6/C2-Node-Suite validiert 85 Contract-Faelle.
+- Kombinierte R1-R7/C2-Node-Suite validiert 119 Contract-Faelle.
 - Disposable PostgreSQL-17-Fixture validiert Schema/Rerun, Katalog 78/78,
   atomaren Rollback, Retry-Races, Two-User-RLS/ACL und Historien-Lookup.
 - C2-Checks validieren 80 aktive v2-Entries, 47 Aliasergänzungen, 58 Suchfälle,
@@ -475,6 +523,13 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
   Notizgrenzen, gemischte Sessions sowie History-/Timertrennung. Die integrierte
   Harness-Matrix deckt vier Fixtures in drei Viewports ab; ein 41-Sekunden-
   Fremdtab-Smoke bewahrt Itemrohwert, Notiz, Fokus, Status und Uhr.
+- R7-Checks validieren Draft-v3-Restore, festen separaten IDB-Slot, Envelope,
+  vollständigen Token-/Lease-CAS, One-Write-/Latest-Pending-Autosave,
+  Retry/Conflict/Lifecycle, Generationstombstone, stale-Writer-Sperre,
+  persistent-first Shell-Discard und alle fail-closed Fehlerzustände. Draft
+  `24/24`, Recovery `28/28`, Shell `38/38`, vollständig `119/119`, Katalog
+  `v2 / 80 / 47 / 58`, Syntax `12/12`, statische Isolation, realer Edge-
+  Harness und finaler CodeRabbit-Re-Review mit `0 Findings` sind grün.
 
 ---
 
@@ -482,9 +537,9 @@ durch `index.html` geladen noch mit einem produktiven Consumer verbunden.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R6/C2 bleiben bis zu den zustaendigen Folgeroadmaps fuer
-  produktive Consumer unverdrahtet. R6 ist DONE; R7 ist der nächste
-  Rolling-Wave-Schritt für isolierte IndexedDB Draft Recovery und darf
+- Activity V2 R1-R7/C2 bleiben bis zu den zustaendigen Folgeroadmaps fuer
+  produktive Consumer unverdrahtet. R7 ist DONE; R8 ist das nächste
+  Rolling-Wave-Gate für Commit- und Android-Recovery-Integration und darf
   weiterhin keinen produktiven V2-Cutover vorwegnehmen.
 - Doku aktuell (Spec + Overview).
 

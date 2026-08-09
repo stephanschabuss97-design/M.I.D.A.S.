@@ -24,8 +24,22 @@ ihn aber nicht vollständig.
 
 - S1, S2 und S3 werden jeweils als deterministischer Gesamtblock mit Contract
   Review und Findings-Korrektur abgeschlossen.
+- Eine Roadmap darf S1 bis S3 und optional S4R als eine autonome
+  `Discovery Wave` freigeben. Die Hauptschritte bleiben getrennte,
+  nachvollziehbare Prüfpunkte; ihre Übergänge benötigen bei grünem internen
+  Continuation Gate jedoch keine erneute Owner-Bestätigung.
+- Nach jedem Hauptschritt der Discovery Wave werden Full Review,
+  Findings-Korrektur, Statusmatrix und Session Resume Card abgeschlossen,
+  bevor automatisch zum nächsten freigegebenen Hauptschritt übergegangen wird.
+- Die Discovery Wave stoppt bei einem Owner-Gate, einem Quellenwiderspruch,
+  einer fehlenden Produktentscheidung, notwendiger Scope-Ausweitung, einem
+  blockierenden Finding oder wenn ein erforderlicher Nachweis nicht sicher
+  erbracht werden kann.
 - Bis zum grünen S4 Readiness Review wird kein Produktcode geändert; erlaubt
   sind Roadmap-, Analyse- und notwendige Vertragsdokumente.
+- Eine bis S4R freigegebene Discovery Wave endet mit dem Readiness-Urteil. S4
+  beginnt standardmäßig erst mit dem nächsten ausdrücklich freigegebenen
+  Ausführungsauftrag.
 - S4 bleibt fachlich substepweise nachvollziehbar. Der Readiness Review gibt
   zusätzlich eine begründete Empfehlung ab, welche benachbarten Substeps als
   gemeinsamer Ausführungsblock laufen dürfen.
@@ -40,6 +54,18 @@ ihn aber nicht vollständig.
 - Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
 - Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen
   Haupt- oder S4-Ausführungsblock aktualisiert.
+
+### Gate-Typen
+
+- `Internal Continuation Gate`: Das Exit-Kriterium des Hauptschritts ist
+  erfüllt, Findings sind geschlossen oder regelkonform zugeordnet und keine
+  Owner-Entscheidung ist offen. Innerhalb einer freigegebenen Discovery Wave
+  wird ohne Rückfrage fortgesetzt.
+- `Owner Gate`: Eine fachliche Entscheidung, produktive Wirkung, externe oder
+  irreversible Aktion, Scope-Ausweitung oder ausdrücklich reservierte
+  Freigabe ist erforderlich. Der Agent stoppt mit einem kompakten Briefing.
+- Ein Abschnittsende allein ist kein Owner-Gate. Fortschrittsmeldungen bleiben
+  informativ und verlangen keine Antwort, solange kein Stop-Grund eintritt.
 
 ## Chat- und Kontextvertrag
 
@@ -261,6 +287,10 @@ zugeordnet; die Zusammenlegung spart Handoffs, nicht Nachvollziehbarkeit.
   Ausführungs-Chat und begründete Abweichungsknoten festgelegt.
 - Der Standard bleibt innerhalb eines zusammenhängenden Ausführungsblocks
   stabil. Kleine Substeps lösen keinen automatischen Reasoning-Wechsel aus.
+- Eine autonome Discovery Wave verwendet grundsätzlich eine gemeinsame
+  Reasoning-Stufe. Ist ein einzelner Knoten deutlich riskanter, wird die Welle
+  vor diesem Knoten geteilt oder die höhere Stufe für die gesamte Welle
+  begründet; zwischen S1, S2 und S3 wird nicht routinemäßig umgeschaltet.
 - Die nachfolgenden Ausführungsschritte verwenden die niedrigste noch
   belastbare Stufe passend zu Risiko und Arbeitsaufwand.
 - `Low`: rein mechanische, eindeutige Einzeloperation.

@@ -37,6 +37,31 @@
     'distance_km',
     'note'
   ]);
+  const SNAPSHOT_KEYS = Object.freeze([
+    'draft_schema_version',
+    'request_id',
+    'catalog_version',
+    'revision',
+    'started_at',
+    'note',
+    'items'
+  ]);
+  const DRAFT_ITEM_KEYS = Object.freeze([
+    'item_key',
+    'item_order',
+    'duration_min',
+    'distance_km',
+    'note',
+    'sets'
+  ]);
+  const DRAFT_SET_KEYS = Object.freeze([
+    'set_order',
+    'reps',
+    'duration_sec',
+    'distance_m',
+    'weight_kg',
+    'assistance_kg'
+  ]);
   const FIELD_POLICIES = Object.freeze(['forbidden', 'optional', 'required']);
   const TRACKING_MODES = Object.freeze([
     'duration',
@@ -76,6 +101,24 @@
       keys.length === expected.length &&
       keys.every((key) => typeof key === 'string' && expected.includes(key))
     );
+  }
+
+  function hasExactOrderedKeys(value, expected) {
+    if (!isRecord(value)) return false;
+    const keys = Reflect.ownKeys(value);
+    return (
+      keys.length === expected.length &&
+      keys.every((key, index) => key === expected[index])
+    );
+  }
+
+  function isDenseArray(value) {
+    if (!Array.isArray(value)) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== value.length + 1 || keys[keys.length - 1] !== 'length') {
+      return false;
+    }
+    return value.every((entry, index) => keys[index] === String(index));
   }
 
   function fail(code) {
@@ -405,20 +448,131 @@
     return `${pad(Math.floor(totalMinutes / 60))}:${pad(minutes)}:${pad(seconds)}`;
   }
 
-  function create(optionsValue) {
+  function isCanonicalTimestamp(value) {
+    if (typeof value !== 'string') return false;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && new Date(time).toISOString() === value;
+  }
+
+  function isRestorableRawValue(value, limit) {
+    return (
+      value === null ||
+      (typeof value === 'string' &&
+        value !== '' &&
+        Array.from(value).length <= limit)
+    );
+  }
+
+  function validateRestoredSnapshot(snapshot, catalogState) {
+    if (
+      !hasExactOrderedKeys(snapshot, SNAPSHOT_KEYS) ||
+      snapshot.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      typeof snapshot.request_id !== 'string' ||
+      !UUID_RE.test(snapshot.request_id) ||
+      snapshot.request_id !== snapshot.request_id.toLowerCase() ||
+      !Number.isSafeInteger(snapshot.catalog_version) ||
+      snapshot.catalog_version < 1 ||
+      !Number.isSafeInteger(snapshot.revision) ||
+      snapshot.revision < 0 ||
+      (snapshot.started_at !== null &&
+        !isCanonicalTimestamp(snapshot.started_at)) ||
+      !isRestorableRawValue(snapshot.note, NOTE_LIMIT) ||
+      (snapshot.note !== null && snapshot.note.trim() !== snapshot.note) ||
+      !isDenseArray(snapshot.items) ||
+      snapshot.items.length > ITEM_LIMIT
+    ) {
+      fail('INVALID_DRAFT_STATE');
+    }
+    if (snapshot.catalog_version !== catalogState.catalogVersion) {
+      fail('CATALOG_VERSION_MISMATCH');
+    }
+    if (
+      snapshot.revision === 0 &&
+      (snapshot.started_at !== null ||
+        snapshot.note !== null ||
+        snapshot.items.length !== 0)
+    ) {
+      fail('INVALID_DRAFT_STATE');
+    }
+    if (snapshot.items.length > 0 && snapshot.started_at === null) {
+      fail('INVALID_DRAFT_STATE');
+    }
+
+    const seenItemKeys = new Set();
+    snapshot.items.forEach((item, itemIndex) => {
+      if (
+        !hasExactOrderedKeys(item, DRAFT_ITEM_KEYS) ||
+        typeof item.item_key !== 'string' ||
+        !ITEM_KEY_RE.test(item.item_key) ||
+        item.item_order !== itemIndex + 1 ||
+        seenItemKeys.has(item.item_key) ||
+        !isDenseArray(item.sets)
+      ) {
+        fail('INVALID_DRAFT_STATE');
+      }
+
+      const catalogEntry = catalogState.entries.get(item.item_key);
+      if (!catalogEntry || catalogEntry.status !== 'active') {
+        fail('INVALID_DRAFT_STATE');
+      }
+      ITEM_FIELD_KEYS.forEach((fieldKey) => {
+        const limit = fieldKey === 'note' ? NOTE_LIMIT : SET_VALUE_LIMIT;
+        if (
+          !isRestorableRawValue(item[fieldKey], limit) ||
+          (catalogEntry.fields[fieldKey] === 'forbidden' &&
+            item[fieldKey] !== null)
+        ) {
+          fail('INVALID_DRAFT_STATE');
+        }
+      });
+
+      if (catalogEntry.trackingMode === 'strength_sets') {
+        if (item.sets.length < 1 || item.sets.length > SET_LIMIT) {
+          fail('INVALID_DRAFT_STATE');
+        }
+      } else if (item.sets.length !== 0) {
+        fail('INVALID_DRAFT_STATE');
+      }
+
+      item.sets.forEach((set, setIndex) => {
+        if (
+          !hasExactOrderedKeys(set, DRAFT_SET_KEYS) ||
+          set.set_order !== setIndex + 1
+        ) {
+          fail('INVALID_DRAFT_STATE');
+        }
+        SET_FIELD_KEYS.forEach((fieldKey) => {
+          if (
+            !isRestorableRawValue(set[fieldKey], SET_VALUE_LIMIT) ||
+            (catalogEntry.fields[fieldKey] === 'forbidden' &&
+              set[fieldKey] !== null)
+          ) {
+            fail('INVALID_DRAFT_STATE');
+          }
+        });
+      });
+      seenItemKeys.add(item.item_key);
+    });
+
+    return deepFreeze(snapshot);
+  }
+
+  function createController(optionsValue, restoredSnapshot, isRestore) {
     const options = assertOptions(optionsValue);
     const semantics = resolveSemantics(options);
     const now = resolveClock(options);
     const requestIdSource = resolveRequestIdSource(options);
     let catalogState = captureCatalog(semantics);
-    let snapshot = createSnapshot({
-      requestId: createRequestId(requestIdSource),
-      catalogVersion: catalogState.catalogVersion,
-      revision: 0,
-      startedAt: null,
-      note: null,
-      items: []
-    });
+    let snapshot = isRestore
+      ? validateRestoredSnapshot(restoredSnapshot, catalogState)
+      : createSnapshot({
+          requestId: createRequestId(requestIdSource),
+          catalogVersion: catalogState.catalogVersion,
+          revision: 0,
+          startedAt: null,
+          note: null,
+          items: []
+        });
 
     function getSnapshot() {
       return snapshot;
@@ -703,6 +857,14 @@
     });
   }
 
+  function create(optionsValue) {
+    return createController(optionsValue, undefined, false);
+  }
+
+  function restore(snapshot, optionsValue) {
+    return createController(optionsValue, snapshot, true);
+  }
+
   if (root.AppModules === undefined) {
     root.AppModules = {};
   } else if (!isRecord(root.AppModules)) {
@@ -720,7 +882,7 @@
     throw new TypeError('AppModules.activityV2 must be extensible');
   }
 
-  const sessionDraftApi = deepFreeze({ create });
+  const sessionDraftApi = deepFreeze({ create, restore });
   Object.defineProperty(root.AppModules.activityV2, 'sessionDraft', {
     value: sessionDraftApi,
     enumerable: true,

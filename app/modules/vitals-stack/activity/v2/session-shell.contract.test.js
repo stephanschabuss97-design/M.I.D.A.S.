@@ -407,6 +407,67 @@ function mountRuntime(runtime, overrides = {}) {
   return { shell, panel };
 }
 
+function recoveryState(state, overrides = {}) {
+  return deepFreeze({
+    state,
+    started_at: null,
+    saved_at: null,
+    item_count: 0,
+    reason: null,
+    ...overrides
+  });
+}
+
+function createRecoveryFacade(draft, initialState, overrides = {}) {
+  let state = initialState;
+  let listener = null;
+  let discardCalls = 0;
+  let destroyCalls = 0;
+  let unsubscribeCalls = 0;
+  const facade = deepFreeze({
+    getState: () => state,
+    getDraft: () => draft,
+    startNew: overrides.startNew || (() => draft),
+    continueSession: overrides.continueSession || (() => draft),
+    flush: overrides.flush || (() => Promise.resolve(state)),
+    discard() {
+      discardCalls += 1;
+      return overrides.discard
+        ? overrides.discard({
+            emit,
+            getDiscardCalls: () => discardCalls
+          })
+        : Promise.resolve(state);
+    },
+    subscribe(nextListener) {
+      if (overrides.subscribe) return overrides.subscribe(nextListener);
+      listener = nextListener;
+      nextListener(state);
+      return () => {
+        unsubscribeCalls += 1;
+        listener = null;
+      };
+    },
+    destroy() {
+      destroyCalls += 1;
+      overrides.destroy?.();
+    }
+  });
+
+  function emit(nextState) {
+    state = nextState;
+    listener?.(nextState);
+  }
+
+  return {
+    facade,
+    emit,
+    getDiscardCalls: () => discardCalls,
+    getDestroyCalls: () => destroyCalls,
+    getUnsubscribeCalls: () => unsubscribeCalls
+  };
+}
+
 function actionElement(panel, action, itemKey = null) {
   return panel
     .querySelectorAll('button')
@@ -1537,6 +1598,274 @@ test('confirmation and discard failures preserve draft, timer, focus and open sh
     panel.querySelector('.activity-v2-session-status').textContent,
     /private/i
   );
+});
+
+test('optional recovery validates exact ownership and state before DOM mutation', () => {
+  let runtime = createRuntime();
+  let before = runtime.document.body.children.length;
+  assertShellError(
+    () => mountRuntime(runtime, { recovery: {} }),
+    'INVALID_RECOVERY_API'
+  );
+  assert.equal(runtime.document.body.children.length, before);
+
+  runtime = createRuntime();
+  before = runtime.document.body.children.length;
+  const otherDraft = createRuntime().draft;
+  const mismatch = createRecoveryFacade(
+    otherDraft,
+    recoveryState('active')
+  ).facade;
+  assertShellError(
+    () => mountRuntime(runtime, { recovery: mismatch }),
+    'RECOVERY_DRAFT_MISMATCH'
+  );
+  assert.equal(runtime.document.body.children.length, before);
+
+  runtime = createRuntime();
+  before = runtime.document.body.children.length;
+  const invalidState = createRecoveryFacade(
+    runtime.draft,
+    Object.freeze({
+      state: 'saved',
+      started_at: null,
+      saved_at: null,
+      item_count: -1,
+      reason: null
+    })
+  ).facade;
+  assertShellError(
+    () => mountRuntime(runtime, { recovery: invalidState }),
+    'INVALID_RECOVERY_STATE'
+  );
+  assert.equal(runtime.document.body.children.length, before);
+
+  runtime = createRuntime();
+  before = runtime.document.body.children.length;
+  const invalidSubscription = createRecoveryFacade(
+    runtime.draft,
+    recoveryState('active'),
+    { subscribe: () => null }
+  ).facade;
+  assertShellError(
+    () => mountRuntime(runtime, { recovery: invalidSubscription }),
+    'INVALID_RECOVERY_API'
+  );
+  assert.equal(runtime.document.body.children.length, before);
+});
+
+test('recovery status patches only its polite region and preserves draft UI state', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  const rawDraft = runtime.draft;
+  let snapshotReads = 0;
+  let timerReads = 0;
+  const managedDraft = deepFreeze({
+    getSnapshot() {
+      snapshotReads += 1;
+      return rawDraft.getSnapshot();
+    },
+    getTimerSnapshot() {
+      timerReads += 1;
+      return rawDraft.getTimerSnapshot();
+    },
+    addItem: (key) => rawDraft.addItem(key),
+    removeItem: (key) => rawDraft.removeItem(key),
+    moveItem: (key, order) => rawDraft.moveItem(key, order),
+    setNote: (note) => rawDraft.setNote(note),
+    discard: () => {
+      throw new Error('raw managed discard must not run');
+    },
+    addSet: (key) => rawDraft.addSet(key),
+    removeSet: (key, order) => rawDraft.removeSet(key, order),
+    setSetField: (key, order, field, value) =>
+      rawDraft.setSetField(key, order, field, value),
+    setItemField: (key, field, value) =>
+      rawDraft.setItemField(key, field, value)
+  });
+  const initialSnapshot = rawDraft.getSnapshot();
+  const recovery = createRecoveryFacade(
+    managedDraft,
+    recoveryState('active', {
+      started_at: initialSnapshot.started_at,
+      item_count: 1
+    })
+  );
+  const { shell, panel } = mountRuntime(runtime, {
+    draft: managedDraft,
+    recovery: recovery.facade,
+    loadLastPerformance: () => Promise.resolve(null)
+  });
+  shell.open({ opener: runtime.opener });
+  const input = setInputElement(panel, 'bench_press', 1, 'reps');
+  input.value = '8';
+  input.focus();
+  const history = panel.querySelector('.activity-v2-session-history');
+  const timerText = panel.querySelector('.activity-v2-session-timer').textContent;
+  const generalStatus = panel.querySelector('.activity-v2-session-status');
+  const recoveryStatus = panel.querySelector(
+    '.activity-v2-session-recovery-status'
+  );
+  assert.equal(recoveryStatus.getAttribute('role'), 'status');
+  assert.equal(recoveryStatus.getAttribute('aria-live'), 'polite');
+  assert.equal(
+    panel.querySelector('.activity-v2-session-lead').textContent,
+    'Baue dein Training Schritt für Schritt auf. Die Session wird lokal auf diesem Gerät gesichert.'
+  );
+
+  snapshotReads = 0;
+  timerReads = 0;
+  const states = [
+    ['saving', 'Wird lokal gesichert …', 'notice', null],
+    ['saved', 'Lokal gesichert', 'success', null],
+    [
+      'degraded',
+      'Lokale Wiederherstellung derzeit nicht garantiert.',
+      'error',
+      'storage_error'
+    ],
+    [
+      'conflict',
+      'Die Session wurde in einem anderen Tab verändert. Bitte neu laden, bevor du sie lokal weiter sicherst oder verwirfst.',
+      'error',
+      'conflict'
+    ]
+  ];
+  states.forEach(([state, message, tone, reason]) => {
+    recovery.emit(
+      recoveryState(state, {
+        started_at: initialSnapshot.started_at,
+        saved_at:
+          state === 'saved' ? '2026-08-09T08:00:00.000Z' : null,
+        item_count: 1,
+        reason
+      })
+    );
+    assert.equal(recoveryStatus.textContent, message);
+    assert.equal(recoveryStatus.dataset.tone, tone);
+    assert.equal(panel.querySelector('.activity-v2-session-history'), history);
+    assert.equal(panel.querySelector('.activity-v2-session-timer').textContent, timerText);
+    assert.equal(input.value, '8');
+    assert.equal(runtime.document.activeElement, input);
+    assert.equal(generalStatus.textContent, '');
+  });
+  assert.equal(snapshotReads, 0);
+  assert.equal(timerReads, 0);
+
+  shell.destroy();
+  assert.equal(recovery.getUnsubscribeCalls(), 1);
+  assert.equal(recovery.getDestroyCalls(), 0);
+});
+
+test('recovery close awaits only persistent discard and failure remains retryable', async () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('bench_press');
+  const dirty = runtime.draft.getSnapshot();
+  let rawDiscardCalls = 0;
+  const managedDraft = deepFreeze({
+    getSnapshot: () => runtime.draft.getSnapshot(),
+    getTimerSnapshot: () => runtime.draft.getTimerSnapshot(),
+    addItem: (key) => runtime.draft.addItem(key),
+    removeItem: (key) => runtime.draft.removeItem(key),
+    moveItem: (key, order) => runtime.draft.moveItem(key, order),
+    setNote: (note) => runtime.draft.setNote(note),
+    discard() {
+      rawDiscardCalls += 1;
+      throw new Error('raw managed discard must not run');
+    },
+    addSet: (key) => runtime.draft.addSet(key),
+    removeSet: (key, order) => runtime.draft.removeSet(key, order),
+    setSetField: (key, order, field, value) =>
+      runtime.draft.setSetField(key, order, field, value),
+    setItemField: (key, field, value) =>
+      runtime.draft.setItemField(key, field, value)
+  });
+  const firstDiscard = deferred();
+  const secondDiscard = deferred();
+  const recovery = createRecoveryFacade(
+    managedDraft,
+    recoveryState('saved', {
+      started_at: dirty.started_at,
+      saved_at: '2026-08-09T08:00:00.000Z',
+      item_count: 1
+    }),
+    {
+      discard({ emit, getDiscardCalls }) {
+        emit(
+          recoveryState('discarding', {
+            started_at: dirty.started_at,
+            saved_at: '2026-08-09T08:00:00.000Z',
+            item_count: 1
+          })
+        );
+        return (getDiscardCalls() === 1 ? firstDiscard.promise : secondDiscard.promise)
+          .then(() => {
+            emit(recoveryState('destroyed'));
+          })
+          .catch((error) => {
+            emit(
+              recoveryState('degraded', {
+                started_at: dirty.started_at,
+                saved_at: '2026-08-09T08:00:00.000Z',
+                item_count: 1,
+                reason: 'storage_error'
+              })
+            );
+            throw error;
+          });
+      }
+    }
+  );
+  const { shell, panel } = mountRuntime(runtime, {
+    draft: managedDraft,
+    recovery: recovery.facade,
+    confirmDiscard: () => true,
+    loadLastPerformance: () => Promise.resolve(null)
+  });
+  shell.open({ opener: runtime.opener });
+  const focused = actionElement(panel, 'remove', 'bench_press');
+  focused.focus();
+  const history = panel.querySelector('.activity-v2-session-history');
+  const timerText = panel.querySelector('.activity-v2-session-timer').textContent;
+
+  const failedClose = shell.requestClose('close_button');
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(shell.isOpen(), true);
+  assert.equal(recovery.getDiscardCalls(), 1);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-recovery-status').textContent,
+    'Lokale Session wird verworfen …'
+  );
+  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, true);
+  firstDiscard.reject(new Error('private storage detail'));
+  assert.equal(await failedClose, false);
+  assert.equal(shell.isOpen(), true);
+  assert.equal(runtime.draft.getSnapshot(), dirty);
+  assert.equal(runtime.document.activeElement, focused);
+  assert.equal(panel.querySelector('.activity-v2-session-history'), history);
+  assert.equal(panel.querySelector('.activity-v2-session-timer').textContent, timerText);
+  assert.equal(actionElement(panel, 'remove', 'bench_press').disabled, false);
+  assert.equal(
+    panel.querySelector('.activity-v2-session-recovery-status').textContent,
+    'Lokale Wiederherstellung derzeit nicht garantiert.'
+  );
+  assert.equal(
+    panel.querySelector('.activity-v2-session-status').textContent,
+    'Die Session konnte nicht verworfen werden.'
+  );
+
+  const successfulClose = shell.requestClose('escape');
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(recovery.getDiscardCalls(), 2);
+  secondDiscard.resolve();
+  assert.equal(await successfulClose, true);
+  assert.equal(shell.isOpen(), false);
+  assert.equal(rawDiscardCalls, 0);
+  assert.equal(recovery.getDestroyCalls(), 0);
+  assert.equal(runtime.draft.getSnapshot(), dirty);
+  assert.equal(runtime.document.activeElement, runtime.opener);
 });
 
 test('destroy invalidates a pending confirmation without late discard or DOM effects', async () => {

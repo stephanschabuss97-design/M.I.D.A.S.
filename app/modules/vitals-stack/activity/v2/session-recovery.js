@@ -1,0 +1,1578 @@
+'use strict';
+
+(function initActivityV2SessionRecovery(root) {
+  const DATABASE_NAME = 'midas_activity_v2_recovery';
+  const DATABASE_VERSION = 1;
+  const STORE_NAME = 'session_recovery';
+  const SLOT_KEY = 'active_session';
+  const RECOVERY_SCHEMA_VERSION = 'midas.activity-session-recovery.v1';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const SAFE_MESSAGE =
+    'The activity session recovery operation could not be completed.';
+  const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  const STORE_OPTION_KEYS = Object.freeze(['indexedDB']);
+  const OPEN_OPTION_KEYS = Object.freeze([
+    'storage',
+    'semantics',
+    'resolveSemantics',
+    'now',
+    'createRequestId',
+    'createLeaseToken',
+    'enqueue'
+  ]);
+  const STORE_METHOD_KEYS = Object.freeze(['read', 'save', 'discard', 'close']);
+  const RECOVERY_METHOD_KEYS = Object.freeze([
+    'getState',
+    'getDraft',
+    'startNew',
+    'continueSession',
+    'flush',
+    'discard',
+    'subscribe',
+    'destroy'
+  ]);
+  const DRAFT_METHOD_KEYS = Object.freeze([
+    'getSnapshot',
+    'getTimerSnapshot',
+    'addItem',
+    'removeItem',
+    'moveItem',
+    'setNote',
+    'discard',
+    'addSet',
+    'removeSet',
+    'setSetField',
+    'setItemField'
+  ]);
+  const MUTATION_METHOD_KEYS = Object.freeze([
+    'addItem',
+    'removeItem',
+    'moveItem',
+    'setNote',
+    'addSet',
+    'removeSet',
+    'setSetField',
+    'setItemField'
+  ]);
+  const RECORD_KEYS = Object.freeze([
+    'slot_key',
+    'recovery_schema_version',
+    'slot_generation',
+    'write_sequence',
+    'lease_token',
+    'request_id',
+    'persisted_revision',
+    'saved_at',
+    'draft'
+  ]);
+  const OBSERVATION_KEYS = Object.freeze(['kind', 'value']);
+  const STATE_KEYS = Object.freeze([
+    'state',
+    'started_at',
+    'saved_at',
+    'item_count',
+    'reason'
+  ]);
+  const SNAPSHOT_KEYS = Object.freeze([
+    'draft_schema_version',
+    'request_id',
+    'catalog_version',
+    'revision',
+    'started_at',
+    'note',
+    'items'
+  ]);
+  const JSON_NODE_LIMIT = 50000;
+  const JSON_DEPTH_LIMIT = 100;
+  const CANCELED_WRITE = Object.freeze({ canceled: true });
+
+  class ActivityV2SessionRecoveryError extends Error {
+    constructor(code) {
+      super(SAFE_MESSAGE);
+      this.name = 'ActivityV2SessionRecoveryError';
+      this.code = code;
+    }
+  }
+
+  const hasOwn = (value, key) =>
+    Object.prototype.hasOwnProperty.call(value, key);
+
+  const isRecord = (value) =>
+    value !== null && typeof value === 'object' && !Array.isArray(value);
+
+  function hasExactKeys(value, expected) {
+    if (!isRecord(value)) return false;
+    const keys = Reflect.ownKeys(value);
+    return (
+      keys.length === expected.length &&
+      keys.every((key) => typeof key === 'string' && expected.includes(key))
+    );
+  }
+
+  function hasExactOrderedKeys(value, expected) {
+    if (!isRecord(value)) return false;
+    const keys = Reflect.ownKeys(value);
+    return (
+      keys.length === expected.length &&
+      keys.every((key, index) => key === expected[index])
+    );
+  }
+
+  function fail(code) {
+    throw new ActivityV2SessionRecoveryError(code);
+  }
+
+  function makeError(code) {
+    return new ActivityV2SessionRecoveryError(code);
+  }
+
+  function deepFreeze(value, seen = new WeakSet()) {
+    if (
+      value === null ||
+      (typeof value !== 'object' && typeof value !== 'function') ||
+      seen.has(value)
+    ) {
+      return value;
+    }
+    seen.add(value);
+    Reflect.ownKeys(value).forEach((key) => deepFreeze(value[key], seen));
+    return Object.freeze(value);
+  }
+
+  function assertCanonicalUuid(value, code) {
+    if (typeof value !== 'string' || !UUID_RE.test(value)) fail(code);
+    return value;
+  }
+
+  function isCanonicalTimestamp(value) {
+    if (typeof value !== 'string') return false;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && new Date(time).toISOString() === value;
+  }
+
+  function cloneJsonCompatible(value) {
+    const seen = new WeakSet();
+    let nodes = 0;
+
+    function clone(current, depth) {
+      nodes += 1;
+      if (nodes > JSON_NODE_LIMIT || depth > JSON_DEPTH_LIMIT) {
+        throw new TypeError('unsafe value');
+      }
+      if (
+        current === null ||
+        typeof current === 'string' ||
+        typeof current === 'boolean'
+      ) {
+        return current;
+      }
+      if (typeof current === 'number') {
+        if (!Number.isFinite(current)) throw new TypeError('unsafe value');
+        return current;
+      }
+      if (typeof current !== 'object' || seen.has(current)) {
+        throw new TypeError('unsafe value');
+      }
+      seen.add(current);
+
+      if (Array.isArray(current)) {
+        const keys = Reflect.ownKeys(current);
+        if (
+          keys.length !== current.length + 1 ||
+          keys[keys.length - 1] !== 'length' ||
+          !keys.slice(0, -1).every((key, index) => key === String(index))
+        ) {
+          throw new TypeError('unsafe value');
+        }
+        return current.map((entry) => clone(entry, depth + 1));
+      }
+
+      if (Object.prototype.toString.call(current) !== '[object Object]') {
+        throw new TypeError('unsafe value');
+      }
+
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      const keys = Reflect.ownKeys(current);
+      if (
+        keys.some(
+          (key) =>
+            typeof key !== 'string' ||
+            !descriptors[key] ||
+            !hasOwn(descriptors[key], 'value') ||
+            descriptors[key].enumerable !== true
+        )
+      ) {
+        throw new TypeError('unsafe value');
+      }
+      const result = {};
+      keys.forEach((key) => {
+        Object.defineProperty(result, key, {
+          value: clone(descriptors[key].value, depth + 1),
+          enumerable: true,
+          writable: true,
+          configurable: true
+        });
+      });
+      return result;
+    }
+
+    return clone(value, 0);
+  }
+
+  function protectedJsonClone(value, code = 'STORAGE_ERROR') {
+    try {
+      return deepFreeze(cloneJsonCompatible(value));
+    } catch {
+      fail(code);
+    }
+  }
+
+  function structurallyEqual(left, right, seen = new WeakMap()) {
+    if (Object.is(left, right)) return true;
+    if (
+      left === null ||
+      right === null ||
+      typeof left !== 'object' ||
+      typeof right !== 'object' ||
+      Array.isArray(left) !== Array.isArray(right)
+    ) {
+      return false;
+    }
+    if (seen.get(left) === right) return true;
+    seen.set(left, right);
+    const leftKeys = Reflect.ownKeys(left);
+    const rightKeys = Reflect.ownKeys(right);
+    if (
+      leftKeys.length !== rightKeys.length ||
+      leftKeys.some((key) => !rightKeys.includes(key))
+    ) {
+      return false;
+    }
+    return leftKeys.every((key) =>
+      structurallyEqual(left[key], right[key], seen)
+    );
+  }
+
+  function createObservation(value, issuedObservations) {
+    const observation =
+      value === undefined
+        ? deepFreeze({ kind: 'missing', value: null })
+        : deepFreeze({ kind: 'record', value: protectedJsonClone(value) });
+    if (issuedObservations) issuedObservations.add(observation);
+    return observation;
+  }
+
+  function validateObservationShape(observation) {
+    if (!hasExactOrderedKeys(observation, OBSERVATION_KEYS)) {
+      fail('INVALID_OBSERVATION');
+    }
+    if (observation.kind === 'missing' && observation.value === null) {
+      return observation;
+    }
+    if (observation.kind !== 'record') fail('INVALID_OBSERVATION');
+    protectedJsonClone(observation.value, 'INVALID_OBSERVATION');
+    return observation;
+  }
+
+  function inspectRecord(record) {
+    if (!isRecord(record)) return { kind: 'invalid' };
+    if (
+      hasOwn(record, 'recovery_schema_version') &&
+      typeof record.recovery_schema_version === 'string' &&
+      record.recovery_schema_version !== RECOVERY_SCHEMA_VERSION
+    ) {
+      return { kind: 'unknown' };
+    }
+    if (
+      !hasExactOrderedKeys(record, RECORD_KEYS) ||
+      record.slot_key !== SLOT_KEY ||
+      record.recovery_schema_version !== RECOVERY_SCHEMA_VERSION ||
+      !Number.isSafeInteger(record.slot_generation) ||
+      record.slot_generation < 0 ||
+      !Number.isSafeInteger(record.write_sequence) ||
+      record.write_sequence < 0 ||
+      typeof record.lease_token !== 'string' ||
+      !UUID_RE.test(record.lease_token)
+    ) {
+      return { kind: 'invalid' };
+    }
+
+    const isTombstone =
+      record.write_sequence === 0 &&
+      record.request_id === null &&
+      record.persisted_revision === null &&
+      record.saved_at === null &&
+      record.draft === null;
+    if (isTombstone) return { kind: 'tombstone', record };
+
+    if (
+      record.write_sequence < 1 ||
+      typeof record.request_id !== 'string' ||
+      !UUID_RE.test(record.request_id) ||
+      !Number.isSafeInteger(record.persisted_revision) ||
+      record.persisted_revision < 1 ||
+      !isCanonicalTimestamp(record.saved_at) ||
+      !hasExactOrderedKeys(record.draft, SNAPSHOT_KEYS) ||
+      record.draft.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      record.draft.request_id !== record.request_id ||
+      record.draft.revision !== record.persisted_revision ||
+      !Number.isSafeInteger(record.draft.catalog_version) ||
+      record.draft.catalog_version < 1
+    ) {
+      return { kind: 'invalid' };
+    }
+    return { kind: 'active', record };
+  }
+
+  function createActiveRecord({ observation, draft, savedAt, leaseToken }) {
+    const inspected =
+      observation.kind === 'missing'
+        ? { kind: 'missing' }
+        : inspectRecord(observation.value);
+    if (
+      inspected.kind !== 'missing' &&
+      inspected.kind !== 'tombstone' &&
+      inspected.kind !== 'active'
+    ) {
+      fail('INVALID_OBSERVATION');
+    }
+    if (
+      !hasExactOrderedKeys(draft, SNAPSHOT_KEYS) ||
+      draft.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      typeof draft.request_id !== 'string' ||
+      !UUID_RE.test(draft.request_id) ||
+      !Number.isSafeInteger(draft.catalog_version) ||
+      draft.catalog_version < 1 ||
+      !Number.isSafeInteger(draft.revision) ||
+      draft.revision < 1 ||
+      !isCanonicalTimestamp(savedAt)
+    ) {
+      fail('INVALID_DRAFT_STATE');
+    }
+    assertCanonicalUuid(leaseToken, 'INVALID_LEASE_TOKEN');
+
+    let generation = 0;
+    let sequence = 0;
+    if (inspected.kind !== 'missing') {
+      generation = inspected.record.slot_generation;
+      sequence = inspected.record.write_sequence;
+      if (leaseToken !== inspected.record.lease_token) {
+        fail('INVALID_LEASE_TOKEN');
+      }
+    }
+    if (inspected.kind === 'active') {
+      if (
+        draft.request_id !== inspected.record.request_id ||
+        draft.revision <= inspected.record.persisted_revision
+      ) {
+        fail('CONFLICT');
+      }
+    }
+    if (sequence >= Number.MAX_SAFE_INTEGER) fail('STORAGE_ERROR');
+
+    return deepFreeze({
+      slot_key: SLOT_KEY,
+      recovery_schema_version: RECOVERY_SCHEMA_VERSION,
+      slot_generation: generation,
+      write_sequence: sequence + 1,
+      lease_token: leaseToken,
+      request_id: draft.request_id,
+      persisted_revision: draft.revision,
+      saved_at: savedAt,
+      draft: protectedJsonClone(draft, 'INVALID_DRAFT_STATE')
+    });
+  }
+
+  function createTombstoneRecord(observation, leaseToken) {
+    assertCanonicalUuid(leaseToken, 'INVALID_LEASE_TOKEN');
+    let generation = 1;
+    let previousToken = null;
+    if (observation.kind === 'record') {
+      const record = observation.value;
+      previousToken = isRecord(record) ? record.lease_token : null;
+      if (
+        typeof previousToken === 'string' &&
+        UUID_RE.test(previousToken.toLowerCase())
+      ) {
+        previousToken = previousToken.toLowerCase();
+      }
+      if (
+        isRecord(record) &&
+        Number.isSafeInteger(record.slot_generation) &&
+        record.slot_generation >= 0
+      ) {
+        if (record.slot_generation >= Number.MAX_SAFE_INTEGER) {
+          fail('STORAGE_ERROR');
+        }
+        generation = record.slot_generation + 1;
+      }
+    }
+    if (leaseToken === previousToken) fail('INVALID_LEASE_TOKEN');
+    return deepFreeze({
+      slot_key: SLOT_KEY,
+      recovery_schema_version: RECOVERY_SCHEMA_VERSION,
+      slot_generation: generation,
+      write_sequence: 0,
+      lease_token: leaseToken,
+      request_id: null,
+      persisted_revision: null,
+      saved_at: null,
+      draft: null
+    });
+  }
+
+  function createIndexedDbStore(optionsValue) {
+    const options = optionsValue === undefined ? {} : optionsValue;
+    if (!isRecord(options)) fail('INVALID_OPTIONS');
+    if (Reflect.ownKeys(options).some((key) => !STORE_OPTION_KEYS.includes(key))) {
+      fail('INVALID_OPTIONS');
+    }
+    const indexedDb =
+      !hasOwn(options, 'indexedDB') || options.indexedDB === undefined
+        ? root.indexedDB
+        : options.indexedDB;
+    if (!isRecord(indexedDb) || typeof indexedDb.open !== 'function') {
+      fail('INDEXED_DB_UNAVAILABLE');
+    }
+
+    let database = null;
+    let opening = null;
+    let storeEpoch = 0;
+    let closed = false;
+    const issuedObservations = new WeakSet();
+
+    function storageError() {
+      return makeError('STORAGE_ERROR');
+    }
+
+    function getDatabase() {
+      if (closed) return Promise.reject(storageError());
+      if (database) return Promise.resolve({ database, epoch: storeEpoch });
+      if (opening) return opening;
+
+      const openEpoch = storeEpoch;
+      let openPromise;
+      openPromise = new Promise((resolve, reject) => {
+        let request;
+        let settled = false;
+        let blocked = false;
+
+        function rejectOpen() {
+          if (settled) return;
+          settled = true;
+          reject(storageError());
+        }
+
+        try {
+          request = indexedDb.open(DATABASE_NAME, DATABASE_VERSION);
+        } catch {
+          rejectOpen();
+          return;
+        }
+        if (!isRecord(request)) {
+          rejectOpen();
+          return;
+        }
+
+        request.onupgradeneeded = () => {
+          try {
+            const upgradeDb = request.result;
+            if (!upgradeDb.objectStoreNames.contains(STORE_NAME)) {
+              upgradeDb.createObjectStore(STORE_NAME, { keyPath: 'slot_key' });
+            }
+          } catch {
+            try {
+              request.transaction?.abort();
+            } catch {
+              // The open error remains generic and payload-free.
+            }
+          }
+        };
+        request.onblocked = () => {
+          blocked = true;
+          storeEpoch += 1;
+          rejectOpen();
+        };
+        request.onerror = rejectOpen;
+        request.onsuccess = () => {
+          const opened = request.result;
+          if (
+            settled ||
+            blocked ||
+            closed ||
+            openEpoch !== storeEpoch ||
+            !opened
+          ) {
+            try {
+              opened?.close();
+            } catch {
+              // Late handles are never published.
+            }
+            rejectOpen();
+            return;
+          }
+          settled = true;
+          database = opened;
+          opening = null;
+          opened.onversionchange = () => {
+            if (database !== opened) return;
+            database = null;
+            storeEpoch += 1;
+            try {
+              opened.close();
+            } catch {
+              // Calls after invalidation fail or reopen through a fresh epoch.
+            }
+          };
+          resolve({ database: opened, epoch: openEpoch });
+        };
+      });
+      opening = openPromise;
+      openPromise.catch(() => {
+        if (opening === openPromise) opening = null;
+      });
+      return openPromise;
+    }
+
+    function runTransaction(mode, operation) {
+      return getDatabase().then(
+        ({ database: activeDatabase, epoch: operationEpoch }) =>
+          new Promise((resolve, reject) => {
+            let transaction;
+            let store;
+            let result;
+            let operationError = null;
+            let settled = false;
+
+            function finishError(error = operationError || storageError()) {
+              if (settled) return;
+              settled = true;
+              reject(error);
+            }
+
+            try {
+              transaction = activeDatabase.transaction(STORE_NAME, mode);
+              store = transaction.objectStore(STORE_NAME);
+            } catch {
+              finishError();
+              return;
+            }
+
+            transaction.oncomplete = () => {
+              if (settled) return;
+              if (
+                closed ||
+                operationEpoch !== storeEpoch ||
+                database !== activeDatabase
+              ) {
+                finishError();
+                return;
+              }
+              settled = true;
+              resolve(result);
+            };
+            transaction.onerror = () => finishError();
+            transaction.onabort = () => finishError();
+
+            function abortWith(error) {
+              operationError = error;
+              try {
+                transaction.abort();
+              } catch {
+                finishError(error);
+              }
+            }
+
+            try {
+              operation({
+                store,
+                setResult(value) {
+                  result = value;
+                },
+                abortWith
+              });
+            } catch (error) {
+              abortWith(
+                error instanceof ActivityV2SessionRecoveryError
+                  ? error
+                  : storageError()
+              );
+            }
+          })
+      );
+    }
+
+    function read() {
+      if (arguments.length !== 0) fail('INVALID_OPTIONS');
+      return runTransaction('readonly', ({ store, setResult, abortWith }) => {
+        let request;
+        try {
+          request = store.get(SLOT_KEY);
+        } catch {
+          abortWith(storageError());
+          return;
+        }
+        request.onerror = () => abortWith(storageError());
+        request.onsuccess = () => {
+          try {
+            setResult(createObservation(request.result, issuedObservations));
+          } catch (error) {
+            abortWith(error);
+          }
+        };
+      });
+    }
+
+    function save(options) {
+      if (
+        arguments.length !== 1 ||
+        !hasExactKeys(options, [
+          'observation',
+          'draft',
+          'savedAt',
+          'leaseToken'
+        ])
+      ) {
+        fail('INVALID_OPTIONS');
+      }
+      if (!issuedObservations.has(options.observation)) {
+        fail('INVALID_OBSERVATION');
+      }
+      const observation = validateObservationShape(options.observation);
+      const record = createActiveRecord({
+        observation,
+        draft: options.draft,
+        savedAt: options.savedAt,
+        leaseToken: options.leaseToken
+      });
+
+      return runTransaction('readwrite', ({ store, setResult, abortWith }) => {
+        let getRequest;
+        try {
+          getRequest = store.get(SLOT_KEY);
+        } catch {
+          abortWith(storageError());
+          return;
+        }
+        getRequest.onerror = () => abortWith(storageError());
+        getRequest.onsuccess = () => {
+          let current;
+          try {
+            current = createObservation(getRequest.result);
+          } catch (error) {
+            abortWith(error);
+            return;
+          }
+          if (!structurallyEqual(current, observation)) {
+            abortWith(makeError('CONFLICT'));
+            return;
+          }
+          let putRequest;
+          try {
+            putRequest = store.put(record);
+          } catch {
+            abortWith(storageError());
+            return;
+          }
+          putRequest.onerror = () => abortWith(storageError());
+          putRequest.onsuccess = () => {
+            setResult(createObservation(record, issuedObservations));
+          };
+        };
+      });
+    }
+
+    function discard(options) {
+      if (
+        arguments.length !== 1 ||
+        !hasExactKeys(options, ['observation', 'leaseToken'])
+      ) {
+        fail('INVALID_OPTIONS');
+      }
+      if (!issuedObservations.has(options.observation)) {
+        fail('INVALID_OBSERVATION');
+      }
+      const observation = validateObservationShape(options.observation);
+      const record = createTombstoneRecord(observation, options.leaseToken);
+
+      return runTransaction('readwrite', ({ store, setResult, abortWith }) => {
+        let getRequest;
+        try {
+          getRequest = store.get(SLOT_KEY);
+        } catch {
+          abortWith(storageError());
+          return;
+        }
+        getRequest.onerror = () => abortWith(storageError());
+        getRequest.onsuccess = () => {
+          let current;
+          try {
+            current = createObservation(getRequest.result);
+          } catch (error) {
+            abortWith(error);
+            return;
+          }
+          if (!structurallyEqual(current, observation)) {
+            abortWith(makeError('CONFLICT'));
+            return;
+          }
+          let putRequest;
+          try {
+            putRequest = store.put(record);
+          } catch {
+            abortWith(storageError());
+            return;
+          }
+          putRequest.onerror = () => abortWith(storageError());
+          putRequest.onsuccess = () => {
+            setResult(createObservation(record, issuedObservations));
+          };
+        };
+      });
+    }
+
+    function close() {
+      if (arguments.length !== 0) fail('INVALID_OPTIONS');
+      if (closed) return;
+      closed = true;
+      storeEpoch += 1;
+      const activeDatabase = database;
+      database = null;
+      opening = null;
+      try {
+        activeDatabase?.close();
+      } catch {
+        // Closing is idempotent and never deletes the database.
+      }
+    }
+
+    return deepFreeze({ read, save, discard, close });
+  }
+
+  function resolveSemantics(catalogVersion) {
+    if (
+      !Number.isSafeInteger(catalogVersion) ||
+      catalogVersion < 1
+    ) {
+      fail('INVALID_CATALOG_VERSION');
+    }
+    const activityV2 = root.AppModules?.activityV2;
+    const semantics =
+      catalogVersion === 1
+        ? activityV2?.semantics
+        : catalogVersion === 2
+          ? activityV2?.semanticsV2
+          : null;
+    if (
+      !isRecord(semantics) ||
+      typeof semantics.getCatalog !== 'function' ||
+      typeof semantics.getEntryByKey !== 'function'
+    ) {
+      return null;
+    }
+    try {
+      return semantics.getCatalog().catalog_version === catalogVersion
+        ? semantics
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function assertStorage(storage) {
+    if (
+      !hasExactKeys(storage, STORE_METHOD_KEYS) ||
+      STORE_METHOD_KEYS.some((key) => typeof storage[key] !== 'function')
+    ) {
+      fail('INVALID_STORAGE');
+    }
+    return storage;
+  }
+
+  function assertDraftApi() {
+    const draftApi = root.AppModules?.activityV2?.sessionDraft;
+    if (
+      !isRecord(draftApi) ||
+      typeof draftApi.create !== 'function' ||
+      typeof draftApi.restore !== 'function'
+    ) {
+      fail('DRAFT_API_MISSING');
+    }
+    return draftApi;
+  }
+
+  function assertSemantics(semantics) {
+    if (
+      !isRecord(semantics) ||
+      typeof semantics.getCatalog !== 'function' ||
+      typeof semantics.getEntryByKey !== 'function'
+    ) {
+      fail('SEMANTICS_MISSING');
+    }
+    return semantics;
+  }
+
+  function resolveNow(options) {
+    if (!hasOwn(options, 'now') || options.now === undefined) return Date.now;
+    if (typeof options.now !== 'function') fail('INVALID_CLOCK');
+    return options.now;
+  }
+
+  function readNow(now) {
+    let value;
+    try {
+      value = now();
+    } catch {
+      fail('INVALID_CLOCK');
+    }
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      !Number.isFinite(new Date(value).getTime())
+    ) {
+      fail('INVALID_CLOCK');
+    }
+    return value;
+  }
+
+  function resolveUuidFactory(options, key, code) {
+    if (hasOwn(options, key) && options[key] !== undefined) {
+      if (typeof options[key] !== 'function') fail(code);
+      return options[key];
+    }
+    return () => {
+      if (!root.crypto || typeof root.crypto.randomUUID !== 'function') {
+        fail(code === 'INVALID_LEASE_TOKEN' ? 'LEASE_TOKEN_UNAVAILABLE' : 'REQUEST_ID_UNAVAILABLE');
+      }
+      return root.crypto.randomUUID();
+    };
+  }
+
+  function readUuid(factory, code, previous = null) {
+    let value;
+    try {
+      value = factory();
+    } catch (error) {
+      if (error instanceof ActivityV2SessionRecoveryError) throw error;
+      fail(code);
+    }
+    if (typeof value !== 'string' || !UUID_RE.test(value.toLowerCase())) {
+      fail(code);
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === previous) fail(code);
+    return normalized;
+  }
+
+  function resolveEnqueue(options) {
+    if (hasOwn(options, 'enqueue') && options.enqueue !== undefined) {
+      if (typeof options.enqueue !== 'function') fail('INVALID_SCHEDULER');
+      return options.enqueue;
+    }
+    if (typeof root.queueMicrotask === 'function') return root.queueMicrotask;
+    if (typeof root.setTimeout === 'function') {
+      return (callback) => root.setTimeout(callback, 0);
+    }
+    fail('INVALID_SCHEDULER');
+  }
+
+  function resolveCatalogResolver(options) {
+    if (
+      hasOwn(options, 'resolveSemantics') &&
+      options.resolveSemantics !== undefined
+    ) {
+      if (typeof options.resolveSemantics !== 'function') {
+        fail('INVALID_SEMANTICS_RESOLVER');
+      }
+      return options.resolveSemantics;
+    }
+    return resolveSemantics;
+  }
+
+  function createState(state, rawDraft, savedAt, reason) {
+    const snapshot = rawDraft ? rawDraft.getSnapshot() : null;
+    return deepFreeze({
+      state,
+      started_at: snapshot?.started_at ?? null,
+      saved_at: savedAt,
+      item_count: snapshot?.items.length ?? 0,
+      reason
+    });
+  }
+
+  function normalizeStorageError(error) {
+    if (
+      error instanceof ActivityV2SessionRecoveryError &&
+      error.code === 'CONFLICT'
+    ) {
+      return error;
+    }
+    return makeError('STORAGE_ERROR');
+  }
+
+  async function callStorage(storage, method, argument, hasArgument = true) {
+    let result;
+    try {
+      result = hasArgument ? storage[method](argument) : storage[method]();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+    let then;
+    try {
+      then = result?.then;
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+    if (typeof then !== 'function') throw makeError('STORAGE_ERROR');
+    try {
+      return await result;
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  function assertCoordinatorObservation(observation) {
+    validateObservationShape(observation);
+    return deepFreeze(observation);
+  }
+
+  async function open(optionsValue) {
+    if (!isRecord(optionsValue)) fail('INVALID_OPTIONS');
+    if (
+      Reflect.ownKeys(optionsValue).some(
+        (key) => !OPEN_OPTION_KEYS.includes(key)
+      )
+    ) {
+      fail('INVALID_OPTIONS');
+    }
+    if (!hasOwn(optionsValue, 'storage') || !hasOwn(optionsValue, 'semantics')) {
+      fail('INVALID_OPTIONS');
+    }
+
+    const storage = assertStorage(optionsValue.storage);
+    const currentSemantics = assertSemantics(optionsValue.semantics);
+    const catalogResolver = resolveCatalogResolver(optionsValue);
+    const now = resolveNow(optionsValue);
+    const requestIdFactory = resolveUuidFactory(
+      optionsValue,
+      'createRequestId',
+      'INVALID_REQUEST_ID'
+    );
+    const leaseTokenFactory = resolveUuidFactory(
+      optionsValue,
+      'createLeaseToken',
+      'INVALID_LEASE_TOKEN'
+    );
+    const enqueue = resolveEnqueue(optionsValue);
+    const draftApi = assertDraftApi();
+
+    let phase = 'empty';
+    let reason = null;
+    let observation = null;
+    let hasObservation = false;
+    let rawDraft = null;
+    let managedDraft = null;
+    let recoveredDraft = null;
+    let savedAt = null;
+    let persistedRevision = null;
+    let pendingSnapshot = null;
+    let activeWrite = null;
+    let retryBlocked = false;
+    let controllerEpoch = 0;
+    let queued = false;
+    let queueToken = 0;
+    let discardPromise = null;
+    let canStartDegraded = false;
+    let stateSnapshot = createState('empty', null, null, null);
+    const subscribers = new Set();
+    const lifecycleRemovers = [];
+
+    function notifySubscribers() {
+      [...subscribers].forEach((listener) => {
+        try {
+          listener(stateSnapshot);
+        } catch {
+          subscribers.delete(listener);
+        }
+      });
+    }
+
+    function publish(nextPhase, nextReason = null) {
+      phase = nextPhase;
+      reason = nextReason;
+      stateSnapshot = createState(phase, rawDraft || recoveredDraft, savedAt, reason);
+      notifySubscribers();
+    }
+
+    function currentRecord() {
+      if (!hasObservation || observation.kind !== 'record') return null;
+      return inspectRecord(observation.value);
+    }
+
+    function updateConfirmedObservation(nextObservation) {
+      observation = assertCoordinatorObservation(nextObservation);
+      hasObservation = true;
+      canStartDegraded = false;
+      const inspected = currentRecord();
+      if (inspected?.kind === 'active') {
+        savedAt = inspected.record.saved_at;
+        persistedRevision = inspected.record.persisted_revision;
+      } else {
+        savedAt = null;
+        persistedRevision = null;
+      }
+    }
+
+    async function acquireObservationForSave(operationEpoch) {
+      if (hasObservation) return true;
+      const nextObservation = assertCoordinatorObservation(
+        await callStorage(storage, 'read', undefined, false)
+      );
+      updateConfirmedObservation(nextObservation);
+      if (operationEpoch !== controllerEpoch) return false;
+      if (nextObservation.kind === 'missing') return true;
+      const inspected = inspectRecord(nextObservation.value);
+      if (inspected.kind === 'tombstone') return true;
+      throw makeError('CONFLICT');
+    }
+
+    function leaseTokenForSave() {
+      const inspected = currentRecord();
+      if (inspected?.kind === 'active' || inspected?.kind === 'tombstone') {
+        return inspected.record.lease_token;
+      }
+      if (hasObservation && observation.kind !== 'missing') {
+        fail('CONFLICT');
+      }
+      return readUuid(leaseTokenFactory, 'INVALID_LEASE_TOKEN');
+    }
+
+    async function performSave(snapshot, operationEpoch) {
+      const acquired = await acquireObservationForSave(operationEpoch);
+      if (!acquired || operationEpoch !== controllerEpoch) return CANCELED_WRITE;
+      const leaseToken = leaseTokenForSave();
+      const savedAtValue = new Date(readNow(now)).toISOString();
+      const nextObservation = await callStorage(storage, 'save', {
+        observation,
+        draft: snapshot,
+        savedAt: savedAtValue,
+        leaseToken
+      });
+      return assertCoordinatorObservation(nextObservation);
+    }
+
+    function startNextWrite(expectedEpoch) {
+      if (
+        activeWrite ||
+        pendingSnapshot === null ||
+        expectedEpoch !== controllerEpoch ||
+        phase === 'destroyed' ||
+        phase === 'discarding' ||
+        phase === 'conflict' ||
+        retryBlocked
+      ) {
+        return null;
+      }
+
+      const snapshot = pendingSnapshot;
+      pendingSnapshot = null;
+      publish('saving');
+      let outcome = 'success';
+      const operation = performSave(snapshot, expectedEpoch)
+        .then((nextObservation) => {
+          if (nextObservation === CANCELED_WRITE) {
+            outcome = 'canceled';
+            return;
+          }
+          updateConfirmedObservation(nextObservation);
+        })
+        .catch((error) => {
+          outcome = error.code === 'CONFLICT' ? 'conflict' : 'storage_error';
+        })
+        .finally(() => {
+          activeWrite = null;
+          if (expectedEpoch !== controllerEpoch) return;
+          if (outcome === 'canceled') return;
+          if (outcome === 'conflict') {
+            pendingSnapshot = null;
+            retryBlocked = true;
+            publish('conflict', 'conflict');
+            return;
+          }
+          if (outcome === 'storage_error') {
+            if (pendingSnapshot === null) {
+              pendingSnapshot = snapshot;
+              retryBlocked = true;
+              publish('degraded', 'storage_error');
+              return;
+            }
+            retryBlocked = false;
+            startNextWrite(expectedEpoch);
+            return;
+          }
+          if (pendingSnapshot !== null) {
+            publish('saving');
+            startNextWrite(expectedEpoch);
+            return;
+          }
+          const latest = rawDraft?.getSnapshot();
+          if (latest && latest.revision === persistedRevision) {
+            publish('saved');
+          } else {
+            publish('saving');
+          }
+        });
+      activeWrite = operation;
+      return operation;
+    }
+
+    function scheduleWrite() {
+      if (
+        activeWrite ||
+        queued ||
+        retryBlocked ||
+        phase === 'conflict' ||
+        phase === 'discarding' ||
+        phase === 'destroyed'
+      ) {
+        return;
+      }
+      queued = true;
+      const expectedEpoch = controllerEpoch;
+      const expectedToken = ++queueToken;
+      try {
+        enqueue(() => {
+          if (!queued || expectedToken !== queueToken) return;
+          queued = false;
+          if (expectedEpoch !== controllerEpoch) return;
+          startNextWrite(expectedEpoch);
+        });
+      } catch {
+        if (expectedToken === queueToken) queued = false;
+        retryBlocked = true;
+        publish('degraded', 'storage_error');
+      }
+    }
+
+    function onMutation(snapshot) {
+      if (phase === 'conflict') {
+        publish('conflict', 'conflict');
+        return;
+      }
+      pendingSnapshot = snapshot;
+      retryBlocked = false;
+      publish('saving');
+      if (!activeWrite) scheduleWrite();
+    }
+
+    function assertReadable() {
+      if (phase === 'destroyed') fail('CONTROLLER_DESTROYED');
+      if (!rawDraft || !managedDraft) fail('INVALID_STATE');
+    }
+
+    function assertMutable() {
+      assertReadable();
+      if (phase === 'discarding') fail('MUTATION_BLOCKED');
+    }
+
+    function createManagedDraft(controller) {
+      const managed = {
+        getSnapshot() {
+          assertReadable();
+          return controller.getSnapshot();
+        },
+        getTimerSnapshot() {
+          assertReadable();
+          return controller.getTimerSnapshot();
+        },
+        addItem: null,
+        removeItem: null,
+        moveItem: null,
+        setNote: null,
+        discard() {
+          assertMutable();
+          fail('PERSISTENT_DISCARD_REQUIRED');
+        },
+        addSet: null,
+        removeSet: null,
+        setSetField: null,
+        setItemField: null
+      };
+      MUTATION_METHOD_KEYS.forEach((method) => {
+        managed[method] = (...args) => {
+          assertMutable();
+          const before = controller.getSnapshot();
+          const result = controller[method](...args);
+          if (result !== before) onMutation(result);
+          return result;
+        };
+      });
+      return deepFreeze(managed);
+    }
+
+    function getState() {
+      return stateSnapshot;
+    }
+
+    function getDraft() {
+      return managedDraft;
+    }
+
+    function draftOptions(semantics) {
+      return {
+        semantics,
+        now,
+        createRequestId: requestIdFactory
+      };
+    }
+
+    function startNew() {
+      if (
+        phase !== 'empty' &&
+        !(phase === 'degraded' && rawDraft === null && canStartDegraded)
+      ) {
+        fail(phase === 'destroyed' ? 'CONTROLLER_DESTROYED' : 'INVALID_STATE');
+      }
+      const wasDegraded = phase === 'degraded';
+      const controller = draftApi.create(draftOptions(currentSemantics));
+      rawDraft = controller;
+      recoveredDraft = null;
+      managedDraft = createManagedDraft(controller);
+      publish(wasDegraded ? 'degraded' : 'active', wasDegraded ? 'storage_error' : null);
+      return managedDraft;
+    }
+
+    function continueSession() {
+      if (
+        !recoveredDraft ||
+        !['recoverable', 'degraded', 'conflict'].includes(phase)
+      ) {
+        fail(phase === 'destroyed' ? 'CONTROLLER_DESTROYED' : 'INVALID_STATE');
+      }
+      const continuedPhase = phase;
+      const continuedReason = reason;
+      rawDraft = recoveredDraft;
+      recoveredDraft = null;
+      managedDraft = createManagedDraft(rawDraft);
+      publish(
+        continuedPhase === 'recoverable' ? 'saved' : continuedPhase,
+        continuedPhase === 'recoverable' ? null : continuedReason
+      );
+      return managedDraft;
+    }
+
+    async function flush() {
+      if (phase === 'destroyed') fail('CONTROLLER_DESTROYED');
+      if (phase === 'discarding') fail('MUTATION_BLOCKED');
+      if (phase === 'conflict') return stateSnapshot;
+      const flushEpoch = controllerEpoch;
+      queued = false;
+      queueToken += 1;
+
+      if (activeWrite) await activeWrite;
+      if (flushEpoch !== controllerEpoch || phase === 'conflict') {
+        return stateSnapshot;
+      }
+      if (pendingSnapshot !== null) {
+        retryBlocked = false;
+        startNextWrite(flushEpoch);
+        if (activeWrite) await activeWrite;
+      }
+      while (activeWrite && flushEpoch === controllerEpoch) {
+        const currentWrite = activeWrite;
+        await currentWrite;
+        if (activeWrite === currentWrite) break;
+      }
+      return stateSnapshot;
+    }
+
+    async function acquireObservationForDiscard() {
+      if (hasObservation) return;
+      updateConfirmedObservation(
+        assertCoordinatorObservation(
+          await callStorage(storage, 'read', undefined, false)
+        )
+      );
+    }
+
+    function removeLifecycleListeners() {
+      lifecycleRemovers.splice(0).forEach((remove) => {
+        try {
+          remove();
+        } catch {
+          // Listener cleanup cannot alter storage truth.
+        }
+      });
+    }
+
+    function closeStorage() {
+      try {
+        storage.close();
+      } catch {
+        // A committed tombstone or explicit destroy remains terminal.
+      }
+    }
+
+    function discard() {
+      if (phase === 'destroyed') {
+        return Promise.reject(makeError('CONTROLLER_DESTROYED'));
+      }
+      if (discardPromise) return discardPromise;
+
+      let resolveDiscard;
+      let rejectDiscard;
+      const publicDiscardPromise = new Promise((resolve, reject) => {
+        resolveDiscard = resolve;
+        rejectDiscard = reject;
+      });
+      discardPromise = publicDiscardPromise;
+      controllerEpoch += 1;
+      const discardEpoch = controllerEpoch;
+      queued = false;
+      queueToken += 1;
+      pendingSnapshot = null;
+      retryBlocked = true;
+      publish('discarding');
+      const writeToAwait = activeWrite;
+
+      (async () => {
+        if (phase === 'destroyed' || discardEpoch !== controllerEpoch) {
+          throw makeError('CONTROLLER_DESTROYED');
+        }
+        if (writeToAwait) await writeToAwait;
+        if (phase === 'destroyed' || discardEpoch !== controllerEpoch) {
+          throw makeError('CONTROLLER_DESTROYED');
+        }
+        await acquireObservationForDiscard();
+        if (phase === 'destroyed' || discardEpoch !== controllerEpoch) {
+          throw makeError('CONTROLLER_DESTROYED');
+        }
+        const inspected = currentRecord();
+        const previousToken =
+          inspected?.kind === 'active' || inspected?.kind === 'tombstone'
+            ? inspected.record.lease_token
+            : null;
+        const nextToken = readUuid(
+          leaseTokenFactory,
+          'INVALID_LEASE_TOKEN',
+          previousToken
+        );
+        const nextObservation = await callStorage(storage, 'discard', {
+          observation,
+          leaseToken: nextToken
+        });
+        updateConfirmedObservation(nextObservation);
+        rawDraft = null;
+        recoveredDraft = null;
+        managedDraft = null;
+        savedAt = null;
+        persistedRevision = null;
+        publish('destroyed');
+        removeLifecycleListeners();
+        subscribers.clear();
+        closeStorage();
+        return stateSnapshot;
+      })().then(resolveDiscard, (error) => {
+        const normalized =
+          error instanceof ActivityV2SessionRecoveryError &&
+          error.code === 'CONTROLLER_DESTROYED'
+            ? error
+            : normalizeStorageError(error);
+        if (phase === 'destroyed') {
+          discardPromise = null;
+          rejectDiscard(normalized);
+          return;
+        }
+        const snapshot = rawDraft?.getSnapshot() || recoveredDraft?.getSnapshot();
+        if (
+          snapshot &&
+          snapshot.revision > 0 &&
+          snapshot.revision !== persistedRevision
+        ) {
+          pendingSnapshot = snapshot;
+        }
+        retryBlocked = true;
+        publish(
+          normalized.code === 'CONFLICT' ? 'conflict' : 'degraded',
+          normalized.code === 'CONFLICT' ? 'conflict' : 'storage_error'
+        );
+        discardPromise = null;
+        rejectDiscard(normalized);
+      });
+      return publicDiscardPromise;
+    }
+
+    function subscribe(listener) {
+      if (typeof listener !== 'function') fail('INVALID_LISTENER');
+      if (phase === 'destroyed') fail('CONTROLLER_DESTROYED');
+      let active = true;
+      try {
+        listener(stateSnapshot);
+        subscribers.add(listener);
+      } catch {
+        active = false;
+      }
+      return function unsubscribe() {
+        if (!active) return;
+        active = false;
+        subscribers.delete(listener);
+      };
+    }
+
+    function destroy() {
+      if (phase === 'destroyed') return;
+      controllerEpoch += 1;
+      queued = false;
+      queueToken += 1;
+      pendingSnapshot = null;
+      retryBlocked = true;
+      rawDraft = null;
+      recoveredDraft = null;
+      managedDraft = null;
+      savedAt = null;
+      persistedRevision = null;
+      publish('destroyed');
+      removeLifecycleListeners();
+      subscribers.clear();
+      closeStorage();
+    }
+
+    const controller = deepFreeze({
+      getState,
+      getDraft,
+      startNew,
+      continueSession,
+      flush,
+      discard,
+      subscribe,
+      destroy
+    });
+
+    function registerLifecycleListener(target, type, listener) {
+      if (
+        !target ||
+        typeof target.addEventListener !== 'function' ||
+        typeof target.removeEventListener !== 'function'
+      ) {
+        return;
+      }
+      try {
+        target.addEventListener(type, listener);
+        lifecycleRemovers.push(() => target.removeEventListener(type, listener));
+      } catch {
+        // Lifecycle flush remains best effort.
+      }
+    }
+
+    registerLifecycleListener(root.document, 'visibilitychange', () => {
+      if (root.document.visibilityState !== 'hidden') return;
+      flush().catch(() => {});
+    });
+    registerLifecycleListener(root, 'pagehide', () => {
+      flush().catch(() => {});
+    });
+
+    try {
+      updateConfirmedObservation(
+        assertCoordinatorObservation(
+          await callStorage(storage, 'read', undefined, false)
+        )
+      );
+      if (observation.kind === 'missing') {
+        publish('empty');
+        return controller;
+      }
+      const inspected = inspectRecord(observation.value);
+      if (inspected.kind === 'unknown') {
+        publish('blocked', 'unknown_recovery_schema');
+        return controller;
+      }
+      if (inspected.kind === 'invalid') {
+        publish('blocked', 'invalid_record');
+        return controller;
+      }
+      if (inspected.kind === 'tombstone') {
+        publish('empty');
+        return controller;
+      }
+
+      let restoredSemantics;
+      try {
+        restoredSemantics = catalogResolver(
+          inspected.record.draft.catalog_version
+        );
+      } catch {
+        restoredSemantics = null;
+      }
+      if (!restoredSemantics) {
+        publish('blocked', 'catalog_unavailable');
+        return controller;
+      }
+      try {
+        if (
+          !isRecord(restoredSemantics) ||
+          typeof restoredSemantics.getCatalog !== 'function' ||
+          typeof restoredSemantics.getEntryByKey !== 'function' ||
+          restoredSemantics.getCatalog().catalog_version !==
+            inspected.record.draft.catalog_version
+        ) {
+          publish('blocked', 'catalog_unavailable');
+          return controller;
+        }
+      } catch {
+        publish('blocked', 'catalog_unavailable');
+        return controller;
+      }
+      try {
+        recoveredDraft = draftApi.restore(
+          inspected.record.draft,
+          draftOptions(restoredSemantics)
+        );
+      } catch {
+        recoveredDraft = null;
+        publish('blocked', 'invalid_record');
+        return controller;
+      }
+      publish('recoverable');
+      return controller;
+    } catch {
+      observation = null;
+      hasObservation = false;
+      savedAt = null;
+      persistedRevision = null;
+      canStartDegraded = true;
+      publish('degraded', 'storage_error');
+      return controller;
+    }
+  }
+
+  if (root.AppModules === undefined) {
+    root.AppModules = {};
+  } else if (!isRecord(root.AppModules)) {
+    throw new TypeError('AppModules must be an object');
+  }
+  if (root.AppModules.activityV2 === undefined) {
+    root.AppModules.activityV2 = {};
+  } else if (!isRecord(root.AppModules.activityV2)) {
+    throw new TypeError('AppModules.activityV2 must be an object');
+  }
+  if ('sessionRecovery' in root.AppModules.activityV2) {
+    throw new Error('AppModules.activityV2.sessionRecovery is already registered');
+  }
+  if (!Object.isExtensible(root.AppModules.activityV2)) {
+    throw new TypeError('AppModules.activityV2 must be extensible');
+  }
+
+  const sessionRecoveryApi = deepFreeze({
+    resolveSemantics,
+    createIndexedDbStore,
+    open
+  });
+  Object.defineProperty(root.AppModules.activityV2, 'sessionRecovery', {
+    value: sessionRecoveryApi,
+    enumerable: true,
+    writable: false,
+    configurable: false
+  });
+})(typeof window !== 'undefined' ? window : globalThis);

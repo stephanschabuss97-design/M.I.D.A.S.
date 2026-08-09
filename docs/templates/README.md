@@ -43,6 +43,26 @@ Kompatibilitätsindex für ältere Links.
 11. Findings korrigieren, bevor S1 in einem eigenen Ausführungs-Chat begonnen
     wird.
 
+## Autonome Discovery Wave
+
+Neue Roadmaps sollen S1 bis S3 und, wenn kein erwartbares Owner-Gate
+dazwischenliegt, auch S4R als eine autonome `Discovery Wave` prüfen. Dabei
+bleiben S1, S2, S3 und S4R eigenständige, vollständig dokumentierte
+Hauptschritte. Nur die künstliche Gesprächspause zwischen ihnen entfällt.
+
+- Nach jedem Hauptschritt: Full Review, Findings-Korrektur, Statusmatrix und
+  Session Resume Card aktualisieren.
+- Bei bestandenem `Internal Continuation Gate` automatisch fortfahren.
+- Bei Owner-Entscheidung, Quellenwiderspruch, Scope-Ausweitung, blockierendem
+  Finding oder fehlendem belastbarem Nachweis stoppen.
+- Bis einschließlich S4R keine Produktcodeänderung oder produktive Wirkung.
+- Nach S4R mit dem Readiness-Urteil enden; S4 benötigt einen eigenen
+  Ausführungsauftrag.
+
+Die Roadmap legt den freigegebenen Bereich (`S1-S3`, `S1-S4R` oder
+`deaktiviert`) in Metadaten und Startkarte fest. Für die gesamte Discovery Wave
+gilt grundsätzlich eine gemeinsame Reasoning-Stufe.
+
 Im S4 Readiness Review zusätzlich sichere Ausführungsblöcke empfehlen.
 Benachbarte Substeps dürfen gemeinsam laufen, wenn Wirkung, Reihenfolge,
 Reviewtiefe und Gates kompatibel sind. Ihre einzelnen Ergebnisse und Findings
@@ -160,5 +180,7 @@ Arbeite die in [ROADMAP-PFAD] definierte MIDAS-Roadmap gemäß ihrer
 Ausführungs-Chat-Startkarte ab. Lies die dort festgelegten Quellen in der
 angegebenen Reihenfolge, prüfe den realen Git- und Systemstand und beginne mit
 dem eingetragenen Startschritt. Erfinde keine fehlenden Verträge; dokumentiere
-Widersprüche als Finding und beachte alle Owner-Gates.
+Widersprüche als Finding und beachte alle Owner-Gates. Führe eine in der
+Startkarte freigegebene Discovery Wave über ihre internen Continuation Gates
+ohne Rückfrage bis zum erlaubten Endpunkt aus; starte S4 nicht automatisch.
 ```

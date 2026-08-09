@@ -170,7 +170,7 @@ test('classic-script namespace is immutable and preserves existing modules', () 
   const crypto = { randomUUID: () => UUIDS[0].toUpperCase() };
   const { api, context, activityV1 } = loadDraft({ semantics, crypto });
 
-  assert.deepEqual(Object.keys(api), ['create']);
+  assert.deepEqual(Object.keys(api), ['create', 'restore']);
   assertFrozenTree(api);
   assert.equal(context.AppModules.activity, activityV1);
   assert.equal(Object.isExtensible(context.AppModules), true);
@@ -244,6 +244,85 @@ test('create returns the exact pristine immutable draft with dynamic catalog dat
     running: false,
     elapsed_ms: 0,
     label: '00:00'
+  });
+});
+
+test('restore preserves an exact mixed draft by reference without replaying dependencies', () => {
+  const started = Date.UTC(2026, 7, 8, 9, 10, 11, 120);
+  const { api, controller, semantics } = createController({
+    now: () => started
+  });
+  controller.addItem('alpha_item');
+  controller.setSetField('alpha_item', 1, 'reps', '0012');
+  controller.setItemField('alpha_item', 'note', '  strength raw  ');
+  controller.addItem('run_item');
+  controller.setItemField('run_item', 'duration_min', '1e2');
+  controller.setItemField('run_item', 'distance_km', '05,20');
+  controller.setNote('  Mixed session 😀  ');
+  controller.moveItem('run_item', 1);
+
+  const storedSnapshot = plain(controller.getSnapshot());
+  const expected = plain(storedSnapshot);
+  let idReads = 0;
+  let nowReads = 0;
+  const restored = api.restore(storedSnapshot, {
+    semantics,
+    now: () => {
+      nowReads += 1;
+      return started + 65_432;
+    },
+    createRequestId: () => {
+      idReads += 1;
+      return UUIDS[1];
+    }
+  });
+
+  assert.equal(idReads, 0);
+  assert.equal(nowReads, 0);
+  assert.deepEqual(Object.keys(restored), [
+    'getSnapshot',
+    'getTimerSnapshot',
+    'addItem',
+    'removeItem',
+    'moveItem',
+    'setNote',
+    'discard',
+    'addSet',
+    'removeSet',
+    'setSetField',
+    'setItemField'
+  ]);
+  assert.equal(restored.getSnapshot(), storedSnapshot);
+  assert.deepEqual(plain(restored.getSnapshot()), expected);
+  assertFrozenTree(storedSnapshot);
+  assert.deepEqual(plain(restored.getTimerSnapshot()), {
+    running: true,
+    elapsed_ms: 65_432,
+    label: '01:05'
+  });
+  assert.equal(nowReads, 1);
+
+  const beforeMutation = restored.getSnapshot();
+  const mutated = restored.setItemField('run_item', 'duration_min', ' 2,5 ');
+  assert.notEqual(mutated, beforeMutation);
+  assert.equal(mutated.request_id, expected.request_id);
+  assert.equal(mutated.catalog_version, expected.catalog_version);
+  assert.equal(mutated.started_at, expected.started_at);
+  assert.equal(mutated.revision, expected.revision + 1);
+  assert.equal(mutated.items[0].duration_min, ' 2,5 ');
+  assert.equal(idReads, 0);
+  assert.equal(nowReads, 1);
+
+  const discarded = restored.discard();
+  assert.equal(idReads, 1);
+  assert.deepEqual(plain(discarded), {
+    draft_schema_version: 'midas.activity-session-draft.v3',
+    request_id: UUIDS[1],
+    catalog_version: 7,
+    revision: 0,
+    started_at: null,
+    note: null,
+    items: []
   });
 });
 
@@ -417,6 +496,27 @@ test('all eleven real catalog-v2 non-strength entries obey their item policies',
     assert.deepEqual(plain(item.sets), []);
   });
   assertFrozenTree(controller.getSnapshot());
+
+  const storedSnapshot = plain(controller.getSnapshot());
+  let dependencyReads = 0;
+  const restored = context.AppModules.activityV2.sessionDraft.restore(
+    storedSnapshot,
+    {
+      semantics,
+      now: () => {
+        dependencyReads += 1;
+        return 0;
+      },
+      createRequestId: () => {
+        dependencyReads += 1;
+        return UUIDS[1];
+      }
+    }
+  );
+  assert.equal(dependencyReads, 0);
+  assert.equal(restored.getSnapshot(), storedSnapshot);
+  assert.deepEqual(plain(restored.getSnapshot()), plain(controller.getSnapshot()));
+  assertFrozenTree(restored.getSnapshot());
 });
 
 test('options, dependencies, catalog, request ID and clock fail closed', () => {
@@ -494,6 +594,124 @@ test('options, dependencies, catalog, request ID and clock fail closed', () => {
       createRequestId: () => UUIDS[0]
     }),
     'INVALID_CATALOG'
+  );
+});
+
+test('restore options are exact and restoration does not require ID generation', () => {
+  const semantics = makeSemantics(() => makeCatalog());
+  const sourceApi = loadDraft({ semantics }).api;
+  const pristine = plain(sourceApi.create({
+    semantics,
+    createRequestId: () => UUIDS[0]
+  }).getSnapshot());
+  const api = loadDraft({ semantics }).api;
+
+  assertDraftError(() => api.restore(pristine, null), 'INVALID_OPTIONS');
+  assertDraftError(
+    () => api.restore(pristine, { semantics, extra: true }),
+    'INVALID_OPTIONS'
+  );
+  assertDraftError(
+    () => api.restore(pristine, { semantics, now: 'later' }),
+    'INVALID_CLOCK'
+  );
+  assertDraftError(
+    () => api.restore(pristine, { semantics, createRequestId: 1 }),
+    'INVALID_REQUEST_ID'
+  );
+
+  const restored = api.restore(pristine, { semantics });
+  assert.equal(restored.getSnapshot(), pristine);
+  assertFrozenTree(pristine);
+  const noteOnly = restored.setNote('note-only draft');
+  assert.equal(noteOnly.revision, 1);
+  assert.equal(noteOnly.started_at, null);
+  const restoredNoteOnly = api.restore(plain(noteOnly), {
+    semantics,
+    createRequestId: () => UUIDS[1]
+  });
+  assert.deepEqual(plain(restoredNoteOnly.getSnapshot()), plain(noteOnly));
+  assertDraftError(() => restored.discard(), 'REQUEST_ID_UNAVAILABLE');
+  assert.equal(restored.getSnapshot(), noteOnly);
+});
+
+test('restore rejects non-canonical draft, item, set and raw-value states atomically', () => {
+  const { api, controller, semantics } = createController({
+    now: () => Date.UTC(2026, 7, 8, 12, 0, 0)
+  });
+  controller.addItem('alpha_item');
+  const valid = plain(controller.getSnapshot());
+  const options = {
+    semantics,
+    now: () => 0,
+    createRequestId: () => UUIDS[1]
+  };
+  const invalidCases = [
+    (draft) => { draft.draft_schema_version = 'midas.activity-session-draft.v2'; },
+    (draft) => {
+      draft.request_id = 'ABCDEFAB-CDEF-4ABC-8DEF-ABCDEFABCDEF';
+    },
+    (draft) => { draft.revision = -1; },
+    (draft) => { draft.revision = Number.MAX_SAFE_INTEGER + 1; },
+    (draft) => { draft.started_at = '2026-08-08T12:00:00Z'; },
+    (draft) => { draft.note = ''; },
+    (draft) => { draft.note = ' untrimmed '; },
+    (draft) => { draft.items.extra = true; },
+    (draft) => { draft.items[0].item_order = 2; },
+    (draft) => { draft.items[0].item_key = 'old_item'; },
+    (draft) => { draft.items[0].duration_min = '1'; },
+    (draft) => { draft.items[0].note = ''; },
+    (draft) => { draft.items[0].note = '😀'.repeat(501); },
+    (draft) => { draft.items[0].sets = []; },
+    (draft) => { draft.items[0].sets[0].set_order = 2; },
+    (draft) => { draft.items[0].sets[0].duration_sec = '30'; },
+    (draft) => { draft.items[0].sets[0].reps = ''; },
+    (draft) => { draft.items[0].sets[0].reps = '😀'.repeat(33); },
+    (draft) => { draft.items[0].sets[0].extra = null; }
+  ];
+
+  invalidCases.forEach((mutate) => {
+    const candidate = plain(valid);
+    mutate(candidate);
+    assertDraftError(() => api.restore(candidate, options), 'INVALID_DRAFT_STATE');
+    assert.equal(Object.isFrozen(candidate), false);
+    assert.equal(Object.isFrozen(candidate.items), false);
+  });
+
+  const reordered = {
+    request_id: valid.request_id,
+    draft_schema_version: valid.draft_schema_version,
+    catalog_version: valid.catalog_version,
+    revision: valid.revision,
+    started_at: valid.started_at,
+    note: valid.note,
+    items: valid.items
+  };
+  assertDraftError(() => api.restore(reordered, options), 'INVALID_DRAFT_STATE');
+
+  const duplicate = plain(valid);
+  duplicate.items.push({
+    ...plain(duplicate.items[0]),
+    item_order: 2
+  });
+  assertDraftError(() => api.restore(duplicate, options), 'INVALID_DRAFT_STATE');
+
+  const pristineWithItems = plain(valid);
+  pristineWithItems.revision = 0;
+  assertDraftError(
+    () => api.restore(pristineWithItems, options),
+    'INVALID_DRAFT_STATE'
+  );
+
+  const missingStart = plain(valid);
+  missingStart.started_at = null;
+  assertDraftError(() => api.restore(missingStart, options), 'INVALID_DRAFT_STATE');
+
+  const wrongCatalog = plain(valid);
+  wrongCatalog.catalog_version += 1;
+  assertDraftError(
+    () => api.restore(wrongCatalog, options),
+    'CATALOG_VERSION_MISMATCH'
   );
 });
 

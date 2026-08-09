@@ -4,7 +4,8 @@ Kompakter projektspezifischer Vertrag. Die allgemeine Arbeitsweise steht in
 `docs/templates/MIDAS Roadmap Workflow Contract.md` und wird nicht in jede
 Roadmap kopiert. Erstellung und initialer Contract Review dieser Roadmap
 erfolgen mit `GPT-5.6 Sol / Extra High`; die Ausführung routet ihre
-Reasoning-Stufen anschließend risikobasiert je Schritt.
+Reasoning-Stufen anschließend risikobasiert je zusammenhängendem
+Ausführungsblock.
 
 ---
 
@@ -28,6 +29,7 @@ Reasoning-Stufen anschließend risikobasiert je Schritt.
 | Ausführungsmodell | `GPT-5.6 Sol` |
 | Reasoning-Standard | `Medium / High / Extra High` |
 | Reasoning-Ausnahmen | `[Schritt: Stufe + Begründung / keine]` |
+| Autonome Discovery Wave | `S1-S3` / `S1-S4R` / `deaktiviert` |
 | Owner-Erklärmodus | `none` / `Briefing` / `Briefing + S6-Recap` |
 | Betroffene Hauptdateien | `[Pfade]` |
 | Deploy relevant | `ja` / `nein` |
@@ -65,6 +67,12 @@ dupliziert sie nicht.
   6. `git status --short und nur der relevante Diff`
 - Startschritt:
   - `[S1 oder aktueller Resume-Schritt]`
+- Freigegebener autonomer Block:
+  - `[S1-S3 / S1-S4R / keiner]`
+- Interne Continuation Gates:
+  - `Nach jedem freigegebenen Discovery-Hauptschritt Full Review,
+    Findings-Korrektur und Status-Sync; bei PASS ohne Owner-Gate automatisch
+    fortfahren.`
 - Erlaubte Autonomie:
   - `[lokale Reads/Edits/Tests gemäß Tool Permissions]`
 - Owner-Gates:
@@ -82,7 +90,11 @@ Arbeite diese MIDAS-Roadmap gemäß ihrer Ausführungs-Chat-Startkarte ab.
 Lies die festgelegten Quellen in der angegebenen Reihenfolge, prüfe den realen
 Git- und Systemstand und beginne mit dem eingetragenen Startschritt. Erfinde
 keine fehlenden Verträge; dokumentiere Widersprüche als Finding und beachte
-alle Owner-Gates.
+alle Owner-Gates. Ist eine autonome Discovery Wave freigegeben, schließe jeden
+enthaltenen Hauptschritt mit Full Review, Findings-Korrektur und Status-Sync ab
+und fahre bei bestandenem internem Continuation Gate ohne Rückfrage fort.
+Endet der freigegebene autonome Block mit S4R, stoppe dort und beginne S4 nur
+mit separater Freigabe.
 ```
 
 ## Session Resume Card
@@ -366,7 +378,8 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[kurz oder none]`
 
 Exit: S4 kann ohne neue Grundsatzentscheidung beginnen; sichere
-Ausführungsblöcke und notwendige Einzelgates sind festgelegt.
+Ausführungsblöcke und notwendige Einzelgates sind festgelegt. Eine autonome
+Discovery Wave endet hier; sie startet S4 nicht selbstständig.
 
 ## S4 - Umsetzung
 

@@ -16,6 +16,7 @@
     'draft',
     'host',
     'loadLastPerformance',
+    'recovery',
     'semantics',
     'setIntervalFn'
   ]);
@@ -32,6 +33,42 @@
     'removeSet',
     'setSetField',
     'setItemField'
+  ]);
+  const RECOVERY_METHODS = Object.freeze([
+    'getState',
+    'getDraft',
+    'startNew',
+    'continueSession',
+    'flush',
+    'discard',
+    'subscribe',
+    'destroy'
+  ]);
+  const RECOVERY_STATE_KEYS = Object.freeze([
+    'state',
+    'started_at',
+    'saved_at',
+    'item_count',
+    'reason'
+  ]);
+  const RECOVERY_STATES = Object.freeze([
+    'empty',
+    'recoverable',
+    'active',
+    'saving',
+    'saved',
+    'degraded',
+    'conflict',
+    'blocked',
+    'discarding',
+    'destroyed'
+  ]);
+  const RECOVERY_REASONS = Object.freeze([
+    'storage_error',
+    'conflict',
+    'unknown_recovery_schema',
+    'invalid_record',
+    'catalog_unavailable'
   ]);
   const SNAPSHOT_KEYS = Object.freeze([
     'catalog_version',
@@ -275,6 +312,50 @@
       fail('INVALID_DRAFT_API');
     }
     return draft;
+  }
+
+  function assertRecoveryState(state) {
+    if (
+      !hasExactKeys(state, RECOVERY_STATE_KEYS) ||
+      !RECOVERY_STATES.includes(state.state) ||
+      (state.started_at !== null && !isCanonicalTimestamp(state.started_at)) ||
+      (state.saved_at !== null && !isCanonicalTimestamp(state.saved_at)) ||
+      !Number.isSafeInteger(state.item_count) ||
+      state.item_count < 0 ||
+      (state.reason !== null && !RECOVERY_REASONS.includes(state.reason))
+    ) {
+      fail('INVALID_RECOVERY_STATE');
+    }
+    try {
+      assertFrozenTree(state);
+    } catch {
+      fail('INVALID_RECOVERY_STATE');
+    }
+    return state;
+  }
+
+  function resolveRecovery(options, draft) {
+    if (!hasOwn(options, 'recovery') || options.recovery === undefined) {
+      return null;
+    }
+    const recovery = options.recovery;
+    if (
+      !hasExactKeys(recovery, RECOVERY_METHODS) ||
+      RECOVERY_METHODS.some((method) => typeof recovery[method] !== 'function')
+    ) {
+      fail('INVALID_RECOVERY_API');
+    }
+    let managedDraft;
+    let state;
+    try {
+      managedDraft = recovery.getDraft();
+      state = recovery.getState();
+    } catch {
+      fail('INVALID_RECOVERY_API');
+    }
+    if (managedDraft !== draft) fail('RECOVERY_DRAFT_MISMATCH');
+    assertRecoveryState(state);
+    return Object.freeze({ controller: recovery, state });
   }
 
   function resolveSemantics(options) {
@@ -1155,7 +1236,7 @@
     });
   }
 
-  function createStructure(document) {
+  function createStructure(document, recoveryEnabled = false) {
     shellSequence += 1;
     const titleId = `activity-v2-session-title-${shellSequence}`;
     const searchId = `activity-v2-session-search-${shellSequence}`;
@@ -1225,7 +1306,9 @@
         document,
         'p',
         'activity-v2-session-lead',
-        'Baue dein Training Schritt für Schritt auf. Gespeichert wird hier noch nichts.'
+        recoveryEnabled
+          ? 'Baue dein Training Schritt für Schritt auf. Die Session wird lokal auf diesem Gerät gesichert.'
+          : 'Baue dein Training Schritt für Schritt auf. Gespeichert wird hier noch nichts.'
       )
     );
 
@@ -1338,7 +1421,18 @@
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
-    content.append(intro, pickerCard, itemsSection, noteCard, status);
+    const recoveryStatus = recoveryEnabled
+      ? makeElement(document, 'div', 'activity-v2-session-recovery-status')
+      : null;
+    if (recoveryStatus) {
+      recoveryStatus.setAttribute('role', 'status');
+      recoveryStatus.setAttribute('aria-live', 'polite');
+      recoveryStatus.setAttribute('aria-label', 'Lokaler Wiederherstellungsstatus');
+    }
+
+    content.append(intro, pickerCard, itemsSection, noteCard);
+    if (recoveryStatus) content.append(recoveryStatus);
+    content.append(status);
     panel.append(header, content);
     return {
       panel,
@@ -1351,6 +1445,7 @@
       itemList,
       itemCount,
       note,
+      recoveryStatus,
       status
     };
   }
@@ -1359,13 +1454,14 @@
     const options = assertMountOptions(optionsValue);
     const document = assertHost(options.host);
     const draft = assertDraft(options.draft);
+    const recovery = resolveRecovery(options, draft);
     const semantics = resolveSemantics(options);
     const loadLastPerformance = resolveLookup(options);
     const confirmDiscard = resolveConfirmation(options);
     const scheduler = resolveScheduler(options);
     if (mountedHosts.has(options.host)) fail('SHELL_ALREADY_MOUNTED');
 
-    const ui = createStructure(document);
+    const ui = createStructure(document, recovery !== null);
     let openState = false;
     let destroyed = false;
     let listenersBound = false;
@@ -1381,12 +1477,42 @@
     let searchState = { mode: 'closed', entries: [] };
     let lookupGeneration = 0;
     let lookupStates = new Map();
+    let unsubscribeRecovery = null;
     let controller;
 
     function setStatus(message, tone = '') {
       ui.status.textContent = message;
       if (tone) ui.status.dataset.tone = tone;
       else delete ui.status.dataset.tone;
+    }
+
+    function patchRecoveryStatus(nextState) {
+      if (!ui.recoveryStatus) return;
+      let state;
+      try {
+        state = assertRecoveryState(nextState);
+      } catch {
+        ui.recoveryStatus.textContent =
+          'Lokale Wiederherstellung derzeit nicht garantiert.';
+        ui.recoveryStatus.dataset.tone = 'error';
+        return;
+      }
+      const presentation = {
+        saving: ['Wird lokal gesichert …', 'notice'],
+        saved: ['Lokal gesichert', 'success'],
+        degraded: [
+          'Lokale Wiederherstellung derzeit nicht garantiert.',
+          'error'
+        ],
+        conflict: [
+          'Die Session wurde in einem anderen Tab verändert. Bitte neu laden, bevor du sie lokal weiter sicherst oder verwirfst.',
+          'error'
+        ],
+        discarding: ['Lokale Session wird verworfen …', 'notice']
+      }[state.state] || ['', ''];
+      ui.recoveryStatus.textContent = presentation[0];
+      if (presentation[1]) ui.recoveryStatus.dataset.tone = presentation[1];
+      else delete ui.recoveryStatus.dataset.tone;
     }
 
     function assertUsable() {
@@ -2738,7 +2864,7 @@
       });
       const guard = Promise.resolve()
         .then(() => confirmDiscard(context))
-        .then((confirmed) => {
+        .then(async (confirmed) => {
           if (
             destroyed ||
             generation !== closeGuardGeneration ||
@@ -2752,10 +2878,18 @@
             return false;
           }
           try {
-            draft.discard();
+            if (recovery) await recovery.controller.discard();
+            else draft.discard();
           } catch {
             setStatus('Die Session konnte nicht verworfen werden.', 'error');
             reconcileAfterGuard = true;
+            return false;
+          }
+          if (
+            destroyed ||
+            generation !== closeGuardGeneration ||
+            !openState
+          ) {
             return false;
           }
           return closeTechnical();
@@ -2793,6 +2927,14 @@
     function destroy() {
       if (destroyed) return;
       closeGuardGeneration += 1;
+      if (unsubscribeRecovery) {
+        try {
+          unsubscribeRecovery();
+        } catch {
+          // A foreign unsubscriber cannot prevent local shell cleanup.
+        }
+        unsubscribeRecovery = null;
+      }
       closeTechnical();
       stopTimerScheduler();
       unbindListeners();
@@ -2817,10 +2959,21 @@
     });
 
     try {
+      if (recovery) {
+        patchRecoveryStatus(recovery.state);
+        unsubscribeRecovery = recovery.controller.subscribe(patchRecoveryStatus);
+        if (typeof unsubscribeRecovery !== 'function') fail('INVALID_RECOVERY_API');
+      }
       render();
       options.host.appendChild(ui.panel);
       mountedHosts.set(options.host, controller);
     } catch (error) {
+      try {
+        unsubscribeRecovery?.();
+      } catch {
+        // Detached mount rollback stays best-effort.
+      }
+      unsubscribeRecovery = null;
       if (ui.panel.parentNode) ui.panel.remove();
       if (error instanceof ActivityV2SessionShellError) throw error;
       fail('INVALID_HOST');
