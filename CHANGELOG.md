@@ -29,6 +29,10 @@ erhalten.
 
 ### Changed
 
+- Der produktive Activity-V2-Commit-RPC akzeptiert nach dem kontrollierten
+  SQL-22-Update jede vorhandene unveränderliche Katalogversion statt nur der
+  höchsten. Idempotenz, RLS/ACL-Hardening, Activity V1 und die weiterhin
+  verborgene Activity-V2-Produktgrenze bleiben unverändert.
 - Aktuelle QA-Verträge, historische QA-Nachweise und Release-Historie sind
   getrennte, gezielt lesbare Dokumentationsflächen.
 - Der Roadmap-Readiness-Review empfiehlt sichere S4-Ausführungsblöcke, ohne

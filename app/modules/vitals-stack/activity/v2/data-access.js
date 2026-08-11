@@ -368,10 +368,86 @@
     return item;
   }
 
+  function readCommitOptions(options) {
+    if (!isRecord(options)) violation();
+    const keys = Reflect.ownKeys(options);
+    if (
+      ![2, 3].includes(keys.length) ||
+      keys.some(
+        (key) =>
+          typeof key !== 'string' ||
+          !['payload', 'requestId', 'semantics'].includes(key)
+      ) ||
+      !Object.prototype.hasOwnProperty.call(options, 'payload') ||
+      !Object.prototype.hasOwnProperty.call(options, 'requestId')
+    ) {
+      violation();
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(options);
+    if (
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.prototype.hasOwnProperty.call(descriptors[key], 'value')
+      )
+    ) {
+      violation();
+    }
+    return {
+      requestId: descriptors.requestId.value,
+      payload: descriptors.payload.value,
+      semantics: Object.prototype.hasOwnProperty.call(descriptors, 'semantics')
+        ? descriptors.semantics.value
+        : undefined,
+      semanticsProvided: Object.prototype.hasOwnProperty.call(
+        descriptors,
+        'semantics'
+      )
+    };
+  }
+
+  function readOwnFunction(value, key) {
+    if (!isRecord(value)) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor &&
+      Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+      typeof descriptor.value === 'function'
+      ? descriptor.value
+      : null;
+  }
+
+  function resolveCommitSemantics(provided, semanticsValue) {
+    const source = provided ? semanticsValue : getSemantics();
+    if (!source && !provided) {
+      throw new Error('activity-v2-semantics-missing');
+    }
+    const getCatalog = readOwnFunction(source, 'getCatalog');
+    const getEntryByKey = readOwnFunction(source, 'getEntryByKey');
+    if (!getCatalog || !getEntryByKey) violation();
+    const semantics = Object.freeze({
+      getCatalog(...args) {
+        return getCatalog.apply(source, args);
+      },
+      getEntryByKey(...args) {
+        return getEntryByKey.apply(source, args);
+      }
+    });
+    const catalog = semantics.getCatalog();
+    if (
+      !isRecord(catalog) ||
+      !Number.isSafeInteger(catalog.catalog_version) ||
+      catalog.catalog_version < 1 ||
+      catalog.catalog_version > 2147483647
+    ) {
+      violation();
+    }
+    return { semantics, catalog };
+  }
+
   function normalizeCommitRequest(options) {
-    assertExactKeys(options, ['payload', 'requestId']);
-    const requestId = assertUuid(options.requestId);
-    const payload = options.payload;
+    const selected = readCommitOptions(options);
+    const requestId = assertUuid(selected.requestId);
+    const payload = selected.payload;
     assertExactKeys(payload, TOP_LEVEL_KEYS, [
       'catalog_version',
       'duration_min',
@@ -382,9 +458,10 @@
     ]);
     if (payload.schema_version !== REQUEST_SCHEMA) violation();
 
-    const semantics = getSemantics();
-    if (!semantics) throw new Error('activity-v2-semantics-missing');
-    const catalog = semantics.getCatalog();
+    const { semantics, catalog } = resolveCommitSemantics(
+      selected.semanticsProvided,
+      selected.semantics
+    );
     const catalogVersion = assertInteger(payload.catalog_version, 1, 2147483647);
     if (catalogVersion !== catalog.catalog_version) violation();
 
@@ -411,6 +488,7 @@
 
     return {
       requestId,
+      semantics,
       payload: {
         schema_version: REQUEST_SCHEMA,
         catalog_version: catalogVersion,
@@ -538,7 +616,12 @@
     return normalized;
   }
 
-  function validateItemResponse(value, semantics, expected) {
+  function validateItemResponse(
+    value,
+    semantics,
+    expected,
+    expectedCatalogVersion
+  ) {
     assertExactKeys(value, [
       'catalog_version',
       'created_at',
@@ -561,6 +644,8 @@
     const entry = semantics.getEntryByKey(value.item_key);
     if (
       !entry ||
+      value.catalog_version !== expectedCatalogVersion ||
+      catalog.catalog_version !== expectedCatalogVersion ||
       value.catalog_version !== catalog.catalog_version ||
       value.item_label_snapshot !== entry.label ||
       value.tracking_mode_snapshot !== entry.tracking_mode ||
@@ -649,10 +734,15 @@
     ) {
       violation();
     }
-    const semantics = getSemantics();
+    const semantics = request.semantics;
     if (!semantics) violation();
     session.items.forEach((item, index) =>
-      validateItemResponse(item, semantics, request.payload.items[index])
+      validateItemResponse(
+        item,
+        semantics,
+        request.payload.items[index],
+        request.payload.catalog_version
+      )
     );
     return value;
   }
@@ -862,28 +952,18 @@
     return { detail: combined, token: token || null };
   }
 
-  function diagnosticText(value) {
-    return typeof value === 'string'
-      ? value.replace(/\s+/g, ' ').slice(0, 300)
-      : '';
-  }
-
-  function logFailure(operation, code, status, detail) {
+  function logFailure(operation, code, status) {
     const diag =
       root.diag ||
       root.AppModules?.diag ||
       root.AppModules?.diagnostics ||
       { add() {} };
     const safeStatus = Number.isInteger(status) ? String(status) : 'none';
-    const safeDetail = diagnosticText(detail);
-    diag.add?.(
-      `[activity-v2] ${operation} failed code=${code} status=${safeStatus}` +
-        (safeDetail ? ` detail=${safeDetail}` : '')
-    );
+    diag.add?.(`[activity-v2] ${operation} failed code=${code} status=${safeStatus}`);
   }
 
   function domainError(code, operation, retryable, commitState, diagnostic = {}) {
-    logFailure(operation, code, diagnostic.status, diagnostic.detail);
+    logFailure(operation, code, diagnostic.status);
     return new ActivityV2DataAccessError(code, operation, retryable, commitState);
   }
 

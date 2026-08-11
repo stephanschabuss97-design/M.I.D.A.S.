@@ -2,16 +2,19 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-09
+Stand: 2026-08-11
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
 Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-,
-R6-Duration-/Distance- und R7-Recovery-Bausteine sind bereitgestellt. R8 ist
-das nächste Rolling-Wave-Gate; sichtbare Activity-Consumer verwenden weiterhin
-V1.
+R6-Duration-/Distance-, R7-Recovery- und R8-Commit-Bausteine sind
+bereitgestellt. R8 ist mit einer explizit owner-akzeptierten Evidence-Lücke
+für den nicht ausgeführten Android-Device-Reclaim und den fehlenden finalen
+CodeRabbit-Null-Lauf abgeschlossen. R9 ist das nächste Rolling-Wave-Gate;
+sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-09: `PASS`. R1, R2 und R3 bleiben unverändert
+Cross-Contract-Stand 2026-08-11: `PASS mit dokumentierter R8-Evidence-Lücke`.
+R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
 produktiver 80er-Snapshot und die Studio-Suchmatrix ist grün. R4 ist DONE: die
@@ -30,9 +33,17 @@ Katalog-Rollout als offenen Cross-Roadmap-Vertrag erkannt: R4 muss Suche und
 Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
 Schreibpfad bleibt dabei unverändert. R7 bindet Recovery an die gespeicherte
-Draft-Katalogversion, R8 entscheidet die Commit-Kompatibilität zwischen
-bestehenden Katalogversionen und R12 beweist die produktive
-Aktivierungsreihenfolge einschließlich gecachter PWA-Clients.
+Draft-Katalogversion, R8 hat die Commit-Kompatibilität zwischen bestehenden
+Katalogversionen entschieden und R12 beweist die produktive
+Aktivierungsreihenfolge einschließlich gecachter PWA-Clients. R8 ist DONE:
+Draft v3 wird unverändert in eine tiefgefrorene R2-Payload projiziert, der
+exakte Commit-Intent liegt vor jedem Remoteversuch persistent im Recovery-
+Envelope v2, und Known-/Unknown-/Replay-/Cleanup-Pfade sind durch CAS und einen
+monotonen Attempt geschützt. SQL 22 ist produktiv ausgeführt und erlaubt den
+Commit gegen jede vorhandene unveränderliche Katalogversion statt nur gegen die
+höchste. Activity V1, Produkt-PWA und Produktconsumer bleiben unverändert.
+Der lokale Android-Debugpfad ist gebaut und isoliert, aber der reale Device-
+Prozess-Reclaim wurde auf Owner-Entscheidung nicht ausgeführt.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -41,9 +52,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R7/C2 stellen nur die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R8/C2 stellen nur die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Editor- und lokale Recovery-Grundlage bereit.
+Historien-, Editor-, Recovery- und Commitgrundlage bereit.
 
 ---
 
@@ -1494,23 +1505,38 @@ anbinden, ohne den R7-Speichervertrag umzudeuten.
 
 ### R8 - Core Commit and Android Recovery Integration
 
-Ziel:
+Status: `DONE_WITH_OWNER_ACCEPTED_EVIDENCE_GAP`.
 
-- vollständiger atomarer End-to-End-Commit
-- eindeutige Abbildung der R3-Uhr auf `started_at`, `ended_at` und die
-  ganzzahlige bestätigte `duration_min` einschließlich Rundungsregel
-- idempotenter Retry über die bestehende `request_id`; unklare oder
-  fehlgeschlagene Writes behalten den lokalen Draft
-- Recovery-Datensatz erst nach eindeutig bestätigtem Commit entfernen
-- explizite Entscheidung und Tests, welche bereits vorhandenen
-  unveränderlichen Katalogversionen während eines Rollouts weiterhin committen
-  dürfen; eine neue höchste Version darf keinen gültigen älteren Draft oder
-  gecachten PWA-Client allein wegen seiner Version unbrauchbar machen
-- interne, weiterhin nicht produktiv aktivierte Verbindung von R7-Draft,
-  R2-Commit und bestätigtem Abschlusszustand
-- testgebundener Android-PWA-Smoke für Backgrounding, Reload und realistischen
-  Prozess-Reclaim einschließlich Resume und erfolgreichem Commit
-- noch keine produktive Feature-Aktivierung
+- [R8 Roadmap](<archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
+- [R8 Evidence](<archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
+
+Nachgewiesenes Ergebnis:
+
+- atomarer R2-End-to-End-Commit aus unverändertem Draft v3 mit einmalig
+  gebildeten `started_at`, `ended_at` und ganzzahlig bestätigter
+  `duration_min`;
+- persistierter tiefgefrorener Commit-Intent vor jedem Remoteversuch;
+  Unknown sperrt Mutation und Discard und erlaubt nur identische
+  `request_id`-/Payload-Wiederholung;
+- Recovery-Envelope v2 mit v1-Lesekompatibilität, Intent-/Attempt-CAS,
+  One-Promise-Koordination und Generationstombstone erst nach bestätigtem
+  Commit oder Replay;
+- SQL 22 produktiv bestätigt: jede vorhandene unveränderliche
+  Katalogversion bleibt commitfähig, auch wenn später eine höhere Version
+  existiert; Tabellen, Katalogsnapshots, RLS, ACL und Activity V1 bleiben
+  unverändert;
+- lokale/disposable/Browser-Matrix einschließlich Unknown-Retry, Reload,
+  Offline, Races und drei Viewports grün; debug-only Android-App-ID,
+  localhost-PWA und Releaseisolation gebaut und geprüft;
+- kein Produktload, Dual-Write oder produktiver Activity-V2-Cutover.
+
+Akzeptierte Abschlussgrenze:
+
+- Der Owner beendete die S5-Langläufer am 2026-08-11 nach grüner
+  technischer Kernmatrix. Der echte Android-Device-Prozess-Reclaim wurde
+  mangels verbundenem ADB-Gerät nicht ausgeführt; der finale
+  CodeRabbit-Null-Lauf blieb nach Korrektur aller 19 S5-Findings rate-limitiert.
+  Beides ist keine behauptete PASS-Evidence und wird nicht auf R9 übertragen.
 
 Warum danach:
 
@@ -1519,6 +1545,8 @@ Supabase abgeschlossen werden. Destruktive Historienoperationen bleiben aus
 diesem Write- und Device-Sicherheitsgate herausgelöst.
 
 ### R9 - Session History, Detail, Correction and Deletion
+
+Status: `NEXT_ROLLING_WAVE_GATE`.
 
 Ziel:
 
@@ -1540,6 +1568,11 @@ Warum danach:
 Commit und Device-Recovery müssen stabil sein, bevor bereits abgeschlossene
 Daten angezeigt, verändert oder gelöscht werden. R9 isoliert die destruktive
 Lebenszykluslogik vom R8-Save-Gate.
+
+R9 darf den bewiesenen Commit-/Tombstonevertrag wiederverwenden, aber weder
+den nicht ausgeführten Android-Device-Smoke als PASS voraussetzen noch Activity
+V2 produktiv aktivieren. Produktcutover und finaler Android-PWA-Smoke bleiben
+R12.
 
 ### R10 - Completed Activity Coaching Export V1
 
@@ -1831,9 +1864,9 @@ Zuständig und Ergebnis:
 
 ### O-8 Katalog-Rollout und ältere PWA-Clients
 
-Offen nach dem C2-Nachreview:
+Ausgangslage nach dem C2-Nachreview:
 
-- Der R2-Commit akzeptiert derzeit ausschließlich die höchste vorhandene
+- Der R2-Commit akzeptierte vor SQL 22 ausschließlich die höchste vorhandene
   `catalog_version`.
 - Nach produktiver Aktivierung können ein vorhandener Draft oder ein gecachter
   PWA-Client noch eine ältere, weiterhin unveränderliche Katalogversion tragen.
@@ -1848,7 +1881,10 @@ Zuständig:
   oder umgedeutet.
 - R7-Verantwortung `DONE`: persistente Recovery ist exakt an die im Draft
   gespeicherte Katalogversion gebunden.
-- R8 entscheidet und testet die serverseitige Commit-Kompatibilität.
+- R8-Verantwortung `DONE`: SQL 22 akzeptiert beim Neuschreiben jede im
+  unveränderlichen Katalog vorhandene Payloadversion; identischer Replay wird
+  weiterhin vor Katalog-/Aktivprüfung aufgelöst. Die produktive Postcondition
+  ist v1=78, v2=80, andere=0 und V2-Historie 0/0/0.
 - R12 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
   und den finalen Android-PWA-Smoke.
 
@@ -1864,8 +1900,10 @@ entschieden und umgesetzt. O-4 ist für R3 entschieden; O-6 ist durch R6 mit
 `keine Intensität` für die erste produktive Ausbaustufe geschlossen. O-5 bleibt
 bis R9 bewusst offen und darf nicht vorweggenommen werden. O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
-umgesetzt. O-8 bleibt bis zu den zuständigen R4-, R7-, R8- und R12-Gates offen
-und muss vor dem produktiven Cutover geschlossen sein.
+umgesetzt. O-8 ist für R4, R7 und R8 geschlossen. Offen bleibt ausschließlich
+das R12-Gate für Produktselektor, Aktivierungsreihenfolge, gecachte PWA-Clients
+und finalen Android-Smoke; es muss vor dem produktiven Cutover geschlossen
+sein.
 
 ### O-9 Vorbereitete Session-Vorlage
 

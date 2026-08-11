@@ -138,8 +138,12 @@ function uuidFor(number) {
   return `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 }
 
-function makeCommitResult(context, rpcPayload, outcome = 'created') {
-  const semantics = context.AppModules.activityV2.semantics;
+function makeCommitResult(
+  context,
+  rpcPayload,
+  outcome = 'created',
+  semantics = context.AppModules.activityV2.semantics
+) {
   return {
     schema_version: 'midas.activity-session-result.v1',
     outcome,
@@ -158,7 +162,7 @@ function makeCommitResult(context, rpcPayload, outcome = 'created') {
         const entry = semantics.getEntryByKey(item.item_key);
         return {
           id: uuidFor(100 + itemIndex),
-          catalog_version: 1,
+          catalog_version: rpcPayload.p_payload.catalog_version,
           item_key: item.item_key,
           item_order: item.item_order,
           item_label_snapshot: entry.label,
@@ -185,6 +189,13 @@ function makeCommitResult(context, rpcPayload, outcome = 'created') {
       })
     }
   };
+}
+
+function makeV2Payload() {
+  const payload = makePayload('strength_sets');
+  payload.catalog_version = 2;
+  payload.items[0].item_key = 'high_row';
+  return payload;
 }
 
 function makeLookupResult(commitResult) {
@@ -350,6 +361,259 @@ test('commit canonicalizes once and keeps request ID and body across retries', a
   ]);
 });
 
+test('S4.7 explicit v2 semantics validates request and response without body drift', async () => {
+  const harness = makeHarness();
+  const semanticsV2 = harness.context.AppModules.activityV2.semanticsV2;
+  const payload = makeV2Payload();
+  const before = jsonClone(payload);
+  harness.state.fetchImpl = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    return makeResponse(
+      200,
+      makeCommitResult(harness.context, request, 'created', semanticsV2)
+    );
+  };
+  harness.state.fetchWithAuthImpl = async (makeRequest) => {
+    await makeRequest({ authorization: 'Bearer first' });
+    return await makeRequest({ authorization: 'Bearer refreshed' });
+  };
+
+  const result = await harness.api.commitSession({
+    requestId: REQUEST_ID,
+    payload,
+    semantics: semanticsV2
+  });
+
+  assert.equal(result.outcome, 'created');
+  assert.equal(result.session.items[0].catalog_version, 2);
+  assert.equal(result.session.items[0].item_key, 'high_row');
+  assert.deepEqual(payload, before);
+  assert.equal(harness.state.calls.length, 2);
+  assert.equal(
+    harness.state.calls[0].options.body,
+    harness.state.calls[1].options.body
+  );
+  const sent = JSON.parse(harness.state.calls[0].options.body);
+  assert.deepEqual(Object.keys(sent), ['p_request_id', 'p_payload']);
+  assert.equal(sent.p_payload.catalog_version, 2);
+  assert.equal(sent.p_payload.items[0].item_key, 'high_row');
+  assert.equal(harness.state.calls[0].options.body.includes('semantics'), false);
+  assert.deepEqual(harness.state.fetchOptions, [
+    { tag: 'activity-v2:activity_v2_commit_session', maxAttempts: 2 }
+  ]);
+});
+
+test('S4.7 keeps v1 default and rejects option or catalog drift before transport', async () => {
+  const cases = [
+    (harness) => ({ requestId: REQUEST_ID, payload: makeV2Payload() }),
+    (harness) => ({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: harness.context.AppModules.activityV2.semanticsV2
+    }),
+    (harness) => ({
+      requestId: REQUEST_ID,
+      payload: makeV2Payload(),
+      semantics: harness.context.AppModules.activityV2.semantics
+    }),
+    () => ({ requestId: REQUEST_ID, payload: makePayload(), semantics: null }),
+    () => ({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: undefined
+    }),
+    () => ({ requestId: REQUEST_ID, payload: makePayload(), semantics: {} }),
+    (harness) => ({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: harness.context.AppModules.activityV2.semantics,
+      extra: true
+    }),
+    (harness) => {
+      const options = {
+        requestId: REQUEST_ID,
+        payload: makePayload(),
+        semantics: harness.context.AppModules.activityV2.semantics
+      };
+      options[Symbol('unexpected')] = true;
+      return options;
+    },
+    () => ({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: {
+        getCatalog() {
+          return { catalog_version: 0 };
+        },
+        getEntryByKey() {
+          return null;
+        }
+      }
+    })
+  ];
+
+  for (const createOptions of cases) {
+    const harness = makeHarness();
+    const error = await captureError(
+      harness.api.commitSession(createOptions(harness))
+    );
+    assertDomainError(error, {
+      code: 'INVALID_SESSION',
+      operation: 'commitSession',
+      retryable: false,
+      commitState: 'not_committed'
+    });
+    assert.equal(harness.state.calls.length, 0);
+  }
+
+  const accessorHarness = makeHarness();
+  let getterCalls = 0;
+  const accessorOptions = {
+    requestId: REQUEST_ID,
+    payload: makePayload()
+  };
+  Object.defineProperty(accessorOptions, 'semantics', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return accessorHarness.context.AppModules.activityV2.semantics;
+    }
+  });
+  const accessorError = await captureError(
+    accessorHarness.api.commitSession(accessorOptions)
+  );
+  assertDomainError(accessorError, {
+    code: 'INVALID_SESSION',
+    operation: 'commitSession',
+    retryable: false,
+    commitState: 'not_committed'
+  });
+  assert.equal(getterCalls, 0);
+  assert.equal(accessorHarness.state.calls.length, 0);
+
+  const methodAccessorHarness = makeHarness();
+  let methodGetterCalls = 0;
+  const methodAccessorSemantics = {
+    getEntryByKey() {
+      return null;
+    }
+  };
+  Object.defineProperty(methodAccessorSemantics, 'getCatalog', {
+    enumerable: true,
+    get() {
+      methodGetterCalls += 1;
+      return () => ({ catalog_version: 1 });
+    }
+  });
+  const methodAccessorError = await captureError(
+    methodAccessorHarness.api.commitSession({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: methodAccessorSemantics
+    })
+  );
+  assertDomainError(methodAccessorError, {
+    code: 'INVALID_SESSION',
+    operation: 'commitSession',
+    retryable: false,
+    commitState: 'not_committed'
+  });
+  assert.equal(methodGetterCalls, 0);
+  assert.equal(methodAccessorHarness.state.calls.length, 0);
+
+  const throwingHarness = makeHarness();
+  const throwingError = await captureError(
+    throwingHarness.api.commitSession({
+      requestId: REQUEST_ID,
+      payload: makePayload(),
+      semantics: {
+        getCatalog() {
+          throw new Error('catalog-secret');
+        },
+        getEntryByKey() {
+          return null;
+        }
+      }
+    })
+  );
+  assertDomainError(throwingError, {
+    code: 'REQUEST_FAILED',
+    operation: 'commitSession',
+    retryable: false,
+    commitState: 'not_committed'
+  });
+  assert.equal(throwingError.message.includes('catalog-secret'), false);
+  assert.equal(throwingHarness.state.calls.length, 0);
+});
+
+test('S4.7 validates a successful response against the selected semantics', async () => {
+  for (const mutate of [
+    (response) => {
+      response.session.items[0].field_policy_snapshot.weight_kg = 'optional';
+    },
+    (response) => {
+      response.session.items[0].catalog_version = 1;
+    }
+  ]) {
+    const harness = makeHarness();
+    const semanticsV2 = harness.context.AppModules.activityV2.semanticsV2;
+    harness.state.fetchImpl = async (_url, options) => {
+      const request = JSON.parse(options.body);
+      const response = makeCommitResult(
+        harness.context,
+        request,
+        'created',
+        semanticsV2
+      );
+      mutate(response);
+      return makeResponse(200, response);
+    };
+
+    const error = await captureError(
+      harness.api.commitSession({
+        requestId: REQUEST_ID,
+        payload: makeV2Payload(),
+        semantics: semanticsV2
+      })
+    );
+    assertDomainError(error, {
+      code: 'REQUEST_FAILED',
+      operation: 'commitSession',
+      retryable: true,
+      commitState: 'unknown'
+    });
+    assert.equal(harness.state.calls.length, 1);
+  }
+
+  const stableHarness = makeHarness();
+  const baseV1 = stableHarness.context.AppModules.activityV2.semantics;
+  const baseV2 = stableHarness.context.AppModules.activityV2.semanticsV2;
+  const injected = {
+    getCatalog() {
+      return baseV2.getCatalog();
+    },
+    getEntryByKey(itemKey) {
+      return baseV2.getEntryByKey(itemKey);
+    }
+  };
+  stableHarness.state.fetchImpl = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    injected.getCatalog = () => baseV1.getCatalog();
+    injected.getEntryByKey = (itemKey) => baseV1.getEntryByKey(itemKey);
+    return makeResponse(
+      200,
+      makeCommitResult(stableHarness.context, request, 'created', baseV2)
+    );
+  };
+  const stableResult = await stableHarness.api.commitSession({
+    requestId: REQUEST_ID,
+    payload: makeV2Payload(),
+    semantics: injected
+  });
+  assert.equal(stableResult.outcome, 'created');
+  assert.equal(stableResult.session.items[0].catalog_version, 2);
+});
+
 test('all three tracking modes pass local policy validation', async () => {
   for (const mode of ['duration', 'duration_distance', 'strength_sets']) {
     const harness = makeHarness();
@@ -443,7 +707,10 @@ test('known SQL tokens map to stable domain errors without raw response data', a
       commitState: 'not_committed'
     });
     assert.equal(error.message.includes('raw-db-detail'), false);
-    assert.equal(harness.state.diagnostics.some((line) => line.includes(token)), true);
+    assert.equal(
+      harness.state.diagnostics.some((line) => line.includes(`code=${code}`)),
+      true
+    );
   }
 
   const harness = makeHarness();
@@ -479,8 +746,10 @@ test('auth, network, unknown server, and malformed-success failures are conserva
   );
 
   const networkHarness = makeHarness();
+  const diagnosticSentinel =
+    `socket-secret-detail request_id=${REQUEST_ID} payload=bench_press:150`;
   networkHarness.state.fetchImpl = async () => {
-    throw new Error('socket-secret-detail');
+    throw new Error(diagnosticSentinel);
   };
   const networkError = await captureError(
     networkHarness.api.commitSession({ requestId: REQUEST_ID, payload: makePayload() })
@@ -494,7 +763,13 @@ test('auth, network, unknown server, and malformed-success failures are conserva
   assert.equal(networkError.message.includes('socket-secret-detail'), false);
   assert.equal(
     networkHarness.state.diagnostics.some((line) => line.includes('socket-secret-detail')),
-    true
+    false
+  );
+  assert.equal(
+    networkHarness.state.diagnostics.some(
+      (line) => line.includes(REQUEST_ID) || line.includes('bench_press:150')
+    ),
+    false
   );
 
   const serverHarness = makeHarness();

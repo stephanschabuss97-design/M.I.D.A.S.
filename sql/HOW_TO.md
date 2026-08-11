@@ -356,6 +356,88 @@ table/RLS/policy/RPC/ACL boundary remained unchanged. See the archived C2
 Evidence for the exact gate results; never copy credentials or raw database
 output into this HOW-TO.
 
+# Activity V2 R8 Commit Compatibility
+
+`22_Activity_V2_Commit_Compatibility.sql` replaces only
+`public.activity_v2_commit_session(uuid,jsonb)`. New requests validate every
+used item against the payload's existing `catalog_version`; they do not require
+that version to be the highest catalog version. An identical replay is still
+resolved by `request_id` plus canonical payload fingerprint before catalog
+availability or active-status checks.
+
+The file is PostgreSQL-17-bound and fails closed unless all of these conditions
+hold before its first persistent statement:
+
+- the commit RPC has exactly one overload and its `pg_get_functiondef`
+  SHA-256 is either canonical R2
+  `2241cea9a5453a38d074abc88aebe8edb6f7e5c0226d063423daef0b1411418e`
+  or the exact R8 rerun
+  `7cdabca31dd7b4f3a8a78f5dc4d79c2116c7f77a2a0f5b834439093c0215177e`;
+- both Activity V2 RPCs retain their reviewed owner, volatility, security,
+  empty-search-path and exact Execute ACL;
+- the four Activity V2 tables match the canonical structural/RLS/policy
+  fingerprint and retain only the reviewed SELECT grants;
+- catalog v1 and v2 remain the exact immutable 78-row and 80-row snapshots.
+
+The same transaction snapshots all catalog versions, the protected table
+structure/ACLs, the lookup RPC source and Activity V2 row counts. Its
+postcondition proves that only the commit RPC plus its already-reviewed
+hardening changed. SQL 22 revokes Execute from `PUBLIC`, `anon`,
+`authenticated` and `service_role`, then grants Execute back only to
+`authenticated`. Do not rerun `16_Explicit_Grants.sql` for this change.
+
+`22_Activity_V2_Commit_Compatibility_Rollback.sql` is a separate manual
+action. It accepts only the exact R8 source, restores the exact R2 function
+source, and reasserts the same owner/search-path/ACL boundary. It is not an
+automatic failure handler and intentionally rejects a second rollback run.
+After a rollback, the forward SQL accepts the restored exact R2 preimage.
+
+Before any productive execution:
+
+1) repeat the read-only PostgreSQL version, overload, source-hash,
+   owner/search-path/ACL, structure/RLS/policy and catalog-v1/v2 preflight;
+2) compare the reviewed SQL-file hash with the approved intent;
+3) obtain the separate productive Owner approval;
+4) run only the forward SQL and stop on any guard failure;
+5) repeat all read-only postconditions and the Security Advisor;
+6) never create a synthetic productive Activity V2 session.
+
+Rollback requires its own fresh read-only preflight, incident decision and
+Owner approval. Never use it merely because the forward outcome is unknown;
+first establish the actual function source hash.
+
+The guarded disposable regression fixture is
+`sql/tests/22_Activity_V2_Commit_Compatibility_fixture.sql`. It may run only
+inside the local PostgreSQL-17 database `midas_activity_v2_s45`, owned by and
+connected as `postgres`. It rebuilds the R2+C2 scaffold, exercises exact
+forward/rerun/rollback, source/overload/hardening/ACL/RLS/catalog drift,
+v1/v2/new-highest commits, missing-item and policy rejection, replay,
+response-loss equivalence, two-connection races and direct-DML isolation. It
+finishes with catalog v1/v2 unchanged and zero session/item/set rows.
+
+## Activity V2 R8 Productive Execution Record
+
+The owner-approved productive SQL-22 execution completed on 2026-08-11 from
+`15:51:09Z` through `15:51:11Z` with `ON_ERROR_STOP` behavior and exit code 0.
+The reviewed forward file SHA-256 was
+`429520e59295939c7f9279a2a694c6f9d7b4770d4bb9106bf8b7d2cb35b3d0e3`.
+
+The immediate read-only preflight and postconditions proved:
+
+- commit RPC source changed only from canonical R2
+  `2241cea9a5453a38d074abc88aebe8edb6f7e5c0226d063423daef0b1411418e`
+  to canonical R8
+  `7cdabca31dd7b4f3a8a78f5dc4d79c2116c7f77a2a0f5b834439093c0215177e`;
+- catalog counts remained v1=78, v2=80 and other=0;
+- Activity V2 session, item and set counts remained 0/0/0;
+- function overload count, owner, volatility, security, empty search path,
+  Execute ACL, table structure, RLS and policies remained contract-equal;
+- no synthetic training session, Activity V1 write, web/edge/APK deploy or
+  product cutover occurred.
+
+This record authorizes no rerun and no rollback. A future rollback still needs
+its own current read-only preflight, incident decision and explicit owner gate.
+
 # Adding a New Module Script
 
 1) Create `sql/NN_Module_Name.sql` (or a final master script once the refactor is done).

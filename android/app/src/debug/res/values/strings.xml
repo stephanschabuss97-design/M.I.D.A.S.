@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MIDAS Activity V2 Local Test</string>
+    <string name="launcher_subtitle">Isolierte lokale Activity-V2-Testhülle. Keine Produktdaten und kein Produkt-Cutover.</string>
+    <string name="native_config_help">Nur für den owner-gateten lokalen Test: disposable Supabase-REST-Endpoint und temporären ANON-Key aus lokalem Tooloutput eingeben. Keine Produktwerte verwenden.</string>
+    <string name="midas_url">http://localhost:8765/app/modules/vitals-stack/activity/v2/test-pwa/?fixture=all</string>
+</resources>

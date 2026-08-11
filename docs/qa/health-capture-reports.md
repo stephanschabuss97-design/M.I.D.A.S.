@@ -466,3 +466,56 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Version, Store, Slot, Envelope, CAS, Autosave, Lifecycle oder Discardvertrag;
   produktive Script-Reihenfolge oder neue Netzwerk-, Supabase-, SQL-/RPC-,
   Commit-, Service-Worker-, Android- oder Legacy-Storage-Nutzung.
+
+### HCR-026 - Activity V2 R8 Commit und Katalogkompatibilität bleiben isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R8 Roadmap](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
+  und [R8 Evidence](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
+- Ebene: local-runtime + disposable PostgreSQL 17 + Browser + produktiver
+  SQL-Postcheck + Android-Build; Android Device nicht ausgeführt
+- Ausführung: automated + manual + owner-gated SQL
+- Wirkung: produktiv ersetzt SQL 22 ausschließlich
+  `activity_v2_commit_session(uuid,jsonb)` und reassertiert dessen bestehende
+  ACL. Kein Katalog-, Tabellen-, Policy-, Index- oder Sessionwrite; kein Web-,
+  Edge- oder APK-Deploy und kein Activity-V1-Write.
+- Voraussetzung: R1-R8-/C2-Sources und Tests gehören zum selben Repo-Stand;
+  PostgreSQL-Fixtures laufen nur disposable. Produktives SQL erfordert den
+  exakten Source-/Hash-/Owner-/ACL-/RLS-/Katalog-Preflight und ein separates
+  Owner-Gate. Keine echten Trainingssessions für den Smoke erzeugen.
+- Aktion:
+  `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`, alle
+  Activity-V2-JS-Dateien rekursiv mit `node --check`,
+  `node tools/activity-catalog.mjs check` und
+  `node tools/activity-v2-r8-isolation.mjs` ausführen. Danach das guarded
+  Fixture `sql/tests/22_Activity_V2_Commit_Compatibility_fixture.sql` auf
+  PostgreSQL 17 ausführen. Die lokale Test-PWA unter
+  `/app/modules/vitals-stack/activity/v2/test-pwa/?fixture=all` für
+  Unknown/identischen Retry, Reload, Offline, Races und drei Viewports prüfen.
+  Android Debug und Release bauen; ein Device-Smoke darf nur mit eigenem Gate
+  und genau einem autorisierten ADB-Gerät beginnen.
+- Erwartung: 179/179 Contracts, Syntax 21/21, Katalog
+  `v2 / 80 / 47 / 58` und Isolation
+  `protected=7, product_v2_loads=0, core_network_edges=0,
+  unsafe_diagnostics=0, secret_material=0, recovery_deletes=0,
+  local_worker_scope=1`. Das PostgreSQL-17.6-Full-Fixture beweist Forward,
+  Rerun, exakten R2-Rollback, Wiederherstellung, v1/v2/v3, Missing/Policy,
+  Replay, Responseverlust und zwei Races; Endstand Katalog 78/80/0 und
+  Sessions/Items/Sets 0/0/0. Der Browser beweist All, Unknown/Retry,
+  Preparing/Committing-Freeze, Reload, Offline, 2-/3-Tab-Races sowie
+  1440x900, 390x844 und 320x800. Debug-Merge ist
+  `de.schabuss.midas.activityv2test` mit localhost/Cleartext; Release-Merge
+  bleibt `de.schabuss.midas` ohne Cleartext und mit Produkt-URL.
+- Produktiver Nachweis 2026-08-11: Forward-SHA-256
+  `429520e59295939c7f9279a2a694c6f9d7b4770d4bb9106bf8b7d2cb35b3d0e3`;
+  RPC-Source R2 `2241cea9…1418e` -> R8 `7cdabca3…5177e`; Katalog 78/80/0
+  und Historie 0/0/0 vor/nach, Owner/ACL/RLS/Policies unverändert.
+- Bewusste Evidence-Grenze: Der Owner beendete S5 nach der grünen technischen
+  Kernmatrix. ADB und Wireless Debugging meldeten 0 Geräte; deshalb gab es
+  keine Installation, Reverse-Regel, Force-Stop oder Prozess-Reclaim. Der
+  finale CodeRabbit-Null-Lauf blieb nach Korrektur von F-ACT-R8-43 bis -61
+  rate-limitiert. Diese beiden Nachweise sind `NOT EXECUTED`, nicht `PASS`.
+- Invalidiert durch: Draft-/Recovery-/Commit-/Shell-/Data-Access-JS,
+  Semantik/Katalog, SQL 22 oder Rollback, RLS/ACL/Owner/Functionsource,
+  Test-PWA-/Worker-/Android-Debuggrenze, Produkt-Scriptload, Activity V1,
+  Dual-Write, physisches Recovery-Delete oder ein späterer Produktcutover.

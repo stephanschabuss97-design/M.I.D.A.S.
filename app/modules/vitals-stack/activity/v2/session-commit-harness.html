@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>Activity V2 Commit Harness</title>
+    <link rel="stylesheet" href="./session-shell.css?v=r8-s5-3">
+    <link rel="stylesheet" href="./session-commit-harness.css?v=r8-s5-3">
+  </head>
+  <body class="activity-v2-commit-harness">
+    <main id="harness-dashboard" class="activity-v2-commit-harness-stage">
+      <section class="activity-v2-commit-harness-card" aria-labelledby="harness-title">
+        <p class="activity-v2-commit-harness-eyebrow">ACTIVITY V2 · R8 · ISOLATED</p>
+        <h1 id="harness-title">Commit- und Fault-Injection-Harness</h1>
+        <p class="activity-v2-commit-harness-lead">
+          Echte Draft-, Recovery-, Commit- und Shellmodule mit lokalen deterministischen Adaptern.
+          Es werden keine Produktendpunkte oder Zugangsdaten verwendet.
+        </p>
+        <nav class="activity-v2-commit-harness-fixtures" aria-label="Commit-Fixtures">
+          <a href="?fixture=success">Success</a>
+          <a href="?fixture=known">Known / Not committed</a>
+          <a href="?fixture=release">Release pending</a>
+          <a href="?fixture=unknown">Unknown + Retry</a>
+          <a href="?fixture=cleanup">Cleanup pending</a>
+          <a href="?fixture=blocked">Blocked / no dispatch</a>
+          <a href="?fixture=preparing">Preparing delay</a>
+          <a href="?fixture=committing">Committing delay</a>
+          <a href="?fixture=reload">Reload / Resume</a>
+          <a href="?fixture=race2">2-Tab-Race</a>
+          <a href="?fixture=race3">3-Tab-Race</a>
+          <a href="?fixture=all">Alle Verträge</a>
+        </nav>
+        <output id="harness-status" class="activity-v2-commit-harness-status" role="status" aria-live="polite">
+          Harness bereit.
+        </output>
+        <dl id="harness-metrics" class="activity-v2-commit-harness-metrics" aria-label="Payloadfreie Harnessmetriken"></dl>
+        <p class="activity-v2-commit-harness-boundary">
+          Isolation: kein Produktload, kein Fetch, kein Service Worker, kein physisches Recovery-Delete.
+        </p>
+      </section>
+    </main>
+
+    <script src="./semantics.js?v=r8-s5-3"></script>
+    <script src="./semantics-v2.js?v=r8-s5-3"></script>
+    <script src="./session-draft.js?v=r8-s5-3"></script>
+    <script src="./session-recovery.js?v=r8-s5-3"></script>
+    <script src="./session-commit.js?v=r8-s5-3"></script>
+    <script src="./session-shell.js?v=r8-s5-3"></script>
+    <script src="./session-commit-harness-adapter.js?v=r8-s5-3"></script>
+    <script src="./session-commit-harness.js?v=r8-s5-3"></script>
+  </body>
+</html>

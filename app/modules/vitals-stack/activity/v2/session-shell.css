@@ -998,6 +998,52 @@
   gap: 0.55rem;
 }
 
+.activity-v2-session-commit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-top: 1rem;
+  border-color: var(--activity-v2-line-strong);
+}
+
+.activity-v2-session-commit-card .activity-v2-session-section-title,
+.activity-v2-session-commit-status {
+  grid-column: 1;
+}
+
+.activity-v2-session-commit-status {
+  min-width: 0;
+  margin: 0;
+  color: var(--activity-v2-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.activity-v2-session-commit-status[data-tone="success"] {
+  color: #91ebca;
+}
+
+.activity-v2-session-commit-status[data-tone="notice"] {
+  color: #f4d68e;
+}
+
+.activity-v2-session-commit-status[data-tone="error"] {
+  color: #ffacb5;
+}
+
+.activity-v2-session-commit-card > [data-action="finish"],
+.activity-v2-session-commit-card > [data-action="retry"] {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: min(15rem, 100%);
+}
+
+.activity-v2-session-commit-card > button[hidden] {
+  display: none;
+}
+
 .activity-v2-session-status {
   min-height: 1.5rem;
   margin-top: 1rem;
@@ -1141,6 +1187,17 @@
 
   .activity-v2-session-note {
     min-height: 9rem;
+  }
+
+  .activity-v2-session-commit-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activity-v2-session-commit-card > [data-action="finish"],
+  .activity-v2-session-commit-card > [data-action="retry"] {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100%;
   }
 }
 

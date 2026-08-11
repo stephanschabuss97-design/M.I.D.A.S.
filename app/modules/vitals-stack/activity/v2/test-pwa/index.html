@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#10151d">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Activity V2 Local Test PWA</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../session-shell.css?v=r8-s5-3">
+    <link rel="stylesheet" href="../session-commit-harness.css?v=r8-s5-3">
+    <link rel="stylesheet" href="./local-test-pwa.css?v=r8-s5-3">
+  </head>
+  <body class="activity-v2-commit-harness" data-runtime-boundary="localhost-only">
+    <main id="harness-dashboard" class="activity-v2-commit-harness-stage">
+      <section class="activity-v2-commit-harness-card" aria-labelledby="harness-title">
+        <p class="activity-v2-commit-harness-eyebrow">ACTIVITY V2 · R8 · LOCAL TEST PWA</p>
+        <h1 id="harness-title">Commit- und Recovery-Testlane</h1>
+        <p class="activity-v2-commit-harness-lead">
+          Reale Draft-, Recovery-, Commit- und Shellmodule mit lokalem deterministischem Adapter.
+          Diese PWA registriert ihren Worker ausschließlich auf localhost und nutzt keine Produktdaten.
+        </p>
+        <output id="local-pwa-status" class="activity-v2-local-pwa-status" role="status" aria-live="polite">
+          Lokale PWA wird geprüft.
+        </output>
+        <nav class="activity-v2-commit-harness-fixtures" aria-label="Commit-Fixtures">
+          <a href="?fixture=success">Success</a>
+          <a href="?fixture=known">Known / Not committed</a>
+          <a href="?fixture=release">Release pending</a>
+          <a href="?fixture=unknown">Unknown + Retry</a>
+          <a href="?fixture=cleanup">Cleanup pending</a>
+          <a href="?fixture=blocked">Blocked / no dispatch</a>
+          <a href="?fixture=preparing">Preparing delay</a>
+          <a href="?fixture=committing">Committing delay</a>
+          <a href="?fixture=reload">Reload / Resume</a>
+          <a href="?fixture=race2">2-Tab-Race</a>
+          <a href="?fixture=race3">3-Tab-Race</a>
+          <a href="?fixture=all">Alle Verträge</a>
+        </nav>
+        <output id="harness-status" class="activity-v2-commit-harness-status" role="status" aria-live="polite">
+          Harness bereit.
+        </output>
+        <dl id="harness-metrics" class="activity-v2-commit-harness-metrics" aria-label="Payloadfreie Harnessmetriken"></dl>
+        <p class="activity-v2-commit-harness-boundary">
+          Isolation: kein Produktload, kein Produkt-Service-Worker, keine Zugangsdaten im Repo,
+          kein physisches Recovery-Delete.
+        </p>
+      </section>
+    </main>
+
+    <script src="./local-test-pwa.js?v=r8-s5-3"></script>
+  </body>
+</html>

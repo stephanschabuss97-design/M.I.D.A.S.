@@ -5,9 +5,9 @@ Kurze Einordnung:
   (Aktivitaet + Dauer + Notiz).
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
   R3-Draft-/Shell-Grundlage, C2-Katalogversion 2, R4-Suche/Last-Performance,
-  R5-Strength-Set-Editor, R6-Duration-/Distance-Editor und R7-IndexedDB-Draft-
-  Recovery sind bereitgestellt; die sichtbare App und alle produktiven
-  Consumer verwenden weiterhin V1.
+  R5-Strength-Set-Editor, R6-Duration-/Distance-Editor, R7-IndexedDB-Draft-
+  Recovery und der isolierte R8-Commit-Core sind bereitgestellt; die sichtbare
+  App und alle produktiven Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
@@ -27,6 +27,8 @@ Related docs:
 - [Activity V2 R6 Roadmap](<../archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
 - [Activity V2 R7 Roadmap](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
 - [Activity V2 R7 Evidence](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
+- [Activity V2 R8 Roadmap](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
+- [Activity V2 R8 Evidence](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -54,16 +56,16 @@ Related docs:
 | `app/modules/vitals-stack/activity/v2/semantics.js` | Isolierter V2-Katalog, Validator, Normalisierung und lokale Suche |
 | `app/modules/vitals-stack/activity/v2/semantics.contract.test.js` | Lokale R1-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/semantics-harness.html` | Isolierter klassischer Browser-Ladenachweis |
-| `app/modules/vitals-stack/activity/v2/data-access.js` | Isolierte R2-Commit- und Historienzugriffsschicht mit additiver R4-Semantikinjektion nur für Lookup |
+| `app/modules/vitals-stack/activity/v2/data-access.js` | Isolierte R2-Commit- und Historienzugriffsschicht mit additiver R4-Lookup- sowie expliziter R8-Commit-Semantikinjektion bei unverändertem v1-Default |
 | `app/modules/vitals-stack/activity/v2/data-access.contract.test.js` | Lokale R2-Request-, Response-, Retry- und Fehler-Contract-Tests |
 | `sql/20_Activity_V2.sql` | Additives R2-Schema, Katalogprojektion, RLS und RPCs |
 | `sql/tests/20_Activity_V2_fixture.sql` | Guarded disposable PostgreSQL-17-Contract-Fixture |
 | `app/modules/vitals-stack/activity/v2/session-draft.js` | Isolierte R3-R7-In-Memory-Draft-Factory mit strikter Draft-v3-Rehydration, policy-gesteuerten Strength-Sets und Itemwerten |
 | `app/modules/vitals-stack/activity/v2/session-draft.contract.test.js` | Lokale R3-R7-Draft-, Restore-, Timer-, Set-, Item- und Mutations-Contract-Tests |
-| `app/modules/vitals-stack/activity/v2/session-recovery.js` | Isolierte R7-Recovery-Fassade mit eigenem IndexedDB-Slot, vollständigem Lease-CAS, Autosave-Coordinator und Tombstone-Discard |
+| `app/modules/vitals-stack/activity/v2/session-recovery.js` | Isolierte R7/R8-Recovery-Fassade mit Envelope-v1/v2-Lesen, Intent-/Attempt-CAS, Autosave, Quarantäne und Generationstombstone |
 | `app/modules/vitals-stack/activity/v2/session-recovery.contract.test.js` | Disposable R7-IDB-, Envelope-, CAS-, Autosave-, Retry-, Conflict-, Lifecycle- und Discard-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/session-recovery-harness.html` | Separater R7-Browser-Harness für bewusstes Recovery-Gate und reale IndexedDB-Fixtures |
-| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-R7-Vollflaechen-Shell mit Suche, read-only Historie, Editoren, optionalem Recoverystatus und persistent-first Discard |
+| `app/modules/vitals-stack/activity/v2/session-shell.js` | Isolierte R3-R8-Vollflächen-Shell mit Suche, read-only Historie, Editoren, Recovery sowie Finish-/identischer Retry-Integration |
 | `app/modules/vitals-stack/activity/v2/session-shell.css` | Responsive R3-R7-Shell-, Such-, Historien-, Editor-, Recovery-, Dialog- und Fokusdarstellung |
 | `app/modules/vitals-stack/activity/v2/session-shell.contract.test.js` | Lokale R3-R7-Shell-, Search-, Lookup-, Editor-, Recovery-, Guard-, Fokus- und Lifecycle-Contract-Tests |
 | `app/modules/vitals-stack/activity/v2/session-shell-harness.html` | Isolierter visueller R6-Browser-Harness mit Strength-, Duration-, Distance- und Historien-Fixtures |
@@ -72,6 +74,12 @@ Related docs:
 | `sql/21_Activity_V2_Catalog_V2.sql` | Insert-only Projektion des unveränderlichen 80er-Katalog-v2-Snapshots |
 | `sql/tests/21_Activity_V2_Catalog_V2_fixture.sql` | Guarded C2-Fixture für Re-Run, Drift-Fail und R2-Kompatibilität |
 | `tools/activity-catalog.mjs` | Read-only Inspector für Katalogparität, Suche und spätere Pflege |
+| `app/modules/vitals-stack/activity/v2/session-commit.js` | Privater R8-Mapper und Commit-Coordinator mit tiefgefrorenem Intent, One-Promise-State-Machine und Known-/Unknown-/Replay-/Cleanup-Pfaden |
+| `app/modules/vitals-stack/activity/v2/session-commit-harness.js` | Isolierter deterministischer R8-Browserharness mit echten Draft-/Recovery-/Commit-/Shellmodulen und Fault-/Race-Fixtures |
+| `app/modules/vitals-stack/activity/v2/test-pwa/` | Nur lokal gebundene installierbare Test-PWA mit eigenem Worker-Scope; kein Produkt-Service-Worker |
+| `sql/22_Activity_V2_Commit_Compatibility.sql` | Guarded R8-Replace des bestehenden Commit-RPC für vorhandene unveränderliche Katalogversionen |
+| `sql/22_Activity_V2_Commit_Compatibility_Rollback.sql` | Separater owner-gateter exakter R8-zu-R2-Rollback nur für den Commit-RPC |
+| `tools/activity-v2-r8-isolation.mjs` | Aggregierter Produkt-/V1-/Netzwerk-/Secret-/Recovery-Delete-Isolationsguard |
 
 ---
 
@@ -315,7 +323,45 @@ Consumer verbunden.
   Desktop/Mobile, Touchziele, Overflow und saubere Browserkonsole.
 - R7 ergänzt weder Supabase-Commit noch SQL/RPC/RLS/Grants, Netzwerk, Service
   Worker, Android-Prozess-Reclaim, Produktnavigation, Activity V1 oder
-  produktiven Scriptload. Commitintegration und Android-PWA-Nachweis gehören R8.
+  produktiven Scriptload. R8 hat die Commitintegration geliefert; der reale
+  Android-PWA-Device-Nachweis blieb dort bewusst unausgeführt.
+
+## 2.9 Activity V2 R8 - isolierter Commit-Core und Katalogkompatibilität
+
+Status: implementiert und lokal/disposable/im Browser bewiesen; SQL 22 ist
+produktiv ausgeführt. Activity V2 bleibt ohne Produkt-Scriptload oder Consumer.
+Der echte Android-Device-Prozess-Reclaim wurde auf Owner-Entscheidung nicht
+ausgeführt und ist keine PASS-Evidence.
+
+- `session-commit.js` projiziert den unveränderten Draft v3 exakt auf
+  `midas.activity-session.v1`. Die Abschlussuhr wird einmal ausgewertet;
+  `ended_at`, `duration_min`, Katalogversion, Reihenfolge und normalisierte
+  Zahlen werden im tiefgefrorenen Commit-Intent nicht neu erzeugt.
+- Recovery-Envelope v2 liest weiterhin v1. Der persistierte Intent und ein
+  monotoner Attempt werden mit demselben Observation-CAS wie der Draft
+  geschützt. Unbekannte oder beschädigte mögliche Commitzustände bleiben in
+  Quarantäne und dürfen nicht verworfen werden.
+- Der Coordinator hält genau eine lokale Finish-/Retry-Promise. Erst nach
+  bestätigter Intent-Persistenz darf der Remoteversuch starten. Unknown sperrt
+  Bearbeitung und erlaubt ausschließlich denselben Intent mit derselben
+  `request_id` und Payload; bestätigter Commit oder Replay schreibt den
+  Generationstombstone.
+- Die Shell injiziert den Coordinator nur in der isolierten Activity-V2-
+  Laufzeit. Activity V1 bleibt der einzige produktive Consumer; es gibt weder
+  Dual-Write noch Produktnavigation oder Produkt-Service-Worker-Load.
+- SQL 22 ersetzt ausschließlich den vorhandenen Commit-RPC. Ein neuer Commit
+  darf jede vorhandene unveränderliche Katalogversion verwenden; identischer
+  Replay bleibt idempotent. Tabellen, Katalogzeilen, RLS, Policies, Owner und
+  ACLs bleiben unverändert.
+- Die lokale Test-PWA hat einen eigenen Worker-Scope. Android Debug verwendet
+  `de.schabuss.midas.activityv2test`, localhost und Cleartext nur im Debug-
+  Merge; Release bleibt `de.schabuss.midas` mit Produkt-URL und ohne
+  Cleartextfreigabe.
+- Bewiesen sind 179/179 Contracts, 21/21 Syntaxchecks, Katalog
+  `2/80/47/58`, der aggregierte Isolationsguard, PostgreSQL-17-Full-Fixture,
+  Browser-Unknown/Retry/Reload/Offline/Races und produktive SQL-22-
+  Postconditions mit leerer V2-Historie. Nicht bewiesen sind der reale
+  Android-Prozess-Reclaim und ein abschließender CodeRabbit-Null-Lauf.
 
 ---
 
@@ -345,10 +391,11 @@ Consumer verbunden.
 - Mehrere abgeschlossene Sessions pro Kalendertag sind erlaubt.
 - R2 fuehrt keine Korrektur, Loeschung, Retention, UI oder Consumer-Migration ein.
 - C2 nutzt dieselbe Tabelle additiv: v1 bleibt 78, v2 ist ein vollständiger
-  80er-Snapshot. Der Commit akzeptiert damit jetzt Katalogversion 2 als höchste
-  Version; echte Sessionnutzung bleibt bis zu den späteren Gates gesperrt.
+  80er-Snapshot. Seit R8 akzeptiert der Commit jede vorhandene
+  unveränderliche Payload-Katalogversion statt nur der höchsten; echte
+  Sessionnutzung bleibt bis zum R12-Cutover gesperrt.
 
-### Activity V2 R3-R7 - Draft- und Recoveryvertrag
+### Activity V2 R3-R8 - Draft-, Recovery- und Commitvertrag
 
 - Der fachliche Draft existiert im Arbeitsspeicher und ist kein abgeschlossener
   R2-Datensatz; R7 speichert nur seinen vollständigen unveränderten v3-Snapshot
@@ -357,8 +404,9 @@ Consumer verbunden.
   eindeutige `item_key` und lueckenlose, einsbasierte `item_order`.
 - Reload-Recovery ist im isolierten R7-Harness bewiesen. Site-Datenlöschung,
   anderes Browserprofil oder anderes Gerät besitzen keinen gemeinsamen Slot.
-- R8 verbindet dieselbe Recovery intern mit Commit und Android-PWA-Prozess-
-  Reclaim; bis dahin bleibt sie außerhalb des Produkts.
+- R8 verbindet dieselbe Recovery intern mit dem Commit-Core. Die lokale
+  Browser-PWA ist bewiesen; der echte Android-Prozess-Reclaim blieb mangels
+  ADB-Gerät unausgeführt. Beides bleibt außerhalb des Produkts.
 
 ---
 
@@ -474,17 +522,19 @@ Consumer verbunden.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1-R7/C2: Semantik, additive produktive Datenbasis, lokaler
+- Activity V2 R1-R8/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
-  Historie, Strength-/Duration-/Distance-Editor und lokale Draft-Recovery sind
-  implementiert. Die V2-Runtime bleibt isoliert; es gibt keinen produktiven
-  UI-, Consumer- oder V1-Cutover.
+  Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der
+  Commit-Core sind implementiert. SQL 22 ist produktiv bestätigt; die V2-
+  Runtime bleibt isoliert und es gibt keinen produktiven UI-, Consumer- oder
+  V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
 - Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
-- Activity-V2-Risiko: Reload-Recovery ist im lokalen R7-Harness bewiesen;
-  produktive Commitintegration, Android-PWA-Prozess-Reclaim und Gerätewechsel
-  bleiben bis R8 beziehungsweise außerhalb des lokalen Recoveryvertrags gesperrt.
+- Activity-V2-Risiko: Commit/Recovery sind lokal, disposable und im Browser
+  bewiesen. Der reale Android-PWA-Prozess-Reclaim wurde in R8 nicht ausgeführt;
+  Gerätewechsel liegt außerhalb des lokalen Recoveryvertrags. Produktive
+  Consumerintegration und finaler Android-Smoke bleiben R12.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -530,6 +580,16 @@ Consumer verbunden.
   `24/24`, Recovery `28/28`, Shell `38/38`, vollständig `119/119`, Katalog
   `v2 / 80 / 47 / 58`, Syntax `12/12`, statische Isolation, realer Edge-
   Harness und finaler CodeRabbit-Re-Review mit `0 Findings` sind grün.
+- R8-Checks validieren Mapper, Zeitvertrag, tiefgefrorenen Commit-Intent,
+  Envelope-v1/v2, Intent-/Attempt-CAS, Quarantäne, One-Promise-Coordinator,
+  Known/Unknown/Replay/Cleanup, Data-Access-v1/v2, Shell und Fault-/Race-
+  Harness. Die finale technische Matrix ist 179/179, Syntax 21/21, Katalog
+  `v2 / 80 / 47 / 58` und Isolation `7/0/0/0/0/0/1`. PostgreSQL 17.6 und
+  produktives SQL 22 enden bei Katalog 78/80/0 und V2-Historie 0/0/0. Browser-
+  All/Unknown/Retry/Reload/Offline/Races sowie 1440/390/320 sind PASS. Android
+  Debug/Release bauen isoliert; der Device-Reclaim und der finale CodeRabbit-
+  Null-Lauf wurden per Owner-Entscheidung nicht als Pflichtabschluss verfolgt
+  und dürfen nicht als PASS zitiert werden.
 
 ---
 
@@ -537,9 +597,10 @@ Consumer verbunden.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R7/C2 bleiben bis zu den zustaendigen Folgeroadmaps fuer
-  produktive Consumer unverdrahtet. R7 ist DONE; R8 ist das nächste
-  Rolling-Wave-Gate für Commit- und Android-Recovery-Integration und darf
-  weiterhin keinen produktiven V2-Cutover vorwegnehmen.
+- Activity V2 R1-R8/C2 bleiben bis zu den zuständigen Folgeroadmaps für
+  produktive Consumer unverdrahtet. R8 ist mit dokumentierter, owner-
+  akzeptierter Device-/Review-Evidence-Lücke DONE; R9 ist das nächste
+  Rolling-Wave-Gate. Ausschließlich R12 darf den produktiven V2-Cutover und den
+  finalen Android-PWA-Smoke ausführen.
 - Doku aktuell (Spec + Overview).
 

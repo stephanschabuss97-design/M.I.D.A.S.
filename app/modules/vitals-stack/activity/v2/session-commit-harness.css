@@ -1,0 +1,163 @@
+:root {
+  --activity-v2-harness-bg: #071019;
+  --activity-v2-harness-surface: rgba(17, 31, 43, 0.96);
+  --activity-v2-harness-line: rgba(173, 202, 218, 0.2);
+  --activity-v2-harness-text: #f2f8f9;
+  --activity-v2-harness-muted: #9db1bc;
+  --activity-v2-harness-accent: #6ce0c6;
+}
+
+.activity-v2-commit-harness {
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  color: var(--activity-v2-harness-text);
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--activity-v2-harness-bg);
+}
+
+.activity-v2-commit-harness,
+.activity-v2-commit-harness * {
+  box-sizing: border-box;
+}
+
+.activity-v2-commit-harness-stage {
+  display: grid;
+  min-width: 0;
+  min-height: 100vh;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  place-items: center;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(54, 197, 167, 0.2), transparent 30rem),
+    radial-gradient(circle at 100% 80%, rgba(58, 122, 160, 0.18), transparent 28rem),
+    linear-gradient(160deg, #09141e, var(--activity-v2-harness-bg) 70%, #060c12);
+}
+
+@supports (min-height: 100dvh) {
+  .activity-v2-commit-harness-stage {
+    min-height: 100dvh;
+  }
+}
+
+.activity-v2-commit-harness-card {
+  width: min(62rem, 100%);
+  min-width: 0;
+  padding: clamp(1.2rem, 4vw, 2.2rem);
+  border: 1px solid var(--activity-v2-harness-line);
+  border-radius: 1.2rem;
+  background: var(--activity-v2-harness-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+.activity-v2-commit-harness-eyebrow {
+  margin: 0 0 0.45rem;
+  color: var(--activity-v2-harness-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.activity-v2-commit-harness-card h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 5vw, 2.35rem);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.activity-v2-commit-harness-lead,
+.activity-v2-commit-harness-boundary {
+  color: var(--activity-v2-harness-muted);
+  line-height: 1.6;
+}
+
+.activity-v2-commit-harness-fixtures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.4rem;
+}
+
+.activity-v2-commit-harness-fixtures a {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--activity-v2-harness-line);
+  border-radius: 0.75rem;
+  color: #bdeee3;
+  background: rgba(255, 255, 255, 0.04);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.activity-v2-commit-harness-fixtures a:hover {
+  border-color: rgba(108, 224, 198, 0.42);
+}
+
+.activity-v2-commit-harness-fixtures a:focus-visible {
+  outline: 3px solid rgba(165, 243, 223, 0.3);
+  outline-offset: 2px;
+}
+
+.activity-v2-commit-harness-status {
+  display: block;
+  min-height: 1.5rem;
+  margin-top: 1.2rem;
+  color: var(--activity-v2-harness-muted);
+  font-weight: 700;
+}
+
+.activity-v2-commit-harness-status[data-tone="success"] {
+  color: #91ebca;
+}
+
+.activity-v2-commit-harness-status[data-tone="error"] {
+  color: #ffacb5;
+}
+
+.activity-v2-commit-harness-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 1rem 0 0;
+}
+
+.activity-v2-commit-harness-metrics div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--activity-v2-harness-line);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.activity-v2-commit-harness-metrics dt {
+  color: var(--activity-v2-harness-muted);
+}
+
+.activity-v2-commit-harness-metrics dd {
+  margin: 0;
+  color: var(--activity-v2-harness-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .activity-v2-commit-harness-fixtures,
+  .activity-v2-commit-harness-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-v2-commit-harness * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}

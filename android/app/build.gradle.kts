@@ -19,6 +19,11 @@ android {
   }
 
   buildTypes {
+    debug {
+      applicationIdSuffix = ".activityv2test"
+      versionNameSuffix = "-activityv2test"
+    }
+
     release {
       isMinifyEnabled = false
       proguardFiles(

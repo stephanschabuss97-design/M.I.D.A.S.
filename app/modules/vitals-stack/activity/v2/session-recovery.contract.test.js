@@ -29,6 +29,9 @@ const cssSource = fs.readFileSync(cssPath, 'utf8');
 const SAFE_MESSAGE =
   'The activity session recovery operation could not be completed.';
 const RECOVERY_SCHEMA = 'midas.activity-session-recovery.v1';
+const RECOVERY_SCHEMA_V2 = 'midas.activity-session-recovery.v2';
+const COMMIT_INTENT_SCHEMA = 'midas.activity-session-commit-intent.v1';
+const COMMIT_ATTEMPT_SCHEMA = 'midas.activity-session-commit-attempt.v1';
 const SLOT_KEY = 'active_session';
 const UUIDS = [
   '10000000-0000-4000-8000-000000000001',
@@ -357,6 +360,61 @@ function loadRuntime({ contextValues = {}, includeSemanticsV2 = true } = {}) {
   };
 }
 
+function loadRuntimeWithSnapshotFault() {
+  const activityV1 = { marker: 'activity-v1' };
+  const context = vm.createContext({
+    AppModules: { activity: activityV1, activityV2: {} },
+    queueMicrotask,
+    setTimeout,
+    clearTimeout
+  });
+  vm.runInContext(semanticsSource, context, { filename: semanticsPath });
+  vm.runInContext(semanticsV2Source, context, { filename: semanticsV2Path });
+  vm.runInContext(draftSource, context, { filename: draftPath });
+  const semantics = context.AppModules.activityV2.semantics;
+  const semanticsV2 = context.AppModules.activityV2.semanticsV2;
+  const draftApi = context.AppModules.activityV2.sessionDraft;
+  let readsBeforeThrow = null;
+
+  function wrapDraft(draft) {
+    const wrapped = {};
+    Object.keys(draft).forEach((key) => {
+      wrapped[key] = key === 'getSnapshot'
+        ? () => {
+            if (readsBeforeThrow === 0) throw new Error('snapshot read fault');
+            if (readsBeforeThrow !== null) readsBeforeThrow -= 1;
+            return draft.getSnapshot();
+          }
+        : draft[key];
+    });
+    return Object.freeze(wrapped);
+  }
+
+  const faultingDraftApi = Object.freeze({
+    create: (options) => wrapDraft(draftApi.create(options)),
+    restore: (options) => wrapDraft(draftApi.restore(options))
+  });
+  context.AppModules.activityV2 = {
+    semantics,
+    semanticsV2,
+    sessionDraft: faultingDraftApi
+  };
+  vm.runInContext(recoverySource, context, { filename: recoveryPath });
+  return {
+    context,
+    activityV1,
+    semantics,
+    semanticsV2,
+    draftApi: faultingDraftApi,
+    recoveryApi: context.AppModules.activityV2.sessionRecovery,
+    fault: {
+      arm(reads) {
+        readsBeforeThrow = reads;
+      }
+    }
+  };
+}
+
 function createDraft(runtime, {
   requestId = UUIDS[0],
   now = TIMES[0],
@@ -405,6 +463,80 @@ function tombstone({ generation = 1, leaseToken = UUIDS[2] } = {}) {
     persisted_revision: null,
     saved_at: null,
     draft: null
+  };
+}
+
+function v2ActiveRecord(snapshot, {
+  intent = null,
+  attempt = null,
+  ...recordOptions
+} = {}) {
+  const record = activeRecord(snapshot, recordOptions);
+  record.recovery_schema_version = RECOVERY_SCHEMA_V2;
+  record.commit_intent = intent;
+  record.commit_attempt = attempt;
+  return record;
+}
+
+function v2Tombstone({ generation = 1, leaseToken = UUIDS[2] } = {}) {
+  return {
+    ...tombstone({ generation, leaseToken }),
+    recovery_schema_version: RECOVERY_SCHEMA_V2,
+    commit_intent: null,
+    commit_attempt: null
+  };
+}
+
+function numeric(value) {
+  return value === null ? null : Number(String(value).replace(',', '.'));
+}
+
+function integer(value) {
+  return value === null ? null : Number.parseInt(value, 10);
+}
+
+function commitIntent(snapshot, {
+  preparedAt = new Date(TIMES[2]).toISOString()
+} = {}) {
+  const elapsed = Date.parse(preparedAt) - Date.parse(snapshot.started_at);
+  return {
+    commit_intent_schema_version: COMMIT_INTENT_SCHEMA,
+    request_id: snapshot.request_id,
+    draft_revision: snapshot.revision,
+    catalog_version: snapshot.catalog_version,
+    prepared_at: preparedAt,
+    payload: {
+      schema_version: 'midas.activity-session.v1',
+      catalog_version: snapshot.catalog_version,
+      started_at: snapshot.started_at,
+      ended_at: preparedAt,
+      duration_min: Math.max(1, Math.round(elapsed / 60000)),
+      title: null,
+      note: snapshot.note,
+      items: snapshot.items.map((item, itemIndex) => ({
+        item_key: item.item_key,
+        item_order: itemIndex + 1,
+        duration_min: integer(item.duration_min),
+        distance_km: numeric(item.distance_km),
+        note: item.note,
+        sets: item.sets.map((set, setIndex) => ({
+          set_order: setIndex + 1,
+          reps: integer(set.reps),
+          duration_sec: integer(set.duration_sec),
+          distance_m: numeric(set.distance_m),
+          weight_kg: numeric(set.weight_kg),
+          assistance_kg: numeric(set.assistance_kg)
+        }))
+      }))
+    }
+  };
+}
+
+function commitAttempt(number, token) {
+  return {
+    commit_attempt_schema_version: COMMIT_ATTEMPT_SCHEMA,
+    attempt_number: number,
+    attempt_token: token
   };
 }
 
@@ -679,7 +811,7 @@ test('discard commits a rotated generation tombstone and permanently fences stal
   }));
 });
 
-test('unknown and corrupt JSON records can only be discarded through exact observation CAS', async () => {
+test('unknown and ambiguous records are quarantined while declared v1 corruption remains CAS-discardable', async () => {
   const runtime = loadRuntime();
   const corrupt = {
     slot_key: SLOT_KEY,
@@ -689,26 +821,14 @@ test('unknown and corrupt JSON records can only be discarded through exact obser
   };
   const fake = createFakeIndexedDb(corrupt);
   const firstStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
-  const secondStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
-  const [firstObservation, staleObservation] = await Promise.all([
-    firstStore.read(),
-    secondStore.read()
-  ]);
-  const result = await firstStore.discard({
-    observation: firstObservation,
-    leaseToken: UUIDS[2]
-  });
-  assert.deepEqual(plain(result.value), tombstone({
-    generation: 1,
-    leaseToken: UUIDS[2]
-  }));
   await assertRecoveryError(
-    () => secondStore.discard({
-      observation: staleObservation,
-      leaseToken: UUIDS[3]
+    async () => firstStore.discard({
+      observation: await firstStore.read(),
+      leaseToken: UUIDS[2]
     }),
-    'CONFLICT'
+    'UNSAFE_DISCARD'
   );
+  assert.deepEqual(fake.control.getRecord(), corrupt);
 
   const validGenerationCorrupt = {
     slot_key: SLOT_KEY,
@@ -726,51 +846,22 @@ test('unknown and corrupt JSON records can only be discarded through exact obser
   assert.equal(repaired.value.slot_generation, 8);
   assert.equal(repaired.value.lease_token, UUIDS[4]);
 
-  const protoRecord = JSON.parse(
-    '{"__proto__":{"neutral":"fixture"},"slot_generation":"broken"}'
-  );
-  fake.control.setRecord(protoRecord);
-  const protoStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
-  const protoObservation = await protoStore.read();
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(protoObservation.value, '__proto__'),
-    true
-  );
-  await protoStore.discard({
-    observation: protoObservation,
-    leaseToken: UUIDS[5]
-  });
-  assert.equal(fake.control.getRecord().draft, null);
-
-  const largeCorrupt = {
-    slot_generation: 'broken',
-    neutral: Array.from({ length: 12000 }, () => null)
-  };
-  fake.control.setRecord(largeCorrupt);
-  const largeStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
-  const largeObservation = await largeStore.read();
-  await largeStore.discard({
-    observation: largeObservation,
-    leaseToken: UUIDS[0]
-  });
-  assert.equal(fake.control.getRecord().draft, null);
-
-  const upperTokenCorrupt = {
-    slot_generation: 'broken',
-    lease_token: UUIDS[1].toUpperCase()
-  };
-  fake.control.setRecord(upperTokenCorrupt);
-  const upperTokenStore = runtime.recoveryApi.createIndexedDbStore({
-    indexedDB: fake.indexedDB
-  });
-  const upperTokenObservation = await upperTokenStore.read();
+  const malformedV2 = v2ActiveRecord(createDraft(runtime).getSnapshot());
+  malformedV2.commit_attempt = commitAttempt(1, UUIDS[5]);
+  fake.control.setRecord(malformedV2);
+  const v2Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const v2Observation = await v2Store.read();
   await assertRecoveryError(
-    () => upperTokenStore.discard({
-      observation: upperTokenObservation,
-      leaseToken: UUIDS[1]
+    () => v2Store.discard({
+      observation: v2Observation,
+      leaseToken: UUIDS[0],
+      recoverySchemaVersion: RECOVERY_SCHEMA_V2,
+      commitIntent: null,
+      commitAttempt: null
     }),
-    'INVALID_LEASE_TOKEN'
+    'UNSAFE_DISCARD'
   );
+  assert.deepEqual(fake.control.getRecord(), malformedV2);
 });
 
 test('blocked open, abort, versionchange and non-JSON values fail without confirmed success', async () => {
@@ -987,7 +1078,12 @@ test('open missing exposes exact controller state and pristine managed draft wit
     'flush',
     'discard',
     'subscribe',
-    'destroy'
+    'destroy',
+    'getCommitIntent',
+    'prepareCommit',
+    'beginCommitAttempt',
+    'releaseCommit',
+    'completeCommit'
   ]);
   assertFrozenTree(controller);
   assert.deepEqual(plain(controller.getState()), {
@@ -1060,6 +1156,9 @@ test('real mutations enqueue once, canonical no-ops enqueue nothing and save the
   assert.equal(fake.control.getRecord().draft.note, 'synthetic autosave');
   assert.equal(fake.control.getRecord().persisted_revision, 1);
   assert.equal(fake.control.getRecord().write_sequence, 1);
+  assert.equal(fake.control.getRecord().recovery_schema_version, RECOVERY_SCHEMA_V2);
+  assert.equal(fake.control.getRecord().commit_intent, null);
+  assert.equal(fake.control.getRecord().commit_attempt, null);
   assert.deepEqual(setup.reads, { request: 1, lease: 1, time: 1 });
 
   const second = draft.setNote('synthetic autosave 2');
@@ -1171,6 +1270,9 @@ test('tombstone opens empty, retains its lease on first save and catalog v2 rest
   assert.equal(saved.write_sequence, 1);
   assert.equal(saved.lease_token, UUIDS[2]);
   assert.equal(saved.request_id, UUIDS[3]);
+  assert.equal(saved.recovery_schema_version, RECOVERY_SCHEMA_V2);
+  assert.equal(saved.commit_intent, null);
+  assert.equal(saved.commit_attempt, null);
   assert.equal(tombstoneSetup.reads.lease, 0);
 
   const v2Controller = runtime.draftApi.create({
@@ -1195,6 +1297,411 @@ test('tombstone opens empty, retains its lease on first save and catalog v2 rest
   );
 });
 
+test('v2 store writes exact ordered metadata and rejects attempt-without-intent', async () => {
+  const runtime = loadRuntime();
+  const fake = createFakeIndexedDb();
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const observation = await store.read();
+  const snapshot = createDraft(runtime).getSnapshot();
+  const savedAt = new Date(TIMES[1]).toISOString();
+
+  const result = await store.save({
+    observation,
+    draft: snapshot,
+    savedAt,
+    leaseToken: UUIDS[1],
+    recoverySchemaVersion: RECOVERY_SCHEMA_V2,
+    commitIntent: null,
+    commitAttempt: null
+  });
+  assert.deepEqual(Reflect.ownKeys(result.value), [
+    'slot_key',
+    'recovery_schema_version',
+    'slot_generation',
+    'write_sequence',
+    'lease_token',
+    'request_id',
+    'persisted_revision',
+    'saved_at',
+    'draft',
+    'commit_intent',
+    'commit_attempt'
+  ]);
+  assert.deepEqual(plain(result.value), v2ActiveRecord(snapshot, {
+    savedAt,
+    leaseToken: UUIDS[1]
+  }));
+
+  await assertRecoveryError(
+    () => store.save({
+      observation: result,
+      draft: snapshot,
+      savedAt,
+      leaseToken: UUIDS[1],
+      recoverySchemaVersion: RECOVERY_SCHEMA_V2,
+      commitIntent: null,
+      commitAttempt: commitAttempt(1, UUIDS[3])
+    }),
+    'INVALID_COMMIT_ATTEMPT'
+  );
+
+  const tombstoneFake = createFakeIndexedDb(v2Tombstone());
+  const tombstoneStore = runtime.recoveryApi.createIndexedDbStore({
+    indexedDB: tombstoneFake.indexedDB
+  });
+  const tombstoneObservation = await tombstoneStore.read();
+  await assertRecoveryError(
+    () => tombstoneStore.save({
+      observation: tombstoneObservation,
+      draft: snapshot,
+      savedAt,
+      leaseToken: UUIDS[2]
+    }),
+    'CONFLICT'
+  );
+  assert.deepEqual(tombstoneFake.control.getRecord(), v2Tombstone());
+});
+
+test('v1 continue and autosave stay v1 while v2 continue and autosave stay v2', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+
+  const v1Fake = createFakeIndexedDb(activeRecord(source));
+  const v1Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: v1Fake.indexedDB });
+  const v1Setup = createOpenOptions(runtime, v1Store);
+  const v1Controller = await runtime.recoveryApi.open(v1Setup.options);
+  v1Controller.continueSession().setNote('legacy autosave');
+  v1Setup.scheduler.runNext();
+  await waitForState(v1Controller, 'saved');
+  assert.equal(v1Fake.control.getRecord().recovery_schema_version, RECOVERY_SCHEMA);
+  assert.equal(Object.hasOwn(v1Fake.control.getRecord(), 'commit_intent'), false);
+
+  const v2Fake = createFakeIndexedDb(v2ActiveRecord(source));
+  const v2Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: v2Fake.indexedDB });
+  const v2Setup = createOpenOptions(runtime, v2Store);
+  const v2Controller = await runtime.recoveryApi.open(v2Setup.options);
+  v2Controller.continueSession().setNote('v2 autosave');
+  v2Setup.scheduler.runNext();
+  await waitForState(v2Controller, 'saved');
+  assert.equal(v2Fake.control.getRecord().recovery_schema_version, RECOVERY_SCHEMA_V2);
+  assert.equal(v2Fake.control.getRecord().commit_intent, null);
+  assert.equal(v2Fake.control.getRecord().commit_attempt, null);
+});
+
+test('prepare synchronously locks mutation and migrates exact v1 draft only on transaction complete', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime, { note: 'prepare fixture' }).getSnapshot();
+  const initial = activeRecord(source, { generation: 4, sequence: 7 });
+  const fake = createFakeIndexedDb(initial);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+  const draft = controller.continueSession();
+  const intent = commitIntent(source);
+  fake.control.state.holdCommits = true;
+
+  const preparePromise = controller.prepareCommit(intent);
+  assert.equal(controller.getCommitIntent(), null);
+  await assertRecoveryError(() => draft.setNote('must stay locked'), 'MUTATION_BLOCKED');
+  await assertRecoveryError(() => controller.discard(), 'UNSAFE_DISCARD');
+  await settleTurns();
+  assert.deepEqual(fake.control.getRecord(), initial);
+  assert.equal(fake.control.state.pendingCommits.length, 1);
+
+  fake.control.releaseCommit();
+  const prepared = await preparePromise;
+  assert.notEqual(prepared, intent);
+  assertFrozenTree(prepared);
+  assert.deepEqual(plain(prepared), plain(intent));
+  assert.deepEqual(plain(controller.getCommitIntent()), plain(intent));
+  assert.notEqual(controller.getCommitIntent(), controller.getCommitIntent());
+  assert.equal(fake.control.getRecord().recovery_schema_version, RECOVERY_SCHEMA_V2);
+  assert.equal(fake.control.getRecord().write_sequence, 8);
+  assert.deepEqual(fake.control.getRecord().draft, plain(source));
+  assert.deepEqual(fake.control.getRecord().commit_intent, plain(intent));
+  assert.equal(fake.control.getRecord().commit_attempt, null);
+  assert.equal(setup.reads.time, 0);
+});
+
+test('attempt claim is monotonic and persistent-first; release attempt one unlocks only after complete', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime, { note: 'attempt fixture' }).getSnapshot();
+  const intent = commitIntent(source);
+  const initial = v2ActiveRecord(source, { intent, sequence: 2 });
+  const fake = createFakeIndexedDb(initial);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store, {
+    leaseTokens: [UUIDS[3], UUIDS[4]]
+  });
+  const controller = await runtime.recoveryApi.open(setup.options);
+  const draft = controller.continueSession();
+  fake.control.state.holdCommits = true;
+
+  let claimSettled = false;
+  const claimPromise = controller.beginCommitAttempt(intent).then((claim) => {
+    claimSettled = true;
+    return claim;
+  });
+  await settleTurns();
+  assert.equal(claimSettled, false);
+  assert.equal(fake.control.getRecord().commit_attempt, null);
+  fake.control.releaseCommit();
+  const claim = await claimPromise;
+  assert.deepEqual(plain(claim), commitAttempt(1, UUIDS[3]));
+  assertFrozenTree(claim);
+
+  fake.control.state.holdCommits = true;
+  const releasePromise = controller.releaseCommit(intent);
+  await assertRecoveryError(() => draft.setNote('still locked'), 'MUTATION_BLOCKED');
+  await assertRecoveryError(() => controller.discard(), 'UNSAFE_DISCARD');
+  await settleTurns();
+  assert.deepEqual(fake.control.getRecord().commit_attempt, commitAttempt(1, UUIDS[3]));
+  fake.control.releaseCommit();
+  assert.equal(await releasePromise, null);
+  assert.equal(controller.getCommitIntent(), null);
+  assert.equal(fake.control.getRecord().commit_intent, null);
+  assert.equal(fake.control.getRecord().commit_attempt, null);
+  assert.equal(draft.setNote('editing unlocked').note, 'editing unlocked');
+});
+
+test('prepare snapshot faults stay asynchronous, unlocked and never reach storage', async () => {
+  const runtime = loadRuntimeWithSnapshotFault();
+  const source = createDraft(runtime, { note: 'prepare snapshot fault' }).getSnapshot();
+  const intent = commitIntent(source);
+  const initial = v2ActiveRecord(source, { sequence: 2 });
+  const fake = createFakeIndexedDb(initial);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+  const draft = controller.continueSession();
+
+  runtime.fault.arm(2);
+  let preparePromise;
+  assert.doesNotThrow(() => {
+    preparePromise = controller.prepareCommit(intent);
+  });
+  await assert.rejects(preparePromise, /snapshot read fault/);
+  assert.equal(controller.getState().state, 'saved');
+  assert.equal(controller.getCommitIntent(), null);
+  assert.equal(fake.control.getRecord().commit_intent, null);
+  runtime.fault.arm(null);
+  assert.equal(draft.setNote('prepare remained editable').note, 'prepare remained editable');
+});
+
+test('attempt and release snapshot faults stay asynchronous and never reach storage', async () => {
+  const runtime = loadRuntimeWithSnapshotFault();
+  const source = createDraft(runtime, { note: 'snapshot fault fixture' }).getSnapshot();
+  const intent = commitIntent(source);
+  const initial = v2ActiveRecord(source, { intent, sequence: 2 });
+  const fake = createFakeIndexedDb(initial);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store, {
+    leaseTokens: [UUIDS[3], UUIDS[4]]
+  });
+  const controller = await runtime.recoveryApi.open(setup.options);
+  controller.continueSession();
+
+  runtime.fault.arm(1);
+  let beginPromise;
+  assert.doesNotThrow(() => {
+    beginPromise = controller.beginCommitAttempt(intent);
+  });
+  await assert.rejects(beginPromise, /snapshot read fault/);
+  assert.equal(fake.control.getRecord().commit_attempt, null);
+
+  runtime.fault.arm(null);
+  const claim = await controller.beginCommitAttempt(intent);
+  assert.deepEqual(plain(claim), commitAttempt(1, UUIDS[4]));
+
+  runtime.fault.arm(1);
+  let releasePromise;
+  assert.doesNotThrow(() => {
+    releasePromise = controller.releaseCommit(intent);
+  });
+  await assert.rejects(releasePromise, /snapshot read fault/);
+  assert.deepEqual(
+    fake.control.getRecord().commit_attempt,
+    commitAttempt(1, UUIDS[4])
+  );
+});
+
+test('attempt two cannot release and stale observation cannot steal a persisted claim', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+  const intent = commitIntent(source);
+  const firstAttempt = commitAttempt(1, UUIDS[2]);
+  const initial = v2ActiveRecord(source, { intent, attempt: firstAttempt });
+  const fake = createFakeIndexedDb(initial);
+  const storeA = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const storeB = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setupA = createOpenOptions(runtime, storeA, { leaseTokens: [UUIDS[3]] });
+  const setupB = createOpenOptions(runtime, storeB, { leaseTokens: [UUIDS[4]] });
+  const [controllerA, controllerB] = await Promise.all([
+    runtime.recoveryApi.open(setupA.options),
+    runtime.recoveryApi.open(setupB.options)
+  ]);
+  controllerA.continueSession();
+  controllerB.continueSession();
+
+  const secondAttempt = await controllerA.beginCommitAttempt(intent);
+  assert.deepEqual(plain(secondAttempt), commitAttempt(2, UUIDS[3]));
+  await assertRecoveryError(() => controllerA.releaseCommit(intent), 'RELEASE_BLOCKED');
+  const directStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const directObservation = await directStore.read();
+  await assertRecoveryError(
+    () => directStore.save({
+      observation: directObservation,
+      draft: source,
+      savedAt: directObservation.value.saved_at,
+      leaseToken: directObservation.value.lease_token,
+      recoverySchemaVersion: RECOVERY_SCHEMA_V2,
+      commitIntent: null,
+      commitAttempt: null
+    }),
+    'CONFLICT'
+  );
+  await assertRecoveryError(
+    () => controllerB.beginCommitAttempt(intent),
+    'CONFLICT'
+  );
+  assert.deepEqual(fake.control.getRecord().commit_attempt, commitAttempt(2, UUIDS[3]));
+  assert.equal(controllerB.getState().state, 'conflict');
+});
+
+test('complete requires the locally held current claim and tombstones only on transaction complete', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+  const intent = commitIntent(source);
+  const initial = v2ActiveRecord(source, {
+    intent,
+    generation: 5,
+    sequence: 9,
+    leaseToken: UUIDS[1]
+  });
+  const fake = createFakeIndexedDb(initial);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store, {
+    leaseTokens: [UUIDS[3], UUIDS[4]]
+  });
+  const controller = await runtime.recoveryApi.open(setup.options);
+  const draft = controller.continueSession();
+
+  await assertRecoveryError(() => controller.completeCommit(intent), 'COMMIT_ATTEMPT_REQUIRED');
+  const claim = await controller.beginCommitAttempt(intent);
+  assert.deepEqual(plain(claim), commitAttempt(1, UUIDS[3]));
+  fake.control.state.holdCommits = true;
+  const completePromise = controller.completeCommit(intent);
+  await settleTurns();
+  assert.equal(controller.getState().state, 'saved');
+  assert.deepEqual(fake.control.getRecord().commit_attempt, commitAttempt(1, UUIDS[3]));
+  await assertRecoveryError(() => draft.setNote('terminal lock'), 'MUTATION_BLOCKED');
+  fake.control.releaseCommit();
+  const terminal = await completePromise;
+  assert.equal(terminal.state, 'destroyed');
+  assert.equal(controller.getState().state, 'destroyed');
+  assert.deepEqual(fake.control.getRecord(), v2Tombstone({
+    generation: 6,
+    leaseToken: UUIDS[4]
+  }));
+  await assertRecoveryError(() => draft.getSnapshot(), 'CONTROLLER_DESTROYED');
+});
+
+test('malformed v2 commit truth stays quarantined and byte-content unchanged', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+  const intent = commitIntent(source);
+  intent.payload.duration_min += 1;
+  const malformed = v2ActiveRecord(source, { intent });
+  const fake = createFakeIndexedDb(malformed);
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+
+  assert.equal(controller.getState().state, 'blocked');
+  assert.equal(controller.getState().reason, 'invalid_record');
+  assert.equal(controller.getCommitIntent(), null);
+  await assertRecoveryError(() => controller.discard(), 'UNSAFE_DISCARD');
+  await assertRecoveryError(() => controller.startNew(), 'MUTATION_BLOCKED');
+  assert.deepEqual(fake.control.getRecord(), plain(malformed));
+});
+
+test('invalid preparation has no lock side effect and reload requires a matching locally held attempt', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+  const v1Fake = createFakeIndexedDb(activeRecord(source));
+  const v1Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: v1Fake.indexedDB });
+  const v1Setup = createOpenOptions(runtime, v1Store);
+  const v1Controller = await runtime.recoveryApi.open(v1Setup.options);
+  const v1Draft = v1Controller.continueSession();
+  const malformedIntent = commitIntent(source);
+  malformedIntent.payload.duration_min = 2;
+  await assertRecoveryError(
+    () => v1Controller.prepareCommit(malformedIntent),
+    'INVALID_COMMIT_INTENT'
+  );
+  const accessorIntent = plain(commitIntent(source));
+  let accessorReads = 0;
+  Object.defineProperty(accessorIntent, 'prepared_at', {
+    get() {
+      accessorReads += 1;
+      return new Date(TIMES[2]).toISOString();
+    },
+    enumerable: true
+  });
+  await assertRecoveryError(
+    () => v1Controller.prepareCommit(accessorIntent),
+    'INVALID_COMMIT_INTENT'
+  );
+  assert.equal(accessorReads, 0);
+  assert.equal(v1Draft.setNote('still mutable').note, 'still mutable');
+
+  const intent = commitIntent(source);
+  const attempt = commitAttempt(1, UUIDS[3]);
+  const v2Fake = createFakeIndexedDb(v2ActiveRecord(source, { intent, attempt }));
+  const v2Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: v2Fake.indexedDB });
+  const v2Setup = createOpenOptions(runtime, v2Store);
+  const v2Controller = await runtime.recoveryApi.open(v2Setup.options);
+  const restoredIntent = v2Controller.getCommitIntent();
+  assert.deepEqual(plain(restoredIntent), plain(intent));
+  assertFrozenTree(restoredIntent);
+  v2Controller.continueSession();
+  await assertRecoveryError(
+    () => v2Controller.releaseCommit(intent),
+    'COMMIT_ATTEMPT_MISMATCH'
+  );
+  const differentIntent = commitIntent(source, {
+    preparedAt: new Date(TIMES[3]).toISOString()
+  });
+  await assertRecoveryError(
+    () => v2Controller.completeCommit(differentIntent),
+    'COMMIT_INTENT_MISMATCH'
+  );
+  assert.deepEqual(v2Fake.control.getRecord(), plain(v2ActiveRecord(source, {
+    intent,
+    attempt
+  })));
+});
+
+test('destroy stays terminal when an in-flight claim settles after storage close', async () => {
+  const runtime = loadRuntime();
+  const source = createDraft(runtime).getSnapshot();
+  const intent = commitIntent(source);
+  const fake = createFakeIndexedDb(v2ActiveRecord(source, { intent }));
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store, { leaseTokens: [UUIDS[3]] });
+  const controller = await runtime.recoveryApi.open(setup.options);
+  controller.continueSession();
+  fake.control.state.holdCommits = true;
+
+  const claimPromise = controller.beginCommitAttempt(intent);
+  await settleTurns();
+  controller.destroy();
+  fake.control.releaseCommit();
+  await assertRecoveryError(() => claimPromise, 'CONTROLLER_DESTROYED');
+  assert.equal(controller.getState().state, 'destroyed');
+  assert.equal(controller.getDraft(), null);
+});
+
 test('unknown, invalid and unavailable-catalog records block without empty fallback', async () => {
   const runtime = loadRuntime();
   const unknownFake = createFakeIndexedDb({
@@ -1208,7 +1715,7 @@ test('unknown, invalid and unavailable-catalog records block without empty fallb
   assert.equal(unknown.getState().state, 'blocked');
   assert.equal(unknown.getState().reason, 'unknown_recovery_schema');
   assert.equal(unknown.getDraft(), null);
-  await assertRecoveryError(() => unknown.startNew(), 'INVALID_STATE');
+  await assertRecoveryError(() => unknown.startNew(), 'MUTATION_BLOCKED');
 
   const source = createDraft(runtime).getSnapshot();
   const invalidValue = activeRecord(source);
@@ -1243,7 +1750,7 @@ test('unknown, invalid and unavailable-catalog records block without empty fallb
   assert.equal(unavailable.getState().reason, 'catalog_unavailable');
 });
 
-test('blocked discard is observation-protected and only confirmed tombstone destroys controller', async () => {
+test('unknown-schema controller is quarantined without discard, start-new or tombstone', async () => {
   const runtime = loadRuntime();
   const unknownRecord = {
     slot_key: SLOT_KEY,
@@ -1259,16 +1766,12 @@ test('blocked discard is observation-protected and only confirmed tombstone dest
   const controller = await runtime.recoveryApi.open(setup.options);
   assert.equal(controller.getState().state, 'blocked');
 
-  const result = await controller.discard();
-  assert.equal(result.state, 'destroyed');
-  assert.equal(controller.getState().state, 'destroyed');
+  await assertRecoveryError(() => controller.discard(), 'UNSAFE_DISCARD');
+  await assertRecoveryError(() => controller.startNew(), 'MUTATION_BLOCKED');
+  assert.equal(controller.getState().state, 'blocked');
   assert.equal(controller.getDraft(), null);
-  assert.deepEqual(fake.control.getRecord(), tombstone({
-    generation: 1,
-    leaseToken: UUIDS[2]
-  }));
-  assert.equal(fake.control.state.closedConnections, 1);
-  await assertRecoveryError(() => controller.discard(), 'CONTROLLER_DESTROYED');
+  assert.deepEqual(fake.control.getRecord(), unknownRecord);
+  assert.equal(fake.control.state.closedConnections, 0);
 });
 
 test('two restored controllers conflict by observation and the losing RAM branch remains mutable', async () => {
@@ -1434,7 +1937,7 @@ test('discard waits active write, drops pending, rotates token and blocks mutati
   fake.control.releaseCommit();
   await discardPromise;
   assert.equal(controller.getState().state, 'destroyed');
-  assert.deepEqual(fake.control.getRecord(), tombstone({
+  assert.deepEqual(fake.control.getRecord(), v2Tombstone({
     generation: 1,
     leaseToken: UUIDS[2]
   }));

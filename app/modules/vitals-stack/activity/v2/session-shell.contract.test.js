@@ -468,6 +468,71 @@ function createRecoveryFacade(draft, initialState, overrides = {}) {
   };
 }
 
+function sessionCommitState(state, overrides = {}) {
+  return deepFreeze({
+    state,
+    reason: null,
+    focus_target: null,
+    intent_present: false,
+    ...overrides
+  });
+}
+
+function createSessionCommitFacade(initialState, overrides = {}) {
+  let state = initialState;
+  const listeners = new Set();
+  let finishCalls = 0;
+  let retryCalls = 0;
+  let destroyCalls = 0;
+  let unsubscribeCalls = 0;
+
+  function emit(nextState) {
+    state = nextState;
+    [...listeners].forEach((listener) => listener(nextState));
+  }
+
+  const methods = {
+    getState() {
+      return state;
+    },
+    finish() {
+      finishCalls += 1;
+      return overrides.finish
+        ? overrides.finish({ emit, state, finishCalls })
+        : Promise.resolve(state);
+    },
+    retry() {
+      retryCalls += 1;
+      return overrides.retry
+        ? overrides.retry({ emit, state, retryCalls })
+        : Promise.resolve(state);
+    },
+    subscribe(listener) {
+      if (overrides.subscribe) return overrides.subscribe(listener);
+      listener(state);
+      listeners.add(listener);
+      return () => {
+        if (!listeners.delete(listener)) return;
+        unsubscribeCalls += 1;
+      };
+    },
+    destroy() {
+      destroyCalls += 1;
+      return overrides.destroy ? overrides.destroy({ emit, state }) : state;
+    }
+  };
+  Object.values(methods).forEach(Object.freeze);
+  const facade = Object.freeze(methods);
+  return {
+    facade,
+    emit,
+    getFinishCalls: () => finishCalls,
+    getRetryCalls: () => retryCalls,
+    getDestroyCalls: () => destroyCalls,
+    getUnsubscribeCalls: () => unsubscribeCalls
+  };
+}
+
 function actionElement(panel, action, itemKey = null) {
   return panel
     .querySelectorAll('button')
@@ -2922,6 +2987,275 @@ test('item no-ops stay DOM-free and post-mutation breaches never stale-rollback'
     panel.querySelector('.activity-v2-session-status').textContent,
     ''
   );
+});
+
+test('S4.9 accepts only an explicit exact coordinator and leaves legacy mounts unchanged', () => {
+  let runtime = createRuntime();
+  let mounted = mountRuntime(runtime);
+  assert.equal(
+    mounted.panel.querySelector('.activity-v2-session-commit-card'),
+    null
+  );
+  mounted.shell.destroy();
+
+  runtime = createRuntime();
+  const before = runtime.document.body.children.length;
+  assertShellError(
+    () => mountRuntime(runtime, { sessionCommit: {} }),
+    'INVALID_SESSION_COMMIT_API'
+  );
+  assert.equal(runtime.document.body.children.length, before);
+
+  runtime = createRuntime();
+  const malformed = createSessionCommitFacade({
+    state: 'editing',
+    reason: null,
+    focus_target: null,
+    intent_present: false
+  });
+  assertShellError(
+    () => mountRuntime(runtime, { sessionCommit: malformed.facade }),
+    'INVALID_SESSION_COMMIT_STATE'
+  );
+
+  runtime = createRuntime();
+  const commit = createSessionCommitFacade(sessionCommitState('editing'));
+  mounted = mountRuntime(runtime, { sessionCommit: commit.facade });
+  const card = mounted.panel.querySelector('.activity-v2-session-commit-card');
+  assert.ok(card);
+  assert.equal(card.getAttribute('aria-label'), 'Sessionabschluss');
+  assert.equal(
+    card.querySelector('.activity-v2-session-commit-status').getAttribute('role'),
+    'status'
+  );
+  assert.equal(actionElement(mounted.panel, 'finish').textContent, 'Session abschließen');
+
+  runtime = createRuntime();
+  const recovery = createRecoveryFacade(runtime.draft, recoveryState('empty'));
+  const recoveryR8 = Object.freeze({
+    ...recovery.facade,
+    getCommitIntent: () => null,
+    prepareCommit: () => Promise.resolve(null),
+    beginCommitAttempt: () => Promise.resolve(null),
+    releaseCommit: () => Promise.resolve(null),
+    completeCommit: () => Promise.resolve(null)
+  });
+  assert.doesNotThrow(() => mountRuntime(runtime, { recovery: recoveryR8 }));
+
+  runtime = createRuntime();
+  const recoveryWithUnknownExtra = Object.freeze({
+    ...createRecoveryFacade(runtime.draft, recoveryState('empty')).facade,
+    unknownCommitMethod: () => null
+  });
+  assertShellError(
+    () => mountRuntime(runtime, { recovery: recoveryWithUnknownExtra }),
+    'INVALID_RECOVERY_API'
+  );
+});
+
+test('S4.9 locks mutations during busy states and freezes the timer only after intent persistence', async () => {
+  let nowValue = 1_722_509_200_000;
+  const runtime = createRuntime({ now: () => nowValue });
+  runtime.draft.addItem('ab_wheel_rollout');
+  runtime.draft.setSetField('ab_wheel_rollout', 1, 'reps', '10');
+  const recovery = createRecoveryFacade(
+    runtime.draft,
+    recoveryState('saved', {
+      started_at: new Date(nowValue).toISOString(),
+      saved_at: new Date(nowValue).toISOString(),
+      item_count: 1
+    })
+  );
+  const commit = createSessionCommitFacade(sessionCommitState('editing'));
+  const { shell, panel } = mountRuntime(runtime, {
+    recovery: recovery.facade,
+    sessionCommit: commit.facade
+  });
+  shell.open({ opener: runtime.opener });
+  const search = panel.querySelector('.activity-v2-session-search');
+  const reps = setInputElement(panel, 'ab_wheel_rollout', 1, 'reps');
+  const timer = panel.querySelector('.activity-v2-session-timer');
+  assert.equal(runtime.intervals.size, 1);
+
+  commit.emit(sessionCommitState('preparing'));
+  assert.equal(search.disabled, true);
+  assert.equal(reps.disabled, true);
+  assert.equal(actionElement(panel, 'finish').disabled, true);
+  assert.equal(actionElement(panel, 'close').disabled, true);
+  assert.equal(runtime.intervals.size, 1);
+  nowValue += 65_000;
+  [...runtime.intervals.values()][0].callback();
+  assert.equal(timer.textContent, '01:05');
+
+  commit.emit(
+    sessionCommitState('preparing', {
+      intent_present: true
+    })
+  );
+  const frozen = timer.textContent;
+  assert.equal(runtime.intervals.size, 0);
+  nowValue += 120_000;
+  runtime.document.dispatchEvent({ type: 'visibilitychange' });
+  assert.equal(timer.textContent, frozen);
+  assert.equal(await shell.requestClose('api'), false);
+  assert.equal(shell.isOpen(), true);
+
+  commit.emit(
+    sessionCommitState('unknown', {
+      reason: 'REQUEST_FAILED',
+      intent_present: true
+    })
+  );
+  assert.equal(actionElement(panel, 'retry').textContent, 'Identisch erneut versuchen');
+  assert.equal(actionElement(panel, 'close').disabled, false);
+  const escape = pressKey(runtime, runtime.document.activeElement, 'Escape');
+  assert.equal(escape.defaultPrevented, true);
+  assert.equal(shell.isOpen(), false);
+  assert.equal(recovery.getDiscardCalls(), 0);
+
+  shell.open({ opener: runtime.opener });
+  assert.equal(runtime.intervals.size, 0);
+  commit.emit(
+    sessionCommitState('not_committed', {
+      reason: 'AUTH_REQUIRED'
+    })
+  );
+  assert.equal(search.disabled, false);
+  assert.equal(
+    setInputElement(panel, 'ab_wheel_rollout', 1, 'reps').disabled,
+    false
+  );
+  assert.equal(runtime.intervals.size, 1);
+  assert.notEqual(timer.textContent, frozen);
+});
+
+test('S4.9 drives finish, safe focus, retry, cleanup and terminal success without parallel actions', () => {
+  const runtime = createRuntime();
+  runtime.draft.addItem('ab_wheel_rollout');
+  const finishGate = deferred();
+  const retryGate = deferred();
+  const commit = createSessionCommitFacade(sessionCommitState('editing'), {
+    finish({ emit }) {
+      emit(sessionCommitState('preparing'));
+      return finishGate.promise;
+    },
+    retry({ emit }) {
+      emit(
+        sessionCommitState('committing', {
+          intent_present: true
+        })
+      );
+      return retryGate.promise;
+    }
+  });
+  const { shell, panel } = mountRuntime(runtime, {
+    sessionCommit: commit.facade
+  });
+  shell.open({ opener: runtime.opener });
+
+  const finish = actionElement(panel, 'finish');
+  click(panel, finish);
+  click(panel, finish);
+  assert.equal(commit.getFinishCalls(), 1);
+  assert.equal(panel.getAttribute('aria-busy'), 'true');
+
+  const focusTarget = deepFreeze({
+    scope: 'set',
+    item_key: 'ab_wheel_rollout',
+    set_order: 1,
+    field_key: 'reps'
+  });
+  commit.emit(
+    sessionCommitState('editing', {
+      reason: 'INVALID_SET_VALUE',
+      focus_target: focusTarget
+    })
+  );
+  assert.equal(
+    runtime.document.activeElement,
+    setInputElement(panel, 'ab_wheel_rollout', 1, 'reps')
+  );
+  assert.match(
+    panel.querySelector('.activity-v2-session-commit-status').textContent,
+    /markierte Eingabe/
+  );
+
+  commit.emit(
+    sessionCommitState('unknown', {
+      reason: 'REQUEST_FAILED',
+      intent_present: true
+    })
+  );
+  const retry = actionElement(panel, 'retry');
+  click(panel, retry);
+  click(panel, retry);
+  assert.equal(commit.getRetryCalls(), 1);
+  assert.equal(panel.getAttribute('aria-busy'), 'true');
+
+  commit.emit(
+    sessionCommitState('cleanup_pending', {
+      reason: 'STORAGE_ERROR',
+      intent_present: true
+    })
+  );
+  assert.equal(actionElement(panel, 'retry').textContent, 'Abschluss bestätigen');
+  actionElement(panel, 'retry').focus();
+  commit.emit(sessionCommitState('committed'));
+  assert.equal(
+    panel.querySelector('.activity-v2-session-commit-status').textContent,
+    'Session gespeichert.'
+  );
+  assert.equal(panel.querySelector('.activity-v2-session-commit-card').querySelector('button').hidden, true);
+  assert.equal(runtime.document.activeElement, actionElement(panel, 'close'));
+});
+
+test('S5 closed views discard deferred commit-action focus before any later open', () => {
+  assert.match(
+    shellSource,
+    /if \(!openState\) \{\s*commitActionFocusPending = false;\s*\} else if \(!presentation\.busy && commitActionFocusPending\)/
+  );
+  assert.match(
+    shellSource,
+    /function closeTechnical\(\) \{\s*commitActionFocusPending = false;\s*if \(!openState\) return true;/
+  );
+});
+
+test('S4.9 view-close states never call Recovery discard and shell destroy never owns the coordinator', async () => {
+  const closableStates = [
+    sessionCommitState('release_pending', {
+      reason: 'STORAGE_ERROR',
+      intent_present: true
+    }),
+    sessionCommitState('unknown', {
+      reason: 'REQUEST_FAILED',
+      intent_present: true
+    }),
+    sessionCommitState('cleanup_pending', {
+      reason: 'STORAGE_ERROR',
+      intent_present: true
+    }),
+    sessionCommitState('blocked', {
+      reason: 'IDEMPOTENCY_CONFLICT',
+      intent_present: true
+    }),
+    sessionCommitState('committed')
+  ];
+  for (const state of closableStates) {
+    const runtime = createRuntime();
+    runtime.draft.addItem('ab_wheel_rollout');
+    const recovery = createRecoveryFacade(runtime.draft, recoveryState('saved'));
+    const commit = createSessionCommitFacade(state);
+    const { shell } = mountRuntime(runtime, {
+      recovery: recovery.facade,
+      sessionCommit: commit.facade
+    });
+    shell.open({ opener: runtime.opener });
+    assert.equal(await shell.requestClose('api'), true, state.state);
+    assert.equal(recovery.getDiscardCalls(), 0, state.state);
+    shell.destroy();
+    assert.equal(commit.getUnsubscribeCalls(), 1, state.state);
+    assert.equal(commit.getDestroyCalls(), 0, state.state);
+  }
 });
 
 test('destroy is idempotent, preserves the draft and releases all local lifecycle state', () => {

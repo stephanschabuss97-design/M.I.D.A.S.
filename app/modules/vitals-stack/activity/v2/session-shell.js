@@ -17,6 +17,7 @@
     'host',
     'loadLastPerformance',
     'recovery',
+    'sessionCommit',
     'semantics',
     'setIntervalFn'
   ]);
@@ -44,6 +45,17 @@
     'subscribe',
     'destroy'
   ]);
+  const RECOVERY_COMMIT_METHODS = Object.freeze([
+    'getCommitIntent',
+    'prepareCommit',
+    'beginCommitAttempt',
+    'releaseCommit',
+    'completeCommit'
+  ]);
+  const RECOVERY_R8_METHODS = Object.freeze([
+    ...RECOVERY_METHODS,
+    ...RECOVERY_COMMIT_METHODS
+  ]);
   const RECOVERY_STATE_KEYS = Object.freeze([
     'state',
     'started_at',
@@ -69,6 +81,37 @@
     'unknown_recovery_schema',
     'invalid_record',
     'catalog_unavailable'
+  ]);
+  const SESSION_COMMIT_METHODS = Object.freeze([
+    'getState',
+    'finish',
+    'retry',
+    'subscribe',
+    'destroy'
+  ]);
+  const SESSION_COMMIT_STATE_KEYS = Object.freeze([
+    'state',
+    'reason',
+    'focus_target',
+    'intent_present'
+  ]);
+  const SESSION_COMMIT_STATES = Object.freeze([
+    'editing',
+    'preparing',
+    'committing',
+    'not_committed',
+    'release_pending',
+    'unknown',
+    'cleanup_pending',
+    'committed',
+    'blocked',
+    'destroyed'
+  ]);
+  const SESSION_COMMIT_FOCUS_KEYS = Object.freeze([
+    'scope',
+    'item_key',
+    'set_order',
+    'field_key'
   ]);
   const SNAPSHOT_KEYS = Object.freeze([
     'catalog_version',
@@ -339,9 +382,14 @@
       return null;
     }
     const recovery = options.recovery;
+    const allowedMethods = hasExactKeys(recovery, RECOVERY_METHODS)
+      ? RECOVERY_METHODS
+      : hasExactKeys(recovery, RECOVERY_R8_METHODS)
+        ? RECOVERY_R8_METHODS
+        : null;
     if (
-      !hasExactKeys(recovery, RECOVERY_METHODS) ||
-      RECOVERY_METHODS.some((method) => typeof recovery[method] !== 'function')
+      allowedMethods === null ||
+      allowedMethods.some((method) => typeof recovery[method] !== 'function')
     ) {
       fail('INVALID_RECOVERY_API');
     }
@@ -356,6 +404,59 @@
     if (managedDraft !== draft) fail('RECOVERY_DRAFT_MISMATCH');
     assertRecoveryState(state);
     return Object.freeze({ controller: recovery, state });
+  }
+
+  function assertSessionCommitState(state) {
+    if (
+      !hasExactOrderedKeys(state, SESSION_COMMIT_STATE_KEYS) ||
+      !SESSION_COMMIT_STATES.includes(state.state) ||
+      !(state.reason === null || typeof state.reason === 'string') ||
+      typeof state.intent_present !== 'boolean'
+    ) {
+      fail('INVALID_SESSION_COMMIT_STATE');
+    }
+    const focus = state.focus_target;
+    if (focus !== null) {
+      if (
+        !hasExactOrderedKeys(focus, SESSION_COMMIT_FOCUS_KEYS) ||
+        !['session', 'item', 'set'].includes(focus.scope) ||
+        !(focus.item_key === null || typeof focus.item_key === 'string') ||
+        !(focus.set_order === null || Number.isSafeInteger(focus.set_order)) ||
+        !(focus.field_key === null || typeof focus.field_key === 'string')
+      ) {
+        fail('INVALID_SESSION_COMMIT_STATE');
+      }
+    }
+    try {
+      assertFrozenTree(state);
+    } catch {
+      fail('INVALID_SESSION_COMMIT_STATE');
+    }
+    return state;
+  }
+
+  function resolveSessionCommit(options) {
+    if (!hasOwn(options, 'sessionCommit') || options.sessionCommit === undefined) {
+      return null;
+    }
+    const sessionCommit = options.sessionCommit;
+    if (
+      !hasExactOrderedKeys(sessionCommit, SESSION_COMMIT_METHODS) ||
+      SESSION_COMMIT_METHODS.some(
+        (method) => typeof sessionCommit[method] !== 'function'
+      )
+    ) {
+      fail('INVALID_SESSION_COMMIT_API');
+    }
+    let state;
+    try {
+      assertFrozenTree(sessionCommit);
+      state = sessionCommit.getState();
+    } catch {
+      fail('INVALID_SESSION_COMMIT_API');
+    }
+    assertSessionCommitState(state);
+    return Object.freeze({ controller: sessionCommit, state });
   }
 
   function resolveSemantics(options) {
@@ -1236,7 +1337,11 @@
     });
   }
 
-  function createStructure(document, recoveryEnabled = false) {
+  function createStructure(
+    document,
+    recoveryEnabled = false,
+    sessionCommitEnabled = false
+  ) {
     shellSequence += 1;
     const titleId = `activity-v2-session-title-${shellSequence}`;
     const searchId = `activity-v2-session-search-${shellSequence}`;
@@ -1417,6 +1522,45 @@
     note.placeholder = 'Zum Beispiel: Fokus, Energie oder Technik …';
     noteCard.append(noteLabel, noteHint, note);
 
+    const commitCard = sessionCommitEnabled
+      ? makeElement(
+          document,
+          'section',
+          'activity-v2-session-card activity-v2-session-commit-card'
+        )
+      : null;
+    const commitStatus = sessionCommitEnabled
+      ? makeElement(
+          document,
+          'p',
+          'activity-v2-session-commit-status',
+          'Session bereit.'
+        )
+      : null;
+    const commitAction = sessionCommitEnabled
+      ? setButton(
+          makeElement(document, 'button', 'activity-v2-session-primary'),
+          'finish',
+          'Session abschließen',
+          'Session sicher abschließen'
+        )
+      : null;
+    if (commitCard) {
+      commitCard.setAttribute('aria-label', 'Sessionabschluss');
+      commitStatus.setAttribute('role', 'status');
+      commitStatus.setAttribute('aria-live', 'polite');
+      commitCard.append(
+        makeElement(
+          document,
+          'h2',
+          'activity-v2-session-section-title',
+          'Session abschließen'
+        ),
+        commitStatus,
+        commitAction
+      );
+    }
+
     const status = makeElement(document, 'div', 'activity-v2-session-status');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
@@ -1432,6 +1576,7 @@
 
     content.append(intro, pickerCard, itemsSection, noteCard);
     if (recoveryStatus) content.append(recoveryStatus);
+    if (commitCard) content.append(commitCard);
     content.append(status);
     panel.append(header, content);
     return {
@@ -1446,6 +1591,9 @@
       itemCount,
       note,
       recoveryStatus,
+      commitCard,
+      commitStatus,
+      commitAction,
       status
     };
   }
@@ -1455,13 +1603,18 @@
     const document = assertHost(options.host);
     const draft = assertDraft(options.draft);
     const recovery = resolveRecovery(options, draft);
+    const sessionCommit = resolveSessionCommit(options);
     const semantics = resolveSemantics(options);
     const loadLastPerformance = resolveLookup(options);
     const confirmDiscard = resolveConfirmation(options);
     const scheduler = resolveScheduler(options);
     if (mountedHosts.has(options.host)) fail('SHELL_ALREADY_MOUNTED');
 
-    const ui = createStructure(document, recovery !== null);
+    const ui = createStructure(
+      document,
+      recovery !== null,
+      sessionCommit !== null
+    );
     let openState = false;
     let destroyed = false;
     let listenersBound = false;
@@ -1478,6 +1631,13 @@
     let lookupGeneration = 0;
     let lookupStates = new Map();
     let unsubscribeRecovery = null;
+    let unsubscribeSessionCommit = null;
+    let sessionCommitReady = false;
+    let sessionCommitFault = false;
+    let sessionCommitState = sessionCommit?.state || null;
+    let timerFrozen = false;
+    let frozenTimerLabel = null;
+    let commitActionFocusPending = false;
     let controller;
 
     function setStatus(message, tone = '') {
@@ -1513,6 +1673,228 @@
       ui.recoveryStatus.textContent = presentation[0];
       if (presentation[1]) ui.recoveryStatus.dataset.tone = presentation[1];
       else delete ui.recoveryStatus.dataset.tone;
+    }
+
+    function sessionCommitPresentation(state) {
+      if (sessionCommitFault) {
+        return {
+          message: 'Abschluss ist blockiert. Eingaben bleiben erhalten.',
+          tone: 'error',
+          action: null,
+          label: '',
+          accessibleName: '',
+          busy: false
+        };
+      }
+      if (state.state === 'editing') {
+        return {
+          message:
+            state.reason === null
+              ? 'Session bereit.'
+              : 'Bitte prüfe die markierte Eingabe. Es wurde nichts gespeichert.',
+          tone: state.reason === null ? 'success' : 'error',
+          action: 'finish',
+          label: 'Session abschließen',
+          accessibleName: 'Session sicher abschließen',
+          busy: false
+        };
+      }
+      const presentation = {
+        preparing: [
+          'Abschluss wird sicher vorbereitet …',
+          'notice',
+          'finish',
+          'Wird vorbereitet …',
+          'Sessionabschluss wird vorbereitet',
+          true
+        ],
+        committing: [
+          'Session wird gespeichert …',
+          'notice',
+          'finish',
+          'Wird gespeichert …',
+          'Session wird gespeichert',
+          true
+        ],
+        not_committed: [
+          'Nicht gespeichert. Eingaben bleiben erhalten.',
+          'error',
+          'finish',
+          'Erneut abschließen',
+          'Session erneut sicher abschließen',
+          false
+        ],
+        release_pending: [
+          'Nicht gespeichert. Lokale Freigabe ausstehend.',
+          'notice',
+          'retry',
+          'Freigabe erneut versuchen',
+          'Lokale Freigabe erneut versuchen',
+          false
+        ],
+        unknown: [
+          'Speicherstatus unklar. Nur identisch erneut versuchen.',
+          'error',
+          'retry',
+          'Identisch erneut versuchen',
+          'Identischen Speicherversuch wiederholen',
+          false
+        ],
+        cleanup_pending: [
+          'Gespeichert. Lokaler Abschluss wird bestätigt.',
+          'notice',
+          'retry',
+          'Abschluss bestätigen',
+          'Gespeicherte Session lokal erneut bestätigen',
+          false
+        ],
+        committed: [
+          'Session gespeichert.',
+          'success',
+          null,
+          '',
+          '',
+          false
+        ],
+        blocked: [
+          'Abschluss ist blockiert. Eingaben bleiben erhalten.',
+          'error',
+          state.intent_present || state.reason !== 'STORAGE_ERROR'
+            ? null
+            : 'retry',
+          'Abschluss erneut prüfen',
+          'Sessionabschluss erneut prüfen',
+          false
+        ],
+        destroyed: ['', '', null, '', '', false]
+      }[state.state];
+      return {
+        message: presentation[0],
+        tone: presentation[1],
+        action: presentation[2],
+        label: presentation[3],
+        accessibleName: presentation[4],
+        busy: presentation[5]
+      };
+    }
+
+    function sessionCommitAllowsMutation() {
+      return (
+        !sessionCommitFault &&
+        (!sessionCommit ||
+          ['editing', 'not_committed'].includes(sessionCommitState?.state))
+      );
+    }
+
+    function sessionCommitLocksClose() {
+      return (
+        !sessionCommitFault &&
+        ['preparing', 'committing'].includes(sessionCommitState?.state)
+      );
+    }
+
+    function sessionCommitUsesViewClose() {
+      return Boolean(
+        sessionCommit &&
+          (sessionCommitFault ||
+            !['editing', 'not_committed', 'preparing', 'committing'].includes(
+              sessionCommitState?.state
+            ))
+      );
+    }
+
+    function focusCommitTarget(target) {
+      if (!target || !openState) return false;
+      const refs =
+        typeof target.item_key === 'string'
+          ? itemActionRefs.get(target.item_key)
+          : null;
+      if (target.scope === 'set') {
+        const row = refs?.editor?.setRows?.get(target.set_order);
+        if (target.field_key && focusElement(row?.fields.get(target.field_key)?.input)) {
+          return true;
+        }
+        if (row) {
+          for (const field of row.fields.values()) {
+            if (focusElement(field.input)) return true;
+          }
+        }
+      }
+      if (target.scope === 'item') {
+        if (
+          target.field_key &&
+          focusElement(refs?.editor?.itemFields.get(target.field_key)?.input)
+        ) {
+          return true;
+        }
+        return focusItemRow(target.item_key);
+      }
+      if (target.field_key === 'note') return focusElement(ui.note);
+      return focusPicker();
+    }
+
+    function applySessionCommitState() {
+      if (!ui.commitCard || !sessionCommitState) return;
+      if (sessionCommitState.intent_present && !timerFrozen) {
+        refreshTimerSafely();
+        frozenTimerLabel = ui.timer.textContent;
+        timerFrozen = true;
+      } else if (
+        !sessionCommitState.intent_present &&
+        ['editing', 'not_committed'].includes(sessionCommitState.state) &&
+        timerFrozen
+      ) {
+        timerFrozen = false;
+        frozenTimerLabel = null;
+        refreshTimerSafely();
+      }
+      if (timerFrozen && frozenTimerLabel !== null) {
+        ui.timer.textContent = frozenTimerLabel;
+      }
+
+      const presentation = sessionCommitPresentation(sessionCommitState);
+      if (document.activeElement === ui.commitAction) {
+        commitActionFocusPending = true;
+      }
+      ui.commitStatus.textContent = presentation.message;
+      if (presentation.tone) ui.commitStatus.dataset.tone = presentation.tone;
+      else delete ui.commitStatus.dataset.tone;
+      ui.commitCard.setAttribute('aria-busy', presentation.busy ? 'true' : 'false');
+      ui.panel.setAttribute('aria-busy', presentation.busy ? 'true' : 'false');
+      ui.commitAction.hidden = presentation.action === null;
+      if (presentation.action !== null) {
+        ui.commitAction.dataset.action = presentation.action;
+        ui.commitAction.textContent = presentation.label;
+        ui.commitAction.setAttribute('aria-label', presentation.accessibleName);
+      }
+      ui.commitAction.disabled =
+        presentation.busy || closeGuardPromise !== null;
+      ui.close.disabled = sessionCommitLocksClose();
+      if (!openState) {
+        commitActionFocusPending = false;
+      } else if (!presentation.busy && commitActionFocusPending) {
+        if (presentation.action === null) focusElement(ui.close);
+        else focusElement(ui.commitAction);
+        commitActionFocusPending = false;
+      }
+      syncDraftControlsDisabled();
+      syncTimerScheduler();
+      if (sessionCommitState.state === 'editing' && sessionCommitState.focus_target) {
+        focusCommitTarget(sessionCommitState.focus_target);
+      }
+      if (sessionCommitState.state === 'destroyed' && openState) {
+        commitActionFocusPending = false;
+        closeTechnical();
+      }
+    }
+
+    function patchSessionCommitState(nextState) {
+      try {
+        sessionCommitState = assertSessionCommitState(nextState);
+      } catch {
+        sessionCommitFault = true;
+      }
+      if (sessionCommitReady) applySessionCommitState();
     }
 
     function assertUsable() {
@@ -2156,7 +2538,8 @@
     }
 
     function syncDraftControlsDisabled() {
-      const guarded = closeGuardPromise !== null;
+      const guarded =
+        closeGuardPromise !== null || !sessionCommitAllowsMutation();
       ui.search.disabled = guarded;
       ui.note.disabled = guarded;
       ui.searchResults.querySelectorAll('button').forEach((button) => {
@@ -2282,7 +2665,8 @@
         nextState.snapshot.items.length === 1 ? 'Eintrag' : 'Einträge'
       }`;
       ui.note.value = nextState.snapshot.note || '';
-      ui.timer.textContent = nextState.timer.label;
+      if (!timerFrozen) ui.timer.textContent = nextState.timer.label;
+      else if (frozenTimerLabel !== null) ui.timer.textContent = frozenTimerLabel;
       currentState = nextState;
       itemActionRefs = nextActionRefs;
       renderSearchState();
@@ -2294,6 +2678,7 @@
     }
 
     function refreshTimer() {
+      if (timerFrozen) return currentState?.timer || null;
       const nextState = readState(draft, semantics);
       ui.timer.textContent = nextState.timer.label;
       currentState = nextState;
@@ -2331,7 +2716,9 @@
     }
 
     function syncTimerScheduler() {
-      if (openState && currentState?.timer.running) startTimerScheduler();
+      if (openState && currentState?.timer.running && !timerFrozen) {
+        startTimerScheduler();
+      }
       else stopTimerScheduler();
     }
 
@@ -2542,12 +2929,41 @@
       }
     }
 
+    function runSessionCommitAction(action) {
+      if (
+        !sessionCommit ||
+        sessionCommitFault ||
+        closeGuardPromise ||
+        !['finish', 'retry'].includes(action)
+      ) {
+        return;
+      }
+      let operation;
+      try {
+        operation = sessionCommit.controller[action]();
+        if (typeof operation?.then !== 'function') throw new TypeError('promise');
+      } catch {
+        sessionCommitFault = true;
+        applySessionCommitState();
+        return;
+      }
+      Promise.resolve(operation).catch(() => {
+        if (destroyed) return;
+        sessionCommitFault = true;
+        applySessionCommitState();
+      });
+    }
+
     function handleClick(event) {
       const target = findActionButton(event.target);
       const action = target?.dataset?.action;
       if (!action || target.disabled) return;
       if (action === 'close') {
         controller.requestClose('close_button');
+        return;
+      }
+      if (action === 'finish' || action === 'retry') {
+        runSessionCommitAction(action);
         return;
       }
       if (action === 'retry-lookup') {
@@ -2789,6 +3205,7 @@
     }
 
     function closeTechnical() {
+      commitActionFocusPending = false;
       if (!openState) return true;
       stopTimerScheduler();
       unbindListeners();
@@ -2826,6 +3243,7 @@
         activeDocuments.set(document, controller);
         syncTimerScheduler();
         focusPicker();
+        if (sessionCommit) applySessionCommitState();
         reconcileLookupDom();
       } catch (error) {
         stopTimerScheduler();
@@ -2849,6 +3267,10 @@
       if (!CLOSE_SOURCES.includes(source)) fail('INVALID_OPTIONS');
       if (!openState) return Promise.resolve(true);
       if (closeGuardPromise) return closeGuardPromise;
+      if (sessionCommitLocksClose()) return Promise.resolve(false);
+      if (sessionCommitUsesViewClose()) {
+        return Promise.resolve(closeTechnical());
+      }
       const state = readState(draft, semantics);
       if (state.snapshot.revision === 0) {
         return Promise.resolve(closeTechnical());
@@ -2909,6 +3331,7 @@
           if (closeGuardPromise === guard) {
             closeGuardPromise = null;
             if (!destroyed && openState) syncDraftControlsDisabled();
+            if (!destroyed && sessionCommit) applySessionCommitState();
             if (reconcileAfterGuard && !destroyed && openState) {
               reconcileLookupDom();
               restoreOpener(previousFocus);
@@ -2927,6 +3350,15 @@
     function destroy() {
       if (destroyed) return;
       closeGuardGeneration += 1;
+      sessionCommitReady = false;
+      if (unsubscribeSessionCommit) {
+        try {
+          unsubscribeSessionCommit();
+        } catch {
+          // The injected coordinator remains externally owned.
+        }
+        unsubscribeSessionCommit = null;
+      }
       if (unsubscribeRecovery) {
         try {
           unsubscribeRecovery();
@@ -2964,7 +3396,17 @@
         unsubscribeRecovery = recovery.controller.subscribe(patchRecoveryStatus);
         if (typeof unsubscribeRecovery !== 'function') fail('INVALID_RECOVERY_API');
       }
+      if (sessionCommit) {
+        unsubscribeSessionCommit = sessionCommit.controller.subscribe(
+          patchSessionCommitState
+        );
+        if (typeof unsubscribeSessionCommit !== 'function') {
+          fail('INVALID_SESSION_COMMIT_API');
+        }
+      }
       render();
+      sessionCommitReady = true;
+      if (sessionCommit) applySessionCommitState();
       options.host.appendChild(ui.panel);
       mountedHosts.set(options.host, controller);
     } catch (error) {
@@ -2974,6 +3416,13 @@
         // Detached mount rollback stays best-effort.
       }
       unsubscribeRecovery = null;
+      try {
+        unsubscribeSessionCommit?.();
+      } catch {
+        // Detached mount rollback stays best-effort.
+      }
+      unsubscribeSessionCommit = null;
+      sessionCommitReady = false;
       if (ui.panel.parentNode) ui.panel.remove();
       if (error instanceof ActivityV2SessionShellError) throw error;
       fail('INVALID_HOST');

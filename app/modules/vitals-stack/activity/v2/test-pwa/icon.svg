@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MIDAS Activity V2 Local Test">
+  <rect width="512" height="512" rx="112" fill="#10151d" />
+  <path d="M112 152h72l72 208 72-208h72v208h-48V216l-72 200h-44l-72-200v144h-52z" fill="#7dd3fc" />
+  <circle cx="400" cy="112" r="32" fill="#34d399" />
+</svg>

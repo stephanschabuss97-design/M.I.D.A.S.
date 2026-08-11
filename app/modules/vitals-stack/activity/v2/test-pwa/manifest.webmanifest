@@ -1,0 +1,26 @@
+{
+  "name": "MIDAS Activity V2 Local Test",
+  "short_name": "MIDAS V2 Test",
+  "description": "Lokale isolierte R8 Commit- und Recovery-Testlane.",
+  "lang": "de",
+  "id": "/app/modules/vitals-stack/activity/v2/test-pwa/",
+  "start_url": "./?fixture=all",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10151d",
+  "theme_color": "#10151d",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
