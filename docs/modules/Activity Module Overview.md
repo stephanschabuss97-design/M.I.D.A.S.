@@ -6,7 +6,8 @@ Kurze Einordnung:
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
   R3-Draft-/Shell-Grundlage, C2-Katalogversion 2, R4-Suche/Last-Performance,
   R5-Strength-Set-Editor, R6-Duration-/Distance-Editor, R7-IndexedDB-Draft-
-  Recovery und der isolierte R8-Commit-Core sind bereitgestellt; die sichtbare
+  Recovery, der isolierte R8-Commit-Core und der isolierte R9-History-/
+  Lifecycle-Consumer sind bereitgestellt; die sichtbare
   App und alle produktiven Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
@@ -29,6 +30,8 @@ Related docs:
 - [Activity V2 R7 Evidence](<../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
 - [Activity V2 R8 Roadmap](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
 - [Activity V2 R8 Evidence](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
+- [Activity V2 R9 Roadmap](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Roadmap (DONE).md>)
+- [Activity V2 R9 Evidence](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Evidence (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -80,6 +83,15 @@ Related docs:
 | `sql/22_Activity_V2_Commit_Compatibility.sql` | Guarded R8-Replace des bestehenden Commit-RPC für vorhandene unveränderliche Katalogversionen |
 | `sql/22_Activity_V2_Commit_Compatibility_Rollback.sql` | Separater owner-gateter exakter R8-zu-R2-Rollback nur für den Commit-RPC |
 | `tools/activity-v2-r8-isolation.mjs` | Aggregierter Produkt-/V1-/Netzwerk-/Secret-/Recovery-Delete-Isolationsguard |
+| `app/modules/vitals-stack/activity/v2/session-canonicalization.js` | Reine R9-Canonicalization des veränderlichen Sessioninhalts ohne Erstellungsidentität oder technische Child-UUIDs |
+| `app/modules/vitals-stack/activity/v2/session-correction.js` | Isoliertes memory-only R9-Correction-Modell mit Snapshot-, Dirty-, Policy- und Dual-CAS-Vertrag |
+| `app/modules/vitals-stack/activity/v2/session-history.js` | R9-History-/Detail-/Correction-/Delete-Controller mit Keyset-Pagination, Reconciliation und getrenntem Mutation-State |
+| `app/modules/vitals-stack/activity/v2/session-history-shell.js` | Isolierter R9-Consumer für History, Snapshotdetail, Korrektur und Delete |
+| `app/modules/vitals-stack/activity/v2/session-history-shell.css` | Responsive R9-History-/Dialog-/Statusdarstellung |
+| `app/modules/vitals-stack/activity/v2/session-history-harness.html` | Lokaler deterministischer R9-Browserharness; kein Produktload |
+| `sql/23_Activity_V2_History_Lifecycle.sql` | Additive R9-Revision sowie gehärtete List-/Detail-/Replace-/Delete-RPCs und privater Canonicalization-Helper |
+| `sql/23_Activity_V2_History_Lifecycle_Rollback.sql` | Separater owner-gateter Deployment-Rollback nur vor sicher ausgeschlossener Lifecycle-Nutzung |
+| `sql/tests/23_Activity_V2_History_Lifecycle_fixture.sql` | Guarded PostgreSQL-17-Fresh-/Rerun-/Drift-/Rollback-/Race-/Security-Fixture |
 
 ---
 
@@ -363,6 +375,40 @@ ausgeführt und ist keine PASS-Evidence.
   Postconditions mit leerer V2-Historie. Nicht bewiesen sind der reale
   Android-Prozess-Reclaim und ein abschließender CodeRabbit-Null-Lauf.
 
+## 2.10 Activity V2 R9 - isolierte Sessionhistorie und Lifecycle
+
+Status: implementiert und lokal, im Browser sowie disposable bewiesen; SQL 23
+ist produktiv ausgeführt und read-only nachgeprüft. Der R9-Client bleibt ohne
+Produkt-Scriptload oder sichtbaren Consumer.
+
+- Die Historie verwendet begrenzte Keyset-Pagination über `(started_at, id)`
+  statt Offset oder unbegrenzter Reads. Details werden ausschließlich aus den
+  gespeicherten Session-, Item- und Set-Snapshots aufgebaut.
+- Korrektur ersetzt den vollständigen veränderlichen Inhalt atomar. `id`,
+  `user_id`, `request_id`, `request_fingerprint`, `started_at`, `day`, `title`,
+  `created_at` und die ursprüngliche Katalogversion bleiben unverändert.
+- `revision` wird als Dezimalstring transportiert. Revision und ein aus dem
+  kanonischen veränderlichen Inhalt abgeleiteter Fingerprint bilden gemeinsam
+  den CAS gegen Lost Updates und uneindeutige Replays.
+- Neue Items einer Korrektur dürfen nur aus der ursprünglichen Katalogversion
+  stammen; vorhandene Snapshots bleiben historisch erhalten. Technische Item-
+  und Set-UUIDs sind keine stabile fachliche Identität.
+- Delete ist ein bewusst bestätigter, ownergebundener und wiederholsicherer
+  Hard Delete mit FK-Cascade. Ein DDL-Rollback stellt gelöschte Sessions nicht
+  wieder her und ist nach realer Lifecycle-Nutzung unzulässig.
+- List/Detail bleiben invoker-/RLS-gebunden. Replace/Delete sind eng
+  ownergebundene gehärtete RPCs; der interne Helper liegt im nicht exponierten
+  Schema `midas_private`. Direkte Client-DML bleibt entzogen.
+- Korrektur und Delete besitzen einen eigenen `mutationState`, verwenden weder
+  R7-Recovery noch R8-Commit-Intent und versöhnen Unknown Outcomes durch einen
+  neuen Read. History- und Last-Performance-Caches werden generation-gefenced.
+- Bewiesen sind 208/208 lokale Contracts, die Browsermatrix 1440/390/320,
+  PostgreSQL-17-Fresh/Rerun/Drift/Rollback/Races/Security, der R8-
+  Isolationsguard und das produktive SQL-23-Postimage mit 0/0/0 Sessions/
+  Items/Sets. Vier CodeRabbit-Reviews schlossen alle berechtigten Findings;
+  der finale Null-Lauf blieb rate-limitiert und ist als owner-akzeptiertes,
+  nicht blockierendes Restrisiko dokumentiert, nicht als PASS.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -407,6 +453,19 @@ ausgeführt und ist keine PASS-Evidence.
 - R8 verbindet dieselbe Recovery intern mit dem Commit-Core. Die lokale
   Browser-PWA ist bewiesen; der echte Android-Prozess-Reclaim blieb mangels
   ADB-Gerät unausgeführt. Beides bleibt außerhalb des Produkts.
+
+### Activity V2 R9 - History- und Lifecyclevertrag
+
+- `health_activity_sessions.revision` beginnt bei 1 und steigt nur nach einer
+  erfolgreichen inhaltlichen Korrektur. List-/Detailantworten transportieren
+  PostgreSQL-`bigint` verlustfrei als Dezimalstring.
+- Die vier öffentlichen RPCs sind `activity_v2_list_sessions`,
+  `activity_v2_session_detail`, `activity_v2_replace_session` und
+  `activity_v2_delete_session`; der reine Canonicalization-Helper bleibt in
+  `midas_private` außerhalb der Data API.
+- Die produktive Installation enthält nur die additive SQL-23-Struktur. Es
+  wurde keine Session angelegt, korrigiert oder gelöscht; der Postcheck blieb
+  bei 0/0/0.
 
 ---
 
@@ -522,10 +581,11 @@ ausgeführt und ist keine PASS-Evidence.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1-R8/C2: Semantik, additive produktive Datenbasis, lokaler
+- Activity V2 R1-R9/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
   Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der
-  Commit-Core sind implementiert. SQL 22 ist produktiv bestätigt; die V2-
+  Commit-Core sowie History/Detail/Correction/Delete sind implementiert. SQL
+  22 und SQL 23 sind produktiv bestätigt; die V2-
   Runtime bleibt isoliert und es gibt keinen produktiven UI-, Consumer- oder
   V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
@@ -535,6 +595,10 @@ ausgeführt und ist keine PASS-Evidence.
   bewiesen. Der reale Android-PWA-Prozess-Reclaim wurde in R8 nicht ausgeführt;
   Gerätewechsel liegt außerhalb des lokalen Recoveryvertrags. Produktive
   Consumerintegration und finaler Android-Smoke bleiben R12.
+- R9-Review-Risiko: Alle berechtigten Findings aus vier erfolgreichen
+  CodeRabbit-Läufen sind korrigiert und invalidierte Checks grün. Ein weiterer
+  finaler Null-Lauf wurde rate-limitiert und daher nicht als PASS gewertet;
+  der Owner akzeptierte diese klar abgegrenzte Restunsicherheit für R9.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -590,6 +654,15 @@ ausgeführt und ist keine PASS-Evidence.
   Debug/Release bauen isoliert; der Device-Reclaim und der finale CodeRabbit-
   Null-Lauf wurden per Owner-Entscheidung nicht als Pflichtabschluss verfolgt
   und dürfen nicht als PASS zitiert werden.
+- R9-Checks validieren bounded Keyset-History, Snapshotdetail, unveränderliche
+  Erstellungsidentität, ursprüngliche Katalogversion, Canonicalization,
+  Revision/Content-Dual-CAS, Edit/Edit-, Edit/Delete- und Delete/Delete-Races,
+  Unknown-Outcome-Reconciliation, Hard Delete, RLS/ACL/Auth/Owner/Search Path,
+  private Helpergrenze, Cache-Fencing und Productload-Isolation. Die finale
+  lokale Matrix ist 208/208; Browser 1440/390/320, PostgreSQL-17-Fixture und
+  produktiver read-only SQL-23-Postcheck sind grün. Produktive V2-Daten bleiben
+  0/0/0; ein rate-limitierter finaler CodeRabbit-Null-Lauf ist ausdrücklich
+  nur owner-akzeptiertes Restrisiko.
 
 ---
 
@@ -597,10 +670,10 @@ ausgeführt und ist keine PASS-Evidence.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R8/C2 bleiben bis zu den zuständigen Folgeroadmaps für
-  produktive Consumer unverdrahtet. R8 ist mit dokumentierter, owner-
-  akzeptierter Device-/Review-Evidence-Lücke DONE; R9 ist das nächste
-  Rolling-Wave-Gate. Ausschließlich R12 darf den produktiven V2-Cutover und den
+- Activity V2 R1-R9/C2 bleiben bis zu den zuständigen Folgeroadmaps für
+  produktive Consumer unverdrahtet. R8 und R9 sind mit ihren ausdrücklich
+  dokumentierten, owner-akzeptierten Evidence-/Review-Grenzen DONE; R10 ist
+  das nächste Rolling-Wave-Gate. Ausschließlich R12 darf den produktiven V2-Cutover und den
   finalen Android-PWA-Smoke ausführen.
 - Doku aktuell (Spec + Overview).
 

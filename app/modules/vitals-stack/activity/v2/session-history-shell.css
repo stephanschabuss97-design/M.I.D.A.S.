@@ -1,0 +1,660 @@
+.activity-v2-history-shell {
+  --history-bg: #071119;
+  --history-panel: rgba(13, 30, 39, 0.92);
+  --history-panel-strong: #102733;
+  --history-line: rgba(147, 194, 198, 0.2);
+  --history-line-strong: rgba(108, 224, 198, 0.48);
+  --history-text: #ecf7f4;
+  --history-muted: #99b8ba;
+  --history-accent: #6ce0c6;
+  --history-accent-ink: #06221d;
+  --history-danger: #ff8f91;
+  --history-danger-bg: rgba(255, 103, 107, 0.12);
+  --history-shadow: 0 22px 64px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 3rem);
+  overflow-wrap: anywhere;
+  color: var(--history-text);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(108, 224, 198, 0.13), transparent 30rem),
+    radial-gradient(circle at 92% 14%, rgba(82, 137, 196, 0.12), transparent 28rem),
+    var(--history-bg);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.activity-v2-history-shell *,
+.activity-v2-history-shell *::before,
+.activity-v2-history-shell *::after {
+  box-sizing: inherit;
+}
+
+.activity-v2-history-header {
+  width: min(86rem, 100%);
+  margin: 0 auto clamp(1.1rem, 2vw, 1.8rem);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.activity-v2-history-title,
+.activity-v2-history-detail-title,
+.activity-v2-history-section-title,
+.activity-v2-history-snapshot h4,
+.activity-v2-history-session-note h3 {
+  margin: 0;
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+}
+
+.activity-v2-history-title {
+  max-width: 16ch;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 780;
+}
+
+.activity-v2-history-eyebrow {
+  margin: 0 0 0.55rem;
+  color: var(--history-accent);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.activity-v2-history-lead {
+  max-width: 44rem;
+  margin: 0.85rem 0 0;
+  color: var(--history-muted);
+  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
+  line-height: 1.6;
+}
+
+.activity-v2-history-layout {
+  width: min(86rem, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(0.9rem, 2vw, 1.5rem);
+  align-items: start;
+}
+
+.activity-v2-history-column {
+  min-width: 0;
+  border: 1px solid var(--history-line);
+  border-radius: 1.15rem;
+  background: var(--history-panel);
+  box-shadow: var(--history-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.activity-v2-history-column--list {
+  padding: clamp(1rem, 2vw, 1.45rem);
+}
+
+.activity-v2-history-column--detail {
+  padding: clamp(1rem, 2.7vw, 2rem);
+}
+
+.activity-v2-history-section-title {
+  margin-bottom: 1rem;
+  color: var(--history-text);
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+.activity-v2-history-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+}
+
+.activity-v2-history-entry,
+.activity-v2-history-button {
+  min-height: 2.75rem;
+  border: 1px solid var(--history-line-strong);
+  border-radius: 0.8rem;
+  color: var(--history-text);
+  background: rgba(108, 224, 198, 0.08);
+  font: inherit;
+  font-weight: 720;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.activity-v2-history-entry:hover,
+.activity-v2-history-button:hover {
+  border-color: var(--history-accent);
+  background: rgba(108, 224, 198, 0.15);
+}
+
+.activity-v2-history-entry:focus-visible,
+.activity-v2-history-button:focus-visible,
+.activity-v2-history-shell input:focus-visible,
+.activity-v2-history-shell textarea:focus-visible,
+.activity-v2-history-shell select:focus-visible,
+.activity-v2-history-shell summary:focus-visible {
+  outline: 3px solid rgba(108, 224, 198, 0.35);
+  outline-offset: 3px;
+}
+
+.activity-v2-history-entry:active,
+.activity-v2-history-button:active {
+  transform: translateY(1px);
+}
+
+.activity-v2-history-entry:disabled,
+.activity-v2-history-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.activity-v2-history-shell[data-busy="true"] .activity-v2-history-entry:disabled,
+.activity-v2-history-shell[data-busy="true"] .activity-v2-history-button:disabled {
+  cursor: wait;
+}
+
+.activity-v2-history-entry {
+  width: 100%;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+  text-align: left;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.activity-v2-history-entry-primary,
+.activity-v2-history-entry-metrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.activity-v2-history-entry-primary strong {
+  font-size: 1rem;
+}
+
+.activity-v2-history-entry-primary span,
+.activity-v2-history-entry-metrics {
+  color: var(--history-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.activity-v2-history-entry-metrics {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.activity-v2-history-entry-metrics span + span::before {
+  margin-right: 0.6rem;
+  color: var(--history-accent);
+  content: "·";
+}
+
+.activity-v2-history-button {
+  padding: 0.65rem 1rem;
+}
+
+.activity-v2-history-button--quiet {
+  border-color: var(--history-line);
+  color: var(--history-muted);
+  background: transparent;
+}
+
+.activity-v2-history-button--wide {
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.activity-v2-history-button--danger {
+  border-color: rgba(255, 143, 145, 0.45);
+  color: #ffd4d5;
+  background: var(--history-danger-bg);
+}
+
+.activity-v2-history-state {
+  min-height: 12rem;
+  margin: 0;
+  padding: 1.25rem;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--history-muted);
+  border: 1px dashed var(--history-line);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.activity-v2-history-state--detail {
+  min-height: 28rem;
+}
+
+.activity-v2-history-state--loading::before {
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: 0 auto;
+  border: 2px solid var(--history-line);
+  border-top-color: var(--history-accent);
+  border-radius: 50%;
+  content: "";
+  animation: activity-v2-history-spin 720ms linear infinite;
+}
+
+.activity-v2-history-state--error,
+.activity-v2-history-inline-error {
+  color: #ffc0c2;
+}
+
+.activity-v2-history-inline-error {
+  margin: 0.8rem 0 0;
+  padding: 0.8rem;
+  border-radius: 0.7rem;
+  background: var(--history-danger-bg);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.activity-v2-history-detail-header {
+  padding-bottom: 1.15rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--history-line);
+}
+
+.activity-v2-history-detail-title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.activity-v2-history-meta,
+.activity-v2-history-facts {
+  margin: 1.15rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.activity-v2-history-meta dt,
+.activity-v2-history-facts dt {
+  color: var(--history-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-v2-history-meta dd,
+.activity-v2-history-facts dd {
+  margin: 0.22rem 0 0;
+  color: var(--history-text);
+  font-weight: 720;
+}
+
+.activity-v2-history-meta dt:nth-of-type(n + 2),
+.activity-v2-history-meta dd:nth-of-type(n + 2),
+.activity-v2-history-facts dt:nth-of-type(n + 2),
+.activity-v2-history-facts dd:nth-of-type(n + 2) {
+  /* Definition list pairs are reordered into compact cards below. */
+}
+
+.activity-v2-history-meta dt,
+.activity-v2-history-meta dd,
+.activity-v2-history-facts dt,
+.activity-v2-history-facts dd {
+  padding: 0 0.15rem;
+}
+
+.activity-v2-history-session-note,
+.activity-v2-history-snapshot {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--history-line);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.activity-v2-history-session-note h3 {
+  font-size: 0.86rem;
+}
+
+.activity-v2-history-session-note p {
+  margin: 0.55rem 0 0;
+  color: var(--history-muted);
+  line-height: 1.55;
+}
+
+.activity-v2-history-column--detail > .activity-v2-history-section-title {
+  margin-top: 1.5rem;
+}
+
+.activity-v2-history-snapshot > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.activity-v2-history-snapshot h4 {
+  font-size: 1rem;
+}
+
+.activity-v2-history-badge {
+  padding: 0.28rem 0.5rem;
+  flex: 0 0 auto;
+  color: var(--history-accent);
+  border: 1px solid rgba(108, 224, 198, 0.28);
+  border-radius: 999px;
+  background: rgba(108, 224, 198, 0.08);
+  font-size: 0.68rem;
+  font-weight: 780;
+}
+
+.activity-v2-history-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.activity-v2-history-sets {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.activity-v2-history-sets p {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.84rem;
+}
+
+.activity-v2-history-sets span {
+  color: var(--history-muted);
+}
+
+.activity-v2-history-policy {
+  margin-top: 0.8rem;
+  color: var(--history-muted);
+  font-size: 0.78rem;
+}
+
+.activity-v2-history-policy summary {
+  width: fit-content;
+  color: var(--history-accent);
+  cursor: pointer;
+}
+
+.activity-v2-history-policy p {
+  margin: 0.55rem 0 0;
+  line-height: 1.5;
+}
+
+.activity-v2-history-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+.activity-v2-history-correction-form {
+  margin-top: 1.15rem;
+}
+
+.activity-v2-history-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.activity-v2-history-field {
+  min-width: 0;
+  display: grid;
+  gap: 0.38rem;
+  color: var(--history-muted);
+  font-size: 0.75rem;
+  font-weight: 720;
+}
+
+.activity-v2-history-field input,
+.activity-v2-history-field textarea,
+.activity-v2-history-add-item select {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.66rem 0.75rem;
+  color: var(--history-text);
+  border: 1px solid var(--history-line);
+  border-radius: 0.68rem;
+  background: rgba(4, 16, 23, 0.82);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 620;
+}
+
+.activity-v2-history-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.activity-v2-history-field input:disabled,
+.activity-v2-history-field textarea:disabled,
+.activity-v2-history-add-item select:disabled {
+  opacity: 0.62;
+}
+
+.activity-v2-history-correction-item {
+  margin-top: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--history-line);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.activity-v2-history-correction-item > header,
+.activity-v2-history-correction-set > header {
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.activity-v2-history-correction-item h4,
+.activity-v2-history-correction-set h5,
+.activity-v2-history-dialog h3 {
+  margin: 0;
+}
+
+.activity-v2-history-compact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.activity-v2-history-compact-actions .activity-v2-history-button,
+.activity-v2-history-correction-set .activity-v2-history-button {
+  min-height: 2.25rem;
+  padding: 0.42rem 0.65rem;
+  font-size: 0.74rem;
+}
+
+.activity-v2-history-correction-sets {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.activity-v2-history-correction-set {
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.activity-v2-history-correction-set h5 {
+  color: var(--history-accent);
+  font-size: 0.8rem;
+}
+
+.activity-v2-history-add-item {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  border: 1px dashed var(--history-line-strong);
+  border-radius: 0.8rem;
+}
+
+.activity-v2-history-confirmation {
+  margin: 1rem 0 0;
+  padding: 0.9rem;
+  color: var(--history-accent);
+  border: 1px solid rgba(108, 224, 198, 0.3);
+  border-radius: 0.75rem;
+  background: rgba(108, 224, 198, 0.09);
+  font-weight: 720;
+}
+
+.activity-v2-history-dialog {
+  margin-top: 1rem;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid rgba(255, 143, 145, 0.45);
+  border-radius: 0.85rem;
+  background: rgba(62, 25, 30, 0.92);
+}
+
+.activity-v2-history-dialog h3,
+.activity-v2-history-dialog p {
+  grid-column: 1 / -1;
+}
+
+.activity-v2-history-dialog p {
+  margin: 0;
+  color: #e0b9ba;
+}
+
+.activity-v2-history-delete-warning {
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 143, 145, 0.48);
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(135deg, rgba(255, 103, 107, 0.12), transparent 70%),
+    rgba(30, 15, 20, 0.78);
+}
+
+.activity-v2-history-delete-warning h3,
+.activity-v2-history-delete-warning p {
+  grid-column: 1 / -1;
+}
+
+.activity-v2-history-delete-warning h3 {
+  margin: 0;
+  color: #ffd4d5;
+  font-size: clamp(1.15rem, 2.5vw, 1.55rem);
+}
+
+.activity-v2-history-delete-warning p {
+  margin: 0 0 0.35rem;
+  color: #e0b9ba;
+  line-height: 1.55;
+}
+
+@keyframes activity-v2-history-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 56rem) {
+  .activity-v2-history-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-v2-history-state--detail {
+    min-height: 14rem;
+  }
+}
+
+@media (max-width: 38rem) {
+  .activity-v2-history-shell {
+    padding: 0.8rem;
+  }
+
+  .activity-v2-history-header,
+  .activity-v2-history-detail-header,
+  .activity-v2-history-snapshot > header,
+  .activity-v2-history-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-v2-history-header .activity-v2-history-button,
+  .activity-v2-history-detail-header .activity-v2-history-button,
+  .activity-v2-history-actions .activity-v2-history-button {
+    width: 100%;
+  }
+
+  .activity-v2-history-meta,
+  .activity-v2-history-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-v2-history-sets p {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .activity-v2-history-field-grid,
+  .activity-v2-history-add-item,
+  .activity-v2-history-dialog,
+  .activity-v2-history-delete-warning {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-v2-history-correction-item > header,
+  .activity-v2-history-correction-set > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-v2-history-compact-actions {
+    justify-content: stretch;
+  }
+
+  .activity-v2-history-compact-actions .activity-v2-history-button {
+    flex: 1 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-v2-history-entry,
+  .activity-v2-history-button {
+    transition: none;
+  }
+
+  .activity-v2-history-state--loading::before {
+    animation-duration: 1.8s;
+  }
+}

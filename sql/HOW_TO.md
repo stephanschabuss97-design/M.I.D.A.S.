@@ -287,8 +287,9 @@ For every Data-API RPC:
 `20_Activity_V2.sql` is the canonical additive Activity V2 R2 schema source.
 It provisions the immutable catalog projection, three normalized history
 tables, RLS, constraints/indexes, the atomic retry-idempotent commit RPC and
-the owner-bound last-performance lookup. It does not wire UI consumers, migrate
-Activity V1, create a draft, or insert a productive session.
+the owner-bound `public.activity_v2_last_performance(text)` lookup RPC. It does
+not wire UI consumers, migrate Activity V1, create a draft, or insert a
+productive session.
 
 Run order for the R2-only foundation:
 
@@ -303,8 +304,9 @@ Run order for the R2-only foundation:
 The commit RPC is intentionally `SECURITY DEFINER`, owned by `postgres`, with
 an empty `search_path` and explicit permanent-user/owner validation. This is
 the sole Activity V2 write boundary. Do not replace it with browser table DML
-or broaden grants to silence an advisor warning. The lookup remains
-`SECURITY INVOKER`, stable and owner-scoped.
+or broaden grants to silence an advisor warning.
+`public.activity_v2_last_performance(text)` remains `SECURITY INVOKER`, stable
+and owner-scoped.
 
 The disposable regression fixture is
 `sql/tests/20_Activity_V2_fixture.sql`. It requires PostgreSQL 17,
@@ -380,7 +382,8 @@ hold before its first persistent statement:
 - catalog v1 and v2 remain the exact immutable 78-row and 80-row snapshots.
 
 The same transaction snapshots all catalog versions, the protected table
-structure/ACLs, the lookup RPC source and Activity V2 row counts. Its
+structure/ACLs, the `public.activity_v2_last_performance(text)` source and
+Activity V2 row counts. Its
 postcondition proves that only the commit RPC plus its already-reviewed
 hardening changed. SQL 22 revokes Execute from `PUBLIC`, `anon`,
 `authenticated` and `service_role`, then grants Execute back only to
@@ -437,6 +440,114 @@ The immediate read-only preflight and postconditions proved:
 
 This record authorizes no rerun and no rollback. A future rollback still needs
 its own current read-only preflight, incident decision and explicit owner gate.
+
+# Activity V2 R9 History Lifecycle
+
+`23_Activity_V2_History_Lifecycle.sql` is the additive R9 source for bounded
+session history, snapshot detail, atomic full-replacement correction and
+CAS-protected hard delete. It adds only
+`public.health_activity_sessions.revision bigint`, one pure canonical-content
+helper in the non-exposed `midas_private` schema and four exact public RPCs.
+It does not change the R8 sources of
+`public.activity_v2_commit_session(uuid,jsonb)` (SHA-256
+`7cdabca31dd7b4f3a8a78f5dc4d79c2116c7f77a2a0f5b834439093c0215177e`)
+or `public.activity_v2_last_performance(text)` (SHA-256
+`36958865e48db7f6ca13a7ad36d0d8751f53729c5d40c762654ab2baa73d296e`),
+request identity, catalog, RLS policies, product load or Activity V1.
+
+The complete fresh/disposable R9 target order is exactly:
+
+1) `20_Activity_V2.sql`;
+2) `21_Activity_V2_Catalog_V2.sql`;
+3) `22_Activity_V2_Commit_Compatibility.sql`;
+4) `23_Activity_V2_History_Lifecycle.sql`;
+5) `16_Explicit_Grants.sql`.
+
+Do not run SQL 20, 21 or 22 again after SQL 23. Their older canonical guards
+do not accept the additive R9 revision. SQL 16 is R8-compatible when every R9
+object is absent, mirrors the full R9 grants when every R9 object exists, and
+fails closed on a partial R9 state.
+
+SQL 23 accepts only the exact R8 postimage or its own exact rerun. The
+PostgreSQL-17 `pg_get_functiondef` SHA-256 values of the R9 functions are:
+
+- private canonical helper:
+  `7fe25b2b010faf95615907d700091579565b39088adcd44d0bd0484333f30f5e`;
+- list:
+  `aeca949ea42b53ec3b7ead67668be4b3c6b70553d538068c01f93157ad0de8ed`;
+- detail:
+  `53938011daac6fe80e68a9c3464604b69f396a4d5f5ff4d274cfbcca925cbb11`;
+- replace:
+  `feb73a16ccc2680f8ddb368ffbabd1c4cb41320838af9d6040b6c6d2a7cf1f7f`;
+- delete:
+  `97474cc440ca538abd0fa6f444bb2bb69fd801f2080c28e5d81599484477f54b`.
+
+`midas_private` must not be present in the PostgREST/Supabase exposed-schema
+configuration. Only `authenticated` receives schema `USAGE` and helper
+`EXECUTE`, solely for the invoker-bound detail RPC. `PUBLIC`, `anon` and
+`service_role` receive neither. The four public R9 RPCs grant Execute only to
+`authenticated`; direct browser-role Activity-V2 DML remains revoked.
+
+The guarded disposable regression fixture is
+`sql/tests/23_Activity_V2_History_Lifecycle_fixture.sql`. It may run only in
+the PostgreSQL-17 database `midas_activity_v2_s45`, owned by and connected as
+`postgres`. It rebuilds the complete R8 postimage, proves fresh/rerun/drift/
+rollback/forward behavior, revision and original-catalog derivation, bounded
+reads, exact replay, dual-CAS correction, snapshot preservation, exhaustion,
+atomic rollback, all Edit/Edit/Edit/Delete/Delete/Delete lock orders, FK
+cascade, permanent auth, owner isolation, overload/ACL/search-path security
+and final zero-row cleanup.
+
+## Productive R9 execution record (2026-08-13)
+
+After the coupled R9 S4.10/S5 owner gate and a canonical read-only preflight,
+`23_Activity_V2_History_Lifecycle.sql` was executed exactly once on Supabase
+project `jlylmservssinsavlkdi` using the linked Management API connection as
+PostgreSQL role `postgres`. The executed file SHA-256 was
+`b8180409e2199477177d4cb6fe21604467bc8da37fce73342db49c511cf01bc4`.
+
+The productive preflight and read-only postcheck established:
+
+- PostgreSQL 17.6 and canonical R8 structure SHA-256
+  `657f31c14b1a17e17241b1cd9aaa4c69a0622321c1f5e6e13927df4ebb23ee14`;
+- catalog v1/v2/other counts 78/80/0 with the exact reviewed content hashes;
+- Activity V2 session/item/set counts 0/0/0 before and after execution;
+- `revision bigint not null default 1` with its bounded check, exactly four
+  public R9 RPC overloads and exactly one private canonical helper;
+- all five R9 function source hashes, owner/security/volatility/search-path
+  settings and minimal ACLs equal the reviewed disposable postimage;
+- R8 `public.activity_v2_commit_session(uuid,jsonb)` and
+  `public.activity_v2_last_performance(text)` source hashes stayed unchanged;
+- no browser-role direct DML, anonymous table access or unexpected grant;
+- a real Data API request for schema `midas_private` returned HTTP 406 with
+  `PGRST106`; the exposed schemas were only `public, graphql_public`;
+- no synthetic training session, correction, delete, product load,
+  web/edge/APK deploy or commit occurred.
+
+This record authorizes no SQL 23 rerun and no rollback. The R9 client remains
+isolated until R12. Product activation, every real correction/delete and S6
+remain separate owner gates.
+
+## Activity V2 R9 Rollback Boundary
+
+`23_Activity_V2_History_Lifecycle_Rollback.sql` is only a deployment rollback
+before the first real R9 correction or deletion. It cannot restore a deleted
+session. `revision = 1` is not sufficient evidence because replay leaves no
+revision change and hard delete leaves no audit row. In addition to its
+technical preflight, rollback therefore requires a separately documented,
+owner-approved operative non-use confirmation and this same-session setting:
+
+```sql
+select pg_catalog.set_config(
+  'midas.activity_v2_r9_operational_nonuse_confirmed',
+  'true',
+  false
+);
+```
+
+The setting does not itself authorize rollback. Productive SQL 23, every
+productive rollback and every real Activity-V2 correction/delete remain
+separate Owner gates. Never create a synthetic productive session.
 
 # Adding a New Module Script
 

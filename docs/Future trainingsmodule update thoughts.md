@@ -2,18 +2,22 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-11
+Stand: 2026-08-13
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
 Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-,
-R6-Duration-/Distance-, R7-Recovery- und R8-Commit-Bausteine sind
-bereitgestellt. R8 ist mit einer explizit owner-akzeptierten Evidence-Lücke
+R6-Duration-/Distance-, R7-Recovery-, R8-Commit- und R9-History-/Lifecycle-
+Bausteine sind bereitgestellt. R8 ist mit einer explizit owner-akzeptierten
+Evidence-Lücke
 für den nicht ausgeführten Android-Device-Reclaim und den fehlenden finalen
-CodeRabbit-Null-Lauf abgeschlossen. R9 ist das nächste Rolling-Wave-Gate;
+CodeRabbit-Null-Lauf abgeschlossen. R9 ist mit einer separat dokumentierten,
+owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 ist das nächste
+Rolling-Wave-Gate;
 sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-11: `PASS mit dokumentierter R8-Evidence-Lücke`.
+Cross-Contract-Stand 2026-08-13: `PASS mit dokumentierten R8-Evidence-Gaps
+und owner-akzeptierter R9-Review-Restunsicherheit`.
 R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
@@ -44,6 +48,13 @@ Commit gegen jede vorhandene unveränderliche Katalogversion statt nur gegen die
 höchste. Activity V1, Produkt-PWA und Produktconsumer bleiben unverändert.
 Der lokale Android-Debugpfad ist gebaut und isoliert, aber der reale Device-
 Prozess-Reclaim wurde auf Owner-Entscheidung nicht ausgeführt.
+R9 ist DONE: SQL 23 ergänzt produktiv Revision, bounded History, gespeicherte
+Details, atomare Correction und wiederholsicheren Hard Delete über minimale
+ACLs und einen nicht exponierten privaten Helper. Die isolierte Clientruntime
+versöhnt Races und Unknown Outcomes und bleibt ohne Produktload. Produktiver
+Poststand ist 0/0/0. Vier erfolgreiche CodeRabbit-Reviews wurden vollständig
+korrigiert; der danach rate-limitierte Null-Lauf ist ausdrücklich kein PASS,
+sondern owner-akzeptierte Restunsicherheit.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -52,9 +63,9 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R8/C2 stellen nur die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R9/C2 stellen nur die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Editor-, Recovery- und Commitgrundlage bereit.
+Historien-, Editor-, Recovery-, Commit- und Lifecyclegrundlage bereit.
 
 ---
 
@@ -1546,7 +1557,7 @@ diesem Write- und Device-Sicherheitsgate herausgelöst.
 
 ### R9 - Session History, Detail, Correction and Deletion
 
-Status: `NEXT_ROLLING_WAVE_GATE`.
+Status: `DONE` (2026-08-13); Activity V2 bleibt bis R12 produktiv unsichtbar.
 
 Ziel:
 
@@ -1575,6 +1586,8 @@ V2 produktiv aktivieren. Produktcutover und finaler Android-PWA-Smoke bleiben
 R12.
 
 ### R10 - Completed Activity Coaching Export V1
+
+Status: `NEXT_ROLLING_WAVE_GATE`.
 
 Ziel:
 
@@ -1813,15 +1826,17 @@ Zuständig:
 
 ### O-5 Korrekturvertrag
 
-Zu klären:
+Entschieden durch R9:
 
-- komplette Session atomar ersetzen
-- gezielte Item-/Satzupdates
-- Änderungsgrenzen nach Abschluss
+- eine Korrektur ersetzt den vollständig veränderlichen Sessioninhalt atomar;
+- Erstellungsidentität und ursprüngliche Katalogversion bleiben unverändert;
+- Revision plus abgeleiteter Content-Fingerprint bilden den Dual-CAS;
+- Löschung ist ein bewusst bestätigter, wiederholsicherer Hard Delete;
+- technische Item-/Set-UUIDs sind keine fachlich stabile Identität.
 
-Zuständig:
+Zuständig und Ergebnis:
 
-- R9 entscheidet den produktiven Korrektur- und Löschvertrag.
+- R9 hat den Korrektur- und Löschvertrag implementiert und isoliert bewiesen.
 
 ### O-6 Intensität
 
@@ -1897,8 +1912,9 @@ Ziel:
 R1 hat ausschließlich O-1, O-2 und die für Semantik, Suche und spätere
 Schemafähigkeit notwendigen Grundinvarianten eingefroren. O-3 ist durch R5
 entschieden und umgesetzt. O-4 ist für R3 entschieden; O-6 ist durch R6 mit
-`keine Intensität` für die erste produktive Ausbaustufe geschlossen. O-5 bleibt
-bis R9 bewusst offen und darf nicht vorweggenommen werden. O-7 hat keine stille
+`keine Intensität` für die erste produktive Ausbaustufe geschlossen. O-5 ist
+durch R9 als atomarer Vollersatz plus kontrollierter Hard Delete geschlossen.
+O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
 umgesetzt. O-8 ist für R4, R7 und R8 geschlossen. Offen bleibt ausschließlich
 das R12-Gate für Produktselektor, Aktivierungsreihenfolge, gecachte PWA-Clients
@@ -1972,7 +1988,7 @@ benannte Satzdaten; Daueraktivitäten verwenden itemweite Dauer, optionale
 Distanz und Notiz. R6 bearbeitet diese Werte ausschließlich im flüchtigen
 Draft. Die Historie wird nach Key und nicht nach Trainingsplan gesucht. R7
 sichert unfertige Sessions im isolierten Harness als IndexedDB-Draft ab; R8
-soll abgeschlossene Sessions atomar in Supabase integrieren. R9 ergänzt
+integriert abgeschlossene Sessions atomar in Supabase. R9 ergänzt isolierte
 Historie, Details, Korrektur und Löschung. Arztbericht und Doctor View erhalten in R11 nur
 Zusammenfassungen; der versionierte R10-Activity-Export liefert die
 vollständigen Details für spätere Coaching-Analysen. R12 aktiviert die neue

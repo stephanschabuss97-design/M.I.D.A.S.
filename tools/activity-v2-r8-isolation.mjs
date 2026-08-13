@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -23,9 +24,12 @@ const protectedPaths = Object.freeze([
   'public/manifest.json',
   'app/modules/vitals-stack/activity/index.js',
   'app/modules/vitals-stack/activity/v2/session-draft.js',
-  'android/app/src/main',
-  'sql/16_Explicit_Grants.sql'
+  'android/app/src/main'
 ]);
+const explicitGrantsPath = 'sql/16_Explicit_Grants.sql';
+const r9ExplicitGrantsSha256 =
+  'cbe2ea0e1bcc89f6be38ae83f645aa19d57d4334158c5f9ace356360058851fc';
+const protectedTargetCount = protectedPaths.length + 1;
 const blockFPaths = Object.freeze([
   'android/app/build.gradle.kts',
   'android/app/src/debug/AndroidManifest.xml',
@@ -52,6 +56,13 @@ requireCondition(
 requireCondition(
   git(['status', '--porcelain=v1', '--untracked-files=all', '--', ...protectedPaths]) === '',
   'PROTECTED_STATUS'
+);
+requireCondition(
+  createHash('sha256')
+    .update(read(explicitGrantsPath).replace(/\r\n/g, '\n'))
+    .digest('hex') ===
+    r9ExplicitGrantsSha256,
+  'EXPLICIT_GRANTS_SOURCE'
 );
 git(['diff', '--check']);
 
@@ -116,6 +127,6 @@ requireCondition(/midas-activity-v2-r8-local-test-/.test(localWorker), 'LOCAL_WO
 requireCondition(!/public\/manifest\.json|midas-shell-|\/M\.I\.D\.A\.S\.\//.test(localWorker), 'LOCAL_WORKER_PRODUCT_EDGE');
 
 process.stdout.write(
-  'PASS protected=7 product_v2_loads=0 core_network_edges=0 ' +
+  `PASS protected=${protectedTargetCount} product_v2_loads=0 core_network_edges=0 ` +
   'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1\n'
 );

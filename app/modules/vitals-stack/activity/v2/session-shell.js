@@ -2118,10 +2118,10 @@
     }
 
     function settleLookup(itemKey, generation, outcome, rawValue) {
-      if (destroyed) return;
+      if (destroyed) return null;
       const current = lookupStates.get(itemKey);
       if (!current || current.generation !== generation || current.status !== 'loading') {
-        return;
+        return null;
       }
       let next;
       if (outcome === 'error') {
@@ -2141,12 +2141,15 @@
       }
       lookupStates.set(itemKey, deepFreeze(next));
       patchLookup(itemKey);
+      return next.status;
     }
 
     function startLookup(itemKey, retry = false) {
-      if (!loadLastPerformance || destroyed) return;
+      if (!loadLastPerformance || destroyed) return Promise.resolve(null);
       const existing = lookupStates.get(itemKey);
-      if ((!retry && existing) || (retry && existing?.status !== 'error')) return;
+      if ((!retry && existing) || (retry && existing?.status !== 'error')) {
+        return Promise.resolve(existing?.status || null);
+      }
       lookupGeneration += 1;
       const generation = lookupGeneration;
       lookupStates.set(itemKey, deepFreeze({ status: 'loading', generation }));
@@ -2164,13 +2167,85 @@
           throw new TypeError('lookup callback must return a thenable');
         }
       } catch {
-        settleLookup(itemKey, generation, 'error');
-        return;
+        return Promise.resolve(settleLookup(itemKey, generation, 'error'));
       }
-      Promise.resolve(pending).then(
+      return Promise.resolve(pending).then(
         (value) => settleLookup(itemKey, generation, 'success', value),
         () => settleLookup(itemKey, generation, 'error')
       );
+    }
+
+    function normalizeRefreshItemKeys(value) {
+      if (!Array.isArray(value) || value.length > 100) fail('INVALID_OPTIONS');
+      const descriptors = Object.getOwnPropertyDescriptors(value);
+      const expectedOwnKeys = [
+        ...Array.from({ length: value.length }, (_, index) => String(index)),
+        'length'
+      ];
+      const ownKeys = Reflect.ownKeys(value);
+      if (
+        ownKeys.length !== expectedOwnKeys.length ||
+        ownKeys.some((key) =>
+          typeof key !== 'string' || !expectedOwnKeys.includes(key)
+        )
+      ) {
+        fail('INVALID_OPTIONS');
+      }
+      const keys = [];
+      const known = new Set();
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = descriptors[index];
+        if (
+          !descriptor ||
+          !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          typeof descriptor.value !== 'string' ||
+          !ITEM_KEY_RE.test(descriptor.value)
+        ) {
+          fail('INVALID_OPTIONS');
+        }
+        if (known.has(descriptor.value)) fail('INVALID_OPTIONS');
+        known.add(descriptor.value);
+        keys.push(descriptor.value);
+      }
+      return keys;
+    }
+
+    async function refreshLastPerformance(itemKeysValue) {
+      if (destroyed) fail('SHELL_DESTROYED');
+      const itemKeys = normalizeRefreshItemKeys(itemKeysValue);
+      const visibleKeys = new Set(
+        openState && closeGuardPromise === null
+          ? currentState.snapshot.items
+              .map((item) => item.item_key)
+              .filter((itemKey) => itemActionRefs.has(itemKey))
+          : []
+      );
+
+      itemKeys.forEach((itemKey) => {
+        lookupGeneration += 1;
+        lookupStates.delete(itemKey);
+      });
+
+      const items = await Promise.all(
+        itemKeys.map(async (itemKey) => {
+          if (!loadLastPerformance || !visibleKeys.has(itemKey)) {
+            return { item_key: itemKey, status: 'invalidated' };
+          }
+          const status = await startLookup(itemKey);
+          return {
+            item_key: itemKey,
+            status: ['success', 'empty', 'error'].includes(status)
+              ? status
+              : 'error'
+          };
+        })
+      );
+      return deepFreeze({
+        status: items.some((item) => item.status === 'error')
+          ? 'error'
+          : 'success',
+        items
+      });
     }
 
     function reconcileLookupDom() {
@@ -3387,6 +3462,7 @@
       render,
       requestClose,
       isOpen,
+      refreshLastPerformance,
       destroy
     });
 

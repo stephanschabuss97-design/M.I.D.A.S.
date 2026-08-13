@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIDAS Activity V2 R9 Block E Harness</title>
+    <link rel="stylesheet" href="./session-shell.css?r9-block-e1">
+    <link rel="stylesheet" href="./session-history-shell.css?r9-block-e1">
+    <style>
+      body {
+        background: #071119;
+      }
+
+      #activity-v2-r9-open-live-shell {
+        display: block;
+        min-height: 2.75rem;
+        margin: 0 auto 1rem;
+        padding: 0.65rem 1rem;
+        color: #ecf7f4;
+        border: 1px solid rgba(108, 224, 198, 0.48);
+        border-radius: 0.8rem;
+        background: #102733;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        font: 700 0.82rem Inter, ui-sans-serif, system-ui, sans-serif;
+        cursor: pointer;
+      }
+
+      #activity-v2-r9-open-live-shell:focus-visible {
+        outline: 3px solid rgba(108, 224, 198, 0.45);
+        outline-offset: 3px;
+      }
+
+    </style>
+  </head>
+  <body style="margin: 0">
+    <main id="activity-v2-r9-harness"></main>
+    <aside id="activity-v2-r9-live-shell" hidden></aside>
+    <button type="button" id="activity-v2-r9-open-live-shell">
+      R4-Cacheansicht öffnen
+    </button>
+    <script>
+      window.AppModules = { activity: Object.freeze({ productSentinel: true }) };
+    </script>
+    <script src="./semantics.js?r9-block-e1"></script>
+    <script src="./semantics-v2.js?r9-block-e1"></script>
+    <script src="./session-draft.js?r9-block-e1"></script>
+    <script src="./session-shell.js?r9-block-e1"></script>
+    <script src="./session-canonicalization.js?r9-block-e1"></script>
+    <script src="./session-correction.js?r9-block-e1"></script>
+    <script src="./data-access.js?r9-block-e1"></script>
+    <script src="./session-history.js?r9-block-e1"></script>
+    <script src="./session-history-shell.js?r9-block-e1"></script>
+    <script src="./session-history-harness.js?r9-block-e1"></script>
+  </body>
+</html>

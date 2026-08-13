@@ -206,7 +206,7 @@ grant execute on function public.activity_delete(uuid)
   to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- S4.8 Activity V2 R2 catalog, history, and commit API
+-- S4.8 Activity V2 R9 catalog, history, commit, and lifecycle API
 -- ---------------------------------------------------------------------------
 
 revoke all on table public.health_activity_catalog_entries
@@ -240,5 +240,63 @@ grant execute on function public.activity_v2_commit_session(uuid, jsonb)
   to authenticated;
 grant execute on function public.activity_v2_last_performance(text)
   to authenticated;
+do $activity_v2_r9_grants$
+declare
+  v_public_count integer;
+  v_helper_exists boolean;
+  v_schema_exists boolean;
+begin
+  select pg_catalog.count(*)
+    into v_public_count
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = any (array[
+       'activity_v2_list_sessions',
+       'activity_v2_session_detail',
+       'activity_v2_replace_session',
+       'activity_v2_delete_session'
+     ]::text[]);
+  v_helper_exists := pg_catalog.to_regprocedure(
+    'midas_private.activity_v2_canonical_content(integer,integer,text,jsonb)'
+  ) is not null;
+  v_schema_exists := pg_catalog.to_regnamespace('midas_private') is not null;
+
+  -- SQL 16 remains usable for the proven R8-only setup. The R9 fresh target
+  -- order is 20 -> 21 -> 22 -> 23 -> 16; any partial R9 state fails closed.
+  if v_public_count = 0 and not v_helper_exists and not v_schema_exists then
+    return;
+  end if;
+  if v_public_count <> 4 or not v_helper_exists or not v_schema_exists then
+    raise exception 'Activity V2 R9 explicit-grant target is partial';
+  end if;
+
+  revoke all on function public.activity_v2_list_sessions(integer, timestamptz, uuid)
+    from anon, public, authenticated, service_role;
+  revoke all on function public.activity_v2_session_detail(uuid)
+    from anon, public, authenticated, service_role;
+  revoke all on function public.activity_v2_replace_session(uuid, bigint, text, jsonb)
+    from anon, public, authenticated, service_role;
+  revoke all on function public.activity_v2_delete_session(uuid, bigint, text)
+    from anon, public, authenticated, service_role;
+  revoke all on schema midas_private
+    from anon, public, authenticated, service_role;
+  revoke all on function midas_private.activity_v2_canonical_content(integer, integer, text, jsonb)
+    from anon, public, authenticated, service_role;
+
+  grant execute on function public.activity_v2_list_sessions(integer, timestamptz, uuid)
+    to authenticated;
+  grant execute on function public.activity_v2_session_detail(uuid)
+    to authenticated;
+  grant execute on function public.activity_v2_replace_session(uuid, bigint, text, jsonb)
+    to authenticated;
+  grant execute on function public.activity_v2_delete_session(uuid, bigint, text)
+    to authenticated;
+  grant usage on schema midas_private
+    to authenticated;
+  grant execute on function midas_private.activity_v2_canonical_content(integer, integer, text, jsonb)
+    to authenticated;
+end;
+$activity_v2_r9_grants$;
 
 commit;

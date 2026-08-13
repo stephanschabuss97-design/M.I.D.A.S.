@@ -14,6 +14,8 @@ const semanticsV2Source = fs.readFileSync(semanticsV2Path, 'utf8');
 const dataAccessSource = fs.readFileSync(dataAccessPath, 'utf8');
 const REQUEST_ID = 'aaaaaaaa-0000-4000-8000-000000000001';
 const RESPONSE_TIME = '2026-07-31T12:34:56.123456Z';
+const R9_RESPONSE_TIME = '2026-07-31T12:34:56.123Z';
+const FINGERPRINT = 'a'.repeat(64);
 
 function jsonClone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -265,6 +267,106 @@ function makeHistoricalLookupResult(context, itemKey, values = {}) {
   };
 }
 
+function makeHistoryItem(number, startedAt = R9_RESPONSE_TIME, values = {}) {
+  return {
+    session_id: uuidFor(number),
+    started_at: startedAt,
+    day: startedAt.slice(0, 10),
+    title: null,
+    duration_min: 30,
+    item_count: 1,
+    revision: '1',
+    ...values
+  };
+}
+
+function makeHistoryPage(items, hasMore = false) {
+  const last = items.at(-1);
+  return {
+    schema_version: 'midas.activity-session-history-page.v1',
+    items,
+    has_more: hasMore,
+    next_cursor: hasMore
+      ? { started_at: last.started_at, id: last.session_id }
+      : null
+  };
+}
+
+function makeDetail(context, values = {}) {
+  const running = context.AppModules.activityV2.semantics.getEntryByKey('running');
+  const bench = context.AppModules.activityV2.semantics.getEntryByKey('bench_press');
+  return {
+    schema_version: 'midas.activity-session-detail.v1',
+    session_id: uuidFor(900),
+    catalog_version: 1,
+    revision: '9223372036854775807',
+    content_fingerprint: FINGERPRINT,
+    started_at: '2026-07-31T10:00:00.000Z',
+    ended_at: '2026-07-31T10:30:00.000Z',
+    day: '2026-07-31',
+    title: 'Morning',
+    duration_min: 30,
+    note: null,
+    items: [
+      {
+        item_key: 'running',
+        item_order: 1,
+        item_label_snapshot: running.label,
+        tracking_mode_snapshot: running.tracking_mode,
+        equipment_snapshot: running.equipment,
+        load_comparability_snapshot: running.load_comparability,
+        field_policy_snapshot: jsonClone(running.fields),
+        duration_min: 30,
+        distance_km: 5.25,
+        note: null,
+        sets: []
+      },
+      {
+        item_key: 'bench_press',
+        item_order: 2,
+        item_label_snapshot: bench.label,
+        tracking_mode_snapshot: bench.tracking_mode,
+        equipment_snapshot: bench.equipment,
+        load_comparability_snapshot: bench.load_comparability,
+        field_policy_snapshot: jsonClone(bench.fields),
+        duration_min: null,
+        distance_km: null,
+        note: 'Heavy',
+        sets: [
+          {
+            set_order: 1,
+            tracking_mode: 'strength_sets',
+            reps: 10,
+            duration_sec: null,
+            distance_m: null,
+            weight_kg: 80,
+            assistance_kg: null
+          }
+        ]
+      }
+    ],
+    ...values
+  };
+}
+
+function makeReplacement() {
+  return {
+    schema_version: 'midas.activity-session-replacement.v1',
+    duration_min: 35,
+    note: null,
+    items: [
+      {
+        item_key: 'running',
+        item_order: 1,
+        duration_min: 35,
+        distance_km: 6.5,
+        note: null,
+        sets: []
+      }
+    ]
+  };
+}
+
 async function captureError(promise) {
   try {
     await promise;
@@ -284,6 +386,11 @@ function assertDomainError(error, expected) {
   } else {
     assert.equal(Object.hasOwn(error, 'commitState'), false);
   }
+  if (['replaceSession', 'deleteSession'].includes(expected.operation)) {
+    assert.equal(error.mutationState, expected.mutationState);
+  } else {
+    assert.equal(Object.hasOwn(error, 'mutationState'), false);
+  }
   ['response', 'cause', 'details', 'raw', 'jwt'].forEach((key) => {
     assert.equal(Object.hasOwn(error, key), false);
   });
@@ -296,7 +403,11 @@ test('classic-script namespace is immutable and preserves Activity V1', () => {
   assert.equal(harness.context.AppModules.activity.sentinel, true);
   assert.deepEqual(Object.keys(harness.api).sort(), [
     'commitSession',
-    'loadLastPerformance'
+    'deleteSession',
+    'listSessions',
+    'loadLastPerformance',
+    'loadSessionDetail',
+    'replaceSession'
   ]);
   assert.equal(Object.isFrozen(harness.api), true);
   assert.equal(Object.isExtensible(harness.context.AppModules.activityV2), true);
@@ -1143,4 +1254,329 @@ test('missing dependencies fail before transport and product integration remains
     /\bdocument\s*\./,
     /AppModules\.activity(?!V2)/
   ].forEach((pattern) => assert.equal(pattern.test(dataAccessSource), false, String(pattern)));
+});
+
+test('R9 history and detail enforce exact bounded immutable response contracts', async () => {
+  const historyHarness = makeHarness();
+  const page = makeHistoryPage([
+    makeHistoryItem(902, '2026-07-31T12:34:56.123Z', { revision: '9' }),
+    makeHistoryItem(901, '2026-07-31T12:34:56.123Z', { revision: '8' })
+  ]);
+  historyHarness.state.fetchImpl = async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), {
+      p_limit: 20,
+      p_cursor_started_at: null,
+      p_cursor_id: null
+    });
+    return makeResponse(200, page);
+  };
+  const history = await historyHarness.api.listSessions();
+  assert.deepEqual(jsonClone(history), page);
+  assert.equal(Object.isFrozen(history), true);
+  assert.equal(Object.isFrozen(history.items), true);
+  assert.equal(Object.isFrozen(history.items[0]), true);
+
+  const cursorHarness = makeHarness();
+  cursorHarness.state.fetchImpl = async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), {
+      p_limit: 2,
+      p_cursor_started_at: page.next_cursor?.started_at ?? page.items[1].started_at,
+      p_cursor_id: page.items[1].session_id
+    });
+    return makeResponse(200, makeHistoryPage([]));
+  };
+  await cursorHarness.api.listSessions({
+    limit: 2,
+    cursor: {
+      started_at: page.items[1].started_at,
+      id: page.items[1].session_id
+    }
+  });
+
+  for (const options of [
+    { limit: 0 },
+    { limit: 51 },
+    { limit: 20, cursor: { started_at: R9_RESPONSE_TIME } },
+    { limit: 20, cursor: { started_at: R9_RESPONSE_TIME, id: REQUEST_ID.toUpperCase() } }
+  ]) {
+    const harness = makeHarness();
+    assertDomainError(await captureError(harness.api.listSessions(options)), {
+      code: 'INVALID_HISTORY_REQUEST',
+      operation: 'listSessions',
+      retryable: false
+    });
+    assert.equal(harness.state.calls.length, 0);
+  }
+
+  const detailHarness = makeHarness();
+  const detail = makeDetail(detailHarness.context);
+  detailHarness.state.fetchImpl = async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), { p_session_id: detail.session_id });
+    return makeResponse(200, detail);
+  };
+  const loaded = await detailHarness.api.loadSessionDetail(detail.session_id);
+  assert.deepEqual(jsonClone(loaded), detail);
+  assert.equal(Object.isFrozen(loaded), true);
+  assert.equal(Object.isFrozen(loaded.items[1].field_policy_snapshot), true);
+  assert.equal(Object.isFrozen(loaded.items[1].sets[0]), true);
+  assert.equal(Object.hasOwn(loaded.items[0], 'id'), false);
+  assert.equal(Object.hasOwn(loaded.items[1].sets[0], 'id'), false);
+
+  const nullHarness = makeHarness();
+  nullHarness.state.fetchImpl = async () => makeResponse(200, null);
+  assert.equal(await nullHarness.api.loadSessionDetail(uuidFor(999)), null);
+
+  const legacyUuidHarness = makeHarness();
+  const legacyDetail = makeDetail(legacyUuidHarness.context);
+  legacyDetail.items[0].id = uuidFor(123);
+  legacyUuidHarness.state.fetchImpl = async () => makeResponse(200, legacyDetail);
+  assertDomainError(
+    await captureError(
+      legacyUuidHarness.api.loadSessionDetail(legacyDetail.session_id)
+    ),
+    {
+      code: 'REQUEST_FAILED',
+      operation: 'loadSessionDetail',
+      retryable: true
+    }
+  );
+});
+
+test('R9 mutations preserve decimal CAS bytes and separate mutationState from R8 commitState', async () => {
+  const replaceHarness = makeHarness();
+  const replacement = makeReplacement();
+  const before = jsonClone(replacement);
+  replaceHarness.state.fetchImpl = async (_url, options) => {
+    const sent = JSON.parse(options.body);
+    return makeResponse(200, {
+      schema_version: 'midas.activity-session-mutation-result.v1',
+      operation: 'replace',
+      outcome: 'updated',
+      session_id: sent.p_session_id,
+      revision: '9223372036854775807',
+      content_fingerprint: 'b'.repeat(64)
+    });
+  };
+  replaceHarness.state.fetchWithAuthImpl = async (makeRequest) => {
+    await makeRequest({ authorization: 'Bearer first' });
+    return await makeRequest({ authorization: 'Bearer refreshed' });
+  };
+  const replaceResult = await replaceHarness.api.replaceSession({
+    sessionId: uuidFor(900),
+    expectedRevision: '9223372036854775806',
+    expectedContentFingerprint: FINGERPRINT,
+    session: replacement
+  });
+  assert.equal(replaceResult.revision, '9223372036854775807');
+  assert.equal(Object.isFrozen(replaceResult), true);
+  assert.deepEqual(replacement, before);
+  assert.equal(replaceHarness.state.calls.length, 2);
+  assert.equal(
+    replaceHarness.state.calls[0].options.body,
+    replaceHarness.state.calls[1].options.body
+  );
+  assert.deepEqual(JSON.parse(replaceHarness.state.calls[0].options.body), {
+    p_session_id: uuidFor(900),
+    p_expected_revision: '9223372036854775806',
+    p_expected_content_fingerprint: FINGERPRINT,
+    p_replacement: replacement
+  });
+  assert.deepEqual(replaceHarness.state.fetchOptions, [
+    { tag: 'activity-v2:activity_v2_replace_session', maxAttempts: 2 }
+  ]);
+
+  const conflictHarness = makeHarness();
+  conflictHarness.state.fetchImpl = async () =>
+    makeResponse(409, { message: 'MIDAS_ACTIVITY_SESSION_CONFLICT private' });
+  assertDomainError(
+    await captureError(
+      conflictHarness.api.deleteSession({
+        sessionId: uuidFor(900),
+        expectedRevision: '1',
+        expectedContentFingerprint: FINGERPRINT
+      })
+    ),
+    {
+      code: 'SESSION_CONFLICT',
+      operation: 'deleteSession',
+      retryable: false,
+      mutationState: 'not_applied'
+    }
+  );
+
+  const deleteHarness = makeHarness();
+  deleteHarness.state.fetchImpl = async (_url, options) => {
+    const sent = JSON.parse(options.body);
+    return makeResponse(200, {
+      schema_version: 'midas.activity-session-mutation-result.v1',
+      operation: 'delete',
+      outcome: 'already_absent',
+      session_id: sent.p_session_id
+    });
+  };
+  const deleteResult = await deleteHarness.api.deleteSession({
+    sessionId: uuidFor(901),
+    expectedRevision: '2',
+    expectedContentFingerprint: FINGERPRINT
+  });
+  assert.deepEqual(jsonClone(deleteResult), {
+    schema_version: 'midas.activity-session-mutation-result.v1',
+    operation: 'delete',
+    outcome: 'already_absent',
+    session_id: uuidFor(901)
+  });
+  assert.equal(Object.isFrozen(deleteResult), true);
+
+  for (const [token, code] of [
+    ['MIDAS_ACTIVITY_SESSION_NOT_FOUND', 'SESSION_NOT_FOUND'],
+    ['MIDAS_ACTIVITY_REVISION_EXHAUSTED', 'REVISION_EXHAUSTED'],
+    ['MIDAS_ACTIVITY_INVALID_SESSION', 'INVALID_SESSION']
+  ]) {
+    const harness = makeHarness();
+    harness.state.fetchImpl = async () => makeResponse(400, { message: token });
+    assertDomainError(
+      await captureError(
+        harness.api.replaceSession({
+          sessionId: uuidFor(900),
+          expectedRevision: '1',
+          expectedContentFingerprint: FINGERPRINT,
+          session: makeReplacement()
+        })
+      ),
+      {
+        code,
+        operation: 'replaceSession',
+        retryable: false,
+        mutationState: 'not_applied'
+      }
+    );
+  }
+
+  const unknownHarness = makeHarness();
+  unknownHarness.state.fetchImpl = async () => makeResponse(200, { outcome: 'updated' });
+  assertDomainError(
+    await captureError(
+      unknownHarness.api.replaceSession({
+        sessionId: uuidFor(900),
+        expectedRevision: '1',
+        expectedContentFingerprint: FINGERPRINT,
+        session: makeReplacement()
+      })
+    ),
+    {
+      code: 'MUTATION_OUTCOME_UNKNOWN',
+      operation: 'replaceSession',
+      retryable: false,
+      mutationState: 'unknown'
+    }
+  );
+
+  for (const revision of [1, '01', '0', '9223372036854775808']) {
+    const harness = makeHarness();
+    assertDomainError(
+      await captureError(
+        harness.api.deleteSession({
+          sessionId: uuidFor(900),
+          expectedRevision: revision,
+          expectedContentFingerprint: FINGERPRINT
+        })
+      ),
+      {
+        code: 'INVALID_SESSION',
+        operation: 'deleteSession',
+        retryable: false,
+        mutationState: 'not_applied'
+      }
+    );
+    assert.equal(harness.state.calls.length, 0);
+  }
+
+  const undefinedHarness = makeHarness();
+  const undefinedReplacement = makeReplacement();
+  undefinedReplacement.items[0].distance_km = undefined;
+  assertDomainError(
+    await captureError(
+      undefinedHarness.api.replaceSession({
+        sessionId: uuidFor(900),
+        expectedRevision: '1',
+        expectedContentFingerprint: FINGERPRINT,
+        session: undefinedReplacement
+      })
+    ),
+    {
+      code: 'INVALID_SESSION',
+      operation: 'replaceSession',
+      retryable: false,
+      mutationState: 'not_applied'
+    }
+  );
+  assert.equal(undefinedHarness.state.calls.length, 0);
+
+  const legacyHarness = makeHarness();
+  legacyHarness.state.fetchImpl = async () =>
+    makeResponse(400, { message: 'MIDAS_ACTIVITY_INVALID_SESSION' });
+  assertDomainError(
+    await captureError(
+      legacyHarness.api.commitSession({ requestId: REQUEST_ID, payload: makePayload() })
+    ),
+    {
+      code: 'INVALID_SESSION',
+      operation: 'commitSession',
+      retryable: false,
+      commitState: 'not_committed'
+    }
+  );
+});
+
+test('R9 keyset pagination keeps timestamp ties stable and fences intermediate inserts', async () => {
+  const harness = makeHarness();
+  const tieTime = '2026-07-31T12:00:00.000Z';
+  const olderTime = '2026-07-30T12:00:00.000Z';
+  const rows = [
+    makeHistoryItem(6, tieTime),
+    makeHistoryItem(5, tieTime),
+    makeHistoryItem(4, tieTime),
+    makeHistoryItem(3, olderTime)
+  ];
+  let callCount = 0;
+  harness.state.fetchImpl = async (_url, options) => {
+    callCount += 1;
+    if (callCount === 2) rows.push(makeHistoryItem(7, tieTime));
+    const request = JSON.parse(options.body);
+    const sorted = [...rows].sort((left, right) =>
+      left.started_at === right.started_at
+        ? right.session_id.localeCompare(left.session_id)
+        : right.started_at.localeCompare(left.started_at)
+    );
+    const afterCursor = sorted.filter(
+      (row) =>
+        request.p_cursor_started_at === null ||
+        row.started_at < request.p_cursor_started_at ||
+        (row.started_at === request.p_cursor_started_at &&
+          row.session_id < request.p_cursor_id)
+    );
+    const selected = afterCursor.slice(0, request.p_limit + 1);
+    return makeResponse(
+      200,
+      makeHistoryPage(
+        selected.slice(0, request.p_limit),
+        selected.length > request.p_limit
+      )
+    );
+  };
+
+  const first = await harness.api.listSessions({ limit: 2, cursor: null });
+  const second = await harness.api.listSessions({
+    limit: 2,
+    cursor: first.next_cursor
+  });
+  assert.deepEqual(
+    [...first.items, ...second.items].map((item) => item.session_id),
+    [uuidFor(6), uuidFor(5), uuidFor(4), uuidFor(3)]
+  );
+  assert.equal(second.has_more, false);
+  assert.equal(second.next_cursor, null);
+
+  const refreshed = await harness.api.listSessions({ limit: 2, cursor: null });
+  assert.equal(refreshed.items[0].session_id, uuidFor(7));
 });

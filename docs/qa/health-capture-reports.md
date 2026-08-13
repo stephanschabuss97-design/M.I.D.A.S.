@@ -519,3 +519,51 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Semantik/Katalog, SQL 22 oder Rollback, RLS/ACL/Owner/Functionsource,
   Test-PWA-/Worker-/Android-Debuggrenze, Produkt-Scriptload, Activity V1,
   Dual-Write, physisches Recovery-Delete oder ein späterer Produktcutover.
+
+### HCR-027 - Activity V2 R9 History, Correction und Delete bleiben isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R9 Roadmap](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Roadmap (DONE).md>)
+  und [R9 Evidence](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Evidence (DONE).md>)
+- Ebene: local-runtime + Browser + disposable PostgreSQL 17/PostgREST +
+  produktiver read-only SQL-Postcheck
+- Ausführung: automated + manual + einmalig owner-gatetes SQL 23
+- Wirkung: produktiv ausschließlich additive Revision/RPC/ACL-Struktur; kein
+  Productload, keine reale Activity-V2-Session, Korrektur oder Löschung
+- Voraussetzung: R1-R9-/C2-Sources und Tests gehören zum selben Repo-Stand.
+  SQL-Fixtures laufen nur disposable. Produktive Mutation-RPC-Smokes bleiben
+  verboten, solange keine eigene reale Session und gesonderte Freigabe
+  existieren.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`,
+  rekursive `node --check`-Prüfung und
+  `node tools/activity-v2-r8-isolation.mjs` ausführen. Bei SQL- oder Fixture-
+  Änderung das guarded Fixture
+  `sql/tests/23_Activity_V2_History_Lifecycle_fixture.sql` auf PostgreSQL 17
+  vollständig ausführen. Den isolierten R9-Harness bei 1440x900, 390x844 und
+  320x800 auf History/Detail/Correction/Delete, Conflict, Unknown Outcome,
+  Admission, Fokus, A11y, Overflow und Konsole prüfen. Produktiv nur read-only
+  Revision, Funktionsquellen/ACLs, Data-API-Negativgrenze, R8-Kanonik und
+  Session-/Item-/Set-Zähler prüfen.
+- Erwartung: 208/208 lokale Contracts und Isolation
+  `protected=7, product_v2_loads=0, core_network_edges=0,
+  unsafe_diagnostics=0, secret_material=0, recovery_deletes=0,
+  local_worker_scope=1`. Die Historie ist bounded und keyset-paginiert;
+  Details verwenden gespeicherte Snapshots. Correction ist atomarer Vollersatz
+  unter Revision-/Content-Dual-CAS, bewahrt Erstellungsidentität und
+  ursprüngliche Katalogversion und behandelt Child-UUIDs nicht als fachliche
+  Identität. Delete ist ownergebunden, bestätigt, wiederholsicher und cascaded.
+  Edit/Edit-, Edit/Delete- und Delete/Delete-Races, Replay und Unknown Outcomes
+  bleiben deterministisch. SQL 23 besteht Fresh/Rerun/Drift/Rollback/Race/
+  Security; `midas_private` bleibt außerhalb der Data API. Das produktive
+  Postimage bleibt 0/0/0 und Activity V1 der einzige sichtbare Consumer.
+- Reviewgrenze: Vier erfolgreiche CodeRabbit-Läufe lieferten berechtigte
+  Findings, die vollständig korrigiert und revalidiert wurden. Der danach
+  angeforderte Null-Lauf endete vor Analyse rate-limitiert; er ist kein PASS,
+  sondern eine am 2026-08-13 ausdrücklich owner-akzeptierte, nicht blockierende
+  Restunsicherheit. R8-T16/T19 bleiben ebenfalls keine R9-PASS-Evidence.
+- Invalidiert durch: R9-Data-Access-/Canonicalization-/Correction-/History-/
+  Shell-/CSS-/Harness-/Contractteständerungen; SQL 23, Rollback, Fixture oder
+  SQL-16-Grants; Revision-, Cursor-, Snapshot-, Fingerprint-, CAS-, ACL-/RLS-/
+  Auth-/Owner-/Search-Path-/Overload-/Data-API- oder Cachevertrag; neue
+  Produkt-Scriptloads, Activity-V1-/R7-/R8-Kopplung, reale Lifecycle-Nutzung
+  oder späterer Produktcutover.

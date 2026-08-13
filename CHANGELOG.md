@@ -18,6 +18,11 @@ erhalten.
   atomarem retry-idempotentem Session-Commit und ownergebundenem
   Last-Performance-Lookup; Activity V1 und die sichtbare UI bleiben
   unverändert.
+- Additive Activity-V2-History-/Lifecycle-Grundlage mit begrenzter
+  Keyset-Historie, gespeicherten Snapshotdetails, revisions- und
+  fingerprintgeschützter atomarer Korrektur sowie wiederholsicherem Hard
+  Delete. Die neuen RPCs sind produktiv installiert, aber bis R12 ohne
+  sichtbaren Consumer.
 
 - Kanonischer QA-Einstieg mit fachlichen Suites, operativen Runbooks und
   eigenem Release-Readiness-Vertrag.
@@ -53,6 +58,10 @@ erhalten.
   laufen ausschließlich über den gehärteten authentifizierten
   `SECURITY DEFINER`-Commit. `anon`, `service_role` und `PUBLIC` erhalten kein
   RPC-Execute, und direkte Tabellen-DML ist entzogen.
+- Activity-V2-Korrektur und -Löschung laufen ausschließlich über eng
+  ownergebundene, gehärtete RPCs mit Revision/Content-CAS. Der interne
+  Canonicalization-Helper liegt im nicht exponierten Schema `midas_private`;
+  direkte Tabellen-DML sowie `anon`-/`PUBLIC`-Zugriff bleiben entzogen.
 
 - Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
   Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.

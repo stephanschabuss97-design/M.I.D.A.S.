@@ -1154,6 +1154,106 @@ test('lookup callback is request-free while hidden and cached once per key and m
   );
 });
 
+test('T-ACT-R9-16 refreshLastPerformance fences generations and returns terminal cache states', async () => {
+  let runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('running');
+  const waits = [deferred(), deferred(), deferred()];
+  const calls = [];
+  let callIndex = 0;
+  let mounted = mountRuntime(runtime, {
+    loadLastPerformance(itemKey) {
+      calls.push(itemKey);
+      return waits[callIndex++].promise;
+    }
+  });
+  assert.deepEqual(Object.keys(mounted.shell), [
+    'open',
+    'render',
+    'requestClose',
+    'isOpen',
+    'refreshLastPerformance',
+    'destroy'
+  ]);
+  mounted.shell.open({ opener: runtime.opener });
+  assert.deepEqual(calls, ['running']);
+
+  const refreshed = mounted.shell.refreshLastPerformance(['running', 'football']);
+  assert.deepEqual(calls, ['running', 'running']);
+  waits[0].resolve(makeLookupResult(runtime, 'running'));
+  await settle();
+  assert.match(
+    mounted.panel.querySelector('.activity-v2-session-history').textContent,
+    /wird geladen/
+  );
+  waits[1].resolve(null);
+  const result = await refreshed;
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    status: 'success',
+    items: [
+      { item_key: 'running', status: 'empty' },
+      { item_key: 'football', status: 'invalidated' }
+    ]
+  });
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(Object.isFrozen(result.items), true);
+  assert.match(
+    mounted.panel.querySelector('.activity-v2-session-history').textContent,
+    /Noch kein vorheriger Eintrag/
+  );
+
+  const failed = mounted.shell.refreshLastPerformance(['running']);
+  assert.deepEqual(calls, ['running', 'running', 'running']);
+  waits[2].reject(new Error('private lookup failure'));
+  assert.deepEqual(JSON.parse(JSON.stringify(await failed)), {
+    status: 'error',
+    items: [{ item_key: 'running', status: 'error' }]
+  });
+  assert.match(
+    mounted.panel.querySelector('.activity-v2-session-history').textContent,
+    /derzeit nicht verfügbar/
+  );
+
+  runtime = createRuntime({ useSemanticsV2: true });
+  runtime.draft.addItem('running');
+  let closedCalls = 0;
+  mounted = mountRuntime(runtime, {
+    loadLastPerformance() {
+      closedCalls += 1;
+      return Promise.resolve(null);
+    }
+  });
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(await mounted.shell.refreshLastPerformance(['running']))
+    ),
+    {
+      status: 'success',
+      items: [{ item_key: 'running', status: 'invalidated' }]
+    }
+  );
+  assert.equal(closedCalls, 0);
+  mounted.shell.open({ opener: runtime.opener });
+  await settle();
+  assert.equal(closedCalls, 1);
+
+  const accessor = [];
+  Object.defineProperty(accessor, '0', {
+    enumerable: true,
+    get() {
+      throw new Error('must not execute');
+    }
+  });
+  assert.equal(accessor.length, 1);
+  await assert.rejects(
+    mounted.shell.refreshLastPerformance(accessor),
+    (error) => error?.code === 'INVALID_OPTIONS'
+  );
+  await assert.rejects(
+    mounted.shell.refreshLastPerformance(['running', 'running']),
+    (error) => error?.code === 'INVALID_OPTIONS'
+  );
+});
+
 test('lookup renders immutable read-only success, empty, error and explicit retry', async () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   const raw = makeLookupResult(runtime, 'bench_press', {
