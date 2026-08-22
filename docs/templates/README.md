@@ -74,16 +74,27 @@ bleiben dennoch getrennt nachvollziehbar.
   Delta- oder Consumer-Review und die durch seine Änderung erforderlichen
   Checks. Es gibt keinen separaten S4.5-Abschlussreview und keine
   CodeRabbit-Prüfung innerhalb von S4.
+- Ein Full Review innerhalb von S4 ist eine ausdrücklich im S4 Readiness Review
+  begründete Ausnahme für eine echte Risiko- oder Produktivgrenze, etwa
+  Security, RLS, destruktive Datenwirkung oder produktives SQL. Seine Evidence,
+  Invalidation-Bedingungen und der dadurch in S5 nicht erneut auszuführende
+  Prüfanteil müssen vor der Umsetzung benannt sein.
 - S5 ist das integrierte Qualitätsgate für den finalen Gesamtdiff vor jeder
   produktiven Wirkung. Zuerst läuft die vollständige relevante lokale,
   statische und gegebenenfalls Browser-/Device-Testmatrix, danach der native
-  Code- und Contract Review.
-- Bei Codeänderungen folgt CodeRabbit in S5 als zusätzliche unabhängige
-  Kontrolle. Findings werden gegen Roadmap, Produktvertrag und reale
-  Implementierung bewertet und niemals blind korrigiert.
-- Nach berechtigten Korrekturen werden alle invalidierten Checks wiederholt.
-  CodeRabbit wird erneut ausgeführt, sobald die Korrektur Code im geprüften
-  Diff ändert; reine Dokumentationskorrekturen invalidieren den Lauf nicht.
+  Code- und Contract Review. Unveränderte S4-Full-Review-Evidence wird dabei
+  referenziert und nicht erneut erzeugt.
+- Bei Codeänderungen folgt in S5 genau ein geplanter initialer CodeRabbit-Lauf
+  als zusätzliche unabhängige Kontrolle. Findings werden gesammelt gegen
+  Roadmap, Produktvertrag und reale Implementierung bewertet und niemals blind
+  korrigiert.
+- Berechtigte Korrekturen werden gebündelt umgesetzt. Danach werden alle
+  invalidierten Checks und genau ein geplanter CodeRabbit-Verifikationslauf
+  ausgeführt. Reine Dokumentationskorrekturen invalidieren den Lauf nicht.
+- Weitere CodeRabbit-Läufe erfolgen nur, wenn der Verifikationslauf ein neues
+  P0/P1-, Security-, Datenintegritäts- oder Vertragsrisiko eröffnet oder der
+  Owner sie ausdrücklich beauftragt. Gewöhnliche Nitpicks starten keine
+  unbeschränkte Reviewspirale.
 - Ein technisch oder fachlich mehrdeutiges Finding bleibt ein Owner-Gate. Ein
   nicht verfügbarer externer Review wird mit Grund dokumentiert und nicht
   durch ein behauptetes Ergebnis ersetzt.

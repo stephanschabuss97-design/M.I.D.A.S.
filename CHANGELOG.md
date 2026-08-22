@@ -23,6 +23,12 @@ erhalten.
   fingerprintgeschützter atomarer Korrektur sowie wiederholsicherem Hard
   Delete. Die neuen RPCs sind produktiv installiert, aber bis R12 ohne
   sichtbaren Consumer.
+- Versionierter Activity-V2-Coaching-Export für abgeschlossene Ist-Sessions:
+  ein ownergebundener read-only Snapshot-RPC liefert vollständige,
+  deterministisch sortierte Session-, Item- und Satzdaten mit historischer
+  Katalogsemantik, exakten Einheiten, Counts und All-or-Error-Caps. Die
+  Function ist produktiv installiert; Download-UI, Doctor View, Health Export
+  und Activity-V2-Cutover bleiben bis zu ihren Folgeroadmaps unverändert.
 
 - Kanonischer QA-Einstieg mit fachlichen Suites, operativen Runbooks und
   eigenem Release-Readiness-Vertrag.

@@ -405,6 +405,7 @@ test('classic-script namespace is immutable and preserves Activity V1', () => {
     'commitSession',
     'deleteSession',
     'listSessions',
+    'loadCoachingExport',
     'loadLastPerformance',
     'loadSessionDetail',
     'replaceSession'

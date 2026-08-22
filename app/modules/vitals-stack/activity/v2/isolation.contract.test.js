@@ -18,7 +18,8 @@ test('S4.12 integrated guard reports only the exact payload-free projection', ()
   assert.equal(
     output,
     'PASS protected=7 product_v2_loads=0 core_network_edges=0 ' +
-      'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1\n'
+      'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1 ' +
+      'r10_negative_oracles=6\n'
   );
 });
 

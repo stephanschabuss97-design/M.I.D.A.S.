@@ -27,9 +27,17 @@ const protectedPaths = Object.freeze([
   'android/app/src/main'
 ]);
 const explicitGrantsPath = 'sql/16_Explicit_Grants.sql';
-const r9ExplicitGrantsSha256 =
-  'cbe2ea0e1bcc89f6be38ae83f645aa19d57d4334158c5f9ace356360058851fc';
+const r10ExplicitGrantsSha256 =
+  '8f6882c6f3945d86ad1e3455391009e3a91a4f286672b54dec747bb1a950ff4c';
 const protectedTargetCount = protectedPaths.length + 1;
+const r10NegativeOraclePaths = Object.freeze([
+  'app/modules/doctor-stack',
+  'app/modules/vitals-stack/protein',
+  'app/modules/vitals-stack/trendpilot',
+  'app/supabase/api/reports.js',
+  'app/supabase/api/trendpilot.js',
+  'app/supabase/api/vitals.js'
+]);
 const blockFPaths = Object.freeze([
   'android/app/build.gradle.kts',
   'android/app/src/debug/AndroidManifest.xml',
@@ -61,8 +69,19 @@ requireCondition(
   createHash('sha256')
     .update(read(explicitGrantsPath).replace(/\r\n/g, '\n'))
     .digest('hex') ===
-    r9ExplicitGrantsSha256,
+    r10ExplicitGrantsSha256,
   'EXPLICIT_GRANTS_SOURCE'
+);
+requireCondition(
+  git(['diff', '--name-only', 'HEAD', '--', ...r10NegativeOraclePaths]) === '',
+  'R10_NEGATIVE_ORACLE_DIFF'
+);
+requireCondition(
+  git([
+    'status', '--porcelain=v1', '--untracked-files=all', '--',
+    ...r10NegativeOraclePaths
+  ]) === '',
+  'R10_NEGATIVE_ORACLE_STATUS'
 );
 git(['diff', '--check']);
 
@@ -74,6 +93,10 @@ const productSources = [
 ].join('\n');
 const productV2Loads = (productSources.match(/activity\/v2|session-commit|test-pwa/gi) || []).length;
 requireCondition(productV2Loads === 0, 'PRODUCT_V2_LOAD');
+requireCondition(
+  !/activity-coaching-export|coachingExport|loadCoachingExport/.test(productSources),
+  'PRODUCT_R10_LOAD'
+);
 
 const coreRuntime = coreRuntimePaths.map(read).join('\n');
 const coreNetworkEdges = (
@@ -128,5 +151,6 @@ requireCondition(!/public\/manifest\.json|midas-shell-|\/M\.I\.D\.A\.S\.\//.test
 
 process.stdout.write(
   `PASS protected=${protectedTargetCount} product_v2_loads=0 core_network_edges=0 ` +
-  'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1\n'
+  'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1 ' +
+  `r10_negative_oracles=${r10NegativeOraclePaths.length}\n`
 );

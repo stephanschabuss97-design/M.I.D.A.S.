@@ -549,6 +549,130 @@ The setting does not itself authorize rollback. Productive SQL 23, every
 productive rollback and every real Activity-V2 correction/delete remain
 separate Owner gates. Never create a synthetic productive session.
 
+# Activity V2 R10 Completed-Activity Coaching Export
+
+`24_Activity_V2_Coaching_Export.sql` adds exactly one read-only function:
+`public.activity_v2_coaching_export(date,date) returns jsonb`. It exports the
+current completed Activity-V2 facts for the authenticated owner from one
+`STABLE SECURITY INVOKER` calling-query snapshot. It does not call the R9
+history/detail RPCs, write Activity data, expose user/request/fingerprint or
+child-UUID fields, or activate a product consumer.
+
+The complete fresh/disposable R10 target order is exactly:
+
+1) `20_Activity_V2.sql`;
+2) `21_Activity_V2_Catalog_V2.sql`;
+3) `22_Activity_V2_Commit_Compatibility.sql`;
+4) `23_Activity_V2_History_Lifecycle.sql`;
+5) `24_Activity_V2_Coaching_Export.sql`;
+6) `16_Explicit_Grants.sql`.
+
+On an already canonical R9 product target, apply only SQL 24. SQL 24 performs
+its own exact revoke/grant in the same transaction. The SQL-16 block is the
+reviewed full-build and future explicit-grant mirror; it was not needed or run
+for the R10 product action. Any later productive SQL-16 reconciliation is a
+separate reviewed Owner gate. Never rerun SQL 20, 21 or 22 after SQL 23. SQL
+24 accepts only the exact R9 postimage or its own exact R10 postimage and fails
+closed on dependency, relation, catalog, table-ACL/RLS, overload,
+function-source, hardening or execute-ACL drift.
+
+The reviewed PostgreSQL-17 hashes are:
+
+- SQL 24 file SHA-256:
+  `fad0af25e471553a7d1f7263e502d0e5a58423560fc655753a7630f5ba3bd1b6`;
+- export `pg_get_functiondef` SHA-256:
+  `ef3b00b9e674fa379d0e190c8c8b9866d14d4994f488e4b1279c66d174c22376`;
+- rollback file SHA-256:
+  `ce4d5d2dbc4634eaa5c056434fb54f9a6b6eb1eea7f8665dbed77c290db1d9d7`;
+- disposable fixture file SHA-256:
+  `3a79ca0fb5c3a83a64ddef5e424931f9e120e7770ecbcdf7d3c80f7423559877`.
+
+Only `authenticated` receives Execute. `PUBLIC`, `anon` and `service_role`
+do not; `postgres` remains owner. Every private table read inside the
+function is also explicitly filtered to the same `auth.uid()`. The inclusive
+Vienna-local range is at most 366 days and not future. Caps are 1000 sessions,
+10000 items and 50000 sets; all three counts complete before payload
+aggregation. Exceeding a cap or detecting historical snapshot/order/mode
+drift returns an explicit error and never a truncated payload.
+
+The isolated R10 client order is:
+
+1) `activity-coaching-export.js` (pure frozen V1/range contract);
+2) `data-access.js` for the single `loadCoachingExport({ from, to })` RPC;
+3) `activity-coaching-export-controller.js`;
+4) `activity-coaching-export-shell.js` and its CSS;
+5) `activity-coaching-export-harness.js` only from the isolated harness HTML.
+
+None of these files may be added to productive `index.html`, navigation,
+Activity V1 or the productive service worker in R10. The harness uses its
+committed JSON fixture and fake adapter; it never writes Activity data.
+
+Run the local client gates from the repository root:
+
+```text
+node --test app/modules/vitals-stack/activity/v2/activity-coaching-export*.contract.test.js
+node tools/activity-v2-r8-isolation.mjs
+python -m http.server 8766 --bind 127.0.0.1
+npx @playwright/test test app/modules/vitals-stack/activity/v2/activity-coaching-export-browser.smoke.spec.js --workers=1
+```
+
+The browser command targets only the local isolated harness and covers
+desktop, 390x844 and 320x800. If the in-app browser runtime is available, use
+it first; a recorded local Edge/Playwright fallback is acceptable for this
+harness gate. Do not run the browser fixture against a productive origin.
+
+The guarded disposable regression fixture is
+`sql/tests/24_Activity_V2_Coaching_Export_fixture.sql`. It requires the same
+PostgreSQL-17 database `midas_activity_v2_s45`, owner/session user `postgres`,
+extensions and Supabase-role bootstrap as the R9 fixture; `supabase_admin`
+must be a login-capable privileged local harness role and the local postgres
+password used by dblink is `postgres`. It rebuilds R9 and proves SQL-24 fresh,
+rerun, overload/source/ACL drift, auth/RLS/BOLA, ranges, empty and realistic
+v1/v2/mode/correction/deletion exports, original-catalog drift, exact/over
+caps, two concurrent snapshot races, exact rollback, second-rollback
+rejection, forward-after-rollback, SQL-16 mirroring and final zero-row cleanup.
+The exact 1000/10000/50000 payload is evaluated with an authenticated
+`statement_timeout = 8s`; a timeout-setting change is not part of R10.
+
+`24_Activity_V2_Coaching_Export_Rollback.sql` removes only the exact reviewed
+date/date export function and verifies unchanged session/item/set hashes. It
+rejects a second rollback and every overload/source/hardening/ACL drift.
+Productive SQL 24 and every productive rollback require their own current
+read-only preflight, incident/owner decision and explicit owner gate. Never
+run the fixture or create synthetic Activity data on the product database.
+Installing SQL 24 does not authorize product UI wiring. A failed read-only
+client request is safe to repeat and has no commit/mutation state. Rollback
+remains the exact guarded SQL-24 rollback above and requires a fresh Owner
+decision; isolated client/harness files have no productive runtime effect
+while the product-load prohibition remains intact.
+
+## Productive R10 execution record (2026-08-22)
+
+- Target: linked Supabase project `M.I.D.A.S.` (`jlylmservssinsavlkdi`),
+  region `eu-central-1`, PostgreSQL 17.6.
+- Owner approval: explicit single gate after the complete S5 matrix and
+  read-only preflight; approval covered SQL 24 only, not SQL 16 or rollback.
+- Executed source: only `24_Activity_V2_Coaching_Export.sql`, SHA-256
+  `fad0af25e471553a7d1f7263e502d0e5a58423560fc655753a7630f5ba3bd1b6`;
+  linked Supabase CLI exited successfully. No retry, fixture, session DML,
+  rollback or deploy was executed.
+- Postimage: exactly one `date,date -> jsonb` function, owner `postgres`,
+  `STABLE SECURITY INVOKER`, `search_path=''`, function-definition SHA-256
+  `ef3b00b9e674fa379d0e190c8c8b9866d14d4994f488e4b1279c66d174c22376`.
+  Function ACL is exactly owner plus `authenticated`; PUBLIC, `anon` and
+  `service_role` do not receive Execute.
+- Runtime smoke: anonymous/missing-auth calls fail closed; an authenticated
+  real user received a complete client-validated Empty V1 for the requested
+  inclusive Vienna day.
+- Data postcondition: sessions/items/sets remained `0/0/0` and their complete
+  table hashes remained unchanged. Advisors gained no R10-relevant warning.
+- S6 read-only recheck confirmed the same function hash, owner, mode,
+  `search_path`, ACL and `0/0/0` postimage. A first diagnostic filter compared
+  `pg_get_function_identity_arguments` to unnamed `date,date` and therefore
+  produced a false absence; the corrected `to_regprocedure` lookup found the
+  canonical named-argument signature `p_from date, p_to date`. Neither query
+  wrote data.
+
 # Adding a New Module Script
 
 1) Create `sql/NN_Module_Name.sql` (or a final master script once the refactor is done).

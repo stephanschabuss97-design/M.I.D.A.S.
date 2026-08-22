@@ -374,6 +374,9 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[gleicher Scope, gleiche Wirkung, kompatible Reviewtiefe, keine Gates dazwischen]`
 - Review je Ausführungsblock:
   - `[gemeinsamer Review plus weiterhin nachvollziehbare Substep-Ergebnisse]`
+- Reviewbudget:
+  - `[S4 grundsätzlich Delta/Consumer; begründete Full-Review-Grenzen mit
+    Evidence-ID, Invalidation und in S5 wiederverwendetem Prüfanteil / keine]`
 - Readiness-Findings/Korrekturen:
   - `[kurz oder none]`
 
@@ -385,7 +388,9 @@ Discovery Wave endet hier; sie startet S4 nicht selbstständig.
 
 S4 ist ausschließlich der Implementierungsblock. Substeps erhalten den für
 ihr Delta erforderlichen Review und invalidierte Checks. Ein separater
-S4.5-Abschlussreview oder CodeRabbit-Lauf gehört nicht in S4.
+S4.5-Abschlussreview oder CodeRabbit-Lauf gehört nicht in S4. Ein Full Review
+ist nur an einer in S4R ausdrücklich begründeten Risiko- oder Produktivgrenze
+zulässig und muss seine wiederverwendbare Evidence sowie Invalidation nennen.
 
 ### S4.x - [Name]
 
@@ -398,7 +403,9 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Umsetzung:
   - `[Änderung]`
 - Review:
-  - `Delta / Consumer`
+  - `Delta / Consumer / in S4R begründetes Full`
+- S5-Evidence-Übernahme:
+  - `[keine / Evidence-ID + unverändert gültiger Prüfanteil]`
 - Invalidation:
   - `[erneut nötige T-/EV-IDs]`
 - Gate:
@@ -430,14 +437,16 @@ Deterministische Reihenfolge:
 1. Vollständige relevante lokale, statische und gegebenenfalls
    Browser-/Device-Testmatrix ausführen.
 2. Nativen Full Code und Contract Review des finalen Gesamtdiffs durchführen.
-3. Bei Codeänderungen CodeRabbit gegen denselben finalen Diff ausführen.
-4. Jedes externe Finding gegen Roadmap, Produktvertrag und reale
+3. Bei Codeänderungen genau einen geplanten initialen CodeRabbit-Lauf gegen
+   denselben finalen Diff ausführen.
+4. Jedes externe Finding gesammelt gegen Roadmap, Produktvertrag und reale
    Implementierung bewerten; nichts blind korrigieren.
-5. Nur berechtigte Findings minimal korrigieren und alle dadurch invalidierten
-   Checks wiederholen.
-6. CodeRabbit erneut ausführen, sobald eine berechtigte Korrektur Code im
-   geprüften Diff ändert. Reine Dokumentationskorrekturen invalidieren den
-   CodeRabbit-Lauf nicht.
+5. Berechtigte Findings gebündelt und minimal korrigieren und alle dadurch
+   invalidierten Checks wiederholen.
+6. Genau einen geplanten CodeRabbit-Verifikationslauf auf dem korrigierten Diff
+   ausführen. Weitere Läufe nur bei neuem P0/P1-, Security-, Datenintegritäts-
+   oder Vertragsrisiko oder auf ausdrücklichen Owner-Auftrag; gewöhnliche
+   Nitpicks eröffnen keine unbeschränkte Reviewspirale.
 7. Mehrdeutige Produktentscheidungen als Owner-Gate behandeln. Einen nicht
    verfügbaren externen Review mit Grund dokumentieren und nicht ersetzen.
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Activity V2 Export – isolierter Test</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./activity-coaching-export-shell.css">
+</head>
+<body>
+  <main class="export-shell" data-role="root">
+    <h1>Aktivitätsdaten exportieren</h1>
+    <p class="intro">Abgeschlossene Activity-V2-Sessions als vollständige JSON-Datei.</p>
+    <form data-role="form">
+      <fieldset>
+        <legend>Zeitraum</legend>
+        <div class="preset-grid">
+          <label class="preset-option"><input type="radio" name="range-preset" value="6"><span>6 Monate</span></label>
+          <label class="preset-option"><input type="radio" name="range-preset" value="3"><span>3 Monate</span></label>
+          <label class="preset-option"><input type="radio" name="range-preset" value="custom"><span>Eigener Zeitraum</span></label>
+        </div>
+        <div class="custom-fields" data-role="custom-fields" hidden>
+          <label>Von<input data-role="from" type="date"></label>
+          <label>Bis<input data-role="to" type="date"></label>
+        </div>
+      </fieldset>
+      <div class="actions">
+        <button data-role="submit" type="submit">Export laden</button>
+        <button data-role="retry" class="secondary" type="button" hidden>Erneut versuchen</button>
+        <a data-role="download" class="download" hidden>JSON herunterladen</a>
+      </div>
+    </form>
+    <p class="status" data-role="status" tabindex="-1">Test wird vorbereitet.</p>
+  </main>
+  <script defer src="./activity-coaching-export.js"></script>
+  <script defer src="./activity-coaching-export-controller.js"></script>
+  <script defer src="./activity-coaching-export-shell.js"></script>
+  <script defer src="./activity-coaching-export-harness.js"></script>
+</body>
+</html>

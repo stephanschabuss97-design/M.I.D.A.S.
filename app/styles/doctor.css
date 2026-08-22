@@ -368,8 +368,8 @@
   font-size:var(--text-sm);
   line-height:1.35;
   display:-webkit-box;
-  line-clamp:3;
   -webkit-line-clamp:3;      /* 3 Zeilen, bei Bedarf 2 setzen */
+  line-clamp:3;
   -webkit-box-orient:vertical;
   overflow:hidden;
   word-break:break-word;
@@ -413,8 +413,8 @@
     grid-column:1 / -1;
   }
   .doctor-view .notes{
-    line-clamp:4;
     -webkit-line-clamp:4; /* bei Bedarf auf 5 erhoehen */
+    line-clamp:4;
   }
 
 }

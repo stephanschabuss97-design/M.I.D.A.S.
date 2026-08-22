@@ -299,4 +299,58 @@ begin
 end;
 $activity_v2_r9_grants$;
 
+-- ---------------------------------------------------------------------------
+-- S4.9 Activity V2 R10 completed-activity coaching export API
+-- ---------------------------------------------------------------------------
+
+do $activity_v2_r10_grants$
+declare
+  v_public_count integer;
+  v_export_exists boolean;
+  v_export_oid oid;
+begin
+  select pg_catalog.count(*)
+    into v_public_count
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'activity_v2_coaching_export';
+  v_export_oid := pg_catalog.to_regprocedure(
+    'public.activity_v2_coaching_export(date,date)'
+  );
+  v_export_exists := v_export_oid is not null;
+
+  -- SQL 16 remains usable before SQL 24. Once any R10 export overload is
+  -- present, only the one canonical date/date signature is accepted.
+  if v_public_count = 0 and not v_export_exists then
+    return;
+  end if;
+  if v_public_count <> 1 or not v_export_exists then
+    raise exception 'Activity V2 R10 explicit-grant target is partial or overloaded';
+  end if;
+  if (select pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+        pg_catalog.pg_get_functiondef(v_export_oid), 'UTF8')), 'hex')) <>
+       'ef3b00b9e674fa379d0e190c8c8b9866d14d4994f488e4b1279c66d174c22376'
+     or not exists (
+       select 1
+         from pg_catalog.pg_proc p
+         join pg_catalog.pg_roles r on r.oid = p.proowner
+        where p.oid = v_export_oid
+          and r.rolname = 'postgres'
+          and p.prokind = 'f'
+          and p.prorettype = 'jsonb'::pg_catalog.regtype
+          and not p.prosecdef
+          and p.provolatile = 's'
+          and p.proconfig = array['search_path=""']::text[]
+     ) then
+    raise exception 'Activity V2 R10 explicit-grant target source or hardening drift';
+  end if;
+
+  revoke all on function public.activity_v2_coaching_export(date, date)
+    from anon, public, authenticated, service_role;
+  grant execute on function public.activity_v2_coaching_export(date, date)
+    to authenticated;
+end;
+$activity_v2_r10_grants$;
+
 commit;

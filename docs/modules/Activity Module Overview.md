@@ -6,8 +6,9 @@ Kurze Einordnung:
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
   R3-Draft-/Shell-Grundlage, C2-Katalogversion 2, R4-Suche/Last-Performance,
   R5-Strength-Set-Editor, R6-Duration-/Distance-Editor, R7-IndexedDB-Draft-
-  Recovery, der isolierte R8-Commit-Core und der isolierte R9-History-/
-  Lifecycle-Consumer sind bereitgestellt; die sichtbare
+  Recovery, der isolierte R8-Commit-Core, der isolierte R9-History-/
+  Lifecycle-Consumer und der produktiv installierte, aber nicht sichtbar
+  verdrahtete R10-Coaching-Export sind bereitgestellt; die sichtbare
   App und alle produktiven Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
@@ -32,6 +33,8 @@ Related docs:
 - [Activity V2 R8 Evidence](<../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
 - [Activity V2 R9 Roadmap](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Roadmap (DONE).md>)
 - [Activity V2 R9 Evidence](<../archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Evidence (DONE).md>)
+- [Activity V2 R10 Roadmap](<../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+- [Activity V2 R10 Evidence](<../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -92,6 +95,13 @@ Related docs:
 | `sql/23_Activity_V2_History_Lifecycle.sql` | Additive R9-Revision sowie gehärtete List-/Detail-/Replace-/Delete-RPCs und privater Canonicalization-Helper |
 | `sql/23_Activity_V2_History_Lifecycle_Rollback.sql` | Separater owner-gateter Deployment-Rollback nur vor sicher ausgeschlossener Lifecycle-Nutzung |
 | `sql/tests/23_Activity_V2_History_Lifecycle_fixture.sql` | Guarded PostgreSQL-17-Fresh-/Rerun-/Drift-/Rollback-/Race-/Security-Fixture |
+| `app/modules/vitals-stack/activity/v2/activity-coaching-export.js` | Reiner, tief eingefrorener R10-V1-/Range-/Preset-/Filename- und Responsevertrag |
+| `app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js` | Isolierter R10-State-, Retry- und JSON-Download-Controller |
+| `app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js` | Isolierte R10-Shell für Presets, Custom Range, Empty/Error/Retry und Download |
+| `app/modules/vitals-stack/activity/v2/activity-coaching-export-harness.html` | Lokaler R10-Browserharness mit Fakeadapter und committed Fixture; kein Produktload |
+| `sql/24_Activity_V2_Coaching_Export.sql` | Produktiv installierte additive read-only R10-Snapshotfunction mit exakten Guards und ACLs |
+| `sql/24_Activity_V2_Coaching_Export_Rollback.sql` | Separater owner-gateter exakter Rollback nur für die R10-Exportfunction |
+| `sql/tests/24_Activity_V2_Coaching_Export_fixture.sql` | Guarded PostgreSQL-17-Fixture für Exportvertrag, Security, Caps, Snapshotraces und Rollback |
 
 ---
 
@@ -409,6 +419,46 @@ Produkt-Scriptload oder sichtbaren Consumer.
   der finale Null-Lauf blieb rate-limitiert und ist als owner-akzeptiertes,
   nicht blockierendes Restrisiko dokumentiert, nicht als PASS.
 
+## 2.11 Activity V2 R10 - Completed Activity Coaching Export V1
+
+Status: implementiert und lokal, im Browser sowie auf disposable PostgreSQL
+17.6 vollständig bewiesen. SQL 24 ist produktiv installiert und read-only
+postgeprüft; Client, Controller und Harness bleiben ohne Produkt-Scriptload,
+Navigation oder sichtbaren Downloadconsumer.
+
+- `public.activity_v2_coaching_export(date,date) returns jsonb` liefert alle
+  und nur abgeschlossenen Activity-V2-Ist-Sessions des angemeldeten Owners aus
+  genau einem `STABLE SECURITY INVOKER`-Snapshot. Die Function ruft keine
+  R9-History-RPCs auf und schreibt keine Activity-Daten.
+- Das Schema `midas.activity-coaching-export.v1` enthält inklusive Vienna-
+  Range, `generated_at`, exakten Einheiten, Counts, Completeness, Quality,
+  Sessions, Items, Sets und Cautions. Historische Semantik wird ausschließlich
+  über die gespeicherte Kombination aus `catalog_version` und `item_key`
+  aufgelöst.
+- Drei und sechs Kalendermonate sowie eine freie inklusive Range bis maximal
+  366 Tage sind im reinen Clientvertrag abgebildet. Zukunft, inverse oder zu
+  große Ranges werden vor I/O abgelehnt.
+- Die harten Caps sind 1000 Sessions, 10000 Items und 50000 Sets. Alle Counts
+  entstehen vor dem Payloadbau; Überschreitung oder Snapshot-/Order-/Mode-
+  Drift schlägt explizit fehl. Es gibt keine stille Kürzung oder Teilantwort.
+- `dataAccess.loadCoachingExport({ from, to })` verwendet genau einen logischen
+  RPC-Aufruf mit identischem Auth-Retry-Body, validiert die Antwort streng und
+  gibt nur einen tief eingefrorenen vollständigen V1-Export zurück.
+- Der isolierte Harness beweist Presets, Custom Range, Loading, Empty, Error,
+  Retry, stale responses sowie einen parsebaren und revoketen JSON-Blob bei
+  Desktop, 390x844 und 320x800. Er nutzt nur Fakeadapter und Fixture.
+- Produktiv besitzt ausschließlich `authenticated` Execute; `PUBLIC`, `anon`
+  und `service_role` besitzen kein Execute, `postgres` bleibt Owner. Die
+  Function ist `STABLE`, `SECURITY INVOKER`, hat `search_path=''` und den
+  geprüften Functiondef-Hash
+  `ef3b00b9e674fa379d0e190c8c8b9866d14d4994f488e4b1279c66d174c22376`.
+- Der produktive Postcheck blieb bei Sessions/Items/Sets `0/0/0`. Ein real
+  angemeldeter User erhielt ein vollständiges clientvalidiertes Empty-V1;
+  Anon und fehlender Auth wurden abgelehnt. Es gab keine Produkt-DML und
+  keinen Web-, Edge-, APK- oder Device-Deploy.
+- Activity V1, Doctor View, Health Export, Protein Target, Trendpilot, MCP,
+  Import und der R12-Cutover bleiben unverändert außerhalb von R10.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -467,6 +517,19 @@ Produkt-Scriptload oder sichtbaren Consumer.
   wurde keine Session angelegt, korrigiert oder gelöscht; der Postcheck blieb
   bei 0/0/0.
 
+### Activity V2 R10 - read-only Coaching-Exportvertrag
+
+- Der einzige Datenbankentrypoint ist
+  `activity_v2_coaching_export(date,date)`. Er liest Sessions, Items, Sets und
+  den exakten historischen Katalog in einem Calling-Query-Snapshot und liefert
+  genau ein vollständiges JSONB-Dokument.
+- Der Export ist ownergebunden, authenticated-only, read-only und unabhängig
+  von den bounded R9-UI-RPCs. Er besitzt weder Cursor noch Offset, Pagination,
+  Import-, Mutation- oder Coachingempfehlungssemantik.
+- SQL 24 änderte keine Tabelle, Spalte, Policy oder fachliche Zeile. Das
+  produktive Postimage enthält nur die neue Function/ACL; V2-Historie blieb
+  0/0/0.
+
 ---
 
 ## 4. Ablauf / Logikfluss
@@ -508,6 +571,8 @@ Produkt-Scriptload oder sichtbaren Consumer.
 - Kein separates Modal.
 - Die R4-erweiterte Vollflaechen-Shell ist nur im isolierten Harness sichtbar und noch kein
   Bestandteil des Vitals-Moduls oder Training-Tabs.
+- Die R10-Exportshell ist ebenfalls nur im isolierten Harness sichtbar. SQL 24
+  installiert keinen Button und autorisiert keine produktive Verdrahtung.
 
 ---
 
@@ -517,6 +582,9 @@ Produkt-Scriptload oder sichtbaren Consumer.
 - Spaltenlayout analog Body (Datum + Delete links, Werte rechts).
 - Anzeige: Aktivitaet, Dauer (Min), Notiz.
 - Berichte: Activity-Aggregation im aktuellen Range-Arztbericht.
+- R10 verändert weder Doctor View noch Arztbericht oder Health Export. R11
+  darf später ausschließlich eine ruhige Aktivitätszusammenfassung integrieren;
+  das vollständige Satzschema bleibt im separaten Coaching-Export.
 
 ---
 
@@ -568,6 +636,10 @@ Produkt-Scriptload oder sichtbaren Consumer.
 - Aktivitaetskategorien, Intensitaet, Marker.
 - Dynamischer Proteinrechner (Hook auf Activity-Count).
 - Trend/Chart-Ansichten fuer Activity.
+- R11: Doctor-/Report-Zusammenfassung auf Basis eines eigenen bewiesenen
+  V1-/V2-Kompatibilitätsvertrags, ohne den R10-Vollpayload zu kopieren.
+- R12: kontrollierter Productload, V1-/V2-Consumerparität und Cutover. Erst
+  dort darf die isolierte Activity-V2-Runtime sichtbar aktiviert werden.
 
 ---
 
@@ -581,11 +653,12 @@ Produkt-Scriptload oder sichtbaren Consumer.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1-R9/C2: Semantik, additive produktive Datenbasis, lokaler
+- Activity V2 R1-R10/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
   Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der
-  Commit-Core sowie History/Detail/Correction/Delete sind implementiert. SQL
-  22 und SQL 23 sind produktiv bestätigt; die V2-
+  Commit-Core, History/Detail/Correction/Delete und der vollständige read-only
+  Coaching-Export sind implementiert. SQL 22, SQL 23 und SQL 24 sind produktiv
+  bestätigt; die V2-
   Runtime bleibt isoliert und es gibt keinen produktiven UI-, Consumer- oder
   V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
@@ -599,6 +672,10 @@ Produkt-Scriptload oder sichtbaren Consumer.
   CodeRabbit-Läufen sind korrigiert und invalidierte Checks grün. Ein weiterer
   finaler Null-Lauf wurde rate-limitiert und daher nicht als PASS gewertet;
   der Owner akzeptierte diese klar abgegrenzte Restunsicherheit für R9.
+- R10-Watchlists: Der produktive Advisor enthält nur die bekannten
+  R8/R9-fremden Warnungen; SQL 24 erzeugte keine neue R10-Warnung. Der In-App-
+  Browser-Service war nicht verfügbar, die dokumentierte lokale Edge-/
+  Playwright-Matrix bestand jedoch erneut 3/3. Beides blockiert R11 nicht.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -663,6 +740,15 @@ Produkt-Scriptload oder sichtbaren Consumer.
   produktiver read-only SQL-23-Postcheck sind grün. Produktive V2-Daten bleiben
   0/0/0; ein rate-limitierter finaler CodeRabbit-Null-Lauf ist ausdrücklich
   nur owner-akzeptiertes Restrisiko.
+- R10-Checks validieren exakte V1-Keysets/Typen/Units/Counts, Vienna-Ranges,
+  deterministische Sortierung, einen Snapshot, vollständige historische
+  Katalogsemantik, All-or-Error, Caps, Auth/RLS/BOLA/ACL, Correction/Delete-
+  Races, Rollback/Forward, Single-RPC-Data-Access, isolierten Download und
+  Productload-/Doctor-/Health-Negativgrenzen. Finale Activity-V2-Matrix
+  `237/237`, fokussiert R10 `29/29`, Isolation mit sechs R10-Negativorakeln,
+  Browser Desktop/390/320 `3/3` und das PostgreSQL-17.6-Vollfixture sind PASS.
+  Produktiv sind Function/ACL/Empty-V1 bestätigt und V2-Daten unverändert
+  0/0/0.
 
 ---
 
@@ -670,10 +756,11 @@ Produkt-Scriptload oder sichtbaren Consumer.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R9/C2 bleiben bis zu den zuständigen Folgeroadmaps für
+- Activity V2 R1-R10/C2 bleiben bis zu den zuständigen Folgeroadmaps für
   produktive Consumer unverdrahtet. R8 und R9 sind mit ihren ausdrücklich
   dokumentierten, owner-akzeptierten Evidence-/Review-Grenzen DONE; R10 ist
-  das nächste Rolling-Wave-Gate. Ausschließlich R12 darf den produktiven V2-Cutover und den
+  vollständig DONE und R11 das nächste Rolling-Wave-Gate. Ausschließlich R12
+  darf den produktiven V2-Cutover und den
   finalen Android-PWA-Smoke ausführen.
 - Doku aktuell (Spec + Overview).
 

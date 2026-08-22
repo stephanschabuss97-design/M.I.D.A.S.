@@ -567,3 +567,54 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Auth-/Owner-/Search-Path-/Overload-/Data-API- oder Cachevertrag; neue
   Produkt-Scriptloads, Activity-V1-/R7-/R8-Kopplung, reale Lifecycle-Nutzung
   oder späterer Produktcutover.
+
+### HCR-028 - Activity V2 R10 Coaching-Export bleibt vollständig, sicher und isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R10 Roadmap](<../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+  und [R10 Evidence](<../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
+- Ebene: local-runtime + isolierter Browser + disposable PostgreSQL 17.6 +
+  produktiver read-only SQL-Postcheck
+- Ausführung: automated + manual + einmalig owner-gatetes SQL 24
+- Wirkung: produktiv ausschließlich eine additive read-only Exportfunction
+  und deren ACL; kein Productload, keine Session-/Item-/Set-DML, kein Doctor-
+  oder Health-Export-Delta
+- Voraussetzung: R1-R10-/C2-Sources und Tests gehören zum selben Repo-Stand.
+  SQL-Fixtures laufen nur disposable. Produktiv sind ausschließlich read-only
+  Function-/ACL-/Auth-/Count-/Empty-V1-Postchecks erlaubt, sofern kein neues
+  Owner-Gate vorliegt.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  und `node tools/activity-v2-r8-isolation.mjs` ausführen. Bei SQL-24-,
+  Rollback-, Fixture-, SQL-16- oder direkter Dependencyänderung das guarded
+  Fixture `sql/tests/24_Activity_V2_Coaching_Export_fixture.sql` vollständig auf
+  PostgreSQL 17.6 ausführen. Den isolierten R10-Harness bei Desktop, 390x844
+  und 320x800 auf Presets, Custom Range, Invalid/Empty/Error/Retry, stale
+  responses, A11y/Overflow/Konsole und parsebaren/revoketen JSON-Download
+  prüfen. Produktiv keinen Browserharness und keine synthetischen Daten nutzen.
+- Erwartung: Schema `midas.activity-coaching-export.v1`; inklusive Vienna-
+  Range bis 366 Tage; exakt ein vollständiger ownergebundener Snapshot-RPC;
+  keine R9-N+1-Pagination; deterministische Session-/Item-/Set-/Caution-
+  Reihenfolge; historische Semantik aus `catalog_version` + `item_key`;
+  exakte Units und Counts; Caps 1000/10000/50000 als expliziter Fehler statt
+  Truncation. Function ist `postgres`-owned, `STABLE SECURITY INVOKER`,
+  `search_path=''`; Execute nur für `authenticated`, nicht für PUBLIC/anon/
+  service_role. Fehlender Auth und fremder Owner liefern keine Daten.
+- Abschlussbaseline 2026-08-22: Activity-V2-Contracts `237/237`, fokussierte
+  R10-Matrix `29/29`, Isolation `product_v2_loads=0` und
+  `r10_negative_oracles=6`, Browser Desktop/390/320 `3/3` sowie vollständiges
+  PostgreSQL-17.6-Fixture PASS. SQL-24-Dateihash
+  `fad0af25e471553a7d1f7263e502d0e5a58423560fc655753a7630f5ba3bd1b6`,
+  Functiondef-Hash
+  `ef3b00b9e674fa379d0e190c8c8b9866d14d4994f488e4b1279c66d174c22376`.
+  Produktiv waren und blieben Sessions/Items/Sets 0/0/0; ein angemeldeter
+  Realuser erhielt ein clientvalidiertes Empty-V1, Anon/fehlender Auth wurden
+  abgelehnt und es entstand keine neue R10-Advisorwarnung.
+- Watchlists: Die bekannten R8/R9-Security-Advisorhinweise bleiben
+  R10-fremd. Wenn der In-App-Browser-Service fehlt, ist der dokumentierte
+  lokale Edge-/Playwright-Fallback zulässig; ein nicht ausgeführter
+  Browsercheck darf dennoch nie als PASS behauptet werden.
+- Invalidiert durch: Exportvertrag/-validator/-controller/-shell/-fixture,
+  `loadCoachingExport`, SQL 24 oder Rollback, SQL-16-R10-Grantguard, R8/R9-
+  Dependencyfunction, Tabellen-/Katalogschema, RLS/ACL/Owner/Search Path,
+  Range-/Cap-/Snapshot-/Sortier-/All-or-Error-Vertrag, neuer Produkt-Scriptload,
+  Activity-V1-/Doctor-/Health-/MCP-/Importkopplung oder R12-Cutover.

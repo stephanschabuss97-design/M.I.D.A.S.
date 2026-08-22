@@ -84,7 +84,10 @@
   ]);
   const SQL_TOKEN_CODES = Object.freeze({
     MIDAS_ACTIVITY_AUTH_REQUIRED: 'AUTH_REQUIRED',
+    MIDAS_ACTIVITY_EXPORT_LIMIT_EXCEEDED: 'EXPORT_LIMIT_EXCEEDED',
+    MIDAS_ACTIVITY_EXPORT_SNAPSHOT_DRIFT: 'EXPORT_SNAPSHOT_DRIFT',
     MIDAS_ACTIVITY_IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
+    MIDAS_ACTIVITY_INVALID_EXPORT_REQUEST: 'INVALID_EXPORT_REQUEST',
     MIDAS_ACTIVITY_INVALID_ITEM_KEY: 'INVALID_ITEM_KEY',
     MIDAS_ACTIVITY_INVALID_SESSION: 'INVALID_SESSION',
     MIDAS_ACTIVITY_REVISION_EXHAUSTED: 'REVISION_EXHAUSTED',
@@ -93,8 +96,12 @@
   });
   const SAFE_MESSAGES = Object.freeze({
     AUTH_REQUIRED: 'Authentication is required.',
+    EXPORT_CONTRACT_INVALID: 'The activity export response is invalid.',
+    EXPORT_LIMIT_EXCEEDED: 'The activity export is too large.',
+    EXPORT_SNAPSHOT_DRIFT: 'The activity export could not be read consistently.',
     IDEMPOTENCY_CONFLICT: 'The request ID is already bound to different data.',
     INVALID_HISTORY_REQUEST: 'The activity history request is invalid.',
+    INVALID_EXPORT_REQUEST: 'The activity export range is invalid.',
     INVALID_ITEM_KEY: 'The activity item key is invalid.',
     INVALID_SESSION: 'The activity session is invalid.',
     MUTATION_OUTCOME_UNKNOWN: 'The activity mutation outcome is unknown.',
@@ -1670,7 +1677,8 @@
     rpcPayload,
     operation,
     validateResult,
-    mutation = false
+    mutation = false,
+    successContractCode = null
   ) {
     const mutationState = mutation ? 'not_applied' : undefined;
     const supabaseApi = getSupabaseApi();
@@ -1839,8 +1847,50 @@
           'unknown'
         );
       }
+      if (successContractCode !== null) {
+        throw domainError(successContractCode, operation, false, undefined, {
+          status
+        });
+      }
       throw domainError('REQUEST_FAILED', operation, true, undefined, { status });
     }
+  }
+
+  function normalizeExportRange(value) {
+    if (!isRecord(value)) violation();
+    const keys = Reflect.ownKeys(value);
+    if (
+      keys.length !== 2 ||
+      !keys.every((key) => typeof key === 'string') ||
+      !keys.includes('from') ||
+      !keys.includes('to')
+    ) {
+      violation();
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    if (
+      !isRecord(descriptors.from) ||
+      !isRecord(descriptors.to) ||
+      !Object.hasOwn(descriptors.from, 'value') ||
+      !Object.hasOwn(descriptors.to, 'value')
+    ) {
+      violation();
+    }
+    const coachingExport = root.AppModules?.activityV2?.coachingExport;
+    if (
+      typeof coachingExport?.validateRange !== 'function' ||
+      typeof coachingExport?.validateExport !== 'function'
+    ) {
+      throw new Error('coaching-export-contract-unavailable');
+    }
+    return coachingExport.validateRange(
+      {
+        from: descriptors.from.value,
+        to: descriptors.to.value,
+        inclusive: true
+      },
+      null
+    );
   }
 
   async function commitSession(options) {
@@ -1946,6 +1996,45 @@
     );
   }
 
+  async function loadCoachingExport(rangeValue) {
+    let range;
+    try {
+      range = normalizeExportRange(rangeValue);
+    } catch (error) {
+      throw domainError(
+        error instanceof ContractViolation ||
+          error?.code === 'INVALID_EXPORT_REQUEST'
+          ? 'INVALID_EXPORT_REQUEST'
+          : 'REQUEST_FAILED',
+        'loadCoachingExport',
+        false
+      );
+    }
+    const coachingExport = root.AppModules.activityV2.coachingExport;
+    return await callR9Rpc(
+      'activity_v2_coaching_export',
+      { p_from: range.from, p_to: range.to },
+      'loadCoachingExport',
+      (value) => {
+        const result = coachingExport.validateExport(value);
+        if (
+          result.range.from !== range.from ||
+          result.range.to !== range.to ||
+          result.range.inclusive !== true
+        ) {
+          throw domainError(
+            'EXPORT_CONTRACT_INVALID',
+            'loadCoachingExport',
+            false
+          );
+        }
+        return result;
+      },
+      false,
+      'EXPORT_CONTRACT_INVALID'
+    );
+  }
+
   async function replaceSession(optionsValue) {
     let request;
     try {
@@ -2023,6 +2112,7 @@
     loadLastPerformance,
     listSessions,
     loadSessionDetail,
+    loadCoachingExport,
     replaceSession,
     deleteSession
   });

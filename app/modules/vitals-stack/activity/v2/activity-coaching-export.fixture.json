@@ -1,0 +1,148 @@
+{
+  "schema_version": "midas.activity-coaching-export.v1",
+  "generated_at": "2026-08-22T12:00:00.000Z",
+  "timezone": "Europe/Vienna",
+  "range": {
+    "from": "2026-02-22",
+    "to": "2026-08-22",
+    "inclusive": true
+  },
+  "units": {
+    "session_duration": "min",
+    "item_duration": "min",
+    "item_distance": "km",
+    "set_duration": "s",
+    "set_distance": "m",
+    "weight": "kg",
+    "assistance": "kg",
+    "repetitions": "count"
+  },
+  "completeness": {
+    "status": "complete",
+    "truncated": false,
+    "session_count": 2,
+    "item_count": 3,
+    "set_count": 1
+  },
+  "quality": {
+    "status": "ok",
+    "cautions": [
+      "assistance_loads_present",
+      "device_relative_loads_present",
+      "multiple_catalog_versions_present"
+    ]
+  },
+  "sessions": [
+    {
+      "session_id": "00000000-0000-4000-8000-000000000001",
+      "catalog_version": 1,
+      "revision": "1",
+      "day": "2026-06-15",
+      "started_at": "2026-06-15T09:00:00.000Z",
+      "ended_at": "2026-06-15T10:00:00.000Z",
+      "duration_min": 60,
+      "title": "Frühtraining",
+      "note": null,
+      "items": [
+        {
+          "item_key": "running",
+          "item_order": 1,
+          "item_label_snapshot": "Laufen",
+          "tracking_mode_snapshot": "duration",
+          "equipment_snapshot": "none",
+          "load_comparability_snapshot": "not_applicable",
+          "field_policy_snapshot": {
+            "assistance_kg": "forbidden",
+            "distance_km": "forbidden",
+            "distance_m": "forbidden",
+            "duration_min": "required",
+            "duration_sec": "forbidden",
+            "note": "optional",
+            "reps": "forbidden",
+            "weight_kg": "forbidden"
+          },
+          "category": "endurance",
+          "muscle_groups": ["calves", "full_body"],
+          "sport_tags": ["endurance", "outdoor"],
+          "duration_min": 42,
+          "distance_km": null,
+          "note": "Locker",
+          "sets": []
+        },
+        {
+          "item_key": "lat_pulldown",
+          "item_order": 2,
+          "item_label_snapshot": "Latzug",
+          "tracking_mode_snapshot": "strength_sets",
+          "equipment_snapshot": "machine",
+          "load_comparability_snapshot": "device_relative",
+          "field_policy_snapshot": {
+            "assistance_kg": "required",
+            "distance_km": "forbidden",
+            "distance_m": "forbidden",
+            "duration_min": "forbidden",
+            "duration_sec": "forbidden",
+            "note": "optional",
+            "reps": "required",
+            "weight_kg": "forbidden"
+          },
+          "category": "strength",
+          "muscle_groups": ["back", "biceps"],
+          "sport_tags": [],
+          "duration_min": null,
+          "distance_km": null,
+          "note": null,
+          "sets": [
+            {
+              "set_order": 1,
+              "tracking_mode": "strength_sets",
+              "reps": 10,
+              "duration_sec": null,
+              "distance_m": null,
+              "weight_kg": null,
+              "assistance_kg": 25.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": "00000000-0000-4000-8000-000000000002",
+      "catalog_version": 2,
+      "revision": "9223372036854775807",
+      "day": "2026-08-20",
+      "started_at": "2026-08-20T16:30:00.000Z",
+      "ended_at": "2026-08-20T17:30:00.000Z",
+      "duration_min": 60,
+      "title": null,
+      "note": "Ausdauer",
+      "items": [
+        {
+          "item_key": "cycling",
+          "item_order": 1,
+          "item_label_snapshot": "Radfahren",
+          "tracking_mode_snapshot": "duration_distance",
+          "equipment_snapshot": "cardio_machine",
+          "load_comparability_snapshot": "not_applicable",
+          "field_policy_snapshot": {
+            "assistance_kg": "forbidden",
+            "distance_km": "required",
+            "distance_m": "forbidden",
+            "duration_min": "required",
+            "duration_sec": "forbidden",
+            "note": "optional",
+            "reps": "forbidden",
+            "weight_kg": "forbidden"
+          },
+          "category": "endurance",
+          "muscle_groups": ["calves", "quadriceps"],
+          "sport_tags": ["endurance", "indoor"],
+          "duration_min": 60,
+          "distance_km": 20.25,
+          "note": null,
+          "sets": []
+        }
+      ]
+    }
+  ]
+}

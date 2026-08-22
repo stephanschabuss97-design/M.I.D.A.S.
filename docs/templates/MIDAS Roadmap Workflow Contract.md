@@ -275,6 +275,12 @@ ihre Invalidation-Bedingung nicht eingetreten ist.
 Ein kleiner S4-Substep benötigt keinen Full-Review, wenn er keinen neuen
 Vertrag oder Risikopfad eröffnet.
 
+Ein Full-Review innerhalb von S4 ist nur zulässig, wenn S4R ihn für eine echte
+Risiko- oder Produktivgrenze ausdrücklich begründet. S4R nennt dafür Scope,
+Evidence-IDs, Invalidation-Bedingungen und den korrespondierenden Prüfanteil,
+der in S5 bei unverändertem Stand nur referenziert statt erneut ausgeführt
+wird. S5 behält dennoch den finalen Full Review des tatsächlichen Gesamtdiffs.
+
 Bei einem S4-Ausführungsblock gilt die höchste Reviewtiefe seiner enthaltenen
 Substeps. Findings und Ergebnisse bleiben den ursprünglichen Substep-IDs
 zugeordnet; die Zusammenlegung spart Handoffs, nicht Nachvollziehbarkeit.
@@ -389,17 +395,25 @@ referenzieren nur ihre IDs.
 1. lokale statische Checks.
 2. disposable Tests und Fixtures.
 3. Code-/SQL-/Security-Review.
-4. ein geplanter externer Review nach vollständiger lokaler Umsetzung;
-   Findings bewerten, nicht blind übernehmen.
-5. produktiver read-only Preflight.
-6. Owner Briefing und Freigabe je produktivem Gate.
-7. Deploy, SQL und Runtime-Smoke in freigegebener Reihenfolge.
-8. exakte Postconditions.
-9. finaler Review des tatsächlich geänderten Scopes.
+4. genau ein geplanter initialer externer Review nach vollständiger lokaler
+   Umsetzung; Findings gesammelt bewerten, nicht blind übernehmen.
+5. berechtigte Findings gebündelt korrigieren und nur invalidierte Checks
+   wiederholen.
+6. genau einen geplanten externen Verifikationslauf auf dem korrigierten Diff
+   ausführen.
+7. produktiver read-only Preflight.
+8. Owner Briefing und Freigabe je produktivem Gate.
+9. Deploy, SQL und Runtime-Smoke in freigegebener Reihenfolge.
+10. exakte Postconditions.
+11. finaler Review des tatsächlich geänderten Scopes.
 
-Ein zweiter externer Vollreview ist nur nötig, wenn die Korrekturen einen neuen
-Vertrag oder Risikopfad eröffnet haben. Ansonsten werden ausschließlich die
-invalidierten Checks wiederholt.
+Über den initialen Review und den geplanten Verifikationslauf hinaus ist ein
+weiterer externer Review nur nötig, wenn der Verifikationslauf ein neues
+P0/P1-, Security-, Datenintegritäts- oder Vertragsrisiko eröffnet oder der
+Owner ihn ausdrücklich beauftragt. Gewöhnliche Nitpicks erzeugen keine
+unbeschränkte Reviewspirale. Ist der Verifikationslauf nicht verfügbar oder
+rate-limitiert, wird diese Evidence-Lücke ehrlich dokumentiert und nicht als
+PASS behauptet.
 
 ## Abschlussvertrag
 

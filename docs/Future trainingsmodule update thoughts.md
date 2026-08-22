@@ -2,22 +2,23 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-13
+Stand: 2026-08-22
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
 Katalogversion 2, R4-Suche/Last-Performance sowie die isolierten R5-Strength-,
-R6-Duration-/Distance-, R7-Recovery-, R8-Commit- und R9-History-/Lifecycle-
-Bausteine sind bereitgestellt. R8 ist mit einer explizit owner-akzeptierten
+R6-Duration-/Distance-, R7-Recovery-, R8-Commit-, R9-History-/Lifecycle- und
+R10-Coaching-Export-Bausteine sind bereitgestellt. R8 ist mit einer explizit owner-akzeptierten
 Evidence-Lücke
 für den nicht ausgeführten Android-Device-Reclaim und den fehlenden finalen
 CodeRabbit-Null-Lauf abgeschlossen. R9 ist mit einer separat dokumentierten,
-owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 ist das nächste
-Rolling-Wave-Gate;
+owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 ist vollständig
+abgeschlossen; SQL 24 ist produktiv installiert und read-only postgeprüft.
+R11 ist das nächste Rolling-Wave-Gate;
 sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-13: `PASS mit dokumentierten R8-Evidence-Gaps
-und owner-akzeptierter R9-Review-Restunsicherheit`.
+Cross-Contract-Stand 2026-08-22: `PASS mit dokumentierten R8-Evidence-Gaps,
+owner-akzeptierter R9-Review-Restunsicherheit und vollständig grünem R10`.
 R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
@@ -55,6 +56,11 @@ versöhnt Races und Unknown Outcomes und bleibt ohne Produktload. Produktiver
 Poststand ist 0/0/0. Vier erfolgreiche CodeRabbit-Reviews wurden vollständig
 korrigiert; der danach rate-limitierte Null-Lauf ist ausdrücklich kein PASS,
 sondern owner-akzeptierte Restunsicherheit.
+R10 ist DONE: Ein einziger ownergebundener `STABLE SECURITY INVOKER`-RPC
+liefert den vollständigen versionierten Ist-Datenexport aus einem konsistenten
+Snapshot. SQL 24 ist produktiv installiert; Function/ACL/Auth/Empty-V1 und
+unveränderte V2-Zähler 0/0/0 sind postgeprüft. Client, Download-Harness und
+alle sichtbaren Activity-V2-Consumer bleiben bis R12 isoliert.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -63,9 +69,11 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R9/C2 stellen nur die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R10/C2 stellen die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Editor-, Recovery-, Commit- und Lifecyclegrundlage bereit.
+Historien-, Editor-, Recovery-, Commit-, Lifecycle- und Exportgrundlage bereit.
+Die R10-Datenbankfunction existiert produktiv, besitzt aber bis R12 keinen
+sichtbaren Produktconsumer.
 
 ---
 
@@ -930,6 +938,34 @@ Volumenwerte desselben generischen Keys werden bei
 Studios oder Kabelzügen verglichen. Key, Equipmentklasse und
 Lastvergleichbarkeit sind Teil des fachlichen Kontexts.
 
+### 11.6 Bewiesener R10-Iststand
+
+R10 ist am 2026-08-22 abgeschlossen. Das produktive PostgreSQL-17.6-Postimage
+enthält genau die additive read-only Function
+`public.activity_v2_coaching_export(date,date) returns jsonb` mit
+`STABLE SECURITY INVOKER`, leerem Search Path, Owner `postgres` und Execute
+nur für `authenticated`.
+
+Der Vertrag `midas.activity-coaching-export.v1` liefert Session-, Item- und
+Satz-Istwerte, exakte Einheiten, Counts, Completeness, Quality und Cautions aus
+einem konsistenten Snapshot. Historische Semantik bleibt an die gespeicherte
+Kombination aus `catalog_version` und `item_key` gebunden. Range-Cap sind 366
+inklusive Vienna-Tage; harte All-or-Error-Caps sind 1000 Sessions, 10000 Items
+und 50000 Sets. Der Export ist nie paginiert oder still gekürzt und verwendet
+keinen N+1-Loop über R9-RPCs.
+
+Produktiv blieben Sessions/Items/Sets 0/0/0. Der reale Empty-Export wurde vom
+Clientvertrag akzeptiert; Anon und fehlender Auth wurden abgelehnt. Die
+isolierte Download-Shell ist nur ein Testharness und bleibt bis R12 aus
+`index.html`, Navigation und Service Worker ausgeschlossen. Doctor View,
+Health Export, Protein Target, Trendpilot, MCP, Coachingempfehlungen und Import
+wurden nicht verändert.
+
+Nachweise:
+
+- [R10 Completed Activity Coaching Export V1 Roadmap](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+- [R10 Completed Activity Coaching Export V1 Evidence](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
+
 ---
 
 ## 12. Arztansicht und Bericht
@@ -1587,9 +1623,10 @@ R12.
 
 ### R10 - Completed Activity Coaching Export V1
 
-Status: `NEXT_ROLLING_WAVE_GATE`.
+Status: `DONE` (2026-08-22); SQL 24 produktiv installiert, Activity V2 bleibt
+bis R12 produktiv unsichtbar.
 
-Ziel:
+Nachgewiesenes Ergebnis:
 
 - eigenständiges versioniertes Export-Schema für tatsächlich abgeschlossene
   Activity-V2-Sessions
@@ -1604,6 +1641,22 @@ Ziel:
   Sessions
 - bis R12 weiterhin verborgen oder testgebunden; kein vorgezogener
   produktiver Activity-V2-Cutover
+- genau ein ownergebundener, `STABLE SECURITY INVOKER` Snapshot-RPC statt
+  N+1 über R9-History-RPCs
+- vollständiges `midas.activity-coaching-export.v1` mit Vienna-Range, exakten
+  Einheiten, Counts, Completeness, Quality, Cautions und historischen
+  Katalogsnapshots
+- harte All-or-Error-Caps 1000/10000/50000; exakter Maximalpayload unter dem
+  realen `statement_timeout=8s`
+- finale lokale Matrix 237/237, fokussiert 29/29, Browser 3/3, Isolation und
+  PostgreSQL-17.6-Full-Fixture PASS
+- produktive Function/ACL/Auth/Empty-V1-Postconditions PASS; V2-Daten
+  unverändert 0/0/0 und keine neue R10-Advisorwarnung
+
+Nachweise:
+
+- [R10 Roadmap](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+- [R10 Evidence](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
 
 Warum danach:
 
@@ -1611,6 +1664,9 @@ Der Export wird auf dem final gespeicherten Datenvertrag aufgebaut und ist
 danach sofort für Coaching-Analysen nutzbar.
 
 ### R11 - Doctor View and Report Integration
+
+Status: `NEXT_ROLLING_WAVE_GATE`; die ausführungsreife Roadmap wird erst aus
+dem bewiesenen R10-Abschlussstand erstellt.
 
 Ziel:
 
@@ -1989,10 +2045,12 @@ Distanz und Notiz. R6 bearbeitet diese Werte ausschließlich im flüchtigen
 Draft. Die Historie wird nach Key und nicht nach Trainingsplan gesucht. R7
 sichert unfertige Sessions im isolierten Harness als IndexedDB-Draft ab; R8
 integriert abgeschlossene Sessions atomar in Supabase. R9 ergänzt isolierte
-Historie, Details, Korrektur und Löschung. Arztbericht und Doctor View erhalten in R11 nur
-Zusammenfassungen; der versionierte R10-Activity-Export liefert die
-vollständigen Details für spätere Coaching-Analysen. R12 aktiviert die neue
-Erfassung und alle produktiven Consumer kontrolliert.
+Historie, Details, Korrektur und Löschung. R10 stellt den vollständigen,
+versionierten Ist-Datenexport inzwischen produktiv als read-only Snapshot-RPC
+bereit, hält Client und Download aber weiter isoliert. R11 ist das nächste
+Rolling-Wave-Gate und integriert in Arztbericht und Doctor View nur ruhige
+Zusammenfassungen; es kopiert keine Satzdetails aus dem Coaching-Export. R12
+aktiviert die neue Erfassung und alle produktiven Consumer kontrolliert.
 
 Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
 sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte
