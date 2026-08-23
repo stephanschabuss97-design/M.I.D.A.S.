@@ -22,6 +22,23 @@ ihn aber nicht vollständig.
 
 ## Ausführungsmodus
 
+Jede Roadmap wählt genau ein Autonomieprofil:
+
+- `local-full`: Alle freigegebenen nichtproduktiven und reversiblen Wellen
+  einschließlich geplanter read-only Reviews dürfen bis S6 ohne zusätzliche
+  Gesprächspause laufen. Produktive, manuelle oder irreversible Owner-Gates
+  bleiben Stopps.
+- `gated`: Autonom bis zum nächsten eingetragenen Owner-Gate; danach erst nach
+  Freigabe fortsetzen. Dies ist der Standard für MIDAS-Roadmaps.
+- `manual`: Nur ausdrücklich freigegebene Einzelblöcke ausführen und danach
+  stoppen.
+
+Das Profil steht in Metadaten, Startkarte und Resume Card. Es ändert weder
+Scope noch Reviewtiefe und hebt kein Owner-Gate auf. Eine autonome Welle besitzt
+eine gemeinsame Reasoning-Stufe. Ein notwendiger Reasoning-Wechsel wird als
+Wellengrenze vorab benannt; er wird nicht während eines laufenden Auftrags
+vorausgesetzt.
+
 - S1, S2 und S3 werden jeweils als deterministischer Gesamtblock mit Contract
   Review und Findings-Korrektur abgeschlossen.
 - Eine Roadmap darf S1 bis S3 und optional S4R als eine autonome
@@ -37,9 +54,11 @@ ihn aber nicht vollständig.
   erbracht werden kann.
 - Bis zum grünen S4 Readiness Review wird kein Produktcode geändert; erlaubt
   sind Roadmap-, Analyse- und notwendige Vertragsdokumente.
-- Eine bis S4R freigegebene Discovery Wave endet mit dem Readiness-Urteil. S4
+- Ein auf Discovery begrenzter Auftrag endet mit dem Readiness-Urteil. S4
   beginnt standardmäßig erst mit dem nächsten ausdrücklich freigegebenen
-  Ausführungsauftrag.
+  Ausführungsauftrag. Eine Startkarte darf die anschließende
+  Implementierungswelle vorab freigeben; Autonomieprofil und S4R-Gates gelten
+  dabei unverändert.
 - S4 bleibt fachlich substepweise nachvollziehbar. Der Readiness Review gibt
   zusätzlich eine begründete Empfehlung ab, welche benachbarten Substeps als
   gemeinsamer Ausführungsblock laufen dürfen.
@@ -135,10 +154,24 @@ Evidence nicht parallel.
 Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
 
 1. Ausführungs-Chat-Startkarte, Roadmap-Metadaten und Session Resume Card.
-2. Entscheidungslog und Findings.
-3. Nur der aktuelle Schritt samt Exit-Kriterium.
-4. `git status --short` und der relevante Diff.
-5. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
+2. Context Receipt.
+3. Entscheidungslog und Findings.
+4. Nur der aktuelle Schritt samt Exit-Kriterium.
+5. `git status --short` und der relevante Diff.
+6. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
+
+Der Context Receipt wird in S1 angelegt und enthält kompakt:
+
+- Baseline-Commit und relevante Dirty Files,
+- die für den Scope gelesenen Sources of Truth samt Stand oder Fingerprint,
+- gültige Evidence-/Test-IDs und ihre Invalidation-Bedingungen,
+- relevante Tool-, Runtime- und Auth-Verfügbarkeit ohne Secretmaterial.
+
+Nach einem Ausführungsblock wird nur ein tatsächlich geänderter Receipt-Eintrag
+ersetzt. Stimmt die Baseline nicht mehr, wurde eine relevante Datei geändert,
+ist ein Quellen-Fingerprint veraltet oder trat eine Invalidation-Bedingung ein,
+wird der betroffene Kontext gezielt rehydriert. Der Receipt ist weder
+chronologisches Protokoll noch Ersatz für Roadmap, Evidence oder Git.
 
 Ein breiter Re-Read ist nur erforderlich:
 
@@ -210,6 +243,21 @@ Evidence wird nur gelesen:
   schwächen würde. Es wird nur gekürzt, wenn die kompaktere Fassung denselben
   ausführbaren Vertrag vollständig bewahrt.
 
+S4R erstellt vor jeder Umsetzung eine Aufwandsprognose:
+
+- Größenklasse `small`, `medium` oder `large`,
+- kohärente Umsetzungspakete und erwartete Dateigruppen,
+- betroffene Runtimeflächen sowie SQL-/Backend-/Browser-/Devicewirkung,
+- produktive oder manuelle Owner-Gates,
+- erwartete teure Testpässe und externe Reviewläufe,
+- empfohlene autonome Wellen samt Reasoning-Stufe und Stopppunkten.
+
+Die Prognose ist eine Steuerungshilfe, keine Zeilen- oder Dateiquote. Bei
+`large` erfolgt vor S4 ein kompaktes Owner-Briefing mit Kohärenzcheck:
+Die Roadmap bleibt zusammen, wenn die Pakete denselben Produktvertrag und
+dieselbe Evidence teilen; sie wird nur geteilt, wenn eigenständige Gates oder
+getrennte Produktentscheidungen einen klareren Vertrag ergeben.
+
 ## Risikoklassen
 
 <!-- markdownlint-disable MD013 -->
@@ -239,6 +287,11 @@ Evidence wird nur gelesen:
 - CodeRabbit ist eine zusätzliche unabhängige Kontrolle und keine Source of
   Truth. Mehrdeutige Produkt- oder Vertragsfindings bleiben Owner-Gates;
   Ausfall oder Nichtverfügbarkeit werden sichtbar dokumentiert.
+- Der externe Review verwendet ausschließlich den in
+  `docs/DEV_ENVIRONMENT.md` verifizierten Aufruf `coderabbit`. Schlägt Shim,
+  WSL-CLI oder Authentifizierung fehl, endet der externe Reviewpfad mit einem
+  sichtbaren Evidence-Gap. Innerhalb der Roadmap wird keine alternative CLI
+  installiert und kein nativer Review als CodeRabbit-Ergebnis bezeichnet.
 
 ## Reviewtiefen
 

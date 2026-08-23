@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Activity V2 R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
 
 ---
 
@@ -32,6 +33,7 @@ Related docs:
 | `app/modules/doctor-stack/charts/index.js` | Trendpilot-Bands im BP-Chart |
 | `app/styles/doctor.css` | Trendpilot-Block Styling |
 | `app/styles/ui.css` | Trendpilot-Dialog/Overlay Styling |
+| `backend/supabase/functions/midas-trendpilot/activity-compatibility.ts` | Unreferenzierter purer R12-Adapter für Aktivtage, belegte Wochen und Level. |
 
 ---
 
@@ -90,6 +92,11 @@ Prioritaet (max. 1 Satz):
 - Body-Comp: mindestens 2 Messungen mit >= 14 Tagen Abstand.
 - Gewichtstrend: min. 2 Messungen mit >= 14 Tagen Abstand.
 - Lab-Kontext: mind. 2 Samples im Kontextfenster.
+
+R12 hat für die spätere R13-Aktivierung dasselbe Activity-Gate auf
+unterschiedlichen Wiener Aktivtagen vorbereitet: neues Feld `active_days_4w`,
+unveränderte `weeks_with_entries_4w` und unverändertes Level. Produktive und
+historische Events verwenden bis R13 weiterhin `sessions_4w`.
 
 ### 3.2 Dedupe-Strategie
 - Unique: `user_id + type + window_from + severity`
@@ -203,6 +210,9 @@ Prioritaet (max. 1 Satz):
 - Optional: Urinteststreifen 1x pro Monat (nach aerztlicher Abklaerung).
 - KI-Textgenerierung im Payload.
 - Intake bleibt Tages-UI und ist bewusst nicht Teil der Trendpilot-Korrelationen.
+- R13 aktiviert den R12-Aktivtagadapter samt RLS-konformem Schedulerprovider,
+  gemeinsamem Snapshot-Umschlag und neuer `active_days_4w`-Payload. Alte
+  `sessions_4w`-Historie bleibt dabei lesbar.
 
 ## 9.1 Aktuelle Schwellen / Gates (v1)
 
@@ -251,6 +261,10 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Deployment-Hinweis: `TRENDPILOT_USER_ID` als Pflicht-Env fuer Scheduler-Runs setzen.
 - Security-Hinweis: Scheduler nutzt Service-Role Bearer (`SUPABASE_SERVICE_ROLE_KEY`) in GitHub Actions.
 - Scheduler-Hinweis: GitHub Actions nutzt UTC; Sommerzeit-Shift beachten.
+- R12-Stand: Der pure Adapter ist für Empty, Zwei-Wochen-Gate, 3/4/7/8
+  Aktivtage, Same-day/Mixed sowie Montag-/DST-Grenzen lokal bewiesen und nicht
+  vom Edge-Handler importiert. Texte, Severity, ACK, Scheduler und Persistenz
+  bleiben unverändert; Auth-/Payloadaktivierung gehört R13.
 
 ### 11.1 Offene Punkte / Bedenken
 - Zeitlogik: Ongoing-Check im Client basiert auf `window_to >= heute` (UTC). Falls strikte Wien-Zeit gewuenscht, muss der Vergleich angepasst werden.
@@ -266,6 +280,9 @@ Die App erzeugt Begruendungstexte anhand `rule_id` + Payload. Quelle ist eine st
 - Arzt-Block: info/warning/critical sichtbar; Popup nur warning/critical. (done)
 - Chart-Bands: Zeitraum korrekt, Tooltip zeigt Kommentar. (done)
 - Keine Regressionen in BP/Body/Lab Tabs. (done)
+- R12-Adapter: `unknown/low/ok/high`, Aktivtage und belegte Montag-Sonntag-
+  Wochen aus dem validierten R11-Snapshot; exakt kein `sessions_4w` im neuen
+  Output und keine Produktverdrahtung. (done, isoliert)
 
 ---
 

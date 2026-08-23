@@ -8,9 +8,10 @@ Kurze Einordnung:
   R5-Strength-Set-Editor, R6-Duration-/Distance-Editor, R7-IndexedDB-Draft-
   Recovery, der isolierte R8-Commit-Core, der isolierte R9-History-/
   Lifecycle-Consumer, der produktiv installierte, aber nicht sichtbar
-  verdrahtete R10-Coaching-Export und der gemeinsame R11-V1-/V2-
-  Read-Consumervertrag sind bereitgestellt. SQL 25 ist produktiv installiert;
-  die sichtbare App und alle produktiven Consumer verwenden weiterhin V1.
+  verdrahtete R10-Coaching-Export, der gemeinsame R11-V1-/V2-
+  Read-Consumervertrag und die isolierten R12-Protein-/Trendpilot-Adapter sind
+  bereitgestellt. SQL 25 ist produktiv installiert; die sichtbare App und alle
+  produktiven Consumer verwenden weiterhin V1.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
@@ -38,6 +39,7 @@ Related docs:
 - [Activity V2 R10 Evidence](<../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
 - [Activity V2 R11 Roadmap](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
 - [Activity V2 R11 Evidence](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
+- [Activity V2 R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -114,6 +116,10 @@ Related docs:
 | `sql/25_Activity_Consumer_Compatibility.sql` | Produktiv installierte additive read-only R11-Snapshotfunction mit exakten Guards und ACLs |
 | `sql/25_Activity_Consumer_Compatibility_Rollback.sql` | Separater owner-gateter exakter Rollback nur für die R11-Consumerfunction |
 | `sql/tests/25_Activity_Consumer_Compatibility_fixture.sql` | Guarded PostgreSQL-17-Fixture ohne Activity- oder Report-DML |
+| `backend/supabase/functions/_shared/activity-medical-context.ts` | Purer R12-Kontext aus einem validierten R11-Snapshot und einem vollständig enthaltenen 28-Tage-Fenster |
+| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Unreferenzierter R12-Proteinadapter für Aktivtage, ACT-Level und Modifier |
+| `backend/supabase/functions/midas-trendpilot/activity-compatibility.ts` | Unreferenzierter R12-Trendpilotadapter für Aktivtage, belegte Wochen und Level |
+| `tools/activity-v2-r12-isolation.mjs` | Statischer R12-Guard für Product-, Workflow-, SQL-, Entry- und Runtime-Isolation |
 
 ---
 
@@ -504,6 +510,24 @@ bleiben bis R13 unreferenziert.
   keine Activity-/Report-DML und keinen Edge-, Web-, SW-, APK- oder
   Device-Deploy.
 
+## 2.13 Activity V2 R12 - Protein-/Trendpilot-Kompatibilität
+
+Status: pure TypeScript-Projektion und beide medizinischen Adapter lokal
+bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
+
+- `midas.activity-medical-context.v1` validiert den vollständigen R11-Snapshot
+  direkt mit dem R11-Validator und projiziert ausschließlich ein explizites,
+  vollständig enthaltenes 28-Tage-Fenster.
+- Unterschiedliche `Europe/Vienna`-Kalendertage zählen einmal; mehrere V1-/V2-
+  Einheiten am selben Tag verändern Aktivtag und Montag-Sonntag-Woche nicht.
+- Protein behält ACT1/ACT2/ACT3 und Modifier `0.1/0.2/0.3` unverändert.
+- Trendpilot behält `unknown/low/ok/high` und seine Gates unverändert, bereitet
+  aber das eindeutige Feld `active_days_4w` vor. Alte `sessions_4w`-Historie
+  bleibt lesbar und unberührt.
+- Die finale Matrix ist Deno `15/15`; das Isolationsorakel bestätigt 14
+  unveränderte Produktpostimages, null Productwiring und null Runtime-
+  Abhängigkeiten. R13 besitzt Auth, Scheduler, Version, Payload und Aktivierung.
+
 ---
 
 ## 3. Datenmodell / Storage
@@ -587,6 +611,13 @@ bleiben bis R13 unreferenziert.
 - SQL 25 änderte keine Tabelle, View, Policy oder fachliche Zeile. Das
   produktive Postimage enthält nur die neue Function/ACL; V2-Historie blieb
   0/0/0 und Activity V1 bleibt der einzige Capture-Pfad.
+
+### Activity V2 R12 - pure medizinische Consumerprojektion
+
+- R12 fügt kein Datenmodell und keinen Datenbankentrypoint hinzu. Der einzige
+  Dateninput bleibt der validierte R11-Snapshot.
+- Shared Context und beide Adapter sind unreferenzierte lokale Module. Sie
+  lesen weder Netzwerk, Env, Storage noch Supabase und schreiben keine Daten.
 
 ---
 
@@ -697,9 +728,9 @@ bleiben bis R13 unreferenziert.
 - Trend/Chart-Ansichten fuer Activity.
 - R11: Doctor-/Report-Zusammenfassung und Health Export V3 sind auf Basis des
   bewiesenen V1-/V2-Kompatibilitätsvertrags isoliert bereit.
-- R12: Protein Target und Trendpilot isoliert auf denselben Read-Vertrag
-  vorbereiten.
-- R13: read-only Consumer kontrolliert aktivieren und mit bestehender
+- R12: Protein Target und Trendpilot sind isoliert auf denselben Read-Vertrag
+  vorbereitet.
+- R13: die read-only Consumer kontrolliert aktivieren und mit bestehender
   Activity-V1-Erfassung auf Parität prüfen.
 - R14: Activity-V2-Capture, Produktnavigation und Coaching-Download aktivieren
   sowie den finalen Android-PWA-Smoke durchführen.
@@ -716,12 +747,13 @@ bleiben bis R13 unreferenziert.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
-- Activity V2 R1-R11/C2: Semantik, additive produktive Datenbasis, lokaler
+- Activity V2 R1-R12/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
   Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der
   Commit-Core, History/Detail/Correction/Delete und der vollständige read-only
-  Coaching-Export sowie der gemeinsame Doctor-/Report-Read-Vertrag sind
-  implementiert. SQL 22 bis SQL 25 sind produktiv bestätigt; die V2-
+  Coaching-Export, der gemeinsame Doctor-/Report-Read-Vertrag sowie die puren
+  Protein-/Trendpilot-Adapter sind implementiert. SQL 22 bis SQL 25 sind
+  produktiv bestätigt; die V2-
   Runtime bleibt isoliert und es gibt keinen produktiven UI-, Consumer- oder
   V1-Cutover.
 - Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
@@ -743,6 +775,9 @@ bleiben bis R13 unreferenziert.
 - R11-Watchlist: Die drei intentionalen R8/R9-`SECURITY DEFINER`-Hinweise,
   Leaked-Password-Protection und acht ungenutzte Indizes blieben unverändert.
   SQL 25 erzeugte keine R11-Warnung. Die Consumeraktivierung bleibt R13.
+- R12-Watchlist: R13 muss den RLS-konformen Scheduler-Snapshotprovider, die
+  Keymigration, Protein-Calc-Version, neue Trendpilot-Payload und den einmaligen
+  Snapshot-Umschlag innerhalb der SQL25-Grenze von 400 Tagen aktivieren.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -823,6 +858,11 @@ bleiben bis R13 unreferenziert.
   PostgreSQL-17.11-Full-Fixture und SQL16-Driftmatrix PASS. Produktiv sind
   Functionhash/ACL/Auth- und Anonymous-Grenze bestätigt; V1 `65`, Katalog
   `78/80`, V2 `0/0/0` und der bestehende Range-Report blieben unverändert.
+- R12-Checks validieren enthaltene 28-Tage-Unterfenster, Mehrfensternutzung,
+  V1/V2/Mixed/Same-day/Empty, Wien-/Wochen-/DST-Grenzen, Deep Freeze,
+  adversariale Inputs, Protein `0/1/2/5/6`, Trendpilot `3/4/7/8` und statische
+  Product-Isolation. Finale Deno-Matrix `15/15`; kein Browser-, DB-, Remote-
+  oder Deploytest war für die unverdrahtete pure Projektion erforderlich.
 
 ---
 
@@ -830,11 +870,11 @@ bleiben bis R13 unreferenziert.
 
 - Training-Tab speichert und rendert korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R11/C2 bleiben bis zu den zuständigen Folgeroadmaps für
+- Activity V2 R1-R12/C2 bleiben bis zu den zuständigen Folgeroadmaps für
   produktive Consumer unverdrahtet. R8 und R9 sind mit ihren ausdrücklich
   dokumentierten, owner-akzeptierten Evidence-/Review-Grenzen DONE; R10 ist
-  vollständig DONE; R11 ist ebenfalls DONE und R12 das nächste Core-Gate.
-  R13 darf die
+  vollständig DONE; R10 bis R12 sind ebenfalls DONE und R13 das nächste
+  Core-Gate. R13 darf die
   read-only Consumer aktivieren; ausschließlich R14 darf den produktiven
   V2-Capture-Cutover und den finalen Android-PWA-Smoke ausführen.
 - Doku aktuell (Spec + Overview).

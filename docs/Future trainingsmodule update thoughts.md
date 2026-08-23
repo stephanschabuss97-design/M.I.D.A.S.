@@ -12,14 +12,15 @@ R10-Coaching-Export-Bausteine sind bereitgestellt. R8 ist mit einer explizit own
 Evidence-Lücke
 für den nicht ausgeführten Android-Device-Reclaim und den fehlenden finalen
 CodeRabbit-Null-Lauf abgeschlossen. R9 ist mit einer separat dokumentierten,
-owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 und R11 sind
+owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 bis R12 sind
 vollständig abgeschlossen; SQL 24 und SQL 25 sind produktiv installiert und
 read-only postgeprüft. R11 hat Doctor View, Range-Arztbericht und Health Export
-V3 isoliert vorbereitet; sichtbare Activity-Consumer verwenden weiterhin V1.
+V3 isoliert vorbereitet; R12 hat Protein Target und Trendpilot isoliert auf
+Aktivtage vorbereitet. Sichtbare Activity-Consumer verwenden weiterhin V1.
 
-Cross-Contract-Stand 2026-08-22: `PASS mit dokumentierten R8-Evidence-Gaps,
+Cross-Contract-Stand 2026-08-23: `PASS mit dokumentierten R8-Evidence-Gaps,
 owner-akzeptierter R9-Review-Restunsicherheit sowie vollständig grünem R10
-und R11`.
+bis R12`.
 R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
@@ -62,8 +63,8 @@ liefert den vollständigen versionierten Ist-Datenexport aus einem konsistenten
 Snapshot. SQL 24 ist produktiv installiert; Function/ACL/Auth/Empty-V1 und
 unveränderte V2-Zähler 0/0/0 sind postgeprüft. Client, Download-Harness und
 alle sichtbaren Activity-V2-Consumer bleiben zunächst isoliert. R11 hat
-Doctor View, Arztbericht und Health Export vorbereitet; R12 bereitet Protein Target
-und Trendpilot vor. R13 aktiviert die read-only Consumer mit bestehender
+Doctor View, Arztbericht und Health Export vorbereitet; R12 hat Protein Target
+und Trendpilot vorbereitet. R13 aktiviert die read-only Consumer mit bestehender
 V1-Erfassung, R14 erst den Activity-V2-Capture.
 
 R11 ist DONE: Ein gemeinsamer ownergebundener `STABLE SECURITY INVOKER`-RPC
@@ -79,10 +80,10 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R11/C2 stellen die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R12/C2 stellen die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
 Historien-, Editor-, Recovery-, Commit-, Lifecycle-, Export- und gemeinsamen
-Read-Consumergrundlage bereit. R12 ist das nächste Core-Gate. Die R10- und
+Read-Consumergrundlage bereit. R13 ist das nächste Core-Gate. Die R10- und
 R11-Datenbankfunctions existieren produktiv; ihre sichtbaren Consumer bleiben
 den zuständigen R13-/R14-Gates vorbehalten.
 
@@ -1042,7 +1043,7 @@ Zusammenfassungen vereinigen, ohne die ursprünglichen Daten umzuschreiben.
 
 Diese Consumer dürfen nicht still vom neuen Modell abgehängt werden.
 
-R12 bereitet diese Consumer auf dem gemeinsamen R11-Lesevertrag isoliert vor:
+R12 hat diese Consumer auf dem gemeinsamen R11-Lesevertrag isoliert vorbereitet:
 
 - unterschiedliche Wiener Kalendertage zählen als aktive Tage
 - mehrere Items oder Sessions desselben Tages erhöhen den Aktivtag nicht
@@ -1766,8 +1767,9 @@ Activity-V2-Daten. R11 entwickelt die Leser, aktiviert sie aber noch nicht.
 
 ### R12 - Protein Target and Trendpilot Compatibility
 
-Status: `PLANNED_FOLLOW_UP`; erst aus dem bewiesenen R11-Postimage als
-ausführungsreife Roadmap erstellen.
+Status: `DONE` (2026-08-23); pure Adapter vollständig lokal bewiesen, ohne
+Productload, Runtime-, SQL-, Scheduler-, Deploy- oder Schreibwirkung:
+[R12 Protein Target and Trendpilot Compatibility Roadmap](<archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>).
 
 Ziel:
 
@@ -1783,6 +1785,17 @@ Ziel:
 - alle Änderungen hinter der inaktiven R13-Seam halten; kein Productload,
   Deploy, Capture-Cutover oder realer V2-Schreibtest
 
+Nachgewiesenes Ergebnis:
+
+- `midas.activity-medical-context.v1` projiziert aus einem strikt validierten
+  R11-Snapshot explizite, vollständig enthaltene 28-Tage-Fenster in
+  eindeutige Wiener Aktivtage und belegte Montag-Sonntag-Wochen.
+- Protein behält ACT1/ACT2/ACT3 und Modifier unverändert; Trendpilot behält
+  Gate und `unknown/low/ok/high`, bereitet aber `active_days_4w` vor.
+- Finale Deno-Matrix `15/15` und statische Isolation sind grün. Bestehende
+  Edge-Handler, Workflows, Profile, Payloads, SQL25 und sichtbare Consumer
+  blieben unverändert; Aktivierung und Auth-/Schedulerbrücke gehören R13.
+
 Warum danach:
 
 Diese Consumer besitzen medizinische Wirkung und werden deshalb getrennt von
@@ -1791,7 +1804,7 @@ Consumer-Gate, keine Sammlung kleiner Einzelroadmaps.
 
 ### R13 - Read-Consumer Activation and V1 Parity
 
-Status: `PLANNED_CORE_GATE`; erst nach R12-DONE planen.
+Status: `PLANNED_CORE_GATE`; nächstes Core-Gate nach R12-DONE.
 
 Ziel:
 
@@ -1799,6 +1812,18 @@ Ziel:
   kontrolliert produktiv aktivieren
 - die in R12 vorbereiteten Protein-Target- und Trendpilot-Consumer
   kontrolliert produktiv aktivieren
+- für scheduled Protein-/Trendpilot-Läufe einen expliziten RLS-konformen
+  Activity-Snapshot-Provider festlegen; ein Service-/Secret-Key darf den
+  authenticated-only SQL25-Vertrag weder als User-JWT imitieren noch umgehen
+- die Migration der heutigen Legacy-`anon`-/`service_role`-Aufrufe auf den
+  dann aktuellen Supabase-Publishable-/Secret-Key-Vertrag im selben
+  Aktivierungsgate entscheiden und beweisen
+- Trendpilot pro Request über einen gemeinsamen Snapshot-Umschlag statt über
+  einen RPC pro Event versorgen; die 27-Tage-Erweiterung des Requestfensters
+  gegen das SQL25-Maximum von 400 Tagen fail-closed auflösen
+- mit der Aktivierung die neue Protein-Calc-Version und den semantisch
+  eindeutigen `active_days_4w`-Trendpilot-Payload einführen, während alte
+  `sessions_4w`-Historie weiterhin lesbar bleibt
 - Doctor View, Arztbericht, Health Export, Protein Target und Trendpilot mit
   realen Activity-V1-Daten sowie leerer oder vorhandener eigener V2-Historie
   auf Parität, Fehlerverhalten und Doppelzählung prüfen
@@ -2171,8 +2196,8 @@ versionierten Ist-Datenexport inzwischen produktiv als read-only Snapshot-RPC
 bereit, hält Client und Download aber weiter isoliert. R11 hat Arztbericht,
 Doctor View und Health Export auf einem gemeinsamen produktiven Read-Unterbau
 isoliert vorbereitet; es kopiert keine Satzdetails aus dem Coaching-Export.
-R12 ist das nächste Core-Gate und bereitet Protein Target und Trendpilot auf denselben
-Read-Vertrag vor. R13 aktiviert alle read-only Consumer bei weiterhin aktiver
+R12 hat Protein Target und Trendpilot auf denselben Read-Vertrag vorbereitet.
+R13 ist das nächste Core-Gate und aktiviert alle read-only Consumer bei weiterhin aktiver
 V1-Erfassung. Erst R14 aktiviert den Activity-V2-Capture, Coaching-Download
 und finalen Android-PWA-Pfad.
 

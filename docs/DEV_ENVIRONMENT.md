@@ -111,7 +111,7 @@ git status --short
 ## Installierte Kernwerkzeuge
 
 Letzter verifizierter Basis-Toolchain-Abgleich: 11.07.2026. CodeRabbit wurde
-separat am 08.08.2026 verifiziert.
+separat am 23.08.2026 verifiziert.
 
 | Werkzeug | Verifizierter Stand |
 | --- | --- |
@@ -129,7 +129,7 @@ separat am 08.08.2026 verifiziert.
 | Microsoft OpenJDK | `17.0.19` |
 | Android Command-line Tools / ADB | `21.0` / `37.0.0` |
 | Playwright | `1.61.1` |
-| CodeRabbit CLI in WSL | `0.7.2` |
+| CodeRabbit CLI in WSL | `0.7.5` |
 
 Die Befehle in den jeweiligen Abschnitten bleiben die Source of Truth. Die
 Tabelle ist ein datierter Referenzstand und kein Versions-Pin fuer das Repo.
@@ -257,38 +257,75 @@ Wichtig:
 
 ### CodeRabbit Reviews
 
-CodeRabbit besitzt in der MIDAS-Werkstatt drei getrennte Oberflaechen:
+CodeRabbit besitzt in der MIDAS-Werkstatt vier getrennte Bestandteile:
 
 - VS-Code-Extension `coderabbit.coderabbit-vscode` fuer interaktive Hinweise
   im Editor.
 - Codex-Plugin/Skill `coderabbit:code-review` fuer agentisch gefuehrte
   Review- und Fixzyklen.
 - CodeRabbit CLI in Ubuntu/WSL fuer deterministische Reviews lokaler Git-Diffs.
+- Den versionierten Windows-Shim `tools/coderabbit.cmd`, der den aktuellen
+  Windows-Arbeitsordner an die bestehende WSL-CLI weiterreicht.
 
-Der kanonische CLI-Pfad auf diesem Rechner ist:
+Der kanonische Aufruf aus PowerShell, CMD und Codex ist:
+
+```powershell
+coderabbit --version
+```
+
+Der Shim liegt benutzerweit unter
+`C:\Users\steph\.local\bin\coderabbit.cmd`; seine versionierte Quelle ist
+`tools/coderabbit.cmd`. Die eigentliche CLI bleibt ausschließlich in WSL:
 
 ```text
 /root/.local/bin/coderabbit
 ```
 
-Verifizierter Stand am 08.08.2026:
+Verifizierter Stand am 23.08.2026:
 
-- CLI `0.7.2` ist in WSL installiert.
+- CLI `0.7.5` ist in WSL installiert.
 - Agent-Authentifizierung ueber GitHub ist eingerichtet.
 - Die VS-Code-Extension und der Codex-Skill sind vorhanden.
-- Es gibt bewusst keine zweite Windows-CLI und keine CodeRabbit-Dependency im
-  MIDAS-Repo.
+- Der Windows-Shim funktioniert aus MIDAS und aus Pfaden mit Leerzeichen.
+- Es gibt bewusst keine zweite Windows-CLI und keine Package-Dependency im
+  MIDAS-Repo. Der Shim enthaelt keine CLI und kein Secretmaterial.
 
 Installationszustand pruefen, ohne Account- oder Tokenwerte zu dokumentieren:
 
 ```powershell
 code --list-extensions | Select-String -Pattern '^coderabbit\.coderabbit-vscode$'
-wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit --version
-$codeRabbitStatus = wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth status --agent | ConvertFrom-Json
+coderabbit --version
+$codeRabbitStatus = coderabbit auth status --agent | ConvertFrom-Json
 $codeRabbitStatus.authenticated
 ```
 
-Nur wenn die WSL-CLI auf einer neuen oder neu eingerichteten Maschine fehlt:
+Ist `coderabbit` nach einem neuen Terminal nicht auffindbar, zuerst nur den
+Shim aus dem Repo wiederherstellen. Die WSL-CLI wird dabei nicht neu
+installiert:
+
+```powershell
+$codeRabbitBin = Join-Path $HOME '.local\bin'
+New-Item -ItemType Directory -Path $codeRabbitBin -Force | Out-Null
+Copy-Item -LiteralPath 'tools\coderabbit.cmd' -Destination $codeRabbitBin -Force
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+if (-not (@($userPath -split ';') -contains $codeRabbitBin)) {
+  $newUserPath = if ([string]::IsNullOrWhiteSpace($userPath)) {
+    $codeRabbitBin
+  } else {
+    "$($userPath.TrimEnd(';'));$codeRabbitBin"
+  }
+  [Environment]::SetEnvironmentVariable(
+    'Path',
+    $newUserPath,
+    'User'
+  )
+}
+```
+
+`C:\Users\steph\.local\bin` muss genau einmal im Benutzer-PATH stehen. Nach
+einer PATH-Aenderung VS Code neu laden. Nur wenn der direkte WSL-Check auf einer
+neuen oder neu eingerichteten Maschine ebenfalls fehlschlaegt, die WSL-CLI
+installieren:
 
 ```powershell
 wsl.exe -d Ubuntu -u root -- bash -lc "curl -fsSL https://cli.coderabbit.ai/install.sh | sh"
@@ -299,15 +336,15 @@ Fehlt danach die Agent-Authentifizierung, den Browser-Login starten und den
 Status erneut pruefen:
 
 ```powershell
-wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth login --agent
-$codeRabbitStatus = wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit auth status --agent | ConvertFrom-Json
+coderabbit auth login --agent
+$codeRabbitStatus = coderabbit auth status --agent | ConvertFrom-Json
 $codeRabbitStatus.authenticated
 ```
 
 Kanonischer Review eines noch nicht committeten MIDAS-Diffs:
 
 ```powershell
-wsl.exe -d Ubuntu -u root -- bash -lc "cd /mnt/c/Users/steph/Projekte/M.I.D.A.S && /root/.local/bin/coderabbit review --agent -t uncommitted"
+coderabbit review --agent -t uncommitted
 ```
 
 Weitere unterstuetzte Scopes werden nur verwendet, wenn die Roadmap sie
@@ -325,16 +362,18 @@ MIDAS-Reviewvertrag:
 1. Zuerst den vorgesehenen lokalen, statischen und Browser-S5-Checkblock
    vollstaendig ausfuehren.
 2. Den nativen Code-/Contractreview abschliessen.
-3. CodeRabbit danach als zusaetzlichen externen Review des realen finalen Diffs
-   ausfuehren; es ersetzt weder Contract Review noch Tests.
+3. Bei Codeaenderungen CodeRabbit danach als zusaetzlichen externen Review des
+   realen finalen Diffs ausfuehren; es ersetzt weder Contract Review noch
+   Tests. Doku-only-Aenderungen erhalten keinen externen Review.
 4. Jede NDJSON-Zeile einzeln auswerten. Nur `finding`-Events als Issues
    sammeln; Status-/Heartbeat-Events sind kein Finding.
 5. Issues technisch und fachlich gegen Roadmap, Masterplan und reale
    Implementierung pruefen. Nicht blind korrigieren.
 6. Nur berechtigte Issues minimal beheben und alle dadurch invalidierten
    lokalen oder Browserchecks wiederholen.
-7. Einen erneuten CodeRabbit-Review ausfuehren, wenn die Korrektur dies laut
-   Roadmap verlangt oder Code-/Vertragsgrenzen veraendert hat.
+7. Nach berechtigten Korrekturen hoechstens einen Verifikationsreview
+   ausfuehren. Weitere externe Laeufe benoetigen ein neues P0/P1-, Security-,
+   Datenintegritaets- oder Vertragsrisiko oder eine ausdrueckliche Freigabe.
 8. Waehrend eines aktiven Reviews bis zu zehn Minuten ohne Zwischenmeldungen
    warten. Bei Auth-, Netzwerk-, CLI-Fehler oder Timeout keinen manuellen
    Review als CodeRabbit-Ergebnis ausgeben.
@@ -343,6 +382,13 @@ Wichtig:
 
 - CodeRabbit ist ein externer Reviewhelfer, keine Source of Truth und kein
   Ersatz fuer gruene MIDAS-Contracttests.
+- In Roadmaps mit Codeaenderungen gehoert CodeRabbit ausschließlich in S5:
+  ein Initiallauf und maximal ein Verifikationslauf. S1-S4 sowie Doku-only-
+  Roadmaps verwenden native Reviews ohne externen CodeRabbit-Aufruf.
+- Schlaegt der kanonische Shim oder die Authentifizierung fehl, wird der
+  externe Review gestoppt und der konkrete Fehler dokumentiert. Innerhalb
+  einer Roadmap wird weder eine alternative CLI installiert noch ein manueller
+  Review als CodeRabbit-Ersatz ausgegeben.
 - Accountmetadaten, E-Mail-Adressen, Tokens und Auth-Callbacks gehoeren nicht
   in Roadmaps, Logs, Commits oder Abschlussberichte.
 - `npx skills add coderabbitai/skills` ist fuer MIDAS nicht erforderlich, weil
@@ -350,6 +396,14 @@ Wichtig:
   ist.
 - Keine `package.json`-, Lockfile- oder Repository-Dependency nur fuer diesen
   Reviewpfad erzeugen.
+
+Rollback des Windows-Shims, ohne WSL-Installation oder Authentifizierung zu
+veraendern:
+
+1. `C:\Users\steph\.local\bin\coderabbit.cmd` entfernen.
+2. Nur `C:\Users\steph\.local\bin` aus dem Benutzer-PATH entfernen, falls das
+   Verzeichnis nicht fuer andere Werkzeuge verwendet wird.
+3. `tools/coderabbit.cmd` bleibt die versionierte Wiederherstellungsquelle.
 
 ### Deno
 

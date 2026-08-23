@@ -30,6 +30,11 @@ Ausführungsblock.
 | Reasoning-Standard | `Medium / High / Extra High` |
 | Reasoning-Ausnahmen | `[Schritt: Stufe + Begründung / keine]` |
 | Autonome Discovery Wave | `S1-S3` / `S1-S4R` / `deaktiviert` |
+| Autonomieprofil | `local-full` / `gated` / `manual` |
+| Maximal autonomer Endpunkt | `[S3 / S4R / S4.x / S5 / S6]` |
+| Geplante Reasoning-Wellen | `[Schritte: Stufe; Wellengrenzen]` |
+| Erwartete Arbeitsgröße | `small` / `medium` / `large`; in S4R finalisieren |
+| Externes Reviewbudget | `S1-S4: 0; S5 bei Codeänderung: 1 Initial + 1 Verifikation; Doku-only: 0` |
 | Owner-Erklärmodus | `none` / `Briefing` / `Briefing + S6-Recap` |
 | Betroffene Hauptdateien | `[Pfade]` |
 | Deploy relevant | `ja` / `nein` |
@@ -59,7 +64,8 @@ dupliziert sie nicht.
     referenzierten Sources of Truth`
   - oder `BLOCKED: [fehlende Entscheidung]`
 - Verbindliche Lesereihenfolge:
-  1. `Diese Startkarte, Roadmap-Metadaten und Session Resume Card`
+  1. `Diese Startkarte, Roadmap-Metadaten, Session Resume Card und vorhandenen
+     Context Receipt`
   2. `README.md`
   3. `docs/DEV_ENVIRONMENT.md`
   4. `docs/templates/MIDAS Roadmap Workflow Contract.md`
@@ -69,6 +75,10 @@ dupliziert sie nicht.
   - `[S1 oder aktueller Resume-Schritt]`
 - Freigegebener autonomer Block:
   - `[S1-S3 / S1-S4R / keiner]`
+- Autonomieprofil und maximaler Endpunkt:
+  - `[local-full/gated/manual; Sx]`
+- Reasoning-Wellen:
+  - `[Schrittbereich: Stufe; Stop vor notwendigem Stufenwechsel]`
 - Interne Continuation Gates:
   - `Nach jedem freigegebenen Discovery-Hauptschritt Full Review,
     Findings-Korrektur und Status-Sync; bei PASS ohne Owner-Gate automatisch
@@ -93,8 +103,9 @@ keine fehlenden Verträge; dokumentiere Widersprüche als Finding und beachte
 alle Owner-Gates. Ist eine autonome Discovery Wave freigegeben, schließe jeden
 enthaltenen Hauptschritt mit Full Review, Findings-Korrektur und Status-Sync ab
 und fahre bei bestandenem internem Continuation Gate ohne Rückfrage fort.
-Endet der freigegebene autonome Block mit S4R, stoppe dort und beginne S4 nur
-mit separater Freigabe.
+Folge danach nur den ausdrücklich freigegebenen Wellen des eingetragenen
+Autonomieprofils. Ein reiner Discovery-Auftrag endet an S4R; produktive,
+manuelle und benannte Wellengrenzen bleiben Stopps.
 ```
 
 ## Session Resume Card
@@ -118,12 +129,34 @@ Hauptschritt, S4-Ausführungsblock sowie vor Pausen ersetzen.
   - `[Pfade oder Diff-Verweis]`
 - Gültige Nachweise:
   - `[T-/EV-/QA-IDs]`
+- Context Receipt:
+  - `[Baseline/Fingerprint gültig / gezielt zu aktualisieren]`
+- Autonomieprofil / aktuelle Welle:
+  - `[Profil; Schrittbereich; maximaler Endpunkt]`
 - Runtime-/Deploy-Stand:
   - `[Version / SQL-Stand / nicht relevant]`
 - Offene Owner-Freigaben:
   - `[Deploy / SQL / Device / Workflow / none]`
 - Stop-Bedingungen:
   - `[was nicht übersprungen werden darf]`
+
+## Context Receipt
+
+In S1 anlegen; danach nur bei realer Invalidation aktualisieren. Keine
+chronologische Arbeitsgeschichte eintragen.
+
+- Baseline-Commit:
+  - `[SHA]`
+- Relevante Dirty Files:
+  - `[Pfade oder none]`
+- Gelesene Sources of Truth:
+  - `[Pfad: Stand/Fingerprint und betroffener Vertrag]`
+- Gültige Evidence-/Test-IDs:
+  - `[ID: belegte Aussage]`
+- Invalidation-Bedingungen:
+  - `[Datei/Producer/Consumer/Runtime/Finding -> betroffene IDs]`
+- Tool-/Runtime-Status:
+  - `[nur relevante Versionen und Verfügbarkeit; keine Secrets]`
 
 ## Zielvertrag
 
@@ -269,7 +302,9 @@ Deterministisch:
 3. Tests, Runtime, Datenbestand und Entscheidungen gezielt erfassen.
 4. Annahmen von Fakten trennen.
 5. Findings und Fragen dokumentieren.
-6. Contract Review, Korrektur und Abnahme.
+6. Context Receipt mit Baseline, relevanten Quellen, Evidence und
+   Invalidation anlegen.
+7. Contract Review, Korrektur und Abnahme.
 
 Ergebnis:
 
@@ -350,7 +385,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
 | Substep | Änderung | Findings | Dateien | Review | Checks / Evidence | Gate |
 | --- | --- | --- | --- | --- | --- | --- |
-| S4.1 | `[Änderung]` | `[IDs]` | `[Pfade]` | `Delta/Consumer` | `[T-/EV-IDs]` | `none/User` |
+| S4.1 | `[Änderung]` | `[IDs]` | `[Pfade]` | `nativer Delta/Consumer` | `[T-/EV-IDs]` | `none/User` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -377,17 +412,28 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Reviewbudget:
   - `[S4 grundsätzlich Delta/Consumer; begründete Full-Review-Grenzen mit
     Evidence-ID, Invalidation und in S5 wiederverwendetem Prüfanteil / keine]`
+- Aufwandsprognose:
+  - `Größenklasse: [small/medium/large]`
+  - `Umsetzungspakete und erwartete Dateigruppen: [kurz]`
+  - `Runtimeflächen / SQL / Backend: [kurz oder none]`
+  - `Browser / Device / produktive Gates: [kurz oder none]`
+  - `Teure Testpässe und externes Review: [Anzahl und Position]`
+  - `Empfohlene autonome Wellen samt Reasoning: [Schrittbereich: Stufe]`
+  - `Owner-Briefing bei large: [PASS / nicht relevant]`
 - Readiness-Findings/Korrekturen:
   - `[kurz oder none]`
 
 Exit: S4 kann ohne neue Grundsatzentscheidung beginnen; sichere
-Ausführungsblöcke und notwendige Einzelgates sind festgelegt. Eine autonome
-Discovery Wave endet hier; sie startet S4 nicht selbstständig.
+Ausführungsblöcke, Arbeitsgröße und notwendige Einzelgates sind festgelegt.
+Ein reiner Discovery-Auftrag endet hier; nur eine in der Startkarte vorab
+freigegebene Implementierungswelle darf gemäß Autonomieprofil fortfahren.
 
 ## S4 - Umsetzung
 
 S4 ist ausschließlich der Implementierungsblock. Substeps erhalten den für
-ihr Delta erforderlichen Review und invalidierte Checks. Ein separater
+ihr Delta erforderlichen nativen Review und invalidierte Checks. `Nativer
+Review` bedeutet hier lokale Code-/Contract-/Consumer-Prüfung und keinen
+externen CodeRabbit-Aufruf. Ein separater
 S4.5-Abschlussreview oder CodeRabbit-Lauf gehört nicht in S4. Ein Full Review
 ist nur an einer in S4R ausdrücklich begründeten Risiko- oder Produktivgrenze
 zulässig und muss seine wiederverwendbare Evidence sowie Invalidation nennen.
@@ -403,7 +449,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Umsetzung:
   - `[Änderung]`
 - Review:
-  - `Delta / Consumer / in S4R begründetes Full`
+  - `nativer Delta / nativer Consumer / in S4R begründetes natives Full`
 - S5-Evidence-Übernahme:
   - `[keine / Evidence-ID + unverändert gültiger Prüfanteil]`
 - Invalidation:
@@ -437,8 +483,8 @@ Deterministische Reihenfolge:
 1. Vollständige relevante lokale, statische und gegebenenfalls
    Browser-/Device-Testmatrix ausführen.
 2. Nativen Full Code und Contract Review des finalen Gesamtdiffs durchführen.
-3. Bei Codeänderungen genau einen geplanten initialen CodeRabbit-Lauf gegen
-   denselben finalen Diff ausführen.
+3. Bei Codeänderungen genau einen geplanten initialen CodeRabbit-Lauf über den
+   kanonischen `coderabbit`-Aufruf gegen denselben finalen Diff ausführen.
 4. Jedes externe Finding gesammelt gegen Roadmap, Produktvertrag und reale
    Implementierung bewerten; nichts blind korrigieren.
 5. Berechtigte Findings gebündelt und minimal korrigieren und alle dadurch
@@ -449,6 +495,14 @@ Deterministische Reihenfolge:
    Nitpicks eröffnen keine unbeschränkte Reviewspirale.
 7. Mehrdeutige Produktentscheidungen als Owner-Gate behandeln. Einen nicht
    verfügbaren externen Review mit Grund dokumentieren und nicht ersetzen.
+
+Externes Reviewbudget:
+
+- S1-S4: `0` CodeRabbit-Läufe.
+- S5 Initial: bei Codeänderungen maximal `1` Lauf; bei Doku-only `0`.
+- S5 Verifikation: maximal `1` Lauf nach berechtigten Korrekturen.
+- Zusätzlicher Lauf: nur bei neuem P0/P1-, Security-, Datenintegritäts- oder
+  Vertragsrisiko oder ausdrücklichem Owner-Auftrag; als Ausnahme begründen.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -473,7 +527,7 @@ Ergebnis:
 - Produktiver Iststand:
   - `[Version / Zähler / none]`
 - Externer Review:
-  - `[CodeRabbit / anderer / nicht erfolgt]`
+  - `[Tool/Version; Initial n; Verifikation n; Ausnahme n + Grund / nicht erfolgt]`
 - Offene Findings:
   - `[IDs oder none]`
 - Commit-Entscheidung:

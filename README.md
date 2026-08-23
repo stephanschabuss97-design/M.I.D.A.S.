@@ -472,6 +472,9 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 
 ### Operativer Arbeitsmodus
 
+- Coding-Agents verwenden [`AGENTS.md`](AGENTS.md) als kompakten automatisch
+  geladenen Arbeitsvertrag; die dort verlinkten Sources of Truth bleiben
+  maßgeblich.
 - Lies zuerst README, dann die betroffenen Dateien in `docs/modules/`, dann erst
   den Code.
 - Beachte die lokale Tooling-/Check-Dokumentation in

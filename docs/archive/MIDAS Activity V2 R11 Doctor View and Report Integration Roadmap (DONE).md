@@ -1813,3 +1813,26 @@ R11 ist erfolgreich, wenn ein frischer Chat und die Testmatrix belegen können:
 - In R11 ist höchstens der read-only SQL-Unterbau produktiv; die sichtbare
   Read-Consumer-Aktivierung gehört R13 und der Capture-Cutover ausschließlich
   R14.
+
+## Post-Close-Prozessnachtrag - 2026-08-23
+
+Dieser Nachtrag ändert weder den fachlichen R11-Vertrag noch den Status `DONE`.
+Sie korrigiert ausschließlich die historische Zusammenfassung der externen
+Reviews:
+
+- In S4.2 liefen drei CodeRabbit-Reviews erfolgreich. Ein anschließender
+  vierter Bestätigungsversuch wurde durch das externe Rate-Limit beendet.
+- In S5 liefen zusätzlich genau ein Initial- und ein Verifikationsreview
+  erfolgreich.
+- Damit umfasst die vollständige R11-Historie fünf erfolgreiche
+  CodeRabbit-Läufe sowie einen nicht abgeschlossenen, rate-limitierten Versuch.
+- Die Formulierungen in S5 und im Abschluss beziehen sich korrekt auf den
+  dortigen S5-Zyklus, waren als Gesamtzahl für R11 jedoch unvollständig.
+- Die zusätzliche Reviewarbeit änderte keine produktive Wirkung und erzeugt
+  kein neues fachliches Finding. Sie ist eine Prozessabweichung vom inzwischen
+  geschärften MIDAS-Vertrag: externe CodeRabbit-Reviews gehören grundsätzlich
+  in S5 und werden dort auf einen Initial- und einen Verifikationslauf begrenzt.
+
+Die kanonische Evidence enthält denselben Nachtrag. R11 bleibt abgeschlossen;
+dieser Hinweis dient ausschließlich der transparenten Prozesshistorie und als
+Input für nachfolgende Roadmaps.

@@ -258,3 +258,22 @@ Abschlussregeln:
 - Bei realem Widerspruch gewinnt der geprüfte Iststand; Roadmap und Evidence
   werden gemeinsam korrigiert.
 - Nach Archivierung bleibt keine aktive zweite Source of Truth zurück.
+
+## Post-Close-Prozessnachtrag - 2026-08-23
+
+Die fachliche Evidence, alle PASS-Nachweise und der Status `DONE` bleiben
+unverändert. Korrigiert wird ausschließlich die vollständige Zählung der
+externen Reviews:
+
+- S4.2: drei erfolgreiche CodeRabbit-Reviews und ein weiterer, durch das
+  externe Rate-Limit nicht abgeschlossener Bestätigungsversuch.
+- S5: genau ein erfolgreicher Initial- und ein erfolgreicher
+  Verifikationslauf.
+- R11 gesamt: fünf erfolgreiche CodeRabbit-Läufe plus ein nicht
+  abgeschlossener, rate-limitierter Versuch.
+
+`EV-ACT-R11-L10` und der finale Evidence-Digest beschreiben den S5-Zyklus
+korrekt, dürfen jedoch nicht als Gesamtzahl aller R11-Läufe gelesen werden.
+Aus der korrigierten Historie entsteht kein neues Produkt-, Security- oder
+Datenintegritätsfinding. Sie belegt eine Prozessabweichung, die in den
+aktuellen MIDAS-Workflowregeln durch das S5-only-Reviewbudget verhindert wird.

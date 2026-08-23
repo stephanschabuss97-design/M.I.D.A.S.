@@ -7,6 +7,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Activity V2 R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
 
 ---
 
@@ -31,6 +32,7 @@ Related docs:
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
 | `sql/11_Lab_Event_Extension.sql` | CKD-Stufe aus `lab_event`. |
 | `backend/supabase/functions/midas-protein-targets/index.ts` | Edge Function (Compute + Write). |
+| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Unreferenzierter purer R12-Adapter für Aktivtage, ACT-Level und Modifier. |
 
 ---
 
@@ -75,6 +77,9 @@ Related docs:
 - Berechnung: Age Base + Activity Modifier, CKD Faktor, Min/Max Target.
 - Doctor-Lock: nutzt `protein_doctor_factor` als Source of Truth (wenn aktiv); fehlt der Faktor, wird der Run skipped.
 - Activity bleibt Count-basiert (bewusste Sessions, keine Minuten).
+- R12 bereitet isoliert dieselben ACT-Schwellen auf unterschiedlichen Wiener
+  Aktivtagen aus dem validierten R11-Snapshot vor. Der produktive Handler liest
+  bis R13 weiterhin ausschließlich V1-`activity_event`-Zeilen.
 - CKD-Stufe wird konservativ aufgeloest:
   - zuerst letztes `lab_event.payload.ckd_stage`
   - dann bestehendes `user_profile.protein_ckd_stage_g`
@@ -173,6 +178,9 @@ Related docs:
 - Aktivitaetspunkte feiner gewichten (nur wenn Minutes spaeter gewuenscht).
 - Albuminurie als optionaler Faktor.
 - Dialyse-Modus nur via Doctor-Lock.
+- R13 aktiviert den bewiesenen R12-Aktivtagadapter, erhöht dabei die Calc-
+  Version auf `v1.3-*` und prüft die sichtbare Bedeutung von
+  `protein_activity_score_28d`; R12 selbst ändert weder Profil noch Targets.
 
 ---
 
@@ -191,6 +199,10 @@ Related docs:
 - Dependencies (hard): `user_profile` Spalten, `activity_event`, `lab_event`, Edge Function.
 - Dependencies (soft): Profil-UI, Intake/Assistant Anzeige.
 - Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, fehlende CKD-Quelle im Auto-Pfad erzeugt Skip statt stillen Write.
+- R12-Stand: Der pure Adapter ist mit ACT1/ACT2/ACT3 bei 0/1/2/5/6
+  Aktivtagen, Same-day/Mixed und Detailunabhängigkeit lokal bewiesen. Er ist
+  nicht vom Edge-Handler importiert; Scheduler, Profilfelder, Calc-Version und
+  Persistenz bleiben bis R13 unverändert.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/13_Activity_Event.sql`, `sql/11_Lab_Event_Extension.sql`, Edge `midas-protein-targets`, Workflow `protein-targets.yml`.
 
 ---
@@ -205,6 +217,9 @@ Related docs:
 - Auto ohne Lab- und Profil-CKD skipped mit `ckd_stage_missing`.
 - Doctor-Lock ohne CKD schreibt keine erfundenen CKD-Metadaten.
 - Profil-Targets aktualisieren Intake/Assistant (Range-only).
+- R12-Adapter: aktive Tage 0/1/2/5/6 ergeben unverändert ACT1/ACT1/ACT2/
+  ACT2/ACT3 und Modifier 0.1/0.1/0.2/0.2/0.3; mehrere Einheiten desselben
+  Wiener Tages zählen einmal. (done, isoliert)
 
 ---
 

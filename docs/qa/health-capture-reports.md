@@ -680,3 +680,44 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Count-, Sortier-, Sanitization-, Report-first- oder All-or-Error-Vertrag;
   Productimport, Web-/Edge-/SW-/APK-Deploy, Activity-/Report-DML oder eine
   vorgezogene R13-/R14-Aktivierung.
+
+### HCR-030 - Activity V2 R12 Protein-/Trendpilot-Kompatibilität bleibt isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [Protein Module Overview](<../modules/Protein Module Overview.md>),
+  [Trendpilot Module Overview](<../modules/Trendpilot Module Overview.md>) und
+  [R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
+- Ebene: pure Deno-Contracts + Node/static Product-Isolation
+- Ausführung: automated; keine Datenbank, kein Browser, kein Device und kein
+  produktiver Runtime-Smoke
+- Wirkung: ausschließlich sieben neue unreferenzierte lokale TypeScript-,
+  Test- und Isolationstool-Dateien; keine SQL-, ACL-, Workflow-, Handler-,
+  Productload-, Deploy- oder Schreibwirkung
+- Voraussetzung: Der R11-Validator und SQL25-Postimagefingerprint aus HCR-029
+  sind unverändert. Activity V1 bleibt der einzige produktive Capture-Pfad;
+  R13 besitzt Auth-/Schedulerbrücke, Version, Payload und Aktivierung.
+- Aktion: `deno test` für Shared Context, Protein- und Trendpilotadapter sowie
+  Deno Check/Lint/Format ausführen; danach
+  `node tools/activity-v2-r12-isolation.mjs` und `git diff --check`.
+- Erwartung: Ein validierter R11-Snapshot darf mehrere explizite,
+  vollständig enthaltene 28-Tage-Fenster bedienen. Unterschiedliche Wiener
+  Tage zählen einmal, belegte Wochen laufen Montag bis Sonntag. Protein bleibt
+  bei ACT1 `<2`/`0.1`, ACT2 `2-5`/`0.2`, ACT3 `>=6`/`0.3`. Trendpilot bleibt
+  beim Gate `>=4` Aktivtage oder `>=2` Wochen, high `>=8`, low `<=3`, sonst
+  ok beziehungsweise vor Gate unknown; der neue Output heißt
+  `active_days_4w`, alte `sessions_4w`-Events bleiben unberührt.
+- Abschlussbaseline 2026-08-23: Deno `15/15`, Check/Lint/Format, Node-Syntax,
+  Isolation `protected=14`, `r12_files=7`, `product_wiring=0`,
+  `runtime_dependencies=0` und diff-check PASS. CodeRabbit 0.7.5 lief genau
+  einmal initial und einmal verifizierend; alle R12-relevanten Issues wurden
+  korrigiert, drei fremde Baseline-Issues nicht angefasst. Die Verifikation
+  ergänzte noch ein lokal grün bestätigtes Empty-Postimage; kein dritter Lauf
+  gemäß Reviewbudget.
+- Nicht erneut ausgeführt: HCR-029-/R11-Fullmatrix, IM-013, PT-014, Browser,
+  Docker/PostgreSQL, Supabase Local/Remote, Workflow, Edge/Web/SW/APK/Device
+  und Deploy, weil keine jeweilige Invalidation oder produktive Wirkung
+  eingetreten ist.
+- Invalidiert durch: R11-Snapshot/Validator oder SQL25; Shared-Context-
+  Schema/Range/Wien-/Wochenlogik; Protein-ACT-Schwellen/Modifier;
+  Trendpilot-Gates/Level/Payload; Producthandler-, Workflow-, Auth-, Scheduler-,
+  SQL-, Productload- oder R13-/R14-Aktivierungsdelta.

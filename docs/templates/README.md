@@ -56,14 +56,39 @@ Hauptschritte. Nur die künstliche Gesprächspause zwischen ihnen entfällt.
 - Bei Owner-Entscheidung, Quellenwiderspruch, Scope-Ausweitung, blockierendem
   Finding oder fehlendem belastbarem Nachweis stoppen.
 - Bis einschließlich S4R keine Produktcodeänderung oder produktive Wirkung.
-- Nach S4R mit dem Readiness-Urteil enden; S4 benötigt einen eigenen
-  Ausführungsauftrag.
+- Ein auf Discovery begrenzter Auftrag endet nach S4R mit dem
+  Readiness-Urteil. S4 benötigt einen eigenen Ausführungsauftrag, außer die
+  Startkarte hat eine anschließende Implementierungswelle unter dem gewählten
+  Autonomieprofil ausdrücklich vorab freigegeben.
 
 Die Roadmap legt den freigegebenen Bereich (`S1-S3`, `S1-S4R` oder
 `deaktiviert`) in Metadaten und Startkarte fest. Für die gesamte Discovery Wave
 gilt grundsätzlich eine gemeinsame Reasoning-Stufe.
 
-Im S4 Readiness Review zusätzlich sichere Ausführungsblöcke empfehlen.
+Zusätzlich legt jede Roadmap genau ein Autonomieprofil fest:
+
+- `local-full`: Der Chat darf alle freigegebenen nichtproduktiven,
+  reversiblen Schritte einschließlich geplanter read-only Reviews bis S6
+  autonom ausführen. Produktive oder manuelle Owner-Gates bleiben auch hier
+  echte Stopps.
+- `gated`: Der Chat arbeitet autonom bis zum nächsten eingetragenen Owner-Gate
+  und setzt erst nach dessen Freigabe fort. Dies ist der MIDAS-Standard.
+- `manual`: Der Chat stoppt nach jedem ausdrücklich markierten Block. Dieses
+  Profil ist für unklare, destruktive oder bewusst begleitete Arbeit gedacht.
+
+Ein Autonomieprofil entfernt keine fachlichen Gates. Es bestimmt nur, ob ein
+grünes internes Gate eine neue Chatfreigabe benötigt. Jede autonome Welle läuft
+mit einer gemeinsamen Reasoning-Stufe; ein notwendiger Stufenwechsel ist eine
+vorab benannte Wellengrenze.
+
+Im S4 Readiness Review zusätzlich sichere Ausführungsblöcke und die erwartete
+Arbeitsgröße empfehlen. Die Prognose enthält mindestens Größenklasse
+`small/medium/large`, Umsetzungspakete, voraussichtlich betroffene Dateien und
+Runtimeflächen, SQL-/Backendwirkung, Browser-/Devicebedarf, Owner-Gates,
+teure Testpässe, externe Reviews und empfohlene autonome Wellen. `large`
+erzwingt ein kompaktes Owner-Briefing und einen Kohärenzcheck, aber nicht
+automatisch mehrere Roadmaps.
+
 Benachbarte Substeps dürfen gemeinsam laufen, wenn Wirkung, Reihenfolge,
 Reviewtiefe und Gates kompatibel sind. Ihre einzelnen Ergebnisse und Findings
 bleiben dennoch getrennt nachvollziehbar.
@@ -145,10 +170,19 @@ Korrektheit noch Freigaben dürfen von einem vermuteten Cache Hit abhängen.
 In einer neuen Session zuerst lesen:
 
 1. Ausführungs-Chat-Startkarte, Roadmap-Metadaten und Session Resume Card.
-2. Entscheidungslog und offene Findings.
-3. Den aktuellen Schritt und sein Exit-Kriterium.
-4. Den relevanten Git-Diff.
-5. Nur die Referenzen, die der aktuelle Schritt tatsächlich benötigt.
+2. Den aktuellen `Context Receipt` mit Baseline, relevanten Dirty Files,
+   Referenzständen, gültigen Evidence-IDs, Invalidation und Toolstatus.
+3. Entscheidungslog und offene Findings.
+4. Den aktuellen Schritt und sein Exit-Kriterium.
+5. Den relevanten Git-Diff.
+6. Nur die Referenzen, die der aktuelle Schritt tatsächlich benötigt.
+
+Der Context Receipt wird in S1 erzeugt und nach jedem Ausführungsblock nur dort
+aktualisiert, wo sich Baseline, relevante Dateien, Quellenstand, Evidence oder
+Toolzustand geändert haben. Er ist kein zweites Arbeitsprotokoll. Ist seine
+Baseline nicht mehr aktuell oder eine Invalidation-Bedingung eingetreten, wird
+der betroffene Nachweis gezielt erneuert statt der gesamte Projektkontext neu
+eingelesen.
 
 Bereits gültige Entscheidungen und Nachweise werden über ihre IDs referenziert,
 nicht erneut ausformuliert oder ohne Invalidation wiederholt.
@@ -193,5 +227,6 @@ angegebenen Reihenfolge, prüfe den realen Git- und Systemstand und beginne mit
 dem eingetragenen Startschritt. Erfinde keine fehlenden Verträge; dokumentiere
 Widersprüche als Finding und beachte alle Owner-Gates. Führe eine in der
 Startkarte freigegebene Discovery Wave über ihre internen Continuation Gates
-ohne Rückfrage bis zum erlaubten Endpunkt aus; starte S4 nicht automatisch.
+ohne Rückfrage bis zum erlaubten Endpunkt aus. Danach folge dem eingetragenen
+Autonomieprofil und stoppe an jeder benannten Wellen- oder Owner-Grenze.
 ```
