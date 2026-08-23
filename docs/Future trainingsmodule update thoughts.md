@@ -1804,7 +1804,12 @@ Consumer-Gate, keine Sammlung kleiner Einzelroadmaps.
 
 ### R13 - Read-Consumer Activation and V1 Parity
 
-Status: `PLANNED_CORE_GATE`; nächstes Core-Gate nach R12-DONE.
+Status: `ROADMAP_READY` (2026-08-23); nächstes Core-Gate nach
+R12-DONE.
+
+Ausführungsquelle:
+
+- [R13 Read-Consumer Activation and V1 Parity Roadmap](<MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap.md>)
 
 Ziel:
 
@@ -1812,12 +1817,15 @@ Ziel:
   kontrolliert produktiv aktivieren
 - die in R12 vorbereiteten Protein-Target- und Trendpilot-Consumer
   kontrolliert produktiv aktivieren
-- für scheduled Protein-/Trendpilot-Läufe einen expliziten RLS-konformen
-  Activity-Snapshot-Provider festlegen; ein Service-/Secret-Key darf den
-  authenticated-only SQL25-Vertrag weder als User-JWT imitieren noch umgehen
-- die Migration der heutigen Legacy-`anon`-/`service_role`-Aufrufe auf den
-  dann aktuellen Supabase-Publishable-/Secret-Key-Vertrag im selben
-  Aktivierungsgate entscheiden und beweisen
+- für scheduled Protein-/Trendpilot-Läufe einen expliziten privilegierten,
+  ownergebundenen Activity-Snapshot-Provider festlegen; ein Secret-Key darf den
+  authenticated-only SQL25-Vertrag weder als User-JWT imitieren noch dessen
+  V1-/V2-Semantik in einer zweiten Union duplizieren
+- Protein und Trendpilot bereits über getrennte moderne benannte Secret Keys
+  im `apikey`-Header aktivieren; die globale Migration von PWA, Android,
+  Incident Push und übrigen Edge Functions bleibt ausdrücklich außerhalb von
+  R13 und folgt dem
+  [Supabase API Key and Edge Authentication Modernization Masterplan](<MIDAS Supabase API Key and Edge Authentication Modernization Masterplan.md>)
 - Trendpilot pro Request über einen gemeinsamen Snapshot-Umschlag statt über
   einen RPC pro Event versorgen; die 27-Tage-Erweiterung des Requestfensters
   gegen das SQL25-Maximum von 400 Tagen fail-closed auflösen
