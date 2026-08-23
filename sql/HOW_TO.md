@@ -673,6 +673,85 @@ while the product-load prohibition remains intact.
   canonical named-argument signature `p_from date, p_to date`. Neither query
   wrote data.
 
+# Activity V2 R11 Doctor-/Report-Consumer Compatibility
+
+`25_Activity_Consumer_Compatibility.sql` adds exactly one read-only function:
+`public.activity_consumer_snapshot(date,date) returns jsonb`. It combines
+Activity V1 events and completed Activity V2 sessions for the authenticated
+owner in one `STABLE SECURITY INVOKER` calling-query snapshot. It accepts no
+owner parameter, writes no Activity or report data and does not activate a
+Doctor-, Report-, Export- or other product consumer.
+
+The complete fresh/disposable Activity-V2 target order is exactly:
+
+1) `20_Activity_V2.sql`;
+2) `21_Activity_V2_Catalog_V2.sql`;
+3) `22_Activity_V2_Commit_Compatibility.sql`;
+4) `23_Activity_V2_History_Lifecycle.sql`;
+5) `24_Activity_V2_Coaching_Export.sql`;
+6) `25_Activity_Consumer_Compatibility.sql`;
+7) `16_Explicit_Grants.sql`.
+
+On an already canonical R10 product target, apply only SQL 25. SQL 25 performs
+its own exact revoke/grant in the same transaction. SQL 16 is only the
+reviewed full-build and future explicit-grant mirror; do not run it as part of
+the SQL-25 product action. Any productive SQL-16 reconciliation, SQL-25 retry
+or rollback is a separate reviewed Owner gate.
+
+The reviewed PostgreSQL-17 hashes are:
+
+- SQL 25 file SHA-256:
+  `77be7b9fb633d324a9f51f11640b015fcc54bea7e50dcf5392dc22ea424bc572`;
+- consumer `pg_get_functiondef` SHA-256:
+  `f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d`;
+- rollback file SHA-256:
+  `7cbae04722fd67c3e5522d15dfbe003821c0adcd9a1bce03642589c0fc0cb510`;
+- disposable fixture file SHA-256:
+  `ed4365d67f3ca3714b5f1c60435cb6fc0e9144ca029109763b483a9b967624cf`;
+- SQL-16 mirror SHA-256:
+  `10a607eebf453f928e48f0b91c46f64a038d23b6f2b1f1c35e7e66745dd46341`.
+
+Only `authenticated` receives Execute. `PUBLIC`, `anon` and `service_role`
+do not; `postgres` remains owner. The function additionally requires a
+non-anonymous `auth.uid()` context and filters every source to that owner. Its
+inclusive Vienna-local range is at most 400 days. It fails closed on invalid
+historical V1 source fields, more than 1000 V2 sessions or more than 50 items
+per session; it never truncates a payload.
+
+The guarded disposable regression fixture is
+`sql/tests/25_Activity_Consumer_Compatibility_fixture.sql`. It proves fresh,
+rerun, source/dependency/owner/mode/ACL drift, authenticated and anonymous
+boundaries, Empty/range/limit contracts, rollback and unchanged protected
+data without Activity- or report-DML. Never run the fixture or create a
+synthetic Activity/report row on the product database.
+
+`25_Activity_Consumer_Compatibility_Rollback.sql` removes only the exact
+reviewed date/date consumer function. It rejects overload, source, owner,
+hardening, ACL or dependency drift and requires a fresh Owner decision.
+Installing SQL 25 does not authorize R11 product wiring. R13 owns read-only
+consumer activation; R14 alone owns the Activity-V2 capture cutover.
+
+## Productive R11 execution record (2026-08-23)
+
+- Owner approval covered exactly one productive SQL-25 run with SHA-256
+  `77be7b9fb633d324a9f51f11640b015fcc54bea7e50dcf5392dc22ea424bc572`.
+- The Supabase DDL action succeeded once and recorded migration-history entry
+  `20260823083735/activity_v2_r11_consumer_compatibility`. No retry, SQL 16,
+  fixture, rollback, Activity/report DML or Edge/Web/Service-Worker/APK/device
+  deploy ran.
+- Postimage: exactly one `date,date -> jsonb` function, owner `postgres`,
+  `STABLE SECURITY INVOKER`, `search_path=''`, function-definition SHA-256
+  `f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d`.
+  Function ACL is exactly owner plus `authenticated`.
+- Runtime smoke: an authenticated real-owner context returned the exact empty
+  schema for a known empty day; an anonymous authenticated-role claim failed
+  closed with `MIDAS_ACTIVITY_CONSUMER_AUTH_REQUIRED`.
+- Data postcondition: V1 remained 65 with zero invalid source rows, catalog
+  remained 78/80, Activity-V2 sessions/items/sets remained 0/0/0 and the one
+  existing range report remained byte-identical under the documented hashes.
+- Advisors gained no R11 warning. The deployed `midas-monthly-report` remained
+  ACTIVE at version 50 with the same bundle hash; no function deploy ran.
+
 # Adding a New Module Script
 
 1) Create `sql/NN_Module_Name.sql` (or a final master script once the refactor is done).

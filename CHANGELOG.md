@@ -21,14 +21,20 @@ erhalten.
 - Additive Activity-V2-History-/Lifecycle-Grundlage mit begrenzter
   Keyset-Historie, gespeicherten Snapshotdetails, revisions- und
   fingerprintgeschützter atomarer Korrektur sowie wiederholsicherem Hard
-  Delete. Die neuen RPCs sind produktiv installiert, aber bis R12 ohne
-  sichtbaren Consumer.
+  Delete. Die neuen RPCs sind produktiv installiert, aber bis zu den
+  zuständigen R13-/R14-Gates ohne sichtbaren Consumer.
 - Versionierter Activity-V2-Coaching-Export für abgeschlossene Ist-Sessions:
   ein ownergebundener read-only Snapshot-RPC liefert vollständige,
   deterministisch sortierte Session-, Item- und Satzdaten mit historischer
   Katalogsemantik, exakten Einheiten, Counts und All-or-Error-Caps. Die
   Function ist produktiv installiert; Download-UI, Doctor View, Health Export
   und Activity-V2-Cutover bleiben bis zu ihren Folgeroadmaps unverändert.
+- Gemeinsamer Activity-V1-/V2-Read-Unterbau für Doctor View, Range-
+  Arztbericht und Health Export V3: ein ownergebundener Snapshot-RPC ist
+  produktiv installiert, während Doctor-/Report-/Exportconsumer bis R13
+  isoliert bleiben. Arztberichte enthalten weiterhin keine Übungs-, Satz-,
+  Rep-, Gewichts-, Volumen- oder Empfehlungsebene; Health Export V2 und der
+  getrennte R10-Coaching-Export bleiben unverändert.
 
 - Kanonischer QA-Einstieg mit fachlichen Suites, operativen Runbooks und
   eigenem Release-Readiness-Vertrag.
@@ -68,6 +74,9 @@ erhalten.
   ownergebundene, gehärtete RPCs mit Revision/Content-CAS. Der interne
   Canonicalization-Helper liegt im nicht exponierten Schema `midas_private`;
   direkte Tabellen-DML sowie `anon`-/`PUBLIC`-Zugriff bleiben entzogen.
+- Der gemeinsame Activity-Consumer ist `SECURITY INVOKER`, besitzt keinen
+  Ownerparameter und erlaubt Execute nur für nicht anonyme
+  `authenticated`-Aufrufe. SQL 25 verändert keine Activity- oder Reportdaten.
 
 - Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
   Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.

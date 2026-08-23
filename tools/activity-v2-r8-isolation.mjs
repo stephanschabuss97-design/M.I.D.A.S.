@@ -24,19 +24,69 @@ const protectedPaths = Object.freeze([
   'public/manifest.json',
   'app/modules/vitals-stack/activity/index.js',
   'app/modules/vitals-stack/activity/v2/session-draft.js',
-  'android/app/src/main'
+  'android/app/src/main',
+  'app/modules/doctor-stack/doctor/index.js',
+  'app/modules/doctor-stack/reports/index.js',
+  'backend/supabase/functions/midas-monthly-report/index.ts'
 ]);
 const explicitGrantsPath = 'sql/16_Explicit_Grants.sql';
-const r10ExplicitGrantsSha256 =
-  '8f6882c6f3945d86ad1e3455391009e3a91a4f286672b54dec747bb1a950ff4c';
+const r11ExplicitGrantsSha256 =
+  '10a607eebf453f928e48f0b91c46f64a038d23b6f2b1f1c35e7e66745dd46341';
 const protectedTargetCount = protectedPaths.length + 1;
 const r10NegativeOraclePaths = Object.freeze([
-  'app/modules/doctor-stack',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.fixture.json',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-browser.smoke.spec.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-data-access.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-final.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-harness.html',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-harness.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.css',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js',
   'app/modules/vitals-stack/protein',
   'app/modules/vitals-stack/trendpilot',
   'app/supabase/api/reports.js',
   'app/supabase/api/trendpilot.js',
-  'app/supabase/api/vitals.js'
+  'app/supabase/api/vitals.js',
+  'sql/24_Activity_V2_Coaching_Export.sql',
+  'sql/24_Activity_V2_Coaching_Export_Rollback.sql',
+  'sql/tests/24_Activity_V2_Coaching_Export_fixture.sql'
+]);
+const r11IsolatedPaths = Object.freeze([
+  'app/modules/vitals-stack/activity/v2/activity-consumer.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer.fixture.json',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.contract.test.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-view.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-view.contract.test.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-harness.html',
+  'app/modules/doctor-stack/doctor/activity-consumer-harness.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-harness.css',
+  'app/modules/doctor-stack/doctor/activity-consumer-browser.smoke.spec.js',
+  'app/modules/doctor-stack/doctor/health-export-v3.js',
+  'app/modules/doctor-stack/doctor/health-export-v3.contract.test.js',
+  'backend/supabase/functions/midas-monthly-report/activity-consumer.ts',
+  'backend/supabase/functions/midas-monthly-report/activity-consumer_test.ts',
+  'backend/supabase/functions/midas-monthly-report/activity-report.ts',
+  'backend/supabase/functions/midas-monthly-report/activity-report_test.ts',
+  'sql/25_Activity_Consumer_Compatibility.sql',
+  'sql/25_Activity_Consumer_Compatibility_Rollback.sql',
+  'sql/tests/25_Activity_Consumer_Compatibility_fixture.sql'
+]);
+const r11TestPaths = Object.freeze([
+  'app/modules/vitals-stack/activity/v2/activity-consumer.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-final.contract.test.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-view.contract.test.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-browser.smoke.spec.js',
+  'app/modules/doctor-stack/doctor/health-export-v3.contract.test.js',
+  'backend/supabase/functions/midas-monthly-report/activity-consumer_test.ts',
+  'backend/supabase/functions/midas-monthly-report/activity-report_test.ts',
+  'sql/tests/25_Activity_Consumer_Compatibility_fixture.sql'
 ]);
 const blockFPaths = Object.freeze([
   'android/app/build.gradle.kts',
@@ -69,7 +119,7 @@ requireCondition(
   createHash('sha256')
     .update(read(explicitGrantsPath).replace(/\r\n/g, '\n'))
     .digest('hex') ===
-    r10ExplicitGrantsSha256,
+    r11ExplicitGrantsSha256,
   'EXPLICIT_GRANTS_SOURCE'
 );
 requireCondition(
@@ -85,11 +135,19 @@ requireCondition(
 );
 git(['diff', '--check']);
 
+requireCondition(
+  r11IsolatedPaths.every((relativePath) => read(relativePath).length > 0),
+  'R11_OUTPUT_MISSING'
+);
+
 const productSources = [
   read('index.html'),
   read('service-worker.js'),
   read('public/manifest.json'),
-  read('app/modules/vitals-stack/activity/index.js')
+  read('app/modules/vitals-stack/activity/index.js'),
+  read('app/modules/doctor-stack/doctor/index.js'),
+  read('app/modules/doctor-stack/reports/index.js'),
+  read('backend/supabase/functions/midas-monthly-report/index.ts')
 ].join('\n');
 const productV2Loads = (productSources.match(/activity\/v2|session-commit|test-pwa/gi) || []).length;
 requireCondition(productV2Loads === 0, 'PRODUCT_V2_LOAD');
@@ -97,6 +155,12 @@ requireCondition(
   !/activity-coaching-export|coachingExport|loadCoachingExport/.test(productSources),
   'PRODUCT_R10_LOAD'
 );
+const r11ProductLoads = (
+  productSources.match(
+    /activity-consumer(?:-data-access|-view)?\.(?:js|ts)|activity-report\.(?:js|ts)|health-export-v3\.js|activity_consumer_snapshot|midas\.activity-consumer\.v1|midas\.health-export\.v3/gi
+  ) || []
+).length;
+requireCondition(r11ProductLoads === 0, 'PRODUCT_R11_LOAD');
 
 const coreRuntime = coreRuntimePaths.map(read).join('\n');
 const coreNetworkEdges = (
@@ -116,16 +180,53 @@ requireCondition(
 );
 
 const blockFSources = blockFPaths.map(read).join('\n');
+const r11Sources = r11IsolatedPaths.map(read).join('\n');
 const secretPatterns = Object.freeze([
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
   /\bsb_(?:secret|publishable)_[A-Za-z0-9_-]{16,}\b/g,
-  /https:\/\/[a-z0-9-]+\.supabase\.co/gi
+  /https:\/\/(?!example\.)[a-z0-9-]+\.supabase\.co/gi
 ]);
 const secretMaterial = secretPatterns.reduce(
-  (count, pattern) => count + (blockFSources.match(pattern) || []).length,
+  (count, pattern) =>
+    count + (`${blockFSources}\n${r11Sources}`.match(pattern) || []).length,
   0
 );
 requireCondition(secretMaterial === 0, 'SECRET_MATERIAL');
+
+const r11TestSources = r11TestPaths.map(read).join('\n');
+const testDmlPattern =
+  /\b(?:insert\s+into|delete\s+from|merge\s+into|update|truncate(?:\s+table)?)\s+(?:only\s+)?(?:public\.)?(?:health_events|health_activity_[a-z_]+|range_report(?:_[a-z_]+)?)\b/gi;
+const matchesTestDml = (source) => {
+  testDmlPattern.lastIndex = 0;
+  return testDmlPattern.test(source);
+};
+requireCondition(
+  [
+    'insert into public.health_events',
+    'delete from only public.health_activity_sessions',
+    'merge into public.health_activity_session_items',
+    'update public.range_report',
+    'truncate table public.range_report_archive'
+  ].every(matchesTestDml),
+  'R11_TEST_DML_ORACLE'
+);
+testDmlPattern.lastIndex = 0;
+const testDml = (r11TestSources.match(testDmlPattern) || []).length;
+requireCondition(testDml === 0, 'R11_TEST_DML');
+
+const scopeSource = [
+  read('docs/Future trainingsmodule update thoughts.md'),
+  read('docs/modules/Activity Module Overview.md')
+].join('\n');
+const r13ReadSeam =
+  /R13 aktiviert (?:die )?read-only Consumer/.test(scopeSource) &&
+  /R13 aktiviert die bewiesenen read-only Consumer zunächst bei weiterhin\s+produktiver Activity-V1-Erfassung/.test(scopeSource) &&
+  /R13 aktiviert ausschließlich read-only Consumer; Activity V1 bleibt dort\s+der einzige produktive Capture-Pfad/.test(scopeSource);
+const r14CaptureSeam =
+  /R14 ist der einzige produktive Writer-Cutover/.test(scopeSource) &&
+  /R14[^\n]*Activity-V2-Capture/.test(scopeSource);
+requireCondition(r13ReadSeam, 'R13_READ_SEAM');
+requireCondition(r14CaptureSeam, 'R14_CAPTURE_SEAM');
 
 const recoveryDeletes = (
   `${coreRuntime}\n${blockFSources}`.match(
@@ -151,6 +252,8 @@ requireCondition(!/public\/manifest\.json|midas-shell-|\/M\.I\.D\.A\.S\.\//.test
 
 process.stdout.write(
   `PASS protected=${protectedTargetCount} product_v2_loads=0 core_network_edges=0 ` +
-  'unsafe_diagnostics=0 secret_material=0 recovery_deletes=0 local_worker_scope=1 ' +
-  `r10_negative_oracles=${r10NegativeOraclePaths.length}\n`
+  'r11_product_loads=0 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
+  'recovery_deletes=0 local_worker_scope=1 ' +
+  `r10_negative_oracles=${r10NegativeOraclePaths.length} ` +
+  `r11_isolated=${r11IsolatedPaths.length} r13_read_seam=1 r14_capture_seam=1\n`
 );

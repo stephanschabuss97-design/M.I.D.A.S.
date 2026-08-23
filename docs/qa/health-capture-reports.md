@@ -617,4 +617,66 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   `loadCoachingExport`, SQL 24 oder Rollback, SQL-16-R10-Grantguard, R8/R9-
   Dependencyfunction, Tabellen-/Katalogschema, RLS/ACL/Owner/Search Path,
   Range-/Cap-/Snapshot-/Sortier-/All-or-Error-Vertrag, neuer Produkt-Scriptload,
-  Activity-V1-/Doctor-/Health-/MCP-/Importkopplung oder R12-Cutover.
+  Activity-V1-/Doctor-/Health-/MCP-/Importkopplung oder R14-Capture-Cutover.
+
+### HCR-029 - Activity V2 R11 Doctor-, Report- und Health-Consumer bleiben sicher und isoliert
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [Doctor View Module Overview](<../modules/Doctor View Module Overview.md>),
+  [Reports Module Overview](<../modules/Reports Module Overview.md>),
+  [R11 Roadmap](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
+  und [R11 Evidence](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
+- Ebene: local-runtime + isolierter Browser + Deno + disposable PostgreSQL 17
+  + produktiver read-only SQL-Postcheck
+- Ausführung: automated + manual + genau einmal owner-gatetes SQL 25
+- Wirkung: im fachlichen Public-Schema ausschließlich eine additive read-only
+  Consumerfunction und deren ACL; die Supabase-DDL-Aktion schreibt ihren
+  operativen Migration-History-Eintrag. Kein Productload, keine Activity-/
+  Report-DML und kein Web-, Edge-, Service-Worker-, APK- oder Device-Deploy
+- Voraussetzung: R1-R11-/C2-Sources und Tests gehören zum selben Repo-Stand.
+  SQL-Fixtures laufen nur disposable. Activity V1 bleibt produktiv aktiv;
+  R13 besitzt die read-only Consumeraktivierung und R14 allein den Capture-
+  Cutover.
+- Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
+  sowie die direkten Doctor-Contracts und
+  `node tools/activity-v2-r8-isolation.mjs` ausführen. Die vier R11-Deno-
+  Contracts samt Check/Lint/Format ausführen. Bei SQL-25-, Rollback-, Fixture-
+  oder SQL-16-Änderung das guarded Fixture
+  `sql/tests/25_Activity_Consumer_Compatibility_fixture.sql` und die SQL-16-
+  Driftmatrix vollständig auf PostgreSQL 17 ausführen. Den isolierten Doctor-
+  Harness bei Desktop, 390x844 und 320x800 auf report-first, Lazy, Empty,
+  Error, Stale, Logout, V1-Delete, V2-read-only, Health Export V3, Overflow und
+  Konsole prüfen. Produktiv nur Function-/ACL-/Auth-/Daten- und Runtime-
+  Postconditions lesen.
+- Erwartung: `midas.activity-consumer.v1`; V1-Ereignis und V2-Session sind je
+  eine Aktivitätseinheit, aktive Tage sind unterschiedliche Wiener
+  Kalendertage und Sessiondauer wird genau einmal gezählt. Der inklusive Range
+  umfasst höchstens 400 Tage; Caps sind 1000 V2-Sessions und 50 Items pro
+  Session. Ungültige Quellen und Caps schlagen ohne Teilantwort fehl. Function
+  ist `postgres`-owned, `STABLE SECURITY INVOKER`, `search_path=''`; Execute
+  nur für nicht anonyme `authenticated`-Aufrufe, kein Ownerparameter. Doctor-
+  und Reportcopy bleiben report-first und enthalten keine Übungen, Sätze,
+  Reps, Gewichte, Volumen oder Empfehlungen. Health Export V2 und R10-
+  Coaching-Export bleiben getrennt; V3 ist strikt, privat und all-or-error.
+- Abschlussbaseline 2026-08-23: Node `276/276`, Deno `37/37`, Browser `5/5`,
+  PostgreSQL-17.11-Full-Fixture und SQL16-Driftmatrix PASS. SQL-25-Dateihash
+  `77be7b9fb633d324a9f51f11640b015fcc54bea7e50dcf5392dc22ea424bc572`,
+  Functiondef-Hash
+  `f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d`.
+  Produktiv blieben V1 `65`, ungültige V1-Quellen `0`, Katalog `78/80`, V2
+  Sessions/Items/Sets `0/0/0` und ein bestehender Range-Report samt Hashes
+  unverändert. Authenticated Empty-Runtime und anonyme Ablehnung sind PASS;
+  Report-Edge blieb ACTIVE Version 50.
+- Reviewgrenze: CodeRabbit 0.7.5 lief in S5 genau einmal initial und einmal
+  verifizierend. Alle fünf berechtigten Findings wurden korrigiert; weitere
+  Läufe waren nach dem vereinbarten Reviewvertrag nicht vorgesehen. Der native
+  Full Review und alle direkt invalidierten Checks sind grün.
+- Watchlists: drei intentional gehärtete R8/R9-`SECURITY DEFINER`-Hinweise,
+  deaktivierte Leaked-Password-Protection und acht `unused_index`-Infos. Keine
+  Warnung betrifft den R11-RPC; die Watchlist bleibt separat zu pflegen.
+- Invalidiert durch: Consumer-/Validator-/Data-Access-/Doctor-/Report-/Health-
+  Export-V3-Änderungen; SQL 25, Rollback, Fixture oder SQL 16; V1-View,
+  V2-Tabellen, Katalog, RLS/ACL/Owner/Search Path, Auth-/Anonymous-, Range-,
+  Count-, Sortier-, Sanitization-, Report-first- oder All-or-Error-Vertrag;
+  Productimport, Web-/Edge-/SW-/APK-Deploy, Activity-/Report-DML oder eine
+  vorgezogene R13-/R14-Aktivierung.

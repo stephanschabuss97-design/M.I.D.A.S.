@@ -1,0 +1,314 @@
+{
+  "schema_version": "midas.activity-consumer.fixtures.v1",
+  "today": "2026-08-23",
+  "cases": [
+    {
+      "name": "empty",
+      "range": { "from": "2026-08-01", "to": "2026-08-23", "inclusive_days": 23 },
+      "units": [],
+      "snapshot": {
+        "schema_version": "midas.activity-consumer.v1",
+        "timezone": "Europe/Vienna",
+        "range": { "from": "2026-08-01", "to": "2026-08-23", "inclusive_days": 23 },
+        "summary": {
+          "unit_count": 0,
+          "active_day_count": 0,
+          "active_days_per_week": 0,
+          "total_duration_min": 0,
+          "average_duration_min": null,
+          "last_day": null
+        },
+        "quality": { "mixed_source_day_count": 0, "mixed_source_days": [] },
+        "units": []
+      }
+    },
+    {
+      "name": "v1_only",
+      "range": { "from": "2026-08-01", "to": "2026-08-07", "inclusive_days": 7 },
+      "units": [
+        {
+          "source": "activity_v1",
+          "id": "00000000-0000-4000-8000-000000000002",
+          "day": "2026-08-07",
+          "occurred_at": "2026-08-07T10:00:00.000Z",
+          "label": "Radfahren",
+          "duration_min": 45,
+          "note": null,
+          "item_count": null
+        },
+        {
+          "source": "activity_v1",
+          "id": "00000000-0000-4000-8000-000000000001",
+          "day": "2026-08-01",
+          "occurred_at": "2026-08-01T06:00:00.000Z",
+          "label": "Gehen",
+          "duration_min": 30,
+          "note": "Ruhige Runde",
+          "item_count": null
+        }
+      ],
+      "snapshot": {
+        "schema_version": "midas.activity-consumer.v1",
+        "timezone": "Europe/Vienna",
+        "range": { "from": "2026-08-01", "to": "2026-08-07", "inclusive_days": 7 },
+        "summary": {
+          "unit_count": 2,
+          "active_day_count": 2,
+          "active_days_per_week": 2,
+          "total_duration_min": 75,
+          "average_duration_min": 38,
+          "last_day": "2026-08-07"
+        },
+        "quality": { "mixed_source_day_count": 0, "mixed_source_days": [] },
+        "units": [
+          {
+            "source": "activity_v1",
+            "id": "00000000-0000-4000-8000-000000000001",
+            "day": "2026-08-01",
+            "occurred_at": "2026-08-01T06:00:00.000Z",
+            "label": "Gehen",
+            "duration_min": 30,
+            "note": "Ruhige Runde",
+            "item_count": null
+          },
+          {
+            "source": "activity_v1",
+            "id": "00000000-0000-4000-8000-000000000002",
+            "day": "2026-08-07",
+            "occurred_at": "2026-08-07T10:00:00.000Z",
+            "label": "Radfahren",
+            "duration_min": 45,
+            "note": null,
+            "item_count": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "v2_only",
+      "range": { "from": "2026-08-10", "to": "2026-08-23", "inclusive_days": 14 },
+      "units": [
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000012",
+          "day": "2026-08-15",
+          "occurred_at": "2026-08-15T17:00:00.000Z",
+          "label": "Training",
+          "duration_min": 40,
+          "note": null,
+          "item_count": 3
+        },
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000011",
+          "day": "2026-08-15",
+          "occurred_at": "2026-08-15T06:30:00.000Z",
+          "label": "Morgentraining",
+          "duration_min": 20,
+          "note": "Kurz",
+          "item_count": 1
+        }
+      ],
+      "snapshot": {
+        "schema_version": "midas.activity-consumer.v1",
+        "timezone": "Europe/Vienna",
+        "range": { "from": "2026-08-10", "to": "2026-08-23", "inclusive_days": 14 },
+        "summary": {
+          "unit_count": 2,
+          "active_day_count": 1,
+          "active_days_per_week": 0.5,
+          "total_duration_min": 60,
+          "average_duration_min": 30,
+          "last_day": "2026-08-15"
+        },
+        "quality": { "mixed_source_day_count": 0, "mixed_source_days": [] },
+        "units": [
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000011",
+            "day": "2026-08-15",
+            "occurred_at": "2026-08-15T06:30:00.000Z",
+            "label": "Morgentraining",
+            "duration_min": 20,
+            "note": "Kurz",
+            "item_count": 1
+          },
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000012",
+            "day": "2026-08-15",
+            "occurred_at": "2026-08-15T17:00:00.000Z",
+            "label": "Training",
+            "duration_min": 40,
+            "note": null,
+            "item_count": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed",
+      "range": { "from": "2026-08-17", "to": "2026-08-23", "inclusive_days": 7 },
+      "units": [
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000023",
+          "day": "2026-08-22",
+          "occurred_at": "2026-08-22T08:00:00.000Z",
+          "label": "Training",
+          "duration_min": 20,
+          "note": null,
+          "item_count": 0
+        },
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000022",
+          "day": "2026-08-20",
+          "occurred_at": "2026-08-20T17:00:00.000Z",
+          "label": "Krafttraining",
+          "duration_min": 40,
+          "note": null,
+          "item_count": 4
+        },
+        {
+          "source": "activity_v1",
+          "id": "00000000-0000-4000-8000-000000000021",
+          "day": "2026-08-20",
+          "occurred_at": "2026-08-20T06:00:00.000Z",
+          "label": "Gehen",
+          "duration_min": 30,
+          "note": null,
+          "item_count": null
+        }
+      ],
+      "snapshot": {
+        "schema_version": "midas.activity-consumer.v1",
+        "timezone": "Europe/Vienna",
+        "range": { "from": "2026-08-17", "to": "2026-08-23", "inclusive_days": 7 },
+        "summary": {
+          "unit_count": 3,
+          "active_day_count": 2,
+          "active_days_per_week": 2,
+          "total_duration_min": 90,
+          "average_duration_min": 30,
+          "last_day": "2026-08-22"
+        },
+        "quality": { "mixed_source_day_count": 1, "mixed_source_days": ["2026-08-20"] },
+        "units": [
+          {
+            "source": "activity_v1",
+            "id": "00000000-0000-4000-8000-000000000021",
+            "day": "2026-08-20",
+            "occurred_at": "2026-08-20T06:00:00.000Z",
+            "label": "Gehen",
+            "duration_min": 30,
+            "note": null,
+            "item_count": null
+          },
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000022",
+            "day": "2026-08-20",
+            "occurred_at": "2026-08-20T17:00:00.000Z",
+            "label": "Krafttraining",
+            "duration_min": 40,
+            "note": null,
+            "item_count": 4
+          },
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000023",
+            "day": "2026-08-22",
+            "occurred_at": "2026-08-22T08:00:00.000Z",
+            "label": "Training",
+            "duration_min": 20,
+            "note": null,
+            "item_count": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "same_day",
+      "range": { "from": "2026-08-23", "to": "2026-08-23", "inclusive_days": 1 },
+      "units": [
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000033",
+          "day": "2026-08-23",
+          "occurred_at": "2026-08-23T18:00:00.000Z",
+          "label": "Abendtraining",
+          "duration_min": 30,
+          "note": null,
+          "item_count": 2
+        },
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000031",
+          "day": "2026-08-23",
+          "occurred_at": "2026-08-23T06:00:00.000Z",
+          "label": "Morgentraining",
+          "duration_min": 10,
+          "note": null,
+          "item_count": 1
+        },
+        {
+          "source": "activity_v2",
+          "id": "00000000-0000-4000-8000-000000000032",
+          "day": "2026-08-23",
+          "occurred_at": "2026-08-23T12:00:00.000Z",
+          "label": "Mittagstraining",
+          "duration_min": 20,
+          "note": null,
+          "item_count": 1
+        }
+      ],
+      "snapshot": {
+        "schema_version": "midas.activity-consumer.v1",
+        "timezone": "Europe/Vienna",
+        "range": { "from": "2026-08-23", "to": "2026-08-23", "inclusive_days": 1 },
+        "summary": {
+          "unit_count": 3,
+          "active_day_count": 1,
+          "active_days_per_week": 7,
+          "total_duration_min": 60,
+          "average_duration_min": 20,
+          "last_day": "2026-08-23"
+        },
+        "quality": { "mixed_source_day_count": 0, "mixed_source_days": [] },
+        "units": [
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000031",
+            "day": "2026-08-23",
+            "occurred_at": "2026-08-23T06:00:00.000Z",
+            "label": "Morgentraining",
+            "duration_min": 10,
+            "note": null,
+            "item_count": 1
+          },
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000032",
+            "day": "2026-08-23",
+            "occurred_at": "2026-08-23T12:00:00.000Z",
+            "label": "Mittagstraining",
+            "duration_min": 20,
+            "note": null,
+            "item_count": 1
+          },
+          {
+            "source": "activity_v2",
+            "id": "00000000-0000-4000-8000-000000000033",
+            "day": "2026-08-23",
+            "occurred_at": "2026-08-23T18:00:00.000Z",
+            "label": "Abendtraining",
+            "duration_min": 30,
+            "note": null,
+            "item_count": 2
+          }
+        ]
+      }
+    }
+  ]
+}

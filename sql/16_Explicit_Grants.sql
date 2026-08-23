@@ -353,4 +353,80 @@ begin
 end;
 $activity_v2_r10_grants$;
 
+-- ---------------------------------------------------------------------------
+-- Activity V2 R11 read-only Doctor/report consumer snapshot
+-- ---------------------------------------------------------------------------
+
+do $activity_v2_r11_grants$
+declare
+  v_public_count integer;
+  v_snapshot_oid oid;
+  v_acl jsonb;
+begin
+  select pg_catalog.count(*)
+    into v_public_count
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'activity_consumer_snapshot';
+  v_snapshot_oid := pg_catalog.to_regprocedure(
+    'public.activity_consumer_snapshot(date,date)'
+  );
+
+  -- SQL 16 remains usable before SQL 25. Once any R11 overload exists, only
+  -- the canonical date/date function and its exact SQL 25 postimage are valid.
+  if v_public_count = 0 and v_snapshot_oid is null then
+    return;
+  end if;
+  if v_public_count <> 1 or v_snapshot_oid is null then
+    raise exception 'Activity V2 R11 explicit-grant target is partial or overloaded';
+  end if;
+  if pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+       pg_catalog.pg_get_functiondef(v_snapshot_oid), 'UTF8')), 'hex') <>
+       'f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d'
+     or not exists (
+       select 1
+         from pg_catalog.pg_proc p
+         join pg_catalog.pg_roles r on r.oid = p.proowner
+        where p.oid = v_snapshot_oid
+          and r.rolname = 'postgres'
+          and p.prokind = 'f'
+          and p.prorettype = 'jsonb'::pg_catalog.regtype
+          and not p.prosecdef
+          and p.provolatile = 's'
+          and p.proconfig = array['search_path=""']::text[]
+     ) then
+    raise exception 'Activity V2 R11 explicit-grant target source or hardening drift';
+  end if;
+
+  select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_array(
+           case when acl.grantee = 0 then 'PUBLIC' else grantee.rolname end,
+           grantor.rolname, acl.privilege_type, acl.is_grantable)
+           order by case when acl.grantee = 0 then 'PUBLIC' else grantee.rolname end,
+                    grantor.rolname, acl.privilege_type)
+    into v_acl
+    from pg_catalog.pg_proc p
+    cross join lateral pg_catalog.aclexplode(
+      coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+    left join pg_catalog.pg_roles grantee on grantee.oid = acl.grantee
+    join pg_catalog.pg_roles grantor on grantor.oid = acl.grantor
+   where p.oid = v_snapshot_oid;
+  if v_acl <>
+       '[["authenticated","postgres","EXECUTE",false],["postgres","postgres","EXECUTE",false]]'::jsonb
+     or pg_catalog.has_function_privilege(
+       'anon', 'public.activity_consumer_snapshot(date,date)', 'EXECUTE'
+     )
+     or pg_catalog.has_function_privilege(
+       'service_role', 'public.activity_consumer_snapshot(date,date)', 'EXECUTE'
+     ) then
+    raise exception 'Activity V2 R11 explicit-grant target ACL drift';
+  end if;
+
+  revoke all on function public.activity_consumer_snapshot(date, date)
+    from anon, public, authenticated, service_role;
+  grant execute on function public.activity_consumer_snapshot(date, date)
+    to authenticated;
+end;
+$activity_v2_r11_grants$;
+
 commit;

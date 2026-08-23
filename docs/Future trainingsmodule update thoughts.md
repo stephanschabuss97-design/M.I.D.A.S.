@@ -2,7 +2,7 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-22
+Stand: 2026-08-23
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
@@ -12,13 +12,14 @@ R10-Coaching-Export-Bausteine sind bereitgestellt. R8 ist mit einer explizit own
 Evidence-Lücke
 für den nicht ausgeführten Android-Device-Reclaim und den fehlenden finalen
 CodeRabbit-Null-Lauf abgeschlossen. R9 ist mit einer separat dokumentierten,
-owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 ist vollständig
-abgeschlossen; SQL 24 ist produktiv installiert und read-only postgeprüft.
-R11 ist das nächste Rolling-Wave-Gate;
-sichtbare Activity-Consumer verwenden weiterhin V1.
+owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 und R11 sind
+vollständig abgeschlossen; SQL 24 und SQL 25 sind produktiv installiert und
+read-only postgeprüft. R11 hat Doctor View, Range-Arztbericht und Health Export
+V3 isoliert vorbereitet; sichtbare Activity-Consumer verwenden weiterhin V1.
 
 Cross-Contract-Stand 2026-08-22: `PASS mit dokumentierten R8-Evidence-Gaps,
-owner-akzeptierter R9-Review-Restunsicherheit und vollständig grünem R10`.
+owner-akzeptierter R9-Review-Restunsicherheit sowie vollständig grünem R10
+und R11`.
 R1, R2 und R3 bleiben unverändert
 gültig. R3 hält die bewiesene R2-`request_id`, den top-level-Katalogvertrag und
 `item_order` ein. C2 ist DONE: v1 bleibt 78, v2 ist ein vollständiger
@@ -39,7 +40,7 @@ Historien-Lookup versionsagnostisch konsumieren und schließt dafür die
 lookup-spezifische Semantikinjektion der R2-Datenzugriffsschicht. Der
 Schreibpfad bleibt dabei unverändert. R7 bindet Recovery an die gespeicherte
 Draft-Katalogversion, R8 hat die Commit-Kompatibilität zwischen bestehenden
-Katalogversionen entschieden und R12 beweist die produktive
+Katalogversionen entschieden und R14 beweist die produktive
 Aktivierungsreihenfolge einschließlich gecachter PWA-Clients. R8 ist DONE:
 Draft v3 wird unverändert in eine tiefgefrorene R2-Payload projiziert, der
 exakte Commit-Intent liegt vor jedem Remoteversuch persistent im Recovery-
@@ -60,7 +61,16 @@ R10 ist DONE: Ein einziger ownergebundener `STABLE SECURITY INVOKER`-RPC
 liefert den vollständigen versionierten Ist-Datenexport aus einem konsistenten
 Snapshot. SQL 24 ist produktiv installiert; Function/ACL/Auth/Empty-V1 und
 unveränderte V2-Zähler 0/0/0 sind postgeprüft. Client, Download-Harness und
-alle sichtbaren Activity-V2-Consumer bleiben bis R12 isoliert.
+alle sichtbaren Activity-V2-Consumer bleiben zunächst isoliert. R11 hat
+Doctor View, Arztbericht und Health Export vorbereitet; R12 bereitet Protein Target
+und Trendpilot vor. R13 aktiviert die read-only Consumer mit bestehender
+V1-Erfassung, R14 erst den Activity-V2-Capture.
+
+R11 ist DONE: Ein gemeinsamer ownergebundener `STABLE SECURITY INVOKER`-RPC
+vereinigt Activity V1 auf Ereignis- und V2 auf Sessionebene. SQL 25 ist
+produktiv installiert; Function/ACL/Auth, anonyme Ablehnung und unveränderte
+V1-/V2-/Reportdaten sind postgeprüft. Doctor-Drilldown, kompakte Reportcopy,
+Health Export V3 und Edgeadapter bleiben bis R13 ohne Productload.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -69,11 +79,12 @@ Funktionen bereits produktiv existieren.
 
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
-Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R10/C2 stellen die
+Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R11/C2 stellen die
 noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Editor-, Recovery-, Commit-, Lifecycle- und Exportgrundlage bereit.
-Die R10-Datenbankfunction existiert produktiv, besitzt aber bis R12 keinen
-sichtbaren Produktconsumer.
+Historien-, Editor-, Recovery-, Commit-, Lifecycle-, Export- und gemeinsamen
+Read-Consumergrundlage bereit. R12 ist das nächste Core-Gate. Die R10- und
+R11-Datenbankfunctions existieren produktiv; ihre sichtbaren Consumer bleiben
+den zuständigen R13-/R14-Gates vorbehalten.
 
 ---
 
@@ -322,11 +333,11 @@ verändert werden. Eine echte Kataloglücke wird zuerst zu Hause über den
 kontrollierten Katalogpflegeweg geschlossen und danach in einer neu erzeugten
 Vorlage verwendet.
 
-Der minimale maschinenlesbare Vorlagenvertrag wird erst in R13 endgültig
+Der minimale maschinenlesbare Vorlagenvertrag wird erst in R15 endgültig
 eingefroren.
 Als Ausgangspunkt gilt ein Schema wie
 `midas.activity-session-template.v1` mit `schema_version`,
-`catalog_version`, einem Anzeigenamen und geordneten `items`. R13 benötigt in
+`catalog_version`, einem Anzeigenamen und geordneten `items`. R15 benötigt in
 der ersten Ausbaustufe weder eine Supabase-Plantabelle noch MCP-Schreibzugriff.
 
 ---
@@ -549,7 +560,7 @@ C2 ist dadurch noch nicht gefährdet, weil kein produktiver Activity-V2-
 Consumer schreibt. Vor einer späteren Katalogversion bindet R7 einen
 wiederhergestellten Draft an seinen gespeicherten Katalogsnapshot und R8
 entscheidet, welche bereits vorhandenen unveränderlichen Versionen während
-eines Rollouts weiter commitfähig bleiben. R12 beweist anschließend
+eines Rollouts weiter commitfähig bleiben. R14 beweist anschließend
 Katalogauswahl, Aktivierungsreihenfolge und das Verhalten gecachter
 PWA-Clients. Bis diese Gates geschlossen sind, wird keine weitere höchste
 Katalogversion beiläufig produktiv eingefügt.
@@ -618,7 +629,7 @@ Reclaim wird in R7 zunächst isoliert implementiert und bewiesen. R8 übernimmt
 danach dieselbe Recovery in die interne Produktintegration und führt den
 Android-PWA-Smoke aus. Activity V2 wird nicht für echte Sessions verwendet,
 bevor beide Grenzen grün sind; die produktive Aktivierung bleibt zusätzlich
-bis R12 gesperrt. R3 darf das Risiko diagnostisch sichtbar machen, aber keine
+bis R14 gesperrt. R3 darf das Risiko diagnostisch sichtbar machen, aber keine
 halbe IndexedDB-Lösung vorwegnehmen.
 
 Der vollständig ausgebaute Draft ab R7 enthält:
@@ -956,7 +967,7 @@ keinen N+1-Loop über R9-RPCs.
 
 Produktiv blieben Sessions/Items/Sets 0/0/0. Der reale Empty-Export wurde vom
 Clientvertrag akzeptiert; Anon und fehlender Auth wurden abgelehnt. Die
-isolierte Download-Shell ist nur ein Testharness und bleibt bis R12 aus
+isolierte Download-Shell ist nur ein Testharness und bleibt bis R14 aus
 `index.html`, Navigation und Service Worker ausgeschlossen. Doctor View,
 Health Export, Protein Target, Trendpilot, MCP, Coachingempfehlungen und Import
 wurden nicht verändert.
@@ -973,18 +984,21 @@ Nachweise:
 Der Arztbericht braucht keine einzelnen Übungen, Satzgewichte oder
 Trainingsplanansichten.
 
-Er erhält nur eine fachlich ruhige Zusammenfassung, zum Beispiel:
+Er erhält nur eine fachlich ruhige Zusammenfassung:
 
-- Anzahl abgeschlossener Aktivitätssessions
-- aktive Tage
-- Gesamtdauer auf Basis der Sessiondauer
-- durchschnittliche Dauer
-- grobe Verteilung von Kraft- und Ausdaueraktivität
+- Anzahl gespeicherter Aktivitätseinheiten in der Datengrundlage
 - letzter Aktivitätstag
-- optional relevante Datenqualitätswarnung
+- aktive Tage pro Woche auf Basis unterschiedlicher Kalendertage
+- Gesamtdauer auf Basis der Event- beziehungsweise Sessiondauer
+- durchschnittliche Dauer pro Aktivitätseinheit
 
-Die Doctor View darf bei Bedarf eine Sessionliste als sekundären Drilldown
-anzeigen. Satzdetails bleiben primär im Activity-Modul und im Coaching-Export.
+Eine Kraft-/Ausdauerverteilung, Übungen, Sätze, Gewichte, Wiederholungen,
+Volumen oder Trainingsempfehlungen gehören nicht in den Arztbericht.
+
+Die Doctor View darf bei Bedarf eine kompakte Sessionliste als sekundären
+read-only Drilldown anzeigen. Satzdetails bleiben ausschließlich im
+Activity-Modul und im Coaching-Export. R11 bereitet diesen Vertrag isoliert
+vor; R13 aktiviert ihn erst nach bewiesener V1-Parität.
 
 ---
 
@@ -1028,13 +1042,19 @@ Zusammenfassungen vereinigen, ohne die ursprünglichen Daten umzuschreiben.
 
 Diese Consumer dürfen nicht still vom neuen Modell abgehängt werden.
 
-Vor dem V2-Cutover ist zu definieren:
+R12 bereitet diese Consumer auf dem gemeinsamen R11-Lesevertrag isoliert vor:
 
-- was als aktiver Tag zählt
-- ob mehrere Items derselben Session nur einmal zählen
-- wie Kraft- und Daueraktivität bewertet werden
-- wie V1- und V2-Daten ohne Doppelzählung gemeinsam gelesen werden
-- welche Berechnung bewusst unverändert bleibt
+- unterschiedliche Wiener Kalendertage zählen als aktive Tage
+- mehrere Items oder Sessions desselben Tages erhöhen den Aktivtag nicht
+  mehrfach
+- V1 und V2 werden ohne heuristische Umdeutung oder Doppelzählung gelesen
+- Protein Target behält 28-Tage-Fenster, ACT1-/ACT2-/ACT3-Schwellen und
+  medizinische Formel unverändert
+- Trendpilot erhält kompatiblen Aktivitätskontext, aber keine neue Aussage,
+  Schwelle oder Kraft-/Ausdauerbewertung
+
+R13 aktiviert die bewiesenen read-only Consumer zunächst bei weiterhin
+produktiver Activity-V1-Erfassung. Erst R14 wechselt den Capture-Pfad auf V2.
 
 Activity V2 liefert Daten. Es darf medizinisch orientierte Faktoren nicht
 unbemerkt verändern.
@@ -1128,7 +1148,7 @@ ersetzt nicht die ausführlichen Arbeitsverträge der einzelnen Roadmaps.
 - Die Folgeroadmap wird erst aus dem bewiesenen Abschlussstand ihrer
   Vorgängerin abgeleitet. Maximal eine Roadmap darf als grober Ausblick
   vorbereitet werden.
-- Die R1-R14-Beschreibungen bleiben bis dahin Zielkorridore. Sie dürfen keine
+- Die R1-R16-Beschreibungen bleiben bis dahin Zielkorridore. Sie dürfen keine
   noch unbewiesenen Tabellen-, API-, UI- oder Migrationsdetails erzwingen.
 - Jede Roadmap erhält gemäß `docs/templates/` einen eigenen
   Ausführungs-Chat, eine vollständige Startkarte und einen Fresh-Chat-Test.
@@ -1153,24 +1173,58 @@ erneut gegen Recovery-, Commit-, Consumer- und Coaching-Verträge geprüft.
 - Die bisherige R10 wird R11 `Doctor View and Report Integration`.
 - Die bisherige R11 wird R12 `Protein Target, Trendpilot, Legacy
   Compatibility and Product Cutover`.
-- Der vorbereitete Sessionimport bleibt als R13 bestehen, wird aber eindeutig
+- Der vorbereitete Sessionimport wurde zunächst als R13 geführt und eindeutig
   als `Prepared Session Template Import V1` vom R10-Ist-Datenexport getrennt.
-- Die bisherige R12 wird als optionale R14 `Retention and Legacy Cleanup` ans
-  Ende verschoben und blockiert R13 nicht.
+- Die optionale `Retention and Legacy Cleanup` wurde zunächst als R14 ans Ende
+  verschoben.
 
 Diese Rebaseline verändert keine abgeschlossene R1-R6-/C2-Implementierung.
 Sie trennt den atomaren Write, destruktive Historienoperationen,
 maschinenlesbaren Ist-Export, medizinische Consumer und optionalen
 Vorlagenimport in eigenständig prüfbare Verträge.
 
+Diese Nummerierung wurde vor R11 durch die folgende Rebaseline abgelöst.
+
+### 18.3 Rebaseline vor R11
+
+Stand: `2026-08-22`.
+
+Der ursprüngliche R12-Schnitt vereinte medizinische Consumerlogik,
+read-only Runtimeaktivierung, Capture-Cutover, Legacygrenzen, PWA-Caches und
+Android-Nachweis. Diese Bereiche besitzen unterschiedliche Fehler- und
+Rollbackgrenzen. Der Core-Pfad wird deshalb einmalig in drei fachlich
+vollständige Gates geteilt, nicht in weitere Kleinst-Roadmaps:
+
+- R11 bleibt `Doctor View and Report Integration` und bereitet Doctor View,
+  Range-Arztbericht sowie Health Export V3 isoliert vor.
+- R12 wird `Protein Target and Trendpilot Compatibility` und bereitet die
+  verbleibenden medizinischen read-only Consumer isoliert vor.
+- R13 wird `Read-Consumer Activation and V1 Parity` und aktiviert die in R11
+  und R12 bewiesenen Leser, während Activity V1 weiterhin alleiniger
+  produktiver Capture-Pfad bleibt.
+- R14 wird `Activity V2 Capture Cutover and Android PWA Validation` und
+  übernimmt ausschließlich den neuen produktiven Schreibpfad, Legacy-
+  Abgrenzung, Katalogselektor, PWA-Cachegrenze und finalen Android-Nachweis.
+- Der vorbereitete Sessionimport verschiebt sich nach R15.
+- Die optionale Retention-/Legacy-Bereinigung verschiebt sich nach R16.
+
+Warum dieser Schnitt:
+
+- Reader werden vor dem Writer aktiviert und zunächst gegen bekannte
+  Activity-V1-Daten auf Parität geprüft.
+- R14 muss keine neue medizinische Berechnungslogik mehr entwickeln, sondern
+  nur bereits bewiesene Komponenten kontrolliert produktiv zusammenschalten.
+- R12-R14 bleiben substanzielle Integrationsgates; es entstehen keine
+  Roadmaps für einzelne Buttons, Dateien oder Standardtests.
+
 Verbindlichkeit der verbleibenden Folge:
 
-- R7 bis R12 bilden den Core-Pfad. Sie sind für verlustsichere reale Nutzung,
+- R7 bis R14 bilden den Core-Pfad. Sie sind für verlustsichere reale Nutzung,
   vollständige V1-Consumer-Parität und den kontrollierten produktiven Cutover
   notwendig.
-- R13 ist eine gewünschte Post-Core-Komfortfunktion für den Coaching-
+- R15 ist eine gewünschte Post-Core-Komfortfunktion für den Coaching-
   Kreislauf, aber keine Voraussetzung für den produktiven Activity-V2-Kern.
-- R14 ist eine optionale Hygieneentscheidung. Eine eigene R14-Roadmap wird nur
+- R16 ist eine optionale Hygieneentscheidung. Eine eigene R16-Roadmap wird nur
   erstellt, wenn reale Datenmenge, Wartungsaufwand oder Speicherverbrauch
   einen Bedarf belegen.
 
@@ -1270,7 +1324,7 @@ Status: `DONE` am 2026-08-01.
 Typ:
 
 - begrenzte Katalog-Wartungsroadmap außerhalb der funktionalen
-  R1-R14-Nummerierung
+  R1-R16-Nummerierung
 - Ausführungsfenster nach abgeschlossenem R2/R3 und zwingend vor R4
 - R3 ist abgeschlossen; C2 wurde vor R4 abgeschlossen
 
@@ -1542,7 +1596,7 @@ Ziel:
   Verwerfen, Lifecycle-Flush, Konflikte und Fehlerfälle
 - noch kein Supabase-Commit und kein Android-Prozess-Reclaim-Nachweis; diese
   Grenzen bleiben R8 vorbehalten. Die produktive Feature-Aktivierung bleibt
-  bis R12 gesperrt
+  bis R14 gesperrt
 
 Warum danach:
 
@@ -1593,7 +1647,7 @@ diesem Write- und Device-Sicherheitsgate herausgelöst.
 
 ### R9 - Session History, Detail, Correction and Deletion
 
-Status: `DONE` (2026-08-13); Activity V2 bleibt bis R12 produktiv unsichtbar.
+Status: `DONE` (2026-08-13); Activity V2 bleibt bis R14 produktiv unsichtbar.
 
 Ziel:
 
@@ -1619,12 +1673,12 @@ Lebenszykluslogik vom R8-Save-Gate.
 R9 darf den bewiesenen Commit-/Tombstonevertrag wiederverwenden, aber weder
 den nicht ausgeführten Android-Device-Smoke als PASS voraussetzen noch Activity
 V2 produktiv aktivieren. Produktcutover und finaler Android-PWA-Smoke bleiben
-R12.
+R14.
 
 ### R10 - Completed Activity Coaching Export V1
 
 Status: `DONE` (2026-08-22); SQL 24 produktiv installiert, Activity V2 bleibt
-bis R12 produktiv unsichtbar.
+bis R14 produktiv unsichtbar.
 
 Nachgewiesenes Ergebnis:
 
@@ -1639,7 +1693,7 @@ Nachgewiesenes Ergebnis:
   Zielwerten oder Trainingsvorgaben
 - JSON-Smokes mit realistischen Strength-, Duration-, Distance- und Mixed-
   Sessions
-- bis R12 weiterhin verborgen oder testgebunden; kein vorgezogener
+- bis R14 weiterhin verborgen oder testgebunden; kein vorgezogener
   produktiver Activity-V2-Cutover
 - genau ein ownergebundener, `STABLE SECURITY INVOKER` Snapshot-RPC statt
   N+1 über R9-History-RPCs
@@ -1665,42 +1719,58 @@ danach sofort für Coaching-Analysen nutzbar.
 
 ### R11 - Doctor View and Report Integration
 
-Status: `NEXT_ROLLING_WAVE_GATE`; die ausführungsreife Roadmap wird erst aus
-dem bewiesenen R10-Abschlussstand erstellt.
+Status: `DONE` (2026-08-23); SQL 25 produktiv installiert und read-only
+postgeprüft, alle R11-Consumer bis R13 unverdrahtet.
 
 Ziel:
 
-- ruhige Aktivitätszusammenfassung
-- optionaler Session-Drilldown
-- keine Satzdetails im Arztbericht
-- V1-/V2-Kompatibilität ohne Doppelzählung
-- einen gemeinsamen read-only V1-/V2-Kompatibilitätsvertrag auf
-  Event-/Session-Zusammenfassungsebene vorbereiten, den R12 für Protein Target
-  und Trendpilot wiederverwendet; die konkrete View-/RPC-/Helper-Form wird
-  erst in R11 nach Readiness Review festgelegt
+- gemeinsamen versionierten read-only V1-/V2-Consumervertrag auf Event- und
+  Sessionebene vorbereiten
+- unterschiedliche Wiener Kalendertage als Aktivtage zählen; mehrere
+  Einheiten desselben Tages nicht als mehrere Aktivtage werten
+- ruhige Aktivitätszusammenfassung aus letzter Aktivität, aktiven Tagen pro
+  Woche sowie Gesamt- und Durchschnittsdauer vorbereiten
+- optionalen read-only Session-Drilldown ohne Satzdetails vorbereiten
 - bestehendes Report-first-Design der Doctor View beibehalten; Activity V2
   verändert die Datenquelle und Zusammenfassung, nicht die
   Informationshierarchie
-- bestehende Arztberichte bleiben gespeicherte Snapshots; erst ein neu
-  erzeugter Bericht verwendet die kompatible V1-/V2-Auswertung
-- Health Export nur über einen expliziten Schema- und
-  Rückwärtskompatibilitätsvertrag erweitern; der vollständige R10-Coaching-
-  Export bleibt ein eigenständiges Artefakt
-- Integration bis R12 verborgen beziehungsweise feature-gated halten; noch
-  kein produktiver Activity-V2-Cutover
+- bestehende Arztberichte als unveränderte Snapshots erhalten; die neue
+  Reportcopy bis zur R13-Aktivierung nur isoliert beweisen
+- Health Export V2 unverändert aktiv lassen und ein explizit versioniertes,
+  isoliertes V3 vorbereiten; R10-Coaching-Export bleibt eigenständig
+- höchstens den owner-gateten read-only SQL-/ACL-Unterbau produktiv
+  installieren; kein Web-, Edge-, Service-Worker-, APK- oder Consumerdeploy
+
+Nachweise:
+
+- [R11 Roadmap](<archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
+- [R11 Evidence](<archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
+
+Nachgewiesenes Ergebnis:
+
+- `activity_consumer_snapshot(date,date)` vereinigt V1-Events und V2-Sessions
+  in `midas.activity-consumer.v1`, zählt aktive Wiener Kalendertage ohne
+  Same-day-Doppelzählung und bleibt authenticated-only.
+- Doctor-Drilldown und Range-Report enthalten keine Übungs-, Satz-, Rep-,
+  Gewichts-, Volumen- oder Empfehlungsdetails; der Bericht bleibt report-first.
+- Health Export V2 und bestehende Arztberichte blieben unverändert. Das
+  isolierte `midas.health-export.v3` ist strikt und all-or-error vorbereitet.
+- Produktiv blieben V1 `65`, ungültige V1-Quellen `0`, Katalog `78/80`, V2
+  `0/0/0` und ein bestehender Range-Report unverändert. Es gab keinen Web-,
+  Edge-, Service-Worker-, APK- oder Device-Deploy.
 
 Warum danach:
 
 Der medizinische Consumer erhält erst bewiesene, stabil gespeicherte
-Activity-V2-Daten.
+Activity-V2-Daten. R11 entwickelt die Leser, aktiviert sie aber noch nicht.
 
-### R12 - Protein Target, Trendpilot, Legacy Compatibility and Product Cutover
+### R12 - Protein Target and Trendpilot Compatibility
+
+Status: `PLANNED_FOLLOW_UP`; erst aus dem bewiesenen R11-Postimage als
+ausführungsreife Roadmap erstellen.
 
 Ziel:
 
-- gemeinsamer V1-/V2-Aktivtagvertrag: unterschiedliche aktive Kalendertage im
-  relevanten Zeitraum zählen; mehrere Sessions oder Items desselben Tages
-  erhöhen den Count nicht mehrfach
 - den in R11 bewiesenen read-only Kompatibilitätsvertrag wiederverwenden und
   keine zweite unabhängige V1-/V2-Union pro Consumer erfinden
 - Protein Target vereinigt V1 und V2 über aktive Tage, behält das bestehende
@@ -1708,26 +1778,74 @@ Ziel:
   unverändert und leitet nichts aus Sätzen, Gewichten oder Volumen ab
 - Trendpilot verwendet einen kompatiblen Aktivitätskontext ohne
   Doppelzählung; neue medizinische Aussagen oder Schwellwerte sind kein Ziel
-- R11-Doctor-/Report-Integration kontrolliert aktivieren
-- stabiler produktiver Selektor für die aktuelle Katalogversion und bewiesene
-  Rollout-Reihenfolge für Snapshot, Runtime, Consumer und gecachte PWA-Clients
-- kontrollierter Cutover des alten Activity-Capture-Pfads
-- bestehende Activity-V1-Daten und ihre historische Lesbarkeit erhalten; kein
-  Dual Write neuer V2-Sessions und keine Migration erfundener Detaildaten
-- finaler Android-PWA-Smoke
-- kontrollierte produktive Feature-Aktivierung
+- Same-day-, V1-only-, V2-only-, Mixed- und Empty-Verhalten isoliert beweisen
+- keine Kraft-/Ausdauerbewertung, Satz-, Gewichts- oder Volumenlogik ergänzen
+- alle Änderungen hinter der inaktiven R13-Seam halten; kein Productload,
+  Deploy, Capture-Cutover oder realer V2-Schreibtest
 
 Warum danach:
 
-Diese Consumer besitzen fachliche Wirkung und werden getrennt vom
-Darstellungsumbau geprüft. Erst R12 macht Activity V2 für reale Sessions
-produktiv sichtbar.
+Diese Consumer besitzen medizinische Wirkung und werden deshalb getrennt von
+Runtimeaktivierung und Schreibpfad geprüft. R12 bleibt ein substanzielles
+Consumer-Gate, keine Sammlung kleiner Einzelroadmaps.
 
-### R13 - Prepared Session Template Import V1
+### R13 - Read-Consumer Activation and V1 Parity
+
+Status: `PLANNED_CORE_GATE`; erst nach R12-DONE planen.
+
+Ziel:
+
+- die in R11 vorbereiteten Doctor-, Range-Report- und Health-Export-Consumer
+  kontrolliert produktiv aktivieren
+- die in R12 vorbereiteten Protein-Target- und Trendpilot-Consumer
+  kontrolliert produktiv aktivieren
+- Doctor View, Arztbericht, Health Export, Protein Target und Trendpilot mit
+  realen Activity-V1-Daten sowie leerer oder vorhandener eigener V2-Historie
+  auf Parität, Fehlerverhalten und Doppelzählung prüfen
+- Activity V1 während des gesamten Gates als einzigen produktiven
+  Capture-Pfad beibehalten; keine reale Activity-V2-Erfassung aktivieren
+- Web-/Edge-Aktivierung, Cachewirkung und Rollback der read-only Consumer
+  gemeinsam beweisen
+- R10-Coaching-Download, Activity-V2-Navigation, Commit und History weiterhin
+  verborgen halten
+
+Warum danach:
+
+Alle Leser werden mit bekannten V1-Daten produktiv bewiesen, bevor ein neuer
+Writer reale V2-Daten erzeugt. Damit bleibt ein Consumerfehler unabhängig vom
+Capture-Cutover rückrollbar.
+
+### R14 - Activity V2 Capture Cutover and Android PWA Validation
+
+Status: `FINAL_CORE_GATE`; erst nach stabiler R13-Reader-Parität planen.
+
+Ziel:
+
+- stabilen produktiven Selektor für die aktuelle Katalogversion und die
+  Aktivierungsreihenfolge für Snapshot, Runtime und gecachte PWA-Clients
+  beweisen
+- Activity-V2-Session-Shell, Recovery, Commit, History und Coaching-Export in
+  die sichtbare Produktnavigation integrieren
+- Activity V2 als einzigen neuen Capture-Pfad aktivieren und neue
+  Activity-V1-Erfassung kontrolliert deaktivieren; kein Dual Write
+- bestehende Activity-V1-Daten unverändert über die bereits aktiven
+  Kompatibilitätsconsumer lesbar halten; keine erfundene Detailmigration
+- Service Worker, Cachewechsel, Offline-/Reload-/Backgrounding- und
+  Rollbackgrenzen prüfen
+- finalen echten Android-PWA-Smoke für Start, Recovery, Save, History und
+  aktualisierte read-only Consumer durchführen
+
+Warum danach:
+
+R14 ist der einzige produktive Writer-Cutover. Medizinische Logik und
+read-only Consumer sind dann bereits bewiesen, sodass sich dieses Gate auf
+Erfassung, Cache, Legacygrenze und End-to-End-Verhalten konzentrieren kann.
+
+### R15 - Prepared Session Template Import V1
 
 Status: `POST-CORE`; erst nach stabilem Activity-V2-Kern und realer Nutzung
-planen. R13 hängt fachlich von R4, R7-R9 und dem produktiven R12-Cutover ab,
-nicht von einer bestimmten Retention-Entscheidung in R14. R10 liefert den
+planen. R15 hängt fachlich von R4, R7-R9 und dem produktiven R14-Cutover ab,
+nicht von einer bestimmten Retention-Entscheidung in R16. R10 liefert den
 Coaching-Ist-Export, ist aber nicht dasselbe Schema und kein direkter
 Importvertrag.
 
@@ -1747,7 +1865,7 @@ Ziel:
 - klarer Fehlerpfad für fehlende oder veraltete Katalogeinträge mit Verweis auf
   den kontrollierten Pflegeweg
 
-Nicht-Ziele der ersten R13-Ausbaustufe:
+Nicht-Ziele der ersten R15-Ausbaustufe:
 
 - keine Trainingsplanverwaltung in Supabase
 - keine automatische Leistungsprogression
@@ -1759,12 +1877,12 @@ Warum als Post-Core-Erweiterung:
 
 Die Funktion reduziert Reibung zwischen Codex-Analyse und realem Training,
 ohne den planfreien Kern umzubauen. Erst reale Nutzung des produktiven
-R12-Flows zeigt, ob Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich
+R14-Flows zeigt, ob Dateiimport, UI-Wording und Android-Dateiauswahl tatsächlich
 bequem genug sind.
 
-### R14 - Optional Retention and Legacy Cleanup
+### R16 - Optional Retention and Legacy Cleanup
 
-Status: `OPTIONAL`; blockiert weder den produktiven R12-Cutover noch R13.
+Status: `OPTIONAL`; blockiert weder den produktiven R14-Cutover noch R15.
 
 Ziel:
 
@@ -1777,7 +1895,7 @@ Ziel:
 Warum zuletzt:
 
 Löschung und Bereinigung benötigen reale Nutzungserfahrung und dürfen weder
-den Aufbau noch den Coaching- und Vorlagenfluss vorzeitig verkomplizieren. R14
+den Aufbau noch den Coaching- und Vorlagenfluss vorzeitig verkomplizieren. R16
 kann dauerhaft aufgeschoben werden, solange kein realer Hygiene- oder
 Speicherdruck besteht.
 
@@ -1785,11 +1903,14 @@ Speicherdruck besteht.
 
 ## 19. Roadmap-übergreifende Gates
 
-- Kein produktiver V2-Cutover vor erfolgreichem Abschluss von R12.
-- Keine Entfernung von Activity V1 vor bewiesener Consumer-Parität.
+- Kein produktiver V2-Capture-Cutover vor erfolgreichem Abschluss von R14.
+- R13 aktiviert ausschließlich read-only Consumer; Activity V1 bleibt dort
+  der einzige produktive Capture-Pfad.
+- Keine Deaktivierung der Activity-V1-Erfassung vor bewiesener R13-
+  Consumer-Parität und grünem R14-Cutover-Gate.
 - Keine produktive SQL-Wirkung ohne Owner Briefing und Freigabe.
 - Jede UI-Roadmap endet mit einem Live-Server-Smoke.
-- Vor Feature-Aktivierung ist ein finaler echter Android-PWA-Smoke
+- Vor der R14-Capture-Aktivierung ist ein finaler echter Android-PWA-Smoke
   erforderlich.
 - Keine reale Activity-V2-Sessionnutzung vor bewiesener persistenter
   Draft-Recovery aus R7 und grünem internen Android-PWA-Integrationssmoke aus
@@ -1808,14 +1929,14 @@ Speicherdruck besteht.
 - Das R4-Eingangsgate ist erfüllt: C2 hat Katalogversion 2, alle
   Maschinenidentitäten und die exakte Studio-Suchmatrix nachgewiesen. R4 darf
   beginnen, ohne bereits produktive Activity-V2-Nutzung zu aktivieren.
-- Vor dem R12-Cutover muss bewiesen sein, dass eine neue Katalogversion weder
+- Vor dem R14-Cutover muss bewiesen sein, dass eine neue Katalogversion weder
   einen gültigen älteren Draft noch einen gecachten PWA-Client allein durch den
   Wechsel der höchsten Version bei Recovery oder Commit blockiert.
-- R13 darf weder Katalogvalidierung noch R7-Recovery, R8-Commit oder den
+- R15 darf weder Katalogvalidierung noch R7-Recovery, R8-Commit oder den
   normalen R9-Historien-/Korrekturpfad umgehen.
   Importierte Vorlagen dürfen nur Auswahl und Reihenfolge vorbereiten; alle
   gespeicherten Leistungswerte müssen aus der realen Session stammen.
-- R14 ist optional und darf weder R12 noch R13 blockieren. Activity-V1-Daten
+- R16 ist optional und darf weder R14 noch R15 blockieren. Activity-V1-Daten
   werden nicht allein wegen des V2-Cutovers gelöscht.
 
 ---
@@ -1956,7 +2077,7 @@ Zuständig:
   unveränderlichen Katalog vorhandene Payloadversion; identischer Replay wird
   weiterhin vor Katalog-/Aktivprüfung aufgelöst. Die produktive Postcondition
   ist v1=78, v2=80, andere=0 und V2-Historie 0/0/0.
-- R12 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
+- R14 definiert den produktiven Katalogselektor, die Aktivierungsreihenfolge
   und den finalen Android-PWA-Smoke.
 
 Ziel:
@@ -1973,13 +2094,13 @@ durch R9 als atomarer Vollersatz plus kontrollierter Hard Delete geschlossen.
 O-7 hat keine stille
 R1-Korrektur erzeugt, sondern wurde durch C2 als versionierter Pflegepfad
 umgesetzt. O-8 ist für R4, R7 und R8 geschlossen. Offen bleibt ausschließlich
-das R12-Gate für Produktselektor, Aktivierungsreihenfolge, gecachte PWA-Clients
+das R14-Gate für Produktselektor, Aktivierungsreihenfolge, gecachte PWA-Clients
 und finalen Android-Smoke; es muss vor dem produktiven Cutover geschlossen
 sein.
 
 ### O-9 Vorbereitete Session-Vorlage
 
-Entschieden für die spätere R13:
+Entschieden für die spätere R15:
 
 - Codex darf aus einer gemeinsamen Trainingsanalyse eine JSON-Übungsliste für
   die nächste Einheit erstellen.
@@ -1996,7 +2117,7 @@ Entschieden für die spätere R13:
 
 Zuständig:
 
-- R13 friert Dateischema, Import-UX, Fehlermeldungen und Desktop-/Android-PWA-
+- R15 friert Dateischema, Import-UX, Fehlermeldungen und Desktop-/Android-PWA-
   Smokes ein. Ein späterer MCP darf dasselbe Schema transportieren, ist aber
   keine Voraussetzung.
 
@@ -2047,20 +2168,23 @@ sichert unfertige Sessions im isolierten Harness als IndexedDB-Draft ab; R8
 integriert abgeschlossene Sessions atomar in Supabase. R9 ergänzt isolierte
 Historie, Details, Korrektur und Löschung. R10 stellt den vollständigen,
 versionierten Ist-Datenexport inzwischen produktiv als read-only Snapshot-RPC
-bereit, hält Client und Download aber weiter isoliert. R11 ist das nächste
-Rolling-Wave-Gate und integriert in Arztbericht und Doctor View nur ruhige
-Zusammenfassungen; es kopiert keine Satzdetails aus dem Coaching-Export. R12
-aktiviert die neue Erfassung und alle produktiven Consumer kontrolliert.
+bereit, hält Client und Download aber weiter isoliert. R11 hat Arztbericht,
+Doctor View und Health Export auf einem gemeinsamen produktiven Read-Unterbau
+isoliert vorbereitet; es kopiert keine Satzdetails aus dem Coaching-Export.
+R12 ist das nächste Core-Gate und bereitet Protein Target und Trendpilot auf denselben
+Read-Vertrag vor. R13 aktiviert alle read-only Consumer bei weiterhin aktiver
+V1-Erfassung. Erst R14 aktiviert den Activity-V2-Capture, Coaching-Download
+und finalen Android-PWA-Pfad.
 
 Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
 sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte
 Identität in einer vollständigen neuen Katalogversion ergänzt. R4 hält die
 Consumer dafür versionsagnostisch. R7 hat versionsgebundene Recovery bewiesen;
-R8 und R12 müssen vor dem produktiven Cutover noch beweisen, dass der
+R8 und R14 müssen vor dem produktiven Cutover noch beweisen, dass der
 Versionswechsel keinen gültigen älteren PWA-Draft beim Commit oder in einem
 gecachten produktiven Client blockiert.
 
-Als optionale Post-Core-Erweiterung kann R13 eine von Codex vorbereitete
+Als optionale Post-Core-Erweiterung kann R15 eine von Codex vorbereitete
 JSON-Übungsliste als normalen Session-Draft laden. Sie enthält nur Katalogkeys
 und Reihenfolge, keine Leistungsvorgaben oder vorgetäuschten Ist-Werte. Letzte
 Leistung, freie Bearbeitung, Recovery und Save bleiben exakt dieselben wie bei

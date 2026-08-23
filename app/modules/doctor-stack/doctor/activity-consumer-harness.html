@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Doctor Activity Consumer - isolierter Test</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./activity-consumer-harness.css">
+</head>
+<body>
+  <main class="doctor-consumer-shell" data-role="root">
+    <header class="doctor-header">
+      <div>
+        <p class="eyebrow">Arztansicht</p>
+        <h1>Arztbericht</h1>
+      </div>
+      <div class="privacy-actions" aria-label="Datenschutz">
+        <button type="button" data-role="lock">Sperren</button>
+        <button type="button" data-role="logout">Abmelden</button>
+      </div>
+    </header>
+
+    <section class="report-section" data-role="report" aria-labelledby="report-activity-title">
+      <h2 id="report-activity-title">Aktivität</h2>
+      <div data-role="report-copy"></div>
+    </section>
+
+    <section class="export-section" aria-labelledby="export-title">
+      <div class="export-heading">
+        <div>
+          <p class="eyebrow">Isolierter Contract-Test</p>
+          <h2 id="export-title">Health Export V3</h2>
+        </div>
+        <button type="button" data-role="export-v3">V3-Export prüfen</button>
+      </div>
+      <p class="export-status" data-role="export-status" data-export-state="idle" aria-live="polite"></p>
+    </section>
+
+    <section class="details-section" aria-labelledby="details-title">
+      <div class="details-heading">
+        <div>
+          <p class="eyebrow">Sekundäransicht</p>
+          <h2 id="details-title">Trainingseinträge</h2>
+        </div>
+        <button type="button" data-role="toggle" aria-expanded="false">
+          Einzelwerte anzeigen
+        </button>
+      </div>
+
+      <div class="details-panel" data-role="panel" hidden>
+        <div class="range-controls">
+          <label>Von<input type="date" data-role="from" value="2026-08-17"></label>
+          <label>Bis<input type="date" data-role="to" value="2026-08-23"></label>
+        </div>
+        <p class="view-status" data-role="status" aria-live="polite"></p>
+        <div data-role="activity-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script defer src="../../vitals-stack/activity/v2/activity-consumer.js"></script>
+  <script defer src="./health-export-v3.js"></script>
+  <script defer src="./activity-consumer-view.js"></script>
+  <script defer src="./activity-consumer-harness.js"></script>
+</body>
+</html>

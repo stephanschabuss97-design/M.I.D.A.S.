@@ -14,6 +14,8 @@ Related docs:
 - [Doctor View Module Overview](Doctor View Module Overview.md)
 - [Medication Module Overview](Medication Module Overview.md)
 - [Health Capture and Reports QA](../qa/health-capture-reports.md)
+- [Activity V2 R11 Roadmap](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
+- [Activity V2 R11 Evidence](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
 
 ---
 
@@ -31,6 +33,9 @@ Related docs:
 | `backend/supabase/functions/midas-monthly-report/report-lifecycle.ts` | Build-before-write und Singleton-Replacement |
 | `sql/19_Report_Lifecycle.sql` | Fresh-Setup-Singleton-Index |
 | `app/styles/doctor.css` | Berichtsdarstellung und Erzeugungsformular |
+| `backend/supabase/functions/midas-monthly-report/activity-consumer.ts` | Isolierter R11-Loader für den gemeinsamen Activity-Snapshot; noch ohne Productimport |
+| `backend/supabase/functions/midas-monthly-report/activity-report.ts` | Isolierter kompakter R11-Activity-Untervertrag für künftige Berichte |
+| `sql/25_Activity_Consumer_Compatibility.sql` | Produktiv installierter read-only V1-/V2-Snapshot-RPC; keine Report-DML |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -49,6 +54,10 @@ Related docs:
   - `generated_at`
   - `created_at`
   - BP-, Body-, Lab- und Activity-Serien
+
+Bestehende gespeicherte Berichte bleiben unveränderte Snapshots. Der in R11
+isoliert vorbereitete Activity-Untervertrag gilt erst für nach einer späteren
+R13-Aktivierung neu und explizit erzeugte Berichte.
 
 Der partielle Unique-Index `uq_events_range_report_per_user` erzwingt
 höchstens einen `range_report` je technischer `user_id`. MIDAS bleibt
@@ -93,8 +102,27 @@ Die Edge Function aggregiert:
 - `health_medication_schedule_slots`
 - `trendpilot_events_range`
 
+Der aktuelle produktive Handler liest Activity weiterhin über
+`v_events_activity`. R11 hat daneben
+`activity_consumer_snapshot(date,date)` als authenticated-only
+`STABLE SECURITY INVOKER`-RPC installiert. Der isolierte Edge-Loader ist im
+produktiven `index.ts` nicht importiert; es gibt vor R13 keinen neuen
+Report-Read- oder Writepfad.
+
 Medication- und Slot-Reads sind explizit auf den authentifizierten Nutzer
 begrenzt. Ein fehlgeschlagener Domain-Read verhindert den Report-Write.
+
+### 5.1 R11-Activity-Untervertrag
+
+- Report-first bleibt unverändert: Der aktuelle Arztbericht ist der primäre
+  Inhalt und in 60-90 Sekunden erfassbar.
+- Die vorbereitete Copy beschränkt sich auf letzte Aktivität, aktive Tage pro
+  Woche sowie Gesamt- und Durchschnittsdauer. Frequenzwerte besitzen höchstens
+  eine Dezimalstelle.
+- Keine Übungen, Sätze, Reps, Gewichte, Volumen oder Empfehlungen gelangen in
+  den Bericht. Der vollständige R10-Coaching-Export bleibt getrennt.
+- Der Snapshot wird vollständig validiert und vor jedem künftigen Write gebaut.
+  Read-, Contract- oder Buildfehler verhindern den Report-Write atomar.
 
 ## 6. Persistenz und Replacement
 
@@ -157,6 +185,9 @@ Updatefehlern erhalten.
 - Interne `500`-Details bleiben aus dem Client.
 - Genau ein produktiver `range_report`.
 - Kein aktiver Monthly-, Scheduler-, Inbox- oder Archivpfad.
+- R11: V1-/V2-/Mixed-/Empty-Reportcopy, JS-/TS-Parität, Fehlersanitization,
+  Build-before-write und Legacy-Payloads. Keine Activity-/Report-DML im Test
+  und kein Productimport vor R13.
 
 ## 11. Definition of Done
 
@@ -164,3 +195,6 @@ Updatefehlern erhalten.
 - Ein neuer Bericht ersetzt den bisherigen Bericht sicher in-place.
 - Doctor View zeigt Current oder einen verifizierten Zero-State.
 - Runtime, SQL, QA und Recovery beschreiben denselben Singleton-Vertrag.
+- Der R11-Read-Unterbau ist produktiv installiert, während Report-Consumer und
+  sichtbare Copy bis R13 isoliert bleiben; bestehende Berichte wurden nicht
+  neu erzeugt oder verändert.
