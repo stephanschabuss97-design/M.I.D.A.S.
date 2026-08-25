@@ -9,33 +9,35 @@ const test = require('node:test');
 const repoRoot = path.resolve(__dirname, '../../../../..');
 const read = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 
-test('R11 final guard reports only the exact payload-free projection', () => {
+test('R13 final guard reports the exact read-consumer activation boundary', () => {
   const output = execFileSync(
     process.execPath,
-    [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs')],
+    [path.join(repoRoot, 'tools/activity-v2-r13-read-consumer-isolation.mjs')],
     { cwd: repoRoot, encoding: 'utf8' }
   );
   assert.equal(
     output,
-    'PASS protected=10 product_v2_loads=0 core_network_edges=0 ' +
-      'r11_product_loads=0 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
-      'recovery_deletes=0 local_worker_scope=1 r10_negative_oracles=20 ' +
-      'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1\n'
+    'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
+      'product_mode=final product_read_loads=6 cache_version=7 ' +
+      'r14_product_loads=0 secret_material=0 productive_dml=0 ' +
+      'sql_union=1 trend_state_acl=select_only v1_capture=1\n'
   );
 });
 
-test('R11 guard protects the concrete R10 export and inactive product handlers', () => {
-  const source = read('tools/activity-v2-r8-isolation.mjs');
-  assert.match(source, /activity-coaching-export\.js/);
-  assert.match(source, /24_Activity_V2_Coaching_Export\.sql/);
-  assert.match(source, /app\/modules\/doctor-stack\/doctor\/index\.js/);
-  assert.match(source, /backend\/supabase\/functions\/midas-monthly-report\/index\.ts/);
-  assert.match(source, /activity-report\\\.\(\?:js\|ts\)/);
-  assert.match(source, /PRODUCT_R11_LOAD/);
-  assert.match(source, /R11_TEST_DML_ORACLE/);
-  assert.match(source, /'truncate table public\.range_report_archive'/);
-  assert.match(source, /range_report\(\?:_/);
-  assert.match(source, /R11_TEST_DML/);
+test('R13 guard protects flags, caller auth, product scope, secrets and SQL', () => {
+  const source = read('tools/activity-v2-r13-read-consumer-isolation.mjs');
+  assert.match(source, /VERIFY_JWT_FALSE_SCOPE/);
+  assert.match(source, /MONTHLY_VERIFY_JWT_TRUE/);
+  assert.match(source, /WORKFLOW_LEGACY_AUTH/);
+  assert.match(source, /PRODUCT_SCRIPT_ORDER/);
+  assert.match(source, /PRODUCT_MIXED_STATE/);
+  assert.match(source, /productMode === 'final'/);
+  assert.match(source, /CACHE_VERSION = 'v6'/);
+  assert.match(source, /R14_PRODUCT_LOAD/);
+  assert.match(source, /SECRET_MATERIAL/);
+  assert.match(source, /PRODUCTIVE_SQL_DML/);
+  assert.match(source, /SQL_UNION_COUNT/);
+  assert.match(source, /TREND_STATE_ACL/);
 });
 
 test('S4.12 diagnostics retain only stable operation, code and status', () => {
@@ -67,7 +69,7 @@ test('S4.12 commit core stays injection-only while the test PWA uses the local a
   assert.doesNotMatch(localRuntime, /console\.|localStorage|sessionStorage|fetch\s*\(/);
 });
 
-test('S4.12 productive consumer, worker, manifest and native main stay V2-free', () => {
+test('R13 productive surfaces load only read consumers and keep R14 capture absent', () => {
   const productSources = [
     read('index.html'),
     read('service-worker.js'),
@@ -75,8 +77,13 @@ test('S4.12 productive consumer, worker, manifest and native main stay V2-free',
     read('app/modules/vitals-stack/activity/index.js'),
     read('android/app/src/main/AndroidManifest.xml')
   ].join('\n');
-  assert.doesNotMatch(productSources, /activity\/v2|session-commit|test-pwa|activityv2test|localhost:8765/);
+  assert.match(productSources, /activity\/v2\/activity-consumer\.js/);
+  assert.match(productSources, /activity\/v2\/activity-consumer-data-access\.js/);
+  assert.doesNotMatch(
+    productSources,
+    /activity\/v2\/(?:session-|data-access\.js|semantics(?:-v2)?\.js|test-pwa|activity-coaching-export)|activityv2test|localhost:8765/
+  );
   assert.match(productSources, /app\/modules\/vitals-stack\/activity\/index\.js/);
-  assert.match(productSources, /const CACHE_VERSION = 'v6'/);
+  assert.match(productSources, /const CACHE_VERSION = 'v7'/);
   assert.doesNotMatch(read('android/app/src/main/AndroidManifest.xml'), /usesCleartextTraffic/);
 });

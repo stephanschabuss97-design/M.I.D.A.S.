@@ -429,6 +429,25 @@ begin
   end loop;
 
   perform midas_fixture.assert_true(
+    pg_catalog.has_table_privilege(
+      'authenticated', 'public.trendpilot_state', 'SELECT'
+    )
+    and pg_catalog.has_table_privilege(
+      'service_role', 'public.trendpilot_state', 'SELECT'
+    )
+    and not pg_catalog.has_table_privilege(
+      'anon', 'public.trendpilot_state', 'SELECT'
+    )
+    and not pg_catalog.has_table_privilege(
+      'authenticated', 'public.trendpilot_state', 'INSERT,UPDATE,DELETE'
+    )
+    and pg_catalog.has_table_privilege(
+      'service_role', 'public.trendpilot_state', 'INSERT,UPDATE,DELETE'
+    ),
+    'Trendpilot state read/DML ACL drift'
+  );
+
+  perform midas_fixture.assert_true(
     pg_catalog.has_function_privilege(
       'authenticated', 'public.activity_v2_commit_session(uuid,jsonb)', 'EXECUTE'
     )
