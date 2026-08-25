@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Call Protein Targets Edge Function
         run: |
-          curl --fail-with-body --silent --show-error -X POST "${{ secrets.PROTEIN_TARGETS_URL }}" \
+          curl -sS -X POST "${{ secrets.PROTEIN_TARGETS_URL }}" \
             -H "Content-Type: application/json" \
-            -H "apikey: ${{ secrets.PROTEIN_TARGETS_SECRET_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{"trigger":"scheduler"}'

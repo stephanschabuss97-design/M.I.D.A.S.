@@ -161,11 +161,7 @@ grant select
   on table public.trendpilot_events_range
   to authenticated, service_role;
 
-grant select
-  on table public.trendpilot_state
-  to authenticated, service_role;
-
-grant insert, update, delete
+grant select, insert, update, delete
   on table public.trendpilot_state
   to service_role;
 
@@ -378,8 +374,7 @@ begin
   );
 
   -- SQL 16 remains usable before SQL 25. Once any R11 overload exists, only
-  -- the canonical date/date function and either the exact SQL 25 postimage or
-  -- the exact SQL 26 delegating user wrapper are valid.
+  -- the canonical date/date function and its exact SQL 25 postimage are valid.
   if v_public_count = 0 and v_snapshot_oid is null then
     return;
   end if;
@@ -387,10 +382,8 @@ begin
     raise exception 'Activity V2 R11 explicit-grant target is partial or overloaded';
   end if;
   if pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
-       pg_catalog.pg_get_functiondef(v_snapshot_oid), 'UTF8')), 'hex') not in (
-       'f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d',
-       'cffcd679d91b86c621388e790752e3100be140dd582f1e1fe18cf2d5cff79f2b'
-     )
+       pg_catalog.pg_get_functiondef(v_snapshot_oid), 'UTF8')), 'hex') <>
+       'f7226f6a81e2057cd4ea345fc5d2c099b1ad88f54d8066d9b7f1759f191b3c3d'
      or not exists (
        select 1
          from pg_catalog.pg_proc p
@@ -435,89 +428,5 @@ begin
     to authenticated;
 end;
 $activity_v2_r11_grants$;
-
--- ---------------------------------------------------------------------------
--- Activity V2 R13 private snapshot core and service-only owner wrapper
--- ---------------------------------------------------------------------------
-
-do $activity_v2_r13_grants$
-declare
-  v_user_oid oid := pg_catalog.to_regprocedure(
-    'public.activity_consumer_snapshot(date,date)'
-  );
-  v_service_oid oid := pg_catalog.to_regprocedure(
-    'public.activity_consumer_snapshot_for_owner(uuid,date,date)'
-  );
-  v_core_oid oid := pg_catalog.to_regprocedure(
-    'midas_private.activity_consumer_snapshot_core(uuid,date,date)'
-  );
-  v_helper_oid oid := pg_catalog.to_regprocedure(
-    'midas_private.activity_v2_canonical_content(integer,integer,text,jsonb)'
-  );
-begin
-  if v_service_oid is null and v_core_oid is null then
-    return;
-  end if;
-  if v_user_oid is null or v_service_oid is null or v_core_oid is null
-     or v_helper_oid is null
-     or (select pg_catalog.count(*)
-           from pg_catalog.pg_proc p
-           join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-          where (n.nspname = 'public' and p.proname in (
-                   'activity_consumer_snapshot',
-                   'activity_consumer_snapshot_for_owner'
-                 ))
-             or (n.nspname = 'midas_private'
-                 and p.proname = 'activity_consumer_snapshot_core')) <> 3 then
-    raise exception 'Activity V2 R13 explicit-grant target is partial or overloaded';
-  end if;
-  if pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
-       pg_catalog.pg_get_functiondef(v_user_oid), 'UTF8')), 'hex') <>
-       'cffcd679d91b86c621388e790752e3100be140dd582f1e1fe18cf2d5cff79f2b'
-     or pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
-       pg_catalog.pg_get_functiondef(v_service_oid), 'UTF8')), 'hex') <>
-       'eb27ec4435af922a16a7758be7f22a5f0aa384b60d1c048ee237cd26b2df6f54'
-     or pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
-       pg_catalog.pg_get_functiondef(v_core_oid), 'UTF8')), 'hex') <>
-       'abb596278b61d563e7e8e1277206e3b381c3331bd41375c66ed0c24e8933f79f'
-     or exists (
-       select 1
-         from (values (v_user_oid), (v_service_oid), (v_core_oid)) expected(oid)
-        where not exists (
-          select 1
-            from pg_catalog.pg_proc p
-            join pg_catalog.pg_roles r on r.oid = p.proowner
-           where p.oid = expected.oid
-             and r.rolname = 'postgres'
-             and p.prokind = 'f'
-             and p.prorettype = 'jsonb'::pg_catalog.regtype
-             and p.provolatile = 's'
-             and not p.prosecdef
-             and p.proconfig = array['search_path=""']::text[]
-        )
-     ) then
-    raise exception 'Activity V2 R13 explicit-grant source or hardening drift';
-  end if;
-  if pg_catalog.has_function_privilege(
-       'service_role',
-       'midas_private.activity_v2_canonical_content(integer,integer,text,jsonb)',
-       'EXECUTE'
-     ) then
-    raise exception 'Activity V2 R13 protected R9 helper ACL drift';
-  end if;
-
-  revoke all on schema midas_private
-    from anon, public, authenticated, service_role;
-  grant usage on schema midas_private to authenticated, service_role;
-  revoke all on function midas_private.activity_consumer_snapshot_core(uuid, date, date)
-    from anon, public, authenticated, service_role;
-  grant execute on function midas_private.activity_consumer_snapshot_core(uuid, date, date)
-    to authenticated, service_role;
-  revoke all on function public.activity_consumer_snapshot_for_owner(uuid, date, date)
-    from anon, public, authenticated, service_role;
-  grant execute on function public.activity_consumer_snapshot_for_owner(uuid, date, date)
-    to service_role;
-end;
-$activity_v2_r13_grants$;
 
 commit;

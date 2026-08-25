@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Call Trendpilot Edge Function
         run: |
-          curl --fail-with-body --silent --show-error -X POST "${{ secrets.TRENDPILOT_URL }}" \
+          curl -sS -X POST "${{ secrets.TRENDPILOT_URL }}" \
             -H "Content-Type: application/json" \
-            -H "apikey: ${{ secrets.TRENDPILOT_SECRET_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{"trigger":"scheduler"}'

@@ -16,13 +16,6 @@ import {
   RangeReportRow,
   RangeReportWrite,
 } from "./report-lifecycle.ts";
-import { buildActivityReportPayload } from "./activity-report.ts";
-import {
-  ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
-  type ActivityEdgePrincipal,
-  type ActivityEdgeRpcClient,
-} from "../_shared/activity-edge-principal.ts";
-import { createActivityConsumerRuntime } from "../_shared/activity-consumer-runtime.ts";
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -37,16 +30,14 @@ const corsHeaders: HeadersInit = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE_KEY) {
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error("[midas-monthly-report] Supabase env missing");
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
-const activityRuntime = createActivityConsumerRuntime();
 
 type BpEntry = {
   day?: string | null;
@@ -83,36 +74,6 @@ type ActivityEntry = {
   duration_min?: number | null;
   note?: string | null;
 };
-
-const createUserActivityPrincipal = (
-  token: string,
-  userId: string,
-): ActivityEdgePrincipal => {
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  return Object.freeze({
-    schema_version: ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
-    mode: "user",
-    owner_id: userId,
-    rpc_client: userClient as unknown as ActivityEdgeRpcClient,
-  });
-};
-
-const toNarrativeActivitySeries = (
-  snapshot: Awaited<ReturnType<typeof activityRuntime.loadSnapshot>>,
-): ActivityEntry[] =>
-  snapshot.units.map((unit) => ({
-    day: unit.day,
-    activity: unit.label,
-    duration_min: unit.duration_min,
-    note: unit.note,
-  }));
 
 type ProfileRow = {
   full_name: string | null;
@@ -1221,10 +1182,6 @@ Deno.serve(async (req: Request) => {
     const user = await requireUser(token);
     const userId = user.id;
     const { range, reportAnchorTs } = await readRangeReportRequest(req);
-    const activitySnapshotPromise = activityRuntime.loadSnapshot(
-      createUserActivityPrincipal(token, userId),
-      { from: range.from, to: range.to },
-    );
     const medicationReportDay = getIsoDayInTimeZone(new Date(), REPORT_TZ);
     const bpRange30 = {
       from: shiftIsoDate(range.to, -29),
@@ -1272,7 +1229,7 @@ Deno.serve(async (req: Request) => {
       bpSeries180,
       bodySeries,
       labSeries,
-      activitySnapshot,
+      activitySeries,
       medicationData,
       profileResult,
       trendpilotResult,
@@ -1282,7 +1239,7 @@ Deno.serve(async (req: Request) => {
       fetchSeries<BpEntry>("v_events_bp", userId, bpRange180),
       fetchSeries<BodyEntry>("v_events_body", userId, range),
       fetchSeries<LabEntry>("v_events_lab", userId, range),
-      activitySnapshotPromise,
+      fetchSeries<ActivityEntry>("v_events_activity", userId, range),
       fetchRangeMedicationData(userId, medicationReportDay),
       profilePromise,
       trendpilotPromise,
@@ -1294,7 +1251,6 @@ Deno.serve(async (req: Request) => {
     const trendpilotEntries = Array.isArray(trendpilotResult?.data)
       ? (trendpilotResult.data as unknown as TrendpilotEntry[])
       : [];
-    const activitySeries = toNarrativeActivitySeries(activitySnapshot);
     const generatedAt = new Date().toISOString();
 
     const report = await buildAndPersistRangeReport({
@@ -1317,7 +1273,7 @@ Deno.serve(async (req: Request) => {
           trendpilotEntries,
         });
 
-        const basePayload = {
+        return {
           subtype: "range_report",
           period: { from: range.from, to: range.to },
           report_type: "range_report",
@@ -1329,7 +1285,6 @@ Deno.serve(async (req: Request) => {
           lab_series: labSeries,
           activity_series: activitySeries,
         };
-        return buildActivityReportPayload(basePayload, activitySnapshot);
       },
     });
     return responseJson(
