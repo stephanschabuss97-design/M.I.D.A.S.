@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -32,6 +32,12 @@ const CORE_ASSETS = [
   toUrl('assets/js/data-local.js'),
   toUrl('assets/js/ui-tabs.js'),
   toUrl('app/supabase/index.js'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-consumer.js'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js'),
+  toUrl('app/modules/doctor-stack/doctor/activity-consumer-view.js'),
+  toUrl('app/modules/doctor-stack/doctor/health-export-v3.js'),
+  toUrl('app/modules/doctor-stack/reports/index.js'),
+  toUrl('app/modules/doctor-stack/doctor/index.js'),
   toUrl('assets/js/boot-auth.js'),
   toUrl('assets/js/main.js'),
   toUrl('public/manifest.json'),

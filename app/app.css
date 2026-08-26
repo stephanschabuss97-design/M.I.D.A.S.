@@ -8,3 +8,86 @@
 @import url("./styles/ui.css");
 @import url("./styles/hub.css");
 @import url("./modules/doctor-stack/charts/chart.css");
+
+/* R13 read-only Activity consumer inside the Doctor surface. */
+#doctor .activity-consumer-list {
+  border-top: 1px solid var(--border, #d7ded9);
+}
+
+#doctor .activity-consumer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 18px;
+  min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border, #d7ded9);
+}
+
+#doctor .activity-consumer-row-heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+#doctor .activity-consumer-date {
+  color: var(--muted, #627168);
+  font-size: 13px;
+}
+
+#doctor .activity-consumer-label,
+#doctor .activity-consumer-note {
+  overflow-wrap: anywhere;
+}
+
+#doctor .activity-consumer-metrics {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--text, #33443a);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#doctor .activity-consumer-items {
+  color: var(--muted, #6b5330);
+}
+
+#doctor .activity-consumer-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted, #46544c);
+  font-size: 14px;
+}
+
+#doctor .activity-consumer-delete {
+  min-width: 44px;
+  min-height: 44px;
+  justify-self: start;
+  padding: 7px 12px;
+  color: #8b1e2d;
+  border: 1px solid #c78a92;
+  border-radius: 6px;
+  background: transparent;
+}
+
+#doctor .activity-consumer-message {
+  margin: 16px 0 0;
+  padding: 14px 0;
+  color: var(--muted, #53645a);
+}
+
+#doctor .activity-consumer-message.is-error {
+  color: var(--danger, #9b1c31);
+}
+
+@media (max-width: 520px) {
+  #doctor .activity-consumer-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #doctor .activity-consumer-metrics {
+    justify-content: flex-start;
+    white-space: normal;
+  }
+}

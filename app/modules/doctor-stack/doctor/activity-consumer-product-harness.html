@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MIDAS R13 Doctor Activity Product Harness</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../../app.css">
+</head>
+<body>
+  <section id="doctor" class="active">
+    <main class="card" data-role="root">
+      <header>
+        <p class="small">Arztansicht</p>
+        <h1>Aktueller Bericht</h1>
+        <button class="btn ghost" type="button" data-role="logout">Abmelden</button>
+      </header>
+
+      <section data-role="report" aria-labelledby="r13-report-title">
+        <h2 id="r13-report-title">Aktivität</h2>
+        <p>Aktive Tage/Woche: 2</p>
+        <p>Gesamtdauer: 90 Min</p>
+      </section>
+
+      <section aria-labelledby="r13-export-title">
+        <h2 id="r13-export-title">Gesundheitsdaten</h2>
+        <button class="btn ghost" type="button" data-role="export">V3-Export prüfen</button>
+        <p class="small" data-role="export-status" data-state="idle" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="r13-details-title">
+        <h2 id="r13-details-title">Trainingseinträge</h2>
+        <button class="btn ghost" type="button" data-role="toggle" aria-expanded="false">
+          Einzelwerte anzeigen
+        </button>
+        <div data-role="details" hidden>
+          <label>Von <input type="date" data-role="from" value="2026-08-17"></label>
+          <label>Bis <input type="date" data-role="to" value="2026-08-23"></label>
+          <p class="small" data-role="status" aria-live="polite"></p>
+          <div data-role="activity"></div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <script>
+    window.AppModules = {
+      supabase: {
+        baseUrlFromRest() { return window.location.origin; },
+        fetchWithAuth(callback) {
+          return callback(new Headers({ authorization: 'Bearer local-product-harness' }));
+        }
+      }
+    };
+    window.getConf = async () => window.location.origin;
+  </script>
+  <script defer src="../../vitals-stack/activity/v2/activity-consumer.js"></script>
+  <script defer src="../../vitals-stack/activity/v2/activity-consumer-data-access.js"></script>
+  <script defer src="./activity-consumer-view.js"></script>
+  <script defer src="./health-export-v3.js"></script>
+  <script defer src="./activity-consumer-product-harness.js"></script>
+</body>
+</html>

@@ -200,9 +200,50 @@
     return typeof api.loadLabEventsRange === 'function' ? api.loadLabEventsRange : null;
   };
 
-  const resolveActivityRangeLoader = () => {
-    const loader = appModules?.activity?.loadActivities;
-    return typeof loader === 'function' ? loader : null;
+  let activityConsumerController = null;
+  let activityConsumerHost = null;
+
+  const closeActivityConsumer = () => {
+    activityConsumerController?.close?.();
+  };
+
+  const lockActivityConsumer = () => {
+    activityConsumerController?.lock?.();
+  };
+
+  const ensureActivityConsumer = (host) => {
+    if (activityConsumerController && activityConsumerHost === host) {
+      return activityConsumerController;
+    }
+    activityConsumerController?.destroy?.();
+    const view = appModules?.doctor?.activityConsumerView;
+    if (typeof view?.create !== 'function') {
+      throw new Error('activity consumer view unavailable');
+    }
+    activityConsumerHost = host;
+    activityConsumerController = view.create({
+      host,
+      unlocked: true,
+      async deleteV1(unit) {
+        if (unit?.source !== 'activity_v1') {
+          throw new Error('activity delete source rejected');
+        }
+        if (!global.confirm?.(`Alle Trainingseinträge für ${unit.day} löschen?`)) {
+          return;
+        }
+        const result = await deleteRemoteByType(unit.day, 'activity_event');
+        if (!result?.ok) {
+          throw Object.assign(new Error('activity delete failed'), {
+            status: Number(result?.status) || null
+          });
+        }
+      },
+      diagnose({ operation, code, status }) {
+        const safeStatus = Number.isInteger(status) ? status : 'none';
+        diag.add?.(`[doctor-activity] ${operation} code=${code} status=${safeStatus}`);
+      }
+    });
+    return activityConsumerController;
   };
 
   const resolveUserIdFetcher = () => {
@@ -217,13 +258,6 @@
     const uid = await uidFetcher();
     if (!uid) return [];
     const rows = await loader({ user_id: uid, from, to });
-    return Array.isArray(rows) ? rows : [];
-  };
-
-  const loadActivityEventsSafe = async (from, to) => {
-    const loader = resolveActivityRangeLoader();
-    if (typeof loader !== 'function') return [];
-    const rows = await loader(from, to, { reason: 'doctor:activity' });
     return Array.isArray(rows) ? rows : [];
   };
 
@@ -490,6 +524,7 @@
     liveRangeState.status = 'idle';
     liveRangeState.loadedKey = '';
     liveRangeState.dirty = true;
+    closeActivityConsumer();
     setLiveRangeStatus('');
     if (clear) clearLiveRangePanels();
   };
@@ -501,6 +536,7 @@
       liveRangeState.dirty = true;
     }
     liveRangeState.status = liveRangeState.dirty ? 'idle' : 'ready';
+    closeActivityConsumer();
     setLiveRangeStatus('');
   };
 
@@ -707,6 +743,7 @@
     primaryReportState.promise = null;
     primaryReportState.createInFlight = false;
     setReportCreateBusy(false);
+    lockActivityConsumer();
     resetLiveRangeState();
     closeReportCreatePanel({ restoreFocus: false });
     const doc = global.document;
@@ -917,6 +954,7 @@ async function renderDoctor(triggerReason = 'manual'){
   const doctorSection = document.getElementById('doctor');
   const isActive = !!doctorSection && doctorSection.classList.contains('active');
   if (!isDoctorUnlockedSafe()){
+    lockActivityConsumer();
     if (isActive){
       fillAllPanels(placeholderHtml('Bitte Arzt-Ansicht kurz entsperren.'));
       try {
@@ -1105,7 +1143,6 @@ async function renderDoctor(triggerReason = 'manual'){
   let daysArr = [];
   let labRows = [];
   let labLoadError = null;
-  let activityRows = [];
   let activityLoadError = null;
   if (!useLocalFallback) {
     try{
@@ -1143,27 +1180,34 @@ async function renderDoctor(triggerReason = 'manual'){
     }
 
     try {
-      activityRows = await loadActivityEventsSafe(from, to);
+      const controller = ensureActivityConsumer(panels.activity);
+      controller.close();
+      controller.unlock();
+      await controller.setRange({ from, to });
+      const activityState = await controller.open();
       if (stopIfLiveRangeStale()) return;
-      if (Array.isArray(activityRows)) {
-        activityRows = activityRows.filter((entry) => isDayInRange(entry?.day));
-        activityRows.sort((a, b) => (b.day || '').localeCompare(a.day || ''));
-      } else {
-        activityRows = [];
+      if (activityState.status === 'error') {
+        activityLoadError = new Error('activity consumer request failed');
       }
     } catch (err) {
       if (stopIfLiveRangeStale()) return;
       activityLoadError = err;
-      logDoctorError('activity events fetch failed', err);
+      if (panels.activity) {
+        panels.activity.innerHTML = placeholderHtml('Training konnte nicht geladen werden.');
+      }
+      logDoctorError('activity consumer failed', err);
     }
   } else {
+    closeActivityConsumer();
     try {
       const local = typeof getAllEntries === 'function' ? await getAllEntries() : [];
       if (stopIfLiveRangeStale()) return;
       const filtered = Array.isArray(local) ? local.filter((entry) => isDayInRange(entry?.date)) : [];
       daysArr = buildDailyFromLocalEntries(filtered);
       labRows = buildLabRowsFromLocalEntries(filtered);
-      activityRows = [];
+      if (panels.activity) {
+        panels.activity.innerHTML = placeholderHtml('Training ist offline nicht verfügbar.');
+      }
     } catch (err) {
       if (stopIfLiveRangeStale()) return;
       logDoctorError('local fallback failed', err);
@@ -1364,42 +1408,6 @@ async function renderDoctor(triggerReason = 'manual'){
 </section>`;
   };
 
-  const renderDoctorActivityDay = (entry) => {
-    const safeActivity = entry?.activity ? escapeAttr(entry.activity) : '-';
-    const durationValue =
-      entry?.duration_min === null || entry?.duration_min === undefined
-        ? '-'
-        : dash(fmtNum(entry.duration_min, 0));
-    const noteHtml = formatInlineNote(entry?.note);
-    const dayValue = entry?.day || '';
-    return `
-<section class="doctor-day doctor-activity-day" data-date="${escapeAttr(dayValue)}">
-  <div class="col-date">
-    <div class="date-top">
-      <span class="date-label">${fmtDateDE(dayValue)}</span>
-      <span class="date-cloud" title="In Cloud gespeichert?">&#9729;&#65039;</span>
-    </div>
-    <div class="date-actions">
-      <button class="btn ghost" data-del-activity="${escapeAttr(dayValue)}">Löschen</button>
-    </div>
-  </div>
-  <div class="col-measure doctor-activity-metrics">
-    <div class="measure-head">
-      <div class="activity-col">Aktivität</div>
-      <div class="duration-col">Dauer (Min)</div>
-      <div class="note-col">Notiz</div>
-    </div>
-    <div class="measure-grid">
-      <div class="measure-row">
-        <div class="activity-col">${safeActivity}</div>
-        <div class="num duration-col">${durationValue}</div>
-        <div class="note-col">${noteHtml}</div>
-      </div>
-    </div>
-  </div>
-</section>`;
-  };
-
   const bindDomainDeleteButtons = (panel, attrName, type, label) => {
     if (!panel) return;
     panel.querySelectorAll(`[${attrName}]`).forEach((btn) => {
@@ -1474,17 +1482,6 @@ async function renderDoctor(triggerReason = 'manual'){
       bindDomainDeleteButtons(panels.lab, 'data-del-lab', 'lab_event', 'Labor');
     } else {
       panels.lab.innerHTML = placeholderHtml('Keine Laborwerte im Zeitraum.');
-    }
-  }
-
-  if (panels.activity) {
-    if (activityLoadError) {
-      panels.activity.innerHTML = placeholderHtml('Training konnte nicht geladen werden.');
-    } else if (activityRows.length) {
-      panels.activity.innerHTML = activityRows.map(renderDoctorActivityDay).join('');
-      bindDomainDeleteButtons(panels.activity, 'data-del-activity', 'activity_event', 'Training');
-    } else {
-      panels.activity.innerHTML = placeholderHtml('Keine Trainingseinträge im Zeitraum.');
     }
   }
 
@@ -1713,12 +1710,14 @@ async function exportDoctorJson(){
       throw new Error('Keine aktive Supabase-Sitzung.');
     }
     const labLoader = resolveLabRangeLoader();
-    const activityLoader = resolveActivityRangeLoader();
+    const activityAdapter = appModules?.activityV2?.consumerDataAccess;
+    const healthExportV3 = appModules?.doctor?.healthExportV3;
     const userIdFetcher = resolveUserIdFetcher();
     if (
       typeof fetchDailyOverview !== 'function'
       || typeof labLoader !== 'function'
-      || typeof activityLoader !== 'function'
+      || typeof activityAdapter?.loadSnapshot !== 'function'
+      || typeof healthExportV3?.createLoader !== 'function'
       || typeof userIdFetcher !== 'function'
     ) {
       throw new Error('Ein Export-Datenbereich ist nicht verfügbar.');
@@ -1726,21 +1725,26 @@ async function exportDoctorJson(){
     const userId = await userIdFetcher();
     if (!userId) throw new Error('Benutzerkontext ist nicht verfügbar.');
 
-    const [daily, labs, activities] = await Promise.all([
-      fetchDailyOverview(range.from, range.to),
-      labLoader({ user_id: userId, from: range.from, to: range.to }),
-      activityLoader(range.from, range.to, { reason: 'doctor:export-v2' })
-    ]);
-    const payload = buildHealthExportV2({
-      range,
-      daily,
-      labs,
-      activities
+    const exportLoader = healthExportV3.createLoader({
+      async loadBaseExportV2(exportRange) {
+        const [daily, labs] = await Promise.all([
+          fetchDailyOverview(exportRange.from, exportRange.to),
+          labLoader({ user_id: userId, from: exportRange.from, to: exportRange.to })
+        ]);
+        return buildHealthExportV2({
+          range: exportRange,
+          daily,
+          labs,
+          activities: []
+        });
+      },
+      loadActivitySnapshot: activityAdapter.loadSnapshot
     });
+    const payload = await exportLoader.load({ from: range.from, to: range.to });
     dl('gesundheitslog.json', JSON.stringify(payload, null, 2), 'application/json');
     return true;
   } catch (err) {
-    logDoctorError('health export v2 failed', err);
+    logDoctorError('health export v3 failed', err);
     if (typeof global.uiError === 'function') {
       global.uiError('Export fehlgeschlagen. Es wurde keine Datei erstellt.');
     } else {
