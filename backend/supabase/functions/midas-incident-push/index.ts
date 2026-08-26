@@ -22,6 +22,7 @@ const corsHeaders: HeadersInit = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const CALLER_LEGACY_KEY = Deno.env.get("INCIDENTS_PUSH_LEGACY_KEY") ?? "";
 const DEFAULT_USER_ID = Deno.env.get("INCIDENTS_USER_ID") ?? "";
 const INCIDENTS_TZ = Deno.env.get("INCIDENTS_TZ") ?? "Europe/Vienna";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
@@ -39,6 +40,7 @@ const INCIDENT_ACTIONS = [
 const requiredEnv = ([
   ["SUPABASE_URL", SUPABASE_URL],
   ["SUPABASE_SERVICE_ROLE_KEY", SERVICE_ROLE_KEY],
+  ["INCIDENTS_PUSH_LEGACY_KEY", CALLER_LEGACY_KEY],
   ["VAPID_PUBLIC_KEY", VAPID_PUBLIC_KEY],
   ["VAPID_PRIVATE_KEY", VAPID_PRIVATE_KEY],
 ] as Array<[string, string]>)
@@ -872,7 +874,7 @@ Deno.serve(async (req) => {
   }
 
   const token = getBearerToken(req);
-  if (!token || token !== SERVICE_ROLE_KEY) {
+  if (!token || token !== CALLER_LEGACY_KEY) {
     return responseJson({ error: "Unauthorized" }, 401);
   }
 

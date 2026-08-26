@@ -1,8 +1,20 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  type ActivityEdgePrincipal,
+  ActivityEdgePrincipalError,
+  activityEdgePrincipalLog,
+  createActivityEdgePrincipal,
+} from "../_shared/activity-edge-principal.ts";
+import {
+  ActivityConsumerRuntimeError,
+  createActivityConsumerRuntime,
+} from "../_shared/activity-consumer-runtime.ts";
+import { createActivityMedicalContext } from "../_shared/activity-medical-context.ts";
+import type { ActivityConsumerSnapshot } from "../midas-monthly-report/activity-consumer.ts";
+import { deriveTrendpilotActivityCompatibility } from "./activity-compatibility.ts";
 
 declare const Deno: {
-  env: { get(name: string): string | undefined };
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
 
@@ -13,19 +25,9 @@ const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const DEFAULT_USER_ID = Deno.env.get("TRENDPILOT_USER_ID") ?? "";
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  throw new Error("[midas-trendpilot] Supabase env missing");
-}
-
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
-
 const TREND_TZ = "Europe/Vienna";
 const DEFAULT_RANGE_DAYS = 56;
+const MAX_RANGE_DAYS = 373;
 const MIN_WEEKS_REQUIRED = 6;
 const BASELINE_WEEKS = 8;
 const NORMALIZE_WEEKS = 6;
@@ -52,10 +54,6 @@ const LAB_CRITICAL_CREAT_RISE = 0.5;
 const LAB_CRITICAL_EGFR_ABS = 45;
 const LAB_CRITICAL_CREAT_ABS = 1.8;
 const CONTEXT_WEEKS = 4;
-const CONTEXT_ACTIVITY_MIN_WEEKS = 2;
-const CONTEXT_ACTIVITY_MIN_SESSIONS = 4;
-const CONTEXT_ACTIVITY_HIGH_SESSIONS = 8;
-const CONTEXT_ACTIVITY_LOW_SESSIONS = 3;
 const CONTEXT_BODYCOMP_MIN_SAMPLES = 2;
 const CONTEXT_BODYCOMP_MIN_DAYS = 14;
 const CONTEXT_WEIGHT_DELTA_KG = 0.5;
@@ -64,7 +62,6 @@ const CONTEXT_BODYCOMP_DELTA_PCT = 0.5;
 const CONTEXT_LAB_MIN_SAMPLES = 2;
 
 type TrendpilotInput = {
-  user_id?: string | null;
   trigger?: "scheduler" | "manual" | null;
   dry_run?: boolean | null;
   range?: {
@@ -74,7 +71,6 @@ type TrendpilotInput = {
 };
 
 type NormalizedInput = {
-  userId: string;
   trigger: "scheduler" | "manual";
   dryRun: boolean;
   range: {
@@ -126,44 +122,59 @@ const responseJson = (obj: unknown, status = 200) =>
 
 const responseOk = () => new Response("ok", { headers: corsHeaders });
 
-const serializeError = (err: unknown) => {
-  if (err instanceof Error) return err.message;
-  if (err && typeof err === "object") {
-    try {
-      const s = JSON.stringify(err);
-      if (s && s !== "{}") return s;
-    } catch {
-      /* ignore */
-    }
+const REQUEST_KEYS = Object.freeze(["trigger", "dry_run", "range"] as const);
+const RANGE_KEYS = Object.freeze(["from", "to"] as const);
+
+class TrendpilotRequestError extends Error {
+  code = "INVALID_REQUEST" as const;
+  status = 400 as const;
+  publicMessage = "Invalid request" as const;
+
+  constructor() {
+    super("The Trendpilot request is invalid.");
+    this.name = "TrendpilotRequestError";
   }
-  return String(err);
+}
+
+const readPlainObject = (
+  value: unknown,
+  allowedKeys: readonly string[],
+): Record<string, unknown> => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TrendpilotRequestError();
+  }
+  const prototype = Object.getPrototypeOf(value);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(value);
+  if (
+    prototype === null ||
+    Object.getPrototypeOf(prototype) !== null ||
+    keys.some((key) =>
+      typeof key !== "string" ||
+      !allowedKeys.includes(key) ||
+      !descriptors[key]?.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptors[key], "value")
+    )
+  ) {
+    throw new TrendpilotRequestError();
+  }
+  return Object.fromEntries(
+    keys.map((key) => [key, descriptors[key as string].value]),
+  );
 };
 
-const getBearerToken = (req: Request) => {
-  const h = req.headers.get("Authorization") || "";
-  if (h.startsWith("Bearer ")) return h.slice(7);
-  return h || null;
-};
-
-const requireUser = async (token: string | null) => {
-  if (!token) throw new Error("Authorization Header fehlt.");
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    throw new Error("Nutzer konnte nicht authentifiziert werden.");
+const readRequestInput = async (req: Request): Promise<TrendpilotInput> => {
+  let value: unknown;
+  try {
+    value = await req.json();
+  } catch {
+    throw new TrendpilotRequestError();
   }
-  return data.user;
-};
-
-const getUserIdFromToken = async (token: string | null) => {
-  if (!token) throw new Error("Authorization Header fehlt.");
-  if (token === SERVICE_ROLE_KEY) {
-    if (!DEFAULT_USER_ID) {
-      throw new Error("TRENDPILOT_USER_ID fehlt in der Env.");
-    }
-    return { userId: DEFAULT_USER_ID, isServiceRole: true };
+  const raw = readPlainObject(value, REQUEST_KEYS);
+  if (raw.range != null) {
+    raw.range = readPlainObject(raw.range, RANGE_KEYS);
   }
-  const user = await requireUser(token);
-  return { userId: user.id, isServiceRole: false };
+  return raw as TrendpilotInput;
 };
 
 const ISO_DAY_RE = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -175,8 +186,7 @@ const toISODateUTC = (d: Date) => {
   return `${y}-${m}-${day}`;
 };
 
-const viennaTodayIso = () => {
-  const now = new Date();
+const viennaTodayIso = (now: Date) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TREND_TZ,
     year: "numeric",
@@ -262,17 +272,13 @@ const weekWindowForDay = (isoDay: string) => {
 };
 
 const mean = (values: number[]) =>
-  values.length
-    ? values.reduce((sum, v) => sum + v, 0) / values.length
-    : null;
+  values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
 
 const median = (values: number[]) => {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
 const toNumber = (value: unknown) => {
@@ -289,6 +295,30 @@ const mergePayload = (
   extra: Record<string, unknown> | undefined,
 ) => {
   return { ...(base || {}), ...(extra || {}) };
+};
+
+const recordOrNull = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+
+const mergeTrendpilotPayload = (
+  existing: Record<string, unknown> | undefined,
+  incoming: Record<string, unknown> | undefined,
+) => {
+  const merged = mergePayload(existing, incoming);
+  const existingContext = recordOrNull(existing?.context);
+  const incomingContext = recordOrNull(incoming?.context);
+  if (!incomingContext) return merged;
+  const existingActivity = recordOrNull(existingContext?.activity);
+  const preserveLegacyActivity = existingActivity !== null &&
+    Object.hasOwn(existingActivity, "sessions_4w");
+  merged.context = {
+    ...(existingContext || {}),
+    ...incomingContext,
+    ...(preserveLegacyActivity ? { activity: existingActivity } : {}),
+  };
+  return merged;
 };
 
 const withoutAckContinuationPayload = (
@@ -360,34 +390,12 @@ const selectTrendValue = (
 };
 
 const buildActivityContext = (
-  rows: Record<string, unknown>[],
+  snapshot: ActivityConsumerSnapshot,
   from: string,
   to: string,
 ) => {
-  const windowRows = filterRowsByRange(rows, from, to);
-  const sessions = windowRows.length;
-  const weeks = new Set<string>();
-  for (const row of windowRows) {
-    const day = typeof row.day === "string" ? row.day : null;
-    if (!day) continue;
-    const win = weekWindowForDay(day);
-    weeks.add(win.from);
-  }
-  const weeksWithEntries = weeks.size;
-  const gateOk =
-    sessions >= CONTEXT_ACTIVITY_MIN_SESSIONS ||
-    weeksWithEntries >= CONTEXT_ACTIVITY_MIN_WEEKS;
-  let level: "low" | "ok" | "high" | "unknown" = "unknown";
-  if (gateOk) {
-    if (sessions >= CONTEXT_ACTIVITY_HIGH_SESSIONS) level = "high";
-    else if (sessions <= CONTEXT_ACTIVITY_LOW_SESSIONS) level = "low";
-    else level = "ok";
-  }
-  return {
-    level,
-    sessions_4w: sessions,
-    weeks_with_entries_4w: weeksWithEntries,
-  };
+  const context = createActivityMedicalContext(snapshot, { from, to });
+  return deriveTrendpilotActivityCompatibility(context);
 };
 
 const buildLabContext = (
@@ -408,10 +416,10 @@ const buildLabContext = (
       };
     })
     .filter((row) => row && row.egfr != null && row.creatinine != null) as {
-    day: string;
-    egfr: number;
-    creatinine: number;
-  }[];
+      day: string;
+      egfr: number;
+      creatinine: number;
+    }[];
 
   if (windowRows.length < CONTEXT_LAB_MIN_SAMPLES) {
     return { egfr_trend: "unknown" as const, days_from_window: null };
@@ -438,7 +446,7 @@ const buildLabContext = (
 const buildContextForEvent = (
   entry: TrendpilotEvent,
   bodyRows: Record<string, unknown>[],
-  activityRows: Record<string, unknown>[],
+  activitySnapshot: ActivityConsumerSnapshot,
   labRows: Record<string, unknown>[],
 ) => {
   if (entry.severity === "info") return null;
@@ -446,8 +454,16 @@ const buildContextForEvent = (
   if (!windowTo) return null;
   const from = subDaysIso(windowTo, CONTEXT_WEEKS * 7 - 1);
   const to = windowTo;
+  const activityTo = to > activitySnapshot.range.to
+    ? activitySnapshot.range.to
+    : to;
+  const activityFrom = subDaysIso(activityTo, CONTEXT_WEEKS * 7 - 1);
   const bodySamples = parseBodySamples(filterRowsByRange(bodyRows, from, to));
-  const activity = buildActivityContext(activityRows, from, to);
+  const activity = buildActivityContext(
+    activitySnapshot,
+    activityFrom,
+    activityTo,
+  );
   const weightTrend = selectTrendValue(
     bodySamples,
     (sample) => sample.kg,
@@ -499,12 +515,17 @@ const buildContextForEvent = (
 const attachContextToEvents = (
   events: TrendpilotEvent[],
   bodyRows: Record<string, unknown>[],
-  activityRows: Record<string, unknown>[],
+  activitySnapshot: ActivityConsumerSnapshot,
   labRows: Record<string, unknown>[],
 ) => {
   return events.map((evt) => {
     if (evt.severity === "info") return evt;
-    const context = buildContextForEvent(evt, bodyRows, activityRows, labRows);
+    const context = buildContextForEvent(
+      evt,
+      bodyRows,
+      activitySnapshot,
+      labRows,
+    );
     if (!context) return evt;
     return {
       ...evt,
@@ -513,58 +534,72 @@ const attachContextToEvents = (
   });
 };
 
-const normalizeRange = (raw?: TrendpilotInput["range"] | null) => {
+const normalizeRange = (
+  raw: TrendpilotInput["range"] | null | undefined,
+  now: Date,
+) => {
+  if (
+    raw?.from != null && typeof raw.from !== "string" ||
+    raw?.to != null && typeof raw.to !== "string"
+  ) {
+    throw new TrendpilotRequestError();
+  }
   let from = raw?.from ?? "";
   let to = raw?.to ?? "";
   if (from && !parseIsoDay(from)) {
-    throw new Error("range.from ist ungueltig (YYYY-MM-DD erwartet).");
+    throw new TrendpilotRequestError();
   }
   if (to && !parseIsoDay(to)) {
-    throw new Error("range.to ist ungueltig (YYYY-MM-DD erwartet).");
+    throw new TrendpilotRequestError();
+  }
+  if ((from && !to) || (!from && to)) {
+    throw new TrendpilotRequestError();
   }
   if (!from || !to) {
-    const today = viennaTodayIso();
+    const today = viennaTodayIso(now);
     to = today;
     from = subDaysIso(today, DEFAULT_RANGE_DAYS - 1);
   }
-  if (from > to) throw new Error("range.from muss vor range.to liegen.");
+  if (
+    from > to ||
+    diffDaysInclusive(from, to) > MAX_RANGE_DAYS
+  ) {
+    throw new TrendpilotRequestError();
+  }
   return { from, to };
 };
 
-const normalizeInput = async (
-  req: Request,
+const normalizeInput = (
   raw: TrendpilotInput,
-): Promise<NormalizedInput> => {
-  const trigger =
-    raw.trigger === "scheduler" || raw.trigger === "manual"
-      ? raw.trigger
-      : "scheduler";
-
-  const token = getBearerToken(req);
-  const { userId, isServiceRole } = await getUserIdFromToken(token);
-  if (!isServiceRole && raw.user_id && raw.user_id !== userId) {
-    throw new Error("user_id stimmt nicht mit Authorization ueberein.");
+  now: Date,
+): NormalizedInput => {
+  if (
+    raw.trigger != null &&
+    raw.trigger !== "scheduler" &&
+    raw.trigger !== "manual"
+  ) {
+    throw new TrendpilotRequestError();
   }
-
-  if (!userId) {
-    throw new Error("user_id fehlt (kein Token und keine Env gesetzt).");
+  if (raw.dry_run != null && typeof raw.dry_run !== "boolean") {
+    throw new TrendpilotRequestError();
   }
-
   return {
-    userId,
-    trigger,
-    dryRun: Boolean(raw.dry_run),
-    range: normalizeRange(raw.range),
+    trigger: raw.trigger ?? "scheduler",
+    dryRun: raw.dry_run === true,
+    range: normalizeRange(raw.range, now),
   };
 };
 
 const fetchTrendpilotState = async (
+  dataClient: SupabaseClient,
   userId: string,
   type: "bp" | "body" | "lab",
 ) => {
-  const { data, error } = await supabase
+  const { data, error } = await dataClient
     .from("trendpilot_state")
-    .select("user_id,type,baseline_from,baseline_sys,baseline_dia,sample_weeks,updated_at")
+    .select(
+      "user_id,type,baseline_from,baseline_sys,baseline_dia,sample_weeks,updated_at",
+    )
     .eq("user_id", userId)
     .eq("type", type)
     .maybeSingle();
@@ -572,7 +607,10 @@ const fetchTrendpilotState = async (
   return (data as TrendpilotState | null) ?? null;
 };
 
-const upsertTrendpilotState = async (state: TrendpilotState) => {
+const upsertTrendpilotState = async (
+  dataClient: SupabaseClient,
+  state: TrendpilotState,
+) => {
   const row = {
     user_id: state.user_id,
     type: state.type,
@@ -582,18 +620,20 @@ const upsertTrendpilotState = async (state: TrendpilotState) => {
     sample_weeks: state.sample_weeks,
     updated_at: new Date().toISOString(),
   };
-  const { error } = await supabase
+  const { error } = await dataClient
     .from("trendpilot_state")
-    .upsert(row, { onConflict: "user_id,type" });
+    .upsert(row, { onConflict: "user_id,type" })
+    .eq("user_id", state.user_id);
   if (error) throw error;
 };
 
 const fetchHealthEvents = async (
+  dataClient: SupabaseClient,
   userId: string,
   type: "bp" | "body",
   range: NormalizedInput["range"],
 ) => {
-  const { data, error } = await supabase
+  const { data, error } = await dataClient
     .from("health_events")
     .select("id,day,ts,type,ctx,payload")
     .eq("user_id", userId)
@@ -607,10 +647,11 @@ const fetchHealthEvents = async (
 };
 
 const fetchLabEvents = async (
+  dataClient: SupabaseClient,
   userId: string,
   range: NormalizedInput["range"],
 ) => {
-  const { data, error } = await supabase
+  const { data, error } = await dataClient
     .from("health_events")
     .select("id,day,ts,type,ctx,payload")
     .eq("user_id", userId)
@@ -623,27 +664,12 @@ const fetchLabEvents = async (
   return (data as Record<string, unknown>[]) ?? [];
 };
 
-const fetchActivityEvents = async (
-  userId: string,
-  range: NormalizedInput["range"],
-) => {
-  const { data, error } = await supabase
-    .from("health_events")
-    .select("id,day,ts,type,ctx,payload")
-    .eq("user_id", userId)
-    .eq("type", "activity_event")
-    .gte("day", range.from)
-    .lte("day", range.to)
-    .order("day", { ascending: true });
-
-  if (error) throw error;
-  return (data as Record<string, unknown>[]) ?? [];
-};
-
 const evaluateBpTrends = async (
+  dataClient: SupabaseClient,
   userId: string,
   rows: Record<string, unknown>[],
   dryRun: boolean,
+  pendingStateWrites: TrendpilotState[],
 ): Promise<TrendpilotEvent[]> => {
   if (!rows.length) return [];
 
@@ -688,7 +714,7 @@ const evaluateBpTrends = async (
 
   if (weeks.length < MIN_WEEKS_REQUIRED) return [];
 
-  let state = await fetchTrendpilotState(userId, "bp");
+  const state = await fetchTrendpilotState(dataClient, userId, "bp");
   let baselineSys = state?.baseline_sys ?? null;
   let baselineDia = state?.baseline_dia ?? null;
   let baselineFrom = state?.baseline_from ?? "";
@@ -702,7 +728,7 @@ const evaluateBpTrends = async (
     baselineFrom = baselineSlice[0].from;
     sampleWeeks = baselineSlice.length;
     if (!dryRun && baselineSys != null && baselineDia != null) {
-      await upsertTrendpilotState({
+      pendingStateWrites.push({
         user_id: userId,
         type: "bp",
         baseline_from: baselineFrom,
@@ -718,10 +744,10 @@ const evaluateBpTrends = async (
   const classifyWeek = (avgSys: number, avgDia: number) => {
     const deltaSys = avgSys - baselineSys!;
     const deltaDia = avgDia - baselineDia!;
-    const criticalSysDelta =
-      avgSys >= CRITICAL_DELTA_MIN_SYS && deltaSys >= CRITICAL_DELTA_SYS;
-    const criticalDiaDelta =
-      avgDia >= CRITICAL_DELTA_MIN_DIA && deltaDia >= CRITICAL_DELTA_DIA;
+    const criticalSysDelta = avgSys >= CRITICAL_DELTA_MIN_SYS &&
+      deltaSys >= CRITICAL_DELTA_SYS;
+    const criticalDiaDelta = avgDia >= CRITICAL_DELTA_MIN_DIA &&
+      deltaDia >= CRITICAL_DELTA_DIA;
     if (
       avgSys >= CRITICAL_ABS_SYS ||
       avgDia >= CRITICAL_ABS_DIA ||
@@ -782,7 +808,9 @@ const evaluateBpTrends = async (
     }
   }
 
-  if (streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity) {
+  if (
+    streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity
+  ) {
     const end = statuses[statuses.length - 1];
     const payload = {
       rule_id: "bp-trend-v1",
@@ -831,7 +859,7 @@ const evaluateBpTrends = async (
         });
       }
       if (!dryRun && normSys != null && normDia != null) {
-        await upsertTrendpilotState({
+        pendingStateWrites.push({
           user_id: userId,
           type: "bp",
           baseline_from: trailing[0].from,
@@ -847,9 +875,11 @@ const evaluateBpTrends = async (
 };
 
 const evaluateBodyTrends = async (
+  dataClient: SupabaseClient,
   userId: string,
   rows: Record<string, unknown>[],
   dryRun: boolean,
+  pendingStateWrites: TrendpilotState[],
 ): Promise<TrendpilotEvent[]> => {
   if (!rows.length) return [];
 
@@ -887,7 +917,7 @@ const evaluateBodyTrends = async (
 
   if (weeks.length < MIN_WEEKS_REQUIRED) return [];
 
-  let state = await fetchTrendpilotState(userId, "body");
+  const state = await fetchTrendpilotState(dataClient, userId, "body");
   let baselineKg = state?.baseline_sys ?? null;
   let baselineFrom = state?.baseline_from ?? "";
   let sampleWeeks = state?.sample_weeks ?? 0;
@@ -899,7 +929,7 @@ const evaluateBodyTrends = async (
     baselineFrom = baselineSlice[0].from;
     sampleWeeks = baselineSlice.length;
     if (!dryRun && baselineKg != null) {
-      await upsertTrendpilotState({
+      pendingStateWrites.push({
         user_id: userId,
         type: "body",
         baseline_from: baselineFrom,
@@ -962,7 +992,9 @@ const evaluateBodyTrends = async (
     }
   }
 
-  if (streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity) {
+  if (
+    streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity
+  ) {
     const end = statuses[statuses.length - 1];
     const payload = {
       rule_id: "body-weight-trend-v1",
@@ -1007,7 +1039,7 @@ const evaluateBodyTrends = async (
         });
       }
       if (!dryRun && normKg != null) {
-        await upsertTrendpilotState({
+        pendingStateWrites.push({
           user_id: userId,
           type: "body",
           baseline_from: trailing[0].from,
@@ -1023,9 +1055,11 @@ const evaluateBodyTrends = async (
 };
 
 const evaluateLabTrends = async (
+  dataClient: SupabaseClient,
   userId: string,
   rows: Record<string, unknown>[],
   dryRun: boolean,
+  pendingStateWrites: TrendpilotState[],
 ): Promise<TrendpilotEvent[]> => {
   if (!rows.length) return [];
 
@@ -1069,7 +1103,7 @@ const evaluateLabTrends = async (
   const totalSamples = weeks.reduce((sum, w) => sum + w.samples, 0);
   if (totalSamples < LAB_MIN_SAMPLES) return [];
 
-  let state = await fetchTrendpilotState(userId, "lab");
+  const state = await fetchTrendpilotState(dataClient, userId, "lab");
   let baselineEgfr = state?.baseline_sys ?? null;
   let baselineCreat = state?.baseline_dia ?? null;
   let baselineFrom = state?.baseline_from ?? "";
@@ -1078,14 +1112,17 @@ const evaluateLabTrends = async (
   if (baselineEgfr == null || baselineCreat == null) {
     const baselineSlice = weeks.slice(0, LAB_BASELINE_WEEKS);
     if (baselineSlice.length < LAB_MIN_WEEKS) return [];
-    const baselineSamples = baselineSlice.reduce((sum, w) => sum + w.samples, 0);
+    const baselineSamples = baselineSlice.reduce(
+      (sum, w) => sum + w.samples,
+      0,
+    );
     if (baselineSamples < LAB_MIN_SAMPLES) return [];
     baselineEgfr = median(baselineSlice.map((w) => w.avg_egfr));
     baselineCreat = median(baselineSlice.map((w) => w.avg_creatinine));
     baselineFrom = baselineSlice[0].from;
     sampleWeeks = baselineSlice.length;
     if (!dryRun && baselineEgfr != null && baselineCreat != null) {
-      await upsertTrendpilotState({
+      pendingStateWrites.push({
         user_id: userId,
         type: "lab",
         baseline_from: baselineFrom,
@@ -1164,7 +1201,9 @@ const evaluateLabTrends = async (
     }
   }
 
-  if (streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity) {
+  if (
+    streakStart >= 0 && statuses.length - streakStart >= 2 && streakSeverity
+  ) {
     const end = statuses[statuses.length - 1];
     const payload = {
       rule_id: "lab-egfr-creatinine-trend-v1",
@@ -1213,7 +1252,7 @@ const evaluateLabTrends = async (
         });
       }
       if (!dryRun && normEgfr != null && normCreat != null) {
-        await upsertTrendpilotState({
+        pendingStateWrites.push({
           user_id: userId,
           type: "lab",
           baseline_from: trailing[0].from,
@@ -1254,10 +1293,12 @@ const correlateTrends = (
 
   for (const bp of bpEvents) {
     for (const body of bodyEvents) {
-      const overlapFrom =
-        bp.window_from > body.window_from ? bp.window_from : body.window_from;
-      const overlapTo =
-        bp.window_to < body.window_to ? bp.window_to : body.window_to;
+      const overlapFrom = bp.window_from > body.window_from
+        ? bp.window_from
+        : body.window_from;
+      const overlapTo = bp.window_to < body.window_to
+        ? bp.window_to
+        : body.window_to;
       if (overlapFrom > overlapTo) continue;
       const bodyPayload = body.payload || {};
       const deltaKg = toNumber(bodyPayload.delta_kg);
@@ -1277,8 +1318,9 @@ const correlateTrends = (
         body_ids: [],
         weight_delta_kg: deltaKg,
       };
-      entry.window_to =
-        entry.window_to < overlapTo ? overlapTo : entry.window_to;
+      entry.window_to = entry.window_to < overlapTo
+        ? overlapTo
+        : entry.window_to;
       entry.bp_ids.push(bp.id as string);
       entry.body_ids.push(body.id as string);
       entry.weight_delta_kg =
@@ -1312,13 +1354,14 @@ const correlateTrends = (
 };
 
 const upsertTrendpilotEvents = async (
+  dataClient: SupabaseClient,
   userId: string,
   events: TrendpilotEvent[],
 ) => {
   const results: { id?: string | null; type: string; severity: string }[] = [];
   const withIds: TrendpilotEventWithId[] = [];
   for (const evt of events) {
-    const { data: existing, error } = await supabase
+    const { data: existing, error } = await dataClient
       .from("trendpilot_events")
       .select("id,window_to,ack,ack_at,payload")
       .eq("user_id", userId)
@@ -1328,16 +1371,14 @@ const upsertTrendpilotEvents = async (
       .maybeSingle();
     if (error) throw error;
 
-    const windowTo =
-      existing?.window_to && existing.window_to > evt.window_to
-        ? existing.window_to
-        : evt.window_to;
-    const extendsAcknowledgedEvent =
-      existing?.ack === true &&
+    const windowTo = existing?.window_to && existing.window_to > evt.window_to
+      ? existing.window_to
+      : evt.window_to;
+    const extendsAcknowledgedEvent = existing?.ack === true &&
       typeof existing.window_to === "string" &&
       evt.window_to > existing.window_to;
     const payload = withoutAckContinuationPayload(
-      mergePayload(existing?.payload, evt.payload),
+      mergeTrendpilotPayload(existing?.payload, evt.payload),
     );
     if (extendsAcknowledgedEvent) {
       payload.continued_after_ack = true;
@@ -1360,15 +1401,20 @@ const upsertTrendpilotEvents = async (
       row.ack_at = existing.ack_at || null;
     }
 
-    const { data: up, error: upErr } = await supabase
+    const { data: up, error: upErr } = await dataClient
       .from("trendpilot_events")
       .upsert(row, {
         onConflict: "user_id,type,window_from,severity",
       })
+      .eq("user_id", userId)
       .select("id")
       .maybeSingle();
     if (upErr) throw upErr;
-    results.push({ id: up?.id ?? null, type: evt.type, severity: evt.severity });
+    results.push({
+      id: up?.id ?? null,
+      type: evt.type,
+      severity: evt.severity,
+    });
     withIds.push({
       ...evt,
       id: up?.id ?? null,
@@ -1379,107 +1425,194 @@ const upsertTrendpilotEvents = async (
   return { results, withIds };
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return responseOk();
-  if (req.method !== "POST") {
-    return responseJson({ error: "Nur POST erlaubt." }, 405);
-  }
+type TrendpilotHandlerDependencies = {
+  createPrincipal?: typeof createActivityEdgePrincipal;
+  activityRuntime?: ReturnType<typeof createActivityConsumerRuntime>;
+  now?: () => Date;
+};
 
-  try {
-    const body = (await req.json()) as TrendpilotInput;
-    const input = await normalizeInput(req, body);
+export const createTrendpilotHandler = (
+  dependencies: TrendpilotHandlerDependencies = {},
+) => {
+  const createPrincipal = dependencies.createPrincipal ??
+    createActivityEdgePrincipal;
+  const activityRuntime = dependencies.activityRuntime ??
+    createActivityConsumerRuntime();
+  const readNow = dependencies.now ?? (() => new Date());
 
-    const contextRange = {
-      from: subDaysIso(input.range.from, CONTEXT_WEEKS * 7 - 1),
-      to: input.range.to,
-    };
+  return async (req: Request) => {
+    if (req.method === "OPTIONS") return responseOk();
+    if (req.method !== "POST") {
+      return responseJson({ error: "Nur POST erlaubt." }, 405);
+    }
 
-    const [bpRows, bodyRows, labRows, bodyRowsContext, labRowsContext, activityRows] =
-      await Promise.all([
-        fetchHealthEvents(input.userId, "bp", input.range),
-        fetchHealthEvents(input.userId, "body", input.range),
-        fetchLabEvents(input.userId, input.range),
-        fetchHealthEvents(input.userId, "body", contextRange),
-        fetchLabEvents(input.userId, contextRange),
-        fetchActivityEvents(input.userId, contextRange),
+    let principal: ActivityEdgePrincipal | null = null;
+    try {
+      principal = await createPrincipal(req, "trendpilot");
+      const userId = principal.owner_id;
+      const dataClient = principal.rpc_client as unknown as SupabaseClient;
+      const requestNow = readNow();
+      const body = await readRequestInput(req);
+      const input = normalizeInput(body, requestNow);
+      const contextRange = {
+        from: subDaysIso(input.range.from, CONTEXT_WEEKS * 7 - 1),
+        to: input.range.to,
+      };
+
+      const [
+        activitySnapshot,
+        bpRows,
+        bodyRows,
+        labRows,
+        bodyRowsContext,
+        labRowsContext,
+      ] = await Promise.all([
+        activityRuntime.loadSnapshot(principal, contextRange),
+        fetchHealthEvents(dataClient, userId, "bp", input.range),
+        fetchHealthEvents(dataClient, userId, "body", input.range),
+        fetchLabEvents(dataClient, userId, input.range),
+        fetchHealthEvents(dataClient, userId, "body", contextRange),
+        fetchLabEvents(dataClient, userId, contextRange),
       ]);
 
-    const bpTrend = await evaluateBpTrends(
-      input.userId,
-      bpRows,
-      input.dryRun,
-    );
-    const bodyTrend = await evaluateBodyTrends(
-      input.userId,
-      bodyRows,
-      input.dryRun,
-    );
-    const labTrend = await evaluateLabTrends(
-      input.userId,
-      labRows,
-      input.dryRun,
-    );
-    const singleEvents = [...bpTrend, ...bodyTrend, ...labTrend];
-    const singleWithContext = attachContextToEvents(
-      singleEvents,
-      bodyRowsContext,
-      activityRows,
-      labRowsContext,
-    );
-
-    if (!singleEvents.length && !input.dryRun) {
-      return responseJson({
-        ok: true,
-        trigger: input.trigger,
-        range: input.range,
-        events: [],
-        fetched: { bp: bpRows.length, body: bodyRows.length, lab: labRows.length },
-        written: [],
-      });
-    }
-
-    if (input.dryRun) {
-      const synthetic = singleWithContext.map((evt) => ({
-        ...evt,
-        id: `${evt.type}:${evt.severity}:${evt.window_from}`,
-      }));
-      const combined = correlateTrends(
-        synthetic,
-        input.range,
+      const pendingStateWrites: TrendpilotState[] = [];
+      const bpTrend = await evaluateBpTrends(
+        dataClient,
+        userId,
+        bpRows,
+        input.dryRun,
+        pendingStateWrites,
       );
-      const allEvents = [...singleWithContext, ...combined];
+      const bodyTrend = await evaluateBodyTrends(
+        dataClient,
+        userId,
+        bodyRows,
+        input.dryRun,
+        pendingStateWrites,
+      );
+      const labTrend = await evaluateLabTrends(
+        dataClient,
+        userId,
+        labRows,
+        input.dryRun,
+        pendingStateWrites,
+      );
+      const singleEvents = [...bpTrend, ...bodyTrend, ...labTrend];
+      const singleWithContext = attachContextToEvents(
+        singleEvents,
+        bodyRowsContext,
+        activitySnapshot,
+        labRowsContext,
+      );
+
+      for (const state of pendingStateWrites) {
+        await upsertTrendpilotState(dataClient, state);
+      }
+
+      if (!singleEvents.length && !input.dryRun) {
+        return responseJson({
+          ok: true,
+          trigger: input.trigger,
+          range: input.range,
+          events: [],
+          fetched: {
+            bp: bpRows.length,
+            body: bodyRows.length,
+            lab: labRows.length,
+          },
+          written: [],
+        });
+      }
+
+      if (input.dryRun) {
+        const synthetic = singleWithContext.map((evt) => ({
+          ...evt,
+          id: `${evt.type}:${evt.severity}:${evt.window_from}`,
+        }));
+        const combined = correlateTrends(synthetic, input.range);
+        const allEvents = [...singleWithContext, ...combined];
+        return responseJson({
+          ok: true,
+          trigger: input.trigger,
+          range: input.range,
+          dry_run: true,
+          events: allEvents,
+          fetched: {
+            bp: bpRows.length,
+            body: bodyRows.length,
+            lab: labRows.length,
+          },
+          written: [],
+        });
+      }
+
+      const singleUpsert = await upsertTrendpilotEvents(
+        dataClient,
+        userId,
+        singleWithContext,
+      );
+      const combined = correlateTrends(singleUpsert.withIds, input.range);
+      const combinedUpsert = combined.length
+        ? await upsertTrendpilotEvents(dataClient, userId, combined)
+        : { results: [], withIds: [] };
+      const allEvents = [...singleUpsert.withIds, ...combinedUpsert.withIds];
+      const written = [...singleUpsert.results, ...combinedUpsert.results];
       return responseJson({
         ok: true,
         trigger: input.trigger,
         range: input.range,
-        dry_run: true,
         events: allEvents,
-        fetched: { bp: bpRows.length, body: bodyRows.length, lab: labRows.length },
-        written: [],
+        fetched: {
+          bp: bpRows.length,
+          body: bodyRows.length,
+          lab: labRows.length,
+        },
+        written,
       });
+    } catch (err) {
+      const mode = principal?.mode ?? null;
+      if (err instanceof ActivityEdgePrincipalError) {
+        console.error(
+          "[midas-trendpilot]",
+          activityEdgePrincipalLog("trendpilot", err),
+        );
+        return responseJson(
+          { ok: false, error: err.publicMessage },
+          err.status,
+        );
+      }
+      if (err instanceof ActivityConsumerRuntimeError) {
+        console.error("[midas-trendpilot]", {
+          operation: "trendpilot",
+          code: err.code,
+          status: err.status,
+          mode,
+        });
+        return responseJson(
+          { ok: false, error: err.publicMessage },
+          err.status,
+        );
+      }
+      const requestError = err instanceof TrendpilotRequestError;
+      const status = requestError ? err.status : 500;
+      const code = requestError ? err.code : "INTERNAL_ERROR";
+      console.error("[midas-trendpilot]", {
+        operation: "trendpilot",
+        code,
+        status,
+        mode,
+      });
+      return responseJson(
+        {
+          ok: false,
+          error: requestError ? err.publicMessage : "Internal server error",
+        },
+        status,
+      );
     }
+  };
+};
 
-    const singleUpsert = await upsertTrendpilotEvents(
-      input.userId,
-      singleWithContext,
-    );
-    const combined = correlateTrends(singleUpsert.withIds, input.range);
-    const combinedUpsert = combined.length
-      ? await upsertTrendpilotEvents(input.userId, combined)
-      : { results: [], withIds: [] };
-    const allEvents = [...singleUpsert.withIds, ...combinedUpsert.withIds];
-    const written = [...singleUpsert.results, ...combinedUpsert.results];
-    return responseJson({
-      ok: true,
-      trigger: input.trigger,
-      range: input.range,
-      events: allEvents,
-      fetched: { bp: bpRows.length, body: bodyRows.length, lab: labRows.length },
-      written,
-    });
-  } catch (err) {
-    const message = serializeError(err);
-    console.error("[midas-trendpilot] failed", message);
-    return responseJson({ ok: false, error: message }, 400);
-  }
-});
+if (import.meta.main) {
+  Deno.serve(createTrendpilotHandler());
+}
