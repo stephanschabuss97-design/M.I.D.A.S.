@@ -1,5 +1,15 @@
 ﻿# Supabase Core - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+SQL26 stellt einen kanonischen privaten Snapshotkern sowie getrennte User- und
+Servicewrapper bereit. Monthly bleibt Gateway-JWT-geschützt; Protein und
+Trendpilot validieren Legacy-Signing-Benutzer serverseitig über Supabase Auth
+und akzeptieren Scheduler nur über je einen benannten Secret Key. Incident
+Push verwendet den isolierten Alias `INCIDENTS_PUSH_LEGACY_KEY` ausschließlich
+für den Callervergleich. Die globale Signing-/Keymigration wurde bewusst nicht
+begonnen; moderne Default-Keys bleiben dormant.
+
 Kurze Einordnung:
 - Zweck: zentrale Aggregation aller Supabase-Subsysteme (Auth, API, Realtime, Core).
 - Rolle innerhalb von MIDAS: stellt ein einheitliches API-Bundle fuer alle Module bereit.

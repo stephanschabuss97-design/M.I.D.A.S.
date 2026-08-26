@@ -2,7 +2,13 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-23
+Stand: 2026-08-26
+
+R13 ist `DONE`: Die fünf read-only Consumer sind produktiv auf dem gemeinsamen
+SQL26-Vertrag aktiv und mit Activity V1 paritätisch bewiesen. Activity V1
+bleibt alleiniger produktiver Capturewriter; Activity V2 bleibt bei 0/0/0.
+C3 ist das nächste Core-UI-Gate. Erst danach darf R14 als einziger Schritt den
+Activity-V2-Capture und den finalen Android-PWA-Cutover aktivieren.
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
@@ -15,8 +21,8 @@ CodeRabbit-Null-Lauf abgeschlossen. R9 ist mit einer separat dokumentierten,
 owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 bis R12 sind
 vollständig abgeschlossen; SQL 24 und SQL 25 sind produktiv installiert und
 read-only postgeprüft. R11 hat Doctor View, Range-Arztbericht und Health Export
-V3 isoliert vorbereitet; R12 hat Protein Target und Trendpilot isoliert auf
-Aktivtage vorbereitet. Sichtbare Activity-Consumer verwenden weiterhin V1.
+V3 vorbereitet; R12 hat Protein Target und Trendpilot auf Aktivtage
+vorbereitet; R13 hat diese fünf Leser produktiv aktiviert.
 
 Cross-Contract-Stand 2026-08-23: `PASS mit dokumentierten R8-Evidence-Gaps,
 owner-akzeptierter R9-Review-Restunsicherheit sowie vollständig grünem R10

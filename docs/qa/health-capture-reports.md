@@ -28,6 +28,29 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 
 ## Testfälle
 
+### HCR-031 - R13 Read-Consumer-Aktivierung hält V1-Parität und R14-Grenze
+
+- Vertrag: archivierte R13-Roadmap und Evidence sowie Activity-, Doctor-,
+  Reports-, Protein-, Trendpilot- und Supabase-Core-Overviews.
+- Ebene: produktiver Browser + Supabase-Control-Plane + GitHub Actions +
+  geschütztes Metadata-only-Datenpostimage.
+- Voraussetzung: SQL26/F48-ACL, Monthly v61/true, Protein v31/false,
+  Trendpilot v32/false, Incident v27/true, Commit A `d121adad` und Commit B
+  `4aa97f92` sind aktiv; 0 Zielworkflows inflight.
+- Ausführung: Fresh- und v6→v7-Upgradeclient öffnen, Doctor View entsperren,
+  einen expliziten Range-Bericht erzeugen und Health Export V3 über den
+  sichtbaren Produktpfad anstoßen. Protein- und Trendworkflow getrennt auf
+  exakt Commit A dispatchen; Pages exakt auf Commit B prüfen.
+- Erwartung: beide Workflows und Pages erfolgreich; Bericht bleibt
+  report-first ohne Satz-/Gewichtsdetails; V1-Activityzahl/-hash unverändert,
+  V2 Sessions/Items/Sets 0/0/0; kein V2-Writer-, Coaching- oder Captureload.
+- Abschlussnachweis 2026-08-26: `PASS`. Protein `32962050543`, Trend
+  `32962149903`, Pages `32962301099`; V1 66/`cfddb1fa`, V2 0/0/0, Report
+  1/`04619cae`, Profil 1/`e17f64da`, Trend 2/`976373b6` + 0/`4f53cda1`.
+- Invalidiert durch: Änderung an SQL26/F48, Shared Auth, den vier Edgequellen,
+  Schedulerheaders/-Secrets, Productload/SW, Doctor-/Report-/Exportvertrag oder
+  irgendeine Activity-V2-Writeraktivierung.
+
 ### HCR-001 - Activity erfassen und aggregieren
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)

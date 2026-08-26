@@ -1,5 +1,14 @@
 # Protein Module - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+Protein Target v31 läuft produktiv mit `verify_jwt=false` und strikt
+serverseitiger In-Function-Auth: angemeldete Benutzer werden über Supabase
+Auth validiert, der Scheduler ausschließlich über seinen eigenen benannten
+Secret Key. Die unveränderte v1.3-Formel verwendet genau einen
+ownergebundenen 28-Tage-SQL26-Snapshot. Activity V1 bleibt der einzige
+Capturewriter.
+
 Kurze Einordnung:
 - Zweck: dynamische Protein-Ziele aus Profil + Aktivitaet + CKD ableiten und im Profil persistieren.
 - Rolle: verbindet Body-Save mit Edge-Berechnung; Assistant/Intake lesen nur effektive Targets.
@@ -32,7 +41,7 @@ Related docs:
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
 | `sql/11_Lab_Event_Extension.sql` | CKD-Stufe aus `lab_event`. |
 | `backend/supabase/functions/midas-protein-targets/index.ts` | Edge Function (Compute + Write). |
-| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Unreferenzierter purer R12-Adapter für Aktivtage, ACT-Level und Modifier. |
+| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Produktiver purer Adapter für Aktivtage, ACT-Level und Modifier. |
 
 ---
 

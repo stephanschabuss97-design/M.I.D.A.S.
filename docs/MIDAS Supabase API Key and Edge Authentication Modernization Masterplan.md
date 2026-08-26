@@ -4,6 +4,7 @@
 
 - Status: `FUTURE_MASTERPLAN`
 - Erstellt: 2026-08-23
+- Aktualisiert: 2026-08-26; finales R13-Postimage integriert
 - Zielsystem: produktives MIDAS-Supabase-Projekt `M.I.D.A.S.`
 - Geplanter Beginn: nach dem Activity-V2-Core-Cutover
 - Zeitliche Leitplanke: kontrollierte Umstellung noch 2026
@@ -18,6 +19,17 @@ Vor der Umsetzung wird aus dem dann realen Postimage eine konkrete Roadmap nach
 `docs/templates/` erstellt. Die dortige Discovery entscheidet, ob eine einzige
 Roadmap mit getrennten Cutover-Wellen genügt oder ob zwei eng gekoppelte
 Roadmaps für Public Clients und privilegierte Backends sicherer sind.
+
+### Finale R13-Baseline
+
+R13 ist abgeschlossen, ohne die globale Signing-/Keymigration zu beginnen.
+Monthly v61 bleibt `verify_jwt=true`; Protein v31 und Trendpilot v32 laufen
+mit `verify_jwt=false` plus bewiesener In-Function-Auth über Supabase Auth und
+je einem eigenen Scheduler-Secret. Incident v27 bleibt `verify_jwt=true` und
+verwendet den isolierten Caller-Alias. Legacy-Signing und Legacy-Keys bleiben
+aktiv; moderne Default-Keys bleiben dormant. Dieses Postimage ist die
+Ausgangsbasis einer späteren separaten Modernisierungsroadmap, keine implizite
+Freigabe dafür.
 
 ## Warum dieses Thema existiert
 

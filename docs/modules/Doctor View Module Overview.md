@@ -1,13 +1,21 @@
 # Doctor View Module - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+Der R11-Unterbau ist seit R13 produktiv aktiviert: Die Doctor View lädt den
+gemeinsamen Activity-Snapshot lazy und report-first, Health Export V3 ist der
+sichtbare JSON-Export und neu erzeugte Range-Berichte enthalten die kompakte
+Activity-Zusammenfassung. Activity-V1-Löschen bleibt möglich; Activity V2 ist
+hier strikt read-only. Übungs-, Satz-, Gewichts- oder Coachingdetails werden
+nicht in den Arztbericht kopiert.
+
 ## Einordnung
 
 - Zweck: Ruhige, read-only Konsultationsansicht für Arzt und Patient.
 - Primärer Inhalt: der aktuell gespeicherte Arzt-Bericht.
-- Sekundäre Werkzeuge: Einzelwerte, Verlauf und Health Export V2.
-- R11 hat einen gemeinsamen Activity-V1-/V2-Read-Vertrag, einen ruhigen
-  Activity-Drilldown und Health Export V3 isoliert vorbereitet. Produktiv
-  sichtbar bleibt bis R13 der unveränderte V1-/V2-Stand dieser Seite.
+- Sekundäre Werkzeuge: Einzelwerte, Verlauf und Health Export V3.
+- R11 hat den gemeinsamen Activity-V1-/V2-Read-Vertrag vorbereitet; R13 hat
+  Activity-Drilldown und Health Export V3 produktiv aktiviert.
 - Nicht Teil des Moduls: Dateneingabe, Diagnosen oder Therapieentscheidungen.
 
 Related docs:

@@ -1,5 +1,14 @@
 # Reports Module - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+Neue Range-Arztberichte verwenden produktiv genau einen requestgebundenen
+SQL26-Snapshot für Activity V1 und V2. Berechnung und vollständige
+Contractvalidierung erfolgen vor dem atomaren Ersatz des einen
+Report-Singletons. Bestehende Altberichte wurden nicht migriert. Der Bericht
+bleibt kompakt und enthält keine Übungs-, Satz-, Gewichts- oder
+Coachingdetails.
+
 ## Einordnung
 
 - Zweck: Einen aktuellen Arzt-Bericht für einen expliziten Zeitraum erzeugen,
@@ -33,8 +42,8 @@ Related docs:
 | `backend/supabase/functions/midas-monthly-report/report-lifecycle.ts` | Build-before-write und Singleton-Replacement |
 | `sql/19_Report_Lifecycle.sql` | Fresh-Setup-Singleton-Index |
 | `app/styles/doctor.css` | Berichtsdarstellung und Erzeugungsformular |
-| `backend/supabase/functions/midas-monthly-report/activity-consumer.ts` | Isolierter R11-Loader für den gemeinsamen Activity-Snapshot; noch ohne Productimport |
-| `backend/supabase/functions/midas-monthly-report/activity-report.ts` | Isolierter kompakter R11-Activity-Untervertrag für künftige Berichte |
+| `backend/supabase/functions/midas-monthly-report/activity-consumer.ts` | Produktiver requestlokaler Loader für den gemeinsamen Activity-Snapshot |
+| `backend/supabase/functions/midas-monthly-report/activity-report.ts` | Produktiver kompakter Activity-Untervertrag für neu erzeugte Berichte |
 | `sql/25_Activity_Consumer_Compatibility.sql` | Produktiv installierter read-only V1-/V2-Snapshot-RPC; keine Report-DML |
 
 <!-- markdownlint-enable MD013 -->

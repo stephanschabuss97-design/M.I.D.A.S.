@@ -14,6 +14,12 @@ erhalten.
 
 ### Added
 
+- R13 aktiviert die gemeinsamen Activity-V1-/V2-Read-Consumer produktiv in
+  Doctor View, Range-Arztbericht, Health Export V3, Protein Target und
+  Trendpilot. Getrennte Scheduler-Secrets, SQL26 und serverseitige Legacy-
+  Uservalidierung sichern die Reader; Activity V1 bleibt bis R14 der einzige
+  Capturewriter und Activity V2 bleibt produktiv 0/0/0.
+
 - Produktive, additive Activity-V2-Datenbasis mit versioniertem 78er-Katalog,
   atomarem retry-idempotentem Session-Commit und ownergebundenem
   Last-Performance-Lookup; Activity V1 und die sichtbare UI bleiben

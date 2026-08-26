@@ -7,6 +7,17 @@ status: draft
 
 Explain how SQL scripts in `sql/` are structured, how to run them safely, and how to add new module scripts in a consistent style.
 
+## Productive Activity Consumer Runtime (R13, 2026-08-26)
+
+`26_Activity_Consumer_Runtime_Activation.sql` is the active production
+contract. It keeps the public authenticated snapshot signature compatible,
+adds a private canonical core and a service-only wrapper, and grants
+`authenticated` only RLS-bound `SELECT` on `trendpilot_state`. The reviewed
+reverse is `26_Activity_Consumer_Runtime_Activation_Rollback.sql` plus the
+separate matching `REVOKE SELECT ON public.trendpilot_state FROM authenticated`.
+Activity V1 capture remains active; Activity V2 capture is not activated by
+SQL26.
+
 # Principles
 
 - Modular: one script per domain/module.

@@ -1,5 +1,14 @@
 # Trendpilot Module - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+Trendpilot v32 läuft produktiv mit `verify_jwt=false` und derselben
+serverseitigen Uservalidierung wie Protein; der Scheduler verwendet nur den
+eigenen benannten Secret Key. Ein maximal 400 Tage breiter SQL26-Snapshot
+liefert Activity V1/V2 read-only, während Trend-State unter RLS für den Owner
+nur lesbar und für Servicepfade schreibbar bleibt. Historische Payloads und
+medizinische Aussagen wurden nicht umgeschrieben.
+
 Kurze Einordnung:
 - Zweck: Trendanalyse ueber Wochenfenster (BP/Body/Lab + Combined).
 - Rolle innerhalb von MIDAS: erzeugt Trendpilot-Events + UI-Hinweise (Capture/Doctor/Charts/Hub).
@@ -33,7 +42,7 @@ Related docs:
 | `app/modules/doctor-stack/charts/index.js` | Trendpilot-Bands im BP-Chart |
 | `app/styles/doctor.css` | Trendpilot-Block Styling |
 | `app/styles/ui.css` | Trendpilot-Dialog/Overlay Styling |
-| `backend/supabase/functions/midas-trendpilot/activity-compatibility.ts` | Unreferenzierter purer R12-Adapter für Aktivtage, belegte Wochen und Level. |
+| `backend/supabase/functions/midas-trendpilot/activity-compatibility.ts` | Produktiver purer Adapter für Aktivtage, belegte Wochen und Level. |
 
 ---
 

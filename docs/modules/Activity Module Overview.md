@@ -1,5 +1,14 @@
 ﻿# Activity Module - Functional Overview
 
+## R13-Produktionsstand (2026-08-26)
+
+R13 ist `DONE`: Doctor View, Range-Arztbericht, Health Export V3, Protein
+Target und Trendpilot verwenden produktiv den gemeinsamen ownergebundenen
+V1-/V2-Read-Vertrag aus SQL26. Activity V1 bleibt bis R14 der einzige
+Capturewriter; Activity V2 Sessions/Items/Sets stehen produktiv weiterhin auf
+0/0/0. C3 ist das nächste Core-UI-Gate, danach besitzt allein R14 den Capture-
+und Android-PWA-Cutover.
+
 Kurze Einordnung:
 - Produktiver Stand: Activity V1 erfasst eine Trainingseinheit pro Tag
   (Aktivitaet + Dauer + Notiz).
@@ -10,8 +19,8 @@ Kurze Einordnung:
   Lifecycle-Consumer, der produktiv installierte, aber nicht sichtbar
   verdrahtete R10-Coaching-Export, der gemeinsame R11-V1-/V2-
   Read-Consumervertrag und die isolierten R12-Protein-/Trendpilot-Adapter sind
-  bereitgestellt. SQL 25 ist produktiv installiert; die sichtbare App und alle
-  produktiven Consumer verwenden weiterhin V1.
+  bereitgestellt. SQL26 ist produktiv installiert; die fünf read-only
+  Consumer lesen V1/V2 gemeinsam, während die Erfassung weiterhin V1 schreibt.
 - Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
