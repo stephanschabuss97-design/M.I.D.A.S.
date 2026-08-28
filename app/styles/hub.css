@@ -2,6 +2,11 @@
    HUB Layout Base
    ========================================================================== */
 
+body.hub-mode #appMain {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 .hub {
   width: min(1200px, 100%);
   margin: 0 auto;
@@ -258,6 +263,7 @@ body:has(.hub-panel.is-visible) .hub-icon {
 }
 
 .hub-dashboard-card {
+  position: relative;
   background:
     linear-gradient(180deg, rgba(18, 24, 44, 0.9), rgba(10, 14, 26, 0.88));
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -266,6 +272,110 @@ body:has(.hub-panel.is-visible) .hub-icon {
   box-shadow: 0 24px 50px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+.hub-protein-target-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 216, 122, 0.18);
+  background: rgba(255, 216, 122, 0.035);
+  color: #f5f7ff;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: inset 3px 0 0 rgba(255, 216, 122, 0.42);
+}
+
+.hub-protein-target-button:hover,
+.hub-protein-target-button:focus-visible {
+  border-color: rgba(255, 216, 122, 0.48);
+  background: rgba(255, 216, 122, 0.08);
+  outline: none;
+}
+
+.hub-protein-context-dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 2vw, 22px);
+  border-radius: inherit;
+  background: rgba(5, 8, 16, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hub-protein-context-dialog[hidden] {
+  display: none;
+}
+
+.hub-protein-context-card {
+  width: min(100%, 820px);
+  max-height: min(76vh, 680px);
+  overflow: auto;
+  padding: clamp(16px, 3vw, 26px);
+  border: 1px solid rgba(255, 216, 122, 0.22);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(22, 28, 48, 0.98), rgba(10, 14, 26, 0.98));
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.42);
+  overscroll-behavior: contain;
+}
+
+.hub-protein-context-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.hub-protein-context-header p,
+.hub-protein-context-header h3 {
+  margin: 0;
+}
+
+.hub-protein-context-header h3 {
+  margin-top: 4px;
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+}
+
+.hub-protein-context-header .hub-dashboard-close {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+}
+
+.hub-protein-context-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 18px 0 0;
+}
+
+.hub-protein-context-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.hub-protein-context-list dt {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.78rem;
+}
+
+.hub-protein-context-list dd {
+  margin: 0;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .hub-dashboard-header {
@@ -315,8 +425,8 @@ body:has(.hub-panel.is-visible) .hub-icon {
   -webkit-appearance: none;
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: 50%;
   cursor: pointer;
@@ -445,6 +555,20 @@ body:has(.hub-panel.is-visible) .hub-icon {
   }
 
   .hub-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hub-protein-context-dialog {
+    padding: 8px;
+  }
+
+  .hub-protein-context-card {
+    max-height: min(82vh, 660px);
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .hub-protein-context-list {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -873,6 +997,12 @@ body.voice-locked .hub-core-trigger.is-voice-locked::after {
   opacity: 0.92;
 }
 
+.hub-icon[data-carousel-id='profile'] .hub-icon-img {
+  position: relative;
+  top: clamp(8px, 1vw, 14px);
+  width: clamp(264px, 44vw, 520px);
+}
+
 .hub-icon[data-carousel-id='assistant-voice'] .hub-icon-img {
   width: clamp(332px, 56vw, 664px);
 }
@@ -1240,8 +1370,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   border: none;
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   font-size: 1.4rem;
   cursor: pointer;
@@ -1352,7 +1482,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .medication-cards.card,
 .hub-vitals-body.card,
 .hub-vitals-lab.card,
-.hub-vitals-activity.card,
+.hub-training.card,
 .bp-combined-card.card {
   --panel-bg: transparent;
   background: transparent;
@@ -1616,6 +1746,7 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 
 .hub-vitals-tabs .btn {
   min-width: 70px;
+  min-height: 44px;
 }
 
 .hub-vitals-tabs .btn:not(:disabled):active {
@@ -1879,52 +2010,27 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   margin-top: 0;
 }
 
-.hub-vitals-activity {
+.hub-training {
   position: relative;
   margin-top: 12px;
 }
 
-.hub-vitals-activity .activity-form {
+.hub-training .activity-form-actions .btn {
+  min-height: 44px;
+}
+
+.hub-training .activity-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.hub-vitals-activity .activity-form-grid {
+.hub-training .activity-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
   gap: var(--form-grid-gap);
 }
 
-.hub-vitals-activity .activity-metrics {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.hub-vitals-activity .activity-metric {
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hub-vitals-activity .activity-metric .label {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.hub-vitals-activity .activity-metric .value {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #fff;
-}
 .hub-vitals-lab .lab-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(var(--form-grid-min), 1fr));
@@ -2343,8 +2449,8 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   }
 
   .hub-panel-close {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
 
   .hub {
@@ -2369,10 +2475,6 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-  }
-
-  .hub-vitals-activity .activity-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .hub-panel .form-actions .btn,
@@ -3110,6 +3212,11 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
   line-height: 1;
 }
 
+.hub-dashboard-actions .assistant-copy-btn {
+  width: 44px;
+  height: 44px;
+}
+
 .assistant-copy-icon {
   width: 18px;
   height: 18px;
@@ -3237,6 +3344,14 @@ body[data-panel-perf="mobile"] .hub-panel.hub-panel-closing {
 .assistant-context-item .value {
   font-weight: 600;
   text-align: right;
+}
+
+.assistant-context-item.hub-protein-target-button .label {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.assistant-context-item.hub-protein-target-button .value {
+  color: #ffe08a;
 }
 
 @media (max-width: 1024px) {

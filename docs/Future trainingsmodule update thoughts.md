@@ -2,13 +2,15 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-26
+Stand: 2026-08-28
 
 R13 ist `DONE`: Die fünf read-only Consumer sind produktiv auf dem gemeinsamen
 SQL26-Vertrag aktiv und mit Activity V1 paritätisch bewiesen. Activity V1
 bleibt alleiniger produktiver Capturewriter; Activity V2 bleibt bei 0/0/0.
-C3 ist das nächste Core-UI-Gate. Erst danach darf R14 als einziger Schritt den
-Activity-V2-Capture und den finalen Android-PWA-Cutover aktivieren.
+C3 ist ebenfalls `DONE`: Training ist eine eigene Hub-Produktfläche, Vitals
+enthält nur BP/Body/Lab und der Protein-Kontextdialog projiziert gespeicherte
+Werte read-only. R14 darf als einziger Schritt den Activity-V2-Capture und den
+finalen Android-PWA-Cutover aktivieren.
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
@@ -22,7 +24,8 @@ owner-akzeptierten Review-Restunsicherheit abgeschlossen. R10 bis R12 sind
 vollständig abgeschlossen; SQL 24 und SQL 25 sind produktiv installiert und
 read-only postgeprüft. R11 hat Doctor View, Range-Arztbericht und Health Export
 V3 vorbereitet; R12 hat Protein Target und Trendpilot auf Aktivtage
-vorbereitet; R13 hat diese fünf Leser produktiv aktiviert.
+vorbereitet; R13 hat diese fünf Leser produktiv aktiviert. C3 hat danach die
+Produktfläche ohne Writerwechsel stabilisiert.
 
 Cross-Contract-Stand 2026-08-23: `PASS mit dokumentierten R8-Evidence-Gaps,
 owner-akzeptierter R9-Review-Restunsicherheit sowie vollständig grünem R10
@@ -70,14 +73,16 @@ Snapshot. SQL 24 ist produktiv installiert; Function/ACL/Auth/Empty-V1 und
 unveränderte V2-Zähler 0/0/0 sind postgeprüft. Client, Download-Harness und
 alle sichtbaren Activity-V2-Consumer bleiben zunächst isoliert. R11 hat
 Doctor View, Arztbericht und Health Export vorbereitet; R12 hat Protein Target
-und Trendpilot vorbereitet. R13 aktiviert die read-only Consumer mit bestehender
-V1-Erfassung, R14 erst den Activity-V2-Capture.
+und Trendpilot vorbereitet. R13 hat die read-only Consumer mit bestehender
+V1-Erfassung produktiv aktiviert. C3 hat die Trainingsproduktfläche
+kontrolliert aus Vitals herausgetrennt; R14 aktiviert erst anschließend den
+Activity-V2-Capture.
 
 R11 ist DONE: Ein gemeinsamer ownergebundener `STABLE SECURITY INVOKER`-RPC
 vereinigt Activity V1 auf Ereignis- und V2 auf Sessionebene. SQL 25 ist
 produktiv installiert; Function/ACL/Auth, anonyme Ablehnung und unveränderte
 V1-/V2-/Reportdaten sind postgeprüft. Doctor-Drilldown, kompakte Reportcopy,
-Health Export V3 und Edgeadapter bleiben bis R13 ohne Productload.
+Health Export V3 und Edgeadapter sind seit R13 produktiv aktiv.
 
 Dieses Dokument beschreibt, was MIDAS Activity V2 werden soll und in welcher
 Reihenfolge die dafür notwendigen Roadmaps entstehen sollen. Es ist keine
@@ -87,11 +92,12 @@ Funktionen bereits produktiv existieren.
 Bis zum späteren Consumer-Cutover bleiben der reale Code, das aktuelle
 `Activity Module Overview` und die produktive Supabase-Struktur die Source of
 Truth: Activity V1 ist sichtbar aktiv; Activity V2 R1-R12/C2 stellen die
-noch unverdrahtete Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-,
-Historien-, Editor-, Recovery-, Commit-, Lifecycle-, Export- und gemeinsamen
-Read-Consumergrundlage bereit. R13 ist das nächste Core-Gate. Die R10- und
-R11-Datenbankfunctions existieren produktiv; ihre sichtbaren Consumer bleiben
-den zuständigen R13-/R14-Gates vorbehalten.
+Semantik-, Speicher-, Draft-, Shell-, Katalog-, Such-, Historien-, Editor-,
+Recovery-, Commit-, Lifecycle-, Export- und gemeinsame
+Read-Consumergrundlage bereit. R13 hat die fünf read-only Consumer produktiv
+aktiviert; Activity V1 bleibt alleiniger Writer und Activity V2 bei 0/0/0.
+C3 hat die neue Trainingsproduktfläche getrennt vom Writerwechsel umgesetzt;
+der V2-Writer folgt ausschließlich in R14.
 
 ---
 
@@ -1221,19 +1227,57 @@ Warum dieser Schnitt:
   Activity-V1-Daten auf Parität geprüft.
 - R14 muss keine neue medizinische Berechnungslogik mehr entwickeln, sondern
   nur bereits bewiesene Komponenten kontrolliert produktiv zusammenschalten.
-- R12-R14 bleiben substanzielle Integrationsgates; es entstehen keine
-  Roadmaps für einzelne Buttons, Dateien oder Standardtests.
+- R12-R14 und das eingeschobene C3 bleiben substanzielle Integrationsgates; es
+  entstehen keine Roadmaps für einzelne Buttons, Dateien oder Standardtests.
 
 Verbindlichkeit der verbleibenden Folge:
 
-- R7 bis R14 bilden den Core-Pfad. Sie sind für verlustsichere reale Nutzung,
-  vollständige V1-Consumer-Parität und den kontrollierten produktiven Cutover
+- R7 bis R14 bilden gemeinsam mit dem eingeschobenen C3 den Core-Pfad. Sie
+  sind für verlustsichere reale Nutzung, vollständige V1-Consumer-Parität,
+  eine stabile Produktfläche und den kontrollierten produktiven Cutover
   notwendig.
 - R15 ist eine gewünschte Post-Core-Komfortfunktion für den Coaching-
   Kreislauf, aber keine Voraussetzung für den produktiven Activity-V2-Kern.
 - R16 ist eine optionale Hygieneentscheidung. Eine eigene R16-Roadmap wird nur
   erstellt, wenn reale Datenmenge, Wartungsaufwand oder Speicherverbrauch
   einen Bedarf belegen.
+
+### 18.4 C3-Einschub vor R14
+
+Stand: `DONE 2026-08-28`.
+
+Nach Planung und Readiness von R13 wurde die sichtbare Produktgrenze nochmals
+gegen den realen Hub-, Vitals- und Dashboard-Iststand geprüft. Der bestehende
+R14-Vertrag soll nicht zusätzlich den Hub-Umbau, zwei Iconidentitäten und die
+Verlagerung der Protein-Erklärung tragen. Deshalb wird zwischen R13 und R14 ein
+eigenständiges Core-UI-Gate eingeschoben:
+
+- C3 wird `Training Product Surface and Protein Context Relocation`.
+- C3 erhält im Hub-Karussell ein eigenes Modul `Training`, zunächst weiterhin
+  mit der unveränderten Activity-V1-Erfassung als einzigem Writer.
+- C3 reduziert Vitals auf `Blutdruck`, `Körper` und `Labor` und entfernt dort
+  weder Daten noch historische Lesefähigkeit.
+- C3 verschiebt die vorhandene Protein-Berechnungserklärung in einen ruhigen,
+  per Klick oder Tap erreichbaren Dashboard-Dialog. Die medizinische Formel
+  und die gespeicherten Ableitungsfelder bleiben unverändert.
+- C3 trennt die Assetidentitäten: Das bestehende stilisierte Körpermotiv wird
+  als eigenes Activity-Asset kopiert; Profile erhält ein neues, dediziertes
+  MIDAS-Asset. Ein gemeinsamer Dateipfad für zwei fachliche Module ist
+  ausgeschlossen.
+- R14 bleibt unverändert der einzige Activity-V2-Writer-Cutover und integriert
+  die bereits bewiesene V2-Runtime in die von C3 stabilisierte
+  Trainingsproduktfläche.
+
+C3 wird bewusst außerhalb der R1-R16-Nummerierung geführt. Die archivierte
+R13-Roadmap, ihre Evidence und die bereits roadmapübergreifend eingefrorene
+R14-Cutover-Identität bleiben dadurch konsistent. C3 ist dennoch ein
+verpflichtendes Core-Gate und keine optionale Politur.
+
+Das bewiesene C3-Postimage entspricht diesem Vertrag: Activity V1 ist der
+einzige Writer, Activity V2 bleibt produktiv verborgen, Training besitzt ein
+eigenes Datum und einen eigenen Hub-Einstieg direkt nach Vitals, Profile und
+Activity haben getrennte Assets und der Protein-Dialog liest nur gespeicherte
+Werte. Der produktive PWA-Cache ist auf v13 synchronisiert.
 
 ### R1 - Activity V2 Semantics and Product Contract
 
@@ -1251,7 +1295,7 @@ Nachgewiesenes Ergebnis:
 
 Nachweise:
 
-- [R1 Catalog Baseline Contract](MIDAS%20Activity%20V2%20R1%20Catalog%20Baseline%20Contract.md)
+- [R1 Catalog Baseline Contract](<archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
 - [R1 Semantics and Product Contract Roadmap](<archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
 
 Warum zuerst:
@@ -1369,7 +1413,7 @@ Reales Ergebnis:
 - insert-only SQL 21 produktiv PASS; v1/v2 Repo=Produkt vollständig gleich,
   andere Versionen und v2-Sessionreferenzen 0, RLS/Policies/ACL/RPC unverändert
 <!-- markdownlint-disable MD013 -->
-- [C2 Catalog Contract](<MIDAS Activity V2 C2 Catalog Version 2 Contract.md>),
+- [C2 Catalog Contract](<archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>),
   [C2 Roadmap](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
   und [C2 Evidence](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
 <!-- markdownlint-enable MD013 -->
@@ -1810,12 +1854,13 @@ Consumer-Gate, keine Sammlung kleiner Einzelroadmaps.
 
 ### R13 - Read-Consumer Activation and V1 Parity
 
-Status: `ROADMAP_READY` (2026-08-23); nächstes Core-Gate nach
-R12-DONE.
+Status: `DONE` (2026-08-26); alle fünf read-only Consumer sind produktiv auf
+dem gemeinsamen SQL26-Vertrag aktiv und mit Activity V1 paritätisch bewiesen.
 
 Ausführungsquelle:
 
-- [R13 Read-Consumer Activation and V1 Parity Roadmap](<MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap.md>)
+- [R13 Read-Consumer Activation and V1 Parity Roadmap (DONE)](<archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
+- [R13 Read-Consumer Activation and V1 Parity Evidence (DONE)](<archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>)
 
 Ziel:
 
@@ -1854,9 +1899,56 @@ Alle Leser werden mit bekannten V1-Daten produktiv bewiesen, bevor ein neuer
 Writer reale V2-Daten erzeugt. Damit bleibt ein Consumerfehler unabhängig vom
 Capture-Cutover rückrollbar.
 
+### C3 - Training Product Surface and Protein Context Relocation
+
+Status: `DONE` (2026-08-28); R13-Reader-Parität und das vollständige lokale
+C3-Postimage sind bewiesen. Activity V1 bleibt einziger Writer, Activity V2
+bleibt produktiv verborgen und R14 bleibt das einzige Capture-Cutover-Gate.
+
+Ausführungsquelle:
+
+- [C3 Training Product Surface and Protein Context Relocation Roadmap (DONE)](<archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
+
+Ziel:
+
+- eigenes Hub-Karussellmodul `Training` unmittelbar nach Vitals schaffen
+- die bestehende Activity-V1-Erfassung verhaltensgleich in diese
+  Trainingsproduktfläche verlagern; Activity V1 bleibt alleiniger Writer
+- Vitals auf die fachlich zugehörigen Tabs `Blutdruck`, `Körper` und `Labor`
+  reduzieren
+- Carousel-, Panel-, Close-/Discard-, Fokus-, Cache- und bestehende relevante
+  Navigationsverträge gemeinsam synchronisieren
+- das bisherige stilisierte Körpermotiv als dediziertes Activity-Asset führen
+  und Profile mit einem neuen eigenständigen MIDAS-Bitmap-Asset ausstatten
+- das ruhige `Protein-Ziel` im Swipe-down-Dashboard per Button um einen
+  zugänglichen Detaildialog ergänzen; Hover darf nur optionaler Zusatz und nie
+  der einzige Zugang sein
+- im Protein-Dialog ausschließlich bereits gespeicherte Ableitungsdaten wie
+  Zielbereich, Gewichtsbasis, Altersbasis, Aktivitätsfenster/-modifier,
+  CKD-Faktor, aktuellen Gesamtfaktor, Berechnungszeitpunkt und gegebenenfalls
+  Doctor-Lock anzeigen
+- keine zweite Proteinberechnung im Client einführen; der Dialog projiziert
+  den bestehenden Backend-/Profile-Vertrag read-only
+
+Nicht-Ziele:
+
+- keine Activity-V2-Capture-Aktivierung
+- kein Dual Write und keine Änderung der Activity-V1-Speichersemantik
+- keine Änderung an Proteinformel, CKD-Faktoren, Activity-Schwellen oder
+  Doctor-Lock
+- kein Activity-V2-Coaching-Download oder vorbereiteter Sessionimport
+- keine Löschung historischer Activity-V1-Daten
+
+Warum als eigenes Gate:
+
+Hubnavigation, Iconidentität und Dashboard-Informationsarchitektur besitzen
+eine andere Fehler- und Rollbackgrenze als der produktive V2-Writer. C3 macht
+die Produktfläche unter dem bekannten V1-Writer stabil; R14 kann danach den
+Capture-Pfad wechseln, ohne gleichzeitig die gesamte Navigation umzubauen.
+
 ### R14 - Activity V2 Capture Cutover and Android PWA Validation
 
-Status: `FINAL_CORE_GATE`; erst nach stabiler R13-Reader-Parität planen.
+Status: `FINAL_CORE_GATE`; erst nach abgeschlossenem C3 planen.
 
 Ziel:
 
@@ -1864,7 +1956,7 @@ Ziel:
   Aktivierungsreihenfolge für Snapshot, Runtime und gecachte PWA-Clients
   beweisen
 - Activity-V2-Session-Shell, Recovery, Commit, History und Coaching-Export in
-  die sichtbare Produktnavigation integrieren
+  die durch C3 stabilisierte Trainingsproduktfläche integrieren
 - Activity V2 als einzigen neuen Capture-Pfad aktivieren und neue
   Activity-V1-Erfassung kontrolliert deaktivieren; kein Dual Write
 - bestehende Activity-V1-Daten unverändert über die bereits aktiven
@@ -1876,9 +1968,10 @@ Ziel:
 
 Warum danach:
 
-R14 ist der einzige produktive Writer-Cutover. Medizinische Logik und
-read-only Consumer sind dann bereits bewiesen, sodass sich dieses Gate auf
-Erfassung, Cache, Legacygrenze und End-to-End-Verhalten konzentrieren kann.
+R14 ist der einzige produktive Writer-Cutover. Medizinische Logik, read-only
+Consumer und die sichtbare Trainingsproduktfläche sind dann bereits bewiesen,
+sodass sich dieses Gate auf Erfassung, Cache, Legacygrenze und
+End-to-End-Verhalten konzentrieren kann.
 
 ### R15 - Prepared Session Template Import V1
 
@@ -1945,8 +2038,11 @@ Speicherdruck besteht.
 - Kein produktiver V2-Capture-Cutover vor erfolgreichem Abschluss von R14.
 - R13 aktiviert ausschließlich read-only Consumer; Activity V1 bleibt dort
   der einzige produktive Capture-Pfad.
+- C3 muss vor R14 abgeschlossen sein. C3 darf die sichtbare Produktfläche
+  verändern, aber weder Activity V2 als Writer aktivieren noch die
+  Activity-V1-Speichersemantik ändern.
 - Keine Deaktivierung der Activity-V1-Erfassung vor bewiesener R13-
-  Consumer-Parität und grünem R14-Cutover-Gate.
+  Consumer-Parität, grünem C3-UI-Gate und grünem R14-Cutover-Gate.
 - Keine produktive SQL-Wirkung ohne Owner Briefing und Freigabe.
 - Jede UI-Roadmap endet mit einem Live-Server-Smoke.
 - Vor der R14-Capture-Aktivierung ist ein finaler echter Android-PWA-Smoke
@@ -2160,6 +2256,31 @@ Zuständig:
   Smokes ein. Ein späterer MCP darf dasselbe Schema transportieren, ist aber
   keine Voraussetzung.
 
+### O-10 Eigene Trainingsproduktfläche und Protein-Erklärung
+
+Entschieden für C3:
+
+- Training wird ein eigenes Hub-Karussellmodul unmittelbar nach Vitals.
+- Während C3 bleibt Activity V1 der einzige produktive Writer; der Schritt ist
+  eine Produktflächenmigration und kein vorgezogener Activity-V2-Cutover.
+- Das bestehende stilisierte Körpermotiv wird als dediziertes Activity-Asset
+  kopiert. Profile erhält ein neues eigenes Bitmap-Asset im bestehenden
+  MIDAS-Stil.
+- Vitals enthält danach nur noch Blutdruck, Körper und Labor.
+- Die Protein-Berechnungserklärung gehört nicht in die Trainingsfläche. Das
+  Dashboard zeigt weiterhin ruhig das Protein-Ziel und öffnet bei Klick oder
+  Tap einen zugänglichen Detaildialog.
+- Der Dialog erklärt ausschließlich gespeicherte Berechnungsbestandteile. Er
+  berechnet keine medizinischen Werte neu und besitzt keine eigene Formel.
+
+Zuständig:
+
+- C3 friert Hub-/Panelrouting, Assetwechsel, V1-Verlagerung,
+  Dashboard-Dialog, Responsiveverhalten und Desktop-/Mobile-Smokes ein.
+- R14 ersetzt danach innerhalb dieser stabilen Produktfläche ausschließlich
+  den Capture-Pfad durch Activity V2 und führt den finalen Android-PWA-Smoke
+  aus.
+
 ---
 
 ## 21. Finales Akzeptanzbild
@@ -2211,9 +2332,11 @@ bereit, hält Client und Download aber weiter isoliert. R11 hat Arztbericht,
 Doctor View und Health Export auf einem gemeinsamen produktiven Read-Unterbau
 isoliert vorbereitet; es kopiert keine Satzdetails aus dem Coaching-Export.
 R12 hat Protein Target und Trendpilot auf denselben Read-Vertrag vorbereitet.
-R13 ist das nächste Core-Gate und aktiviert alle read-only Consumer bei weiterhin aktiver
-V1-Erfassung. Erst R14 aktiviert den Activity-V2-Capture, Coaching-Download
-und finalen Android-PWA-Pfad.
+R13 hat alle read-only Consumer bei weiterhin aktiver V1-Erfassung produktiv
+aktiviert. C3 hat Training als eigene Produktfläche aus Vitals herausgetrennt
+und die Protein-Erklärung read-only ins Dashboard verlagert, ohne den Writer
+zu wechseln. Erst R14 aktiviert den
+Activity-V2-Capture, Coaching-Download und finalen Android-PWA-Pfad.
 
 Fehlt später eine Übung, wird sie nicht im Studio als freier Key erfunden,
 sondern zu Hause über den Katalog-Inspector als Alias oder neue kontrollierte

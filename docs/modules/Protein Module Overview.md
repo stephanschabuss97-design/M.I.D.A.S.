@@ -1,6 +1,6 @@
 # Protein Module - Functional Overview
 
-## R13-Produktionsstand (2026-08-26)
+## C3-Produktionsstand (2026-08-28)
 
 Protein Target v31 läuft produktiv mit `verify_jwt=false` und strikt
 serverseitiger In-Function-Auth: angemeldete Benutzer werden über Supabase
@@ -8,6 +8,11 @@ Auth validiert, der Scheduler ausschließlich über seinen eigenen benannten
 Secret Key. Die unveränderte v1.3-Formel verwendet genau einen
 ownergebundenen 28-Tage-SQL26-Snapshot. Activity V1 bleibt der einzige
 Capturewriter.
+
+C3 ist `DONE`: Das Hub-Dashboard zeigt den gespeicherten Protein-Zielbereich
+und öffnet einen read-only Kontextdialog. Der Client projiziert ausschließlich
+gespeicherte Profil- und Gewichtsdaten; Formel, Schwellen, Modifier und
+Persistenz bleiben unverändert im bestehenden Protein-/Profile-Vertrag.
 
 Kurze Einordnung:
 - Zweck: dynamische Protein-Ziele aus Profil + Aktivitaet + CKD ableiten und im Profil persistieren.
@@ -17,6 +22,8 @@ Kurze Einordnung:
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Activity V2 R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
+- [Activity V2 R13 Roadmap](<../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
+- [Activity V2 C3 Roadmap](<../archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
 
 ---
 
@@ -34,8 +41,8 @@ Related docs:
 | --- | --- |
 | `app/modules/vitals-stack/protein/index.js` | Modul-API, Edge-Call Bridge (`recomputeTargets`). |
 | `app/modules/vitals-stack/vitals/body.js` | Trigger nach Body-Save. |
-| `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben. |
-| `app/modules/hub/index.js` | Profil-Payload fuer Assistant/Context. |
+| `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben und gespeicherte Derived Fields für die read-only Projektion liefern. |
+| `app/modules/hub/index.js` | Profil-Payload für Assistant sowie read-only Protein-Kontextdialog. |
 | `app/modules/assistant-stack/assistant/day-plan.js` | Protein-Limit im Tagesplan (max/min + Fallback). |
 | `sql/10_User_Profile_Ext.sql` | Profile-Spalten (Targets, Doctor-Lock, Derived Fields). |
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
@@ -86,9 +93,10 @@ Related docs:
 - Berechnung: Age Base + Activity Modifier, CKD Faktor, Min/Max Target.
 - Doctor-Lock: nutzt `protein_doctor_factor` als Source of Truth (wenn aktiv); fehlt der Faktor, wird der Run skipped.
 - Activity bleibt Count-basiert (bewusste Sessions, keine Minuten).
-- R12 bereitet isoliert dieselben ACT-Schwellen auf unterschiedlichen Wiener
-  Aktivtagen aus dem validierten R11-Snapshot vor. Der produktive Handler liest
-  bis R13 weiterhin ausschließlich V1-`activity_event`-Zeilen.
+- Der in R12 isoliert bewiesene Adapter vereinigt seit R13 dieselben ACT-
+  Schwellen auf unterschiedlichen Wiener Aktivtagen aus dem ownergebundenen
+  SQL26-Snapshot. Solange R14 den Writer nicht umstellt, stammen produktive
+  Aktivitaeten weiterhin ausschließlich aus V1-`activity_event`-Zeilen.
 - CKD-Stufe wird konservativ aufgeloest:
   - zuerst letztes `lab_event.payload.ckd_stage`
   - dann bestehendes `user_profile.protein_ckd_stage_g`
@@ -144,6 +152,15 @@ Related docs:
   - nutzen `protein_target_max` bzw. `protein_target_min` als Fallback.
 - Assistant-Text:
   - zeigt nur den Zielbereich (kein Faktor).
+- Hub-Dashboard:
+  - zeigt `PROTEIN-ZIEL` als ruhigen Button mit dem gespeicherten Zielbereich.
+  - öffnet einen read-only Dialog mit Zielbereich, letztem gespeicherten
+    Gewicht, Altersbasis, Activity-Fenster/-Level/-Score/-Modifier,
+    CKD-Kontext, aktuellem Faktor, Calc-Version und letztem Berechnungszeitpunkt,
+    soweit die gespeicherten Felder vorhanden sind.
+  - unterscheidet `loading`, erfolgreiche Leere, Daten und `error`.
+  - ruft weder `recomputeTargets` noch die Edge Function auf und schreibt keine
+    Profil- oder Health-Daten.
 
 ---
 
@@ -169,7 +186,9 @@ Related docs:
 
 ## 8. Events & Integration Points
 
-- Public API: `AppModules.protein.recomputeTargets(...)`.
+- Public API: `AppModules.protein.recomputeTargets(...)` für den bestehenden
+  Body-Save-Pfad sowie `AppModules.protein.loadStoredContext(profile)` für die
+  rein lesende Hub-Projektion.
 - Source of Truth: `user_profile` Targets.
 - Side Effects: `profile.syncProfile` + `profile:changed`.
 - Constraints: Doctor-Lock nutzt Doctor-Faktor; fehlt der Faktor, wird der Run skipped. Cooldown verhindert Spam.
@@ -204,14 +223,13 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (im Aufbau).
+- Status: aktiv; R13-Consumer und C3-Hub-Projektion produktiv verdrahtet.
 - Dependencies (hard): `user_profile` Spalten, `activity_event`, `lab_event`, Edge Function.
 - Dependencies (soft): Profil-UI, Intake/Assistant Anzeige.
 - Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, fehlende CKD-Quelle im Auto-Pfad erzeugt Skip statt stillen Write.
-- R12-Stand: Der pure Adapter ist mit ACT1/ACT2/ACT3 bei 0/1/2/5/6
-  Aktivtagen, Same-day/Mixed und Detailunabhängigkeit lokal bewiesen. Er ist
-  nicht vom Edge-Handler importiert; Scheduler, Profilfelder, Calc-Version und
-  Persistenz bleiben bis R13 unverändert.
+- R13-Stand: Der in R12 bewiesene Adapter ist produktiv im Edge-Handler aktiv;
+  Activity V1 bleibt bis R14 der einzige Capturewriter. C3 hat Formel,
+  Scheduler, Profilfelder, Calc-Version und Persistenz nicht veraendert.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`, `sql/13_Activity_Event.sql`, `sql/11_Lab_Event_Extension.sql`, Edge `midas-protein-targets`, Workflow `protein-targets.yml`.
 
 ---
@@ -226,6 +244,9 @@ Related docs:
 - Auto ohne Lab- und Profil-CKD skipped mit `ckd_stage_missing`.
 - Doctor-Lock ohne CKD schreibt keine erfundenen CKD-Metadaten.
 - Profil-Targets aktualisieren Intake/Assistant (Range-only).
+- Hub-Dashboard und Dialog projizieren gespeicherte Werte korrekt in Lade-,
+  Leer-, Daten- und Fehlerzustand, ohne Recompute oder Write.
+- Dialogfokus bleibt modal gebunden und wird beim Schliessen wiederhergestellt.
 - R12-Adapter: aktive Tage 0/1/2/5/6 ergeben unverändert ACT1/ACT1/ACT2/
   ACT2/ACT3 und Modifier 0.1/0.1/0.2/0.2/0.3; mehrere Einheiten desselben
   Wiener Tages zählen einmal. (done, isoliert)
@@ -237,4 +258,5 @@ Related docs:
 - Modul laeuft ohne Errors.
 - Targets werden bei Body-Save aktualisiert.
 - Doctor-Lock wird respektiert.
+- Der Hub-Dialog bleibt read-only und führt keine zweite Proteinberechnung ein.
 - Dokumentation aktuell.

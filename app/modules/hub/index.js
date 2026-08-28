@@ -53,6 +53,7 @@
     { id: 'assistant-voice', selector: '[data-carousel-id="assistant-voice"]', panel: null },
     { id: 'intake', selector: '[data-carousel-id="intake"]', panel: 'intake' },
     { id: 'vitals', selector: '[data-carousel-id="vitals"]', panel: 'vitals' },
+    { id: 'training', selector: '[data-carousel-id="training"]', panel: 'training' },
     { id: 'appointments', selector: '[data-carousel-id="appointments"]', panel: 'appointments' },
     { id: 'doctor', selector: '[data-carousel-id="doctor"]', panel: 'doctor' },
     { id: 'chart', selector: '[data-carousel-id="chart"]', panel: null },
@@ -62,6 +63,7 @@
   const PANEL_TO_CAROUSEL_ID = {
     intake: 'intake',
     vitals: 'vitals',
+    training: 'training',
     'assistant-text': 'assistant-text',
     appointments: 'appointments',
     doctor: 'doctor',
@@ -100,6 +102,18 @@
     el: null,
     hubEl: null,
     open: false,
+  };
+  const proteinContextDialogState = {
+    root: null,
+    trigger: null,
+    closeButton: null,
+    status: null,
+    list: null,
+    open: false,
+    requestSequence: 0,
+    inertedSiblings: [],
+    keydownBound: false,
+    focusinBound: false,
   };
   const MAX_ASSISTANT_PHOTO_BYTES = 6 * 1024 * 1024;
   const HUB_DEBUG_ENABLED = !!appModules.config?.LOG_HUB_DEBUG;
@@ -700,9 +714,243 @@
 
   const closeDashboard = () => {
     if (!dashboardState.el || !dashboardState.open) return;
+    if (proteinContextDialogState.open) {
+      closeProteinContextDialog({ restoreFocus: false });
+    }
     dashboardState.open = false;
     stopDashboardHydrationTick();
     syncDashboardUi();
+  };
+
+  const PROTEIN_CONTEXT_UNAVAILABLE = 'Nicht verfügbar';
+  const proteinContextNumberFormat = new Intl.NumberFormat('de-AT', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  const proteinContextDateFormat = new Intl.DateTimeFormat('de-AT', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  const formatStoredProteinNumber = (value, suffix = '') => {
+    const numberValue = value == null ? null : Number(value);
+    if (!Number.isFinite(numberValue)) return PROTEIN_CONTEXT_UNAVAILABLE;
+    return `${proteinContextNumberFormat.format(numberValue)}${suffix}`;
+  };
+
+  const formatStoredProteinRange = (min, max, suffix = '') => {
+    const minValue = min == null ? null : Number(min);
+    const maxValue = max == null ? null : Number(max);
+    const minText = Number.isFinite(minValue) ? proteinContextNumberFormat.format(minValue) : null;
+    const maxText = Number.isFinite(maxValue) ? proteinContextNumberFormat.format(maxValue) : null;
+    if (minText && maxText) return `${minText}–${maxText}${suffix}`;
+    if (maxText) return `${maxText}${suffix}`;
+    if (minText) return `${minText}${suffix}`;
+    return PROTEIN_CONTEXT_UNAVAILABLE;
+  };
+
+  const formatStoredProteinDate = (value) => {
+    if (typeof value !== 'string' || !value.trim()) return PROTEIN_CONTEXT_UNAVAILABLE;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime())
+      ? PROTEIN_CONTEXT_UNAVAILABLE
+      : proteinContextDateFormat.format(parsed);
+  };
+
+  const setProteinContextValue = (key, value) => {
+    const node = proteinContextDialogState.list?.querySelector?.(
+      `[data-protein-context-value="${key}"]`,
+    );
+    if (node) node.textContent = value || PROTEIN_CONTEXT_UNAVAILABLE;
+  };
+
+  const renderProteinContextState = (state, projection = null) => {
+    const dialog = proteinContextDialogState.root;
+    const status = proteinContextDialogState.status;
+    const list = proteinContextDialogState.list;
+    if (!dialog || !status || !list) return;
+    dialog.dataset.state = state;
+    list.hidden = state !== 'data';
+    if (state === 'loading') {
+      status.textContent = 'Gespeicherter Protein-Kontext wird geladen …';
+      return;
+    }
+    if (state === 'empty') {
+      status.textContent = 'Noch kein gespeicherter Protein-Kontext verfügbar.';
+      return;
+    }
+    if (state === 'error') {
+      status.textContent = 'Protein-Kontext konnte nicht geladen werden.';
+      return;
+    }
+
+    status.textContent = 'Gespeicherte Werte; es wird nichts neu berechnet.';
+    setProteinContextValue(
+      'target-range',
+      formatStoredProteinRange(projection?.targetMin, projection?.targetMax, ' g/Tag'),
+    );
+    setProteinContextValue(
+      'latest-weight',
+      formatStoredProteinNumber(projection?.latestStoredWeightKg, ' kg'),
+    );
+    setProteinContextValue('age-base', formatStoredProteinNumber(projection?.ageBase, ' g/kg'));
+    setProteinContextValue(
+      'activity-window',
+      formatStoredProteinNumber(projection?.windowDays, ' Tage'),
+    );
+    setProteinContextValue(
+      'activity-level',
+      projection?.activityLevel == null
+        ? PROTEIN_CONTEXT_UNAVAILABLE
+        : String(projection.activityLevel),
+    );
+    setProteinContextValue('active-days', formatStoredProteinNumber(projection?.activeDays));
+    setProteinContextValue(
+      'factor-pre-ckd',
+      formatStoredProteinNumber(projection?.factorPreCkd, ' g/kg'),
+    );
+    setProteinContextValue(
+      'ckd-stage',
+      projection?.ckdStage == null ? PROTEIN_CONTEXT_UNAVAILABLE : String(projection.ckdStage),
+    );
+    setProteinContextValue('ckd-factor', formatStoredProteinNumber(projection?.ckdFactor));
+    setProteinContextValue(
+      'factor-current',
+      formatStoredProteinNumber(projection?.factorCurrent, ' g/kg'),
+    );
+    setProteinContextValue('calculated-at', formatStoredProteinDate(projection?.lastCalcAt));
+    setProteinContextValue(
+      'doctor-lock',
+      projection?.doctorLock == null
+        ? PROTEIN_CONTEXT_UNAVAILABLE
+        : projection.doctorLock
+          ? 'Aktiv'
+          : 'Nicht aktiv',
+    );
+    const doctorParts = [
+      formatStoredProteinNumber(projection?.doctorFactor, ' g/kg'),
+      formatStoredProteinRange(projection?.doctorMin, projection?.doctorMax, ' g/Tag'),
+    ].filter((value) => value !== PROTEIN_CONTEXT_UNAVAILABLE);
+    setProteinContextValue(
+      'doctor-target',
+      doctorParts.length ? doctorParts.join(' / ') : PROTEIN_CONTEXT_UNAVAILABLE,
+    );
+    setProteinContextValue(
+      'calc-version',
+      projection?.calcVersion == null
+        ? PROTEIN_CONTEXT_UNAVAILABLE
+        : String(projection.calcVersion),
+    );
+  };
+
+  const restoreProteinContextSiblings = () => {
+    proteinContextDialogState.inertedSiblings.forEach(({ node, hadInert }) => {
+      if (!node?.isConnected) return;
+      if (hadInert) node.setAttribute('inert', '');
+      else node.removeAttribute('inert');
+    });
+    proteinContextDialogState.inertedSiblings = [];
+  };
+
+  const closeProteinContextDialog = ({ restoreFocus = true } = {}) => {
+    const dialog = proteinContextDialogState.root;
+    if (!dialog || !proteinContextDialogState.open) return false;
+    proteinContextDialogState.requestSequence += 1;
+    proteinContextDialogState.open = false;
+    dialog.hidden = true;
+    dialog.setAttribute('hidden', '');
+    dialog.setAttribute('inert', '');
+    dialog.setAttribute('aria-hidden', 'true');
+    proteinContextDialogState.trigger?.setAttribute('aria-expanded', 'false');
+    restoreProteinContextSiblings();
+    if (restoreFocus && proteinContextDialogState.trigger?.isConnected) {
+      proteinContextDialogState.trigger.focus();
+    }
+    return true;
+  };
+
+  const openProteinContextDialog = async () => {
+    const dialog = proteinContextDialogState.root;
+    if (!dialog || proteinContextDialogState.open) return;
+    proteinContextDialogState.open = true;
+    const sequence = proteinContextDialogState.requestSequence + 1;
+    proteinContextDialogState.requestSequence = sequence;
+    const parent = dialog.parentElement;
+    proteinContextDialogState.inertedSiblings = Array.from(parent?.children || [])
+      .filter((node) => node !== dialog)
+      .map((node) => ({ node, hadInert: node.hasAttribute('inert') }));
+    proteinContextDialogState.inertedSiblings.forEach(({ node }) => node.setAttribute('inert', ''));
+    dialog.hidden = false;
+    dialog.removeAttribute('hidden');
+    dialog.removeAttribute('inert');
+    dialog.setAttribute('aria-hidden', 'false');
+    proteinContextDialogState.trigger?.setAttribute('aria-expanded', 'true');
+    renderProteinContextState('loading');
+    proteinContextDialogState.closeButton?.focus();
+
+    try {
+      await appModules.profile?.sync?.({ reason: 'protein-context-dialog' });
+      if (!proteinContextDialogState.open || sequence !== proteinContextDialogState.requestSequence) return;
+      const syncStatus = appModules.profile?.getSyncStatus?.()?.status;
+      if (syncStatus === 'error') {
+        renderProteinContextState('error');
+        return;
+      }
+      const profile = appModules.profile?.getData?.() || null;
+      if (syncStatus === 'empty' || !profile) {
+        renderProteinContextState('empty');
+        return;
+      }
+      const projection = await appModules.protein?.loadStoredContext?.(profile);
+      if (!proteinContextDialogState.open || sequence !== proteinContextDialogState.requestSequence) return;
+      renderProteinContextState(projection ? 'data' : 'empty', projection);
+    } catch (_) {
+      if (!proteinContextDialogState.open || sequence !== proteinContextDialogState.requestSequence) return;
+      diag.add?.('[hub] protein context load failed');
+      renderProteinContextState('error');
+    }
+  };
+
+  const handleProteinContextKeydown = (event) => {
+    if (!proteinContextDialogState.open) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeProteinContextDialog();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = Array.from(
+      proteinContextDialogState.root?.querySelectorAll?.(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) || [],
+    ).filter((node) => !node.hidden && node.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = doc.activeElement;
+    if (!proteinContextDialogState.root?.contains(active)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleProteinContextFocusin = (event) => {
+    if (!proteinContextDialogState.open) return;
+    const dialog = proteinContextDialogState.root;
+    if (!dialog || dialog.contains(event.target)) return;
+    proteinContextDialogState.closeButton?.focus();
   };
 
   const bindVerticalRevealGestures = (element, { onSwipeUp = null, onSwipeDown = null } = {}) => {
@@ -847,6 +1095,10 @@
 
   const handlePanelEsc = (event) => {
     if (event.key === 'Escape') {
+      if (proteinContextDialogState.open) {
+        closeProteinContextDialog();
+        return;
+      }
       closeActivePanel({ intent: true });
     }
   };
@@ -1392,6 +1644,7 @@
 
     bindButton('[data-hub-module="intake"]', openPanelHandler('intake'), { sync: false });
     bindButton('[data-hub-module="vitals"]', openPanelHandler('vitals'), { sync: false });
+    bindButton('[data-hub-module="training"]', openPanelHandler('training'), { sync: false });
     bindButton(
       '[data-hub-module="appointments"]',
       async (btn) => {
@@ -2049,6 +2302,16 @@
     const copyBtn = root.querySelector('#hubDashboardCopySnapshot');
     const copyBtnIcon = copyBtn?.querySelector('[data-copy-icon]') || null;
     const closeBtn = root.querySelector('#hubDashboardClose');
+    const proteinTargetButton = root.querySelector('#hubProteinTargetButton');
+    const proteinContextDialog = root.querySelector('#hubProteinContextDialog');
+    const proteinContextClose = root.querySelector('#hubProteinContextClose');
+    const proteinContextStatus = root.querySelector('#hubProteinContextStatus');
+    const proteinContextList = root.querySelector('#hubProteinContextList');
+    proteinContextDialogState.root = proteinContextDialog;
+    proteinContextDialogState.trigger = proteinTargetButton;
+    proteinContextDialogState.closeButton = proteinContextClose;
+    proteinContextDialogState.status = proteinContextStatus;
+    proteinContextDialogState.list = proteinContextList;
     hubDashboardCtrl = {
       root,
       copyBtn,
@@ -2077,6 +2340,28 @@
       },
     };
     copyBtn?.addEventListener('click', handleAssistantSnapshotCopy);
+    proteinTargetButton?.setAttribute('aria-expanded', 'false');
+    proteinTargetButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openProteinContextDialog();
+    });
+    proteinContextClose?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeProteinContextDialog();
+    });
+    ['click', 'pointerdown', 'pointerup', 'pointercancel'].forEach((eventName) => {
+      proteinContextDialog?.addEventListener(eventName, (event) => event.stopPropagation());
+    });
+    if (!proteinContextDialogState.keydownBound) {
+      proteinContextDialogState.keydownBound = true;
+      doc?.addEventListener('keydown', handleProteinContextKeydown, true);
+    }
+    if (!proteinContextDialogState.focusinBound) {
+      proteinContextDialogState.focusinBound = true;
+      doc?.addEventListener('focusin', handleProteinContextFocusin, true);
+    }
     closeBtn?.addEventListener('click', (event) => {
       event?.preventDefault?.();
       event?.stopPropagation?.();

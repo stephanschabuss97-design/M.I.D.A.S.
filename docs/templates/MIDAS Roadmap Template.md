@@ -40,6 +40,7 @@ Ausführungsblock.
 | Deploy relevant | `ja` / `nein` |
 | Produktive Schreibwirkung | `ja` / `nein` |
 | Workflow-Vertrag | `docs/templates/MIDAS Roadmap Workflow Contract.md` |
+| Usage-Continuation | `verpflichtend / nicht verfügbar mit Begründung`; geplante Checkpoint-Grenzen |
 | Evidence-Datei | `nicht erforderlich` / `docs/[Titel] Evidence.md` |
 | Gekoppelte Roadmaps | `keine` / `[Pfad und Abhängigkeit]` |
 | Evidence-Owner | `diese Roadmap` / `[gekoppelte Roadmap]` |
@@ -83,6 +84,10 @@ dupliziert sie nicht.
   - `Nach jedem freigegebenen Discovery-Hauptschritt Full Review,
     Findings-Korrektur und Status-Sync; bei PASS ohne Owner-Gate automatisch
     fortfahren.`
+- Usage-Continuation-Gates:
+  - `Vor dem ersten Hauptblock und vor jedem späteren Haupt- oder kohärenten
+    Ausführungsblock gemäß zentralem Workflow-Vertrag; Safe Closure ist eine
+    Stop-Bedingung.`
 - Erlaubte Autonomie:
   - `[lokale Reads/Edits/Tests gemäß Tool Permissions]`
 - Owner-Gates:
@@ -105,7 +110,10 @@ enthaltenen Hauptschritt mit Full Review, Findings-Korrektur und Status-Sync ab
 und fahre bei bestandenem internem Continuation Gate ohne Rückfrage fort.
 Folge danach nur den ausdrücklich freigegebenen Wellen des eingetragenen
 Autonomieprofils. Ein reiner Discovery-Auftrag endet an S4R; produktive,
-manuelle und benannte Wellengrenzen bleiben Stopps.
+manuelle und benannte Wellengrenzen bleiben Stopps. Wende vor jedem neuen
+Haupt- oder kohärenten Ausführungsblock das Usage-aware Continuation Gate an;
+beginne bei Safe Closure keinen neuen Block und hinterlasse einen vollständigen
+Resume-Stand.
 ```
 
 ## Session Resume Card
@@ -133,12 +141,42 @@ Hauptschritt, S4-Ausführungsblock sowie vor Pausen ersetzen.
   - `[Baseline/Fingerprint gültig / gezielt zu aktualisieren]`
 - Autonomieprofil / aktuelle Welle:
   - `[Profil; Schrittbereich; maximaler Endpunkt]`
+- Letzter Usage-Checkpoint / Entscheidung:
+  - `[Ux; Messzeit; CONTINUE / CONTINUE_WITH_CAUTION / SAFE_CLOSURE /
+    FINAL_OBSERVATION / pending]`
 - Runtime-/Deploy-Stand:
   - `[Version / SQL-Stand / nicht relevant]`
 - Offene Owner-Freigaben:
   - `[Deploy / SQL / Device / Workflow / none]`
 - Stop-Bedingungen:
   - `[was nicht übersprungen werden darf]`
+
+## Usage-Continuation-Checkpoints
+
+Nur reale Messungen aus dem in `docs/DEV_ENVIRONMENT.md` dokumentierten State
+eintragen. Keine Werte schätzen und keine vollständigen JSON-Snapshots
+kopieren. Ein Delta ist nur innerhalb derselben Resetidentität zulässig;
+`RESET_CROSSED` und `ADJUSTMENT` beginnen eine neue Baseline. Die Resume Card
+übernimmt ausschließlich den letzten Checkpoint und die aktuelle Entscheidung.
+Eine optionale Abschlussmessung ist nur nach vollständig erfüllten
+S6-Postconditions als `FINAL_OBSERVATION` zulässig; sie autorisiert keinen
+neuen Block und folgt der Sonderregel im zentralen Workflow-Vertrag.
+
+<!-- markdownlint-disable MD013 -->
+
+| ID | Grenze / nächster Block | Messzeit | 5h Rest / Reset | Woche Rest / Reset | Verbrauch 5h / Woche | Ereignis | Entscheidung |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| U0 | `vor [erstem Hauptblock]` | `pending` | `pending` | `pending` | `Baseline` | `pending` | `pending` |
+| U1 | `nach [Block] / vor [Block]` | `pending` | `pending` | `pending` | `pending` | `pending` | `pending` |
+
+<!-- markdownlint-enable MD013 -->
+
+- Kohärente Blockgrenzen:
+  - `[Discovery-Hauptschritte und in S4R freigegebene S4-/S5-/S6-Blöcke]`
+- Vergleichbare Blöcke für empirische Reserve:
+  - `[IDs / noch keine; niemals schätzen]`
+- Safe-Closure-Handoff:
+  - `[Statusmarker, letzter abgeschlossener Block, genau nächstes Gate]`
 
 ## Context Receipt
 
@@ -405,6 +443,11 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[Positionen]`
 - Empfohlene S4-Ausführungsblöcke:
   - `[z. B. S4.1-S4.3 gemeinsam; S4.4 separat]`
+- Kohärenz-/Atomaritätsgrenze je Ausführungsblock:
+  - `[welcher Zustand innerhalb des Blocks nicht sicher teilbar ist und welche
+    Postcondition eine saubere Resume-Grenze herstellt]`
+- Usage-Gates zwischen Ausführungsblöcken:
+  - `[Ux vor Block A; Ux nach Block A/vor Block B; Ux vor S5-S6]`
 - Begründung der Zusammenlegung/Trennung:
   - `[gleicher Scope, gleiche Wirkung, kompatible Reviewtiefe, keine Gates dazwischen]`
 - Review je Ausführungsblock:
@@ -419,6 +462,8 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `Browser / Device / produktive Gates: [kurz oder none]`
   - `Teure Testpässe und externes Review: [Anzahl und Position]`
   - `Empfohlene autonome Wellen samt Reasoning: [Schrittbereich: Stufe]`
+  - `Usage-Reserve: [reale vergleichbare Checkpoints × 1,5 / keine Daten;
+    statische Schwellen plus Resumierbarkeitsurteil]`
   - `Owner-Briefing bei large: [PASS / nicht relevant]`
 - Readiness-Findings/Korrekturen:
   - `[kurz oder none]`

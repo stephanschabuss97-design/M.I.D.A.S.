@@ -14,6 +14,12 @@ erhalten.
 
 ### Added
 
+- C3 führt `Training` als eigene Hub-Produktflaeche unmittelbar nach Vitals
+  ein, trennt Profile und Activity auf dedizierte Assets und ergänzt das
+  Dashboard um ein zugängliches Protein-Ziel mit read-only Kontextdialog.
+  Vitals enthält nur BP, Body und Lab; Activity V1 bleibt der einzige Writer,
+  Activity V2 bis R14 verborgen und die PWA-Cacheversion ist v13.
+
 - R13 aktiviert die gemeinsamen Activity-V1-/V2-Read-Consumer produktiv in
   Doctor View, Range-Arztbericht, Health Export V3, Protein Target und
   Trendpilot. Getrennte Scheduler-Secrets, SQL26 und serverseitige Legacy-

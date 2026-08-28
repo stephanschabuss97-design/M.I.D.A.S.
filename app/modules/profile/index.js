@@ -22,6 +22,12 @@
     evening: 'Abends',
     night: 'Nachts'
   });
+  const PROFILE_SYNC_STATUS = Object.freeze({
+    loading: 'loading',
+    ready: 'ready',
+    empty: 'empty',
+    error: 'error'
+  });
 
   const selectors = {
     panel: '#hubProfilePanel',
@@ -58,6 +64,7 @@
     syncing: false,
     ready: false,
     syncPromise: null,
+    syncStatus: PROFILE_SYNC_STATUS.loading,
     latestLab: null,
     medicationSummary: {
       status: MEDICATION_STATUS.loading,
@@ -322,6 +329,8 @@
     return projected;
   };
 
+  const getProfileSyncStatus = () => Object.freeze({ status: state.syncStatus });
+
   const updateDoctorFieldsVisibility = () => {
     if (!refs?.proteinDoctorLock) return;
     const isActive = !!refs.proteinDoctorLock.checked;
@@ -468,6 +477,7 @@
     if (!refsOk) return null;
     await ensureLocalDb(reason);
     state.syncing = true;
+    state.syncStatus = PROFILE_SYNC_STATUS.loading;
     setFormDisabled(true);
     state.medicationSummary = {
       status: MEDICATION_STATUS.loading,
@@ -485,7 +495,7 @@
         const { data, error } = await client
           .from('user_profile')
           .select(
-            'user_id, full_name, birth_date, height_cm, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_factor, protein_doctor_min, protein_doctor_max, protein_factor_current, protein_age_base, protein_activity_level, protein_activity_score_28d, protein_factor_pre_ckd, protein_ckd_stage_g, protein_ckd_factor, protein_last_calc_at, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
+            'user_id, full_name, birth_date, height_cm, salt_limit_g, protein_target_min, protein_target_max, protein_doctor_lock, protein_doctor_factor, protein_doctor_min, protein_doctor_max, protein_factor_current, protein_age_base, protein_activity_level, protein_activity_score_28d, protein_factor_pre_ckd, protein_ckd_stage_g, protein_ckd_factor, protein_calc_version, protein_window_days, protein_last_calc_at, is_smoker, lifestyle_note, primary_doctor_name, primary_doctor_email, updated_at'
           )
           .eq('user_id', userId)
           .maybeSingle();
@@ -505,11 +515,13 @@
         }
         state.medicationSummary = await fetchMedicationSummary();
         state.data = applyMedicationProjection(profileData);
+        state.syncStatus = profileData ? PROFILE_SYNC_STATUS.ready : PROFILE_SYNC_STATUS.empty;
         fillForm(state.data);
         renderOverview();
         notifyChange('sync');
         log?.(`sync ok reason=${reason}`);
       } catch (err) {
+        state.syncStatus = PROFILE_SYNC_STATUS.error;
         diag?.add?.(`[profile] sync failed (${reason}) ${err.message || err}`);
         if (state.medicationSummary?.status === MEDICATION_STATUS.loading) {
           state.medicationSummary = {
@@ -629,7 +641,8 @@
   appModules.profile = {
     init,
     sync: syncProfile,
-    getData: getProfileDataSnapshot
+    getData: getProfileDataSnapshot,
+    getSyncStatus: getProfileSyncStatus
   };
 
   if (doc?.readyState === 'complete' || doc?.readyState === 'interactive') {

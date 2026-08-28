@@ -10,6 +10,8 @@ Related docs:
 - [Assistant Module Overview](Assistant Module Overview.md)
 - [VAD Module Overview](VAD Module Overview.md)
 - [Hydration Target Module Overview](Hydration Target Module Overview.md)
+- [Activity Module Overview](Activity Module Overview.md)
+- [Protein Module Overview](Protein Module Overview.md)
 
 ---
 
@@ -39,6 +41,11 @@ Related docs:
 ### 3.1 Initialisierung
 
 - Hub initialisiert Carousel, Panels, Quickbar, Dashboard-Reveal und den Voice-Adapter.
+- Carousel und Quickbar verwenden dieselbe produktive Reihenfolge:
+  `assistant-voice`, `intake`, `vitals`, `training`, `appointments`,
+  `assistant-text`, `doctor`, `chart`, `profile`.
+- `training` öffnet das eigenständige Training-Panel; der Hub delegiert den
+  Save an Activity V1 und besitzt keine Writerlogik.
 - `assistant-voice` ist nicht mehr immer sichtbar, sondern haengt am Assistant-Surface-Vertrag.
 - Die produktive Voice-Initialisierung laeuft direkt; ein alter `VOICE_PARKED`-Zwischenguard existiert nicht mehr.
 - Voice wird ueber Boot-/Auth-/Gate-Status kontrolliert geoeffnet oder blockiert.
@@ -46,6 +53,8 @@ Related docs:
 ### 3.2 User-Trigger
 
 - Orbit-/Carousel-Buttons oeffnen Panels.
+- Der Training-Einstieg folgt unmittelbar auf Vitals und öffnet
+  `#hubTrainingPanel` mit eigenem Datum.
 - `assistant-voice` ist bei aktivem Assistant-Surface der offizielle Push-to-talk-Einstieg fuer Voice V1.
 - Reveal-Surfaces:
   - `swipe down` -> oberes Hub-Dashboard
@@ -101,6 +110,20 @@ Related docs:
   - aus demselben Assistant-Kontext gespeist
   - traegt jetzt zusaetzlich einen rein lokalen `WASSER-SOLL`-Orientierungswert im bestehenden Pill-Block
   - zieht nach normalen Intake-Saves direkt mit dem frischen lokalen Snapshot nach
+- Das Dashboard zeigt zusaetzlich das gespeicherte `PROTEIN-ZIEL` als Button.
+  Dieser öffnet einen read-only Dialog mit Zielbereich, Gewichtsbasis,
+  Altersbasis, Activity-Fenster/-Level/-Modifier, CKD-Kontext, aktuellem Faktor,
+  Calc-Version und letztem Berechnungszeitpunkt, soweit diese gespeicherten
+  Werte vorhanden sind.
+- Der Protein-Dialog unterscheidet `loading`, erfolgreiche Leere, Daten und
+  Fehler. Er berechnet keine Formel, Schwelle oder Modifier neu und schreibt
+  weder Profil- noch Gesundheitsdaten.
+- Solange der modale Dialog offen ist, bleiben Tastaturfokus und Screenreader-
+  Kontext im Dialog; `Tab`, `Shift+Tab`, ein von aussen eintretender Fokus und
+  `Escape` werden kontrolliert behandelt, danach wird der Ausgangsfokus
+  wiederhergestellt.
+- Das dedizierte Profile-Asset ist `assets/img/Personal_data_v3.png`; Training
+  verwendet eine bytegleiche Kopie des frueheren Profilmotivs als eigenes Asset.
 - Panels bleiben im DOM und werden nur geoeffnet/geschlossen.
 
 ---
@@ -140,6 +163,9 @@ Related docs:
   - `assistant:action-success`
   - `assistant:intent-*`
 - Das Dashboard konsumiert weiterhin den bestehenden Intake-Snapshot fuer Ist-Werte und ergaenzt lokal einen separaten Hydration-Referenzwert ohne neue Persistenz.
+- Der Protein-Dialog konsumiert ausschließlich
+  `AppModules.protein.loadStoredContext(...)`; er besitzt keinen Recompute- oder
+  Write-Pfad.
 
 ---
 
@@ -167,6 +193,13 @@ Related docs:
 - Die passive Nadel bei `off` fuehlt sich beim ersten Swipe wie ein echter erster Carousel-Schritt an und nicht wie ein harter Platzhalter-Sprung.
 - Das obere Dashboard zieht normale Intake-Saves sofort sichtbar nach, ohne Reload.
 - `WASSER-SOLL` sitzt direkt nach `WASSER`, bleibt rein informativ und aktualisiert sich bei offenem Dashboard mit dem Minutenwechsel mit.
+- Carousel und Quickbar zeigen Training direkt nach Vitals; beide öffnen
+  dasselbe eigenständige Training-Panel.
+- Protein-Ziel und read-only Kontextdialog funktionieren in Daten-, Leer-,
+  Lade- und Fehlerzustand; Fokus bleibt modal gebunden und kehrt beim Schliessen
+  zum Auslöser zurück.
+- Desktop, 390x844 und 320x800 bleiben ohne horizontales Overflow; interaktive
+  Ziele sind auf Mobile mindestens 44x44 CSS-Pixel gross.
 - Pending-Context-Resolver funktioniert fuer Text und Voice.
 - Doctor-/Panel-Navigation bleibt unbeeintraechtigt.
 
@@ -177,4 +210,7 @@ Related docs:
 - Hub ist stabiler zentraler Voice- und Panel-Einstieg.
 - Kein zweiter produktiver Voice-Einstieg ausserhalb des MIDAS-Slots.
 - Pending-Context- und Gate-Helfer sind fuer Text und Voice konsistent.
+- Training ist eine eigene Hub-Produktfläche, während Activity V1 der einzige
+  Writer und Activity V2 bis R14 verborgen bleibt.
+- Das Dashboard erklaert gespeicherten Protein-Kontext ausschließlich read-only.
 - Dokumentation ist auf dem produktiven Hub-Zuschnitt.

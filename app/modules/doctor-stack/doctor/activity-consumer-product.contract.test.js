@@ -63,7 +63,7 @@ test('T-ACT-R13-03 makes the visible download strict V3 with one shared snapshot
   assert.match(doctorSource, /buildHealthExportV2/);
 });
 
-test('T-ACT-R13-03 scopes product styles and upgrades the complete shell cache to v7', () => {
+test('T-ACT-R13-03 scopes product styles and keeps readers in the current v13 shell', () => {
   const selectors = cssSource.split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.includes('.activity-consumer-'));
@@ -72,7 +72,7 @@ test('T-ACT-R13-03 scopes product styles and upgrades the complete shell cache t
     assert.match(selector, /^#doctor\s/);
   });
   assert.doesNotMatch(indexSource, /activity-consumer-harness\.css/);
-  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v7'/);
+  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v13'/);
   PRODUCT_ORDER.forEach((source) => {
     assert.match(serviceWorkerSource, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   });

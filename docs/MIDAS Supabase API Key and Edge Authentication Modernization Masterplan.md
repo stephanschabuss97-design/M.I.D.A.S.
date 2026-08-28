@@ -4,7 +4,7 @@
 
 - Status: `FUTURE_MASTERPLAN`
 - Erstellt: 2026-08-23
-- Aktualisiert: 2026-08-26; finales R13-Postimage integriert
+- Aktualisiert: 2026-08-28; finales R13- und lokales C3-Postimage integriert
 - Zielsystem: produktives MIDAS-Supabase-Projekt `M.I.D.A.S.`
 - Geplanter Beginn: nach dem Activity-V2-Core-Cutover
 - Zeitliche Leitplanke: kontrollierte Umstellung noch 2026
@@ -30,6 +30,17 @@ verwendet den isolierten Caller-Alias. Legacy-Signing und Legacy-Keys bleiben
 aktiv; moderne Default-Keys bleiben dormant. Dieses Postimage ist die
 Ausgangsbasis einer späteren separaten Modernisierungsroadmap, keine implizite
 Freigabe dafür.
+
+### C3-/R14-Grenze
+
+C3 ist lokal `DONE` und hat ausschließlich Web-/PWA-Produktoberflächen
+verändert. Der Cachevertrag steht auf v13; Authentifizierung, Supabase-Keys,
+SQL, Edge Functions, Scheduler und Workflows blieben unverändert. Activity V1
+bleibt der einzige produktive Writer und R14 ist weiterhin das alleinige
+Activity-V2-Capture-/Android-Cutover-Gate. Das Modernisierungsprogramm beginnt
+unverändert erst nach dem Activity-V2-Core-Cutover.
+
+- [C3 Roadmap (DONE)](<archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
 
 ## Warum dieses Thema existiert
 
@@ -58,11 +69,11 @@ Vertragswechsel:
   umgeht RLS. Das ist beabsichtigt, aber ausschließlich in kontrollierten
   Backendkomponenten zulässig.
 
-MIDAS verwendet derzeit noch das Legacy-Modell. Das funktioniert weiterhin,
-vermischt aber an einigen Stellen Anwendungsschlüssel, Benutzeridentität und
-privilegierten Datenbankzugriff. R13 macht diesen Altvertrag sichtbar, weil
-erstmals ein streng ownergebundener Activity-Snapshot sowohl von angemeldeten
-Benutzern als auch von maschinellen Schedulern benötigt wird.
+Die aktiven MIDAS-Consumer verwenden weiterhin überwiegend das Legacy-Modell.
+R13 hat zusätzlich moderne Schlüssel dormant bereitgestellt, ohne die aktiven
+Legacy-Caller oder die Benutzer-JWT-Signierung global umzustellen. Der
+R13-Cutover machte dadurch zwei bisher leicht verwechselbare Ebenen sichtbar:
+Anwendungsschlüssel und Benutzer-JWT-Signierung sind unabhängige Verträge.
 
 ## Begriffe und harte Trennlinien
 
@@ -86,6 +97,30 @@ Session. Nur dieser Token darf als Benutzeridentität in
 
 Ein GitHub-Scheduler besitzt keine Stephan-Session und darf weder einen
 gespeicherten Refresh-Token verwenden noch einen Benutzer-JWT imitieren.
+
+### JWT-Signing-Topologie
+
+Supabase Auth kann Benutzer-JWTs über zwei voneinander getrennte Systeme
+signieren:
+
+- Legacy-JWT-Secret, typischerweise ohne asymmetrischen öffentlichen JWKS-Key
+- modernes Signing-Key-System mit eigenständig rotierbaren Signing Keys
+
+Diese Signing-Topologie ist unabhängig vom API-Key-Bestand. Das Anlegen eines
+`sb_publishable_...`- oder `sb_secret_...`-Schlüssels erzeugt oder aktiviert
+keinen asymmetrischen JWT-Signing-Key. Ein leerer öffentlicher JWKS kann daher
+bei weiterhin aktivem Legacy-Signing ein gültiges Projektpostimage sein und
+ist nicht automatisch ein Plattformausfall.
+
+Für MIDAS folgt daraus:
+
+- API-Key-Migration und JWT-Signing-Key-Migration sind getrennte Wellen.
+- Ein Uservalidator darf `alg`, `kid` und einen öffentlichen JWKS erst
+  voraussetzen, wenn die reale Signing-Topologie dies belegt.
+- Unter Legacy-Signing ist die serverseitige Validierung über Supabase Auth,
+  beispielsweise `auth.getUser(jwt)`, der bevorzugte Kompatibilitätskandidat.
+- Der Validierungsmodus wird vor einem Cutover explizit eingefroren. Es gibt
+  keinen stillen Laufzeit-Fallback zwischen unterschiedlichen Trust-Modellen.
 
 ### Postgres-Rollen und Grants
 
@@ -113,7 +148,7 @@ Secret Key als JWT interpretieren. Bei modernem Secret-Key-Zugriff gilt daher:
 - Fehlende oder fehlerhafte In-Function-Prüfung ist ein Stop-Gate, weil die
   Function sonst offen erreichbar sein könnte.
 
-## Verifizierter MIDAS-Iststand am 2026-08-23
+## Letztes belegtes MIDAS-Postimage am 2026-08-24
 
 ### Produktives Supabase-Projekt
 
@@ -123,15 +158,22 @@ Secret Key als JWT interpretieren. Bei modernem Secret-Key-Zugriff gilt daher:
 - PostgreSQL: 17
 - Projektstatus: `ACTIVE_HEALTHY`
 
-Die read-only Supabase-Inventur zeigte:
+Die R13-Evidence belegt am sicheren F45-Freeze:
 
-- Ein aktiver öffentlicher Schlüssel ist vorhanden: Legacy-`anon`.
-- Ein moderner Publishable Key wurde über die verfügbare Management-API nicht
-  gefunden.
-- Secret-Key-Werte werden aus Sicherheitsgründen nicht inventarisiert oder
-  dokumentiert. Ob bereits moderne benannte Secret Keys existieren, bleibt ein
-  späteres Owner-/Dashboard-Gate.
-- Alle acht produktiven Edge Functions laufen mit `verify_jwt=true`.
+- Legacy-`anon` und Legacy-`service_role` bleiben aktiv und werden von den
+  noch nicht umgestellten Produktcallern weiter benötigt.
+- Ein Default-Publishable-Key und ein Default-Secret-Key existieren dormant
+  und unreferenziert.
+- Die benannten Secret Keys `protein_targets_scheduler` und
+  `trendpilot_scheduler` existieren dormant. Ihre Werte wurden weder
+  dokumentiert noch in Evidence ausgegeben.
+- Die Benutzer-JWTs werden weiterhin über das Legacy-JWT-Secret signiert; der
+  öffentliche Projekt-JWKS enthielt null Keys.
+- SQL26 und Monthly Report sind aktiv und geprüft. Protein Target wurde nach
+  dem F45-Authfehler auf den bewiesenen Legacy-Vertrag mit `verify_jwt=true`
+  zurückgerollt; Trendpilot, Workflows und Web/PWA-Cutover blieben unberührt.
+- Es blieb am Freeze kein unbeabsichtigter produktiver
+  `verify_jwt=false`-Zustand zurück.
 - Alle produktiven Tabellen im Schema `public` haben RLS aktiviert.
 - `activity_consumer_snapshot(date,date)` erlaubt Execute nur `postgres` und
   `authenticated`, ausdrücklich nicht `anon` oder `service_role`.
@@ -139,9 +181,9 @@ Die read-only Supabase-Inventur zeigte:
   `SECURITY DEFINER`-Warnungen und den im Free Plan nicht behebbaren
   Leaked-Password-Hinweis. Diese Findings sind kein API-Key-Migrationsfehler.
 
-### Produktive Edge Functions
+### Edge-Function-Callerklassen und Vor-R13-Planungsbaseline
 
-| Function | Aktueller Caller-/Datenvertrag | Aktuelle Schlüsselnutzung | Zielklasse |
+| Function | Fachliche Callerklasse | Vor R13 belegter Schlüsselvertrag | Zielklasse |
 | --- | --- | --- | --- |
 | `midas-assistant` | angemeldeter Benutzer | Plattform-JWT-Prüfung, OpenAI-Key intern | user-only |
 | `midas-transcribe` | angemeldeter Benutzer | Plattform-JWT-Prüfung, OpenAI-Key intern | user-only |
@@ -152,19 +194,26 @@ Die read-only Supabase-Inventur zeigte:
 | `midas-trendpilot` | Benutzer oder GitHub-Scheduler | Legacy-Service-Role-Bearer plus Owner-Env | dual user/secret |
 | `midas-incident-push` | GitHub-Scheduler/manueller Workflow | Legacy-Service-Role-Bearer | secret-only |
 
-Die Klassifizierung ist Zielinput für die spätere Discovery, noch kein
-Entscheid über eine konkrete SDK- oder Wrapper-Implementierung.
+Die Tabelle beschreibt die fachlichen Callerklassen. Versionen, Sourcehashes,
+Authflags und aktive Schlüssel werden in K0 erneut aus dem dann realen
+Postimage erhoben und niemals nur aus dieser Momentaufnahme übernommen.
 
 ### GitHub Actions
 
-Aktuelle Repository-Secrets, nur als Namen inventarisiert:
+Aktive beziehungsweise dormant vorbereitete Repository-Secrets, nur als Namen
+inventarisiert:
 
 - `INCIDENTS_PUSH_URL`
+- `PROTEIN_TARGETS_SECRET_KEY`
 - `PROTEIN_TARGETS_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `TRENDPILOT_SECRET_KEY`
 - `TRENDPILOT_URL`
 
-Alle drei Scheduler teilen derzeit denselben Legacy-`service_role`-Schlüssel.
+Beim R13-Freeze waren die beiden neuen Scheduler-Secrets angelegt, die
+zugehörigen Workflowänderungen aber noch nicht produktiv aktiviert oder
+ausgeführt. Die aktiven Scheduler bleiben deshalb bis zum kontrollierten
+Cutover auf ihrem jeweils bewiesenen Legacy-Vertrag.
 
 - `incidents-push.yml` verwendet bereits `curl --fail-with-body`.
 - `protein-targets.yml` und `trendpilot.yml` verwenden nur `curl -sS`; ein
@@ -221,16 +270,19 @@ Rolle bisher als langlebiger JWT repräsentiert.
 
 ## Problemstatement
 
-MIDAS besitzt aktuell vier miteinander gekoppelte Altverträge:
+MIDAS besitzt aktuell fünf miteinander gekoppelte Altverträge:
 
 1. Öffentliche Clients sprechen noch von `anon` und speichern einen
    JWT-basierten Anwendungsschlüssel teilweise mit Bearer-Präfix.
-2. Scheduler verwenden einen privilegierten Anwendungsschlüssel zugleich als
+2. Noch nicht migrierte Scheduler verwenden einen privilegierten
+   Anwendungsschlüssel zugleich als
    Bearer-JWT und implizite Maschinenidentität.
 3. Edge Functions verwenden `SUPABASE_SERVICE_ROLE_KEY` sowohl zur
    Caller-Erkennung als auch für privilegierte Datenbankclients.
 4. Drei fachlich unabhängige Scheduler teilen denselben privilegierten
    GitHub-Secretwert.
+5. Ein neuer API-Key-Bestand sagt nichts darüber aus, wie Supabase Auth die
+   Benutzer-JWTs signiert oder wie ein Edge-Validator sie verifizieren muss.
 
 Das funktioniert im Legacy-Modell, erschwert aber Rotation, Least Privilege,
 klare Fehlerdiagnose und die Migration auf moderne Supabase-Schlüssel.
@@ -294,12 +346,12 @@ verwenden weiterhin die Rolle `service_role`. Die Trennung verbessert
 Calleridentität und Rotation; Least Privilege entsteht zusätzlich durch den
 Auth-Modus der Function, feste Ownerbindung und minimale RPC-/ACL-Verträge.
 
-## Verbindlicher R13-Vertrag
+## R13-Vorarbeit und bedingte Evidenzquelle
 
-R13 ist keine globale Schlüssel-Migrationsroadmap. R13 soll die von ihm neu
-benötigten Schedulerpfade jedoch bereits nach dem modernen Zielvertrag bauen,
-damit Protein Target und Trendpilot später nicht nochmals grundlegend
-umgestellt werden müssen.
+R13 ist keine globale Schlüssel-Migrationsroadmap. Sein Zielvertrag sieht vor,
+die von ihm neu benötigten Schedulerpfade bereits nach dem modernen
+Zielvertrag zu bauen, damit Protein Target und Trendpilot später nicht nochmals
+grundlegend umgestellt werden müssen.
 
 R13 soll daher:
 
@@ -328,6 +380,69 @@ R13 darf wiederverwendbare Auth-Grundlagen schaffen, aber keine abstrakte
 Plattform erfinden. Jede gemeinsame Schicht muss reale Duplikation oder ein
 konkretes Sicherheitsrisiko beseitigen.
 
+### R13 nur bei nachgewiesener Relevanz lesen
+
+Die spätere Modernisierungsroadmap übernimmt nicht pauschal die vollständige
+R13-Roadmap als Pflichtlektüre. R13 wird nur herangezogen, wenn die aktuelle
+Welle mindestens eine dieser Grenzen berührt:
+
+- `_shared/activity-edge-principal.ts` oder dessen Uservalidator
+- SQL26 beziehungsweise den gemeinsamen Activity-Consumer-Snapshot
+- Monthly Report, Protein Target oder Trendpilot
+- `protein_targets_scheduler` oder `trendpilot_scheduler`
+- `PROTEIN_TARGETS_SECRET_KEY` oder `TRENDPILOT_SECRET_KEY`
+- den durch R13 vorbereiteten Workflow-, Web- oder PWA-Cutover
+
+Dann genügen zunächst die konkreten R13-Nachweise
+`EV-ACT-R13-PRE09`, `EV-ACT-R13-PRE12`, `F-ACT-R13-45` und das finale
+R13-Postimage. Die vollständige R13-Roadmap wird nur bei einem
+Quellenwiderspruch, fehlender Evidence oder einem tatsächlich betroffenen
+Rollbackvertrag geöffnet. Für nicht betroffene Functions oder Clients ist R13
+keine zusätzliche Kontextpflicht.
+
+Solange R13 noch pausiert oder unarchiviert ist, beschreibt es keine
+allgemeingültige neue Authplattform. Die spätere Discovery verwendet sein
+finales Postimage nur, wenn R13 bis dahin abgeschlossen und die betreffende
+Quelle unverändert ist.
+
+## Lessons Learned aus R13/F45
+
+F45 war kein Fehler beim Erzeugen moderner API Keys und kein allgemeiner
+Supabase-Ausfall. Die Ursache war eine unbewiesene Annahme im neuen
+Uservalidator:
+
+1. R13 stellte moderne Publishable und Secret Keys parallel zum Legacybestand
+   bereit.
+2. Die Benutzer-JWT-Signierung blieb davon unabhängig auf dem Legacy-JWT-
+   Secret.
+3. Der öffentliche JWKS enthielt deshalb null asymmetrische Keys.
+4. Der gepinnte Usermodus verlangte dennoch `alg`, `kid` und erfolgreiche
+   JWKS-Verifikation.
+5. Lokale Mocktests modellierten diese reale Legacy-Signing-Topologie nicht.
+6. Zwei echte User-Smokes scheiterten kontrolliert mit 401; der betroffene
+   Proteinpfad wurde auf sein bewiesenes Preimage zurückgerollt.
+
+Daraus gelten für alle späteren Wellen verbindlich folgende Regeln:
+
+- API-Key-Topologie und JWT-Signing-Topologie werden getrennt inventarisiert,
+  entschieden, getestet und rückgerollt.
+- Eine Bibliothek oder ein Helper wird nicht nach Wunscharchitektur gewählt,
+  sondern gegen echte aktuelle Tokens und das reale Supabase-Postimage.
+- Mocktests müssen Legacy-Token ohne `kid` und modernen Token mit `kid`
+  explizit abbilden. Mocks allein ersetzen keinen kontrollierten echten
+  User-Token-Smoke.
+- Unter dem aktuellen Legacy-Signing wird ein serverseitig autoritativer
+  Auth-Check wie `auth.getUser(jwt)` geprüft und bevorzugt, statt einen leeren
+  JWKS künstlich zu umgehen.
+- Ein späterer Wechsel auf lokale JWKS- beziehungsweise `getClaims()`-
+  Validierung erfolgt erst nach einer eigenständigen Signing-Key-Entscheidung.
+- Authfehler bleiben fail-closed. Ein Validator darf nicht still zwischen
+  Trust-Modellen wechseln oder bei Fehlern in einen schwächeren Modus fallen.
+- Der produktive Cutover wird erst nach einem echten User-Smoke fortgesetzt;
+  Public-, Secret- und Mock-Smokes allein reichen nicht.
+- Eine JWT-Signing-Key-Migration ist kein versteckter Unterpunkt der
+  API-Key-Migration und wird nie zur Nebenwirkung einer Functionumstellung.
+
 ## Nichtziele des späteren Modernisierungsprogramms
 
 - Kein neues Benutzer- oder Rollenmodell.
@@ -352,6 +467,9 @@ Roadmaps bilden, entscheidet der Readiness Review.
 ### Welle K0: Revalidierung und Freeze
 
 - Aktuellen Supabase-Keybestand als Namen/Typen/Status inventarisieren.
+- Davon getrennt die aktuelle Benutzer-JWT-Signing-Topologie erfassen:
+  Legacy oder Signing-Key-System, beobachtete Tokenheader, JWKS-Keyanzahl und
+  aktiver Validierungsweg. Keine Tokenwerte oder Claims dokumentieren.
 - Keine Secret-Werte lesen, ausgeben oder persistieren.
 - Deployed Functionversionen und `verify_jwt` erfassen.
 - GitHub-Secretnamen und Workflowcaller erfassen.
@@ -360,9 +478,13 @@ Roadmaps bilden, entscheidet der Readiness Review.
 - Aktuelle RLS-, ACL- und Function-Owner-Postimages read-only sichern.
 - Baseline-Smokes für Login, Widget, Arztbericht, Protein, Trendpilot und Push
   festhalten.
-- R13-Postimage als neue Grundlage übernehmen.
+- Einen kontrollierten echten User-Token-Smoke für den aktuellen
+  Validierungsweg definieren; Mocktests gelten nicht als Ersatz.
+- Das finale R13-Postimage nur für die unter „R13 nur bei nachgewiesener
+  Relevanz lesen“ genannten Grenzen übernehmen.
 
-Exit: Kein Consumer und kein Secretname ist nur aus Erinnerung bekannt.
+Exit: Kein Consumer, Secretname, Signing-Modus oder User-Validierungsweg ist
+nur aus Erinnerung bekannt.
 
 ### Welle K1: Schlüssel parallel bereitstellen
 
@@ -370,6 +492,8 @@ Owner-Gate im Supabase Dashboard:
 
 - Default Publishable Key anlegen, falls noch nicht vorhanden.
 - Benannte Secret Keys nach finalem Komponentenvertrag anlegen.
+- Bereits aus R13 vorhandene und weiterhin dormant gültige Keys
+  wiederverwenden; keine Ersatzkeys nur wegen einer neuen Roadmap erzeugen.
 - Legacy-Schlüssel aktiv lassen.
 - Nur die notwendigen Werte in native Secret-Stores eintragen.
 - Keine Schlüsselwerte in Chat, Terminalausgabe, Doku oder Git-Diff kopieren.
@@ -389,11 +513,18 @@ umgeschaltet.
 
 ### Welle K2: Gemeinsamen Edge-Auth-Vertrag härten
 
-- Aktuelle Supabase-Empfehlung für `@supabase/server` gegen die reale
-  Deno-/Edge-Runtime prüfen.
+- Aktuelle Supabase-Empfehlung für Authserver-, `getClaims()`- und
+  JWKS-Validierung gegen die reale Deno-/Edge-Runtime und Signing-Topologie
+  prüfen.
+- Unter Legacy-Signing den autoritativen Authserver-Weg, insbesondere
+  `auth.getUser(jwt)`, als primären Kompatibilitätsmodus prüfen.
+- Lokale JWKS-Validierung nur zulassen, wenn ein realer aktiver Signing Key,
+  `alg`, `kid` und der erwartete JWKS-Postimage belegt sind.
 - Falls verwendet: Version pinnen und Lock-/Importvertrag dokumentieren.
 - Alternativ einen kleinen `_shared`-Auth-Helper mit denselben
   Sicherheitsgarantien bauen.
+- Den Validierungsmodus explizit konfigurieren und fail-closed behandeln; kein
+  opportunistisches „JWKS versuchen, dann still auf etwas anderes fallen“.
 - Auth-Modi `user`, `secret:<name>` und gegebenenfalls duale Modi explizit
   testen.
 - User-Client und Admin-Client getrennt halten.
@@ -401,12 +532,35 @@ umgeschaltet.
   Auth-Schicht lösen.
 - Fehlerantworten und Logs redigieren.
 - `verify_jwt=false` erst zusammen mit dem gehärteten Handler deployen.
+- Vor dem ersten betroffenen Functioncutover einen echten User-JWT aus der
+  aktuellen MIDAS-Session kontrolliert prüfen, ohne Token oder Claims in
+  Evidence zu übernehmen.
 
 Exit: Die Auth-Schicht ist lokal gegen Missing, Invalid, Wrong-Key,
-Wrong-Mode, User-JWT, Secret-Key und Body-Owner-Manipulation getestet.
+Wrong-Mode, Legacy-User-JWT, gegebenenfalls Signing-Key-User-JWT, Secret-Key,
+Authserver-Ausfall und Body-Owner-Manipulation getestet. Der reale User-Smoke
+ist grün.
 Wiederholte legitime Schedulerrequests sind fachlich idempotent oder besitzen
 den bereits vorgesehenen Deduplizierungsvertrag; API Keys selbst liefern
 keinen Replay-Schutz.
+
+### Optionales separates Owner-Gate: JWT-Signing-Key-Migration
+
+Die API-Key-Modernisierung setzt keine automatische Migration der
+Benutzer-JWT-Signierung voraus. Wenn Stephan später auch vom Legacy-JWT-Secret
+auf das Signing-Key-System wechseln möchte, erhält diese Änderung einen
+eigenen Scope innerhalb einer Roadmap oder eine eigene kleine Roadmap mit:
+
+- aktueller Supabase-Dokumentation und vollständigem Caller-Inventar
+- Standby-Key, Rotation, Übergangszeit und Revocation als getrennten Gates
+- Nachweis aller lokalen JWT-Validatoren und `verify_jwt`-Einstellungen
+- echten alten und neuen User-Token-Smokes während der Parallelphase
+- Berücksichtigung von JWKS- und Clientcaches
+- eigenständigem Rollback vor jeder irreversiblen Löschung
+
+Ohne dieses ausdrückliche Owner-Gate bleibt Legacy-Signing aktiv und der
+Edge-Auth-Vertrag muss es sicher unterstützen. Das ist kein Blocker für die
+Migration von Legacy-`anon`/`service_role` auf Publishable/Secret API Keys.
 
 ### Welle K3: User-only Edge Functions kompatibel migrieren
 
@@ -421,7 +575,8 @@ Kandidaten:
 Pro Function:
 
 - Callerklasse bestätigen.
-- Benutzer-JWT strikt prüfen.
+- Benutzer-JWT strikt über den in K2 eingefrorenen, zur realen Signing-
+  Topologie passenden Modus prüfen.
 - `SUPABASE_ANON_KEY` auf Publishable-Key-Vertrag umstellen, wo erforderlich.
 - Internes `SUPABASE_SERVICE_ROLE_KEY` nur dort durch einen Secret Key
   ersetzen, wo Adminzugriff fachlich nötig und autorisiert ist.
@@ -603,6 +758,22 @@ Guard:
 - Grants ausschließlich anhand des fachlichen Datenzugriffs prüfen.
 - API-Key-Namen nie als mechanischen SQL-Migrationsgrund verwenden.
 
+### P1: Verwechslung von API-Key- und JWT-Signing-Topologie
+
+Moderne API Keys können vorhanden sein, während Supabase Auth weiterhin
+Legacy-JWTs ohne asymmetrischen JWKS-Key ausstellt. Ein ausschließlich auf
+`alg`/`kid`/JWKS ausgelegter Validator sperrt dann legitime Benutzer aus. Ein
+stiller Fallback könnte umgekehrt eine Authlücke erzeugen.
+
+Guard:
+
+- API Keys und Signing Keys in getrennten Inventaren und Gates führen.
+- Validierungsmodus aus dem realen Postimage einfrieren, nicht aus Keypräfixen
+  oder Wunscharchitektur ableiten.
+- Legacy- und Signing-Key-Tokenformen in Tests modellieren.
+- Vor jedem betroffenen produktiven Cutover einen echten User-Smoke verlangen.
+- Signing-Key-Rotation und Validatorwechsel getrennt rückrollbar halten.
+
 ## Test- und Evidence-Vertrag
 
 Die spätere ausführbare Roadmap soll mindestens vorsehen:
@@ -620,6 +791,13 @@ Die spätere ausführbare Roadmap soll mindestens vorsehen:
 
 - disposable Supabase-/PostgreSQL-17-Tests für neue RPCs oder ACLs
 - User-JWT-, Publishable- und Secret-Key-Negativmatrix
+- Legacy-User-JWT ohne `kid` bei leerem öffentlichen JWKS
+- sofern aktiviert: Signing-Key-User-JWT mit `alg`/`kid` und passendem JWKS
+- autoritative Authserver-Validierung mit `auth.getUser(jwt)` oder dem dann
+  offiziell empfohlenen Äquivalent
+- abgelaufener, manipulierter und projektfremder User-JWT
+- Authserver-/Netzwerkfehler endet fail-closed und wird nicht als anonymer oder
+  privilegierter Zugriff fortgesetzt
 - falscher benannter Key
 - fehlender Key
 - Secret im Authorization-Header
@@ -648,8 +826,11 @@ Die spätere ausführbare Roadmap soll mindestens vorsehen:
 ### Remote und produktiv
 
 - Schlüsseltypen und Status read-only inventarisieren
+- JWT-Signing-System, JWKS-Keyanzahl und aktiven Validierungsmodus read-only
+  inventarisieren; keine Token-, Claim- oder Schlüsselwerte sichern
 - Functionversion und `verify_jwt` vor/nach Deploy sichern
 - GitHub-Secretnamen ohne Werte prüfen
+- kontrollierter echter User-Token-Smoke vor dem ersten betroffenen Cutover
 - manueller Workflow-Smoke
 - Edge-Logs auf 401/403/500 prüfen
 - Security Advisor
@@ -668,6 +849,9 @@ Folgende Aktionen bleiben zwingend manuell beziehungsweise ausdrücklich
 freizugeben:
 
 - neue Publishable oder Secret Keys erzeugen
+- JWT-Signing-Key importieren, erzeugen, rotieren, widerrufen oder löschen
+- produktiven User-Validierungsmodus zwischen Authserver und lokaler
+  Signing-Key-/JWKS-Prüfung ändern
 - Secretwerte in Supabase oder GitHub eintragen
 - `verify_jwt` einer produktiven Function ändern
 - Edge Function deployen
@@ -681,6 +865,8 @@ freizugeben:
 ## Rollback-Grundsätze
 
 - Legacy- und moderne Schlüssel bleiben während der Migration parallel aktiv.
+- API-Key- und JWT-Signing-Migration besitzen getrennte Preimages, Gates und
+  Rollbacks.
 - Jeder Consumer wird einzeln umgestellt und einzeln rückrollbar gehalten.
 - Schlüssel werden nicht als erste Maßnahme gelöscht.
 - Workflow und Edge Function besitzen eine dokumentierte kompatible
@@ -693,15 +879,19 @@ freizugeben:
 
 ## Offene Entscheidungen für die spätere Roadmap
 
-1. Wird `@supabase/server` für alle aktiven Edge Functions eingeführt oder nur
-   für neue beziehungsweise duale Authpfade?
-2. Wird Incident Push in derselben Cutover-Roadmap oder in einer eigenen
+1. Welcher offiziell unterstützte User-Validierungsweg passt zum dann realen
+   Signing-Postimage: Authserver, `getClaims()` oder lokale JWKS-Prüfung?
+2. Soll die optionale JWT-Signing-Key-Migration nach der API-Key-Migration
+   erfolgen oder bewusst als eigener späterer Zukunftsscope verbleiben?
+3. Wird `@supabase/server` für alle aktiven Edge Functions eingeführt, nur für
+   duale Authpfade oder durch einen kleineren bewiesenen Helper ersetzt?
+4. Wird Incident Push in derselben Cutover-Roadmap oder in einer eigenen
    kleinen Welle migriert?
-3. Werden geparkte KI-Functions modernisiert oder vorher kontrolliert
+5. Werden geparkte KI-Functions modernisiert oder vorher kontrolliert
    stillgelegt?
-4. Wie lange bleiben deaktivierte Legacy-Schlüssel vor endgültigem Löschen
+6. Wie lange bleiben deaktivierte Legacy-Schlüssel vor endgültigem Löschen
    bestehen?
-5. Reicht eine Roadmap mit owner-gateten Wellen oder erzwingt die Kombination
+7. Reicht eine Roadmap mit owner-gateten Wellen oder erzwingt die Kombination
    aus PWA und Android zwei getrennte Roadmaps?
 
 Diese Entscheidungen werden nicht aus dem heutigen Zustand erfunden. Sie
@@ -716,6 +906,9 @@ Das Modernisierungsprogramm ist erst abgeschlossen, wenn:
 - alle aktiven privilegierten Backendkomponenten benannte Secret Keys verwenden
 - kein Workflow einen API-Key als Bearer-JWT ausgibt
 - Benutzeridentität ausschließlich aus echten Supabase-Auth-JWTs stammt
+- alle aktiven User-Functions diese JWTs über einen dokumentierten, zur realen
+  Signing-Topologie passenden und mit echtem User-Token geprüften Weg
+  validieren
 - kein Secret Key in Browser, Android, Repo, Doku, Logs oder Recovery liegt
 - alle Edge Functions eine dokumentierte Callerklasse besitzen
 - `verify_jwt` und In-Function-Auth nachweislich zusammenpassen
@@ -725,10 +918,44 @@ Das Modernisierungsprogramm ist erst abgeschlossen, wenn:
 - Recovery die Konfiguration über Namen und Schritte rekonstruieren kann
 - Legacy-`anon` und Legacy-`service_role` ohne Produktbruch deaktiviert sind
 
+Eine Migration der Benutzer-JWT-Signierung auf das moderne Signing-Key-System
+ist für diese API-Key-Abschlusskriterien nicht zwingend. Wird sie vom Owner in
+den Programmscope aufgenommen, besitzt sie eigene zusätzliche
+Abschlusskriterien für Rotation, Parallelvertrauen, Cachefenster, Revocation
+und reale alte/neue User-Token-Smokes.
+
+## Contract Review der F45-Ergänzung
+
+Reviewdatum: 2026-08-24
+
+Geprüft wurden der dokumentierte R13-Freeze, die konkrete Evidence zu
+`EV-ACT-R13-PRE09`, `EV-ACT-R13-PRE12` und `F-ACT-R13-45`, die aktuellen
+Supabase-Verträge für API Keys, JWT Signing Keys und `auth.getUser(jwt)` sowie
+der MIDAS-Single-User- und Owner-Gate-Vertrag.
+
+Korrigierte Findings:
+
+- Der bisherige Iststand behauptete fälschlich, moderne Keys seien noch nicht
+  vorhanden. Das dormant R13-Postimage ist nun dokumentiert.
+- API-Key- und JWT-Signing-Migration waren nicht klar genug getrennt. Sie sind
+  nun eigenständige Inventare, Gates, Tests und Rollbacks.
+- R13 war als pauschale künftige Grundlage formuliert. Es ist nun nur bei
+  konkreter Consumer-, Auth-, SQL- oder Schedulerrelevanz zu lesen.
+- Mocktests konnten eine reale Legacy-Signing-Topologie übersehen. Ein echter
+  User-Token-Smoke ist nun verpflichtend.
+- Eine spätere Signing-Key-Migration war implizit mitgedacht. Sie ist jetzt ein
+  optionaler, ausdrücklich owner-gateter Scope und kein versteckter
+  API-Key-Nebeneffekt.
+
+Ergebnis: `PASS`. Der Masterplan bleibt ein Future-Dokument ohne produktive
+Freigabe und setzt keine Änderung an R13 voraus.
+
 ## Offizielle Referenzen
 
 - [Supabase: Understanding API keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [Supabase: Migrating to publishable and secret API keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys)
+- [Supabase: JWT Signing Keys](https://supabase.com/docs/guides/auth/signing-keys)
+- [Supabase JavaScript: `auth.getUser(jwt)`](https://supabase.com/docs/reference/javascript/auth-getuser)
 - [Supabase: Securing Edge Functions](https://supabase.com/docs/guides/functions/auth)
 - [Supabase: Authorization headers](https://supabase.com/docs/guides/functions/auth-headers)
 
@@ -762,6 +989,17 @@ Supabase-Schlüssel- und Edge-Auth-Verträge weiterentwickeln können.
 - `android/app/src/main/`
 - `sql/16_Explicit_Grants.sql`
 - `sql/HOW_TO.md`
+
+Nur bei nachgewiesener R13-Relevanz zusätzlich, solange R13 aktiv ist:
+
+- `docs/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence.md`
+- `docs/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap.md`
+- zunächst ausschließlich `EV-ACT-R13-PRE09`, `EV-ACT-R13-PRE12`,
+  `F-ACT-R13-45` und das finale Postimage
+
+Nach dem R13-Abschluss werden stattdessen die gleichnamigen `(DONE)`-Quellen in
+`docs/archive/` verwendet. Aktive und archivierte Fassungen werden nicht
+gleichzeitig als konkurrierende Source of Truth gelesen.
 
 Archivierte Roadmaps werden nur über konkrete Evidence-IDs oder bei einem
 nachgewiesenen Quellenwiderspruch erneut gelesen.

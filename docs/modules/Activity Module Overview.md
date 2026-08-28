@@ -1,13 +1,14 @@
 ﻿# Activity Module - Functional Overview
 
-## R13-Produktionsstand (2026-08-26)
+## C3-Produktionsstand (2026-08-28)
 
 R13 ist `DONE`: Doctor View, Range-Arztbericht, Health Export V3, Protein
 Target und Trendpilot verwenden produktiv den gemeinsamen ownergebundenen
 V1-/V2-Read-Vertrag aus SQL26. Activity V1 bleibt bis R14 der einzige
 Capturewriter; Activity V2 Sessions/Items/Sets stehen produktiv weiterhin auf
-0/0/0. C3 ist das nächste Core-UI-Gate, danach besitzt allein R14 den Capture-
-und Android-PWA-Cutover.
+0/0/0. C3 ist `DONE`: Training besitzt eine eigene Hub-Produktfläche mit
+eigenem Datum, während Vitals nur BP, Body und Lab enthält. Ausschließlich
+R14 besitzt weiterhin den Activity-V2-Capture- und Android-PWA-Cutover.
 
 Kurze Einordnung:
 - Produktiver Stand: Activity V1 erfasst eine Trainingseinheit pro Tag
@@ -27,12 +28,12 @@ Kurze Einordnung:
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Activity V2 Masterplan](../Future%20trainingsmodule%20update%20thoughts.md)
-- [Activity V2 R1 Catalog Baseline](../MIDAS%20Activity%20V2%20R1%20Catalog%20Baseline%20Contract.md)
+- [Activity V2 R1 Catalog Baseline](<../archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
 - [Activity V2 R1 Roadmap](<../archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
 - [Activity V2 R2 Roadmap](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
 - [Activity V2 R2 Evidence](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Evidence (DONE).md>)
 - [Activity V2 R3 Roadmap](<../archive/MIDAS Activity V2 R3 Shared Session Draft and UI Shell Roadmap (DONE).md>)
-- [Activity V2 C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+- [Activity V2 C2 Catalog Contract](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>)
 - [Activity V2 C2 Roadmap](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
 - [Activity V2 C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
 - [Activity V2 R4 Roadmap](<../archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
@@ -49,6 +50,9 @@ Related docs:
 - [Activity V2 R11 Roadmap](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
 - [Activity V2 R11 Evidence](<../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
 - [Activity V2 R12 Roadmap](<../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>)
+- [Activity V2 R13 Roadmap](<../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
+- [Activity V2 R13 Evidence](<../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>)
+- [Activity V2 C3 Roadmap](<../archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -638,9 +642,11 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - Auth-Guard via Supabase API (RPCs nur bei Login).
 
 ### 4.2 User-Trigger
-- Training-Tab im Vitals-Panel.
+- Eigenstaendiges Training-Panel `#hubTrainingPanel` unmittelbar nach Vitals.
+- `#trainingDate` ist die Source of Truth für den Trainingstag und unabhängig
+  vom Vitals-Datum.
 - Button `Speichern` triggert `activity_add`.
-- `Zuruecksetzen` leert die Felder.
+- `Zuruecksetzen` leert Aktivitaet, Dauer und Notiz, nicht das Training-Datum.
 
 ### 4.3 Verarbeitung
 - Client-Validierung: Aktivitaet Pflicht, Dauer >= 1.
@@ -649,7 +655,9 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ### 4.4 Persistenz
 - Speicherung per RPC `activity_add(day, payload)`.
-- Datum kommt aus dem Haupt-Datum im Vitals-Panel.
+- Datum kommt ausschließlich aus `#trainingDate`.
+- Activity V1 bleibt der einzige produktive Writer. Die Activity-V2-Capture-
+  Scripts sind bis R14 nicht in die produktive App geladen; es gibt kein Dual Write.
 
 ### 4.5 Isolierter R4-Harness
 
@@ -664,11 +672,12 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ## 5. UI-Integration
 
-- Training-Tab im Vitals-Panel (Hub Overlay).
-- Inline-Form: Aktivitaet, Dauer, Notiz.
-- Kein separates Modal.
+- Eigenstaendiges Hub-Panel `#hubTrainingPanel` mit eigenem Carousel- und
+  Quickbar-Einstieg direkt nach Vitals.
+- Inline-Form: Training-Datum, Aktivitaet, Dauer und Notiz.
+- Vitals enthält nur die Tabs BP, Body und Lab.
 - Die R4-erweiterte Vollflaechen-Shell ist nur im isolierten Harness sichtbar und noch kein
-  Bestandteil des Vitals-Moduls oder Training-Tabs.
+  Bestandteil der produktiven Training-Flaeche.
 - Die R10-Exportshell ist ebenfalls nur im isolierten Harness sichtbar. SQL 24
   installiert keinen Button und autorisiert keine produktive Verdrahtung.
 
@@ -682,7 +691,7 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - Berichte: Activity-Aggregation im aktuellen Range-Arztbericht.
 - R11 hat die ruhige V1-/V2-Aktivitätszusammenfassung, den sekundären
   Doctor-Drilldown, kompakte Range-Report-Copy und Health Export V3 isoliert
-  vorbereitet. R13 aktiviert diese Consumer später read-only. Das
+  vorbereitet. R13 hat diese Consumer read-only aktiviert. Das
   vollständige Satzschema bleibt im separaten R10-Coaching-Export.
 
 ---
@@ -697,12 +706,12 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ## 8. Events & Integration Points
 
-- Public API / Entry Points: `AppModules.activity.addActivity`, `loadActivities`, `deleteActivity`, Training-Tab Save.
-- Source of Truth: `health_events` type `activity_event`, `day` aus Vitals-Datum.
+- Public API / Entry Points: `AppModules.activity.addActivity`, `loadActivities`, `deleteActivity`, Training-Panel-Save.
+- Source of Truth: `health_events` type `activity_event`, `day` aus `#trainingDate`.
 - Side Effects: feuert `activity:changed`, resettet Felder nach Save.
 - Constraints: genau ein Eintrag pro Tag, `duration_min >= 1`.
 - Custom Event: `activity:changed`.
-- Datumsaenderung im Vitals-Panel beeinflusst `day` beim Speichern.
+- Vitals- und Training-Datum sind voneinander unabhaengig.
 - Report-Edge-Function nutzt Activity-Aggregation.
 
 ---
@@ -725,7 +734,8 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
   - Kein Tracker-Start oder Save per Intent-/Voice-Fast-Path ohne separaten Contract.
   - Kein Umgehen der Tagesbindung oder des `unique (user_id, day, type)`-Vertrags ueber Schnellpfade.
 - Hinweise / offene Punkte:
-  - Produktiv existiert nur der UI-gebundene Save-Pfad ueber `addActivity(...)` im Vitals-Kontext.
+  - Produktiv existiert nur der UI-gebundene Save-Pfad über `addActivity(...)`
+    in der eigenständigen Training-Produktfläche.
   - Future Hook: vorbereiteter Tracker-Start oder kleine Vorbelegung erst nach separater Priorisierung und Guard-Klaerung.
 
 ---
@@ -733,15 +743,19 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 ## 9. Erweiterungspunkte / Zukunft
 
 - Aktivitaetskategorien, Intensitaet, Marker.
-- Dynamischer Proteinrechner (Hook auf Activity-Count).
+- Protein Target konsumiert Activity-Tage über den in R13 aktivierten
+  gemeinsamen read-only Vertrag; C3 fuegt keine neue Berechnung hinzu.
 - Trend/Chart-Ansichten fuer Activity.
 - R11: Doctor-/Report-Zusammenfassung und Health Export V3 sind auf Basis des
   bewiesenen V1-/V2-Kompatibilitätsvertrags isoliert bereit.
 - R12: Protein Target und Trendpilot sind isoliert auf denselben Read-Vertrag
   vorbereitet.
-- R13: die read-only Consumer kontrolliert aktivieren und mit bestehender
-  Activity-V1-Erfassung auf Parität prüfen.
-- R14: Activity-V2-Capture, Produktnavigation und Coaching-Download aktivieren
+- R13: `DONE`; read-only Consumer sind bei bestehender Activity-V1-Erfassung
+  produktiv auf Paritaet aktiviert.
+- C3: `DONE`; eigenständige Training-Produktfläche und read-only Protein-
+  Kontextdialog sind stabil, ohne Writerwechsel.
+- R14: Activity-V2-Capture und Coaching-Download in der stabilisierten
+  Produktfläche aktivieren
   sowie den finalen Android-PWA-Smoke durchführen.
 
 ---
@@ -755,23 +769,24 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv (implementiert, im Capture/Doctor/Reports genutzt).
+- Status: aktiv; C3-Produktfläche implementiert, in Capture-Grenze, Doctor und Reports genutzt.
 - Activity V2 R1-R12/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
   Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der
   Commit-Core, History/Detail/Correction/Delete und der vollständige read-only
   Coaching-Export, der gemeinsame Doctor-/Report-Read-Vertrag sowie die puren
   Protein-/Trendpilot-Adapter sind implementiert. SQL 22 bis SQL 25 sind
-  produktiv bestätigt; die V2-
-  Runtime bleibt isoliert und es gibt keinen produktiven UI-, Consumer- oder
-  V1-Cutover.
-- Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`, Vitals-Datum im Capture-Panel, Doctor-Training-Tab.
+  produktiv bestätigt. R13 hat die read-only Consumer aktiviert; die V2-
+  Capture-Runtime bleibt isoliert und es gibt keinen produktiven Writer-Cutover.
+- Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`,
+  eigenes Training-Datum, Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
-- Known issues / risks: nur 1 Eintrag pro Tag; falsches Vitals-Datum => falscher Tag; keine Uhrzeit.
+- Known issues / risks: nur 1 Eintrag pro Tag; falsch gewähltes Training-Datum
+  ergibt den falschen Tag; keine Uhrzeit.
 - Activity-V2-Risiko: Commit/Recovery sind lokal, disposable und im Browser
   bewiesen. Der reale Android-PWA-Prozess-Reclaim wurde in R8 nicht ausgeführt;
   Gerätewechsel liegt außerhalb des lokalen Recoveryvertrags. Produktive
-  Read-Consumerintegration bleibt R13; Capture-Cutover und finaler
+  Read-Consumerintegration ist seit R13 produktiv; Capture-Cutover und finaler
   Android-Smoke bleiben R14.
 - R9-Review-Risiko: Alle berechtigten Findings aus vier erfolgreichen
   CodeRabbit-Läufen sind korrigiert und invalidierte Checks grün. Ein weiterer
@@ -783,10 +798,10 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
   Playwright-Matrix bestand jedoch erneut 3/3. Beides blockierte R11 nicht.
 - R11-Watchlist: Die drei intentionalen R8/R9-`SECURITY DEFINER`-Hinweise,
   Leaked-Password-Protection und acht ungenutzte Indizes blieben unverändert.
-  SQL 25 erzeugte keine R11-Warnung. Die Consumeraktivierung bleibt R13.
-- R12-Watchlist: R13 muss den RLS-konformen Scheduler-Snapshotprovider, die
-  Keymigration, Protein-Calc-Version, neue Trendpilot-Payload und den einmaligen
-  Snapshot-Umschlag innerhalb der SQL25-Grenze von 400 Tagen aktivieren.
+  SQL 25 erzeugte keine R11-Warnung. Die Consumeraktivierung wurde in R13
+  abgeschlossen.
+- R13-Watchlist ist geschlossen. C3 hat weder Scheduler, Proteinformel,
+  Trendpilot-Payload noch SQL veraendert.
 - Backend / SQL / Edge: `sql/13_Activity_Event.sql`, Edge `midas-monthly-report` (Aggregation).
 
 ---
@@ -877,14 +892,10 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ## 13. Definition of Done
 
-- Training-Tab speichert und rendert korrekt.
+- Eigenstaendiges Training-Panel speichert und rendert mit eigenem Datum korrekt.
 - Keine offenen Logs/Errors im Flow.
-- Activity V2 R1-R12/C2 bleiben bis zu den zuständigen Folgeroadmaps für
-  produktive Consumer unverdrahtet. R8 und R9 sind mit ihren ausdrücklich
-  dokumentierten, owner-akzeptierten Evidence-/Review-Grenzen DONE; R10 ist
-  vollständig DONE; R10 bis R12 sind ebenfalls DONE und R13 das nächste
-  Core-Gate. R13 darf die
-  read-only Consumer aktivieren; ausschließlich R14 darf den produktiven
-  V2-Capture-Cutover und den finalen Android-PWA-Smoke ausführen.
+- R1-R13/C2 und C3 sind `DONE`. Activity V1 bleibt der einzige produktive
+  Writer; ausschließlich R14 darf den V2-Capture-Cutover und den finalen
+  Android-PWA-Smoke ausführen.
 - Doku aktuell (Spec + Overview).
 

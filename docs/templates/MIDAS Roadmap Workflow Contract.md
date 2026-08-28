@@ -86,6 +86,139 @@ vorausgesetzt.
 - Ein Abschnittsende allein ist kein Owner-Gate. Fortschrittsmeldungen bleiben
   informativ und verlangen keine Antwort, solange kein Stop-Grund eintritt.
 
+## Usage-aware Continuation Gates
+
+Die lokale Codex-Usage-Telemetrie begrenzt, ob ein neuer Arbeitsblock sicher
+begonnen werden darf. Sie garantiert nicht, dass ein laufender Block ohne
+Quota-Ende fertig wird. Diese Sicherheit entsteht weiterhin durch kleine,
+kohärente Blöcke, klare Postconditions, gezielte Checks und einen aktuellen
+Resume-Stand. Sensor, State-Pfad und Freshness-Vertrag stehen in
+`docs/DEV_ENVIRONMENT.md`.
+
+### Position und Reihenfolge
+
+Ein Usage-Gate ist verpflichtend:
+
+- vor dem ersten Hauptblock einer neuen oder fortgesetzten Roadmap-Session,
+- nach jedem abgeschlossenen Discovery-Hauptschritt vor dem nächsten,
+- nach S4R vor dem ersten S4-Ausführungsblock,
+- nach jedem kohärenten S4-Ausführungsblock vor dem nächsten,
+- vor dem gemeinsamen S5-/S6-Abschlussblock, sofern seit dem letzten Gate
+  gearbeitet oder auf eine Owner-Freigabe gewartet wurde.
+
+Vor dem Gate wird der aktuelle Block regulär abgeschlossen: Postconditions und
+invalidierte Checks ausführen, Findings zuordnen sowie Statusmatrix und Resume
+Card synchronisieren. Danach wird genau einmal frisch gemessen und erst dann
+über den nächsten Block entschieden. Während eines laufenden atomaren Blocks
+wird nicht gepollt und nicht allein wegen eines sinkenden Usage-Werts
+abgebrochen.
+
+Die Entscheidungsfolge ist deterministisch:
+
+1. Sensor unmittelbar vor der Entscheidung refreshen.
+2. State mit dem kanonischen Validator aus `docs/DEV_ENVIRONMENT.md` prüfen;
+   keine ad-hoc Neuinterpretation des rohen JSON.
+3. Beide Fenster mit dem letzten realen Checkpoint der aktiven Roadmap
+   vergleichen, sofern die jeweilige Resetidentität gleich ist.
+4. Resetwechsel oder Messanpassungen behandeln und erst danach den Verbrauch
+   bestimmen.
+5. Statische Schwellen und vorhandene empirische Blockreserve anwenden.
+6. Entscheidung kompakt in aktiver Roadmap und Resume Card festhalten.
+7. Nur bei zulässiger Entscheidung den nächsten Block beginnen.
+
+Wird nach einem Usage-Gate auf eine Owner-Freigabe gewartet und ist die Messung
+bei Erteilung älter als zwei Minuten, muss sie unmittelbar vor der produktiven
+oder extern sichtbaren Fortsetzung wiederholt werden. Usage ersetzt dabei nie
+das Owner-Gate, Preimage, Reverse, Postcheck oder andere Sicherheitsverträge.
+
+### Fenster, Deltas und Resets
+
+5h- und Wochenfenster sind gleichwertige Pflichtsignale. Der Verbrauch eines
+Blocks wird je Fenster als `remaining_vorher - remaining_nachher` erfasst, aber
+nur wenn beide Messungen dieselbe `resetAtEpoch` besitzen.
+
+- Ändert sich `resetAtEpoch`, lautet das Ereignis `RESET_CROSSED`. Es wird kein
+  Delta über die Resetgrenze berechnet; die neue Messung ist die Baseline für
+  den nächsten Block.
+- Steigt `remaining` trotz identischer `resetAtEpoch`, wird dies als
+  `ADJUSTMENT` protokolliert, nicht als negativer Verbrauch. Die aktuelle
+  Messung ersetzt die Baseline.
+- Resetzeit oder Reset-Credits sind Kontext, aber kein zusätzliches Budget.
+- Prozentwerte und Deltas werden nicht aus Chatmeldungen, Rainmeter-Anzeige
+  oder früheren Erinnerungswerten rekonstruiert.
+
+### Entscheidungsklassen
+
+`SAFE_CLOSURE` hat Vorrang vor `CONTINUE_WITH_CAUTION`; diese wiederum vor
+`CONTINUE`.
+
+<!-- markdownlint-disable MD013 -->
+
+| Entscheidung | Messlage | Erlaubte Folge |
+| --- | --- | --- |
+| `CONTINUE` | 5h `> 40 %` und Woche `> 20 %`; vorhandene empirische Reserve reicht | nächsten geplanten kohärenten Block ausführen |
+| `CONTINUE_WITH_CAUTION` | 5h `25-40 %` oder Woche `10-20 %`, ohne Safe-Closure-Grund | höchstens einen kurzen, lokalen, reversiblen und ausdrücklich resumierbaren Block ausführen; danach erneut messen |
+| `SAFE_CLOSURE` | 5h `< 25 %` oder Woche `< 10 %`; State fehlt, ist partial/failed/stale; oder vorhandene empirische Reserve reicht nicht | keinen neuen Haupt- oder Ausführungsblock beginnen; sicheren Handoff herstellen |
+
+<!-- markdownlint-enable MD013 -->
+
+Die Grenzen sind inklusiv: exakt `25 %` im 5h-Fenster oder `10 %` im
+Wochenfenster ist Caution, exakt `40 %` beziehungsweise `20 %` noch nicht
+Continue. Der technische Sensorstatus `OK` ist keine dieser Entscheidungen.
+
+### Empirische Blockreserve
+
+Sobald reale Vergleichswerte derselben Roadmap und desselben Resetzyklus
+vorliegen, verwendet S4R für jeden Bucket den höchsten beobachteten Verbrauch
+eines vergleichbaren Blocks, multipliziert mit `1,5`. Mittelwerte und
+erfundene Schätzwerte sind verboten.
+Die Reserve reicht nur, wenn der projizierte Rest nach dem nächsten Block im
+5h-Fenster mindestens `25 %` und im Wochenfenster mindestens `10 %` beträgt.
+Andernfalls gilt `SAFE_CLOSURE`.
+
+Fehlen vergleichbare Messungen, wird keine numerische Reserve erfunden. Dann
+entscheiden statische Schwellen zusammen mit S4R-Größenklasse,
+Reversibilität, Resumierbarkeit und realer Blockform. Ein großer oder nicht
+sicher resumierbarer Block darf unter Caution nicht begonnen werden.
+
+### Safe Closure und Dokumentation
+
+Safe Closure ist kein Rollback und kein Fehlerstatus für bereits korrekt
+abgeschlossene Arbeit. Sie bewahrt den letzten kohärenten lokalen Stand und
+macht die Fortsetzung eindeutig:
+
+1. keinen neuen Haupt- oder S4-Ausführungsblock beginnen,
+2. laufenden atomaren Block samt notwendigen Postconditions sicher beenden,
+3. Statusmatrix, Findings, relevante Checks und geänderte Dateien
+   synchronisieren,
+4. Resume Card mit letzter Usage-Entscheidung und genau einem nächsten Gate
+   ersetzen,
+5. Roadmap als `PAUSED_USAGE_SAFE_CLOSURE` kennzeichnen; weder `DONE` noch
+   unbewiesene PASS-Ergebnisse setzen und nicht archivieren.
+
+Die aktive Roadmap führt eine kompakte Checkpoint-Tabelle mit real gemessenen
+5h-/Wochenwerten, Resetidentitäten, gültigen Deltas und der Entscheidung. Sie
+enthält keine vollständigen JSON-Snapshots. Die Resume Card enthält nur den
+letzten Checkpoint und die aktuelle Entscheidung; sie ist kein chronologisches
+Usage-Protokoll.
+
+### Finale Abschlussmessung
+
+Eine optionale Messung nach vollständig erfüllten S6-Postconditions und
+unmittelbar vor dem rein deterministischen Verschieben in `docs/archive/` ist
+kein Continuation Gate, weil sie keinen neuen Arbeitsblock freigibt. Sie wird
+als `FINAL_OBSERVATION` protokolliert und darf einen durch das letzte reguläre
+Gate vollständig bewiesenen `DONE`-Stand nicht nachträglich in Safe Closure
+zurückstufen. Ist der Sensor dabei nicht valide, lautet das Ereignis
+`FINAL_OBSERVATION_UNAVAILABLE`; die bereits bewiesene Archivierung bleibt
+zulässig.
+
+Diese Ausnahme gilt ausschließlich, wenn keine Code-, Test-, Review-, Doku-,
+Runtime- oder Owner-Aktion mehr offen ist. Bleibt irgendeine inhaltliche
+Arbeit übrig, ist die Messung ein normales Continuation Gate und die
+Safe-Closure-Regel gilt unverändert. Eine Final Observation darf niemals neue
+Arbeit autorisieren oder fehlende Nachweise ersetzen.
+
 ## Chat- und Kontextvertrag
 
 - Ein langfristiger MIDAS-Denkraum darf für Vision, Brainstorming,

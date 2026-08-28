@@ -124,9 +124,9 @@ if (productMode === 'final') {
     lastIndexPosition = indexPosition;
     lastWorkerPosition = workerPosition;
   }
-  requireCondition(/const CACHE_VERSION = 'v7'/.test(worker), 'WORKER_VERSION');
+  requireCondition(/const CACHE_VERSION = 'v13'/.test(worker), 'WORKER_VERSION');
   productReadLoads = productOrder.length;
-  cacheVersion = 7;
+  cacheVersion = 13;
 } else {
   requireCondition(/const CACHE_VERSION = 'v6'/.test(worker), 'WORKER_VERSION');
 }

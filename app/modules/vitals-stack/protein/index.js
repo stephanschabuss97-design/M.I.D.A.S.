@@ -4,6 +4,7 @@
  * Description: Edge function bridge for dynamic protein targets.
  * Exports:
  *  - recomputeTargets({ weight_kg, dayIso, force, trigger })
+ *  - loadStoredContext(profile): read-only projection for the dashboard dialog
  */
 
 (function initProteinModule(global) {
@@ -19,6 +20,61 @@
   const getSupabaseApi = () => appModules.supabase || global.SupabaseAPI || {};
   const getSupabaseState = () => getSupabaseApi()?.supabaseState || null;
   const getAuthState = () => getSupabaseState()?.authState || 'unknown';
+  let latestWeightCache = null;
+  let latestWeightPromise = null;
+
+  const loadLatestStoredWeight = async () => {
+    if (latestWeightCache && Number.isFinite(latestWeightCache.value)) {
+      return latestWeightCache.value;
+    }
+    if (latestWeightPromise) return latestWeightPromise;
+    const supabase = getSupabaseApi();
+    if (typeof supabase?.getUserId !== 'function' || typeof supabase?.sbSelect !== 'function') {
+      return null;
+    }
+    latestWeightPromise = (async () => {
+      const userId = await supabase.getUserId();
+      if (!userId) return null;
+      const rows = await supabase.sbSelect({
+        table: 'v_events_body',
+        select: 'day,kg',
+        filters: [['user_id', `eq.${userId}`]],
+        order: 'day.desc',
+        limit: 1
+      });
+      const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+      const value = row && Number.isFinite(Number(row.kg)) ? Number(row.kg) : null;
+      if (value !== null) latestWeightCache = { value };
+      return value;
+    })().finally(() => {
+      latestWeightPromise = null;
+    });
+    return latestWeightPromise;
+  };
+
+  const loadStoredContext = async (profile) => {
+    if (!profile || typeof profile !== 'object') return null;
+    const latestStoredWeightKg = await loadLatestStoredWeight();
+    return Object.freeze({
+      targetMin: profile.protein_target_min ?? null,
+      targetMax: profile.protein_target_max ?? null,
+      calcVersion: profile.protein_calc_version ?? null,
+      lastCalcAt: profile.protein_last_calc_at ?? null,
+      windowDays: profile.protein_window_days ?? null,
+      ageBase: profile.protein_age_base ?? null,
+      activityLevel: profile.protein_activity_level ?? null,
+      activeDays: profile.protein_activity_score_28d ?? null,
+      factorPreCkd: profile.protein_factor_pre_ckd ?? null,
+      ckdStage: profile.protein_ckd_stage_g ?? profile.ckd_stage ?? null,
+      ckdFactor: profile.protein_ckd_factor ?? null,
+      factorCurrent: profile.protein_factor_current ?? null,
+      doctorLock: profile.protein_doctor_lock ?? null,
+      doctorFactor: profile.protein_doctor_factor ?? null,
+      doctorMin: profile.protein_doctor_min ?? null,
+      doctorMax: profile.protein_doctor_max ?? null,
+      latestStoredWeightKg
+    });
+  };
 
   async function ensureAuthenticated() {
     const state = getAuthState();
@@ -116,11 +172,16 @@
       dayIso: dayIso || null,
       force: !!force
     };
-    return await callProteinTargets(payload, { reason: trigger || 'body_save' });
+    if (Number.isFinite(payload.weight_kg)) {
+      latestWeightCache = { value: payload.weight_kg };
+    }
+    const result = await callProteinTargets(payload, { reason: trigger || 'body_save' });
+    return result;
   }
 
   appModules.protein = Object.assign(appModules.protein || {}, {
     recomputeTargets,
+    loadStoredContext,
     _callProteinTargets: callProteinTargets
   });
 })(typeof window !== 'undefined' ? window : globalThis);

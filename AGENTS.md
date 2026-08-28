@@ -64,3 +64,20 @@ checks.
   execution waves. Large work receives an owner briefing before S4.
 - Keep the Resume Card, Context Receipt, and Evidence current enough for a
   fresh chat to continue without reconstructing the whole project history.
+
+## Usage-Aware Continuation
+
+- During local roadmap execution on Stephan's Windows workstation, apply the
+  central usage continuation contract before the first main block and before
+  every later main or coherent execution block.
+- Use only the existing local Codex usage telemetry documented in
+  `docs/DEV_ENVIRONMENT.md`; do not infer quota from chat banners, browser UI,
+  or remembered values.
+- Refresh and validate the telemetry with the canonical commands documented in
+  `docs/DEV_ENVIRONMENT.md`; do not reinterpret the raw JSON ad hoc.
+- Missing, partial, failed, or stale telemetry forbids starting another major
+  block. Finish the current atomic block safely, synchronize Roadmap and Resume
+  Card, and stop at a resumable boundary.
+- Usage gates never interrupt an atomic block already in progress and never
+  weaken product, security, owner, deploy, SQL, device, or external-write
+  gates. The workflow contract owns the continuation decision and thresholds.

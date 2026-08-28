@@ -498,6 +498,7 @@ async function initCorePhase() {
 
   const todayIso = todayStr();
   setInputValue('#date', todayIso);
+  setInputValue('#trainingDate', todayIso);
   AppModules.captureGlobals.setLastKnownToday(todayIso);
   AppModules.captureGlobals.setDateUserSelected(false);
   AppModules.captureGlobals.setBpUserOverride(false);
@@ -1702,12 +1703,24 @@ if (saveLabPanelBtn){
 }
 
 const activityForm = document.getElementById('activityForm');
+const trainingDateInput = document.getElementById('trainingDate');
 const activityNameInput = document.getElementById('activityName');
 const activityDurationInput = document.getElementById('activityDuration');
 const activityNoteInput = document.getElementById('activityNote');
 const activitySaveBtn = document.getElementById('activitySaveBtn');
 const activityCancelBtn = document.getElementById('activityCancelBtn');
 const activityFormStatus = document.getElementById('activityFormStatus');
+let activitySaveInFlight = false;
+
+const getTrainingDayIso = () => {
+  const dayIso = typeof trainingDateInput?.value === 'string'
+    ? trainingDateInput.value.trim()
+    : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayIso)) return null;
+  const parsed = new Date(`${dayIso}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10) === dayIso ? dayIso : null;
+};
 
 const clearActivityForm = () => {
   if (activityNameInput) activityNameInput.value = '';
@@ -1722,11 +1735,17 @@ activityCancelBtn?.addEventListener('click', () => {
 
 activityForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!activityNameInput || !activityDurationInput) return;
+  if (activitySaveInFlight || !activityNameInput || !activityDurationInput) return;
 
+  const trainingDayIso = getTrainingDayIso();
   const activityText = activityNameInput.value.trim();
   const durationValue = Number(activityDurationInput.value);
 
+  if (!trainingDayIso) {
+    activityFormStatus.textContent = 'Bitte einen gültigen Trainingstag wählen.';
+    trainingDateInput?.focus();
+    return;
+  }
   if (!activityText) {
     activityFormStatus.textContent = 'Aktivität ist Pflicht.';
     activityNameInput.focus();
@@ -1738,13 +1757,14 @@ activityForm?.addEventListener('submit', async (event) => {
     return;
   }
   const activityPanel = activitySaveBtn?.closest?.('.card, .card-nested');
+  activitySaveInFlight = true;
   saveFeedback?.start({ button: activitySaveBtn, panel: activityPanel });
   activityFormStatus.textContent = '';
   try {
     await window.AppModules?.activity?.addActivity?.({
       activity: activityText,
       duration_min: Math.trunc(durationValue),
-      day: getCaptureDayIso(),
+      day: trainingDayIso,
       note: activityNoteInput?.value || ''
     }, { reason: 'panel:activity' });
     clearActivityForm();
@@ -1756,6 +1776,8 @@ activityForm?.addEventListener('submit', async (event) => {
       message: err?.message || 'Speichern fehlgeschlagen.'
     });
     uiError?.('Training konnte nicht gespeichert werden.');
+  } finally {
+    activitySaveInFlight = false;
   }
 });
 

@@ -28,6 +28,36 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 
 ## Testfälle
 
+### HCR-032 - C3 trennt Training und projiziert Protein-Kontext read-only
+
+- Vertrag: archivierte C3-Roadmap sowie Activity-, Capture-, Hub-, Profile-
+  und Protein-Overviews.
+- Ebene: lokale Contract-/Isolation-/Produktsmokes, eine gebündelte
+  Browsersession, nativer Full Contract/Security/Scope Review und externer
+  CodeRabbit-Review.
+- Wirkung: lokales Web-/PWA-UI-Delta; kein SQL, Remote-Write, Deploy,
+  Workflow-, Device- oder Activity-V2-Capture-Lauf.
+- Voraussetzung: R13 ist `DONE`; Activity V1 ist alleiniger produktiver Writer
+  und Activity V2 Sessions/Items/Sets stehen auf 0/0/0.
+- Ausführung: C3-Contract, R13-Isolation, Doctor-, Activity-V2-Isolation- und
+  Product-Smokes ausführen. Danach Desktop, 390x844 und 320x800 in einer
+  Browsersession auf Navigation, Panelrouting, Datumstrennung, Protein-
+  Dialogzustände, Fokus, Touchziele, Overflow und Cache v13 prüfen.
+- Erwartung: Training folgt unmittelbar auf Vitals, besitzt ein eigenes Datum
+  und schreibt ausschließlich Activity V1; Vitals enthält BP/Body/Lab. Profile
+  verwendet `Personal_data_v3.png`, Activity die bytegleiche Kopie des
+  früheren Profilmotivs. Der Protein-Dialog liest gespeicherte Werte, berechnet
+  nichts neu, schreibt nichts und hält den Fokus modal gebunden.
+- Abschlussnachweis 2026-08-28: `PASS`. C3 Contract `PASS`, R13-Isolation
+  `cache_version=13`, Doctor `4/4`, Activity-V2-Isolation `5/5`, Product-Smoke
+  `5/5`; Browsermatrix Desktop/390/320 grün. Der manuelle CodeRabbit-Fund zur
+  Fokus-Rückholung wurde berechtigt korrigiert und gezielt browsergeprüft. Der
+  Gewicht-Cache-Fund wurde als nicht berechtigt verworfen, weil beide Caller
+  Body-Save und Remote-Sync vor dem Protein-Recompute erfolgreich abschließen.
+- Invalidiert durch: Hub-/Training-/Vitals-/Protein-Dialogcode, relevante
+  Assets oder Cacheversion, Activity-V1-Persistenz, Activity-V2-Productload
+  oder Writer-Cutover.
+
 ### HCR-031 - R13 Read-Consumer-Aktivierung hält V1-Parität und R14-Grenze
 
 - Vertrag: archivierte R13-Roadmap und Evidence sowie Activity-, Doctor-,
@@ -264,7 +294,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 ### HCR-017 - Activity V2 Semantikvertrag bleibt deterministisch
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>)
-  und [R1 Catalog Baseline](<../MIDAS Activity V2 R1 Catalog Baseline Contract.md>)
+  und [R1 Catalog Baseline](<../archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: read-only
@@ -338,7 +368,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 ### HCR-021 - Activity V2 C2 Katalog v2 und Studio-Suche bleiben vertragsgleich
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
-  [C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+  [C2 Catalog Contract](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>)
   und [C2 Roadmap](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
 - Ebene: local-runtime + static
 - Ausführung: automated

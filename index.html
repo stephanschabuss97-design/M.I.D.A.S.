@@ -322,6 +322,21 @@
               <button
                 type="button"
                 class="hub-icon"
+                data-hub-module="training"
+                data-carousel-id="training"
+                aria-pressed="false"
+              >
+              <img
+                class="hub-icon-img"
+                src="assets/img/Activity_v2.png"
+                alt=""
+                aria-hidden="true"
+              >
+              <span class="sr-only">Training</span>
+            </button>
+              <button
+                type="button"
+                class="hub-icon"
                 data-hub-module="appointments"
                 data-carousel-id="appointments"
                 aria-pressed="false"
@@ -389,7 +404,7 @@
               >
               <img
                 class="hub-icon-img"
-                src="assets/img/Personal_data_v2.png"
+                src="assets/img/Personal_data_v3.png"
                 alt=""
                 aria-hidden="true"
               >
@@ -420,6 +435,13 @@
               data-hub-module="vitals"
             >
               &#x1F493; Vitals
+            </button>
+            <button
+              type="button"
+              class="hub-quickbar-btn"
+              data-hub-module="training"
+            >
+              &#x1F3CB; Training
             </button>
             <button
               type="button"
@@ -534,10 +556,18 @@
               </div>
             </div>
             <div class="hub-dashboard-grid">
-              <div class="assistant-context-item" data-extra="protein-target">
+              <button
+                type="button"
+                class="assistant-context-item hub-protein-target-button"
+                id="hubProteinTargetButton"
+                data-extra="protein-target"
+                aria-haspopup="dialog"
+                aria-controls="hubProteinContextDialog"
+                title="Berechnungskontext anzeigen"
+              >
                 <span class="label">Protein-Ziel</span>
                 <span class="value" data-extra-value>-- g</span>
-              </div>
+              </button>
               <div class="assistant-context-item" data-extra="ckd-stage">
                 <span class="label">CKD</span>
                 <span class="value" data-extra-value>--</span>
@@ -551,6 +581,52 @@
               <div class="assistant-context-item" data-expandable="remaining">
                 <span class="label">Restbudget</span>
                 <span class="value" data-expandable-value>--</span>
+              </div>
+            </div>
+            <div
+              class="hub-protein-context-dialog"
+              id="hubProteinContextDialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="hubProteinContextTitle"
+              aria-describedby="hubProteinContextStatus"
+              aria-hidden="true"
+              data-state="loading"
+              inert
+              hidden
+            >
+              <div class="hub-protein-context-card">
+                <header class="hub-protein-context-header">
+                  <div>
+                    <p class="muted small">Gespeicherter Berechnungskontext</p>
+                    <h3 id="hubProteinContextTitle">Protein-Ziel</h3>
+                  </div>
+                  <button
+                    type="button"
+                    class="hub-dashboard-close"
+                    id="hubProteinContextClose"
+                    aria-label="Protein-Kontext schliessen"
+                  >
+                    &times;
+                  </button>
+                </header>
+                <p class="muted" id="hubProteinContextStatus" role="status">Wird geladen …</p>
+                <dl class="hub-protein-context-list" id="hubProteinContextList" hidden>
+                  <div><dt>Zielbereich</dt><dd data-protein-context-value="target-range">Nicht verfügbar</dd></div>
+                  <div><dt>Letztes gespeichertes Gewicht</dt><dd data-protein-context-value="latest-weight">Nicht verfügbar</dd></div>
+                  <div><dt>Altersbasis</dt><dd data-protein-context-value="age-base">Nicht verfügbar</dd></div>
+                  <div><dt>Aktivitätsfenster</dt><dd data-protein-context-value="activity-window">Nicht verfügbar</dd></div>
+                  <div><dt>Aktivitätsstufe</dt><dd data-protein-context-value="activity-level">Nicht verfügbar</dd></div>
+                  <div><dt>Aktive Tage</dt><dd data-protein-context-value="active-days">Nicht verfügbar</dd></div>
+                  <div><dt>Faktor vor CKD</dt><dd data-protein-context-value="factor-pre-ckd">Nicht verfügbar</dd></div>
+                  <div><dt>CKD-Stufe</dt><dd data-protein-context-value="ckd-stage">Nicht verfügbar</dd></div>
+                  <div><dt>CKD-Faktor</dt><dd data-protein-context-value="ckd-factor">Nicht verfügbar</dd></div>
+                  <div><dt>Aktueller Faktor</dt><dd data-protein-context-value="factor-current">Nicht verfügbar</dd></div>
+                  <div><dt>Berechnet am</dt><dd data-protein-context-value="calculated-at">Nicht verfügbar</dd></div>
+                  <div><dt>Doctor-Lock</dt><dd data-protein-context-value="doctor-lock">Nicht verfügbar</dd></div>
+                  <div><dt>Arztvorgabe</dt><dd data-protein-context-value="doctor-target">Nicht verfügbar</dd></div>
+                  <div><dt>Berechnungsstand</dt><dd data-protein-context-value="calc-version">Nicht verfügbar</dd></div>
+                </dl>
               </div>
             </div>
           </div>
@@ -1412,7 +1488,6 @@
                 <button class="btn ghost is-active" type="button" data-vitals-tab="bp" aria-selected="true">BP</button>
                 <button class="btn ghost" type="button" data-vitals-tab="body" aria-selected="false">Body</button>
                 <button class="btn ghost" type="button" data-vitals-tab="lab" aria-selected="false">Lab</button>
-                <button class="btn ghost" type="button" data-vitals-tab="activity" aria-selected="false">Training</button>
               </div>
               <div class="hub-vitals-panel is-active" data-vitals-panel="bp">
                 <div class="hub-vitals-bp">
@@ -1699,75 +1774,77 @@
               </div>
             </div>
           </div>
-              <div class="hub-vitals-panel" data-vitals-panel="activity" aria-hidden="true" hidden>
-            <div class="hub-vitals-activity card">
-              <form id="activityForm" class="activity-form" autocomplete="off">
-                <div class="activity-form-grid form-grid">
-                  <label class="field-group" for="activityName">
-                    <span class="label">Aktivität</span>
-                    <input
-                      type="text"
-                      id="activityName"
-                      placeholder="z. B. Gym"
-                      required
-                    >
-                  </label>
-                  <label class="field-group" for="activityDuration">
-                    <span class="label">Dauer (Minuten)</span>
-                    <input
-                      type="number"
-                      id="activityDuration"
-                      min="1"
-                      inputmode="numeric"
-                      placeholder="z. B. 45"
-                      required
-                    >
-                  </label>
-                </div>
-                <label class="field-group" for="activityNote">
-                  <span class="label">Notiz (optional)</span>
-                  <textarea
-                    id="activityNote"
-                    rows="2"
-                    placeholder="Kurznotiz"
-                  ></textarea>
-                </label>
-                <div class="activity-form-actions form-actions">
-                  <button class="btn primary" id="activitySaveBtn" type="submit">Speichern</button>
-                  <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
-                  <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
-                </div>
-                <div class="activity-metrics" aria-label="Protein-Berechnung">
-                  <div class="activity-metric">
-                    <span class="label">Alter-Basis</span>
-                    <span class="value" data-protein-value="age-base">--</span>
-                  </div>
-                  <div class="activity-metric">
-                    <span class="label">Aktivität (28d)</span>
-                    <span class="value" data-protein-value="activity-score">--</span>
-                  </div>
-                  <div class="activity-metric">
-                    <span class="label">CKD-Faktor</span>
-                    <span class="value" data-protein-value="ckd-factor">--</span>
-                  </div>
-                  <div class="activity-metric">
-                    <span class="label">Faktor</span>
-                    <span class="value" data-protein-value="factor-current">--</span>
-                  </div>
-                  <div class="activity-metric">
-                    <span class="label">Gewicht</span>
-                    <span class="value" data-protein-value="weight-latest">--</span>
-                  </div>
-                  <div class="activity-metric">
-                    <span class="label">Protein-Ziel</span>
-                    <span class="value" data-protein-value="target-range">--</span>
-                  </div>
-                </div>
-              </form>
-            </div>
+        </div>
+      </div>
           </div>
         </div>
       </div>
+    </section>
+    <!-- HUB-PANEL: Training -->
+    <section
+      class="hub-panel"
+      id="hubTrainingPanel"
+      data-hub-panel="training"
+      role="region"
+      aria-labelledby="hubTrainingTitle"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="hub-panel-scroll">
+        <header class="hub-panel-header">
+          <h2 id="hubTrainingTitle">Training</h2>
+          <button
+            type="button"
+            class="hub-panel-close"
+            data-panel-close
+            aria-label="Fenster schliessen"
+          >
+            &times;
+          </button>
+        </header>
+        <div class="hub-panel-body">
+          <div class="hub-training card">
+            <form id="activityForm" class="activity-form" autocomplete="off">
+              <div class="activity-form-grid form-grid">
+                <label class="field-group" for="trainingDate">
+                  <span class="label">Trainingstag</span>
+                  <input type="date" id="trainingDate" required>
+                </label>
+                <label class="field-group" for="activityName">
+                  <span class="label">Aktivität</span>
+                  <input
+                    type="text"
+                    id="activityName"
+                    placeholder="z. B. Gym"
+                    required
+                  >
+                </label>
+                <label class="field-group" for="activityDuration">
+                  <span class="label">Dauer (Minuten)</span>
+                  <input
+                    type="number"
+                    id="activityDuration"
+                    min="1"
+                    inputmode="numeric"
+                    placeholder="z. B. 45"
+                    required
+                  >
+                </label>
+              </div>
+              <label class="field-group" for="activityNote">
+                <span class="label">Notiz (optional)</span>
+                <textarea
+                  id="activityNote"
+                  rows="2"
+                  placeholder="Kurznotiz"
+                ></textarea>
+              </label>
+              <div class="activity-form-actions form-actions">
+                <button class="btn primary" id="activitySaveBtn" type="submit">Speichern</button>
+                <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
+                <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -1837,7 +1914,7 @@
   <script type="module" src="app/modules/assistant-stack/assistant/day-plan.js"></script>
   <script type="module" src="app/modules/assistant-stack/assistant/index.js"></script>
   <script type="module" src="app/modules/assistant-stack/intent/index.js"></script>
-  <script src="app/modules/hub/index.js"></script>
+  <script src="app/modules/hub/index.js?v=13"></script>
   <!-- @refactor: moved to assets/js/ui.js -->
   <script src="assets/js/ui.js"></script>
   <!-- @refactor: moved to assets/js/ui-layout.js -->

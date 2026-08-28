@@ -6,7 +6,7 @@
 @import url("./styles/auth.css");
 @import url("./styles/utilities.css");
 @import url("./styles/ui.css");
-@import url("./styles/hub.css");
+@import url("./styles/hub.css?v=11");
 @import url("./modules/doctor-stack/charts/chart.css");
 
 /* R13 read-only Activity consumer inside the Doctor surface. */

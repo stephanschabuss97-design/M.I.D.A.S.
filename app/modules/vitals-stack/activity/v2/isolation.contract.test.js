@@ -18,7 +18,7 @@ test('R13 final guard reports the exact read-consumer activation boundary', () =
   assert.equal(
     output,
     'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
-      'product_mode=final product_read_loads=6 cache_version=7 ' +
+      'product_mode=final product_read_loads=6 cache_version=13 ' +
       'r14_product_loads=0 secret_material=0 productive_dml=0 ' +
       'sql_union=1 trend_state_acl=select_only v1_capture=1\n'
   );
@@ -84,6 +84,6 @@ test('R13 productive surfaces load only read consumers and keep R14 capture abse
     /activity\/v2\/(?:session-|data-access\.js|semantics(?:-v2)?\.js|test-pwa|activity-coaching-export)|activityv2test|localhost:8765/
   );
   assert.match(productSources, /app\/modules\/vitals-stack\/activity\/index\.js/);
-  assert.match(productSources, /const CACHE_VERSION = 'v7'/);
+  assert.match(productSources, /const CACHE_VERSION = 'v13'/);
   assert.doesNotMatch(read('android/app/src/main/AndroidManifest.xml'), /usesCleartextTraffic/);
 });

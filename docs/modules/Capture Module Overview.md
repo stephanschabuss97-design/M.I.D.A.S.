@@ -1,12 +1,13 @@
 ﻿# Capture Module - Functional Overview
 
 Kurze Einordnung:
-- Zweck: zentrale Eingabeoberflaeche fuer Tagesdaten (Intake, BP, Body, Lab, Training).
-- Rolle innerhalb von MIDAS: Primaries Capture Panel, Quelle fuer Arzt-Ansicht und Reports.
+- Zweck: zentrale Vitals-Eingabeoberflaeche für BP, Body und Lab.
+- Rolle innerhalb von MIDAS: primäres Vitals-Capture-Panel, Quelle für Arzt-Ansicht und Reports; der bestehende Activity-V1-Writer bleibt Teil der Capture-Grenze, wird aber über die eigenständige Training-Produktfläche bedient.
 - Abgrenzung: keine Analyse/Reports, kein Export, keine Charts.
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
+- [Activity Module Overview](Activity Module Overview.md)
 
 ---
 
@@ -28,7 +29,7 @@ Related docs:
 | `app/modules/vitals-stack/vitals/lab.js` | Lab-Panel (eGFR, Kreatinin, HbA1c, LDL, Kalium, CKD, Kommentar) |
 | `app/modules/vitals-stack/vitals/entry.js` | Shared Entry-Helper (Base Entry) |
 | `assets/js/main.js` | UI-Handler, Datum, Panel-Buttons, requestUiRefresh |
-| `index.html` | Hub Vitals-Panel + Tabs (BP/Body/Lab/Training) |
+| `index.html` | getrennte Hub-Panels für Vitals (BP/Body/Lab) und Training |
 | `app/styles/hub.css` | Hub/Capture Layout inkl. BP-Kontext Dropdown |
 | `sql/11_Lab_Event_Extension.sql` | Lab-Event-Validierung + Trigger |
 | `docs/modules/Intake Module Overview.md` | Intake-spezifische Details |
@@ -42,9 +43,10 @@ Related docs:
   - `bp_event` (BP + Kontext)
   - `body_event` (Gewicht, Bauchumfang, Fett/Muskel)
   - `lab_event` (Laborwerte + Kommentar)
-  - `activity_event` (Trainingseintrag)
 - Intake-Daten: siehe Intake-Modul.
 - Zentrale Felder: `user_id`, `day`, `payload`.
+- Activity-V1-Daten und ihr RPC-Vertrag sind im Activity Module Overview
+  dokumentiert; sie sind kein Vitals-Tab mehr.
 
 ---
 
@@ -57,25 +59,31 @@ Related docs:
 
 ### 4.2 User-Trigger
 - Auswahl des Datums im Vitals-Panel.
-- Saves pro Tab (BP/Body/Lab/Training).
+- Saves pro Vitals-Tab (BP/Body/Lab).
 - Reset-Buttons leeren Panels.
+- Training besitzt im eigenen Panel ein unabhaengiges Datum und ruft weiterhin
+  den bestehenden Activity-V1-Writer auf.
 
 ### 4.3 Verarbeitung
-- Validierungen pro Domain (BP Pflichtfelder, Lab Pflichtfelder, Activity Dauer > 0).
+- Validierungen pro Vitals-Domain (BP- und Lab-Pflichtfelder).
 - Kontext-Handling fuer BP (Morgen/Abend).
 - Prefill fuer Body-Letzwerte.
 
 ### 4.4 Persistenz
 - BP/Body/Lab via Supabase API (REST/RPC, je Modul).
-- Training via RPC `activity_add`.
 - Nach Save: Reset, UI-Refresh, Diagnose-Logs.
+- Die eigenständige Training-Produktfläche schreibt in C3 weiterhin über
+  den unveränderten Capture-/Activity-V1-RPC `activity_add`; es gibt kein
+  Dual Write und keinen produktiven Activity-V2-Capture.
 
 ---
 
 ## 5. UI-Integration
 
-- Hub Vitals-Panel mit Tabs: BP, Body, Lab, Training.
-- Datumsfeld oben als Single Source of Truth fuer Tagesdaten.
+- Hub Vitals-Panel mit Tabs: BP, Body, Lab.
+- Das Vitals-Datumsfeld ist die Source of Truth nur für BP, Body und Lab.
+- Das separate Training-Panel folgt direkt nach Vitals und besitzt sein eigenes
+  Datumsfeld; Vitals-Datumswechsel beeinflussen Training nicht.
 - Buttons und Pills im Capture-Panel (inkl. Trendpilot/Statusindikatoren).
 - BP-Bereich enthaelt zusaetzlich einen Breath-Timer-Startpunkt (Vorbereitung vor Messung) mit Fullscreen-Overlay.
 
@@ -100,10 +108,11 @@ Related docs:
 
 - Public API / Entry Points: Hub-Vitals-Panel Buttons, `AppModules.capture` save helpers.
 - Source of Truth: Datum `#date` + `captureGlobals` (dayIso, totals).
-- Side Effects: `requestUiRefresh`, Trendpilot Hook, `activity:changed` Events.
-- Constraints: Pflichtfelder pro Panel (BP/Lab/Activity), Auth-Guard fuer Saves.
+- Side Effects: `requestUiRefresh`, Trendpilot Hook.
+- Constraints: Pflichtfelder pro Vitals-Panel (BP/Lab), Auth-Guard für Saves.
 - `requestUiRefresh` fuer Charts/Doctor/Hub-UI.
-- `activity:changed` fuer Training.
+- Activity-V1-Entry-Points und `activity:changed` gehoeren zum Activity-Modul;
+  Capture behält dort nur seine Writer-Rolle.
 - Trendpilot-Integration aus BP-Save.
 
 ---
@@ -126,25 +135,28 @@ Related docs:
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv (taegliche Erfassung).
-- Dependencies (hard): BP/Body/Lab/Activity Module, `health_events`, Supabase APIs/RPCs, Lab-Validation SQL.
+- Dependencies (hard): BP/Body/Lab Module, `health_events`, Supabase APIs/RPCs, Lab-Validation SQL.
 - Dependencies (soft): Trendpilot, Charts, Reports.
 - Known issues / risks: falsches Datum; Teil-Saves pro Tab; Zeitzonen-Shift moeglich.
-- Backend / SQL / Edge: `health_events`, `sql/11_Lab_Event_Extension.sql`, `sql/13_Activity_Event.sql`.
+- Backend / SQL / Edge: `health_events`, `sql/11_Lab_Event_Extension.sql`.
 
 ---
 
 ## 12. QA-Checkliste
 
 - Datum wechseln -> Panels aktualisieren.
-- BP/Body/Lab/Training speichern -> Daten erscheinen in Arzt-Ansicht.
-- Pflichtfelder greifen (BP/Lab/Activity).
+- BP/Body/Lab speichern -> Daten erscheinen in Arzt-Ansicht.
+- Pflichtfelder greifen (BP/Lab).
 - Reset-Buttons leeren Felder.
+- Vitals enthält keinen Training-Tab; Training-Datum und Vitals-Datum bleiben
+  voneinander unabhaengig.
 
 ---
 
 ## 13. Definition of Done
 
-- Alle Capture-Tabs speichern ohne Errors.
+- Alle Vitals-Capture-Tabs speichern ohne Errors.
 - UI reagiert konsistent auf Datumsaenderung.
+- Die Activity-V1-Persistenz bleibt unverändert und Activity V2 produktiv verborgen.
 - Doku aktuell.
 

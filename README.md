@@ -103,7 +103,7 @@ MIDAS ist heute ein eng geschnittenes persoenliches Gesundheits-Betriebssystem m
 
 - Hub als zentraler Einstieg fuer Navigation, Dashboard, Panels und Voice
 - Hub-Dashboard mit lokaler Hydration-Orientierung (`WASSER-SOLL`) als ruhigem Referenzwert
-- Tageserfassung fuer BP, Body, Lab und Aktivitaet
+- Vitals-Tageserfassung für BP, Body und Lab sowie eine eigenständige Training-Produktfläche
 - Intake fuer Wasser, Salz, Protein und taegliche Medikationsbestaetigung
 - Medication-Verwaltung mit Low-Stock-Hinweisen
 - Assistant in Textform mit lokalem Intent-Fast-Path und LLM-Fallback
@@ -178,6 +178,11 @@ Der Hub ist der zentrale Einstieg in MIDAS. Er orchestriert:
 
 Der Hub ist bewusst keine Fachlogik-Zentrale. Er ist Orchestrator, nicht Source of Truth fuer Gesundheitsdaten.
 
+Im Carousel und in der Quickbar liegt `Training` unmittelbar nach `Vitals`.
+Das obere Dashboard zeigt das gespeicherte Protein-Ziel als ruhige read-only
+Projektion; ein Klick öffnet den Erklärdialog, ohne Formel, Schwellen,
+Modifier oder Persistenz im Client neu zu berechnen.
+
 ### 2. Capture
 
 Capture ist die taegliche Erfassungsflaeche fuer:
@@ -185,9 +190,12 @@ Capture ist die taegliche Erfassungsflaeche fuer:
 - Blutdruck Morgen / Abend
 - Koerperwerte
 - Laborwerte
-- Aktivitaet / Training
 
-Diese Datenbasis speist Doctor View, Reports, Trendpilot und Teile des Assistant-Kontexts.
+Training besitzt eine eigene Produktoberflaeche. In C3 verwendet sie weiterhin
+den bestehenden Activity-V1-Pfad; Capture bleibt damit der einzige Writer,
+während Activity V2 bis R14 als produktiver Capture-Pfad verborgen bleibt.
+Die Datenbasis speist Doctor View, Reports, Trendpilot und Teile des
+Assistant-Kontexts.
 
 ### 3. Intake und Medication
 
@@ -284,7 +292,8 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 | Modul | Zweck | Hauptdatei | Overview |
 |------|------|------|------|
 | Hub | zentraler Einstieg, Navigation, Dashboard, Voice-Gate | `app/modules/hub/index.js` | [`docs/modules/Hub Module Overview.md`](docs/modules/Hub%20Module%20Overview.md) |
-| Capture | Tageserfassung fuer BP, Body, Lab, Aktivitaet | `app/modules/vitals-stack/vitals/index.js` | [`docs/modules/Capture Module Overview.md`](docs/modules/Capture%20Module%20Overview.md) |
+| Capture / Vitals | Tageserfassung für BP, Body und Lab | `app/modules/vitals-stack/vitals/index.js` | [`docs/modules/Capture Module Overview.md`](docs/modules/Capture%20Module%20Overview.md) |
+| Activity / Training | eigenständige Trainingsoberfläche; in C3 weiterhin Activity-V1-Writer | `app/modules/vitals-stack/activity/index.js` | [`docs/modules/Activity Module Overview.md`](docs/modules/Activity%20Module%20Overview.md) |
 | Intake | Wasser, Salz, Protein, Tages-Medikationsflow | `app/modules/intake-stack/intake/index.js` | [`docs/modules/Intake Module Overview.md`](docs/modules/Intake%20Module%20Overview.md) |
 | Medication | Medikamentenverwaltung, Tagesstatus, Low-Stock | `app/modules/intake-stack/medication/index.js` | [`docs/modules/Medication Module Overview.md`](docs/modules/Medication%20Module%20Overview.md) |
 | Assistant | Text-Assistant, lokale Actions, LLM-Fallback | `app/modules/assistant-stack/assistant/index.js` | [`docs/modules/Assistant Module Overview.md`](docs/modules/Assistant%20Module%20Overview.md) |
@@ -415,7 +424,11 @@ http://127.0.0.1:8765
 
 ### Hub und taeglicher Kernfluss
 
-Der taegliche Einstieg laeuft ueber den Hub. Von dort aus werden Panels fuer Capture, Intake, Doctor View, Profile und weitere Bereiche geoeffnet. Das obere Dashboard und der Voice-Slot machen den Hub nicht nur zu einer Navigation, sondern zur eigentlichen Betriebsoberflaeche.
+Der tägliche Einstieg läuft über den Hub. Von dort aus werden eigenständige
+Panels für Vitals, Training, Intake, Doctor View, Profile und weitere Bereiche
+geöffnet. Das obere Dashboard zeigt neben den Tageswerten das gespeicherte
+Protein-Ziel mit read-only Erklaerdialog; zusammen mit dem Voice-Slot macht es
+den Hub zur eigentlichen Betriebsoberflaeche.
 
 ### Intake als realer Hebel
 

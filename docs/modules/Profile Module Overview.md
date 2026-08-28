@@ -9,6 +9,7 @@ Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Touchlog Module Overview](Touchlog Module Overview.md)
 - [Push Module Overview](Push Module Overview.md)
+- [Protein Module Overview](Protein Module Overview.md)
 
 ---
 
@@ -27,6 +28,7 @@ Related docs:
 | `app/modules/profile/index.js` | UI-Bindung, Supabase Sync/Upsert, `profile:changed` Event |
 | `app/modules/push/index.js` | eigenstaendiger Push-Service fuer Subscription, Routing-Health und Touchlog-Push-Wartung |
 | `app/modules/hub/index.js` | oeffnet Panel via Orbit, konsumiert Snapshot im Assistant |
+| `assets/img/Personal_data_v3.png` | dediziertes Profile-Bitmap im Hub; C3-ausdrücklich unverändertes, ownerfreigegebenes Asset |
 | `app/modules/intake-stack/medication/index.js` | liefert Tagesliste (`loadMedicationForDay`) fuer den Medication-Snapshot |
 | `app/styles/hub.css` | Formular- und Card-Styling |
 | `sql/10_User_Profile_Ext.sql` | Tabelle plus aktive Profilfelder inklusive Hausarztfelder; provisioniert keine Legacy-Medikation mehr |
@@ -86,6 +88,10 @@ Related docs:
 ## 5. UI-Integration
 
 - Panel `#hubProfilePanel` im Hub.
+- Der Profile-Einstieg verwendet ausschließlich das dedizierte
+  `assets/img/Personal_data_v3.png`. Das fruehere Profilmotiv wurde bytegleich
+  als eigenes Activity-Asset kopiert und wird nicht mehr als Profile-Identitaet
+  verwendet.
 - Formularfelder:
   - `profileFullName`, `profileBirthDate`, `profileHeight`
   - `profileCkdBadge` (read-only aus Lab-Snapshot)
@@ -163,6 +169,9 @@ Related docs:
   Medication-Snapshot, ungueltige Mail blockt Save. Die physische Legacy-
   Spalte bleibt bis zu einem separaten Client-Rollout-/Drop-Gate bestehen.
 - Push-Health-Risiken sind im Push Module Overview dokumentiert.
+- Asset-Risiko: Profile- und Activity-Identitaet duerfen nicht erneut auf
+  dieselbe Datei zusammengeführt werden; `Personal_data_v3.png` bleibt
+  gestalterisch und bytegleich unverändert.
 - Backend / SQL / Edge: `sql/10_User_Profile_Ext.sql`.
 
 ---
@@ -178,6 +187,8 @@ Related docs:
   unterscheidbar; Save schreibt keine Legacy-Medikation.
 - Profil zeigt keine sichtbare Push-Section, keine Push-Buttons und keinen Push-Kurzstatus.
 - Keine Profile-Push-API fuer Opt-in, Opt-out, Routing-Health oder lokale Suppression.
+- Profile zeigt das dedizierte `Personal_data_v3.png`; Activity verwendet die
+  bytegleiche Kopie des frueheren Profilmotivs als separates Asset.
 
 ---
 
@@ -186,4 +197,5 @@ Related docs:
 - Profilpanel laedt ohne Fehler; Inputs lesen und schreiben Supabase-Daten.
 - Keine offenen `diag`-Errors nach Save oder Refresh.
 - Hausarztkontakt erscheint im Low-Stock-Modul.
+- Profile besitzt eine von Activity getrennte, dedizierte Assetidentitaet.
 - Dokumentation, SQL und QA sind aktuell.

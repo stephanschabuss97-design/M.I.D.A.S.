@@ -97,7 +97,7 @@ test('T-ACT-R13-03 320 handles empty, error, and all-or-error V3', async ({ page
   expect(errors.pageErrors).toEqual([]);
 });
 
-test('T-ACT-R13-03 fresh install activates the complete v7 product shell', async ({ page }) => {
+test('T-ACT-R13-03 fresh install activates the complete v13 product shell', async ({ page }) => {
   const errors = await openHarness(page, 'ready', { width: 1280, height: 900 });
   const cacheState = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.register('/service-worker.js');
@@ -106,28 +106,28 @@ test('T-ACT-R13-03 fresh install activates the complete v7 product shell', async
     await new Promise((resolve) => setTimeout(resolve, 250));
     return await caches.keys();
   });
-  expect(cacheState).toContain('midas-shell-v7');
-  expect(cacheState.filter((key) => key.startsWith('midas-shell-'))).toEqual(['midas-shell-v7']);
+  expect(cacheState).toContain('midas-shell-v13');
+  expect(cacheState.filter((key) => key.startsWith('midas-shell-'))).toEqual(['midas-shell-v13']);
   expect(errors.consoleErrors).toEqual([]);
   expect(errors.pageErrors).toEqual([]);
 });
 
-test('T-ACT-R13-03 v6 upgrade activates only the v7 shell and caches product readers', async ({ page }) => {
+test('T-ACT-R13-03 v9 upgrade activates only the v13 shell and caches product readers', async ({ page }) => {
   const errors = await openHarness(page, 'ready', { width: 1280, height: 900 });
   const cacheState = await page.evaluate(async () => {
-    const old = await caches.open('midas-shell-v6');
+    const old = await caches.open('midas-shell-v9');
     await old.put('/r13-old-shell', new Response('old'));
     const registration = await navigator.serviceWorker.register('/service-worker.js');
     if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     await navigator.serviceWorker.ready;
     await new Promise((resolve) => setTimeout(resolve, 250));
     const keys = await caches.keys();
-    const shell = await caches.open('midas-shell-v7');
+    const shell = await caches.open('midas-shell-v13');
     const urls = (await shell.keys()).map((request) => new URL(request.url).pathname);
     return { keys, urls };
   });
-  expect(cacheState.keys).toContain('midas-shell-v7');
-  expect(cacheState.keys).not.toContain('midas-shell-v6');
+  expect(cacheState.keys).toContain('midas-shell-v13');
+  expect(cacheState.keys).not.toContain('midas-shell-v9');
   [
     '/app/modules/vitals-stack/activity/v2/activity-consumer.js',
     '/app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js',

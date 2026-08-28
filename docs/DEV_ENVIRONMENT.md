@@ -92,6 +92,95 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
   - Android APK Build/Install, wenn das Geraet betroffen ist
   - Live-Smokes mit Schreibwirkung
 
+## Lokale Codex-Usage-Telemetrie
+
+Diese Telemetrie ist der verbindliche technische Sensor für Usage-aware
+Continuation Gates bei lokaler Roadmap-Ausführung auf Stephans Windows-PC.
+Rainmeter zeigt denselben Zustand nur für Menschen an; die Kachel selbst ist
+keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
+
+- Refresh-Skript:
+  `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\GetCodexUsage.ps1`
+- Kanonische Repo-Kopie:
+  `tools/codex-usage/GetCodexUsage.ps1`.
+- Kanonischer State-Validator:
+  `tools/codex-usage/Test-CodexUsageState.ps1`.
+- Autoritativer State:
+  `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\UsageState.json`
+- Erwartetes Schema: `schemaVersion = 3`.
+- Erwartete Sensorversion: `sensorVersion = 3.1.0`.
+- Pflicht-Buckets: `fiveHour` mit `windowDurationMins = 300` und `weekly` mit
+  `windowDurationMins = 10080`.
+- Entscheidungsrelevante Felder je Bucket: `available`, `remaining`, `used`
+  und `resetAtEpoch`; global außerdem `lastAttemptAt`, `lastSuccessAt` und
+  `status`.
+- Reset-Credits sind optionale Kontextinformation und erhöhen nie rechnerisch
+  das verbleibende 5h- oder Wochenbudget.
+
+Die Repo-Kopie ist die versionierte Source of Truth. Änderungen werden zuerst
+dort vorgenommen und danach in den Rainmeter-Pfad installiert; beide Kopien
+müssen anschließend bytegleich sein.
+
+Unmittelbar vor jedem Usage-Gate wird genau ein Refresh ausgeführt und danach
+der gespeicherte State mit dem kanonischen Validator geprüft:
+
+```powershell
+$codexUsageValidator = 'C:\Users\steph\Projekte\M.I.D.A.S\tools\codex-usage\Test-CodexUsageState.ps1'
+$usageValidation = & 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' `
+  -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+  -File $codexUsageValidator -Refresh
+if ($LASTEXITCODE -ne 0) {
+  throw "Codex usage state validation failed with exit code $LASTEXITCODE."
+}
+$usageState = $usageValidation | ConvertFrom-Json
+```
+
+Ein State ist für eine Continuation-Entscheidung nur frisch und vollständig,
+wenn alle folgenden Bedingungen erfüllt sind:
+
+- Installierte und kanonische Skriptkopie besitzen denselben SHA-256.
+- `schemaVersion` ist exakt `3` und `sensorVersion` exakt `3.1.0`.
+- `status` ist exakt `OK`, `LOW` oder `LIMIT`; `WAIT`, `STALE`, `ERROR`,
+  `PARTIAL` und unbekannte Werte sind ungültig.
+- Beide Buckets sind verfügbar und besitzen exakt die erwartete Fensterdauer.
+- `remaining` und `used` sind je Bucket endliche numerische Werte zwischen
+  `0` und `100`; ihre Summe ist innerhalb einer Toleranz von `0.01` gleich
+  `100`.
+- `resetAtEpoch` ist je Bucket eine positive ganze Zahl.
+- `lastAttemptAt` und `lastSuccessAt` sind parsebare Zeitstempel derselben
+  erfolgreichen Messung; sie sind exakt gleich.
+- `lastSuccessAt` liegt nicht in der Zukunft und ist zum
+  Entscheidungszeitpunkt höchstens zwei Minuten alt.
+
+Das Skript serialisiert Refresh- und Markeraktionen über einen lokalen
+Windows-Mutex und speichert den State per temporärer Datei atomar. Ein
+Prozessfehler oder Lock-Timeout macht die Messung unmittelbar ungültig. Ein
+Exitcode `0` reicht umgekehrt nie als Erfolgsnachweis; entscheidend sind
+Skripthash und die validierten JSON-Felder. `status = OK` belegt nur eine
+technisch erfolgreiche, vollständige Messung und ist nicht gleichbedeutend mit
+der Workflow-Entscheidung `CONTINUE`.
+
+Der Validator gibt nur eine kompakte, bereits geprüfte Entscheidungsansicht
+aus. Sein Exitcode `0` ist der kanonische Nachweis, dass Hash-, Schema-,
+Versions-, Status-, Bucket- und Freshnessvertrag gemeinsam erfüllt sind. Der
+Agent entscheidet auf dieser Ausgabe; das rohe `UsageState.json` wird nicht
+eigenständig neu interpretiert.
+
+Der Sensor liest die Limits aus dem lokal authentifizierten Codex-App-Server.
+Diese lokale Schnittstelle ist eine beobachtete Abhängigkeit und kein von
+MIDAS kontrollierter Vertrag. Ändert sie sich, muss der Sensor fail-closed
+enden; vor einer Anpassung werden Repo-Kopie, Sensorversion und Validator
+gemeinsam aktualisiert. Browseranzeige oder Schätzwerte bleiben auch dann kein
+Fallback.
+
+Der Agent schreibt weder vollständige State-Snapshots noch Zugangsdaten in das
+Repo. Roadmaps halten nur die für den Gate-Entscheid nötigen Prozentwerte,
+Reset-Identitäten, Deltas und Entscheidungen fest. Ist der lokale Sensor nicht
+zugreifbar, wird keine Browser-, Chat-UI- oder Schätzdatenquelle als Ersatz
+verwendet; der Workflow wechselt an der nächsten sicheren Grenze in Safe
+Closure. Schwellen, Delta-Regeln und Stop-Semantik stehen ausschließlich in
+`docs/templates/MIDAS Roadmap Workflow Contract.md`.
+
 ## Agent-Arbeitsregeln
 
 - Standardshell ist PowerShell.
