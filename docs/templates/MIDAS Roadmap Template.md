@@ -172,7 +172,8 @@ neuen Block und folgt der Sonderregel im zentralen Workflow-Vertrag.
 <!-- markdownlint-enable MD013 -->
 
 - Kohärente Blockgrenzen:
-  - `[Discovery-Hauptschritte und in S4R freigegebene S4-/S5-/S6-Blöcke]`
+  - `[Discovery-Hauptschritte und in S4R freigegebene S4-Blöcke; S5 und S6
+    getrennt; gegebenenfalls eigenständige S5-Korrektur-/Retest-Welle]`
 - Vergleichbare Blöcke für empirische Reserve:
   - `[IDs / noch keine; niemals schätzen]`
 - Safe-Closure-Handoff:
@@ -189,6 +190,13 @@ chronologische Arbeitsgeschichte eintragen.
   - `[Pfade oder none]`
 - Gelesene Sources of Truth:
   - `[Pfad: Stand/Fingerprint und betroffener Vertrag]`
+- Validated Context Reuse, nur für große stabile Sources:
+  - `Source: [Pfad]`
+  - `Fingerprint: [exakter Hash/Stand]`
+  - `Validiert durch: [Schritt/Evidence-ID]`
+  - `Wiederverwendbare Aussagen: [nur abgedeckte Verträge]`
+  - `Invalidation Trigger: [Änderung/Finding/Runtime]`
+  - `Original zwingend erforderlich bei: [Exact-Source-Fragen]`
 - Gültige Evidence-/Test-IDs:
   - `[ID: belegte Aussage]`
 - Invalidation-Bedingungen:
@@ -447,7 +455,8 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[welcher Zustand innerhalb des Blocks nicht sicher teilbar ist und welche
     Postcondition eine saubere Resume-Grenze herstellt]`
 - Usage-Gates zwischen Ausführungsblöcken:
-  - `[Ux vor Block A; Ux nach Block A/vor Block B; Ux vor S5-S6]`
+  - `[Ux vor Block A; Ux nach Block A/vor Block B; Ux vor S5; Ux nach S5/vor
+    S6; bei separater S5-Korrektur-/Retest-Welle zusätzlich davor]`
 - Begründung der Zusammenlegung/Trennung:
   - `[gleicher Scope, gleiche Wirkung, kompatible Reviewtiefe, keine Gates dazwischen]`
 - Review je Ausführungsblock:
@@ -461,6 +470,8 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `Runtimeflächen / SQL / Backend: [kurz oder none]`
   - `Browser / Device / produktive Gates: [kurz oder none]`
   - `Teure Testpässe und externes Review: [Anzahl und Position]`
+  - `Context-Rehydration / Toolinteraktionen / Fehlersuche: [kurz]`
+  - `Doku / Evidence / Postconditions: [kurz]`
   - `Empfohlene autonome Wellen samt Reasoning: [Schrittbereich: Stufe]`
   - `Usage-Reserve: [reale vergleichbare Checkpoints × 1,5 / keine Daten;
     statische Schwellen plus Resumierbarkeitsurteil]`
@@ -523,6 +534,12 @@ Exit: Alle In-Scope-Findings sind umgesetzt oder abgegrenzt.
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
+Vor S5 ein frisches Usage-Gate ausführen. Entsteht nach einem vollständig
+abgeschlossenen Prüfblock eine getrennte Korrektur-/Retest-Welle, vor deren
+Beginn erneut messen. Wenige Dateien oder LOC genügen nicht zur Einstufung als
+kurzer Block; Context-, Tool-, Browser-, Review- und Dokumentationsarbeit
+gehören zur realen Blockgröße.
+
 Deterministische Reihenfolge:
 
 1. Vollständige relevante lokale, statische und gegebenenfalls
@@ -584,6 +601,9 @@ Exit: Relevante Checks sind grün oder sichtbar abgegrenzt.
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
+S6 beginnt erst nach vollständig abgeschlossenem S5 und einem frischen
+Usage-Gate. `SAFE_CLOSURE` bewahrt den grünen S5-Stand und verschiebt nur S6.
+
 Deterministisch:
 
 1. Module Overviews synchronisieren.
@@ -599,7 +619,11 @@ Deterministisch:
    begründen; dadurch keinen Release-Cut oder Git-Tag erzeugen.
 7. Resume Card auf Abschluss setzen.
 8. Commit-Empfehlung aus realem Diff ableiten.
-9. Roadmap und Evidence mit `(DONE)` archivieren.
+9. Bei geplanter Folgeroadmap einen kompakten Follow-up Postimage Receipt an
+   genau einem Ort ergänzen: ohne Evidence in der Roadmap, mit Evidence
+   vorzugsweise dort; keine zusätzliche Datei und keine doppelte Pflege
+   erzeugen.
+10. Roadmap und Evidence mit `(DONE)` archivieren.
 
 Ergebnis:
 
@@ -614,6 +638,13 @@ Ergebnis:
 - Owner Recap:
   - `nicht erforderlich`
   - oder maximal 10 bis 15 Punkte zu `Was / Warum / Verhalten / Merksatz`
+- Follow-up Postimage Receipt, falls relevant und nicht in Evidence geführt:
+  - `Finaler Writer: [Vertrag]`
+  - `Aktive Consumer / Runtimepfade: [Verträge]`
+  - `API-/RPC-Grenzen: [Verträge]`
+  - `Source-Fingerprints / Evidence-IDs: [IDs]`
+  - `Invalidation Trigger: [Liste]`
+  - `Original zwingend erforderlich bei: [Exact-Source-Fragen]`
 - Archiv:
   - `[Pfad]`
 - Commit-Empfehlung:

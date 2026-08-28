@@ -26,7 +26,10 @@ Kompatibilitätsindex für ältere Links.
 1. `README.md` und `docs/DEV_ENVIRONMENT.md` lesen.
 2. Dieses Dokument und den Workflow-Vertrag vollständig lesen.
 3. Relevante Module Overviews, den QA-Einstieg und nur die für den Scope
-   zuständigen Suites beziehungsweise Runbooks lesen.
+   zuständigen Suites beziehungsweise Runbooks lesen. Bei großen Quellen
+   zuerst nach relevantem Abschnitt, Symbol, Producer oder Consumer suchen und
+   nur den notwendigen Bereich öffnen; bei Unsicherheit ausreichend breit in
+   der autoritativen Quelle nachlesen.
 4. Den Scope-Freeze für Features, Datenmodell, Lifecycle, Retention und
    Automationen vorbereiten; final bestätigt wird er nach S1-S3 in S4R.
 5. Die Roadmap-Vorlage an Ziel, Risiko, Scope, Gates und Referenzen anpassen.
@@ -127,6 +130,11 @@ bleiben dennoch getrennt nachvollziehbar.
 Kurzform: S4 baut; S5 prüft, bewertet und härtet das vollständige Ergebnis,
 bevor irgendeine produktive Wirkung erlaubt ist.
 
+S5 und S6 sind getrennte kohärente Abschlussblöcke. Nach S5 wird vor S6 ein
+neues Usage-Gate ausgeführt. Eine nach einem abgeschlossenen S5-Prüfblock
+notwendige eigenständige Korrektur-/Retest-Welle erhält ebenfalls ein Gate,
+wenn bereits eine sichere Resume-Grenze vorliegt.
+
 Der Roadmap-Richtwert von ungefähr 80 KB oder 1.200 Zeilen ist kein hartes
 Limit. Überschreitungen sind zulässig, wenn eine sinnvolle Kompaktierung
 Entscheidungen, Gates oder Fresh-Chat-Kontext verlieren würde. Gekürzt wird nur
@@ -183,6 +191,14 @@ Toolzustand geändert haben. Er ist kein zweites Arbeitsprotokoll. Ist seine
 Baseline nicht mehr aktuell oder eine Invalidation-Bedingung eingetreten, wird
 der betroffene Nachweis gezielt erneuert statt der gesamte Projektkontext neu
 eingelesen.
+
+Ein fingerprintgebundener Context-Receipt-Eintrag darf einen wiederholten
+Rohread nur ersetzen, wenn Fingerprint und Source exakt stimmen, die aktuelle
+Frage vollständig von seinen validierten Aussagen abgedeckt ist und weder
+Finding, Invalidation noch Exact-Source-Pflicht vorliegt. Andernfalls wird die
+autoritative Quelle gelesen. `AGENTS.md`, Root-`README.md`, aktive Roadmap,
+Resume Card, Findings, aktueller Diff, Dirty Boundary, geänderte Codeflächen
+und produktive Gates bleiben immer Live-Kontext.
 
 Bereits gültige Entscheidungen und Nachweise werden über ihre IDs referenziert,
 nicht erneut ausformuliert oder ohne Invalidation wiederholt.

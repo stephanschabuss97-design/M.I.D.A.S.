@@ -24,6 +24,13 @@ Read only the references relevant to the current task. Reuse still-valid
 evidence instead of repeatedly reopening unchanged files or rerunning unchanged
 checks.
 
+For large sources, search for the relevant symbol, section, producer, or
+consumer first and then read the smallest range that can answer the current
+contract question. A validated Context Receipt may replace a repeated raw read
+only when its source fingerprint matches exactly, the current question is fully
+covered, and no invalidation or exact-source requirement applies. Otherwise
+read the authoritative source. The receipt is a cache, never a source of truth.
+
 ## Working Rules
 
 - Work with the existing static HTML/CSS/JavaScript and Supabase architecture.
@@ -61,7 +68,10 @@ checks.
   full test and external-review phase. S6 synchronizes documentation and closes
   the roadmap.
 - Before implementation, S4R must forecast scope and recommend safe autonomous
-  execution waves. Large work receives an owner briefing before S4.
+  execution waves. Forecast total execution effort, including context
+  rehydration, tool interactions, browser or device work, review, documentation,
+  troubleshooting, and postconditions; file count or changed lines alone are
+  insufficient. Large work receives an owner briefing before S4.
 - Keep the Resume Card, Context Receipt, and Evidence current enough for a
   fresh chat to continue without reconstructing the whole project history.
 

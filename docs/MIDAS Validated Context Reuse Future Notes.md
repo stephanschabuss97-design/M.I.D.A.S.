@@ -1,8 +1,8 @@
 # MIDAS Validated Context Reuse Future Notes
 
-Stand: 2026-08-27
-Status: `FUTURE_PROCESS_WORK`
-Geplanter Wiedereinstieg: `nach C3 DONE, vor Erstellung von R14`
+Stand: 2026-08-28
+Status: `CORE_PROCESS_CHANGES_APPLIED; P2_MEASUREMENT_OPEN`
+Nächster Review: `nach weiteren gemessenen Roadmaps oder neuem Process Finding`
 
 ## Zweck dieser Datei
 
@@ -13,10 +13,11 @@ Diese Datei bewahrt die Lessons Learned aus:
 - dem anschließenden Process Improvement Pitch mit ChatGPT 5.6 Sol High,
 - dem Architektur- und Contract Review im MIDAS-Denkraum.
 
-Sie ist noch keine Roadmap und kein Implementierungsauftrag. Nach Abschluss von
-C3 wird sie gemeinsam mit dem finalen C3-Postimage erneut geprüft. Erst danach
-werden die tatsächlich gerechtfertigten kleinen Prozessänderungen umgesetzt,
-bevor R14 geschrieben wird.
+Sie ist keine Roadmap und kein Produktimplementierungsauftrag. Nach Abschluss
+von C3 wurde sie am 2026-08-28 gegen das finale C3-Postimage geprüft. Die
+gerechtfertigten kleinen Prozessänderungen wurden in die bestehenden Verträge
+übernommen; vertagte Hypothesen und Messaufträge bleiben hier erhalten. Die
+Planung von R14 ist weiterhin eine eigene Owner-Entscheidung.
 
 Der Chat ist keine Source of Truth. Deshalb stehen die entscheidenden
 Erkenntnisse, Unsicherheiten und geplanten Prüfschritte vollständig in dieser
@@ -40,6 +41,9 @@ Das Ziel lautet:
 Die echten Sources of Truth bleiben immer autoritativ. Wiederverwendeter
 Kontext ist ausschließlich ein fingerprintgebundener Cache bereits geleisteter
 Validierungsarbeit.
+
+Kanonischer C3-Nachweis für die hier übernommenen Messungen und Postconditions:
+`docs/archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md`.
 
 ## Abgrenzung zum Usage Guard
 
@@ -84,9 +88,9 @@ Für U5 nach U6 und U6 nach U7 existiert wegen wechselnder 5h-Resetidentität
 kein vertraglich gültiges 5h-Delta. Der Wochenbucket blieb als unabhängiges
 Pflichtsignal verwertbar.
 
-### Spätere C3-Fortsetzung
+### Spätere C3-Fortsetzung vor S5
 
-Die aktive C3-Roadmap enthält zusätzlich:
+Die archivierte C3-Roadmap enthält zusätzlich:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -108,6 +112,32 @@ Der Messwert beweist nicht, welcher Anteil auf welche Aktivität entfiel. Er
 beweist aber, dass eine rein LOC- oder Dateianzahl-basierte Prognose zu schwach
 ist.
 
+### Finaler S5-/S6-Abschluss
+
+<!-- markdownlint-disable MD013 -->
+
+| Gate | Grenze | 5h-Rest | Wochenrest | Vertragliche Beobachtung |
+| --- | --- | ---: | ---: | --- |
+| UR-S5-02 | unmittelbar vor S5 | 99 % | 100 % | `CONTINUE`; frische Baseline nach Reset |
+| UR-S5-FX-01 | vor Fokuskorrektur | 33 % | 89 % | `CONTINUE_WITH_CAUTION`; genau eine Korrektur-/Retest-Welle |
+| UR2 | nach S5 / vor S6 | 3 % | 85 % | `SAFE_CLOSURE`; S6 nicht beginnen |
+| UR-S6-01 | Resume unmittelbar vor S6 | 99 % | 84 % | `CONTINUE`; 5h-Reset überschritten |
+| U8 | nach S6-Postconditions | 78 % | 81 % | `FINAL_OBSERVATION`; DONE bleibt bewiesen |
+
+<!-- markdownlint-enable MD013 -->
+
+Innerhalb derselben gültigen Resetidentitäten benötigte S5 insgesamt 96
+Prozentpunkte des 5h-Fensters und 15 Wochenpunkte. S6 benötigte 21
+beziehungsweise 3 Punkte. Die Werte sind keine Tokenzahlen, zeigen aber:
+
+- S5 und S6 sind keine natürliche gemeinsame Kosten- oder Resume-Einheit.
+- Eine getrennte S5-Korrektur-/Retest-Welle kann ein eigenes Usage-Gate
+  benötigen.
+- `SAFE_CLOSURE` nach S5 bewahrte dessen grünes Postimage und verhinderte den
+  Start von S6 bei 3 Prozent Rest.
+- `FINAL_OBSERVATION` funktionierte wie vorgesehen und stellte den bereits
+  bewiesenen DONE-Stand nicht infrage.
+
 ## Was C3 bereits bewiesen hat
 
 ### PROVEN
@@ -123,6 +153,9 @@ ist.
   Verbrauch verursachen.
 - Der vorhandene Context Receipt enthält bereits Baselines, Fingerprints,
   Evidence-IDs und Invalidation-Bedingungen.
+- S5 kann mit Browsermatrix, Full Review und externem Finding-Zyklus einen
+  nahezu vollständigen 5h-Bucket benötigen.
+- S5 und S6 benötigen getrennte Usage-Gates und sichere Resume-Grenzen.
 
 ### STRONGLY INDICATED
 
@@ -178,7 +211,7 @@ keine pauschale Erlaubnis, Quellen wegzulassen.
 
 ### P0 - Search-/Read-Disziplin konkretisieren
 
-Entscheidung: `GO_AFTER_C3_REVIEW`
+Entscheidung: `APPLIED_2026-08-28`
 
 Kleinster sinnvoller Schnitt:
 
@@ -202,7 +235,7 @@ gilt bei Unsicherheit weiterhin Original lesen.
 
 ### P1 - Context Receipt um Validated Reuse ergänzen
 
-Entscheidung: `GO_AFTER_C3_REVIEW`
+Entscheidung: `APPLIED_2026-08-28`
 
 Kein neues Context-Pack. Der bestehende Context Receipt könnte pro großer,
 stabiler und tatsächlich wiederverwendeter Source ergänzen:
@@ -234,7 +267,7 @@ Voraussichtlich betroffene Verträge:
 
 ### P1 - Follow-up Postimage Receipt
 
-Entscheidung: `GO_AFTER_C3_REVIEW`
+Entscheidung: `APPLIED_2026-08-28`
 
 Bei einer großen Roadmap mit geplanter Folgeroadmap ergänzt S6 innerhalb der
 bereits vorhandenen Roadmap oder Evidence einen kurzen Abschnitt:
@@ -325,6 +358,7 @@ Fail-closed hat immer Vorrang.
 ### Tier A - Always Live
 
 - `AGENTS.md`
+- Root-`README.md`
 - aktive Roadmap und Startkarte
 - Session Resume Card
 - aktuelle Findings und Decision Logs
@@ -411,32 +445,34 @@ Nicht zulässig:
 - Resetgrenzen überbrücken,
 - Einsparungen behaupten, bevor sie gemessen wurden.
 
-## Geplanter Arbeitsauftrag nach C3
+## Umgesetzter Arbeitsauftrag nach C3
 
-Nach C3 DONE und vor R14:
+Nach C3 DONE wurden vor jeder R14-Planung ausgeführt:
 
-1. Finale C3-Roadmap und alle Usage-Checkpoints einschließlich U8 lesen.
-2. Diese Future Notes gegen das reale C3-Postimage aktualisieren.
-3. Prüfen, welche Findings weiterhin `PROVEN`, `STRONGLY INDICATED` oder nur
-   `HYPOTHESIS` sind.
-4. Kleinsten gezielten Änderungsschnitt für Search-/Read-Disziplin bestimmen.
-5. Context-Receipt-Erweiterung und Follow-up Postimage Receipt gegen bestehende
-   Templates prüfen.
-6. Nur notwendige Prozessdateien gezielt ändern; kein Vollumbau.
-7. Contract Review gegen MIDAS-Produkt-, Fresh-Chat-, Resume-, Evidence- und
-   Usage-Vertrag durchführen.
-8. Findings korrigieren.
-9. Erst danach R14 aus dem finalen C3-Postimage schreiben.
+1. Finale C3-Roadmap und alle Usage-Checkpoints einschließlich U8 gelesen.
+2. Future Notes gegen das reale C3-Postimage aktualisiert.
+3. Findings weiterhin als `PROVEN`, `STRONGLY INDICATED` oder `HYPOTHESIS`
+   getrennt.
+4. Search-/Read-Disziplin gezielt geschärft.
+5. Context Receipt minimal um fingerprintgebundene Validated Reuse ergänzt.
+6. Follow-up Postimage Receipt innerhalb bestehender Roadmap/Evidence
+   etabliert; keine neue Dateiart eingeführt.
+7. S5 und S6 als getrennte kohärente Abschlussblöcke mit eigenem Usage-Gate
+   eingefroren.
+8. S4R-Aufwandsprognose um Context-, Tool-, Review-, Browser-, Doku- und
+   Postcondition-Arbeit ergänzt.
+9. Nur Prozessdateien geändert; Produktcode, Sensor und R14 unangetastet.
 
-Mögliche betroffene Dateien:
+Tatsächlich betroffene Dateien:
 
 - `AGENTS.md`
-- `docs/DEV_ENVIRONMENT.md`, nur wenn Tooling oder technische Bedienung
-  betroffen ist
 - `docs/templates/README.md`
 - `docs/templates/MIDAS Roadmap Workflow Contract.md`
 - `docs/templates/MIDAS Roadmap Template.md`
 - `docs/templates/MIDAS Roadmap Evidence Template.md`
+
+`docs/DEV_ENVIRONMENT.md` blieb unverändert, weil weder Sensor noch Validator
+oder technische Bedienung geändert wurden.
 
 ## Contract-Review-Fragen für den Wiedereinstieg
 
@@ -454,21 +490,15 @@ Mögliche betroffene Dateien:
 
 ## Aktuelle Empfehlung
 
-Bis C3 abgeschlossen ist:
+Der kleinste gerechtfertigte Kern ist umgesetzt. Bis weitere Messdaten oder ein
+neues Process Finding vorliegen:
 
-- nichts implementieren,
-- exakten Usage- und Fingerprintvertrag unverändert lassen,
+- keine zusätzliche Context-Dateiart einführen,
 - keine Resetjitter-Toleranz ergänzen,
-- kein Execution Context Pack erzeugen.
-
-Nach C3:
-
-1. Search-/Read-Disziplin gezielt schärfen.
-2. Bestehenden Context Receipt minimal für Validated Reuse erweitern.
-3. Follow-up Postimage Receipt innerhalb vorhandener Roadmap/Evidence
-   etablieren.
-4. Contract Review durchführen.
-5. R14 erst danach schreiben.
+- keine detaillierte Lesebuchhaltung etablieren,
+- Einsparungen nicht behaupten, sondern in späteren Roadmaps messen,
+- fingerprintgebundene Reuse immer fail-closed behandeln,
+- R14 erst nach eigener fachlicher Besprechung und Roadmap-Erstellung beginnen.
 
 Leitgedanke:
 

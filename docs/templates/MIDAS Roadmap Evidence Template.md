@@ -205,6 +205,14 @@ Geschützte Negativnachweise:
   - `[Initial n; Verifikation n; weitere/Versuche n + Grund]`
 - Roadmap-Verweise:
   - `[S5/S6]`
+- Follow-up Postimage Receipt, nur bei geplanter Folgeroadmap und wenn diese
+  Evidence der einmalige kanonische Ablageort ist:
+  - `Finaler Writer: [Vertrag]`
+  - `Aktive Consumer / produktive Runtimepfade: [Verträge]`
+  - `API-/RPC-Grenzen: [Verträge]`
+  - `Source-Fingerprints / gültige Evidence-IDs: [IDs]`
+  - `Invalidation Trigger: [Liste]`
+  - `Original zwingend erforderlich bei: [Exact-Source-Fragen]`
 
 Abschlussregeln:
 
@@ -212,3 +220,6 @@ Abschlussregeln:
 - Bei Widerspruch gewinnt nicht diese Datei, sondern der erneut geprüfte reale
   Iststand; Roadmap und Evidence werden anschließend gemeinsam korrigiert.
 - Nach Archivierung keine aktive zweite Source of Truth zurücklassen.
+- Der Follow-up Postimage Receipt ist ein fingerprintgebundener Cache für die
+  nächste Rolling Wave und ersetzt weder das reale Postimage noch die
+  autoritativen Sources of Truth.

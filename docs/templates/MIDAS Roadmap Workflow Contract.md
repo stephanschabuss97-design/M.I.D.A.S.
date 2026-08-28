@@ -68,8 +68,11 @@ vorausgesetzt.
 - Produktives SQL, Deploys, Workflow-Runs, Device-Installationen und andere
   irreversible oder extern sichtbare Aktionen bleiben standardmäßig getrennt,
   sofern der Readiness Review keine gleichwertig sichere Begründung liefert.
-- S5 und S6 laufen grundsätzlich als Gesamtblock. Owner-Gates, externe Reviews
-  und manuelle Smokes dürfen kontrollierte Pausen erzwingen.
+- S5 und S6 sind getrennte kohärente Abschlussblöcke. Nach vollständig
+  abgeschlossenem S5 wird vor S6 erneut gemessen; ein grünes Autonomieprofil
+  ersetzt dieses Usage-Gate nicht. Innerhalb von S5 erhält eine eigenständige
+  Korrektur-/Retest-Welle ebenfalls ein Gate, wenn der vorherige Prüfblock
+  bereits eine sichere Resume-Grenze hergestellt hat.
 - Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
 - Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen
   Haupt- oder S4-Ausführungsblock aktualisiert.
@@ -103,8 +106,10 @@ Ein Usage-Gate ist verpflichtend:
 - nach jedem abgeschlossenen Discovery-Hauptschritt vor dem nächsten,
 - nach S4R vor dem ersten S4-Ausführungsblock,
 - nach jedem kohärenten S4-Ausführungsblock vor dem nächsten,
-- vor dem gemeinsamen S5-/S6-Abschlussblock, sofern seit dem letzten Gate
-  gearbeitet oder auf eine Owner-Freigabe gewartet wurde.
+- vor S5,
+- nach vollständig abgeschlossenem S5 vor S6,
+- innerhalb von S5 vor einer getrennten Korrektur-/Retest-Welle, sofern der
+  vorherige Prüfblock bereits abgeschlossen und sicher resumierbar ist.
 
 Vor dem Gate wird der aktuelle Block regulär abgeschlossen: Postconditions und
 invalidierte Checks ausführen, Findings zuordnen sowie Statusmatrix und Resume
@@ -187,8 +192,11 @@ Safe Closure ist kein Rollback und kein Fehlerstatus für bereits korrekt
 abgeschlossene Arbeit. Sie bewahrt den letzten kohärenten lokalen Stand und
 macht die Fortsetzung eindeutig:
 
-1. keinen neuen Haupt- oder S4-Ausführungsblock beginnen,
-2. laufenden atomaren Block samt notwendigen Postconditions sicher beenden,
+1. keinen neuen Haupt- oder Ausführungsblock beginnen,
+2. da reguläre Usage-Gates an sicheren Blockgrenzen liegen, ist der vorherige
+   Block bereits abgeschlossen; ausnahmsweise noch offene notwendige
+   Postconditions eines begonnenen atomaren Blocks werden ausschließlich
+   fertiggestellt,
 3. Statusmatrix, Findings, relevante Checks und geänderte Dateien
    synchronisieren,
 4. Resume Card mit letzter Usage-Entscheidung und genau einem nächsten Gate
@@ -293,6 +301,13 @@ Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
 5. `git status --short` und der relevante Diff.
 6. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
 
+Bei großen Quellen wird zuerst nach dem relevanten Symbol, Abschnitt,
+Producer oder Consumer gesucht und anschließend nur der zur aktuellen
+Vertragsfrage nötige Bereich gelesen. Pauschale Vollreads, wiederholte große
+Suchausgaben und identische Quellenausschnitte ohne Invalidation sind zu
+vermeiden. Bei Unsicherheit, fehlendem Treffer oder einer Exact-Source-Pflicht
+wird die autoritative Quelle ausreichend breit gelesen.
+
 Der Context Receipt wird in S1 angelegt und enthält kompakt:
 
 - Baseline-Commit und relevante Dirty Files,
@@ -300,15 +315,33 @@ Der Context Receipt wird in S1 angelegt und enthält kompakt:
 - gültige Evidence-/Test-IDs und ihre Invalidation-Bedingungen,
 - relevante Tool-, Runtime- und Auth-Verfügbarkeit ohne Secretmaterial.
 
+Für eine große, stabile und tatsächlich wiederverwendete Source darf der
+Context Receipt zusätzlich enthalten:
+
+- Source und exakten Fingerprint,
+- validierenden Schritt beziehungsweise Evidence-ID,
+- wiederverwendbare Aussagen,
+- Invalidation Trigger,
+- Fragen, für die das Original zwingend gelesen werden muss.
+
+Dieser Eintrag ist nur ein abgeleiteter Cache. `REUSE_VALIDATED_CONTEXT` ist
+zulässig, wenn Source und Fingerprint exakt stimmen, die aktuelle Frage
+vollständig abgedeckt ist und weder Finding, Invalidation noch
+Exact-Source-Pflicht vorliegt. In allen anderen Fällen gilt `READ_ORIGINAL`.
+`AGENTS.md`, Root-`README.md`, aktive Roadmap, Resume Card, Findings, aktueller
+Diff, Dirty Boundary, geänderte Codeflächen und produktive Owner-Gates werden
+immer live gelesen.
+
 Nach einem Ausführungsblock wird nur ein tatsächlich geänderter Receipt-Eintrag
 ersetzt. Stimmt die Baseline nicht mehr, wurde eine relevante Datei geändert,
 ist ein Quellen-Fingerprint veraltet oder trat eine Invalidation-Bedingung ein,
 wird der betroffene Kontext gezielt rehydriert. Der Receipt ist weder
 chronologisches Protokoll noch Ersatz für Roadmap, Evidence oder Git.
 
-Ein breiter Re-Read ist nur erforderlich:
+Ein breiter Re-Read der jeweils relevanten Quellen ist nur erforderlich:
 
-- beim initialen S1,
+- beim initialen S1, soweit kein gültiger fingerprintgebundener Receipt die
+  konkrete Frage vollständig abdeckt,
 - im S4 Readiness Review, soweit S1-S3 betroffen sind,
 - bei einem Contract-Finding mit unklarer Herkunft.
 
@@ -383,9 +416,12 @@ S4R erstellt vor jeder Umsetzung eine Aufwandsprognose:
 - betroffene Runtimeflächen sowie SQL-/Backend-/Browser-/Devicewirkung,
 - produktive oder manuelle Owner-Gates,
 - erwartete teure Testpässe und externe Reviewläufe,
+- notwendige Context-Rehydration, Toolinteraktionen, Fehlersuche sowie
+  Dokumentations-, Evidence- und Postcondition-Arbeit,
 - empfohlene autonome Wellen samt Reasoning-Stufe und Stopppunkten.
 
-Die Prognose ist eine Steuerungshilfe, keine Zeilen- oder Dateiquote. Bei
+Die Prognose ist eine Steuerungshilfe, keine Zeilen- oder Dateiquote. Wenige
+Dateien oder geänderte Zeilen beweisen keinen kurzen Block. Bei
 `large` erfolgt vor S4 ein kompaktes Owner-Briefing mit Kohärenzcheck:
 Die Roadmap bleibt zusammen, wenn die Pakete denselben Produktvertrag und
 dieselbe Evidence teilen; sie wird nur geteilt, wenn eigenständige Gates oder
@@ -620,6 +656,12 @@ PASS behauptet.
   nicht bemerkenswerte Änderungen werden kurz begründet.
 - Ein Changelog-Eintrag ist weder ein Release-Cut noch ein Git-Tag.
 - `DONE` erfordert ein erfülltes S6-Exit-Kriterium.
+- Hat eine abgeschlossene Roadmap eine geplante Folgeroadmap, ergänzt S6 in
+  Roadmap oder vorhandener Evidence einen kompakten Follow-up Postimage
+  Receipt: finaler Writer, aktive Consumer, produktive Runtimepfade, relevante
+  API-/RPC-Grenzen, Source-Fingerprints, gültige Evidence-IDs,
+  Invalidation Trigger und Exact-Source-Fragen. Es entsteht keine zusätzliche
+  Datei; das Receipt ersetzt weder das reale Postimage noch Sources of Truth.
 - Roadmap und optionale Evidence werden mit `(DONE)` archiviert.
 - Commit und Push bleiben Owner-Aktionen.
 - Temporäre Arbeitsnotizen bleiben keine zweite Source of Truth.
