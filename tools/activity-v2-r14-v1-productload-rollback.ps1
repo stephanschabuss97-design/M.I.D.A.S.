@@ -40,14 +40,15 @@ if ($LASTEXITCODE -ne 0) {
 $workerPath = Join-Path $repositoryRoot 'service-worker.js'
 $workerSource = [IO.File]::ReadAllText($workerPath)
 $versionNeedle = "const CACHE_VERSION = 'v13';"
-if (($workerSource.Split($versionNeedle).Length - 1) -ne 1) {
+if ([regex]::Matches($workerSource, [regex]::Escape($versionNeedle)).Count -ne 1) {
   throw 'The restored service worker does not contain the exact v13 baseline token.'
 }
 $workerSource = $workerSource.Replace($versionNeedle, "const CACHE_VERSION = 'v15';")
 
 $assetNeedle = "  toUrl('assets/js/ui-tabs.js'),"
 $v1Asset = "  toUrl('app/modules/vitals-stack/activity/index.js'),"
-if (($workerSource.Split($assetNeedle).Length - 1) -ne 1 -or $workerSource.Contains($v1Asset)) {
+if ([regex]::Matches($workerSource, [regex]::Escape($assetNeedle)).Count -ne 1 -or
+    $workerSource.Contains($v1Asset)) {
   throw 'The restored service worker cannot be extended with the exact V1 product asset.'
 }
 $workerSource = $workerSource.Replace($assetNeedle, "$assetNeedle`r`n$v1Asset")
