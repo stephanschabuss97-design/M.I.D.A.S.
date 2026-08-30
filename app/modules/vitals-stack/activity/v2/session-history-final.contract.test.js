@@ -37,13 +37,10 @@ const evidenceSource = read(
   'docs/archive/MIDAS Activity V2 R9 Session History Detail Correction and Deletion Evidence (DONE).md'
 );
 
-test('T-ACT-R9-17 keeps Productload, Activity V1 and R7/R8 state ownership isolated', () => {
-  const productSources = [
-    'index.html',
-    'service-worker.js',
-    'public/manifest.json',
-    'app/modules/vitals-stack/activity/index.js'
-  ].map(read).join('\n');
+test('T-ACT-R14-02 activates R9 history without crossing R7/R8 state ownership', () => {
+  const indexSource = read('index.html');
+  const workerSource = read('service-worker.js');
+  const v1Reserve = read('app/modules/vitals-stack/activity/index.js');
   const r9Runtime = [
     historySource,
     historyShellSource,
@@ -51,10 +48,10 @@ test('T-ACT-R9-17 keeps Productload, Activity V1 and R7/R8 state ownership isola
     canonicalizationSource
   ].join('\n');
 
-  assert.doesNotMatch(
-    productSources,
-    /activity\/v2|session-history|session-correction|session-canonicalization/i
-  );
+  assert.equal((indexSource.match(/src="app\/modules\/vitals-stack\/activity\/v2\/session-history\.js"/g) || []).length, 1);
+  assert.equal((workerSource.match(/toUrl\('app\/modules\/vitals-stack\/activity\/v2\/session-history\.js'\)/g) || []).length, 1);
+  assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
+  assert.match(v1Reserve, /addActivity/);
   assert.doesNotMatch(
     r9Runtime,
     /commitSession|commitIntent|request_id|request_fingerprint|sessionRecovery|indexedDB/

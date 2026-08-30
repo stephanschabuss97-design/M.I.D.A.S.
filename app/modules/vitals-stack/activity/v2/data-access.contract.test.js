@@ -1212,7 +1212,7 @@ test('strict response validation rejects wrong request IDs and item order', asyn
   }
 });
 
-test('missing dependencies fail before transport and product integration remains absent', async () => {
+test('missing dependencies fail before transport and R14 product integration is explicit', async () => {
   const harness = makeHarness();
   harness.context.AppModules.supabase = {};
   const error = await captureError(
@@ -1246,7 +1246,7 @@ test('missing dependencies fail before transport and product integration remains
     path.resolve(__dirname, '../../../../..', 'index.html'),
     'utf8'
   );
-  assert.equal(rootIndex.includes('activity/v2/data-access.js'), false);
+  assert.equal(rootIndex.includes('activity/v2/data-access.js'), true);
   assert.equal(rootIndex.includes('activityV2.dataAccess'), false);
   [
     /\blocalStorage\b/,

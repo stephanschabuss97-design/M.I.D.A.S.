@@ -3446,7 +3446,7 @@ test('CSS and harness encode the responsive isolated full-screen contract', () =
   assert.doesNotMatch(harnessSource, /<script[^>]+index\.js/);
 });
 
-test('runtime and harness have no product, persistence, network or unsafe DOM path', () => {
+test('runtime and harness have no persistence, network or unsafe DOM path', () => {
   const combined = `${shellSource}\n${harnessSource}`;
   const forbidden = [
     /\bfetch\b/,
@@ -3470,6 +3470,11 @@ test('runtime and harness have no product, persistence, network or unsafe DOM pa
   ];
   forbidden.forEach((pattern) => assert.doesNotMatch(combined, pattern));
   const indexSource = fs.readFileSync(indexPath, 'utf8');
-  assert.doesNotMatch(indexSource, /session-shell(?:\.js|\.css)/);
+  assert.match(indexSource, /session-shell\.js/);
+  const appCssSource = fs.readFileSync(
+    path.resolve(__dirname, '../../../../..', 'app/app.css'),
+    'utf8'
+  );
+  assert.match(appCssSource, /session-shell\.css/);
   assert.doesNotThrow(() => new vm.Script(shellSource, { filename: shellPath }));
 });

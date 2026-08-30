@@ -19,8 +19,6 @@ const git = (args) => execFileSync('git', args, {
 }).trim();
 
 const protectedPaths = Object.freeze([
-  'index.html',
-  'service-worker.js',
   'public/manifest.json',
   'app/modules/vitals-stack/activity/index.js',
   'app/modules/vitals-stack/activity/v2/session-draft.js',
@@ -31,7 +29,7 @@ const protectedPaths = Object.freeze([
 ]);
 const explicitGrantsPath = 'sql/16_Explicit_Grants.sql';
 const r11ExplicitGrantsSha256 =
-  '10a607eebf453f928e48f0b91c46f64a038d23b6f2b1f1c35e7e66745dd46341';
+  'fd173a3b2437f5899398630c9b7663ab05c558413a07f111ac656496e7a88538';
 const protectedTargetCount = protectedPaths.length + 1;
 const r10NegativeOraclePaths = Object.freeze([
   'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
@@ -41,7 +39,6 @@ const r10NegativeOraclePaths = Object.freeze([
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.contract.test.js',
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-data-access.contract.test.js',
-  'app/modules/vitals-stack/activity/v2/activity-coaching-export-final.contract.test.js',
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-harness.html',
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-harness.js',
   'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.css',
@@ -55,6 +52,15 @@ const r10NegativeOraclePaths = Object.freeze([
   'sql/24_Activity_V2_Coaching_Export_Rollback.sql',
   'sql/tests/24_Activity_V2_Coaching_Export_fixture.sql'
 ]);
+const r10R14ProductloadContractPath =
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.contract.test.js';
+const r10R14ProductloadContractSha256 =
+  'e6d62f15d7e1b783214246761d6448c3f2b1deb0e6dadf8d39fe1f6ebed44f2a';
+const r10NegativeOracleProtectedPaths = Object.freeze(
+  r10NegativeOraclePaths.filter(
+    (relativePath) => relativePath !== r10R14ProductloadContractPath
+  )
+);
 const r11IsolatedPaths = Object.freeze([
   'app/modules/vitals-stack/activity/v2/activity-consumer.js',
   'app/modules/vitals-stack/activity/v2/activity-consumer.contract.test.js',
@@ -106,6 +112,29 @@ const coreRuntimePaths = Object.freeze([
   'app/modules/vitals-stack/activity/v2/session-commit-harness-adapter.js',
   'app/modules/vitals-stack/activity/v2/session-commit-harness.js'
 ]);
+const r14CapturePaths = Object.freeze([
+  'app/modules/vitals-stack/activity/v2/semantics.js',
+  'app/modules/vitals-stack/activity/v2/semantics-v2.js',
+  'app/modules/vitals-stack/activity/v2/session-draft.js',
+  'app/modules/vitals-stack/activity/v2/session-recovery.js',
+  'app/modules/vitals-stack/activity/v2/session-commit.js',
+  'app/modules/vitals-stack/activity/v2/session-canonicalization.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
+  'app/modules/vitals-stack/activity/v2/data-access.js',
+  'app/modules/vitals-stack/activity/v2/session-shell.js',
+  'app/modules/vitals-stack/activity/v2/session-correction.js',
+  'app/modules/vitals-stack/activity/v2/session-history.js',
+  'app/modules/vitals-stack/activity/v2/session-history-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-product-controller.js'
+]);
+const r13ProductReaderPaths = Object.freeze([
+  'app/modules/vitals-stack/activity/v2/activity-consumer.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js',
+  'app/modules/doctor-stack/doctor/activity-consumer-view.js',
+  'app/modules/doctor-stack/doctor/health-export-v3.js'
+]);
 
 requireCondition(
   git(['diff', '--name-only', 'HEAD', '--', ...protectedPaths]) === '',
@@ -123,15 +152,20 @@ requireCondition(
   'EXPLICIT_GRANTS_SOURCE'
 );
 requireCondition(
-  git(['diff', '--name-only', 'HEAD', '--', ...r10NegativeOraclePaths]) === '',
+  git(['diff', '--name-only', 'HEAD', '--', ...r10NegativeOracleProtectedPaths]) === '',
   'R10_NEGATIVE_ORACLE_DIFF'
 );
 requireCondition(
   git([
     'status', '--porcelain=v1', '--untracked-files=all', '--',
-    ...r10NegativeOraclePaths
+    ...r10NegativeOracleProtectedPaths
   ]) === '',
   'R10_NEGATIVE_ORACLE_STATUS'
+);
+requireCondition(
+  createHash('sha256').update(read(r10R14ProductloadContractPath)).digest('hex') ===
+    r10R14ProductloadContractSha256,
+  'R10_R14_PRODUCTLOAD_CONTRACT'
 );
 git(['diff', '--check']);
 
@@ -149,18 +183,33 @@ const productSources = [
   read('app/modules/doctor-stack/reports/index.js'),
   read('backend/supabase/functions/midas-monthly-report/index.ts')
 ].join('\n');
-const productV2Loads = (productSources.match(/activity\/v2|session-commit|test-pwa/gi) || []).length;
-requireCondition(productV2Loads === 0, 'PRODUCT_V2_LOAD');
+const productIndex = read('index.html');
+const productWorker = read('service-worker.js');
+for (const relativePath of r14CapturePaths) {
+  requireCondition(
+    productIndex.split(`src="${relativePath}"`).length - 1 === 1 &&
+      productWorker.split(`toUrl('${relativePath}')`).length - 1 === 1,
+    'PRODUCT_V2_LOAD'
+  );
+}
+const productV2Loads = r14CapturePaths.length;
 requireCondition(
-  !/activity-coaching-export|coachingExport|loadCoachingExport/.test(productSources),
+  !/activity-coaching-export|coachingExport|loadCoachingExport/.test([
+    read('app/modules/vitals-stack/activity/index.js'),
+    read('app/modules/doctor-stack/doctor/index.js'),
+    read('app/modules/doctor-stack/reports/index.js'),
+    read('backend/supabase/functions/midas-monthly-report/index.ts')
+  ].join('\n')),
   'PRODUCT_R10_LOAD'
 );
-const r11ProductLoads = (
-  productSources.match(
-    /activity-consumer(?:-data-access|-view)?\.(?:js|ts)|activity-report\.(?:js|ts)|health-export-v3\.js|activity_consumer_snapshot|midas\.activity-consumer\.v1|midas\.health-export\.v3/gi
-  ) || []
-).length;
-requireCondition(r11ProductLoads === 0, 'PRODUCT_R11_LOAD');
+for (const relativePath of r13ProductReaderPaths) {
+  requireCondition(
+    productIndex.split(`src="${relativePath}"`).length - 1 === 1 &&
+      productWorker.split(`toUrl('${relativePath}')`).length - 1 === 1,
+    'PRODUCT_R11_LOAD'
+  );
+}
+const r11ProductLoads = r13ProductReaderPaths.length;
 
 const coreRuntime = coreRuntimePaths.map(read).join('\n');
 const coreNetworkEdges = (
@@ -219,11 +268,11 @@ const scopeSource = [
   read('docs/modules/Activity Module Overview.md')
 ].join('\n');
 const r13ReadSeam =
-  /R13 aktiviert (?:die )?read-only Consumer/.test(scopeSource) &&
+  /R13 (?:hat|aktiviert)[^\n]*read-only Consumer/.test(scopeSource) &&
   /R13 aktiviert die bewiesenen read-only Consumer zunächst bei weiterhin\s+produktiver Activity-V1-Erfassung/.test(scopeSource) &&
   /R13 aktiviert ausschließlich read-only Consumer; Activity V1 bleibt dort\s+der einzige produktive Capture-Pfad/.test(scopeSource);
 const r14CaptureSeam =
-  /R14 ist der einzige produktive Writer-Cutover/.test(scopeSource) &&
+  /R14 (?:ist|bleibt)[^\n]*einzige[^\n]*(?:Writer-Cutover|Activity-V2-Writer-Cutover)/.test(scopeSource) &&
   /R14[^\n]*Activity-V2-Capture/.test(scopeSource);
 requireCondition(r13ReadSeam, 'R13_READ_SEAM');
 requireCondition(r14CaptureSeam, 'R14_CAPTURE_SEAM');
@@ -251,8 +300,8 @@ requireCondition(/midas-activity-v2-r8-local-test-/.test(localWorker), 'LOCAL_WO
 requireCondition(!/public\/manifest\.json|midas-shell-|\/M\.I\.D\.A\.S\.\//.test(localWorker), 'LOCAL_WORKER_PRODUCT_EDGE');
 
 process.stdout.write(
-  `PASS protected=${protectedTargetCount} product_v2_loads=0 core_network_edges=0 ` +
-  'r11_product_loads=0 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
+  `PASS protected=${protectedTargetCount} product_v2_loads=${productV2Loads} core_network_edges=0 ` +
+  `r11_product_loads=${r11ProductLoads} unsafe_diagnostics=0 secret_material=0 test_dml=0 ` +
   'recovery_deletes=0 local_worker_scope=1 ' +
   `r10_negative_oracles=${r10NegativeOraclePaths.length} ` +
   `r11_isolated=${r11IsolatedPaths.length} r13_read_seam=1 r14_capture_seam=1\n`

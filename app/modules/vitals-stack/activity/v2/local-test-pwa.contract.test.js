@@ -79,7 +79,7 @@ test('S5 local PWA cache-busters are identical between HTML requests and worker 
   assert.match(localWorker, /'\.\.\/session-commit-harness\.js\?v=r8-s5-3'/);
 });
 
-test('S4.11 local worker caches only the isolated harness and never owns Recovery storage', () => {
+test('S4.11 local worker stays isolated while R14 product owns the V2 capture cache', () => {
   assert.match(localWorker, /midas-activity-v2-r8-local-test-/);
   assert.match(localWorker, /event\.waitUntil\([\s\S]*?cache\.put\(request, copy\)/);
   assert.match(localWorker, /cached \|\| Response\.error\(\)/);
@@ -89,10 +89,12 @@ test('S4.11 local worker caches only the isolated harness and never owns Recover
   assert.doesNotMatch(localWorker, /public\/manifest\.json|\/M\.I\.D\.A\.S\.\/|midas-shell-|activity\/index\.js/);
   assert.doesNotMatch(localWorker, /indexedDB|deleteDatabase|session_recovery|active_session/);
   assert.doesNotMatch(localIndex, /data-access\.js|app\/modules\/vitals-stack\/activity\/index\.js/);
-  assert.match(productIndex, /app\/modules\/vitals-stack\/activity\/index\.js/);
-  assert.doesNotMatch(productIndex, /activity\/v2\/|test-pwa/);
-  assert.match(productWorker, /const CACHE_VERSION = 'v6'/);
-  assert.doesNotMatch(productWorker, /activity\/v2\/|test-pwa|r8-local-test/);
+  assert.doesNotMatch(productIndex, /app\/modules\/vitals-stack\/activity\/index\.js/);
+  assert.match(productIndex, /activity\/v2\/session-recovery\.js/);
+  assert.doesNotMatch(productIndex, /test-pwa/);
+  assert.match(productWorker, /const CACHE_VERSION = 'v14'/);
+  assert.match(productWorker, /activity\/v2\/session-recovery\.js/);
+  assert.doesNotMatch(productWorker, /test-pwa|r8-local-test/);
 });
 
 test('S4.11 runbook keeps credentials ephemeral and device actions owner-gated', () => {

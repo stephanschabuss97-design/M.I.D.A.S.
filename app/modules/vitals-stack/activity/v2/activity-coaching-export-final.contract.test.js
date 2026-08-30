@@ -176,10 +176,18 @@ test('T-ACT-R10-14 realistic fixture is contract-valid and answers consumer ques
   });
 });
 
-test('T-ACT-R10-14 product, medical and adjacent consumers contain no R10 load edge', () => {
-  const paths = [
-    'index.html',
-    'service-worker.js',
+test('T-ACT-R14-03 activates R10 only through the V2 product composition', () => {
+  const productEntry = read('index.html');
+  const productCache = read('service-worker.js');
+  for (const source of [
+    'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
+    'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
+    'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js'
+  ]) {
+    assert.equal((productEntry.match(new RegExp(`src="${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g')) || []).length, 1);
+    assert.equal((productCache.match(new RegExp(`toUrl\\('${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'\\)`, 'g')) || []).length, 1);
+  }
+  const adjacentPaths = [
     'app/modules/vitals-stack/activity/index.js',
     'app/modules/doctor-stack/doctor/index.js',
     'app/modules/doctor-stack/reports/index.js',
@@ -189,6 +197,6 @@ test('T-ACT-R10-14 product, medical and adjacent consumers contain no R10 load e
     'app/supabase/api/trendpilot.js',
     'app/supabase/api/vitals.js'
   ];
-  const sources = paths.map(read).join('\n');
-  assert.doesNotMatch(sources, /activity-coaching-export|coachingExport|loadCoachingExport/);
+  const adjacentSources = adjacentPaths.map(read).join('\n');
+  assert.doesNotMatch(adjacentSources, /activity-coaching-export|coachingExport|loadCoachingExport/);
 });

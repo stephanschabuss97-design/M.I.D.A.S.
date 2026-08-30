@@ -1239,7 +1239,7 @@ test('discard rejects repeated or failing IDs without partially replacing state'
   assert.equal(failingId.getSnapshot(), before);
 });
 
-test('runtime remains isolated from product, persistence, network and R2 data access', () => {
+test('runtime remains isolated from persistence, network and R2 data access', () => {
   const forbidden = [
     /\bfetch\b/,
     /XMLHttpRequest/,
@@ -1259,6 +1259,6 @@ test('runtime remains isolated from product, persistence, network and R2 data ac
     /\b78\b/
   ];
   forbidden.forEach((pattern) => assert.doesNotMatch(source, pattern));
-  assert.doesNotMatch(fs.readFileSync(indexPath, 'utf8'), /session-draft\.js/);
+  assert.match(fs.readFileSync(indexPath, 'utf8'), /session-draft\.js/);
   assert.doesNotThrow(() => new vm.Script(source, { filename: draftPath }));
 });

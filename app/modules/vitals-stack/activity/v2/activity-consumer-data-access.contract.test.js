@@ -117,12 +117,12 @@ function assertFrozenTree(value, seen = new WeakSet()) {
   Reflect.ownKeys(value).forEach((key) => assertFrozenTree(value[key], seen));
 }
 
-test('T-ACT-R11-05 registers only the frozen, product-unreferenced read API', () => {
+test('T-ACT-R11-05 registers only the frozen R13 product read API', () => {
   const harness = makeHarness();
   assert.deepEqual(Reflect.ownKeys(harness.api), ['loadSnapshot']);
   assertFrozenTree(harness.api);
   assert.equal(harness.context.AppModules.activity.sentinel, true);
-  assert.doesNotMatch(indexSource, /activity-consumer-data-access(?:\.js)?/);
+  assert.match(indexSource, /activity-consumer-data-access\.js/);
   assert.throws(
     () => makeHarness({ context: { AppModules: [] } }),
     /AppModules must be an object/

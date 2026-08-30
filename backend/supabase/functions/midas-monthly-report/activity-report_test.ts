@@ -233,7 +233,7 @@ Deno.test("T-ACT-R11-06 Activity failure occurs before report repository access"
   assertEquals(calls, { find: 0, insert: 0, update: 0 });
 });
 
-Deno.test("T-ACT-R11-06 legacy snapshots and product handler remain untouched", () => {
+Deno.test("T-ACT-R11-06 legacy snapshots remain untouched while R13 activates the reader", () => {
   const legacy = {
     id: "legacy-report",
     payload: {
@@ -244,7 +244,7 @@ Deno.test("T-ACT-R11-06 legacy snapshots and product handler remain untouched", 
   };
   const before = clone(legacy);
   assertEquals(legacy, before);
-  assert(!productIndex.includes('from "./activity-consumer.ts"'));
-  assert(!productIndex.includes('from "./activity-report.ts"'));
-  assert(!productIndex.includes("validateActivitySnapshot"));
+  assert(productIndex.includes('from "./activity-report.ts"'));
+  assert(productIndex.includes('from "../_shared/activity-consumer-runtime.ts"'));
+  assert(productIndex.includes("createActivityConsumerRuntime"));
 });

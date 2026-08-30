@@ -22,8 +22,25 @@ const PRODUCT_ORDER = [
   'app/modules/doctor-stack/reports/index.js',
   'app/modules/doctor-stack/doctor/index.js'
 ];
+const CAPTURE_ORDER = [
+  'app/modules/vitals-stack/activity/v2/semantics.js',
+  'app/modules/vitals-stack/activity/v2/semantics-v2.js',
+  'app/modules/vitals-stack/activity/v2/session-draft.js',
+  'app/modules/vitals-stack/activity/v2/session-recovery.js',
+  'app/modules/vitals-stack/activity/v2/session-commit.js',
+  'app/modules/vitals-stack/activity/v2/session-canonicalization.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
+  'app/modules/vitals-stack/activity/v2/data-access.js',
+  'app/modules/vitals-stack/activity/v2/session-shell.js',
+  'app/modules/vitals-stack/activity/v2/session-correction.js',
+  'app/modules/vitals-stack/activity/v2/session-history.js',
+  'app/modules/vitals-stack/activity/v2/session-history-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-product-controller.js'
+];
 
-test('T-ACT-R13-03 loads only the read consumer in the frozen product order', () => {
+test('T-ACT-R14-01 loads V2 capture before the unchanged reader order', () => {
   let previous = -1;
   PRODUCT_ORDER.forEach((source) => {
     const current = indexSource.indexOf(`src="${source}"`);
@@ -33,9 +50,12 @@ test('T-ACT-R13-03 loads only the read consumer in the frozen product order', ()
   const activityV2Scripts = [...indexSource.matchAll(
     /<script[^>]+src="([^"]*\/activity\/v2\/[^"]+)"[^>]*><\/script>/g
   )].map((match) => match[1]);
-  assert.deepEqual(activityV2Scripts, PRODUCT_ORDER.slice(0, 2));
-  assert.doesNotMatch(indexSource, /session-(?:shell|commit|history|recovery)\.js/);
-  assert.doesNotMatch(indexSource, /activity-coaching-export/);
+  assert.deepEqual(activityV2Scripts, [...CAPTURE_ORDER, ...PRODUCT_ORDER.slice(0, 2)]);
+  assert.ok(
+    indexSource.indexOf(`src="${CAPTURE_ORDER.at(-1)}"`) <
+      indexSource.indexOf('src="app/supabase/index.js"')
+  );
+  assert.doesNotMatch(indexSource, /activity-consumer-harness|test-pwa/);
 });
 
 test('T-ACT-R13-03 wires Doctor details lazily and preserves source-safe delete', () => {
@@ -63,7 +83,7 @@ test('T-ACT-R13-03 makes the visible download strict V3 with one shared snapshot
   assert.match(doctorSource, /buildHealthExportV2/);
 });
 
-test('T-ACT-R13-03 scopes product styles and keeps readers in the current v13 shell', () => {
+test('T-ACT-R14-01 scopes product styles and keeps readers in the v14 shell', () => {
   const selectors = cssSource.split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.includes('.activity-consumer-'));
@@ -72,7 +92,10 @@ test('T-ACT-R13-03 scopes product styles and keeps readers in the current v13 sh
     assert.match(selector, /^#doctor\s/);
   });
   assert.doesNotMatch(indexSource, /activity-consumer-harness\.css/);
-  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v13'/);
+  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v14'/);
+  CAPTURE_ORDER.forEach((source) => {
+    assert.match(serviceWorkerSource, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  });
   PRODUCT_ORDER.forEach((source) => {
     assert.match(serviceWorkerSource, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   });

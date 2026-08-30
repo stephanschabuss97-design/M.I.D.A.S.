@@ -147,7 +147,7 @@ async function assertLoadError(promise, code) {
   });
 }
 
-test('T-ACT-R11-08 registers only the frozen V3 API and remains product-unreferenced', () => {
+test('T-ACT-R11-08 registers only the frozen R13 product V3 API', () => {
   const { api } = loadApi();
   assert.deepEqual(Reflect.ownKeys(api), [
     'schemaVersion', 'validateV2', 'build', 'validateV3', 'createLoader',
@@ -155,9 +155,9 @@ test('T-ACT-R11-08 registers only the frozen V3 API and remains product-unrefere
   ]);
   assert.equal(api.schemaVersion, 'midas.health-export.v3');
   assert.equal(Object.isFrozen(api), true);
-  assert.equal(hash(doctorSource), '11200c055e34ef861b0c1d5507f32122b5d445afd7c0499e32571ffbf4fe7dd4');
-  assert.doesNotMatch(doctorSource, /healthExportV3|health-export-v3/);
-  assert.doesNotMatch(indexSource, /health-export-v3/);
+  assert.equal(hash(doctorSource), '3505237e84f22f24b787c621213dbe7776fa163d069b7c4bc3bd79e01784616e');
+  assert.match(doctorSource, /healthExportV3/);
+  assert.match(indexSource, /health-export-v3/);
 });
 
 test('T-ACT-R11-08 builds exact V1, V2, mixed, same-day and empty V3 payloads', () => {

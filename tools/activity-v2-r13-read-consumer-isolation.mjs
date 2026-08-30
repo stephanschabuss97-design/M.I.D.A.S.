@@ -91,6 +91,23 @@ const productOrder = Object.freeze([
   'app/modules/doctor-stack/reports/index.js',
   'app/modules/doctor-stack/doctor/index.js'
 ]);
+const captureOrder = Object.freeze([
+  'app/modules/vitals-stack/activity/v2/semantics.js',
+  'app/modules/vitals-stack/activity/v2/semantics-v2.js',
+  'app/modules/vitals-stack/activity/v2/session-draft.js',
+  'app/modules/vitals-stack/activity/v2/session-recovery.js',
+  'app/modules/vitals-stack/activity/v2/session-commit.js',
+  'app/modules/vitals-stack/activity/v2/session-canonicalization.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js',
+  'app/modules/vitals-stack/activity/v2/data-access.js',
+  'app/modules/vitals-stack/activity/v2/session-shell.js',
+  'app/modules/vitals-stack/activity/v2/session-correction.js',
+  'app/modules/vitals-stack/activity/v2/session-history.js',
+  'app/modules/vitals-stack/activity/v2/session-history-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js',
+  'app/modules/vitals-stack/activity/v2/activity-product-controller.js'
+]);
 const activatedReadPaths = productOrder.slice(0, 4);
 const index = read('index.html');
 const worker = read('service-worker.js');
@@ -124,15 +141,33 @@ if (productMode === 'final') {
     lastIndexPosition = indexPosition;
     lastWorkerPosition = workerPosition;
   }
-  requireCondition(/const CACHE_VERSION = 'v13'/.test(worker), 'WORKER_VERSION');
+  requireCondition(/const CACHE_VERSION = 'v14'/.test(worker), 'WORKER_VERSION');
   productReadLoads = productOrder.length;
-  cacheVersion = 13;
+  cacheVersion = 14;
 } else {
   requireCondition(/const CACHE_VERSION = 'v6'/.test(worker), 'WORKER_VERSION');
 }
 requireCondition(
-  /app\/modules\/vitals-stack\/activity\/index\.js/.test(index),
-  'V1_CAPTURE_MISSING'
+  !/src="app\/modules\/vitals-stack\/activity\/index\.js"/.test(index) &&
+    !/toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/.test(worker),
+  'V1_CAPTURE_LOAD'
+);
+
+let lastCaptureIndexPosition = -1;
+let lastCaptureWorkerPosition = -1;
+for (const relativePath of captureOrder) {
+  const indexPosition = index.indexOf(`src="${relativePath}"`);
+  const workerPosition = worker.indexOf(`toUrl('${relativePath}')`);
+  requireCondition(indexPosition > lastCaptureIndexPosition, 'R14_CAPTURE_SCRIPT_ORDER');
+  requireCondition(workerPosition > lastCaptureWorkerPosition, 'R14_CAPTURE_CACHE_ORDER');
+  requireCondition(countLiteral(index, `src="${relativePath}"`) === 1, 'R14_CAPTURE_SCRIPT_COUNT');
+  requireCondition(countLiteral(worker, `toUrl('${relativePath}')`) === 1, 'R14_CAPTURE_CACHE_COUNT');
+  lastCaptureIndexPosition = indexPosition;
+  lastCaptureWorkerPosition = workerPosition;
+}
+requireCondition(
+  lastCaptureIndexPosition < index.indexOf('src="app/supabase/index.js"'),
+  'R14_CAPTURE_BEFORE_SUPABASE'
 );
 
 const captureProductSources = [
@@ -142,10 +177,11 @@ const captureProductSources = [
   read('app/modules/vitals-stack/activity/index.js'),
   read('android/app/src/main/AndroidManifest.xml')
 ].join('\n');
-const r14CapturePattern =
-  /activity\/v2\/(?:session-|data-access\.js|semantics(?:-v2)?\.js|test-pwa|activity-coaching-export)|activityv2test|localhost:8765/gi;
-const r14ProductLoads = count(captureProductSources, r14CapturePattern);
-requireCondition(r14ProductLoads === 0, 'R14_PRODUCT_LOAD');
+const forbiddenProductLoads = count(
+  captureProductSources,
+  /activity\/v2\/(?:test-pwa|[^\s"']*harness)|activityv2test|localhost:8765/gi
+);
+requireCondition(forbiddenProductLoads === 0, 'R14_PRODUCT_LOAD');
 requireCondition(
   !/usesCleartextTraffic/.test(read('android/app/src/main/AndroidManifest.xml')),
   'NATIVE_CLEARTEXT'
@@ -224,7 +260,7 @@ requireCondition(secretMaterial === 0, 'SECRET_MATERIAL');
 process.stdout.write(
   'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
   `product_mode=${productMode} product_read_loads=${productReadLoads} ` +
-  `cache_version=${cacheVersion} r14_product_loads=${r14ProductLoads} ` +
+  `cache_version=${cacheVersion} r14_capture_loads=${captureOrder.length} ` +
   'secret_material=0 productive_dml=0 sql_union=1 trend_state_acl=select_only ' +
-  'v1_capture=1\n'
+  'v1_capture=0\n'
 );

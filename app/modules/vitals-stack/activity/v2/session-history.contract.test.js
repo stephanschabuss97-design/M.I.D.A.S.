@@ -265,7 +265,7 @@ async function openReadyDetail(controller, detail) {
   assert.equal(controller.getState().detail.status, 'ready');
 }
 
-test('Block C namespaces and controller surfaces are exact, frozen and product-isolated', () => {
+test('Block C namespaces and controller surfaces are exact, frozen and R14-product-loaded', () => {
   const runtime = makeRuntime();
   const { guard } = makeGuard(runtime);
   const controller = makeController(runtime, makeAdapter(), guard);
@@ -309,7 +309,7 @@ test('Block C namespaces and controller surfaces are exact, frozen and product-i
     path.resolve(__dirname, '../../../../..', 'index.html'),
     'utf8'
   );
-  assert.equal(rootIndex.includes('session-history.js'), false);
+  assert.equal(rootIndex.includes('session-history.js'), true);
   const source = sources.at(-1)[1];
   for (const forbidden of [
     /\bfetch\s*\(/,

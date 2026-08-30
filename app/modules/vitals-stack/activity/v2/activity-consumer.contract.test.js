@@ -78,7 +78,7 @@ function makeV2Unit(index, overrides = {}) {
   };
 }
 
-test('registers only the frozen consumer API and remains product-unreferenced', () => {
+test('registers only the frozen R13 product consumer API', () => {
   const { api, context, globalsBefore } = load();
   assert.deepEqual(Reflect.ownKeys(api), API_KEYS);
   assertFrozenTree(api);
@@ -86,7 +86,7 @@ test('registers only the frozen consumer API and remains product-unreferenced', 
     Reflect.ownKeys(context).filter((key) => key !== 'AppModules').sort(),
     globalsBefore
   );
-  assert.doesNotMatch(indexSource, /activity-consumer(?:\.js)?/);
+  assert.match(indexSource, /activity-consumer\.js/);
 
   assert.throws(
     () => load({ AppModules: [] }),
@@ -341,12 +341,12 @@ test('fails closed without leaking raw proxy or accessor errors', () => {
   });
 });
 
-test('contains no I/O, mutation API or product activation seam', () => {
+test('contains no I/O or mutation API and is activated only by composition', () => {
   assert.doesNotMatch(
     source,
     /\b(?:fetch|XMLHttpRequest|WebSocket|indexedDB|localStorage|sessionStorage)\b/
   );
   assert.doesNotMatch(source, /\.(?:rpc|insert|update|delete|upsert)\s*\(/);
   assert.doesNotMatch(source, /service[_-]?role|Authorization|Bearer/i);
-  assert.doesNotMatch(indexSource, /activity-consumer(?:\.js)?/);
+  assert.match(indexSource, /activity-consumer\.js/);
 });

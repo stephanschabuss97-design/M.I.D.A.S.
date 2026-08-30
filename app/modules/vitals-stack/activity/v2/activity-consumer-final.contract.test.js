@@ -13,16 +13,22 @@ const sha256 = (relativePath) => createHash('sha256')
   .update(fs.readFileSync(path.join(repoRoot, relativePath)))
   .digest('hex');
 
-const productHashes = Object.freeze({
-  'index.html': '6cf9cf4e6e1c4c4e7722c568a590541c529d85e2e7dde483cac83f8a1bc3e30b',
-  'service-worker.js': 'd02d5510a6ceee8140f1925e6c83630af5b75e35e31851dbc2b7f783a0ed0a8b',
+const readerHashes = Object.freeze({
   'public/manifest.json': '57d476c3ba086fb7331a27005ad5a6a73240783e4500eb708235b212aa9ee11f',
   'app/modules/vitals-stack/activity/index.js':
     'f3a4eff3248f2ce3778ec1b99bf902bae58c69892a64864363767d70c944d8d8',
+  'app/modules/vitals-stack/activity/v2/activity-consumer.js':
+    'f30fa02ae6ee10ce0e45df6b19314b8bf669e596599612dffbc326717dae5bc0',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js':
+    '0bacdccb96c8471dfa165ebed306d69cc08608020fdc7335fb2395e310fa5791',
+  'app/modules/doctor-stack/doctor/activity-consumer-view.js':
+    '6a7b9126a52c3958acd703eca2fc6c7a5eb546bd6304abd414235ad22dad020f',
+  'app/modules/doctor-stack/doctor/health-export-v3.js':
+    '538a9db15687e8aff87880631ca6a57865d869290ffee5112635ee94853e1106',
   'app/modules/doctor-stack/doctor/index.js':
-    '11200c055e34ef861b0c1d5507f32122b5d445afd7c0499e32571ffbf4fe7dd4',
+    '3505237e84f22f24b787c621213dbe7776fa163d069b7c4bc3bd79e01784616e',
   'backend/supabase/functions/midas-monthly-report/index.ts':
-    '164f64e93ca5db4d3cdd972718908c93be694ce8a69f3e20707cb71ab250ca44'
+    'e7bf04bb10682c55a87b992a22402e7003de5d88d7febdf678a74878440108b8'
 });
 
 test('T-ACT-R11-09 SQL 16 mirrors only the exact canonical SQL 25 postimage', () => {
@@ -61,19 +67,26 @@ test('T-ACT-R11-09 SQL 16 mirrors only the exact canonical SQL 25 postimage', ()
   );
 });
 
-test('T-ACT-R11-09 product load, cache, Doctor and Edge postimages remain exact', () => {
-  for (const [relativePath, expectedHash] of Object.entries(productHashes)) {
+test('T-ACT-R14-04 keeps R13 readers, Doctor, Edge and the V1 rollback source exact', () => {
+  for (const [relativePath, expectedHash] of Object.entries(readerHashes)) {
     assert.equal(sha256(relativePath), expectedHash, relativePath);
   }
-  const product = Object.keys(productHashes).map(read).join('\n');
-  assert.doesNotMatch(
-    product,
-    /activity-consumer(?:-data-access|-view)?\.(?:js|ts)|health-export-v3\.js|activity_consumer_snapshot|midas\.activity-consumer\.v1|midas\.health-export\.v3/i
-  );
-  assert.match(read('service-worker.js'), /const CACHE_VERSION = 'v6'/);
+  const indexSource = read('index.html');
+  const workerSource = read('service-worker.js');
+  for (const relativePath of [
+    'app/modules/vitals-stack/activity/v2/activity-consumer.js',
+    'app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js',
+    'app/modules/doctor-stack/doctor/activity-consumer-view.js',
+    'app/modules/doctor-stack/doctor/health-export-v3.js'
+  ]) {
+    assert.equal(indexSource.split(`src="${relativePath}"`).length - 1, 1);
+    assert.equal(workerSource.split(`toUrl('${relativePath}')`).length - 1, 1);
+  }
+  assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
+  assert.match(workerSource, /const CACHE_VERSION = 'v14'/);
 });
 
-test('T-ACT-R11-09 integrated isolation keeps R10 separate and R11 inactive', () => {
+test('T-ACT-R14-04 integrated isolation activates only the planned R14/R13 product loads', () => {
   const output = execFileSync(
     process.execPath,
     [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs')],
@@ -81,20 +94,20 @@ test('T-ACT-R11-09 integrated isolation keeps R10 separate and R11 inactive', ()
   );
   assert.equal(
     output,
-    'PASS protected=10 product_v2_loads=0 core_network_edges=0 ' +
-      'r11_product_loads=0 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
-      'recovery_deletes=0 local_worker_scope=1 r10_negative_oracles=20 ' +
+    'PASS protected=8 product_v2_loads=15 core_network_edges=0 ' +
+      'r11_product_loads=4 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
+      'recovery_deletes=0 local_worker_scope=1 r10_negative_oracles=19 ' +
       'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1\n'
   );
 });
 
 test('T-ACT-R11-09 R13 owns read activation and R14 alone owns capture cutover', () => {
   const scope = read('docs/Future trainingsmodule update thoughts.md');
-  assert.match(scope, /R13 aktiviert die read-only Consumer/);
+  assert.match(scope, /R13 (?:hat|aktiviert)[^\n]*read-only Consumer/);
   assert.match(
     scope,
     /R13 aktiviert ausschließlich read-only Consumer; Activity V1 bleibt dort\s+der einzige produktive Capture-Pfad/
   );
-  assert.match(scope, /R14 ist der einzige produktive Writer-Cutover/);
+  assert.match(scope, /R14 (?:ist|bleibt)[^\n]*einzige[^\n]*(?:Writer-Cutover|Activity-V2-Writer-Cutover)/);
   assert.match(scope, /R14 - Activity V2 Capture Cutover and Android PWA Validation/);
 });

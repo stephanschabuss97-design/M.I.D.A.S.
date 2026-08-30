@@ -11,7 +11,7 @@ const harnessPath = path.join(__dirname, 'semantics-harness.html');
 const roadmapPath = path.resolve(
   __dirname,
   '../../../../..',
-  'docs/MIDAS Activity V2 R1 Catalog Baseline Contract.md'
+  'docs/archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md'
 );
 const source = fs.readFileSync(semanticsPath, 'utf8');
 
@@ -520,7 +520,7 @@ test('classic-script namespace contract preserves Activity V1', () => {
   );
 });
 
-test('R1 source has no productive runtime or integration side effects', () => {
+test('R1 source stays pure while R14 product loads it as the historical catalog', () => {
   const rootIndex = fs.readFileSync(
     path.resolve(__dirname, '../../../../..', 'index.html'),
     'utf8'
@@ -537,8 +537,8 @@ test('R1 source has no productive runtime or integration side effects', () => {
   forbiddenSourcePatterns.forEach((pattern) => {
     assert.equal(pattern.test(source), false, String(pattern));
   });
-  assert.equal(rootIndex.includes('activity/v2/semantics.js'), false);
-  assert.equal(rootIndex.includes('activityV2'), false);
+  assert.equal(rootIndex.includes('activity/v2/semantics.js'), true);
+  assert.equal(rootIndex.includes('activityV2'), true);
 });
 
 test('isolated browser harness uses classic scripts with valid syntax', () => {

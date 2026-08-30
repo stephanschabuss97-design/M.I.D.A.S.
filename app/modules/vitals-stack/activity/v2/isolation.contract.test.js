@@ -9,7 +9,7 @@ const test = require('node:test');
 const repoRoot = path.resolve(__dirname, '../../../../..');
 const read = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 
-test('R13 final guard reports the exact read-consumer activation boundary', () => {
+test('R14 final guard reports the exact reader-preserving capture cutover boundary', () => {
   const output = execFileSync(
     process.execPath,
     [path.join(repoRoot, 'tools/activity-v2-r13-read-consumer-isolation.mjs')],
@@ -18,9 +18,9 @@ test('R13 final guard reports the exact read-consumer activation boundary', () =
   assert.equal(
     output,
     'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
-      'product_mode=final product_read_loads=6 cache_version=13 ' +
-      'r14_product_loads=0 secret_material=0 productive_dml=0 ' +
-      'sql_union=1 trend_state_acl=select_only v1_capture=1\n'
+      'product_mode=final product_read_loads=6 cache_version=14 ' +
+      'r14_capture_loads=15 secret_material=0 productive_dml=0 ' +
+      'sql_union=1 trend_state_acl=select_only v1_capture=0\n'
   );
 });
 
@@ -69,7 +69,7 @@ test('S4.12 commit core stays injection-only while the test PWA uses the local a
   assert.doesNotMatch(localRuntime, /console\.|localStorage|sessionStorage|fetch\s*\(/);
 });
 
-test('R13 productive surfaces load only read consumers and keep R14 capture absent', () => {
+test('R14 productive surfaces load one V2 capture and preserve the R13 readers', () => {
   const productSources = [
     read('index.html'),
     read('service-worker.js'),
@@ -79,11 +79,10 @@ test('R13 productive surfaces load only read consumers and keep R14 capture abse
   ].join('\n');
   assert.match(productSources, /activity\/v2\/activity-consumer\.js/);
   assert.match(productSources, /activity\/v2\/activity-consumer-data-access\.js/);
-  assert.doesNotMatch(
-    productSources,
-    /activity\/v2\/(?:session-|data-access\.js|semantics(?:-v2)?\.js|test-pwa|activity-coaching-export)|activityv2test|localhost:8765/
-  );
-  assert.match(productSources, /app\/modules\/vitals-stack\/activity\/index\.js/);
-  assert.match(productSources, /const CACHE_VERSION = 'v13'/);
+  assert.match(productSources, /activity\/v2\/activity-product-controller\.js/);
+  assert.doesNotMatch(productSources, /activity\/v2\/(?:test-pwa|[^\s"']*harness)|activityv2test|localhost:8765/);
+  assert.doesNotMatch(read('index.html'), /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
+  assert.doesNotMatch(read('service-worker.js'), /toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/);
+  assert.match(productSources, /const CACHE_VERSION = 'v14'/);
   assert.doesNotMatch(read('android/app/src/main/AndroidManifest.xml'), /usesCleartextTraffic/);
 });

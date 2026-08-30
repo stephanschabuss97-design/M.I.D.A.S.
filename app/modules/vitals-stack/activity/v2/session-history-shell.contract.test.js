@@ -11,12 +11,13 @@ const harnessPath = path.join(__dirname, 'session-history-harness.js');
 const harnessHtmlPath = path.join(__dirname, 'session-history-harness.html');
 const cssPath = path.join(__dirname, 'session-history-shell.css');
 const rootIndexPath = path.resolve(__dirname, '..', '..', '..', '..', '..', 'index.html');
+const rootCssPath = path.resolve(__dirname, '..', '..', '..', '..', '..', 'app/app.css');
 const shellSource = fs.readFileSync(shellPath, 'utf8');
 const harnessSource = fs.readFileSync(harnessPath, 'utf8');
 const harnessHtml = fs.readFileSync(harnessHtmlPath, 'utf8');
 const cssSource = fs.readFileSync(cssPath, 'utf8');
 
-test('Block C shell namespace is additive, exact, frozen and product-isolated', () => {
+test('Block C shell namespace is additive, exact, frozen and R14-product-loaded', () => {
   const activityV1 = Object.freeze({ sentinel: true });
   const context = vm.createContext({
     AppModules: { activity: activityV1, activityV2: {} }
@@ -35,12 +36,17 @@ test('Block C shell namespace is additive, exact, frozen and product-isolated', 
   );
 
   const rootIndex = fs.readFileSync(rootIndexPath, 'utf8');
+  const rootCss = fs.readFileSync(rootCssPath, 'utf8');
   [
     'session-history.js',
     'session-history-shell.js',
     'session-history-harness.js',
     'session-history-shell.css'
-  ].forEach((name) => assert.equal(rootIndex.includes(name), false));
+  ].forEach((name) => {
+    const expected = /(?:harness\.js|\.css)$/.test(name) ? false : true;
+    assert.equal(rootIndex.includes(name), expected);
+  });
+  assert.equal(rootCss.includes('session-history-shell.css'), true);
 });
 
 test('shell mount releases an acquired subscription when initial render fails', () => {

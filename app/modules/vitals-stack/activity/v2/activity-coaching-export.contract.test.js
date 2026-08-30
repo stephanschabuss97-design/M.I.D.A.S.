@@ -241,7 +241,7 @@ function emptyExport() {
   return value;
 }
 
-test('T-ACT-R10-01 namespace is exact, immutable and product-isolated', () => {
+test('T-ACT-R10-01 namespace is exact, immutable and R14-product-loaded', () => {
   const { api, context, globalsBefore } = load();
 
   assert.deepEqual(Object.keys(api), API_KEYS);
@@ -262,7 +262,7 @@ test('T-ACT-R10-01 namespace is exact, immutable and product-isolated', () => {
     },
     { enumerable: true, writable: false, configurable: false }
   );
-  assert.equal(indexSource.includes('activity-coaching-export.js'), false);
+  assert.equal(indexSource.includes('activity-coaching-export.js'), true);
   assert.equal(/\b(fetch|XMLHttpRequest|WebSocket|indexedDB|localStorage)\b/.test(source), false);
   assert.equal(/\b(document|navigator)\b/.test(source), false);
   assert.equal(source.includes('supabase'), false);

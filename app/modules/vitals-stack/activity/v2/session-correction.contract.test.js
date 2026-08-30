@@ -114,7 +114,7 @@ function captureError(callback) {
   assert.fail('expected operation to throw');
 }
 
-test('S4.2 namespaces are exact, immutable and remain product-isolated', () => {
+test('S4.2 namespaces are exact, immutable and R14-product-loaded', () => {
   const harness = makeHarness();
   assert.equal(harness.context.AppModules.activity, harness.activityV1);
   assert.deepEqual(Object.keys(harness.canonicalization), ['project']);
@@ -141,8 +141,8 @@ test('S4.2 namespaces are exact, immutable and remain product-isolated', () => {
     path.resolve(__dirname, '../../../../..', 'index.html'),
     'utf8'
   );
-  assert.equal(rootIndex.includes('session-canonicalization.js'), false);
-  assert.equal(rootIndex.includes('session-correction.js'), false);
+  assert.equal(rootIndex.includes('session-canonicalization.js'), true);
+  assert.equal(rootIndex.includes('session-correction.js'), true);
   const implementation = sources
     .filter(([filePath]) =>
       [canonicalizationPath, correctionPath].includes(filePath)

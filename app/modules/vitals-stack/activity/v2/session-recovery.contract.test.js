@@ -2125,7 +2125,7 @@ test('open validates exact dependencies while initial storage protocol failures 
   assert.equal(degraded.getState().reason, 'storage_error');
 });
 
-test('recovery runtime is isolated from product load, network, Supabase and existing storage', () => {
+test('recovery runtime is isolated from network, Supabase and existing storage', () => {
   const indexSource = fs.readFileSync(indexPath, 'utf8');
   const serviceWorkerSource = fs.readFileSync(serviceWorkerPath, 'utf8');
   [
@@ -2141,8 +2141,8 @@ test('recovery runtime is isolated from product load, network, Supabase and exis
   assert.match(recoverySource, /midas_activity_v2_recovery/);
   assert.match(recoverySource, /session_recovery/);
   assert.match(recoverySource, /active_session/);
-  assert.doesNotMatch(indexSource, /session-recovery\.js/);
-  assert.doesNotMatch(serviceWorkerSource, /session-recovery\.js/);
+  assert.match(indexSource, /session-recovery\.js/);
+  assert.match(serviceWorkerSource, /session-recovery\.js/);
 });
 
 test('isolated recovery harness owns exact gate copy, fixtures and R7-only storage cleanup', () => {

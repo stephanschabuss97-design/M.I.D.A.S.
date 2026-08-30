@@ -16,7 +16,7 @@ const indexPath = path.resolve(__dirname, '../../../../..', 'index.html');
 const contractPath = path.resolve(
   __dirname,
   '../../../../..',
-  'docs/MIDAS Activity V2 C2 Catalog Version 2 Contract.md'
+  'docs/archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md'
 );
 
 const semanticsSource = fs.readFileSync(semanticsPath, 'utf8');
@@ -367,12 +367,12 @@ test('real draft-v3 and shell accept injected catalog v2 and both new keys', () 
   assert.equal(intervals.size, 0);
 });
 
-test('draft fallback and product index remain catalog-v1-only without C2 side effects', () => {
+test('draft fallback remains v1 while the R14 product composition selects catalog v2', () => {
   assert.match(draftSource, /root\.AppModules\?\.activityV2\?\.semantics/);
   assert.match(shellSource, /root\.AppModules\?\.activityV2\?\.semantics/);
   assert.doesNotMatch(draftSource, /semanticsV2/);
   assert.doesNotMatch(shellSource, /semanticsV2/);
-  assert.doesNotMatch(indexSource, /semantics-v2\.js|semanticsV2/);
+  assert.match(indexSource, /activity\/v2\/semantics-v2\.js/);
   assert.doesNotMatch(semanticsV2Source, /fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage/);
   assert.doesNotMatch(semanticsV2Source, /require\s*\(|module\.exports|document\./);
   assert.equal(fs.existsSync(semanticsTestPath), true);

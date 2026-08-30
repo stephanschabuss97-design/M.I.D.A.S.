@@ -383,7 +383,7 @@ function assertCoordinatorState(controller, expected) {
   assert.deepEqual(plain(state), expected);
 }
 
-test('S4.5 public namespace is exact while load remains product-isolated', () => {
+test('S4.5 public namespace is exact while R14 product loading stays explicit', () => {
   const runtime = loadRuntime({ instrument: false });
 
   assert.deepEqual(Object.keys(runtime.commitApi), ['create']);
@@ -392,8 +392,8 @@ test('S4.5 public namespace is exact while load remains product-isolated', () =>
   assert.doesNotMatch(commitSource, /\bfetch\s*\(/);
   assert.doesNotMatch(commitSource, /indexedDB|localStorage|sessionStorage/);
   assert.doesNotMatch(commitSource, /supabase|activity_v2_commit_session/i);
-  assert.equal(indexSource.includes('session-commit.js'), false);
-  assert.equal(serviceWorkerSource.includes('session-commit.js'), false);
+  assert.equal(indexSource.includes('session-commit.js'), true);
+  assert.equal(serviceWorkerSource.includes('session-commit.js'), true);
   assert.throws(
     () => vm.runInContext(commitSource, runtime.context, { filename: commitPath }),
     /already registered/

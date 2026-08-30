@@ -74,13 +74,14 @@ function state(controller) {
   return clone(controller.getState());
 }
 
-test('T-ACT-R11-07 registers a frozen API without product loading or handler edits', () => {
+test('T-ACT-R11-07 registers the frozen R13 product API without handler edits', () => {
   const harness = makeHarness();
   assert.deepEqual(Reflect.ownKeys(harness.api), ['create', 'render']);
   assert.equal(Object.isFrozen(harness.api), true);
   assert.equal(Object.isFrozen(harness.api.create), true);
-  assert.doesNotMatch(indexSource, /activity-consumer-(?:view|harness)/);
-  assert.doesNotMatch(doctorIndexSource, /activityConsumerView/);
+  assert.match(indexSource, /activity-consumer-view\.js/);
+  assert.doesNotMatch(indexSource, /activity-consumer-harness/);
+  assert.match(doctorIndexSource, /activityConsumerView/);
 });
 
 test('T-ACT-R11-07 remains locked and lazy until explicit unlock and open', async () => {

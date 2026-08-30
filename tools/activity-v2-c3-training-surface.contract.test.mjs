@@ -24,11 +24,10 @@ const worker = read('service-worker.js');
 for (const id of [
   'hubTrainingPanel',
   'hubTrainingTitle',
-  'trainingDate',
-  'activityForm',
-  'activitySaveBtn',
-  'activityCancelBtn',
-  'activityFormStatus'
+  'activityV2ProductHost',
+  'activityV2SessionHost',
+  'activityV2HistoryHost',
+  'activityV2ExportHost'
 ]) {
   requireCondition(count(index, `id="${id}"`) === 1, `ID_${id.toUpperCase()}`);
 }
@@ -57,8 +56,9 @@ requireCondition(!index.includes('data-protein-value='), 'TRAINING_PROTEIN_METRI
 const trainingPanelStart = index.indexOf('id="hubTrainingPanel"');
 const trainingPanelEnd = index.indexOf('</section>', trainingPanelStart);
 const trainingPanel = index.slice(trainingPanelStart, trainingPanelEnd);
-requireCondition(trainingPanel.includes('id="activityForm"'), 'FORM_IN_TRAINING_PANEL');
-requireCondition(trainingPanel.includes('id="trainingDate"'), 'DATE_IN_TRAINING_PANEL');
+requireCondition(trainingPanel.includes('id="activityV2ProductHost"'), 'V2_ENTRY_IN_TRAINING_PANEL');
+requireCondition(trainingPanel.includes('id="activityV2SessionHost"'), 'V2_SESSION_IN_TRAINING_PANEL');
+requireCondition(!trainingPanel.includes('id="activityForm"'), 'V1_FORM_REMOVED');
 
 requireCondition(hub.includes("{ id: 'training', selector: '[data-carousel-id=\"training\"]', panel: 'training' }"), 'HUB_CAROUSEL_MAP');
 requireCondition(hub.includes("training: 'training'"), 'HUB_PANEL_MAP');
@@ -68,13 +68,13 @@ requireCondition(
   'HUB_SCRIPT_VERSIONED_LOAD'
 );
 
-requireCondition(count(main, "activityForm?.addEventListener('submit'") === 1, 'SUBMIT_LISTENER_COUNT');
-requireCondition(count(main, 'activity?.addActivity?.({') === 1, 'V1_WRITER_COUNT');
-requireCondition(main.includes("setInputValue('#trainingDate', todayIso)"), 'DATE_INITIALIZATION');
-requireCondition(main.includes('day: trainingDayIso'), 'EXPLICIT_TRAINING_DAY');
-requireCondition(main.includes('activitySaveInFlight'), 'IN_FLIGHT_GUARD');
-requireCondition(main.includes('/^\\d{4}-\\d{2}-\\d{2}$/'), 'STRICT_DATE_SHAPE');
-requireCondition(main.includes("toISOString().slice(0, 10) === dayIso"), 'STRICT_CALENDAR_ROUNDTRIP');
+requireCondition(count(main, 'activityV2.productController.mount({') === 1, 'V2_MOUNT_COUNT');
+requireCondition(count(main, 'refreshActivityConsumers: refreshActivityV2Consumers') === 1, 'V2_REFRESH_BINDING');
+requireCondition(!main.includes("activityForm?.addEventListener('submit'"), 'V1_SUBMIT_LISTENER_REMOVED');
+requireCondition(!main.includes('activity?.addActivity?.({'), 'V1_WRITER_REMOVED');
+requireCondition(!main.includes("setInputValue('#trainingDate', todayIso)"), 'V1_DATE_INITIALIZATION_REMOVED');
+requireCondition(main.includes("new Event('activity:changed')"), 'PAYLOAD_FREE_CHANGE_EVENT');
+requireCondition(!main.includes("new CustomEvent('activity:changed'"), 'NO_PAYLOAD_CHANGE_EVENT');
 
 for (const obsolete of [
   'activityModifierFor',
@@ -85,7 +85,7 @@ for (const obsolete of [
   requireCondition(!vitals.includes(obsolete), `VITALS_OBSOLETE_${obsolete.toUpperCase()}`);
 }
 requireCondition(!hubCss.includes('.hub-vitals-activity'), 'VITALS_ACTIVITY_CSS_REMOVED');
-requireCondition(hubCss.includes('.hub-training .activity-form'), 'TRAINING_FORM_CSS');
+requireCondition(appCss.includes('activity-product-controller.css'), 'TRAINING_PRODUCT_CSS');
 
 for (const id of [
   'hubProteinTargetButton',
@@ -124,7 +124,7 @@ requireCondition(readOnlyProteinBlock.includes("select: 'day,kg'"), 'LATEST_WEIG
 requireCondition(!/\b(?:insert|upsert|update|delete|rpc)\b/i.test(readOnlyProteinBlock), 'PROJECTION_READ_ONLY');
 requireCondition(protein.includes('loadStoredContext,'), 'PROJECTION_EXPORT');
 
-requireCondition(worker.includes("const CACHE_VERSION = 'v13'"), 'WORKER_V13');
+requireCondition(worker.includes("const CACHE_VERSION = 'v14'"), 'WORKER_V14');
 requireCondition(appCss.includes('@import url("./styles/hub.css?v=11")'), 'HUB_CSS_VERSIONED_IMPORT');
 requireCondition(
   count(worker, "toUrl('app/styles/hub.css?v=11')") === 1,
@@ -155,5 +155,8 @@ for (const forbidden of [
 ]) {
   requireCondition(!index.includes(`src="app/modules/vitals-stack/activity/v2/${forbidden}"`), `V2_CAPTURE_${forbidden.toUpperCase()}`);
 }
+
+requireCondition(!index.includes('src="app/modules/vitals-stack/activity/index.js"'), 'V1_PRODUCTLOAD_REMOVED');
+requireCondition(!worker.includes("toUrl('app/modules/vitals-stack/activity/index.js')"), 'V1_CACHE_REMOVED');
 
 console.log('ACTIVITY_V2_C3_TRAINING_CONTRACT_PASS');
