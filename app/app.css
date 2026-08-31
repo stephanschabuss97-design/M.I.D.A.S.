@@ -8,6 +8,10 @@
 @import url("./styles/ui.css");
 @import url("./styles/hub.css?v=11");
 @import url("./modules/doctor-stack/charts/chart.css");
+@import url("./modules/vitals-stack/activity/v2/session-shell.css");
+@import url("./modules/vitals-stack/activity/v2/session-history-shell.css");
+@import url("./modules/vitals-stack/activity/v2/activity-coaching-export-shell.css");
+@import url("./modules/vitals-stack/activity/v2/activity-product-controller.css");
 
 /* R13 read-only Activity consumer inside the Doctor surface. */
 #doctor .activity-consumer-list {

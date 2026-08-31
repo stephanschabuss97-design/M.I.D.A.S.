@@ -83,7 +83,7 @@ test('T-ACT-R14-04 keeps R13 readers, Doctor, Edge and the V1 rollback source ex
     assert.equal(workerSource.split(`toUrl('${relativePath}')`).length - 1, 1);
   }
   assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
-  assert.match(workerSource, /const CACHE_VERSION = 'v14'/);
+  assert.match(workerSource, /const CACHE_VERSION = 'v16'/);
 });
 
 test('T-ACT-R14-04 integrated isolation activates only the planned R14/R13 product loads', () => {

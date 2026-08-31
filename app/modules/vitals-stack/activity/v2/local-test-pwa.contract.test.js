@@ -92,7 +92,7 @@ test('S4.11 local worker stays isolated while R14 product owns the V2 capture ca
   assert.doesNotMatch(productIndex, /app\/modules\/vitals-stack\/activity\/index\.js/);
   assert.match(productIndex, /activity\/v2\/session-recovery\.js/);
   assert.doesNotMatch(productIndex, /test-pwa/);
-  assert.match(productWorker, /const CACHE_VERSION = 'v14'/);
+  assert.match(productWorker, /const CACHE_VERSION = 'v16'/);
   assert.match(productWorker, /activity\/v2\/session-recovery\.js/);
   assert.doesNotMatch(productWorker, /test-pwa|r8-local-test/);
 });

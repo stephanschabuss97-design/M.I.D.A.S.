@@ -54,7 +54,7 @@ const readerHashes = Object.freeze({
     '538a9db15687e8aff87880631ca6a57865d869290ffee5112635ee94853e1106'
 });
 
-test('R14 productload is one ordered V2 writer graph with exact v14 cache identities', () => {
+test('R14 productload is one ordered V2 writer graph with exact v16 cache identities', () => {
   const index = read('index.html');
   const worker = read('service-worker.js');
   const css = read('app/app.css');
@@ -76,7 +76,7 @@ test('R14 productload is one ordered V2 writer graph with exact v14 cache identi
     assert.equal(count(css, `@import url("${importPath}")`), 1, relativePath);
     assert.equal(count(worker, `toUrl('${relativePath}')`), 1, relativePath);
   }
-  assert.match(worker, /const CACHE_VERSION = 'v14'/);
+  assert.match(worker, /const CACHE_VERSION = 'v16'/);
   assert.doesNotMatch(index, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
   assert.doesNotMatch(worker, /toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/);
   assert.doesNotMatch(`${index}\n${worker}`, /activity\/v2\/(?:test-pwa|[^\s"']*harness)/);
@@ -141,7 +141,7 @@ test('R14 chart consumes only the unchanged R13 snapshot and aggregates markers 
   }
 });
 
-test('R14 rollback material restores only explicit baseline product paths and creates v15', () => {
+test('R14 rollback material restores only explicit baseline product paths and creates v17', () => {
   const rollback = read('tools/activity-v2-r14-v1-productload-rollback.ps1');
   assert.match(rollback, /\[switch\]\$ConfirmRollback/);
   assert.match(rollback, new RegExp(baselineCommit));
@@ -156,14 +156,14 @@ test('R14 rollback material restores only explicit baseline product paths and cr
     assert.match(rollback, new RegExp(relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(rollback, /restore --source=\$baselineCommit --worktree -- @productPaths/);
-  assert.match(rollback, /const CACHE_VERSION = 'v15'/);
+  assert.match(rollback, /const CACHE_VERSION = 'v17'/);
   assert.match(rollback, /app\/modules\/vitals-stack\/activity\/index\.js/);
   assert.doesNotMatch(rollback, /reset --hard|clean\s+-|sql\/|docs\/|indexedDB\.deleteDatabase|Remove-Item/);
 
   const rollbackIndex = gitShow(baselineCommit, 'index.html');
   const rollbackMain = gitShow(baselineCommit, 'assets/js/main.js');
   let rollbackWorker = gitShow(baselineCommit, 'service-worker.js')
-    .replace("const CACHE_VERSION = 'v13';", "const CACHE_VERSION = 'v15';")
+    .replace("const CACHE_VERSION = 'v13';", "const CACHE_VERSION = 'v17';")
     .replace(
       "  toUrl('assets/js/ui-tabs.js'),",
       "  toUrl('assets/js/ui-tabs.js'),\n  toUrl('app/modules/vitals-stack/activity/index.js'),"
@@ -172,7 +172,7 @@ test('R14 rollback material restores only explicit baseline product paths and cr
   assert.equal(count(rollbackIndex, 'src="app/modules/vitals-stack/activity/index.js"'), 1);
   assert.equal(count(rollbackMain, "activityForm?.addEventListener('submit'"), 1);
   assert.equal(count(rollbackMain, 'activity?.addActivity?.({'), 1);
-  assert.match(rollbackWorker, /const CACHE_VERSION = 'v15'/);
+  assert.match(rollbackWorker, /const CACHE_VERSION = 'v17'/);
   assert.equal(count(rollbackWorker, "toUrl('app/modules/vitals-stack/activity/index.js')"), 1);
   assert.doesNotMatch(rollbackWorker, /activity\/v2\/activity-product-controller\.js/);
 });

@@ -752,7 +752,12 @@
           draft,
           recovery: recoveryController,
           semantics: selectedSemantics,
-          commitSession: options.dataAccess.commitSession,
+          commitSession: ({ requestId, payload }) =>
+            options.dataAccess.commitSession({
+              requestId,
+              payload,
+              semantics: selectedSemantics
+            }),
           now: options.now
         });
         assertMethodSurface(commit, COMMIT_METHODS);

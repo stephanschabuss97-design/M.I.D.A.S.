@@ -18,7 +18,7 @@ test('R14 final guard reports the exact reader-preserving capture cutover bounda
   assert.equal(
     output,
     'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
-      'product_mode=final product_read_loads=6 cache_version=14 ' +
+      'product_mode=final product_read_loads=6 cache_version=16 ' +
       'r14_capture_loads=15 secret_material=0 productive_dml=0 ' +
       'sql_union=1 trend_state_acl=select_only v1_capture=0\n'
   );
@@ -83,6 +83,6 @@ test('R14 productive surfaces load one V2 capture and preserve the R13 readers',
   assert.doesNotMatch(productSources, /activity\/v2\/(?:test-pwa|[^\s"']*harness)|activityv2test|localhost:8765/);
   assert.doesNotMatch(read('index.html'), /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
   assert.doesNotMatch(read('service-worker.js'), /toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/);
-  assert.match(productSources, /const CACHE_VERSION = 'v14'/);
+  assert.match(productSources, /const CACHE_VERSION = 'v16'/);
   assert.doesNotMatch(read('android/app/src/main/AndroidManifest.xml'), /usesCleartextTraffic/);
 });

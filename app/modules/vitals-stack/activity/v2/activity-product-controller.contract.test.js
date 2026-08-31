@@ -14,6 +14,9 @@ const cssSource = fs.readFileSync(
   path.join(__dirname, 'activity-product-controller.css'),
   'utf8'
 );
+const semanticsSource = fs.readFileSync(path.join(__dirname, 'semantics.js'), 'utf8');
+const semanticsV2Source = fs.readFileSync(path.join(__dirname, 'semantics-v2.js'), 'utf8');
+const dataAccessSource = fs.readFileSync(path.join(__dirname, 'data-access.js'), 'utf8');
 
 class FakeElement {
   constructor(ownerDocument, tagName) {
@@ -173,6 +176,133 @@ function api(methods) {
   return Object.fromEntries(methods.map((method) => [method, () => {}]));
 }
 
+function compositionUuid(number) {
+  return `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
+}
+
+function makeCompositionResult(context, rpcBody, outcome) {
+  const semantics = rpcBody.p_payload.catalog_version === 2
+    ? context.AppModules.activityV2.semanticsV2
+    : context.AppModules.activityV2.semantics;
+  const responseTime = '2026-08-29T05:30:00.123456Z';
+  return {
+    schema_version: 'midas.activity-session-result.v1',
+    outcome,
+    session: {
+      id: compositionUuid(900),
+      request_id: rpcBody.p_request_id,
+      started_at: rpcBody.p_payload.started_at,
+      ended_at: rpcBody.p_payload.ended_at,
+      day: rpcBody.p_payload.started_at.slice(0, 10),
+      duration_min: rpcBody.p_payload.duration_min,
+      title: rpcBody.p_payload.title,
+      note: rpcBody.p_payload.note,
+      created_at: responseTime,
+      updated_at: responseTime,
+      items: rpcBody.p_payload.items.map((item, itemIndex) => {
+        const entry = semantics.getEntryByKey(item.item_key);
+        return {
+          id: compositionUuid(100 + itemIndex),
+          catalog_version: rpcBody.p_payload.catalog_version,
+          item_key: item.item_key,
+          item_order: item.item_order,
+          item_label_snapshot: entry.label,
+          tracking_mode_snapshot: entry.tracking_mode,
+          equipment_snapshot: entry.equipment,
+          load_comparability_snapshot: entry.load_comparability,
+          field_policy_snapshot: JSON.parse(JSON.stringify(entry.fields)),
+          duration_min: item.duration_min,
+          distance_km: item.distance_km,
+          note: item.note,
+          created_at: responseTime,
+          sets: item.sets.map((set, setIndex) => ({
+            id: compositionUuid(200 + setIndex),
+            set_order: set.set_order,
+            tracking_mode: 'strength_sets',
+            reps: set.reps,
+            duration_sec: set.duration_sec,
+            distance_m: set.distance_m,
+            weight_kg: set.weight_kg,
+            assistance_kg: set.assistance_kg,
+            created_at: responseTime
+          }))
+        };
+      })
+    }
+  };
+}
+
+function createCompositionDataAccess() {
+  const state = { requests: [], diagnostics: [] };
+  const response = (body) => ({
+    status: 200,
+    ok: true,
+    async json() { return JSON.parse(JSON.stringify(body)); },
+    clone() { return response(body); }
+  });
+  const supabase = {
+    baseUrlFromRest: (value) => String(value).replace(/\/rest\/v1\/?$/, ''),
+    async fetchWithAuth(makeRequest) {
+      return await makeRequest({ authorization: 'Bearer test-token' });
+    }
+  };
+  const context = vm.createContext({
+    AppModules: { activity: { sentinel: true }, supabase },
+    Headers,
+    URL,
+    diag: { add(message) { state.diagnostics.push(String(message)); } },
+    async fetch(_url, options) {
+      state.requests.push({ body: options.body });
+      const request = JSON.parse(options.body);
+      return response(makeCompositionResult(
+        context,
+        request,
+        state.requests.length === 1 ? 'created' : 'replayed'
+      ));
+    },
+    async getConf(key) {
+      assert.equal(key, 'webhookUrl');
+      return 'https://example.supabase.co/rest/v1/';
+    }
+  });
+  new vm.Script(semanticsSource).runInContext(context);
+  new vm.Script(semanticsV2Source).runInContext(context);
+  new vm.Script(dataAccessSource).runInContext(context);
+  return {
+    dataAccess: context.AppModules.activityV2.dataAccess,
+    semanticsByVersion: new Map([
+      [1, context.AppModules.activityV2.semantics],
+      [2, context.AppModules.activityV2.semanticsV2]
+    ]),
+    state
+  };
+}
+
+function makeCompositionPayload(catalogVersion) {
+  const v2 = catalogVersion === 2;
+  return {
+    schema_version: 'midas.activity-session.v1',
+    catalog_version: catalogVersion,
+    started_at: '2026-08-29T05:00:00.000000Z',
+    ended_at: '2026-08-29T05:30:00.000000Z',
+    duration_min: 30,
+    title: null,
+    note: v2 ? 'composition-sensitive-marker' : null,
+    items: [{
+      item_key: v2 ? 'high_row' : 'bench_press',
+      item_order: 1,
+      sets: [{
+        set_order: 1,
+        reps: 8,
+        duration_sec: null,
+        distance_m: null,
+        weight_kg: 50,
+        assistance_kg: null
+      }]
+    }]
+  };
+}
+
 function freezeRecoveryState(state, reason = null, itemCount = 0) {
   return Object.freeze({
     state,
@@ -196,20 +326,24 @@ function createFixture({
   initialRecoveryState = 'empty',
   recoveredCatalogVersion = 2,
   flushFails = false,
-  confirmDiscard = false
+  confirmDiscard = false,
+  semanticsVersions = null,
+  dataAccess = null
 } = {}) {
   const document = new FakeDocument();
   const hosts = Array.from({ length: 4 }, () => document.createElement('div'));
   const calls = [];
-  const semanticsByVersion = new Map();
-  [1, 2].forEach((version) => {
-    semanticsByVersion.set(version, {
-      getCatalog: () => ({ catalog_version: version, entries: [] }),
-      getEntryByKey: () => null,
-      normalizeSearchText: (value) => String(value),
-      search: () => []
+  const semanticsByVersion = semanticsVersions || new Map();
+  if (!semanticsVersions) {
+    [1, 2].forEach((version) => {
+      semanticsByVersion.set(version, {
+        getCatalog: () => ({ catalog_version: version, entries: [] }),
+        getEntryByKey: () => null,
+        normalizeSearchText: (value) => String(value),
+        search: () => []
+      });
     });
-  });
+  }
   const makeDraft = (catalogVersion) => ({
     getSnapshot: () => Object.freeze({
       catalog_version: catalogVersion,
@@ -224,6 +358,7 @@ function createFixture({
   let recoveryOpenCount = 0;
   let activeRecovery = null;
   let activeCommit = null;
+  let activeCommitOptions = null;
   let historyCreateOptions = null;
   let exportRoot = null;
 
@@ -354,6 +489,7 @@ function createFixture({
       create: (value) => {
         calls.push('commit.create');
         assert.equal(value.semantics.getCatalog().catalog_version, value.draft.getSnapshot().catalog_version);
+        activeCommitOptions = value;
         return createCommit();
       }
     },
@@ -365,7 +501,7 @@ function createFixture({
         return shell;
       }
     },
-    dataAccess: api([
+    dataAccess: dataAccess || api([
       'commitSession',
       'loadLastPerformance',
       'listSessions',
@@ -446,6 +582,7 @@ function createFixture({
     calls,
     getRecovery: () => activeRecovery,
     getCommit: () => activeCommit,
+    getCommitOptions: () => activeCommitOptions,
     getHistoryOptions: () => historyCreateOptions,
     getExportRoot: () => exportRoot
   };
@@ -543,7 +680,9 @@ test('S4.2 basis renders safe German entry UI, exact public state and focus', as
   assert.ok(Object.isFrozen(controller.getState()));
   assert.equal(primary.children[0].textContent, 'Training starten');
   assert.equal(secondary.children[0].textContent, 'Verlauf');
-  assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML|request_id|payload/i);
+  assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML|request_id|console|diag|CustomEvent|dispatchEvent/i);
+  assert.equal(source.match(/\brequestId\b/g)?.length, 2);
+  assert.equal(source.match(/\bpayload\b/g)?.length, 2);
 
   const observed = [];
   const unsubscribe = controller.subscribe((state) => observed.push(state.state));
@@ -584,6 +723,61 @@ test('S4.3 composes one v2 recovery, commit and session shell graph', async () =
     fixture.calls.filter((value) => value.startsWith('refreshActivityConsumers')),
     ['refreshActivityConsumers:0']
   );
+});
+
+test('R14 composes selected draft semantics through real data access without RPC or retry drift', async () => {
+  const requestId = 'aaaaaaaa-0000-4000-8000-000000000001';
+  const v2Composition = createCompositionDataAccess();
+  const v2Fixture = createFixture({
+    semanticsVersions: v2Composition.semanticsByVersion,
+    dataAccess: v2Composition.dataAccess
+  });
+  const v2Controller = loadModule().mount(v2Fixture.options);
+  await v2Controller.setAuthenticated(true);
+  await v2Controller.startSession();
+
+  const v2Payload = makeCompositionPayload(2);
+  const v2Before = JSON.stringify(v2Payload);
+  const commitV2 = () => v2Fixture.getCommitOptions().commitSession({ requestId, payload: v2Payload });
+  const created = await commitV2();
+  const replayed = await commitV2();
+
+  assert.equal(created.outcome, 'created');
+  assert.equal(replayed.outcome, 'replayed');
+  assert.equal(created.session.items[0].catalog_version, 2);
+  assert.equal(JSON.stringify(v2Payload), v2Before);
+  assert.equal(v2Composition.state.requests.length, 2);
+  assert.equal(new Set(v2Composition.state.requests.map(({ body }) => body)).size, 1);
+  const v2Body = JSON.parse(v2Composition.state.requests[0].body);
+  assert.deepEqual(Object.keys(v2Body), ['p_request_id', 'p_payload']);
+  assert.equal(v2Body.p_request_id, requestId);
+  assert.equal(v2Body.p_payload.catalog_version, 2);
+  assert.equal(v2Composition.state.requests[0].body.includes('semantics'), false);
+  assert.equal(JSON.stringify(v2Composition.state.diagnostics).includes(requestId), false);
+  assert.equal(JSON.stringify(v2Composition.state.diagnostics).includes('composition-sensitive-marker'), false);
+
+  const v1Composition = createCompositionDataAccess();
+  const v1Fixture = createFixture({
+    initialRecoveryState: 'recoverable',
+    recoveredCatalogVersion: 1,
+    semanticsVersions: v1Composition.semanticsByVersion,
+    dataAccess: v1Composition.dataAccess
+  });
+  const v1Controller = loadModule().mount(v1Fixture.options);
+  await v1Controller.setAuthenticated(true);
+  await v1Controller.continueSession();
+  const recovered = await v1Fixture.getCommitOptions().commitSession({
+    requestId,
+    payload: makeCompositionPayload(1)
+  });
+
+  assert.equal(recovered.outcome, 'created');
+  assert.equal(recovered.session.items[0].catalog_version, 1);
+  assert.equal(v1Composition.state.requests.length, 1);
+  const v1Body = JSON.parse(v1Composition.state.requests[0].body);
+  assert.deepEqual(Object.keys(v1Body), ['p_request_id', 'p_payload']);
+  assert.equal(v1Body.p_payload.catalog_version, 1);
+  assert.ok(v1Fixture.calls.includes('resolveSemantics:1'));
 });
 
 test('S4.3 restores with the draft catalog version instead of current v2', async () => {
