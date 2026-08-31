@@ -269,84 +269,6 @@ const setAuthPendingAfterUnlock = (value) => {
 };
 const delay = (ms = 0) => new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
 
-let activityV2ProductController = null;
-const activityV2ProductLifecycle = Object.freeze({
-  async setAuthenticated(authenticated) {
-    if (!activityV2ProductController) return false;
-    await activityV2ProductController.setAuthenticated(authenticated);
-    return true;
-  }
-});
-
-if (!window.AppModules?.activityV2 || 'productLifecycle' in window.AppModules.activityV2) {
-  throw new Error('Activity V2 product lifecycle could not be registered.');
-}
-Object.defineProperty(window.AppModules.activityV2, 'productLifecycle', {
-  value: activityV2ProductLifecycle,
-  enumerable: true,
-  writable: false,
-  configurable: false
-});
-
-const createActivityV2Uuid = () => {
-  const value = window.crypto?.randomUUID?.();
-  if (typeof value !== 'string') {
-    throw new Error('Activity V2 UUID generation is unavailable.');
-  }
-  return value;
-};
-
-const refreshActivityV2Consumers = function refreshActivityV2Consumers() {
-  if (arguments.length !== 0) {
-    throw new Error('Activity V2 refresh does not accept payloads.');
-  }
-  document.dispatchEvent(new Event('activity:changed'));
-  return requestUiRefresh({ reason: 'activity:v2' });
-};
-
-async function mountActivityV2Product(authenticated) {
-  if (activityV2ProductController) {
-    throw new Error('Activity V2 product is already mounted.');
-  }
-  const activityV2 = window.AppModules?.activityV2;
-  const hostIds = [
-    'activityV2ProductHost',
-    'activityV2SessionHost',
-    'activityV2HistoryHost',
-    'activityV2ExportHost'
-  ];
-  const hosts = hostIds.map((id) => document.getElementById(id));
-  if (!activityV2 || hosts.some((host) => !host)) {
-    throw new Error('Activity V2 product composition is unavailable.');
-  }
-  const [host, sessionHost, historyHost, exportHost] = hosts;
-  activityV2ProductController = activityV2.productController.mount({
-    host,
-    sessionHost,
-    historyHost,
-    exportHost,
-    semantics: activityV2.semanticsV2,
-    resolveSemantics: activityV2.sessionRecovery.resolveSemantics,
-    sessionDraft: activityV2.sessionDraft,
-    sessionRecovery: activityV2.sessionRecovery,
-    sessionCommit: activityV2.sessionCommit,
-    sessionShell: activityV2.sessionShell,
-    dataAccess: activityV2.dataAccess,
-    sessionCorrection: activityV2.sessionCorrection,
-    sessionHistory: activityV2.sessionHistory,
-    sessionHistoryShell: activityV2.sessionHistoryShell,
-    coachingExport: activityV2.coachingExport,
-    coachingExportController: activityV2.coachingExportController,
-    coachingExportShell: activityV2.coachingExportShell,
-    now: () => Date.now(),
-    createRequestId: createActivityV2Uuid,
-    createLeaseToken: createActivityV2Uuid,
-    confirmDiscard: ({ message }) => window.confirm(message),
-    refreshActivityConsumers: refreshActivityV2Consumers
-  });
-  await activityV2ProductController.setAuthenticated(Boolean(authenticated));
-}
-
 // SUBMODULE: waitForSupabaseApi @public - wartet auf Supabase-Initialisierung über Polling + Event
 const waitForSupabaseApi = (() => {
   let pendingPromise = null;
@@ -576,6 +498,7 @@ async function initCorePhase() {
 
   const todayIso = todayStr();
   setInputValue('#date', todayIso);
+  setInputValue('#trainingDate', todayIso);
   AppModules.captureGlobals.setLastKnownToday(todayIso);
   AppModules.captureGlobals.setDateUserSelected(false);
   AppModules.captureGlobals.setBpUserOverride(false);
@@ -590,12 +513,11 @@ async function initCorePhase() {
   logBootPhaseSummary('INIT_CORE', 'done');
 }
 
-async function initModulesPhase(context) {
+async function initModulesPhase() {
   setBootStage('INIT_MODULES');
   logBootPhaseSummary('INIT_MODULES', 'start');
   bindTabs();
   bindAuthButtons();
-  await mountActivityV2Product(context.hasSession);
   if (getSupabaseState()?.sbClient) watchAuthState();
   try { window.AppModules.capture?.addCapturePanelKeys?.(); } catch(_){ }
   // S2.1 candidate (non-critical before first interaction):
@@ -1583,7 +1505,7 @@ async function main(){
   await runBootPhase();
   await runAuthCheckPhase(context);
   await initCorePhase();
-  await initModulesPhase(context);
+  await initModulesPhase();
   await initUiAndLiftLockPhase();
 }
 function getCaptureDayIso() {
@@ -1779,6 +1701,85 @@ if (saveLabPanelBtn){
     }
   });
 }
+
+const activityForm = document.getElementById('activityForm');
+const trainingDateInput = document.getElementById('trainingDate');
+const activityNameInput = document.getElementById('activityName');
+const activityDurationInput = document.getElementById('activityDuration');
+const activityNoteInput = document.getElementById('activityNote');
+const activitySaveBtn = document.getElementById('activitySaveBtn');
+const activityCancelBtn = document.getElementById('activityCancelBtn');
+const activityFormStatus = document.getElementById('activityFormStatus');
+let activitySaveInFlight = false;
+
+const getTrainingDayIso = () => {
+  const dayIso = typeof trainingDateInput?.value === 'string'
+    ? trainingDateInput.value.trim()
+    : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayIso)) return null;
+  const parsed = new Date(`${dayIso}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10) === dayIso ? dayIso : null;
+};
+
+const clearActivityForm = () => {
+  if (activityNameInput) activityNameInput.value = '';
+  if (activityDurationInput) activityDurationInput.value = '';
+  if (activityNoteInput) activityNoteInput.value = '';
+  if (activityFormStatus) activityFormStatus.textContent = '';
+};
+
+activityCancelBtn?.addEventListener('click', () => {
+  clearActivityForm();
+});
+
+activityForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (activitySaveInFlight || !activityNameInput || !activityDurationInput) return;
+
+  const trainingDayIso = getTrainingDayIso();
+  const activityText = activityNameInput.value.trim();
+  const durationValue = Number(activityDurationInput.value);
+
+  if (!trainingDayIso) {
+    activityFormStatus.textContent = 'Bitte einen gültigen Trainingstag wählen.';
+    trainingDateInput?.focus();
+    return;
+  }
+  if (!activityText) {
+    activityFormStatus.textContent = 'Aktivität ist Pflicht.';
+    activityNameInput.focus();
+    return;
+  }
+  if (!Number.isFinite(durationValue) || durationValue < 1) {
+    activityFormStatus.textContent = 'Dauer muss mindestens 1 Minute sein.';
+    activityDurationInput.focus();
+    return;
+  }
+  const activityPanel = activitySaveBtn?.closest?.('.card, .card-nested');
+  activitySaveInFlight = true;
+  saveFeedback?.start({ button: activitySaveBtn, panel: activityPanel });
+  activityFormStatus.textContent = '';
+  try {
+    await window.AppModules?.activity?.addActivity?.({
+      activity: activityText,
+      duration_min: Math.trunc(durationValue),
+      day: trainingDayIso,
+      note: activityNoteInput?.value || ''
+    }, { reason: 'panel:activity' });
+    clearActivityForm();
+    saveFeedback?.ok({ button: activitySaveBtn, panel: activityPanel, successText: '&#x2705; Training gespeichert' });
+  } catch (err) {
+    saveFeedback?.error({
+      button: activitySaveBtn,
+      statusEl: activityFormStatus,
+      message: err?.message || 'Speichern fehlgeschlagen.'
+    });
+    uiError?.('Training konnte nicht gespeichert werden.');
+  } finally {
+    activitySaveInFlight = false;
+  }
+});
 
 // Sync vitals panels when the date changes in capture view
 const dateEl = document.getElementById('date');
@@ -2020,4 +2021,6 @@ window.addEventListener('focus', () => {
 - Realtime-Events: INSERT/UPDATE ? upsert, DELETE ? lokal entfernen.
 - UI-Refresh: Arzt-Ansicht sofort; Charts nur, wenn Panel offen.
 === */
+
+
 

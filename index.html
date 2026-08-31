@@ -1804,10 +1804,47 @@
         </header>
         <div class="hub-panel-body">
           <div class="hub-training card">
-            <div id="activityV2ProductHost"></div>
-            <div id="activityV2SessionHost"></div>
-            <div id="activityV2HistoryHost" hidden></div>
-            <div id="activityV2ExportHost" hidden></div>
+            <form id="activityForm" class="activity-form" autocomplete="off">
+              <div class="activity-form-grid form-grid">
+                <label class="field-group" for="trainingDate">
+                  <span class="label">Trainingstag</span>
+                  <input type="date" id="trainingDate" required>
+                </label>
+                <label class="field-group" for="activityName">
+                  <span class="label">Aktivität</span>
+                  <input
+                    type="text"
+                    id="activityName"
+                    placeholder="z. B. Gym"
+                    required
+                  >
+                </label>
+                <label class="field-group" for="activityDuration">
+                  <span class="label">Dauer (Minuten)</span>
+                  <input
+                    type="number"
+                    id="activityDuration"
+                    min="1"
+                    inputmode="numeric"
+                    placeholder="z. B. 45"
+                    required
+                  >
+                </label>
+              </div>
+              <label class="field-group" for="activityNote">
+                <span class="label">Notiz (optional)</span>
+                <textarea
+                  id="activityNote"
+                  rows="2"
+                  placeholder="Kurznotiz"
+                ></textarea>
+              </label>
+              <div class="activity-form-actions form-actions">
+                <button class="btn primary" id="activitySaveBtn" type="submit">Speichern</button>
+                <button class="btn ghost" id="activityCancelBtn" type="button">Zurücksetzen</button>
+                <span class="small muted" id="activityFormStatus" aria-live="polite"></span>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -1894,22 +1931,8 @@
   <script src="assets/js/data-local.js"></script>
   <!-- @refactor: Phase 3 - app/modules/vitals-stack/vitals/index.js -->
   <script src="app/modules/vitals-stack/vitals/index.js"></script>
-  <!-- Activity V2: exact R14 capture product order -->
-  <script src="app/modules/vitals-stack/activity/v2/semantics.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/semantics-v2.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-draft.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-recovery.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-commit.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-canonicalization.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/activity-coaching-export.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/data-access.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-shell.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-correction.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-history.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/session-history-shell.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js"></script>
-  <script src="app/modules/vitals-stack/activity/v2/activity-product-controller.js"></script>
+  <!-- @refactor: Phase 9 - app/modules/vitals-stack/activity/index.js -->
+  <script src="app/modules/vitals-stack/activity/index.js"></script>
   <!-- @refactor: Phase 2 - app/modules/intake-stack/intake/index.js -->
   <script src="app/modules/intake-stack/intake/index.js"></script>
   <!-- Shared capture helpers -->
@@ -2048,6 +2071,7 @@
     - FUTURE (placeholders) -> #SUBMODULES: 3, #@extract: 0, Exports:[assistHooks (planned), pwaBootstrap (planned), bleIntegration (planned)]
   total @extract-candidate markers: 18
 -->
+
 
 
 
