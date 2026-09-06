@@ -361,14 +361,6 @@ const stageSignedOutState = () => {
   supabaseState.pendingSignOut = createPendingSignOutCleanup();
 };
 
-const syncActivityV2Authentication = async (logged) => {
-  try {
-    await globalWindow?.AppModules?.activityV2?.productLifecycle?.setAuthenticated?.(!!logged);
-  } catch (_) {
-    diag.add?.('[auth] Activity V2 lifecycle synchronization failed');
-  }
-};
-
 export const finalizeAuthState = (logged) => {
   clearAuthGrace();
   const nextState = logged ? 'auth' : 'unauth';
@@ -390,17 +382,14 @@ export const scheduleAuthGrace = () => {
   supabaseState.authGraceTimer = setTimeout(async () => {
     try {
       if (!supabaseState.sbClient) {
-        await syncActivityV2Authentication(false);
         finalizeAuthState(false);
         return;
       }
       diag.add?.('[capture] guard: request session');
       const { data } = await supabaseState.sbClient.auth.getSession();
       diag.add?.('[capture] guard: session resp');
-      await syncActivityV2Authentication(!!data?.session);
       finalizeAuthState(!!data?.session);
     } catch (_) {
-      await syncActivityV2Authentication(false);
       finalizeAuthState(false);
     }
   }, AUTH_GRACE_MS);
@@ -640,7 +629,6 @@ export async function handleAndroidNativeSessionCleared({ reload = true } = {}) 
   } catch (error) {
     diag.add?.('[auth] android native clear signOut failed: ' + (error?.message || error));
   } finally {
-    await syncActivityV2Authentication(false);
     finalizeAuthState(false);
   }
 
@@ -739,17 +727,16 @@ export function watchAuthState() {
           supabaseState.lastUserId = newUid;
           diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
         }
-        await syncActivityV2Authentication(true);
-        finalizeAuthState(true);
-        await afterLoginBoot();
-        await (globalWindow?.setupRealtime || defaultSetupRealtime)();
-        globalWindow?.requestUiRefresh?.().catch((err) =>
-          diag.add?.('ui refresh err: ' + (err?.message || err))
-        );
-        try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
-        try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
-        return;
-      }
+      finalizeAuthState(true);
+      await afterLoginBoot();
+      await (globalWindow?.setupRealtime || defaultSetupRealtime)();
+      globalWindow?.requestUiRefresh?.().catch((err) =>
+        diag.add?.('ui refresh err: ' + (err?.message || err))
+      );
+      try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
+      try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
+      return;
+    }
 
     if (isAndroidNativeAuthOwnerContext()) {
       const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
@@ -765,7 +752,6 @@ export function watchAuthState() {
     }
 
     stageSignedOutState();
-    await syncActivityV2Authentication(false);
 
     if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       finalizeAuthState(false);
