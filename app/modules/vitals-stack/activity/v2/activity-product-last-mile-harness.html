@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de-AT">
+  <head>
+    <meta charset="utf-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Activity V2 Product Last-Mile Harness</title>
+    <link rel="stylesheet" href="./session-shell.css">
+    <link rel="stylesheet" href="./session-history-shell.css">
+    <link rel="stylesheet" href="./activity-coaching-export-shell.css">
+    <link rel="stylesheet" href="./activity-product-controller.css">
+    <style>
+      body { margin: 0; padding: 1rem; background: #111827; color: #e5e7eb; font: 16px/1.5 system-ui, sans-serif; }
+      .harness-card { max-width: 72rem; margin: 0 auto; }
+      #harness-run { margin: 0 0 1rem; padding: .7rem 1rem; }
+      #harness-status { padding: .75rem; border: 1px solid #4b5563; border-radius: .5rem; }
+      #harness-status[data-result="pass"] { border-color: #34d399; }
+      #harness-status[data-result="fail"] { border-color: #f87171; }
+      #activity-v2-session-host[hidden], #activity-v2-history-host[hidden], #activity-v2-export-host[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <main class="harness-card">
+      <h1>Activity V2 Product Last-Mile Harness</h1>
+      <p id="harness-status" role="status" data-result="ready">Bereit.</p>
+      <button id="harness-run" type="button">Last-Mile-Vertrag ausführen</button>
+      <section id="activity-v2-product-host"></section>
+      <section id="activity-v2-session-host"></section>
+      <section id="activity-v2-history-host" hidden></section>
+      <section id="activity-v2-export-host" hidden></section>
+    </main>
+
+    <script src="./semantics.js"></script>
+    <script src="./semantics-v2.js"></script>
+    <script src="./session-draft.js"></script>
+    <script src="./session-recovery.js"></script>
+    <script src="./session-commit.js"></script>
+    <script src="./session-canonicalization.js"></script>
+    <script src="./activity-coaching-export.js"></script>
+    <script src="./data-access.js"></script>
+    <script src="./session-shell.js"></script>
+    <script src="./session-correction.js"></script>
+    <script src="./session-history.js"></script>
+    <script src="./session-history-shell.js"></script>
+    <script src="./activity-coaching-export-controller.js"></script>
+    <script src="./activity-coaching-export-shell.js"></script>
+    <script src="./activity-product-controller.js"></script>
+    <script src="./activity-product-last-mile-harness.js"></script>
+  </body>
+</html>

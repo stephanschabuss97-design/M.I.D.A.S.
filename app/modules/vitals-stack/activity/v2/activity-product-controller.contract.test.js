@@ -725,6 +725,27 @@ test('S4.3 composes one v2 recovery, commit and session shell graph', async () =
   );
 });
 
+test('R14 redundant authenticated lifecycle events preserve the active session surface', async () => {
+  const productController = loadModule();
+  const fixture = createFixture();
+  const controller = productController.mount(fixture.options);
+
+  await controller.setAuthenticated(true);
+  await controller.startSession();
+  assert.equal(controller.getState().state, 'editing');
+  assert.equal(controller.getState().active_surface, 'session');
+
+  await controller.setAuthenticated(true);
+
+  assert.equal(controller.getState().state, 'editing');
+  assert.equal(controller.getState().active_surface, 'session');
+  assert.equal(fixture.calls.filter((value) => value === 'recovery.open').length, 1);
+  assert.equal(fixture.calls.filter((value) => value === 'commit.create').length, 1);
+  assert.equal(fixture.calls.filter((value) => value === 'shell.mount').length, 1);
+  assert.equal(fixture.calls.filter((value) => value === 'shell.open').length, 1);
+  assert.equal(fixture.calls.includes('shell.destroy'), false);
+});
+
 test('R14 composes selected draft semantics through real data access without RPC or retry drift', async () => {
   const requestId = 'aaaaaaaa-0000-4000-8000-000000000001';
   const v2Composition = createCompositionDataAccess();

@@ -1232,7 +1232,7 @@
         }
         if (destroyRequested) fail('CONTROLLER_DESTROYED');
         await ensureRecovery();
-        reconcileProductState('entry');
+        reconcileProductState();
         if (stateSnapshot.state === 'idle') ui.start.focus();
         else if (stateSnapshot.state === 'recoverable') ui.resume.focus();
         return stateSnapshot;

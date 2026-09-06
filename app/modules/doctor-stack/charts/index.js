@@ -1177,6 +1177,34 @@ const normalizeDayKey = (value) => {
   const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : raw;
 };
+const buildActivityMarkerMap = (unitsValue) => {
+  const units = Array.isArray(unitsValue) ? unitsValue : [];
+  const unitsByDay = new Map();
+  units.forEach((unit) => {
+    const dayKey = normalizeDayKey(unit?.day);
+    if (!dayKey) return;
+    if (!unitsByDay.has(dayKey)) unitsByDay.set(dayKey, []);
+    unitsByDay.get(dayKey).push(unit);
+  });
+  const markers = new Map();
+  unitsByDay.forEach((dayUnits, dayKey) => {
+    if (dayUnits.length === 1) {
+      const unit = dayUnits[0];
+      markers.set(dayKey, {
+        activity: unit.label,
+        duration_min: unit.duration_min,
+        note: unit.note
+      });
+      return;
+    }
+    markers.set(dayKey, {
+      activity: `${dayUnits.length} Trainings`,
+      duration_min: dayUnits.reduce((sum, unit) => sum + unit.duration_min, 0),
+      note: ""
+    });
+  });
+  return markers;
+};
 if (metric === "bp") {
   await this.loadTrendpilotBands({ from: rangeFrom, to: rangeTo });
   if (!isCurrentDraw()) return;
@@ -1188,36 +1216,15 @@ if (metric === "bp") {
     if (!isCurrentDraw()) return;
     let activityByDate = new Map();
     if (metric === "weight") {
-      const activityModule = appModules?.activity || {};
-      const activityLoader = activityModule.loadActivities;
+      const activityLoader = appModules?.activityV2?.consumerDataAccess?.loadSnapshot;
       if (typeof activityLoader === "function" && rangeFrom && rangeTo) {
         try {
-          let rows = await activityLoader(rangeFrom, rangeTo, { reason: "chart:activity" });
+          const snapshot = await activityLoader({ from: rangeFrom, to: rangeTo });
           if (!isCurrentDraw()) return;
-          if ((!Array.isArray(rows) || !rows.length) && typeof activityModule._callActivityRpc === "function") {
-            try {
-              const fallbackRows = await activityModule._callActivityRpc(
-                "activity_list",
-                { p_from: rangeFrom, p_to: rangeTo },
-                { reason: "chart:activity-fallback" }
-              );
-              if (!isCurrentDraw()) return;
-              rows = Array.isArray(fallbackRows) ? fallbackRows : rows;
-            } catch (fallbackErr) {
-              appModules?.diag?.add?.(`[chart] activity fallback failed: ${fallbackErr?.message || fallbackErr}`);
-            }
-          }
-          if (Array.isArray(rows)) {
-            rows.forEach((row) => {
-              const dayKey = normalizeDayKey(row?.day);
-              if (dayKey) activityByDate.set(dayKey, row);
-            });
-          }
-          diag?.add?.(
-            `[chart] activity load: rows=${Array.isArray(rows) ? rows.length : 0} map=${activityByDate.size}`
-          );
-        } catch (err) {
-          diag?.add?.(`[chart] activity load failed: ${err?.message || err}`);
+          const units = Array.isArray(snapshot?.units) ? snapshot.units : [];
+          activityByDate = buildActivityMarkerMap(units);
+        } catch (_) {
+          diag?.add?.('[chart] activity load failed');
         }
       }
     }
@@ -1759,9 +1766,6 @@ grid += text(W - PR - 2, yDia  + 4, "Dia 90",  "end");
           const smoothEntries = Array.from(smoothByDate.entries())
             .map(([day, value]) => ({ day, ts: toDayTs(day), value }))
             .filter((entry) => Number.isFinite(entry.ts) && Number.isFinite(entry.value));
-          diag?.add?.(
-            `[chart] activity markers: activity=${activityByDate.size} smooth=${smoothByDate.size} smoothEntries=${smoothEntries.length}`
-          );
           activityByDate.forEach((act, day) => {
             const dayKey = normalizeDayKey(day);
             const actTs = toDayTs(dayKey);

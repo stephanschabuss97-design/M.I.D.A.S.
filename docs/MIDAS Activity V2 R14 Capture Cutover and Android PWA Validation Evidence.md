@@ -9,11 +9,11 @@ werden nicht als PASS eingetragen.
 | Feld | Wert |
 | --- | --- |
 | Zugehörige Roadmap | `docs/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap.md` |
-| Status | `S5.4/S5.5 ATOMIC V16/V17 CUTOVER IN PROGRESS; U10R11 PRIMARY_OWNER_BOUNDARY_ALLOWED; Android owner-deferred` |
+| Status | `S5.4/S5.5 V18/V19 ATOMIC WINDOW ADMITTED; F-ACT-R14-26 PRODUCTIVE REPROOF IN PROGRESS; Android owner-deferred` |
 | Evidence-Owner | `R14` |
 | Baseline-Commit | `4be058b1b2e59f410ea8a6e3a4e5af9fdb86b652` |
 | Umgebungen | `lokal / Browser / PWA / produktiv read-only / produktiv write; Android gemäß D-ACT-R14-17 owner-deferred` |
-| Produktive Wirkung | `V2-Productload kurzzeitig über 1edbe38d/v14 ausgeliefert; kein V2-Datensatz entstanden; V1-Productload über ce2e18d/v15 vollständig wiederhergestellt` |
+| Produktive Wirkung | `Zwei V2-Cutoverversuche ohne persistierten V2-Datensatz; letzter datenverlustfreier V1-Productloadrollback über 4e87729/v17 vollständig PASS. Aktueller lokaler Fix hat keine externe Wirkung.` |
 | Archivziel | `docs/archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md` |
 
 ## Nachweisvertrag
@@ -140,6 +140,7 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-L09 | S5.1 | Browser Desktop/390/320 | Fokus, Touch, Overflow, Lifecycle | Eine Edge-Session: realer Hub-Swipe zum Training, read-only History/Export ohne App-Fehler; Desktop sowie 390x844 und 320x800, 45-px-Touchziele, sichtbarer 3-px-Fokus und 0 Horizontaloverflow. Isolierte Harnesses: `all: committed · PASS`, Reload/Resume vor/nach Reload PASS, mehr als 30 Sekunden anderer selektierter Tab, R9-Correction und singulärer Delete-Guard ohne Mutation. | PASS |
 | EV-ACT-R14-L10 | S5.1 | Fresh/Upgrade/Offline-PWA | konsistentes Cachepostimage | Root-SW v14 einmalig, exakt 15 V2-Capture-/vier R13-Readerloads, null V1- oder Harnessload; lokaler Test-PWA-Worker meldet bereit und reale Reload-Fixture bleibt committed/PASS. Offline-/Unknown-/Release-/Cleanup-/Blocked-Zustände über echten isolierten Adapter/Workercontract; reale Fresh-/Upgrade-/stale-client-Smokes bleiben P1/P2. | PASS LOCAL |
 | EV-ACT-R14-L11 | F-ACT-R14-25 Korrektur | Semantikbindung, Retry, Cache und Fullmatrix | minimal, datenidentisch, monoton | Controller bindet den Commit an selectedSemantics; echte Controller→Data-Access-Regression belegt erfolgreiche v2-`created`/`replayed`-Responses, erfolgreichen Recovery-v1-Commit, exakt p_request_id/p_payload, byteidentischen Retry und payloadfreie Diagnostik. Root-SW v16 / V1-Inverse v17. 299/299 Node, 84/84 Deno, 55 Syntaxchecks, Browser-Harness `all: committed · PASS`, Cutover-/Rollbackcontracts und native Fullreviews PASS; gezielter Hardening-Rerun 61/61, Release-Scope 16 Code-/Testdateien plus zwei R14-Dokus, null V1-Writercallsite, ein V2-Mount, lokaler Edge-Boot mit einem V2-Controllerscript/null V1-Form/null Console-Errors; Backend-Diff 0, Secretmuster 0. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
+| EV-ACT-R14-L12 | F-ACT-R14-26 Korrektur | realer Last-Mile-, Lifecycle-, Retry-, Recovery-, Cache- und Fullmatrixpfad | minimal, datenidentisch, ohne Außenwirkung | Redundantes Auth-Event als Surface-Reset reproduziert und durch neutrales Reconcile minimal korrigiert. Reale DOM→Listener→Shell→finish→Recovery/Intent→Semantik→Data-Access→Transport-Komposition in fünf Edge/Playwright-Modi PASS; Unknown-Retry bodyidentisch, Reload-Recovery PASS. 303/303 Node, 84/84 Deno, 57/57 Syntax, diff-check und native Fullreviews PASS. v18/v19 vorbereitet; 19-Dateien-Manifest `75daad72...d3169`. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
 
 ## Evidence-Gültigkeit und Invalidation
 
@@ -149,6 +150,7 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-L06/L07 | index `f017b4ec...b6a0`; app.css `6e02ac4e...d560`; main `9c31759d...9663`; Authcore `e4619a78...b8e6`; Chart `f3020bd8...5914`; SW `fcaa1907...225`; Cutovercontract `1ce88d5a...b1d9`; Rollbacktool `23b37d83...856c` | lokales v14-Cutoverpostimage mit null V1-Writerload, erhaltenen R13-Readern und materialisierter v15-Inverse | Änderung an Productload/SW/Consumern/Authhook/Chart/Rollbackmaterial | S5 |
 | EV-ACT-R14-L08..L10 | R8-Isolation `46c05f78...aef5`; R10-Productloadcontract `e6d62f15...4f2a`; R13-Reporttest `1ae18b13...e488`; Browser-Session 2026-08-29 | lokale Releasebereitschaft und vollständige lokale Matrix | Korrektur an Runtime/UI/SW oder diesen Contractpostimages | P1 |
 | EV-ACT-R14-L11 | Controller `d30e7b8a...c7c0`; Regression `559581bc...5598`; index `340d37e7...ea0a`; app.css `e9df9112...5e4f`; main `3411f13d...fd6`; Authcore `d0a2b041...20ca`; Chart `c743db04...2d8`; SW `8c208012...0142`; Cutovercontract `2c751df3...ee11`; Rollbacktool `a03f7a91...dc3`; 16-Dateien-Manifest `2b329d5a...4926b` | F-ACT-R14-25 lokal geschlossen; v16/v17-Cutoverreserve releasebereit | Änderung an Commitcomposition, Productload, SW, Rollbacktool oder einem Manifestpfad | neuer P1/P2-Reproof |
+| EV-ACT-R14-L12 | Controller `47acec1a...e173`; Test `e3c4028d...b1bdb`; Harness HTML/JS/Contract `dd6a8048...edde` / `077ee88f...1eea` / `51c411b2...32d`; SW `102c1fe7...3dd7`; Cutovercontract `cd778c84...5dcf`; Rollbacktool `b7aa1ed1...2f1b`; Manifest `75daad72...d3169` | F-ACT-R14-26 lokal korrigiert; v18/v19 releasebereit | Änderung an Lifecycle, Last-Mile-Harness, Productload, Cache, Rollback oder Manifestpfad | produktiver Write-/Reader-/Delete-Reproof |
 | EV-ACT-R14-P01..P04 | in S5 erfassen | produktiver Cutover | neuer Deploy/Runtime-Drift | S6/R15 |
 
 ## Produktiver Read-only Preflight
@@ -171,6 +173,10 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-W02 | kontrollierter V2-Write | P2 | genau eine Session mit Items/Sets | Original und identischer Retry fail-closed; Draft erhalten; V2 danach 0/0/0 | FAIL / NO WRITE |
 | EV-ACT-R14-W03 | normaler R9-Delete eines Smoke-Datensatzes | P2 / D-ACT-R14-18 | V2-Datensatz nach bewiesenem Write/Reader entfernt | Kein Datensatz entstanden; deshalb kein Delete ausgeführt | NOT APPLICABLE |
 | EV-ACT-R14-W04 | Productload-Rollback auf V1 | P1 bedingt, nur bei Cutoverfehler | Webcode zurück; Daten unverändert | ce2e18d / Run 33296959317; V1-Form/Script 1/1, V2-Productcontroller 0, R13-Reader 2, SW v15 | PASS |
+| EV-ACT-R14-W05 | erneuter Web-/PWA-Cutover | D-ACT-R14-19/-20 | V2-Productload und Root-SW v16 | 1b6e716 / Run 33357905534; live V1/V2/R13 0/1/2 und SW v16; Fresh/Upgrade/stale-client/Recovery PASS | PASS, danach bedingt zurückgerollt |
+| EV-ACT-R14-W06 | erneuter kontrollierter V2-Write | D-ACT-R14-19 plus Aktionsbestätigung | genau eine Session mit Items/Sets | Original und genau ein identischer Retry blieben im Editing-/Readyzustand; Draft/Eingaben erhalten; V1 67, V2 0/0/0 | FAIL / NO WRITE |
+| EV-ACT-R14-W07 | normaler R9-Delete | D-ACT-R14-19 | ausschließlich erzeugten Smoke-Datensatz entfernen | Kein Datensatz entstanden; deshalb kein Delete ausgeführt | NOT APPLICABLE |
+| EV-ACT-R14-W08 | v17-Productload-Rollback auf V1 | D-ACT-R14-19 bedingt | Webcode zurück; Daten unverändert | 4e87729 / Run 33358569779; V1-Script 1, V2-Productcontroller 0, R13-Reader 2, SW v17; frischer V1-Boot PASS | PASS |
 
 ## Vorher-/Nachher-Nachweis
 
@@ -178,10 +184,10 @@ Nicht als Evidence zulässig:
 | --- | --- | --- | --- |
 | sichtbarer Capture | Activity V1 | nach bedingtem Rollback wieder Activity V1 | PASS ROLLBACK |
 | V1-Produktcallsite | genau eine | kurzzeitig null; Rollbackpostimage wieder genau eine | PASS ROLLBACK |
-| V1-Historie | vorhanden | keine V1-Mutation oder -Löschung; finaler S5.6-Readerpostcheck offen | PARTIAL / NO MUTATION |
+| V1-Historie | vorhanden | keine V1-Mutation oder -Löschung; S5.6: 67 Einträge und R13-Snapshot 67 Units | PASS / NO MUTATION |
 | V2 Sessions/Items/Sets | 0/0/0 | nach Save und Retry weiterhin 0/0/0 | PASS NO WRITE |
-| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; finaler S5.6-Readersmoke offen | PARTIAL |
-| Root-SW | v13 bei Planung | v14 Cutover, danach monoton v15 Rollback | PASS |
+| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; S5.6-Service-Snapshot 67 Units, 0 Mixed-Source-Days | PASS |
+| Root-SW | v13 bei Planung | v14/v15 erstes Fenster; v16 Cutover, danach monoton v17 Rollback | PASS |
 
 ## Deploy- und Runtime-Nachweise
 
@@ -191,6 +197,8 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-P02 | Android Daily-Driver | owner-deferred | nicht ausgeführt und nicht als PASS behauptet | nein | DEFERRED / NOT PASS |
 | EV-ACT-R14-P03 | R13 Consumer | Cutover: unveränderte zwei Loads; Rollback: unveränderte zwei Loads | finaler S5.6-Readerpostcheck noch offen | read-only | PARTIAL |
 | EV-ACT-R14-P04 | Service Worker | Cutover v14; Rollback `ce2e18d` / `33296959317` v15 | Upgradebanner, kontrolliertes Schließen alter v14-Clients und frischer v15-Boot PASS | nein | PASS ROLLBACK |
+| EV-ACT-R14-P05 | Pages/Web zweites Fenster | `1b6e716` / `33357905534`; Rollback `4e87729` / `33358569779` | v16 Fresh/Upgrade/stale-client/Recovery PASS; Write FAIL; v17 frischer V1-Boot PASS | kein persistierter Write | PASS ROLLBACK / PRODUCT FAIL |
+| EV-ACT-R14-P06 | R13 Consumer S5.6 | zwei unveränderte Productloads; Service-Snapshot `midas.activity-consumer.v1` | 67 Units, 0 Mixed-Source-Days | read-only | PASS |
 
 ## Findings und Korrekturen
 
@@ -211,6 +219,65 @@ Nicht als Evidence zulässig:
 | F-ACT-R14-23 | S5.3/U10R | P1 / Android-DONE-Vertrag | D-ACT-R14-17: Android auf ausdrückliche Ownerentscheidung deferred, kein PC/ADB, kein erfundener PASS; Web/PWA-Funktionsnachweis bleibt Pflicht, Layoutpolishing später. | Ownerentscheidung im Zielvertrag, S5.5, Testmatrix und Device Evidence synchronisiert. | accepted / scope amended |
 | F-ACT-R14-24 | S5.5 Rollback | P1 / Rollback-Validator | Exakte Tokenzählung im PowerShell-Tool von mehrdeutigem `String.Split(string)` auf `Regex.Matches(Regex.Escape(...))` umgestellt. Die sechs Produktpfade waren vor dem Fehlalarm bereits exakt restauriert; keine breitere Inverse. | Toolausgabe `R14_V1_PRODUCTLOAD_ROLLBACK_V15_READY`, PowerShell-Parser, gezielter Materialisierungscontract und Live-v15-Postimage PASS. | fixed |
 | F-ACT-R14-25 | S5.5/U11 Diagnose + U11R2 Korrektur | P1 / produktiver V2-Commit / Semantikbindung | Productcontroller bindet den Data-Access-Commit an die pro Draft bereits gewählte selectedSemantics; exakt Request-ID/Payload/Semantik, ohne Semantik im RPC-Body. Neue Drafts v2, Recovery-v1 bleibt v1; keine SQL-/Auth-/Medizinänderung. | Echte Productcontroller→Data-Access-Regression, 299 Node, 84 Deno, 55 Syntaxchecks, Browser-Harness, v16/v17-Cutover-/Rollbackcontracts und native Fullreviews PASS. Produktiver Reproof offen. | fixed locally / productive reproof pending |
+| F-ACT-R14-26 | zweites S5.5/S5.6 + lokaler Reproof | P1 / produktiver Sessionabschluss / reale UI-Composition | Redundantes `setAuthenticated(true)` setzte durch erzwungenes Entry-Reconcile eine offene Session auf `recoverable/entry`. Minimalfix erhält die aktive Fläche; vollständiger Last-Mile-Pfad lokal bewiesen. Historischer Produktionsfehler bleibt bewusst nicht monokausal zugeschrieben. | Fünf Browserfälle, 303 Node, 84 Deno, 57 Syntax und Fullreviews PASS; v18/v19 releasebereit. Produktiver Write-/Reader-/Delete-Reproof offen. | fixed locally / productive reproof pending |
+| F-ACT-R14-27 | lokaler Recovery-Harness | P2 / Testorakel / Lease-Token | Deterministischer UUID-Zähler kollidierte nach simuliertem Reload nur testintern mit dem gespeicherten Lease-Token; Resume-Sequenz getrennt. | Recovery-Browsermodus und vollständige Matrix PASS; kein Produktvertrag betroffen. | fixed |
+
+### Dirty-Stop Recovery Receipt 2026-09-06
+
+- Letzte sichere Produktpostcondition: HEAD/origin `4e87729e94131d75d870f9cfb99e8141ecd09f21`,
+  Pages-Run `33358569779`, V1 alleiniger Writer, V2-Capture nicht im
+  Productload, zwei R13-Readerloads und Root-SW v17. Die sechs Produktpfade
+  entsprechen HEAD; keine neue externe Wirkung.
+- Der abgebrochene Block änderte ausschließlich den direkten
+  Productcontroller-Vertrag und drei ungetrackte lokale Last-Mile-Harness-
+  Dateien. Productcontroller und Productload blieben unverändert.
+- Aktuelle Fingerprints: Productcontroller `d30e7b8a...c7c0`, Test
+  `e3c4028d...b1bdb`, Harness-HTML `63d7da4a...a2b`, Harness-JS
+  `116aff66...bd56`, Harness-Contract `8562262a...ffc68`.
+- Vor dem letzten Patch waren Browserläufe für Erfolg, Unknown plus identischen
+  Retry, Recovery, Misdirect und Reauth sowie Syntax/3-of-3-Harnesscontract
+  abgeschlossen. Wegen der danach geänderten Quellen gelten sie nicht als
+  aktuelles Releaseorakel. Nach dem Patch lief kein Test; kein Testprozess ist
+  offen.
+- U12R3 am 2026-09-05T20:41:30+02:00 lieferte 95 % 5h / 85 % Woche und
+  CONTINUE. Der Block endete später als echter Usage-DIRTY-STOP. Das nächste
+  Gate ist eine neue POST_REHYDRATION_BASELINE; Rehydration bleibt SUNK_USAGE.
+- U12R4 am 2026-09-06T05:44:05+02:00 ist valide: 86 % 5h / 68 % Woche,
+  Resetidentitäten 1788683876/1788755765, `CONTINUE / PRIMARY_ALLOWED`.
+  Mangels dokumentierter gleicher U12R3-Resetidentität wird kein Delta
+  berechnet. Der kohärente lokale Diagnose-/Fix-/Validierungsblock ist
+  zugelassen; nach seinem Abschluss folgt zwingend ein neuer Sensorcheckpoint.
+
+### Lokaler F-ACT-R14-26-Abschlussnachweis 2026-09-06
+
+- Negative Regression reproduzierte den Lifecycle-Reset; ein neutraler
+  `reconcileProductState()`-Aufruf ist der einzige Produktcodefix.
+- Browser-Plugin nicht verfügbar; dokumentierter Playwright-Fallback mit
+  installiertem Edge. Erfolg, Unknown/identischer Retry, Reload-Recovery,
+  Misdirect und Reauth `5/5 PASS`; keine Console-/Page-Errors.
+- Harness-False-Failure F-ACT-R14-27 durch kollidierende deterministische
+  Lease-UUID bewiesen und ausschließlich im Harness korrigiert.
+- Matrix: Node `303/303`, Deno `84/84`, Syntax `57/57`, `git diff --check`
+  sowie native Code-/Contract-/Security-/Privacy-/Cache-/Lifecycle-/Rollback-/
+  Consumerreviews PASS. Backend-/Supabase-Diff 0, Secretkandidaten 0,
+  Produktlog-Additionen 0, Harness-Productloadreferenzen 0.
+- Lokales Release: Root-SW v18; geprüfte V1-Inverse v19. Null V1-
+  Writercallsite, ein V2-Controller, zwei R13-Readerloads. Produktion bleibt
+  unverändert 4e87729/v17 mit V1 als einzigem Writer.
+- Fingerprints und 19-Dateien-Manifest sind als EV-ACT-R14-L12 eingefroren.
+  Der historische Produktionsfehler wird erst durch einen echten erfolgreichen
+  Write-/Reader-/Delete-Reproof endgültig geschlossen.
+- U12R5 am 2026-09-06T06:02:49+02:00 ist valide: 42 % 5h / 61 % Woche,
+  Resetidentitäten 1788683876/1788755765, statisch `CONTINUE`. Delta seit
+  U12R4: 44/7 Punkte. Die harte unverteilbare Produktivreserve von mindestens
+  89 % 5h und über 20 % Woche ist nicht erfüllt; daher
+  `PRIMARY_REJECTED_FOR_RESERVE`, kein Commit, Push, Deploy oder Write.
+- U12R6 am 2026-09-06T10:45:59+02:00 ist valide: 94 % 5h / 55 % Woche,
+  Resetidentitäten 1788702263/1788755765, `CONTINUE`. Der 5h-Reset wurde
+  überschritten; die Messung ist POST_REHYDRATION_BASELINE. Manifest,
+  21-Dateien-Scope und 4e87729/v17-Preimage sind unverändert, die harte
+  89/20-Grenze ist erfüllt. `PRIMARY_OWNER_BOUNDARY_ALLOWED`; D-ACT-R14-22
+  wird ohne erneute Freigabe im atomaren v18/v19-Fenster ausgeübt.
 
 ## Externer Review-Nachweis
 
@@ -219,8 +286,10 @@ Nicht als Evidence zulässig:
 - CodeRabbit Verifikation:
   - `2026-08-29; genau ein Verifikationslauf nach Fingerprint-Härtung; 0 Findings. Kein dritter Lauf.`
 - Offene P0/P1:
-  - `none lokal; produktiver Reproof von F-ACT-R14-25 ist durch
-    D-ACT-R14-19 konditional freigegeben, bleibt aber Usage-gated.`
+  - `F-ACT-R14-26 offen. Der produktive Reproof von F-ACT-R14-25 scheiterte
+    erneut fail-closed; D-ACT-R14-19/-20 sind ausgeübt. Kein dritter
+    CodeRabbit-Lauf und kein weiterer produktiver Versuch ohne neue
+    Korrektur-, Test-, Cache- und P1/P2-Grenze.`
 
 ## Rollback-Nachweis
 
@@ -254,8 +323,40 @@ Nicht als Evidence zulässig:
     95d2922f...12da. Alte v14-Clients kontrolliert geschlossen; frischer v15-
     Client bootet ohne Fehler in die V1-Trainingsmaske. Kein Storage-Clear und
     keine Gesundheitsdatenlöschung.`
+  - `PASS zweites Fenster. Der v16-Pflicht-Write und genau ein identischer
+    Retry blieben ohne Persistenz; anschließend materialisierte das Tool mit
+    -ConfirmRollback ausschließlich die sechs Produktpfade und Root-SW v17.
+    Rollbackcommit 4e87729e94131d75d870f9cfb99e8141ecd09f21,
+    Pages-Run 33358569779 completed/success. Live V1-Script 1,
+    V2-Productcontroller 0, R13-Readerloads 2, Root-SW v17. Index SHA-256
+    552f347470237b9928368e5a29d4b2280ce5fcf26c6172424867a11b47cc437d,
+    Service Worker
+    1b5006812dd742e5d3d93a5180d86193a56d57c22843a0c9b2db2ed183944038.
+    Nach vollständigem Schließen alter kontrollierter Clients bootete ein
+    frischer V1-Client ohne Fehler in die V1-Trainingsmaske. V1 blieb 67,
+    V2 0/0/0; kein Storage-Clear und keine Gesundheitsdatenlöschung.`
 
 ## Finaler Evidence-Digest
+
+### S5.6-Postimage 2026-08-31
+
+- Cutover: `1b6e7164a26709246439e7609ddb3aa1a31aaf1f`, Pages-Run
+  `33357905534`, Live-index `340d37e7...ea0a`, Live-SW
+  `504ce2e5...f85c`, V1/V2/R13 `0/1/2`, Root-SW v16.
+- Web/PWA: Fresh, Upgrade, kontrollierter stale-client und Recovery nach
+  realistischem Tabwechsel PASS.
+- Write: Original plus genau ein identischer Retry FAIL / NO WRITE. Draft und
+  Eingaben erhalten; keine V2-Zeile, kein Dual Write und keine Datenlöschung.
+- Rollback: `4e87729e94131d75d870f9cfb99e8141ecd09f21`, Pages-Run
+  `33358569779`, Live-index `552f3474...437d`, Live-SW
+  `1b500681...4038`, V1/V2/R13 `1/0/2`, Root-SW v17; frischer V1-Boot und
+  V1-Trainingsmaske PASS.
+- Daten/Reader: V1 67; V2 Sessions/Items/Sets 0/0/0; leere geschützte V2-ID-
+  und Request-ID-Hashes `4f53cda1...b945`; R13-Schema
+  `midas.activity-consumer.v1`, 67 Units, 0 Mixed-Source-Days.
+- Android: `DEFERRED BY OWNER / NOT PASS`.
+- Urteil: `POSTIMAGE COMPLETE / PRODUCT FAIL / V17 ROLLBACK PASS`; R14 bleibt
+  offen und wird nicht archiviert.
 
 - Lokale Evidence:
   - `F-ACT-R14-25 ist lokal geschlossen. Echte Controller→Data-Access-
@@ -271,14 +372,22 @@ Nicht als Evidence zulässig:
   - `V2-Web/PWA-Productload und Recovery wurden über 1edbe38d/Run 33296179701
     bewiesen. Der Pflicht-Write blieb nach identischem Retry ohne Persistenz;
     deshalb kein Reader-/Delete-PASS und vollständiger v15-Webrollback.`
+  - `Das zweite Fenster lieferte v16 über 1b6e716/Run 33357905534. Live-
+    Productload, Fresh/Upgrade/stale-client und Recovery waren PASS. Der
+    bestätigte Write und genau ein identischer Retry blieben real ohne
+    Zustandsfortschritt und ohne V2-Persistenz; deshalb waren History/Detail/
+    Export/Delete nicht ausführbar. Der vollständige v17-Rollback über
+    4e87729/Run 33358569779 ist PASS.`
 - Device Evidence:
   - `DEFERRED BY OWNER gemäß D-ACT-R14-17; nicht ausgeführt und nicht als PASS
     dokumentiert. Im revidierten R14-Scope kein DONE-Blocker, aber sichtbares
     Evidence-Gap für späteres Polishing beziehungsweise freiwillige Validation.`
 - Restrisiken:
-  - `F-ACT-R14-25 benötigt noch den erneuten produktiven v16-Write-/Reader-/
-    Delete-Reproof. Bis dahin bleibt Activity V1 über ce2e18d/v15 produktiver
-    Writer. Android bleibt transparent owner-deferred.`
+  - `F-ACT-R14-26 ist offen. Der produktive Reproof der lokal geschlossenen
+    F-ACT-R14-25-Korrektur scheiterte erneut fail-closed. Bis zur bewiesenen
+    Ursache, minimalen Korrektur, erneuten vollständigen Revalidierung und
+    neuem P1/P2 bleibt Activity V1 über 4e87729/v17 produktiver Writer.
+    Android bleibt transparent owner-deferred.`
   - `U11R2 2026-08-30T15:19:50+02:00: 98 % 5h / 84 % Woche, CONTINUE.
     Lokaler Korrekturblock abgeschlossen; neues Usage-Gate vor P1 offen.`
   - `Erneuerter PRE07 PASS. U10R3 2026-08-30T15:38:32+02:00: 52 % 5h /
@@ -327,8 +436,23 @@ Nicht als Evidence zulässig:
     ce2e18d/v15-Preimage und der 16-Dateien-Manifesthash sind bestätigt.
     D-ACT-R14-20 wurde als PRIMARY_OWNER_BOUNDARY_ALLOWED ausgeübt und das
     atomare v16/v17-Fenster ohne Zwischenpoll begonnen.`
+  - `U11R3 2026-08-31T06:55:35+02:00: 52 % 5h / 93 % Woche, CONTINUE.
+    Das atomare Fenster war davor vollständig durch den v17-Rollback beendet.
+    S5.6 dokumentiert das reale Postimage; S6/DONE bleibt wegen
+    F-ACT-R14-26 gesperrt.`
+  - `U12 2026-08-31T07:02:18+02:00: 35 % 5h / 90 % Woche,
+    CONTINUE_WITH_CAUTION. S5.6 ist synchronisiert. S6/DONE bleibt unabhängig
+    vom Usage-Gate wegen des offenen F-ACT-R14-26 gesperrt; kein neuer Block.`
+  - `U12R1 2026-08-31T07:04:40+02:00: 29 % 5h / 89 % Woche,
+    CONTINUE_WITH_CAUTION. Genau ein kurzer lokaler Diagnoseblock, ohne Deploy,
+    Datenbankzugriff oder Fix: Das fehlende synchrone preparing-Publication
+    grenzt F-ACT-R14-26 bis vor/an den realen Shell-Dispatch in finish() ein;
+    die fehlende vollständige Composition-Regression ist belegt.`
+  - `U12R2 2026-08-31T07:09:30+02:00: 19 % 5h / 87 % Woche,
+    SAFE_CLOSURE. Kein neuer Diagnoseblock begonnen; ausschließlich der
+    kanonische Checkpoint und die sichere Resume-Grenze wurden synchronisiert.`
 - Follow-up Postimage Receipt für R15:
-  - `Git-/Pages-/SW-Version: ce2e18d / Run 33296959317 / Root-SW v15.`
+  - `Git-/Pages-/SW-Version: 4e87729 / Run 33358569779 / Root-SW v17.`
   - `V1-/V2-Produktstatus: V1 alleiniger produktiver Writer; V2-Capture nicht
     im Productload; R13-Readerloads unverändert aktiv.`
   - `Source-Fingerprints / gültige Evidence-IDs: TODO.`

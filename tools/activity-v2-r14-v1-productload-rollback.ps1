@@ -43,7 +43,7 @@ $versionNeedle = "const CACHE_VERSION = 'v13';"
 if ([regex]::Matches($workerSource, [regex]::Escape($versionNeedle)).Count -ne 1) {
   throw 'The restored service worker does not contain the exact v13 baseline token.'
 }
-$workerSource = $workerSource.Replace($versionNeedle, "const CACHE_VERSION = 'v17';")
+$workerSource = $workerSource.Replace($versionNeedle, "const CACHE_VERSION = 'v19';")
 
 $assetNeedle = "  toUrl('assets/js/ui-tabs.js'),"
 $v1Asset = "  toUrl('app/modules/vitals-stack/activity/index.js'),"
@@ -55,10 +55,10 @@ $workerSource = $workerSource.Replace($assetNeedle, "$assetNeedle`r`n$v1Asset")
 [IO.File]::WriteAllText($workerPath, $workerSource, [Text.UTF8Encoding]::new($false))
 
 $postimage = [IO.File]::ReadAllText($workerPath)
-if (-not $postimage.Contains("const CACHE_VERSION = 'v17';") -or
+if (-not $postimage.Contains("const CACHE_VERSION = 'v19';") -or
     -not $postimage.Contains($v1Asset) -or
     $postimage.Contains("activity/v2/activity-product-controller.js")) {
-  throw 'The V17 V1 productload postimage validation failed.'
+  throw 'The V19 V1 productload postimage validation failed.'
 }
 
-Write-Output 'R14_V1_PRODUCTLOAD_ROLLBACK_V17_READY'
+Write-Output 'R14_V1_PRODUCTLOAD_ROLLBACK_V19_READY'
