@@ -15,8 +15,8 @@
  */
 
 // SUBMODULE: imports @internal - Supabase-Core und Hilfsfunktionen
-import { getUserId } from '../auth/core.js?v=20';
-import { sbSelect } from './select.js?v=20';
+import { getUserId } from '../auth/core.js?v=21';
+import { sbSelect } from './select.js?v=21';
 
 // SUBMODULE: globals @internal - Diagnose-Hook
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
