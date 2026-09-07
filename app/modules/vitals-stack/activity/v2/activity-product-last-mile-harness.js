@@ -9,7 +9,7 @@
   const exportHost = root.document.getElementById('activity-v2-export-host');
   const url = new URL(root.location.href);
   const requestedMode = url.searchParams.get('mode');
-  const mode = ['success', 'unknown', 'recovery', 'misdirect', 'reauth'].includes(requestedMode)
+  const mode = ['success', 'unknown', 'recovery', 'misdirect', 'reauth', 'aged'].includes(requestedMode)
     ? requestedMode
     : 'success';
   const phase = url.searchParams.get('phase') === 'resume' ? 'resume' : 'seed';
@@ -229,6 +229,7 @@
         });
         return deepFreeze({
           getState: real.getState,
+          preflight: real.preflight,
           finish() {
             finishCalls += 1;
             markers.add('finish_invoked');
@@ -406,6 +407,22 @@
       );
       if (!(mode === 'recovery' && phase === 'resume')) {
         addValidItemThroughShell(activityV2);
+      }
+      if (mode === 'aged') {
+        clock += 24 * 60 * 60 * 1000;
+        const preflight = controller.preflightSessionCommit();
+        if (
+          preflight?.state !== 'blocked' ||
+          preflight?.reason !== 'INVALID_TIME' ||
+          preflight?.focus_target?.field_key !== 'duration_min' ||
+          requestBodies.length !== 0
+        ) {
+          fail('aged draft preflight drift');
+        }
+        status.dataset.result = 'pass';
+        status.textContent = 'aged: BLOCKED BEFORE TRANSPORT \u00b7 PASS';
+        root.document.title = 'Activity V2 Last Mile \u00b7 AGED \u00b7 PASS';
+        return;
       }
       if (mode === 'reauth') {
         await controller.setAuthenticated(true);

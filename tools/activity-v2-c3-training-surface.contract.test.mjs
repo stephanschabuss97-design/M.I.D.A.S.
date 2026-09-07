@@ -57,7 +57,11 @@ const trainingPanelStart = index.indexOf('id="hubTrainingPanel"');
 const trainingPanelEnd = index.indexOf('</section>', trainingPanelStart);
 const trainingPanel = index.slice(trainingPanelStart, trainingPanelEnd);
 requireCondition(trainingPanel.includes('id="activityV2ProductHost"'), 'V2_ENTRY_IN_TRAINING_PANEL');
-requireCondition(trainingPanel.includes('id="activityV2SessionHost"'), 'V2_SESSION_IN_TRAINING_PANEL');
+requireCondition(!trainingPanel.includes('id="activityV2SessionHost"'), 'V2_SESSION_OUTSIDE_TRANSFORMED_PANEL');
+requireCondition(
+  index.indexOf('id="activityV2SessionHost"') > trainingPanelEnd,
+  'V2_SESSION_AFTER_TRAINING_PANEL'
+);
 requireCondition(!trainingPanel.includes('id="activityForm"'), 'V1_FORM_REMOVED');
 
 requireCondition(hub.includes("{ id: 'training', selector: '[data-carousel-id=\"training\"]', panel: 'training' }"), 'HUB_CAROUSEL_MAP');
@@ -124,7 +128,7 @@ requireCondition(readOnlyProteinBlock.includes("select: 'day,kg'"), 'LATEST_WEIG
 requireCondition(!/\b(?:insert|upsert|update|delete|rpc)\b/i.test(readOnlyProteinBlock), 'PROJECTION_READ_ONLY');
 requireCondition(protein.includes('loadStoredContext,'), 'PROJECTION_EXPORT');
 
-requireCondition(worker.includes("const CACHE_VERSION = 'v18'"), 'WORKER_V18');
+requireCondition(worker.includes("const CACHE_VERSION = 'v20'"), 'WORKER_V20');
 requireCondition(appCss.includes('@import url("./styles/hub.css?v=11")'), 'HUB_CSS_VERSIONED_IMPORT');
 requireCondition(
   count(worker, "toUrl('app/styles/hub.css?v=11')") === 1,

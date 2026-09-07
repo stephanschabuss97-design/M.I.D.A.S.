@@ -13,13 +13,13 @@
  */
 
 // SUBMODULE: imports @internal - API- und Core-Abhängigkeiten
-import { supabaseState } from '../core/state.js';
-import { baseUrlFromRest, maskUid } from '../core/client.js';
-import { fetchWithAuth } from '../core/http.js';
-import { setConfigStatus } from '../auth/ui.js';
-import { getUserId } from '../auth/core.js';
-import { toEventsUrl } from '../realtime/index.js';
-import { sbSelect } from './select.js';
+import { supabaseState } from '../core/state.js?v=20';
+import { baseUrlFromRest, maskUid } from '../core/client.js?v=20';
+import { fetchWithAuth } from '../core/http.js?v=20';
+import { setConfigStatus } from '../auth/ui.js?v=20';
+import { getUserId } from '../auth/core.js?v=20';
+import { toEventsUrl } from '../realtime/index.js?v=20';
+import { sbSelect } from './select.js?v=20';
 
 // SUBMODULE: globals @internal - globale Diagnose- und Utility-Hilfsfunktionen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

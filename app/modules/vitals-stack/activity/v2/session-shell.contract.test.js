@@ -495,6 +495,16 @@ function createSessionCommitFacade(initialState, overrides = {}) {
     getState() {
       return state;
     },
+    preflight() {
+      return overrides.preflight
+        ? overrides.preflight({ state })
+        : Object.freeze({
+            state: 'ready',
+            reason: null,
+            focus_target: null,
+            intent_present: state.intent_present === true
+          });
+    },
     finish() {
       finishCalls += 1;
       return overrides.finish

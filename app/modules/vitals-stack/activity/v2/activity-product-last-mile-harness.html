@@ -16,6 +16,7 @@
       #harness-status { padding: .75rem; border: 1px solid #4b5563; border-radius: .5rem; }
       #harness-status[data-result="pass"] { border-color: #34d399; }
       #harness-status[data-result="fail"] { border-color: #f87171; }
+      .transformed-product-surface { transform: translateZ(0); }
       #activity-v2-session-host[hidden], #activity-v2-history-host[hidden], #activity-v2-export-host[hidden] { display: none; }
     </style>
   </head>
@@ -24,11 +25,13 @@
       <h1>Activity V2 Product Last-Mile Harness</h1>
       <p id="harness-status" role="status" data-result="ready">Bereit.</p>
       <button id="harness-run" type="button">Last-Mile-Vertrag ausführen</button>
-      <section id="activity-v2-product-host"></section>
-      <section id="activity-v2-session-host"></section>
-      <section id="activity-v2-history-host" hidden></section>
-      <section id="activity-v2-export-host" hidden></section>
+      <section class="transformed-product-surface">
+        <section id="activity-v2-product-host"></section>
+      </section>
     </main>
+    <section id="activity-v2-session-host"></section>
+    <section id="activity-v2-history-host" hidden></section>
+    <section id="activity-v2-export-host" hidden></section>
 
     <script src="./semantics.js"></script>
     <script src="./semantics-v2.js"></script>

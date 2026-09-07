@@ -15,13 +15,13 @@ medizinische Logik noch ein neues Datenmodell.
 
 | Feld | Wert |
 | --- | --- |
-| Status | `S5.4/S5.5 V18/V19 ATOMIC WINDOW ADMITTED; F-ACT-R14-26 PRODUCTIVE REPROOF IN PROGRESS; Android owner-deferred` |
+| Status | `S5_CUTOVER_IN_PROGRESS; P1_P2_EXERCISED; F-ACT-R14-32 FIXED LOCALLY; LOCAL S5 CLOSURE PASS; V19 PREIMAGE PASS; R14 OPEN` |
 | Modul / Bereich | `Activity V2 / Training / PWA / Android` |
 | Owner / Kontext | `Stephan; private Single-User-PWA für den eigenen CKD- und Arztkontext` |
 | Chat-Lebenszyklus | `Denkraum -> eigener Ausführungs-Chat` |
 | Erstellt am | `2026-08-28` |
-| Letzter Stand | `2026-09-06; redundanter Auth-Lifecycle-Reset minimal korrigiert, vollständiger realer Last-Mile-Pfad lokal in fünf Browserfällen und kompletter R14-Matrix grün; v18/v19 releasebereit, Produktion unverändert auf V1/v17` |
-| Aktueller Schritt | `U12R6 PRIMARY_OWNER_BOUNDARY_ALLOWED; D-ACT-R14-22 wird im atomaren v18/v19-Fenster ausgeübt` |
+| Letzter Stand | `2026-09-07; F32 lokal geschlossen; v20/v21-Preflight PASS; U11R15 98/53 PRIMARY_ALLOWED; Produktion vor Fensterbeginn unverändert auf V1/v19` |
+| Aktueller Schritt | `D-ACT-R14-23/-25 werden im atomaren v20/v21-Fenster ausgeübt; kein Zwischenpoll bis Erfolg oder vollständig abgeschlossenem Rollback.` |
 | Risikoklasse | `R3`; produktiver Writer- und Web/PWA-Cache-Cutover bei bestehender Gesundheitsdatenbank; Android-Evidence gemäß D-ACT-R14-17 deferred |
 | Standard-Reviewtiefe | `Full`; S4 gemäß Workflow nur Delta/Consumer, S5 integriert Full und externes Review |
 | Ausführungsmodell | `GPT-5.6 Sol` |
@@ -207,11 +207,16 @@ medizinische Logik noch ein neues Datenmodell.
     Unknown plus identischen Retry, Recovery nach Reload, Misdirect und Reauth
     vollständig grün. 303/303 Node, 84/84 Deno, 57 Syntaxchecks,
     git diff --check und native Fullreviews sind PASS.`
+  - `Das v18/v19-Fenster ist beendet. Cutover 0fa44e2 / Pages 34022878621
+    lieferte den V2-Productload. Der einzige Abschlussversuch blieb vor dem
+    Transport fail-closed; V2 blieb 0/0/0. Rollback 3857bf4 / Pages
+    34023954044 stellte V1 und Root-SW v19 wieder her. Ein isolierter frischer
+    V1-Client bootet; R13 liefert 69 reine V1-Units.`
 - Nächster erlaubter Schritt:
-  - `Unmittelbar nach dem abgeschlossenen großen lokalen Block das kanonische
-    Usage-Gate ausführen. Nur bei CONTINUE und vollständiger atomarer Reserve
-    darf die konditionale Freigabe D-ACT-R14-22 für das vorbereitete
-    v18/v19-Produktivfenster ausgeübt werden; sonst sicher vor S5.4 stoppen.`
+  - `Das vorbereitete v20/v21-P1/P2-Briefing gemeinsam freigeben. Danach den
+    produktiven Read-only-Preflight und ein frisches Usage-Gate ausführen.
+    Nur bei gültigem CONTINUE und vollständiger atomarer Reserve darf das
+    Cutoverfenster beginnen.`
 - Offene Findings:
   - `F-ACT-R14-13/-14 sind im S2-Vertrag geschlossen und bleiben als
     verpflichtende S4-/S5-Orakel offen, nicht als Produktentscheidung.`
@@ -246,6 +251,32 @@ medizinische Logik noch ein neues Datenmodell.
     nur testintern mit dem gespeicherten Lease-Token. Eine getrennte Resume-
     Sequenz beseitigt das falsche Orakel; der reale Browser-Recoveryfall ist
     danach PASS.`
+  - `F-ACT-R14-28 ist lokal geschlossen: Ein mehrtägiger Draft überschreitet
+    deterministisch die bestehende 1440-Minuten-Grenze und scheitert vor
+    Persistenz oder Transport mit INVALID_TIME/duration_min. Der write-freie
+    Preflight verwendet denselben Intent-/Validierungspfad und verändert Draft,
+    Request-ID oder Eingaben nicht.`
+  - `F-ACT-R14-29 Viewport ist lokal geschlossen: Die Overlayhosts liegen nicht
+    mehr im transformierten, höhenbegrenzten Hubpanel; 1280x720, 960x640,
+    390x844 und 320x800 sind per Maus, Tastatur beziehungsweise Touch grün.`
+  - `F-ACT-R14-29 Cache ist gemeinsam mit F-ACT-R14-32 lokal geschlossen:
+    direkte und transitive Releaseidentitäten, releaseeigene Cache-Lookups,
+    v20/v21-Materialisierer und reale schnelle Wechsel sind grün.`
+  - `F-ACT-R14-30 ist lokal geschlossen: calcMAP-Diagnostik enthält nur noch
+    abstrakte Fehlercodes; Werte, Kontext, Fehlertexte und Gesundheitsdetails
+    sind durch einen Negativvertrag ausgeschlossen.`
+  - `F-ACT-R14-31 ist lokal geschlossen und final reviewed: v20 und v21
+  ergänzenden in den eingefrorenen Quellpostimages
+  fehlenden Chart-Workerasset deterministisch
+    am eindeutigen Main-Asset-Anker und normalisieren nur bekannte EOF-
+    Leerzeilen. 8/8 Contracts und beide isolierten Materialisierungen samt
+    diff-check sind PASS.`
+  - `F-ACT-R14-32 ist lokal geschlossen: Alle 18 Quellen des Supabase-/Boot-
+    ESM-Graphs verwenden eine gemeinsame Releasequery, der Worker installiert
+    den vollständigen Graph und die v20/v21-Materialisierer normalisieren ihn
+    deterministisch. Ein alter v19-Worker mit v20-HTML, v20→v21-Rollback und
+    Fresh-v20→Offline wurden im echten Browser mit realen Releasewurzeln
+    kohärent bewiesen; doppelte Root-/Auth-Core-Identitäten bleiben aus.`
 - Geänderte Dateien:
   - `Block A/B: Productcontroller, CSS und direkter Contracttest. Block C:
     index.html, app.css, main.js, Auth-Lifecyclehook, Chartadapter, Root-SW,
@@ -253,9 +284,10 @@ medizinische Logik noch ein neues Datenmodell.
     und explizites v15-Rollbacktool. Roadmap/Evidence sind synchronisiert;
     vorbestehende Änderungen an DEV_ENVIRONMENT und Workflow Contract bleiben
     unangetastet.`
-  - `Beim U8R-Re-entry erschien zusätzlich die fremde Dirty-Datei
-    docs/Codex Usage Guard VS Code Extension Future Notes.md; sie bleibt
-    ebenfalls unangetastet und außerhalb des R14-Diffs.`
+  - `Beim U8R-Re-entry erschien zusätzlich eine fremde Guard-Future-Notes-
+    Änderung. Sie wurde am 2026-09-07 unter
+    docs/Codex Usage Guard Evolution Notes.md konsolidiert und bleibt außerhalb
+    des R14-Produkt-, Test- und Cutoverscopes.`
   - `S5 ergänzte ausschließlich invalidierte Contractpostimages, archivierte
     Contractpfade, einen R13-aktivierten Reporttest und die fingerprintgebundene
     R10/R14-Ausnahme im bestehenden R8-Isolationsgate; keine Runtime-, SQL-
@@ -265,9 +297,10 @@ medizinische Logik noch ein neues Datenmodell.
     Die vorbestehenden DEV_ENVIRONMENT-/Workflow-Contract-/Usage-Notes-/Training-
     Thoughts-Änderungen sowie die ungetrackte R15-Roadmap bleiben fremd und
     unangetastet.`
-  - `Aktuell sind 19 R14-Code-/Testdateien für v18/v19 abgegrenzt; zusammen
-    mit Roadmap und Evidence umfasst der konditionale P1-Scope 21 Dateien.
-    Fremde Dirty-Dateien und die ungetrackte R15-Roadmap bleiben ausgeschlossen.`
+  - `Aktuell sind 49 R14-Code-/Testdateien für v20/v21 abgegrenzt; zusammen
+    mit Roadmap und Evidence umfasst der nächste konditionale P1-Scope 51
+    Dateien. Manifest`333a3469...db95`. Fremde Dirty-Dateien und die
+    ungetrackte R15-Roadmap bleiben ausgeschlossen.`
 - Gültige Nachweise:
   - `R8 Recovery/Commit L01-L08 und D01-Evidence-Gap; R9 History/Lifecycle;
     R10 Export L01/L08/L09; R13 finales Reader-Postimage; C3 HCR-032.`
@@ -306,43 +339,65 @@ medizinische Logik noch ein neues Datenmodell.
     dd6a8048...edde, Harness-JS 077ee88f...1eea und Harness-Contract
     51c411b2...32d. 19-Dateien-Code-/Testmanifest
     75daad72...d3169; Root-SW v18, explizite V1-Inverse v19.`
+  - `V18/V19-Postimage 2026-09-06: Cutover 0fa44e2/Run 34022878621;
+    Rollback 3857bf4/Run 34023954044; Live v19 V1/V2/R13 1/0/2. Daten
+    V1 69/459f2056...007d, V2 0/0/0/4f53cda1...b945. Gültige neue
+    Evidence: v18-Productload/Fresh/Upgrade/Recovery und vollständiger
+    v19-Rollback. Invalidiert als Abschlussbeweis: produktiver Write-/Reader-/
+    Delete-Reproof.`
+  - `Dirty-Stop-Closure und F31-Repair: F28/F30 sowie F29-Viewport lokal
+    geschlossen; Materialisierer ergänzt fehlenden Chart-Token deterministisch.
+    35-Dateien-Manifest 2a9bb7f9...0812c; v20/v21-Roundtrip PASS. Evidence
+    EV-ACT-R14-L13; nativer Abschlussreview noch offen.`
+  - `F32-Postimage 2026-09-07: vollständiger 18-Dateien-Supabase-/Boot-Graph,
+    Root-SW 88232bcf...b186, Cutovertool 15dd80da...d316, Rollbacktool
+    a19144c7...b2ed; reale v19→v20-/v20→v21- und Fresh→Offline-Smokes PASS.
+    49-Dateien-Code-/Testmanifest 333a3469...db95; EV-ACT-R14-L15.`
 - Autonomieprofil / aktuelle Welle:
   - `gated; G0-S5.3 lokal autonom, danach koordiniertes P1/P2; P3 nur bei
     unerwartetem Reparaturbedarf.`
 - Runtime-/Deploy-Stand:
-  - `Der zweite V2-Cutovercommit 1b6e716 wurde über Pages-Run 33357905534
-    erfolgreich ausgeliefert und nach dem erneut fehlgeschlagenen Pflicht-
-    Write durch Commit 4e87729 und Pages-Run 33358569779 vollständig auf den
-    V1-Productload zurückgerollt. Live: V1-Form/Script je 1,
-    V2-Productcontroller 0, R13-Readerloads 2, Root-SW v17. Ein vollständig
-    frischer Client bootet grün in die V1-Trainingsmaske.`
+  - `Der v18-Cutovercommit 0fa44e2 wurde über Pages-Run 34022878621
+    ausgeliefert. Nach dem fail-closed Pflicht-Write restaurierte Commit
+    3857bf4 über Pages-Run 34023954044 die sechs V1-Produktpfade mit Root-SW
+    v19. Live: V1-Form/Script je 1, V2-Productcontroller 0,
+    R13-Readerloads 2. Isolierter frischer V1-Boot PASS; der schnelle
+    Cache-Mischzustand ist durch F32 lokal als transitive ESM-/Offline-
+    Kohärenzlücke geschlossen und benötigt nur noch den produktiven Reproof.`
 - Offene Owner-Freigaben:
-  - `D-ACT-R14-19/-20 wurden im abgeschlossenen v16/v17-Fenster ausgeübt.
-    D-ACT-R14-22 erteilt konditional ein neues P1/P2 für genau ein v18/v19-
-    Fenster nach lokal grünem Stand und erlaubendem Usage-Gate. P3 bleibt für
+  - `D-ACT-R14-19/-20 und D-ACT-R14-22 wurden in den abgeschlossenen
+    v16/v17- beziehungsweise v18/v19-Fenstern ausgeübt. D-ACT-R14-23 erteilt
+    konditional das neue gemeinsame P1/P2 für genau ein v20/v21-Fenster, wurde
+    wegen der fehlenden Usage-Reserve aber noch nicht ausgeübt. P3 bleibt für
     unerwartete produktive Reparaturen außerhalb der normalen Flows nötig.`
 - Letzter Usage-Checkpoint / Entscheidung:
-  - `U12R6 2026-09-06T10:45:59+02:00: 5h 94 %, Woche 55 %, CONTINUE.
-    5h RESET_CROSSED seit U12R5; POST_REHYDRATION_BASELINE und Rehydration als
-    SUNK_USAGE. Manifest, 21-Dateien-Scope und 4e87729/v17-Preimage sind
-    unverändert; harte 89/20-Grenze erfüllt. PRIMARY_OWNER_BOUNDARY_ALLOWED
-    nach D-ACT-R14-22; atomares v18/v19-Fenster beginnt.`
+  - `U11R15 2026-09-07T22:40:33+02:00: 5h 98 %, Woche 53 %, gültig;
+    CONTINUE und PRIMARY_ALLOWED oberhalb 81/21. POST_REHYDRATION_BASELINE;
+    Rehydration SUNK_USAGE. PRE08, Scope, Manifest und v19-Postimage sind
+    unverändert; das atomare v20/v21-Fenster beginnt ohne weiteres Gate.`
 - Rehydrationsstatus:
-  - `U12R6 ist POST_REHYDRATION_BASELINE. Der gemessene Rest ist das Nettobudget
-    für das nun begonnene Fenster. Das angeforderte Profil GPT-5.6 Sol / High
-    blieb unverändert; die aktive UI-/Runtime-Stufe ist technisch nicht
-    beobachtbar und wird daher nicht als unabhängig verifiziert behauptet.`
+  - `U12R6 war POST_REHYDRATION_BASELINE; Rehydration wurde als SUNK_USAGE
+    behandelt. Das angeforderte Profil GPT-5.6 Sol / High blieb unverändert;
+    die aktive UI-/Runtime-Stufe ist technisch nicht beobachtbar und wird
+    daher nicht als unabhängig verifiziert behauptet.`
 - Primärblock / Zulassung:
-  - `S5.4-S5.5 / V18_PRODUCTIVE_CUTOVER ist mit U12R6 und D-ACT-R14-22
-    zugelassen und beginnt als unteilbares Fenster; Abschluss ausschließlich
-    durch grünen Write-/Reader-/Delete-Smoke oder vollständigen v19-Rollback.`
+  - `F32-Repair-/Retestblock vollständig geschlossen. Nächster atomarer Block
+    ist ausschließlich das durch D-ACT-R14-23 konditional freigegebene
+    v20/v21-Cutoverfenster nach frischem Usage-Gate; PRE08 ist aktuell PASS.
+    Der Operational Safety Floor beträgt 72/12; mit dem CONTINUE-Band ist die
+    effektive operative Grenze 72/21. Der Autonomous Full-Closure Floor beträgt
+    81/14 beziehungsweise effektiv 81/21. Ab 81/21 ist PRIMARY_ALLOWED
+    verfügbar; ab 72/21 bis unter 81/21 ist nach D-ACT-R14-25
+    PRIMARY_OWNER_BOUNDARY_ALLOWED verfügbar. U11R13 lag bei 80/66. Stephan
+    akzeptierte das reine Risiko einer späteren administrativen Closure
+    ausdrücklich; sichere Produkt-/Rollbackpostcondition und minimaler
+    Postimage-/Resume-Fakt bleiben Teil des atomaren Fensters.`
 - Restricted-Work-Episode:
-  - `nicht relevant am letzten Checkpoint; U10R10 war statisch CONTINUE und
-    nach D-ACT-R14-20 boundary-fähig, nicht PRIMARY_REJECTED_FOR_RESERVE.`
+  - `Keine aktive Fallback-Episode. U11R15 lässt den unveränderten Primärblock
+    als PRIMARY_ALLOWED zu.`
 - Erlaubter Fallback:
-  - `CLOSURE_ONLY. R14 besitzt vor dem produktiven Fenster keinen weiteren
-    unabhängigen Fallback; der Cutover darf nicht geteilt und sein grünes
-    Preflight-/Releasepostimage nicht invalidiert werden.`
+  - `Keiner. Ausschließlich Usage-/Freigabe-/Resume-Sync; sichere Pause vor
+    produktivem Preflight und S5.4.`
 - Stop-Bedingungen:
   - `jede Bedingung der Startkarte oder Evidence-Lücke an einem Pflichtgate.`
 
@@ -419,6 +474,18 @@ Diese Werte sind keine Tokenzahlen und keine Garantie. Die zentrale
 | U12R4 | `2026-09-06T05:44:05+02:00` | `86 % / 1788683876` | `68 % / 1788755765` | `POST_REHYDRATION_BASELINE; U12R3-Resetidentität nicht dokumentiert, daher kein Delta; Rehydration ist SUNK_USAGE` | `CONTINUE / PRIMARY_ALLOWED` | `kohärenter lokaler F-ACT-R14-26-Diagnose-/Fix-/Validierungsblock; danach zwingend erneut messen` |
 | U12R5 | `2026-09-06T06:02:49+02:00` | `42 % / 1788683876` | `61 % / 1788755765` | `44 / 7 seit U12R4; großer lokaler Block vollständig abgeschlossen` | `CONTINUE / PRIMARY_REJECTED_FOR_RESERVE` | `v18/v19-Produktivfenster nicht begonnen; lokale Evidence synchronisiert, sichere Pause vor S5.4` |
 | U12R6 | `2026-09-06T10:45:59+02:00` | `94 % / 1788702263` | `55 % / 1788755765` | `5h RESET_CROSSED; Woche 6 Punkte seit U12R5; POST_REHYDRATION_BASELINE` | `CONTINUE / PRIMARY_OWNER_BOUNDARY_ALLOWED` | `D-ACT-R14-22 ausüben; atomares v18/v19-Cutoverfenster ohne Zwischenpoll beginnen` |
+| U11R4 | `2026-09-06T11:17:12+02:00` | `23 % / 1788702263` | `44 % / 1788755765` | `71 / 11 seit U12R6; atomares Fenster davor vollständig durch v19-Rollback beendet` | `SAFE_CLOSURE` | `nur Status-/Findings-/Evidence-/Resume-Sync; Diagnose F-ACT-R14-28..30 nicht begonnen` |
+| U11R5 | `2026-09-06T21:36:13+02:00` | `96 % / 1788741277` | `24 % / 1788755765` | `POST_REHYDRATION_BASELINE nach eindeutigem Dirty-Stop-Recovery; Rehydration ist SUNK_USAGE` | `CONTINUE` | `nur fehlende/invalidierte lokale Closure-Checks; kein Fix, Cutover oder externe Wirkung` |
+| U11R6 | `2026-09-06T21:40:52+02:00` | `87 % / 1788741277` | `22 % / 1788755765` | `9 / 2 seit U11R5; Closure sicher beendet und F31 vollständig dokumentiert` | `CONTINUE` | `kein automatischer Repairblock gemäß Sessionvertrag; Pause vor eigenem F31-Fix-/Retestblock` |
+| U11R7 | `2026-09-06T21:44:37+02:00` | `81 % / 1788741277` | `21 % / 1788755765` | `6 / 1 seit U11R6; neuer expliziter Ownerauftrag für enges F31-Repair` | `CONTINUE` | `nur Materialisierer, direkter Contract und isolierter v20/v21-Roundtrip` |
+| U11R8 | `2026-09-06T21:50:28+02:00` | `69 % / 1788741277` | `19 % / 1788755765` | `12 / 2 seit U11R7; F31-Repair und sichere Dokumentationspostconditions vollständig` | `CONTINUE_WITH_CAUTION` | `Repairblock beendet; kein Review-/Red-Team-Anschluss in derselben Restricted-Work-Episode` |
+| U11R9 | `2026-09-06T22:01:28+02:00` | `55 % / 1788741277` | `17 % / 1788755765` | `14 / 2 seit U11R8; genau ein ownerbeauftragter bounded Finding-only-Review mit vollständigen Dokumentationspostconditions` | `CONTINUE_WITH_CAUTION` | `F32 P1 offen; kein zweiter Block in derselben Restricted-Work-Episode, sichere Pause vor F32-Repair` |
+| U11R10 | `2026-09-07T07:04:38+02:00` | `98 % / 1788775447` | `100 % / 1789362247` | `POST_REHYDRATION_BASELINE; Resetidentitäten gewechselt; Rehydration SUNK_USAGE` | `CONTINUE` | `kohärenter lokaler F32-Diagnose-/Fix-/Retestblock zugelassen; keine Produktivwirkung` |
+| U11R11 | `2026-09-07T07:34:05+02:00` | `29 % / 1788775447` | `89 % / 1789362247` | `69 / 11 seit U11R10; F32-Repair, reale Releasebrowser, Regressionen, Fullreviews und Doku vollständig` | `CONTINUE_WITH_CAUTION` | `lokaler Block geschlossen; kein neuer Block in dieser Restricted-Work-Episode; Pause vor neuem P1/P2 und frischem Cutovergate` |
+| U11R12 | `2026-09-07T12:15:54+02:00` | `95 % / 1788793997` | `83 % / 1789362247` | `5h RESET_CROSSED; POST_REHYDRATION_BASELINE; Rehydration SUNK_USAGE. Vergleichsblock 71/11; echte Closure 9/2; Sensorpuffer 1/1; Hard Floor 81/14; effektive Zulassungsgrenze 81/21; raw Preferred 107/17 und 5h PREFERRED_UNATTAINABLE` | `historisch CONTINUE / PRIMARY_REJECTED_FOR_RESERVE; durch F-ACT-R14-33 als RESERVE_MISCLASSIFICATION korrigiert und boundary-fähig` | `D-ACT-R14-23 dokumentiert, aber nicht ausgeübt; kein Preflight, Commit, Push, Deploy oder produktiver Write; wegen Zeitablauf frisches Gate vor S5.4` |
+| U11R13 | `2026-09-07T17:51:16+02:00` | `80 % / 1788813548` | `66 % / 1789362247` | `POST_REHYDRATION_BASELINE; Rehydration SUNK_USAGE. PRE08, 49-Dateien-Manifest, 51-Dateien-Scope und v19-Postimage PASS. Nach D-ACT-R14-25: Operational Safety Floor 72/12, effektiv 72/21; Autonomous Full-Closure Floor 81/14, effektiv 81/21` | `CONTINUE / PRIMARY_OWNER_BOUNDARY_ALLOWED` | `Die frühere Ein-Punkt-Ablehnung war eine Reservefehlklassifikation. Stephan akzeptierte das reduzierte administrative Closure-Polster ausdrücklich; kein produktiver Start erfolgte bisher.` |
+| U11R14 | `2026-09-07T18:18:14+02:00` | `59 % / 1788813548` | `62 % / 1789362247` | `16/3 seit dem Guard-Hotfix-U0 75/65; Workflow-, R14- und Guard-Dokumente korrigiert und geprüft; keine Produktwirkung` | `CONTINUE / PRIMARY_REJECTED_FOR_RESERVE` | `Hotfixblock vollständig geschlossen; unter effektivem Operational Safety Floor 72/21 kein v20/v21-Start in diesem Bucket; D-ACT-R14-23/-25 bleiben für das nächste ausreichende Gate gültig` |
+| U11R15 | `2026-09-07T22:40:33+02:00` | `98 % / 1788831575` | `53 % / 1789362247` | `5h RESET_CROSSED; POST_REHYDRATION_BASELINE; Rehydration SUNK_USAGE; PRE08, Manifest, Scope und v19-Postimage unverändert` | `CONTINUE / PRIMARY_ALLOWED` | `D-ACT-R14-23/-25 ausüben; atomares v20/v21-Fenster ohne Zwischenpoll begonnen` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -630,6 +697,9 @@ R14 ist erfolgreich, wenn:
 | D-ACT-R14-20 | 2026-08-30 | Der Owner akzeptiert für exakt das unveränderte, vorbereitete v16/v17-Fenster einmalig `CONTINUE_OWNER_BOUNDARY`. Bevorzugte Reserve ist 96/15; harte Mindestreserve aus beobachtetem vollständigem Block plus Closure-Rest ist 89/20. | U10R10 lag mit 95/68 über der harten Grenze und im statischen Continue-Bereich. Der frühere absolute Ein-Punkt-Stop erzeugte drei Ablehnungen und zusätzlichen Usage-Verbrauch ohne Sicherheitsgewinn. Da das Fenster nicht begann, ist einmalig frisch zu messen; bei 5h mindestens 89 %, Woche über 20 % und unverändertem Produktpostimage beginnt es ohne weitere Owner-Diskussion. Unter der harten Grenze, bei fehlendem statischem Continue, Drift oder Finding bleibt der Stop unüberstimmbar. |
 | D-ACT-R14-21 | 2026-08-30 | U10R10 ist die erste kanonische Messung nach Reset und Session-Rehydration. Ihre 95 % sind die verfügbare Nettokapazität; der bereits angefallene Einstieg ist `SUNK_USAGE` und wird nicht nochmals in die Cutoverreserve eingerechnet. | Der Owner beobachtete vor dem Einstieg ein frisches Fenster, aber es existiert kein kanonischer Vorhercheckpoint mit derselben Reset-ID. Deshalb wird kein exaktes 5-%-Rehydrationsdelta behauptet. Für die Zulassung zählt der gemessene Rest gegen die harte 89/20-Mindestreserve; nur noch offene Reads oder Revalidierungen dürfen den prospektiven Bedarf erhöhen. |
 | D-ACT-R14-22 | 2026-09-06 | Der Owner erteilt konditional P1/P2 für genau einen weiteren R14-Cutover nach bewiesenem F-ACT-R14-26-Fix, vollständig grüner lokaler Abschlussmatrix und frischem Usage-`CONTINUE` mit vollständiger atomarer Reserve. | Freigegeben sind der exakt abgegrenzte R14-Commit/Push, Pages-Deploy, genau ein V2-Smoke-Write, höchstens identischer Retry bei unbekannter Antwort, History/Detail/Export/R13-Smokes, normaler R9-Delete des Smoke-Datensatzes und bei Pflichtfehler der datenverlustfreie monotone v19-Webrollback. Nach grünem S6 ist auch der abschließende R14-Dokumentationscommit/Push freigegeben. Keine weitere P1/P2-Rückfrage bei erfüllten Bedingungen; P3 bleibt außerhalb dieser Flows Pflicht. |
+| D-ACT-R14-23 | 2026-09-07 | Der Owner erteilt konditional neues gemeinsames P1/P2 für genau ein v20/v21-R14-Cutoverfenster einschließlich abschließendem R14-Dokumentationscommit/Push nach grünem S6. | Freigegeben sind ausschließlich der dokumentierte 51-Dateien-R14-Scope, bestehender Pages-Weg, genau ein V2-Smoke-Write, höchstens identischer Retry bei unbekannter Antwort, History/Detail/Export/R13-/Dual-Write-Nachweise, normaler R9-Delete des Smoke-Datensatzes und bei Pflichtfehler der vollständige datenverlustfreie v21-Webrollback. U11R12 begann unter der damals angewandten 96/21-Fehlklassifikation keine produktive Aktion. D-ACT-R14-24/-25 ersetzen ausschließlich diese Reservebewertung; Scope, P1/P2 und P3-Grenze bleiben unverändert. |
+| D-ACT-R14-24 | 2026-09-07 | Der erste Contract Review korrigiert die durch F-ACT-R14-33 gefundene falsche Verwendung statischer Safe-Closure-Schwellen. | 71/11 vollständiger Vergleichsblock plus 9/2 echte CLOSURE_ONLY-Kosten plus 1/1 Sensorpuffer ergaben zunächst eine einheitliche 81/14-Grenze beziehungsweise effektiv 81/21. Der zweite Review in D-ACT-R14-25 trennt daraus die operative Sicherheitsgrenze von der autonomen Full-Closure-Grenze. Raw Preferred 107/17 bleibt `PREFERRED_UNATTAINABLE` und nur advisory. |
+| D-ACT-R14-25 | 2026-09-07 | Der Owner verlangt nach der erneuten Ablehnung bei U11R13 ausdrücklich, den Usage Guard nicht als unüberwindbare Ein-Punkt-Sperre über seine Usage-Risikoentscheidung zu stellen. Der Workflow trennt deshalb Operational Safety Floor und Autonomous Full-Closure Floor. | Der vollständige 71/11-Block endete nachweislich `ROLLED_BACK_SAFE` und enthält die technische Produkt-/Rollbackpostcondition. Plus 1/1 Sensorpuffer ergibt Operational Safety Floor 72/12, effektiv im CONTINUE-Band 72/21. Die zusätzliche 9/2-CLOSURE_ONLY-Messung ergibt Autonomous Full-Closure Floor 81/14, effektiv 81/21. U11R13 80/66 erfüllt die operative Boundary. Stephan akzeptiert ausdrücklich, dass nur die umfassende administrative Closure gegebenenfalls in einen späteren Block fällt; minimale Postimage-/Resume-Fakten bleiben zwingend im atomaren Fenster. Bei unverändertem Scope, PRE08 und Rollback ist `PRIMARY_OWNER_BOUNDARY_ALLOWED` erteilt. Keine weitere identische Ablehnungsdiskussion; Produkt-, Security-, Daten- und Rollbackgates bleiben unberührt. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -727,7 +797,7 @@ vor S4 beziehungsweise P1.
 | S3 | Bruchrisiko-, Security- und Cutoverreview | `High` | PASS | Alle P0/P1-Zeitlinien besitzen Prevention, Testorakel, Evidence-ID und Stop-/Rollbackpfad; F-ACT-R14-15..19 vertraglich geschlossen, kein unzugeordnetes P0/P1. |
 | S4R | Readiness Review | `High` | PASS | Large but controlled; drei sichere lokale Wellen, vollständiger Datei-/Test-/Rollbackscope, reale Tool-/Secretbereitschaft und autonome Grenze S5.3 bestätigt. |
 | S4 | Lokale Umsetzung | `High` | PASS | Block A-C PASS: vollständige Composition, atomarer lokaler V2-Productload/SW v14, null V1-Writerload, unveränderte R13-Reader, v15-Inverse und native Full-S4-Reviews grün. |
-| S5 | Tests, produktiver Cutover und Android | `High` | LOCAL FIX/VALIDATION PASS / PRODUCTIVE REPROOF PENDING | V17-Rollback 4e87729/Run 33358569779 bleibt produktiv. F-ACT-R14-26 lokal korrigiert; Last-Mile-Browser 5/5, Node 303/303, Deno 84/84, Syntax 57/57 und Fullreviews PASS. v18/v19 releasebereit; produktiver Write-/Reader-/Delete-Reproof offen. |
+| S5 | Tests, produktiver Cutover und Android | `High` | LOCAL CLOSURE PASS / P1-P2 REQUIRED / R14 OPEN | F28-F32 lokal geschlossen; v20/v21-Graph, reale Releasewechsel, Fresh-Offline, Matrix und Fullreviews grün. Produktiver Write-/Reader-/Delete-Reproof bleibt offen. |
 | S6 | Doku-Sync und Archiv | `High` | TODO | |
 
 ## Findings
@@ -761,6 +831,12 @@ vor S4 beziehungsweise P1.
 | F-ACT-R14-25 | P1 | Produktiver V2-Commit / Semantikbindung | fixed locally / productive reproof pending | `createSessionGraph` bindet `dataAccess.commitSession` minimal an `selectedSemantics` und reicht exakt Request-ID, Payload und Semantik weiter. Neue Drafts verwenden v2, Recovery-v1 bleibt v1; Semantik gelangt nicht in den RPC-Body, Request-ID/Payload und Retry bleiben identisch. Echte Controller→Data-Access-Regression, vollständige relevante Matrix und Fullreviews PASS. Produktiver Reproof benötigt neues P1/P2. |
 | F-ACT-R14-26 | P1 | Produktiver Sessionabschluss / reale UI-Composition | fixed locally / productive reproof pending | Reproduziert: redundantes `setAuthenticated(true)` setzte eine offene Session durch erzwungenes Entry-Reconcile von `editing/session` auf `recoverable/entry`. Minimalfix erhält beim redundanten Auth-Lifecycle die aktive Fläche. Vollständiger realer lokaler DOM→Listener→Shell→finish→Recovery/Intent→Data-Access→Transportpfad ist für Erfolg, Unknown/Retry, Reload-Recovery, Misdirect und Reauth PASS. Der historische Produktionsfehler wird nicht monokausal überbeansprucht; Abschluss verlangt realen produktiven Reproof. |
 | F-ACT-R14-27 | P2 | lokaler Recovery-Harness / Lease-Token | fixed in test harness | Die Test-UUID-Sequenz startete nach simuliertem Reload erneut bei 1 und kollidierte nur im Harness mit dem gespeicherten Lease-Token. Resume verwendet eine getrennte deterministische Sequenz; Recovery-Browserfall und vollständige Matrix PASS. Kein Produktcode- oder Datenvertrag betroffen. |
+| F-ACT-R14-28 | P1 | Recovery-Draftalter / produktiver Commit-Preflight | fixed locally | Exakte Ursache ist die bestehende 1440-Minuten-Grenze: der gealterte Draft scheitert mit INVALID_TIME/duration_min vor Persistenz und Transport. Ein write-freier Preflight nutzt denselben Validatorpfad und lässt Draft, Request-ID und Eingaben unverändert. |
+| F-ACT-R14-29 | P1 | Viewport/Scroll und rascher SW-Rollback | fixed locally / final review PASS | Overlayhosts und vier Viewports grün. Direkte und transitive Cacheidentitäten, v20/v21-Materialisierer sowie reale schnelle Releasewechsel und Fresh-Offline sind grün. |
+| F-ACT-R14-30 | P1 | Privacy / produktive Browserdiagnostik | fixed locally | Die calcMAP-Callsites protokollieren nur abstrakte Fehlercodes. Ein Negativvertrag verbietet Messwerte, Tages-/Kontextwerte, rohe Fehler und Gesundheitsdetails. |
+| F-ACT-R14-31 | P1 | Release-/Rollbackmaterialisierung | fixed locally / final review PASS | v20/v21 ergänzen den in den eingefrorenen Workerquellen fehlenden Chartasset am eindeutigen Main-Anker; bekannte EOF-Leerzeilen in index beziehungsweise V1-main werden deterministisch normalisiert. Direkte Contracts, isolierter Roundtrip und nativer Rollbackreview PASS. |
+| F-ACT-R14-32 | P1 | Transitive ESM-/Offline-Cachekohärenz | fixed locally / productive reproof pending | Vollständiger 18-Dateien-Supabase-/Boot-Graph trägt je Release genau eine Queryidentität und wird vollständig installiert. Reale v19→v20- und v20→v21-stale-client-Wechsel sowie Fresh-v20→Offline bleiben kohärent; 306 Node, drei Cachebrowserorakel, 44 Syntax- und zwei Parserchecks sowie Fullreviews PASS. |
+| F-ACT-R14-33 | P1 | Usage Reserve / Closure-Zuordnung | fixed in process contract | Zuerst wurden die statischen 25/10-Safe-Closure-Schwellen fälschlich als Kosten addiert. Danach wurde 71/11 + 9/2 + 1/1 = 81/14 erneut als einzige nicht überstimmbare Grenze behandelt und U11R13 bei 80/66 um einen Sensorpunkt abgelehnt. D-ACT-R14-25 trennt nun Operational Safety Floor 72/12 (effektiv 72/21) und Autonomous Full-Closure Floor 81/14 (effektiv 81/21). Zwischen beiden darf der Owner nur das administrative Closure-Risiko akzeptieren; die sichere operative Postcondition bleibt zwingend. Preferred 107/17 bleibt advisory und `PREFERRED_UNATTAINABLE`. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -1437,12 +1513,15 @@ wurde ohne Zwischenpoll begonnen.
 ### S5.4 - Atomares P1/P2-Cutoverfenster beginnen
 
 Nur wenn P1, P2 und der bedingte Webrollback gemeinsam freigegeben sind und ein
-frisches U10 `CONTINUE` und entweder `PRIMARY_ALLOWED` mit bevorzugter Reserve
-oder `PRIMARY_OWNER_BOUNDARY_ALLOWED` mit 5h mindestens 89 %, Woche über 20 %
-und unverändertem Postimage
-ergibt. D-ACT-R14-20 ersetzt bei erfüllter Boundary die erneute Owner-Rückfrage.
-U10 nach dem Wiedereinstieg ist eine `POST_REHYDRATION_BASELINE`; bereits
-verbrauchte Rehydration wird gemäß D-ACT-R14-21 nicht erneut reserviert.
+frisches Usage-Gate `CONTINUE` und entweder `PRIMARY_ALLOWED` mit mindestens
+81 % 5h / 21 % Woche oder `PRIMARY_OWNER_BOUNDARY_ALLOWED` mit mindestens
+72 % / 21 % und unverändertem Postimage ergibt. Bei der Boundary nennt der
+Agent einmal raw Preferred, Operational Safety Floor, Autonomous Full-Closure
+Floor, aktuelle Messung und das reine administrative Closure-Risiko; nach der
+unmittelbaren ausdrücklichen Owner-Annahme wird weder erneut diskutiert noch
+identisch gemessen. Das erste Gate nach dem Wiedereinstieg ist eine
+`POST_REHYDRATION_BASELINE`; bereits verbrauchte Rehydration wird gemäß
+D-ACT-R14-21 nicht erneut reserviert.
 Android ist gemäß D-ACT-R14-17 deferred:
 
 - bestätigten Commit-/Push-/Deployweg exakt einmal ausführen oder den Owner-
@@ -1670,12 +1749,168 @@ Gesundheitsdetails:
 7. Zwischen Deploy und vollständigem Erfolg oder Rollback kein Usage-Poll,
    keine weitere Freigabe und kein freiwilliger Stopp; danach U11.
 
+#### S5.4/S5.5 v18/v19 Gate Record - 2026-09-06
+
+Urteil: `V18 WEB/PWA PASS; WRITE FAIL-CLOSED BEFORE TRANSPORT; V19 ROLLBACK PASS`.
+
+- Cutovercommit `0fa44e29536a604256638057d4e54a9e593b8bab`, Push nach
+  `origin/main`, Pages-Run `34022878621` erfolgreich. Live-Index
+  `233d4429...cd1`, Live-SW `102c1fe7...8dd7`, Root-SW v18; genau ein
+  V2-Productcontroller, null V1-Writerload und zwei R13-Readerloads.
+- Fresh-/Upgrade-/stale-client- und Recovery-Nachweise PASS. Der vorhandene
+  Recovery-Draft blieb mit gespeicherter Identität erhalten.
+- Der Abschlussbereich war im realen Desktop-Viewport visuell nicht
+  erreichbar; Owner führte nach sicherer Tastaturfokussierung genau einmal
+  Enter aus. Ergebnis: bekannte Eingabevalidierung, kein Transportstart und
+  kein Retry. F-ACT-R14-28/-29 sind offen.
+- Vorher/Nachher: R13-Snapshot `midas.activity-consumer.v1` mit 69 reinen
+  V1-Units, 0 Mixed-Source-Tagen und ID-Hash `459f2056...007d`. V2 blieb
+  Sessions/Items/Sets `0/0/0`; alle ID- und Request-ID-Hashes bleiben
+  `4f53cda1...b945`. Kein Write, Dual Write oder Delete.
+- V19-Inverse wurde über das bestätigte Rollbacktool materialisiert. Direkter
+  PowerShell-Start war lokal durch ExecutionPolicy blockiert und hatte keine
+  Wirkung; der kanonische Bypass-Aufruf lieferte
+  `R14_V1_PRODUCTLOAD_ROLLBACK_V19_READY`. Rollbackcontract und Syntax PASS.
+- Rollbackcommit `3857bf4e03d2ad6e0af7c2c3c3ec6ce3d29aab58`, Push und Pages-Run
+  `34023954044` erfolgreich. Live-Index `48cd9e0a...c6c`, Live-SW
+  `0e35a08b...a6de`, V1-Form/Script/Mainwriter vorhanden,
+  V2-Productcontroller 0, zwei R13-Readerloads und Root-SW v19.
+- Ein alter v18-Client bootete nach schnellem Rollback im gemischten Cache
+  fail-closed. Alle 37 v19-Coreassets lieferten 2xx; ein isolierter vollständig
+  frischer Edge-Client bootete ohne Bootfehler mit genau einer V1-Form und
+  ohne V2-Host/-Controller. Der rasche Upgradepfad bleibt F-ACT-R14-29.
+- U11R4 danach: 23 % 5h / 44 % Woche, gültig und `SAFE_CLOSURE`. Kein neuer
+  Diagnose-, Fix-, Test- oder Produktivblock; nur sichere Synchronisierung.
+
 Für S5.6 sind bereits nur diese einzusetzenden Postimagefelder offen: exakter
 Cutover-Commit und Pages-Run, Live-index-/SW-Fingerprint, V1-Zähler und ID-Hash,
 V2 Session/Item/Set-Zähler und geschützte Hashes vor/nach R9-Delete,
 gehashte Request-ID-Kontinuität, History-/Detail-/Exportstatus,
 R13-Snapshot/Readerstatus sowie die transparente Android-Einstufung
 `DEFERRED BY OWNER / NOT PASS`.
+
+#### Dirty-Stop-Closure F-ACT-R14-28..31 - 2026-09-06
+
+- Recovery eindeutig: HEAD/origin `3857bf4e...ab58`, live V1/v19; kein
+  laufender R14-Test- oder Serverprozess und keine externe Wirkung.
+- F28: bestehende 1440-Minuten-Regel als exakte INVALID_TIME-/duration_min-
+  Ursache vor Persistenz/Transport bewiesen; write-freier Realpfad-Preflight.
+- F29 Viewport: transformierter Hubpanel-Containing-Block als Ursache bewiesen;
+  Overlayhosts liegen direkt unter BODY. Browsernachweis 1280x720 Maus,
+  960x640 Tastatur, 390x844 Touch und 320x800 Touch `4/4 PASS`.
+- F30: zwei calcMAP-Logcallsiteklassen auf abstrakte Codes reduziert;
+  Negativvertrag `2/2 PASS`.
+- Vor den letzten Cache-Nachschärfungen: Node `303/303`, Deno `84/84`,
+  relevante Syntax `66/66`, Last-Mile-/Release-/lokaler Productbrowser PASS,
+  R8/R13 PASS. Danach `21/21` gezielt invalidierte Node-Contracts PASS.
+- Der Closure-Roundtrip fand F31: Das Cutovertool erwartet im eingefrorenen
+  v18-Worker einen noch nicht vorhandenen Doctor-Chart-Token und stoppt im
+  kontrollierten Temp-Worktree vor der Materialisierung. Temp-Worktrees wurden
+  vollständig entfernt. Kein Fix in derselben Closure-Welle.
+- Aktueller lokaler Code-/Testscope: 35 Dateien, Manifest
+  `2a9bb7f9e1a3a5aa7356a8904789d9d839273facbf6278898449f81662b0812c`.
+- Nach getrenntem Ownerauftrag wurde F31 minimal korrigiert. v20 und v21
+  materialisieren jeweils genau einen versionsgebundenen Chartasset;
+  `R14_F31_V20_V21_ROUNDTRIP_PASS` und 8/8 direkte Contracts. Nativer
+  Abschlussreview und verbleibende lokale Closure-Smokes stehen noch aus.
+- Roadmap/Evidence/Resume werden auf diesen Blocker synchronisiert. S5.6,
+  produktiver Cutover, S6 und DONE bleiben gesperrt.
+
+#### Bounded Red Team F-ACT-R14-32 - 2026-09-06
+
+- Unter U11R8 wurde auf ausdrücklichen Ownerauftrag genau ein statischer,
+  finding-only Delta-/Consumer-/Cache-Review ausgeführt. Kein Fix, Browserlauf,
+  Test, Commit, Push, Deploy oder produktiver Zugriff war Teil des Blocks.
+- Der aktive Worker behandelt Navigation network-first. Ein noch steuernder
+  v19-Worker kann daher bereits v20-HTML liefern, bevor v20 die Kontrolle
+  übernommen hat.
+- Der v20-Einstieg versioniert `app/supabase/index.js`, `auth/index.js`,
+  `auth/core.js` und `api/vitals.js` nur teilweise. Neun reale Supabase-
+  Importer referenzieren `auth/core.js` weiterhin unversioniert. Damit können
+  ein alter unversionierter Core und `core.js?v=20` gleichzeitig als getrennte
+  ESM-Identitäten mit unterschiedlichem Lifecyclecode laufen.
+- Die v19-/lokalen v20-Blobvergleiche bestätigen tatsächliche Änderungen an
+  Auth-Core und Vitals; es handelt sich nicht nur um theoretisch identische
+  Doppelimporte.
+- `CORE_ASSETS` enthält den versionierten Einstieg, aber nicht den vollständigen
+  transitiven ESM-Graph. Da `cache.addAll` Imports nicht rekursiv installiert
+  und die erste Seite vor Worker-Kontrolle lädt, ist Fresh-Install mit sofortigem
+  Offline-Reload nicht bewiesen.
+- Bestehende Release-Smokes verwenden ein einzelnes Runtimeasset; der lokale
+  Productbrowser ist fresh/online. Beide Orakel verfehlen diese Failure Class.
+- Ergebnis: `F-ACT-R14-32 P1 OPEN`. F29-Cache ist wieder geöffnet. Der nächste
+  getrennte Block muss zunächst den v19→v20- und v20→v21-Mischzustand sowie den
+  ersten Offline-Reload reproduzieren, dann den kleinsten kohärenten Release-/
+  Cachefix setzen und ausschließlich invalidierte plus gemeinsam betroffene
+  S5-Verträge revalidieren.
+
+#### F-ACT-R14-32 Repair und lokale Closure - 2026-09-07
+
+- U11R10 war als POST_REHYDRATION_BASELINE mit 98 % 5h / 100 % Woche gültig
+  und erlaubte den vollständigen lokalen Block. Keine externe oder produktive
+  Aktion wurde ausgeführt.
+- Reproduktion: Der bisherige Teilgraph erzeugte unter einem alten Worker
+  gleichzeitig unversionierte und v20-versionierte Supabase-Root-/Auth-Core-
+  Instanzen. Das Browserorakel meldete den erwarteten Mischzustand, bevor der
+  Fix gesetzt wurde.
+- Ursache: `boot-auth.js` importierte den Supabase-Root zusätzlich
+  unversioniert; weitere transitive Importer teilten dieselben Module ebenfalls
+  in mehrere URL-Identitäten. Der Worker installierte nur den Root statt des
+  vollständigen 18-Dateien-ESM-Graphs. Network-first-Navigation ist nur dann
+  sicher, wenn jede neue HTML-Version ausschließlich neue, vollständige und
+  cacheinstallierbare Modulidentitäten referenziert.
+- Minimalfix: Alle relativen Imports des Supabase-/Boot-Graphs tragen v20; der
+  Root-Worker installiert jede dieser 18 URLs. Cutover- und Rollbackmaterializer
+  normalisieren denselben Graph deterministisch auf v20 beziehungsweise v21,
+  ohne Semantik in Requests, RPC-Bodys oder Authverträge einzuführen.
+- Reale Browsernachweise: lokaler v20-Productboot und unmittelbarer Offline-
+  Reload PASS; alter echter v19-Worker mit v20-HTML PASS; echter schneller
+  v20→v21-Rollback PASS. Je Postimage genau eine Root-/Core-Identität, 15 V2-
+  Captureloads im v20-Produkt und null V2-Captureload in v21.
+- Regressionen: 306/306 relevante Node-Verträge, 44/44 geänderte JS-/MJS-
+  Syntaxchecks, 2/2 PowerShell-Parser, isolierte v20- und v21-Materialisierung,
+  `git diff --check`, C3/R8/R13, Last-Mile 4/4 und drei Cachebrowserorakel PASS.
+  Die weiterhin gültigen 84/84 Deno-Verträge wurden nicht wiederholt, weil
+  Backend, SQL und deren Orakel unverändert blieben.
+- Native Delta-, Contract-, Security-, Privacy-, Cache-, Lifecycle-, Rollback-
+  und Consumerreviews PASS. Backend-/SQL-/Android-Diff 0, neue Secrets 0,
+  keine neue produktive Diagnose und kein offenes lokales P0/P1-Finding.
+- Release-Scope: 49 Code-/Testdateien. Manifest SHA-256 über die ordinal
+  sortierten Zeilen `Pfad=Datei-SHA256` ohne Schlusszeile:
+  `333a34691d5082f3a69a9de1c162dacb2530362bd9bba99372332eebbfd0db95`.
+  Mit Roadmap und Evidence umfasst ein künftiger P1-Scope 51 Dateien.
+- F29-Cache, F31 und F32 sind lokal geschlossen. Der produktive V2-Write-,
+  Reader- und Delete-Reproof bleibt offen; R14 bleibt deshalb OPEN.
+- U11R11 nach vollständigen Postconditions: 29 % 5h / 89 % Woche, gültig,
+  `CONTINUE_WITH_CAUTION`; 69/11 Punkte seit U11R10. Kein neuer Block in dieser
+  Restricted-Work-Episode.
+
+#### Vorbereitetes v20/v21-P1/P2-Briefing - D-ACT-R14-23 erteilt, nicht ausgeübt
+
+1. Vor dem Fenster das reale V19-Produktpostimage, HEAD/origin/Pages, die
+   geschützten V1-/V2-Zähler, R13, Auth und den 49-Dateien-Manifesthash erneut
+   read-only bestätigen.
+2. D-ACT-R14-23 erteilt das neue gemeinsame P1/P2 für genau dieses
+   v20/v21-Fenster konditional. Frühere Freigaben bleiben verbraucht; keine
+   erneute Rückfrage ist nötig, sobald Preflight und Usage-Reserve erfüllt sind.
+3. Bei anschließendem frischem `CONTINUE` mit vollständiger atomarer Reserve
+   ausschließlich die 49 manifestierten Code-/Testdateien sowie Roadmap und
+   Evidence stagen. Staged name-only, Diff, Secrets und Scope prüfen.
+4. Vorgesehene Commitnachricht: `fix(activity): harden R14 release coherence`.
+   Genau einmal nach `origin/main` pushen und nur den bestehenden GitHub-Pages-
+   Weg abwarten; kein Supabase-/SQL-/Auth-/Secret-/Schedulerdeploy.
+5. Live v20, genau einen V2-Productcontroller, null V1-Writercallsite, zwei
+   unveränderte R13-Readerloads, Fresh, Upgrade, stale-client und Recovery
+   beweisen.
+6. Genau einen V2-Smoke-Write ausführen; nur bei unbekannter Antwort denselben
+   identischen Retry. Danach History, Detail, Coaching-Export, R13 und fehlenden
+   Dual Write prüfen. Ausschließlich den Smoke-Datensatz über den normalen
+   R9-UI-Delete entfernen.
+7. Bei einem Pflichtfehler die geprüfte V1-Productloadinverse mit Root-SW v21
+   ausführen, committen/pushen und Pages, V1-only, R13, Fresh-Client und
+   Datenintegrität vollständig beweisen.
+8. Zwischen Deploy und Erfolg oder abgeschlossenem Rollback kein Usage-Poll
+   und kein freiwilliger Stopp. Android bleibt `DEFERRED / NOT PASS`.
 
 ### S5.6 - Finales Postimage und Rollbackentscheidung
 

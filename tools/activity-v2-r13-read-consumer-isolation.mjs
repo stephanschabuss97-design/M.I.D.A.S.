@@ -141,9 +141,9 @@ if (productMode === 'final') {
     lastIndexPosition = indexPosition;
     lastWorkerPosition = workerPosition;
   }
-  requireCondition(/const CACHE_VERSION = 'v18'/.test(worker), 'WORKER_VERSION');
+  requireCondition(/const CACHE_VERSION = 'v20'/.test(worker), 'WORKER_VERSION');
   productReadLoads = productOrder.length;
-  cacheVersion = 18;
+  cacheVersion = 20;
 } else {
   requireCondition(/const CACHE_VERSION = 'v6'/.test(worker), 'WORKER_VERSION');
 }
@@ -156,17 +156,17 @@ requireCondition(
 let lastCaptureIndexPosition = -1;
 let lastCaptureWorkerPosition = -1;
 for (const relativePath of captureOrder) {
-  const indexPosition = index.indexOf(`src="${relativePath}"`);
-  const workerPosition = worker.indexOf(`toUrl('${relativePath}')`);
+  const indexPosition = index.indexOf(`src="${relativePath}?v=20"`);
+  const workerPosition = worker.indexOf(`toUrl('${relativePath}?v=20')`);
   requireCondition(indexPosition > lastCaptureIndexPosition, 'R14_CAPTURE_SCRIPT_ORDER');
   requireCondition(workerPosition > lastCaptureWorkerPosition, 'R14_CAPTURE_CACHE_ORDER');
-  requireCondition(countLiteral(index, `src="${relativePath}"`) === 1, 'R14_CAPTURE_SCRIPT_COUNT');
-  requireCondition(countLiteral(worker, `toUrl('${relativePath}')`) === 1, 'R14_CAPTURE_CACHE_COUNT');
+  requireCondition(countLiteral(index, `src="${relativePath}?v=20"`) === 1, 'R14_CAPTURE_SCRIPT_COUNT');
+  requireCondition(countLiteral(worker, `toUrl('${relativePath}?v=20')`) === 1, 'R14_CAPTURE_CACHE_COUNT');
   lastCaptureIndexPosition = indexPosition;
   lastCaptureWorkerPosition = workerPosition;
 }
 requireCondition(
-  lastCaptureIndexPosition < index.indexOf('src="app/supabase/index.js"'),
+  lastCaptureIndexPosition < index.indexOf('src="app/supabase/index.js?v=20"'),
   'R14_CAPTURE_BEFORE_SUPABASE'
 );
 

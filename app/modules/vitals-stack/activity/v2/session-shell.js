@@ -84,6 +84,7 @@
   ]);
   const SESSION_COMMIT_METHODS = Object.freeze([
     'getState',
+    'preflight',
     'finish',
     'retry',
     'subscribe',

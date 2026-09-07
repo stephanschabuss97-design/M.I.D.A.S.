@@ -45,6 +45,11 @@ test('R14 Last-Mile harness loads the real product composition in product order'
     assert.ok(offset > previous, `${name} must follow the real product order`);
     previous = offset;
   });
+  const productSurfaceEnd = html.indexOf('</section>', html.indexOf('transformed-product-surface'));
+  assert.ok(html.indexOf('id="activity-v2-product-host"') < productSurfaceEnd);
+  assert.ok(html.indexOf('id="activity-v2-session-host"') > productSurfaceEnd);
+  assert.ok(html.indexOf('id="activity-v2-history-host"') > productSurfaceEnd);
+  assert.ok(html.indexOf('id="activity-v2-export-host"') > productSurfaceEnd);
 });
 
 test('R14 Last-Mile harness crosses click, commit, recovery, semantics and Data Access', () => {
@@ -64,6 +69,14 @@ test('R14 Last-Mile harness crosses click, commit, recovery, semantics and Data 
     "markers.add('reauth_surface_preserved')",
     "fail('reauth changed the active session surface')"
   ].forEach((token) => assert.ok(script.includes(token), `missing ${token}`));
+});
+
+test('R14 Last-Mile harness preflights aged drafts through the real composition without transport', () => {
+  assert.match(script, /mode === 'aged'/);
+  assert.match(script, /controller\.preflightSessionCommit\(\)/);
+  assert.match(script, /preflight\?\.reason !== 'INVALID_TIME'/);
+  assert.match(script, /preflight\?\.focus_target\?\.field_key !== 'duration_min'/);
+  assert.match(script, /requestBodies\.length !== 0/);
 });
 
 test('R14 Last-Mile harness is local-only and exposes no sensitive diagnostic values', () => {

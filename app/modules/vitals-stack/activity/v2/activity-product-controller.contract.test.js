@@ -426,6 +426,15 @@ function createFixture({
     };
     const commit = {
       getState: () => state,
+      preflight: () => {
+        calls.push('commit.preflight');
+        return Object.freeze({
+          state: 'ready',
+          reason: null,
+          focus_target: null,
+          intent_present: false
+        });
+      },
       finish: async () => state,
       retry: async () => state,
       subscribe: (listener) => {
@@ -600,6 +609,7 @@ test('S4.1 registers one frozen product API with the exact controller surface', 
     'subscribe',
     'startSession',
     'continueSession',
+    'preflightSessionCommit',
     'discardRecoveredSession',
     'openHistory',
     'openExport',
@@ -713,6 +723,16 @@ test('S4.3 composes one v2 recovery, commit and session shell graph', async () =
   assert.equal(fixture.calls.filter((value) => value === 'shell.open').length, 1);
   assert.equal(controller.getState().state, 'editing');
   assert.equal(controller.getState().active_surface, 'session');
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(controller.preflightSessionCommit())),
+    {
+      state: 'ready',
+      reason: null,
+      focus_target: null,
+      intent_present: false
+    }
+  );
+  assert.equal(fixture.calls.filter((value) => value === 'commit.preflight').length, 1);
 
   fixture.getCommit().publish(freezeCommitState('committed'));
   fixture.getCommit().publish(freezeCommitState('committed'));

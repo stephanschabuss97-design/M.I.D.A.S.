@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v19';
+const CACHE_VERSION = 'v20';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -17,8 +17,12 @@ const CORE_ASSETS = [
   toUrl('./'),
   toUrl('index.html'),
   toUrl('offline.html'),
-  toUrl('app/app.css'),
+  toUrl('app/app.css?v=20'),
   toUrl('app/styles/hub.css?v=11'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-shell.css?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.css?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.css?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.css?v=20'),
   toUrl('assets/img/Activity_v2.png'),
   toUrl('assets/img/Personal_data_v3.png'),
   toUrl('app/core/boot-flow.js'),
@@ -34,16 +38,47 @@ const CORE_ASSETS = [
   toUrl('assets/js/format.js'),
   toUrl('assets/js/data-local.js'),
   toUrl('assets/js/ui-tabs.js'),
-  toUrl('app/modules/vitals-stack/activity/index.js'),
-  toUrl('app/supabase/index.js'),
+  toUrl('app/modules/vitals-stack/activity/v2/semantics.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/semantics-v2.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-draft.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-recovery.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-commit.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-canonicalization.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/data-access.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-shell.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-correction.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-history.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js?v=20'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=20'),
+  toUrl('app/supabase/index.js?v=20'),
+  toUrl('app/supabase/core/state.js?v=20'),
+  toUrl('app/supabase/core/client.js?v=20'),
+  toUrl('app/supabase/core/http.js?v=20'),
+  toUrl('app/supabase/auth/index.js?v=20'),
+  toUrl('app/supabase/auth/core.js?v=20'),
+  toUrl('app/supabase/auth/ui.js?v=20'),
+  toUrl('app/supabase/auth/guard.js?v=20'),
+  toUrl('app/supabase/realtime/index.js?v=20'),
+  toUrl('app/supabase/api/intake.js?v=20'),
+  toUrl('app/supabase/api/vitals.js?v=20'),
+  toUrl('app/supabase/api/notes.js?v=20'),
+  toUrl('app/supabase/api/select.js?v=20'),
+  toUrl('app/supabase/api/push.js?v=20'),
+  toUrl('app/supabase/api/system-comments.js?v=20'),
+  toUrl('app/supabase/api/trendpilot.js?v=20'),
+  toUrl('app/supabase/api/reports.js?v=20'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-consumer.js'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js'),
   toUrl('app/modules/doctor-stack/doctor/activity-consumer-view.js'),
   toUrl('app/modules/doctor-stack/doctor/health-export-v3.js'),
   toUrl('app/modules/doctor-stack/reports/index.js'),
   toUrl('app/modules/doctor-stack/doctor/index.js'),
-  toUrl('assets/js/boot-auth.js'),
-  toUrl('assets/js/main.js'),
+  toUrl('assets/js/boot-auth.js?v=20'),
+  toUrl('app/modules/doctor-stack/charts/index.js?v=20'),
+  toUrl('assets/js/main.js?v=20'),
   toUrl('public/manifest.json'),
   toUrl('public/img/icons/icon-192.png'),
   toUrl('public/img/icons/icon-512.png'),
@@ -58,16 +93,24 @@ const isStaticAsset = (request) => {
   if (request.destination) {
     return ['style', 'script', 'image', 'font'].includes(request.destination);
   }
-  return /\.(css|js|png|jpe?g|webp|svg|avif|ico|json|woff2?)$/i.test(request.url);
+  return /\.(css|js|png|jpe?g|webp|svg|avif|ico|json|woff2?)$/i.test(new URL(request.url).pathname);
 };
 const getNavigateFallbackResponse = async (request) => {
-  const direct = await caches.match(request);
+  const shell = await caches.open(SHELL_CACHE);
+  const direct = await shell.match(request);
   if (direct) return direct;
-  const shellIndex = await caches.match(toUrl('index.html'));
+  const shellIndex = await shell.match(toUrl('index.html'));
   if (shellIndex) return shellIndex;
-  const shellRoot = await caches.match(toUrl('./'));
+  const shellRoot = await shell.match(toUrl('./'));
   if (shellRoot) return shellRoot;
-  return caches.match(toUrl('offline.html'));
+  return shell.match(toUrl('offline.html'));
+};
+const getCurrentAssetResponse = async (request) => {
+  const shell = await caches.open(SHELL_CACHE);
+  const shellResponse = await shell.match(request);
+  if (shellResponse) return shellResponse;
+  const runtime = await caches.open(RUNTIME_CACHE);
+  return runtime.match(request);
 };
 const isLegacyIncidentType = (type) => (
   type === 'medication_morning'
@@ -173,7 +216,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset(request)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      getCurrentAssetResponse(request).then((cached) => {
         const networkFetch = fetch(request).then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone();

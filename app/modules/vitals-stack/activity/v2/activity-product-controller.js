@@ -30,6 +30,7 @@
     'subscribe',
     'startSession',
     'continueSession',
+    'preflightSessionCommit',
     'discardRecoveredSession',
     'openHistory',
     'openExport',
@@ -97,6 +98,7 @@
   ]);
   const COMMIT_METHODS = Object.freeze([
     'getState',
+    'preflight',
     'finish',
     'retry',
     'subscribe',
@@ -849,6 +851,13 @@
       });
     }
 
+    function preflightSessionCommit() {
+      requireAuthenticated();
+      if (arguments.length !== 0) fail('INVALID_OPTIONS');
+      if (!sessionCommitController) fail('INVALID_STATE');
+      return sessionCommitController.preflight();
+    }
+
     function resetRecovery() {
       try {
         unsubscribeRecovery?.();
@@ -1298,6 +1307,7 @@
       subscribe,
       startSession,
       continueSession,
+      preflightSessionCommit,
       discardRecoveredSession,
       openHistory,
       openExport,

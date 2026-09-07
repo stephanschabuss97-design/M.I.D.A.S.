@@ -49,11 +49,11 @@ test('T-ACT-R14-01 loads V2 capture before the unchanged reader order', () => {
   });
   const activityV2Scripts = [...indexSource.matchAll(
     /<script[^>]+src="([^"]*\/activity\/v2\/[^"]+)"[^>]*><\/script>/g
-  )].map((match) => match[1]);
+  )].map((match) => match[1].replace(/\?v=20$/, ''));
   assert.deepEqual(activityV2Scripts, [...CAPTURE_ORDER, ...PRODUCT_ORDER.slice(0, 2)]);
   assert.ok(
-    indexSource.indexOf(`src="${CAPTURE_ORDER.at(-1)}"`) <
-      indexSource.indexOf('src="app/supabase/index.js"')
+    indexSource.indexOf(`src="${CAPTURE_ORDER.at(-1)}?v=20"`) <
+      indexSource.indexOf('src="app/supabase/index.js?v=20"')
   );
   assert.doesNotMatch(indexSource, /activity-consumer-harness|test-pwa/);
 });
@@ -83,7 +83,7 @@ test('T-ACT-R13-03 makes the visible download strict V3 with one shared snapshot
   assert.match(doctorSource, /buildHealthExportV2/);
 });
 
-test('T-ACT-R14-01 scopes product styles and keeps readers in the v18 shell', () => {
+test('T-ACT-R14-01 scopes product styles and keeps readers in the v20 shell', () => {
   const selectors = cssSource.split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.includes('.activity-consumer-'));
@@ -92,7 +92,7 @@ test('T-ACT-R14-01 scopes product styles and keeps readers in the v18 shell', ()
     assert.match(selector, /^#doctor\s/);
   });
   assert.doesNotMatch(indexSource, /activity-consumer-harness\.css/);
-  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v18'/);
+  assert.match(serviceWorkerSource, /const CACHE_VERSION = 'v20'/);
   CAPTURE_ORDER.forEach((source) => {
     assert.match(serviceWorkerSource, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   });

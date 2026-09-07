@@ -15,19 +15,19 @@
  */
 
 // SUBMODULE: imports @internal - bindet Supabase-Submodule (Core, Auth, API)
-import * as state from './core/state.js';
-import * as client from './core/client.js';
-import * as http from './core/http.js';
-import * as auth from './auth/index.js';
-import * as realtime from './realtime/index.js';
-import * as intake from './api/intake.js';
-import * as vitals from './api/vitals.js';
-import * as notes from './api/notes.js';
-import * as select from './api/select.js';
-import * as push from './api/push.js';
-import * as systemComments from './api/system-comments.js';
-import * as trendpilot from './api/trendpilot.js';
-import * as reports from './api/reports.js';
+import * as state from './core/state.js?v=20';
+import * as client from './core/client.js?v=20';
+import * as http from './core/http.js?v=20';
+import * as auth from './auth/index.js?v=20';
+import * as realtime from './realtime/index.js?v=20';
+import * as intake from './api/intake.js?v=20';
+import * as vitals from './api/vitals.js?v=20';
+import * as notes from './api/notes.js?v=20';
+import * as select from './api/select.js?v=20';
+import * as push from './api/push.js?v=20';
+import * as systemComments from './api/system-comments.js?v=20';
+import * as trendpilot from './api/trendpilot.js?v=20';
+import * as reports from './api/reports.js?v=20';
 
 // SUBMODULE: aggregation @internal - kombiniert alle Module, erkennt doppelte Exporte
 const MODULE_SOURCES = [

@@ -29,10 +29,17 @@
   ]);
   const CONTROLLER_KEYS = Object.freeze([
     'getState',
+    'preflight',
     'finish',
     'retry',
     'subscribe',
     'destroy'
+  ]);
+  const PREFLIGHT_KEYS = Object.freeze([
+    'state',
+    'reason',
+    'focus_target',
+    'intent_present'
   ]);
   const STATE_KEYS = Object.freeze([
     'state',
@@ -1164,6 +1171,36 @@
       return stateSnapshot;
     }
 
+    function preflight() {
+      if (arguments.length !== 0) fail('INVALID_OPTIONS');
+      if (phase === 'destroyed') fail('CONTROLLER_DESTROYED');
+      if (activeOperation) fail('INVALID_STATE');
+      try {
+        if (intent === null) {
+          commitCore.createCommitIntent(draft.getSnapshot(), semantics, now);
+        } else {
+          commitCore.validateCommitIntent(intent, draft.getSnapshot(), semantics);
+        }
+        const ready = {
+          state: 'ready',
+          reason: null,
+          focus_target: null,
+          intent_present: intent !== null
+        };
+        if (!hasExactOrderedKeys(ready, PREFLIGHT_KEYS)) fail('INVALID_STATE');
+        return deepFreeze(ready);
+      } catch (error) {
+        const blocked = {
+          state: 'blocked',
+          reason: commitErrorCode(error),
+          focus_target: normalizedFocus(error),
+          intent_present: intent !== null
+        };
+        if (!hasExactOrderedKeys(blocked, PREFLIGHT_KEYS)) fail('INVALID_STATE');
+        return deepFreeze(blocked);
+      }
+    }
+
     function isCurrent(operation) {
       return (
         activeOperation === operation &&
@@ -1540,6 +1577,7 @@
 
     const controller = deepFreeze({
       getState,
+      preflight,
       finish,
       retry,
       subscribe,

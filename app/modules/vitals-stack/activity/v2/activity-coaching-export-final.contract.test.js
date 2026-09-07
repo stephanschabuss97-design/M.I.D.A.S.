@@ -184,8 +184,8 @@ test('T-ACT-R14-03 activates R10 only through the V2 product composition', () =>
     'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
     'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js'
   ]) {
-    assert.equal((productEntry.match(new RegExp(`src="${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g')) || []).length, 1);
-    assert.equal((productCache.match(new RegExp(`toUrl\\('${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'\\)`, 'g')) || []).length, 1);
+    assert.equal((productEntry.match(new RegExp(`src="${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20"`, 'g')) || []).length, 1);
+    assert.equal((productCache.match(new RegExp(`toUrl\\('${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20'\\)`, 'g')) || []).length, 1);
   }
   const adjacentPaths = [
     'app/modules/vitals-stack/activity/index.js',

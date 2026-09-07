@@ -15,8 +15,8 @@
  */
 
 // SUBMODULE: imports @internal - Supabase-Core und Hilfsfunktionen
-import { getUserId } from '../auth/core.js';
-import { sbSelect } from './select.js';
+import { getUserId } from '../auth/core.js?v=20';
+import { sbSelect } from './select.js?v=20';
 
 // SUBMODULE: globals @internal - Diagnose-Hook
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -35,9 +35,8 @@ const calcMAPValue = (sys, dia) => {
   }
   try {
     return fn(sys, dia);
-  } catch (err) {
-    diag.add?.(`[vitals] calcMAP threw: ${err?.message || err}`);
-    console.warn('Supabase vitals calcMAP error', { sys, dia, error: err });
+  } catch (_) {
+    diag.add?.('[vitals] calcMAP failed code=calculator_exception');
     return null;
   }
 };
@@ -199,16 +198,9 @@ const joinViewsToDaily = ({ bp, body, notes = [] }) => {
         let mapValue = null;
         try {
           mapValue = calcMAPValue(block.sys, block.dia);
-        } catch (err) {
+        } catch (_) {
           // calcMAPValue should already guard, but keep this to be defensive
-          diag.add?.(
-            `[vitals] calcMAPVal? error for day=${row.day} ctx=${row.ctx}: ${err?.message || err}`
-          );
-          console.warn('Supabase vitals map calculation failed', {
-            day: row.day,
-            ctx: row.ctx,
-            error: err
-          });
+          diag.add?.('[vitals] calcMAP failed code=aggregation_exception');
         }
         block.map = mapValue ?? null;
       }

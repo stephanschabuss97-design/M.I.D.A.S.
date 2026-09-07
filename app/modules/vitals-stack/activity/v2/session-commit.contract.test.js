@@ -992,6 +992,7 @@ test('S4.5 exposes an exact controller/state and rejects ambient or accessor inj
 
   assert.deepEqual(Object.keys(controller), [
     'getState',
+    'preflight',
     'finish',
     'retry',
     'subscribe',
@@ -1039,6 +1040,67 @@ test('S4.5 exposes an exact controller/state and rejects ambient or accessor inj
   assert.equal(getterCalls, 0);
 
   await assertCoordinatorError(() => controller.retry(), 'INVALID_STATE');
+});
+
+test('R14 preflight proves an aged recovery draft is INVALID_TIME without persistence or transport', async () => {
+  const runtime = loadRuntime();
+  const { controller: draft } = createValidStrengthDraft(runtime);
+  const harness = createRecoveryHarness(draft);
+  let remoteCalls = 0;
+  const controller = createCoordinator(runtime, {
+    draft,
+    recovery: harness.recovery,
+    now: () => START_MS + 24 * 60 * 60000 + 30000,
+    async commitSession() {
+      remoteCalls += 1;
+      return { outcome: 'created' };
+    }
+  });
+
+  const callsBefore = harness.calls.length;
+  const result = controller.preflight();
+  assert.deepEqual(plain(result), {
+    state: 'blocked',
+    reason: 'INVALID_TIME',
+    focus_target: {
+      scope: 'session',
+      item_key: null,
+      set_order: null,
+      field_key: 'duration_min'
+    },
+    intent_present: false
+  });
+  assertFrozenTree(result);
+  assert.equal(harness.calls.length, callsBefore);
+  assert.equal(remoteCalls, 0);
+  assertCoordinatorState(controller, {
+    state: 'editing',
+    reason: null,
+    focus_target: null,
+    intent_present: false
+  });
+
+  await controller.finish();
+  assertCoordinatorState(controller, {
+    state: 'editing',
+    reason: 'INVALID_TIME',
+    focus_target: {
+      scope: 'session',
+      item_key: null,
+      set_order: null,
+      field_key: 'duration_min'
+    },
+    intent_present: false
+  });
+  assert.equal(remoteCalls, 0);
+  assert.equal(
+    harness.calls.some(({ method }) => method === 'prepareCommit'),
+    false
+  );
+  assert.equal(
+    harness.calls.some(({ method }) => method === 'beginCommitAttempt'),
+    false
+  );
 });
 
 test('S4.5 coalesces reentrant finish and orders flush, intent, claim, dispatch and complete', async () => {

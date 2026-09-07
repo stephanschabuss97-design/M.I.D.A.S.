@@ -56,9 +56,19 @@ const r10R14ProductloadContractPath =
   'app/modules/vitals-stack/activity/v2/activity-coaching-export.contract.test.js';
 const r10R14ProductloadContractSha256 =
   'e6d62f15d7e1b783214246761d6448c3f2b1deb0e6dadf8d39fe1f6ebed44f2a';
+const r14SupabaseReleaseHashes = Object.freeze({
+  'app/supabase/api/reports.js':
+    'a1eeff2f6b80aa70753eb65d4b83f9aa8fb2f4b634fb4281d9865abf14947497',
+  'app/supabase/api/trendpilot.js':
+    '51116389e488655ab5034a8577a78c42c4511de5e49ca7531a15becaa133b584',
+  'app/supabase/api/vitals.js':
+    'c80a799354aa127e9350d4823fc60e595d3b7c65934a2815191f336adf976942'
+});
 const r10NegativeOracleProtectedPaths = Object.freeze(
   r10NegativeOraclePaths.filter(
-    (relativePath) => relativePath !== r10R14ProductloadContractPath
+    (relativePath) =>
+      relativePath !== r10R14ProductloadContractPath &&
+      !Object.hasOwn(r14SupabaseReleaseHashes, relativePath)
   )
 );
 const r11IsolatedPaths = Object.freeze([
@@ -167,6 +177,12 @@ requireCondition(
     r10R14ProductloadContractSha256,
   'R10_R14_PRODUCTLOAD_CONTRACT'
 );
+for (const [relativePath, expectedHash] of Object.entries(r14SupabaseReleaseHashes)) {
+  requireCondition(
+    createHash('sha256').update(read(relativePath)).digest('hex') === expectedHash,
+    'R14_SUPABASE_RELEASE_CONTRACT'
+  );
+}
 git(['diff', '--check']);
 
 requireCondition(
@@ -187,8 +203,8 @@ const productIndex = read('index.html');
 const productWorker = read('service-worker.js');
 for (const relativePath of r14CapturePaths) {
   requireCondition(
-    productIndex.split(`src="${relativePath}"`).length - 1 === 1 &&
-      productWorker.split(`toUrl('${relativePath}')`).length - 1 === 1,
+    productIndex.split(`src="${relativePath}?v=20"`).length - 1 === 1 &&
+      productWorker.split(`toUrl('${relativePath}?v=20')`).length - 1 === 1,
     'PRODUCT_V2_LOAD'
   );
 }
