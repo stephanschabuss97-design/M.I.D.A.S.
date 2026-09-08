@@ -9,7 +9,7 @@
  */
 
 // SUBMODULE: imports @internal - bindet zentrale Supabase-Schnittstelle ein
-import { SupabaseAPI } from "../../app/supabase/index.js?v=21";
+import { SupabaseAPI } from "../../app/supabase/index.js?v=22";
 
 const getBootFlow = () => window.AppModules?.bootFlow || null;
 

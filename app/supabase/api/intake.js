@@ -13,13 +13,13 @@
  */
 
 // SUBMODULE: imports @internal - API- und Core-Abhängigkeiten
-import { supabaseState } from '../core/state.js?v=21';
-import { baseUrlFromRest, maskUid } from '../core/client.js?v=21';
-import { fetchWithAuth } from '../core/http.js?v=21';
-import { setConfigStatus } from '../auth/ui.js?v=21';
-import { getUserId } from '../auth/core.js?v=21';
-import { toEventsUrl } from '../realtime/index.js?v=21';
-import { sbSelect } from './select.js?v=21';
+import { supabaseState } from '../core/state.js?v=22';
+import { baseUrlFromRest } from '../core/client.js?v=22';
+import { fetchWithAuth } from '../core/http.js?v=22';
+import { setConfigStatus } from '../auth/ui.js?v=22';
+import { getUserId } from '../auth/core.js?v=22';
+import { toEventsUrl } from '../realtime/index.js?v=22';
+import { sbSelect } from './select.js?v=22';
 
 // SUBMODULE: globals @internal - globale Diagnose- und Utility-Hilfsfunktionen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -77,9 +77,7 @@ export async function loadIntakeToday({ user_id, dayIso, reason }) {
   }
 
   const requestPromise = (async () => {
-    diag.add?.(
-      `[capture] loadIntakeToday start reason=${normalizedReason} uid=${maskUid(user_id)} day=${baseDay}`
-    );
+    diag.add?.('[capture] loadIntakeToday start');
     const rows = await sbSelect({
       table: 'health_events',
       select: 'id,payload',
@@ -93,9 +91,7 @@ export async function loadIntakeToday({ user_id, dayIso, reason }) {
     });
     const row = Array.isArray(rows) && rows.length ? rows[0] : null;
     const payload = row?.payload || {};
-    diag.add?.(
-      `[capture] loadIntakeToday done reason=${normalizedReason} id=${row?.id || 'null'} payload=${JSON.stringify(payload)}`
-    );
+    diag.add?.(`[capture] loadIntakeToday done result=${row ? 'found' : 'empty'}`);
     return {
       id: row?.id ?? null,
       water_ml: Number(payload.water_ml || 0),
@@ -144,7 +140,7 @@ export async function saveIntakeTotals({ dayIso, totals }) {
   } catch (_) {
     /* ignore */
   }
-  diag.add?.(`[intake] POST failed ${res.status} ${details || ''}`);
+  diag.add?.('[intake] POST failed code=rest_post_rejected');
 
   if (res.status === 404) {
     return { ok: false, status: res.status };
@@ -267,7 +263,7 @@ export async function cleanupOldIntake() {
       (headers) => fetch(query, { method: 'DELETE', headers }),
       { tag: 'intake:cleanup', maxAttempts: 2 }
     );
-  } catch (err) {
-    diag.add?.('cleanupOldIntake error: ' + (err?.message || err));
+  } catch (_) {
+    diag.add?.('[intake] cleanup failed code=cleanup_exception');
   }
 }

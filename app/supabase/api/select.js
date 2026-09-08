@@ -9,9 +9,9 @@
  */
 
 // SUBMODULE: imports @internal - REST- und Auth-Abhängigkeiten
-import { baseUrlFromRest } from '../core/client.js?v=21';
-import { fetchWithAuth } from '../core/http.js?v=21';
-import { setConfigStatus } from '../auth/ui.js?v=21';
+import { baseUrlFromRest } from '../core/client.js?v=22';
+import { fetchWithAuth } from '../core/http.js?v=22';
+import { setConfigStatus } from '../auth/ui.js?v=22';
 
 // SUBMODULE: globals @internal - Diagnose-Hook und globale Konfiguration
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

@@ -7,9 +7,9 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const roots = Object.freeze({
-  v19: process.env.R14_RELEASE_V19_ROOT,
-  v20: process.env.R14_RELEASE_V20_ROOT,
-  v21: process.env.R14_RELEASE_V21_ROOT
+  v21: process.env.R14_RELEASE_V21_ROOT,
+  v22: process.env.R14_RELEASE_V22_ROOT,
+  v23: process.env.R14_RELEASE_V23_ROOT
 });
 for (const [release, root] of Object.entries(roots)) {
   assert.ok(root && fs.statSync(root).isDirectory(), `${release} release root is missing`);
@@ -40,7 +40,7 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
 ].find((candidate) => fs.existsSync(candidate));
 
-let activeRoot = roots.v19;
+let activeRoot = roots.v21;
 const mime = Object.freeze({
   '.css': 'text/css',
   '.html': 'text/html',
@@ -136,23 +136,23 @@ async function inspectRelease(page, version, v2Expected) {
   try {
     const staleContext = await browser.newContext({ serviceWorkers: 'allow' });
     const stalePage = await staleContext.newPage();
-    await startControlled(stalePage, base, roots.v19);
-    await installWaiting(stalePage, roots.v20);
-    await stalePage.goto(`${base}?transition=v19-v20`, { waitUntil: 'networkidle' });
-    await inspectRelease(stalePage, '20', true);
+    await startControlled(stalePage, base, roots.v21);
+    await installWaiting(stalePage, roots.v22);
+    await stalePage.goto(`${base}?transition=v21-v22`, { waitUntil: 'networkidle' });
+    await inspectRelease(stalePage, '22', true);
     await staleContext.close();
 
     const rollbackContext = await browser.newContext({ serviceWorkers: 'allow' });
     const rollbackPage = await rollbackContext.newPage();
-    await startControlled(rollbackPage, base, roots.v20);
-    await installWaiting(rollbackPage, roots.v21);
-    await rollbackPage.goto(`${base}?transition=v20-v21`, { waitUntil: 'networkidle' });
-    await inspectRelease(rollbackPage, '21', false);
+    await startControlled(rollbackPage, base, roots.v22);
+    await installWaiting(rollbackPage, roots.v23);
+    await rollbackPage.goto(`${base}?transition=v22-v23`, { waitUntil: 'networkidle' });
+    await inspectRelease(rollbackPage, '23', false);
     await rollbackContext.close();
 
     const offlineContext = await browser.newContext({ serviceWorkers: 'allow' });
     const offlinePage = await offlineContext.newPage();
-    await startControlled(offlinePage, base, roots.v20);
+    await startControlled(offlinePage, base, roots.v22);
     await offlinePage.waitForFunction(() => Boolean(window.AppModules?.activityV2?.productController));
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'networkidle' });
@@ -160,13 +160,13 @@ async function inspectRelease(page, version, v2Expected) {
     const offlineUrls = await offlinePage.evaluate(() => performance.getEntriesByType('resource')
       .map((entry) => entry.name)
       .filter((url) => url.includes('/app/supabase/') || url.includes('/assets/js/boot-auth.js')));
-    assert.ok(offlineUrls.every((url) => new URL(url).search === '?v=20'));
+    assert.ok(offlineUrls.every((url) => new URL(url).search === '?v=22'));
     assert.equal(new Set(offlineUrls.map((url) => new URL(url).pathname)).size,
       supabaseGraph.length);
     await offlineContext.close();
 
     process.stdout.write(
-      'R14_ACTUAL_RELEASE_TRANSITION_PASS stale_v19_v20=1 rollback_v20_v21=1 fresh_v20_offline=1\n'
+      'R14_ACTUAL_RELEASE_TRANSITION_PASS stale_v21_v22=1 rollback_v22_v23=1 fresh_v22_offline=1\n'
     );
   } finally {
     await browser.close();

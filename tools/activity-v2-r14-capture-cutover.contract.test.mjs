@@ -60,46 +60,48 @@ const cutoverTool = read('tools/activity-v2-r14-v2-productload-cutover.ps1');
 test('R14 cutover materializer is confirmation-gated, scoped and monotone', () => {
   assert.match(cutoverTool, /\[switch\]\$ConfirmCutover/);
   assert.match(cutoverTool, /0fa44e29536a604256638057d4e54a9e593b8bab/);
-  assert.match(cutoverTool, /const CACHE_VERSION = 'v20'/);
-  assert.match(cutoverTool, /activity-product-controller\.js\?v=20/);
+  assert.match(cutoverTool, /const CACHE_VERSION = 'v22'/);
+  assert.match(cutoverTool, /activity-product-controller\.js\?v=22/);
+  assert.match(cutoverTool, /preparedSourceHashes/);
+  assert.match(cutoverTool, /420b8bc3e1fc8bdca5db5929db102500c3c2ce4e82bfe3dfb9052ba3c158d36a/);
   assert.match(cutoverTool, /preflightSessionCommit/);
   assert.doesNotMatch(cutoverTool, /ResumePartial/);
   assert.equal(count(gitShow(cutoverSourceCommit, 'service-worker.js'), "toUrl('app/modules/doctor-stack/charts/index.js')"), 0);
-  assert.match(cutoverTool, /\$chartAsset = "  toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=20'\),"/);
+  assert.match(cutoverTool, /\$chartAsset = "  toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=22'\),"/);
   assert.match(cutoverTool, /Replace-Exactly \$workerSource \$mainAsset "\$chartAsset\$workerNewline\$mainAsset"/);
   assert.match(cutoverTool, /\$indexSource\.TrimEnd\(\[char\[\]\]\("`r`n"\)\) \+ \$indexNewline/);
   assert.doesNotMatch(cutoverTool, /reset --hard|clean\s+-|sql\/|indexedDB\.deleteDatabase|Remove-Item/);
 });
 
-test('R14 productload is one ordered V2 writer graph with exact v20 cache identities', () => {
+test('R14 productload is one ordered V2 writer graph with exact v22 cache identities', () => {
   const index = read('index.html');
   const worker = read('service-worker.js');
   const css = read('app/app.css');
   let previousIndex = -1;
   let previousWorker = -1;
   for (const relativePath of captureOrder) {
-    const indexPosition = index.indexOf(`src="${relativePath}?v=20"`);
-    const workerPosition = worker.indexOf(`toUrl('${relativePath}?v=20')`);
+    const indexPosition = index.indexOf(`src="${relativePath}?v=22"`);
+    const workerPosition = worker.indexOf(`toUrl('${relativePath}?v=22')`);
     assert.ok(indexPosition > previousIndex, relativePath);
     assert.ok(workerPosition > previousWorker, relativePath);
-    assert.equal(count(index, `src="${relativePath}?v=20"`), 1, relativePath);
-    assert.equal(count(worker, `toUrl('${relativePath}?v=20')`), 1, relativePath);
+    assert.equal(count(index, `src="${relativePath}?v=22"`), 1, relativePath);
+    assert.equal(count(worker, `toUrl('${relativePath}?v=22')`), 1, relativePath);
     previousIndex = indexPosition;
     previousWorker = workerPosition;
   }
-  assert.ok(previousIndex < index.indexOf('src="app/supabase/index.js?v=20"'));
+  assert.ok(previousIndex < index.indexOf('src="app/supabase/index.js?v=22"'));
   for (const relativePath of stylePaths) {
     const importPath = relativePath.replace(/^app\//, './');
-    assert.equal(count(css, `@import url("${importPath}?v=20")`), 1, relativePath);
-    assert.equal(count(worker, `toUrl('${relativePath}?v=20')`), 1, relativePath);
+    assert.equal(count(css, `@import url("${importPath}?v=22")`), 1, relativePath);
+    assert.equal(count(worker, `toUrl('${relativePath}?v=22')`), 1, relativePath);
   }
-  assert.match(index, /href="app\/app\.css\?v=20"/);
-  assert.match(index, /src="assets\/js\/main\.js\?v=20"/);
-  assert.match(index, /src="app\/supabase\/index\.js\?v=20"/);
-  assert.match(index, /src="app\/modules\/doctor-stack\/charts\/index\.js\?v=20"/);
-  assert.match(worker, /toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=20'\)/);
+  assert.match(index, /href="app\/app\.css\?v=22"/);
+  assert.match(index, /src="assets\/js\/main\.js\?v=22"/);
+  assert.match(index, /src="app\/supabase\/index\.js\?v=22"/);
+  assert.match(index, /src="app\/modules\/doctor-stack\/charts\/index\.js\?v=22"/);
+  assert.match(worker, /toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=22'\)/);
   assert.match(worker, /test\(new URL\(request\.url\)\.pathname\)/);
-  assert.match(worker, /const CACHE_VERSION = 'v20'/);
+  assert.match(worker, /const CACHE_VERSION = 'v22'/);
   assert.doesNotMatch(index, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
   assert.doesNotMatch(worker, /toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/);
   assert.doesNotMatch(`${index}\n${worker}`, /activity\/v2\/(?:test-pwa|[^\s"']*harness)/);
@@ -171,7 +173,7 @@ test('R14 chart consumes only the unchanged R13 snapshot and aggregates markers 
   }
 });
 
-test('R14 rollback material restores only explicit baseline product paths and creates v21', () => {
+test('R14 rollback material restores only explicit baseline product paths and creates v23', () => {
   const rollback = read('tools/activity-v2-r14-v1-productload-rollback.ps1');
   assert.match(rollback, /\[switch\]\$ConfirmRollback/);
   assert.match(rollback, new RegExp(baselineCommit));
@@ -187,12 +189,12 @@ test('R14 rollback material restores only explicit baseline product paths and cr
   }
   assert.match(rollback, /restore --source=\$baselineCommit --worktree -- @restoredProductPaths/);
   assert.match(rollback, /\$productPaths = @\(\$restoredProductPaths \+ \$supabaseModulePaths\)/);
-  assert.match(rollback, /Set-ReleaseModuleVersion \$relativePath '21'/);
-  assert.match(rollback, /const CACHE_VERSION = 'v21'/);
-  assert.match(rollback, /app\/modules\/vitals-stack\/activity\/index\.js\?v=21/);
-  assert.match(rollback, /app\/modules\/doctor-stack\/charts\/index\.js\?v=21/);
+  assert.match(rollback, /Set-ReleaseModuleVersion \$relativePath '23'/);
+  assert.match(rollback, /const CACHE_VERSION = 'v23'/);
+  assert.match(rollback, /app\/modules\/vitals-stack\/activity\/index\.js\?v=23/);
+  assert.match(rollback, /app\/modules\/doctor-stack\/charts\/index\.js\?v=23/);
   assert.equal(count(gitShow(baselineCommit, 'service-worker.js'), "toUrl('app/modules/doctor-stack/charts/index.js')"), 0);
-  assert.match(rollback, /\$chartAsset = "  toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=21'\),"/);
+  assert.match(rollback, /\$chartAsset = "  toUrl\('app\/modules\/doctor-stack\/charts\/index\.js\?v=23'\),"/);
   assert.match(rollback, /Replace-Exactly \$workerSource \$mainAsset "\$chartAsset\$workerNewline\$mainAsset"/);
   assert.match(rollback, /\$indexSource\.TrimEnd\(\[char\[\]\]\("`r`n"\)\) \+ \$indexNewline/);
   assert.match(rollback, /\$mainSource\.TrimEnd\(\[char\[\]\]\("`r`n"\)\) \+ \$mainNewline/);
@@ -202,7 +204,7 @@ test('R14 rollback material restores only explicit baseline product paths and cr
   const rollbackIndex = gitShow(baselineCommit, 'index.html');
   const rollbackMain = gitShow(baselineCommit, 'assets/js/main.js');
   let rollbackWorker = gitShow(baselineCommit, 'service-worker.js')
-    .replace("const CACHE_VERSION = 'v13';", "const CACHE_VERSION = 'v21';")
+    .replace("const CACHE_VERSION = 'v13';", "const CACHE_VERSION = 'v23';")
     .replace(
       "  toUrl('assets/js/ui-tabs.js'),",
       "  toUrl('assets/js/ui-tabs.js'),\n  toUrl('app/modules/vitals-stack/activity/index.js'),"
@@ -212,11 +214,11 @@ test('R14 rollback material restores only explicit baseline product paths and cr
   assert.equal(count(rollbackMain, "activityForm?.addEventListener('submit'"), 1);
   assert.equal(count(rollbackMain, 'activity?.addActivity?.({'), 1);
   rollbackWorker = rollbackWorker
-    .replace("toUrl('app/app.css')", "toUrl('app/app.css?v=21')")
-    .replace("toUrl('app/supabase/index.js')", "toUrl('app/supabase/index.js?v=21')")
-    .replace("toUrl('assets/js/main.js')", "toUrl('assets/js/main.js?v=21')")
-    .replace("toUrl('app/modules/vitals-stack/activity/index.js')", "toUrl('app/modules/vitals-stack/activity/index.js?v=21')");
-  assert.match(rollbackWorker, /const CACHE_VERSION = 'v21'/);
-  assert.equal(count(rollbackWorker, "toUrl('app/modules/vitals-stack/activity/index.js?v=21')"), 1);
+    .replace("toUrl('app/app.css')", "toUrl('app/app.css?v=23')")
+    .replace("toUrl('app/supabase/index.js')", "toUrl('app/supabase/index.js?v=23')")
+    .replace("toUrl('assets/js/main.js')", "toUrl('assets/js/main.js?v=23')")
+    .replace("toUrl('app/modules/vitals-stack/activity/index.js')", "toUrl('app/modules/vitals-stack/activity/index.js?v=23')");
+  assert.match(rollbackWorker, /const CACHE_VERSION = 'v23'/);
+  assert.equal(count(rollbackWorker, "toUrl('app/modules/vitals-stack/activity/index.js?v=23')"), 1);
   assert.doesNotMatch(rollbackWorker, /activity\/v2\/activity-product-controller\.js/);
 });

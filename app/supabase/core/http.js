@@ -16,7 +16,7 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Client und Header-Cache-Funktionen
-import { ensureSupabaseClient } from './client.js?v=21';
+import { ensureSupabaseClient } from './client.js?v=22';
 import {
   getCachedHeaders,
   getCachedHeadersAt,
@@ -24,7 +24,7 @@ import {
   setHeaderPromise,
   cacheHeaders,
   clearHeaderCache
-} from './state.js?v=21';
+} from './state.js?v=22';
 
 // SUBMODULE: globals @internal - Diagnostik-Objekt und globale Handles
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

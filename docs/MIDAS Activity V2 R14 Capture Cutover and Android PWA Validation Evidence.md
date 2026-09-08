@@ -9,11 +9,11 @@ werden nicht als PASS eingetragen.
 | Feld | Wert |
 | --- | --- |
 | Zugehörige Roadmap | `docs/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap.md` |
-| Status | `S5_CUTOVER_IN_PROGRESS; P1_P2_EXERCISED; F-ACT-R14-32 FIXED LOCALLY; LOCAL S5 CLOSURE PASS; V19 PREIMAGE PASS; R14 OPEN` |
+| Status | `PAUSED_USAGE; P1/P2 GRANTED NOT EXERCISED; LOCAL S5 CLOSURE PASS; V21 PRODUCTION SAFE; R14 OPEN` |
 | Evidence-Owner | `R14` |
 | Baseline-Commit | `4be058b1b2e59f410ea8a6e3a4e5af9fdb86b652` |
 | Umgebungen | `lokal / Browser / PWA / produktiv read-only / produktiv write; Android gemäß D-ACT-R14-17 owner-deferred` |
-| Produktive Wirkung | `Zwei V2-Cutoverversuche ohne persistierten V2-Datensatz; letzter datenverlustfreier V1-Productloadrollback über 3857bf4/v19 vollständig PASS. F32-Repair und Revalidierung waren ausschließlich lokal.` |
+| Produktive Wirkung | `Letzter v20-Cutover vor Write abgebrochen; datenverlustfreier V1-Productloadrollback über 40c4b93/v21 vollständig PASS. Aktuelle Repair-/Analysearbeit ausschließlich lokal; V2 bleibt 0/0/0.` |
 | Archivziel | `docs/archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md` |
 
 ## Nachweisvertrag
@@ -144,6 +144,9 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-L13 | F-ACT-R14-28..31 Dirty-Stop-Closure und Repair | Draft-Preflight, Privacy, Viewport, Release-/Cachematerialisierung | nur lokal, kein Commit/Push/Deploy/Write | F28 INVALID_TIME/duration_min und write-freier Preflight; F30 abstrakte calcMAP-Codes; F29 Viewport 4/4. F31 ergänzt den fehlenden Chartasset am Main-Anker und normalisiert bekannte EOF-Leerzeilen. 8/8 direkte Contracts sowie isolierte v20/v21-Materialisierung samt diff-check PASS. | REPAIR PASS / FINAL REVIEW BY L15 PASS |
 | EV-ACT-R14-L14 | F-ACT-R14-32 bounded Red Team | transitive ESM-Identität und erster Offline-Reload | Finding-only; statische Consumer-/Cacheanalyse ohne Fix oder Produktwirkung | Network-first-Navigation kann v20-HTML unter einem v19-Worker liefern. Neun Supabase-Importer laden `auth/core.js` unversioniert, während der versionierte Einstieg parallel `core.js?v=20` lädt; die v19-/v20-Corequellen unterscheiden sich. `CORE_ASSETS` enthält nicht den vollständigen versionierten ESM-Graph, daher ist Fresh-Install→sofortiger Offline-Reload nicht belegt. | P1 FINDING / OPEN |
 | EV-ACT-R14-L15 | F-ACT-R14-32 Repair/Retest | vollständige transitive Releaseidentität und reale Offline-/Wechselpfade | nur lokal; kein Commit/Push/Deploy/Write | 18 Supabase-/Boot-Module je Release durchgängig v20/v21, vollständig im Shellcache und ohne doppelte Root-/Auth-Core-Identität. Isolierte Materializer; echter v19-Worker→v20-HTML, v20→v21 und Fresh-v20→Offline; lokaler Productboot; 306 Node, 44 Syntax, zwei Parser und native Fullreviews PASS. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
+| EV-ACT-R14-L16 | F34 Repair / F35 Finding | API-Privacyfix und reales lokales Productbrowser-Orakel | nur lokal; keine Außen- oder Datenwirkung | Intake-API nur abstrakte Marker; statischer Privacyvertrag 4/4, 21/21 direkte Contracts plus C3/R8/R13, Parser/Syntax und synthetischer Releasebrowser PASS. Reales v22-Productbrowser-Orakel meldet 36 Treffer ohne Inhaltsausgabe; 24 day-Label-Treffer klassifiziert als 16 Capture-Refresh und 8 Medication; 42 statische diagnosekritische Intake-Stack-Call-Sites. | PARTIAL PASS / P1 FINDING |
+| EV-ACT-R14-L17 | Repair-Findings und V2-Blockeranalyse | vollständige F01-F35-Klassifikation sowie F36-Recovery-/Operatorgrenze | nur Dokumentation und fokussierte Sourceanalyse; keine Tests oder Außenwirkung | Kein weiterer ungefixter V2-Codefehler bewiesen. F35 als vorbestehender gemeinsamer MIDAS-Backlog separiert. F36: erhaltener gealterter Recovery-Draft ist nicht commitfähig; `startSession()` verlangt leeren Recoveryzustand und einzig vorhandene Auflösung ist der bestätigte normale UI-Discard oder Erhalt mit weiterem Cutoverstopp. | F36 OWNER DECISION REQUIRED |
+| EV-ACT-R14-L18 | F34 finale Closure / v22-v23 Release | F34-spezifische Privacy, Productload, Offline, Wechselpfade und native Fullreviews | nur lokal; kein Commit/Push/Deploy/Write/Delete | Intake-API-sensitive Browserdiagnostik 0; bekannter F35-Shared-Zähler 36 ohne Inhaltsausgabe. 24/24 direkte Contracts, 13/13 gezielter Nachlauf, 31 Syntax, zwei Parser und diff-check PASS. Isolierte v21/v22/v23-Materialisierung, synthetischer Mischzustand, reale v21→v22-/v22→v23-Transitions, Fresh-v22→Offline sowie lokaler v22-Productbrowser PASS. Native Delta-/Contract-/Security-/Privacy-/Cache-/Rollback-/Consumerreviews PASS; Backend/SQL/Android-Diff und Secretmuster 0. 50-Dateien-Release-Manifest `179c9df6...29e1`; realer P1-Deltascope 35 Code/Test plus drei R14-Dokumente = 38 Dateien. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
 
 ## Evidence-Gültigkeit und Invalidation
 
@@ -157,6 +160,9 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-L13 | Session Commit `5b2cf8e3...136c`; Controller `565d156e...f07b`; Vitals `d99eaf43...3ab`; index `313091fa...8b68`; SW `5bd6bff8...0449`; Cutovertool `9e51ec29...caeb`; Rollbacktool `634d3624...1f27`; Contract `248f7dc7...c770`; 35-Dateien-Manifest `2a9bb7f9...0812c` | F28/F30, F29-Viewport und F31 lokal geschlossen; v20/v21-Roundtrip grün | Änderung an diesen Quellen, Orakeln oder Toolquellpostimages | nativer Abschlussreview und verbleibende lokale Product-/Offline-Smokes |
 | EV-ACT-R14-L14 | SW `5bd6bff8...0449`; v19 Auth-Core-Blob `6bd7473a...6873f`; lokaler v20 Auth-Core `aa8f5b00...2717b`; v19 Vitals-Blob `694eae23...26873`; lokaler v20 Vitals `61bc3607...915c`; neun statisch bestätigte unversionierte Core-Importer | F32: alter Worker kann neues HTML liefern; transitive Supabase-Module besitzen keine durchgängige Releaseidentität und fehlen als vollständiger ESM-Graph im installierbaren Offlinepostimage | kohärente Versionierung/Navigation/Cachekorrektur plus gezielte stale-client- und Fresh-Offline-Revalidierung | eigener F32-Repair-/Retestblock |
 | EV-ACT-R14-L15 | index `85e4dda9...9cc6`; SW `88232bcf...b186`; boot-auth `f45483f3...5c55`; Supabase root `c6dd73bd...a0b7`; Auth core `f3222e4d...224e`; Cutover `15dd80da...d316`; Rollback `a19144c7...b2ed`; Releasecontract `484351c2...0f26`; reale Transition `fbcb7ee8...4f87`; 49-Dateien-Manifest `333a3469...db95` | F29-Cache/F31/F32 lokal geschlossen; vollständiger v20/v21-Graph und reale Wechsel-/Offlinepfade | Änderung an einem Releasegraph-, Productload-, Worker-, Materializer- oder Browserorakelpfad | neuer produktiver Read-only-Preflight und Write-/Reader-/Delete-Reproof |
+| EV-ACT-R14-L16 | Intake-API-Fix, neuer statischer Privacyvertrag, v22-Productload und inhaltsfreie Browserzähler | F34 im API-Modul korrigiert; F35 im gemeinsamen Intake-Stack reproduzierbar offen | F35-Fix oder Änderung an Intake-, Diagnose-, Browseroracle- oder Releasepfaden | eigener F35-Repair-/Retestblock; danach vollständige lokale Closure |
+| EV-ACT-R14-L17 | Roadmap-/Evidence-Findingstabellen, `docs/MIDAS Activity V2 R14 Repair Findings.md`, fokussierte V2-Controller-/Commitquellen | R14-relevante versus allgemeine MIDAS-Funde getrennt; F36 als aktueller Operatorblocker bewiesen | Änderung am Single-Draft-, Preflight-, Discard- oder Commitvertrag sowie neuer Produktzustand des Recovery-Drafts | Ownerentscheidung zu F36; danach Manifest, Preflight und produktiver Reproof |
+| EV-ACT-R14-L18 | Release-Manifest `179c9df6...29e1`; Intake-Privacytest; v22/v23-Materialisierer; drei Browserorakel; Git-Deltascope 35+3 | F34 vollständig lokal geschlossen, v22/v23 releasekohärent und PRE09-bereit; F35 sauber als Shared Backlog separiert | Änderung an einem Manifestpfad, Intake-Diagnostik/-Oracle, Productload, Worker, Materialisierer oder realem Git-Deltascope | PRE09 und neues v22/v23-P1/P2 |
 | EV-ACT-R14-P01..P04 | in S5 erfassen | produktiver Cutover | neuer Deploy/Runtime-Drift | S6/R15 |
 
 ## Produktiver Read-only Preflight
@@ -171,6 +177,7 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-PRE06 | Rollbackartefakt und P1/P2/P3-Briefing | Tool `23b37d83...856c`, explizites `-ConfirmRollback`, Basis 4be058b1, sechs Produktpfade, Root-SW v15. P1 samt bedingtem Rollback und P2 für einen Write plus normalen R9-Delete durch D-ACT-R14-18 erteilt. U10R2 am 2026-08-30 08:05:11+02:00: 98/100 = CONTINUE; atomares Fenster begonnen. | keiner |
 | EV-ACT-R14-PRE07 | erneuerter v16/v17-Preflight nach F-ACT-R14-25 | HEAD=origin/main=Pages `ce2e18d`; Run 33296959317 success, live V1/V2-Controller/R13-Reader 1/0/2 und SW v15. V1-ID-Menge 67; V2 0/0/0, alle Leerhashes `4f53cda1...b945`; Katalog 78/80. Kein Payloadread oder Write. U10R11 am 2026-08-31 06:37:47+02:00 ist mit 94/99 technisch CONTINUE, verfehlt die bevorzugte 96/15-Reserve knapp und erfüllt die harte 89/20-Mindestreserve. Die Messung ist POST_REHYDRATION_BASELINE; bereits verbrauchter Einstieg ist SUNK_USAGE. 16-Dateien-Manifest `2b329d5a...4926b`, ce2e18d/v15-Produktpreimage und D-ACT-R14-19/-20/-21 sind bestätigt. | `PASS / PRIMARY_OWNER_BOUNDARY_ALLOWED`; atomares Fenster begonnen |
 | EV-ACT-R14-PRE08 | aktueller v20/v21-Preflight nach F-ACT-R14-33 und D-ACT-R14-25 | HEAD=origin/main=Pages `3857bf4`; letzter Pages-Run 34023954044 success/built. Live entspricht HEAD: V1-Form/Script 1/1, V2-Productcontroller 0, R13-Readerloads 2, Root-SW v19. 49-Dateien-Manifest `333a3469...db95` und 51-Dateien-Scope exakt. Auth 1 bestätigt/0 anonym; V1 69 mit unverändertem geschütztem ID-Hash `459f2056...007d`; V2 0/0/0 und ID-/Request-ID-Leerhashes `4f53cda1...b945`; Katalog v1/v2 78/80, deprecated 0; R13 `midas.activity-consumer.v1`, 69 reine V1-Units, 0 Mixed-Source-Tage. Kein Payloadread, Write oder Delete. U11R13 80/66 ist gültig/CONTINUE. D-ACT-R14-25 korrigiert die damalige Ein-Punkt-Ablehnung: effektiver Operational Safety Floor 72/21, Autonomous Full-Closure Floor 81/21. | `PASS / PRIMARY_OWNER_BOUNDARY_ALLOWED`; Owner akzeptierte reduziertes administratives Closure-Polster, keine Produktivwirkung begonnen |
+| EV-ACT-R14-PRE09 | aktueller v22/v23-Preflight nach F34-Closure und D-ACT-R14-27/-28 | HEAD=origin/main=Pages `40c4b93`; letzter Pages-Run 34160860095 completed/success. Live V1/V2/R13 `1/0/2`, Root-SW v21; Edge-Appboot authentifiziert. 50-Dateien-Release-Manifest `179c9df6...29e1`; Git-P1-Deltascope 35 Code/Test plus Roadmap, Evidence und Repair-Findings = 38 Dateien. Auth 1/0 anonym; V1 69 mit unverändertem ID-Hash `459f2056...007d`; V2 0/0/0 und ID-/Request-ID-Leerhashes `4f53cda1...b945`; Katalog 78/80/0; R13 `midas.activity-consumer.v1`, 69 reine V1-Units, 0 Mixed-Source-Tage. Die zwischenzeitlich regulär erfassten Vitals ändern die Activity-Baseline nicht. Kein Payloadread, Write oder Delete. | `PASS`; neues P1/P2 vor atomarem v22/v23-Fenster erforderlich |
 
 ## Produktive Aktionen
 
@@ -187,17 +194,20 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-W09 | v18-Web-/PWA-Cutover | D-ACT-R14-22 | V2-Productload und Root-SW v18 | 0fa44e2 / Run 34022878621; V1/V2/R13 0/1/2; Fresh/Upgrade/stale-client/Recovery PASS | PASS, danach bedingt zurückgerollt |
 | EV-ACT-R14-W10 | genau ein v18-Abschlussversuch | D-ACT-R14-22 plus Owneraktion | genau eine V2-Session nur bei gültigem Draft | bekannte Eingabevalidierung vor Transport; kein Retry, V2 0/0/0, Recovery erhalten | FAIL-CLOSED / NO WRITE |
 | EV-ACT-R14-W11 | v19-Productload-Rollback auf V1 | D-ACT-R14-22 bedingt | Webcode zurück; Daten unverändert | 3857bf4 / Run 34023954044; V1/V2/R13 1/0/2, SW v19; isolierter frischer V1-Boot PASS | PASS ROLLBACK |
+| EV-ACT-R14-W12 | v20-Web-/PWA-Cutover | D-ACT-R14-23/-25 | V2-Productload und Root-SW v20 | 2dbfa3c / Run 34160428748; Live-Index und Worker entsprachen dem Commit, V1/V2/R13 0/1/2, SW v20; Upgradepfad aktiv | PASS, danach wegen Privacy-Pflichtfehler zurückgerollt |
+| EV-ACT-R14-W13 | geplanter v20-Smoke-Write | D-ACT-R14-23 | genau eine V2-Session nur nach grünem Livepostimage | Nicht ausgeführt: Live-Browserdiagnostik enthielt bereits vor dem Write eine Datensatz-ID und konkrete Gesundheitswerte. Kein Retry, V2 0/0/0, kein Delete. | BLOCKED BEFORE WRITE |
+| EV-ACT-R14-W14 | v21-Productload-Rollback auf V1 | D-ACT-R14-23 bedingt | Webcode zurück; Daten unverändert | 40c4b93 / Run 34160860095; Live-Index/SW exakt Commit, V1/V2/R13 1/0/2, SW v21; aktualisierter frischer V1-Client bootet ohne Fehler | PASS ROLLBACK |
 
 ## Vorher-/Nachher-Nachweis
 
 | Merkmal | Vorher | Nachher | Status |
 | --- | --- | --- | --- |
-| sichtbarer Capture | Activity V1 | nach bedingtem Rollback wieder Activity V1 | PASS ROLLBACK |
-| V1-Produktcallsite | genau eine | kurzzeitig null; Rollbackpostimage wieder genau eine | PASS ROLLBACK |
-| V1-Historie | vorhanden | keine Cutovermutation oder -löschung; neue Vor-/Nachbaseline 69 mit identischem Hash | PASS / NO MUTATION |
-| V2 Sessions/Items/Sets | 0/0/0 | nach einzigem v18-Abschlussversuch weiterhin 0/0/0 | PASS NO WRITE |
-| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; aktueller Snapshot 69 Units, 0 Mixed-Source-Days | PASS |
-| Root-SW | v13 bei Planung | v18 Cutover, danach monoton v19 Rollback | PASS ROLLBACK |
+| sichtbarer Capture | Activity V1 | nach bedingtem v21-Rollback wieder Activity V1 | PASS ROLLBACK |
+| V1-Produktcallsite | genau eine | während v20 null; v21-Rollbackpostimage wieder genau eine | PASS ROLLBACK |
+| V1-Historie | 69 mit geschütztem Hash | keine Cutovermutation oder -löschung; Vor-/Nachbaseline 69 mit identischem Hash | PASS / NO MUTATION |
+| V2 Sessions/Items/Sets | 0/0/0 | kein v20-Write versucht; weiterhin 0/0/0 | PASS NO WRITE |
+| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; aus unveränderter Baseline 69 reine V1-Units und 0 Mixed-Source-Days | PASS |
+| Root-SW | v19 vor dem Fenster | v20 Cutover, danach monoton v21 Rollback | PASS ROLLBACK |
 
 ## Deploy- und Runtime-Nachweise
 
@@ -211,6 +221,7 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-P06 | R13 Consumer S5.6 | zwei unveränderte Productloads; Service-Snapshot `midas.activity-consumer.v1` | 67 Units, 0 Mixed-Source-Days | read-only | PASS |
 | EV-ACT-R14-P07 | Pages/Web drittes Fenster | `0fa44e2` / `34022878621`; Rollback `3857bf4` / `34023954044` | v18 Fresh/Upgrade/stale-client/Recovery PASS; Write fail-closed; isolierter v19-V1-Boot PASS | kein persistierter Write | PASS ROLLBACK / PRODUCT FAIL |
 | EV-ACT-R14-P08 | R13 Consumer aktuelles Postimage | zwei unveränderte Productloads; `midas.activity-consumer.v1` | 69 reine V1-Units, 0 Mixed-Source-Days | read-only | PASS |
+| EV-ACT-R14-P09 | Pages/Web viertes Fenster | `2dbfa3c` / `34160428748`; Rollback `40c4b93` / `34160860095` | v20 Live-Productload und Upgrade erreicht; Privacy-Pflichtfehler vor Write; v21 V1-only, frischer aktualisierter Client und Datenintegrität PASS | kein Write, Retry oder Delete | PASS ROLLBACK / PRODUCT PRIVACY FAIL |
 
 ## Findings und Korrekturen
 
@@ -239,6 +250,9 @@ Nicht als Evidence zulässig:
 | F-ACT-R14-31 | Dirty-Stop-Closure + Repair | P1 / Release-Materialisierung | Fehlenden Doctor-Chart-Workerasset in v20/v21 am eindeutigen Main-Anker ergänzen; bekannte EOF-Leerzeilen in v18-index und V1-main normalisieren. | Direkte Contracts, beide isolierten Materializer, `git diff --check` und finaler nativer Rollbackreview PASS. | fixed locally / final review PASS |
 | F-ACT-R14-32 | bounded Red Team + Repair | P1 / transitive ESM-/Offline-Cachekohärenz | Alle 18 Supabase-/Boot-Module besitzen pro Release dieselbe Queryidentität; `CORE_ASSETS` installiert den vollständigen Graph. Materializer normalisieren v20/v21 deterministisch. | Negative Mischreproduktion vor Fix; danach echter v19-Worker→v20-HTML, v20→v21 und Fresh-v20→Offline, 306 Node, 44 Syntax, zwei Parser und Fullreviews PASS. | fixed locally / productive reproof pending |
 | F-ACT-R14-33 | Usage-Hotfix vor S5.4 | P1 / Reserve-, Closure- und Owner-Boundary-Zuordnung | Erst wurden statische 25/10-Schwellen als Kosten addiert; danach sperrte die einheitliche 81/21-Grenze U11R13 80/66 weiterhin um einen Sensorpunkt trotz Ownerannahme. | D-ACT-R14-25: 71/11 bis zur sicheren technischen Postcondition plus 1/1 ergibt Operational Safety Floor 72/12, effektiv 72/21. Mit zusätzlicher echter CLOSURE_ONLY-Messung 9/2 ergibt sich Autonomous Full-Closure Floor 81/14, effektiv 81/21. Owner Boundary darf nur die umfassende administrative Closure vertagen. Raw Preferred 107/17 bleibt advisory und `PREFERRED_UNATTAINABLE`. | fixed in process contract / boundary accepted |
+| F-ACT-R14-34 | v20 S5.4 + lokaler Retest | P2 / Privacy / produktive Browserdiagnostik | `app/supabase/api/intake.js` lokal auf abstrakte Start-, Ergebnis- und Fehlercodes reduziert; Rückgabe-, Transport-, Persistenz- und Fehlerobjektvertrag unverändert. | Intake-/Vitals-Privacy, lokales Productbrowser-Orakel und alle releaseinvalidierten Checks PASS; F34-eigene sensitive Treffer 0. Allgemeiner F35-Privacyfund bleibt transparent offen. | fixed locally / productive reproof pending |
+| F-ACT-R14-35 | lokaler F34-Retest | P2 / Privacy / gemeinsamer Intake-Stack | Reales Browserorakel zählt 36 sensitive-pattern Treffer ohne Inhaltsausgabe. Frischer Klassifikationslauf weist 24 day-Label-Treffer 16 Capture-Refresh- und 8 Medication-Diagnosen zu; statische Analyse klassifiziert 42 Prüfkandidaten in `app/modules/intake-stack/intake/index.js`. | Gemäß D-ACT-R14-27 im separaten Repair-Bugreport erhalten; kein bewiesener V2-Funktionsfehler und keine übereifrige R14-Aufräumwelle. Kein allgemeiner MIDAS-Privacy-PASS. | open / shared repair backlog |
+| F-ACT-R14-36 | fokussierte V2-Blockeranalyse | P1 / Recovery-Draft / produktiver Smoke | Der erhaltene Draft überschreitet die bewiesene 1440-Minuten-Grenze und bleibt durch den write-freien Preflight unverändert. Der Single-Draft-Controller erlaubt einen neuen Draft erst nach leerem Recoveryzustand; vorhandener normaler UI-Discard ist bestätigungspflichtig. | D-ACT-R14-28 erlaubt im nächsten separat freigegebenen v22/v23-Fenster den sichtbaren normalen UI-Discard. Danach frischer Katalog-v2-Draft mit neuer Request-ID; keine stille Mutation oder Datenbanklöschung. | owner-resolved / productive execution pending |
 
 ### Dirty-Stop Recovery Receipt 2026-09-06
 
@@ -529,7 +543,7 @@ Nicht als Evidence zulässig:
   effektiv 81/21. Raw Preferred 107/17 bleibt `PREFERRED_UNATTAINABLE` und
   advisory. U11R13 erfüllt die operative Boundary; Stephan hat das reine Risiko
   einer späteren administrativen Closure ausdrücklich akzeptiert. D-ACT-R14-23
-  bleibt erteilt und nicht ausgeübt. Der abgeschlossene Guard-Hotfix führte zu
+  war zu diesem Zeitpunkt erteilt und noch nicht ausgeübt. Der abgeschlossene Guard-Hotfix führte zu
   U11R14 59/62 und kostete 16/3; damit beginnt in diesem Bucket kein
   Produktfenster. D-ACT-R14-23/-25 bleiben für das nächste effektive
   72/21-Gate gültig; Produktion bleibt unverändert und R14 OPEN.
@@ -537,6 +551,94 @@ Nicht als Evidence zulässig:
   `CONTINUE / PRIMARY_ALLOWED`. PRE08, 49-Dateien-Manifest, 51-Dateien-Scope
   und v19-Postimage sind unverändert. D-ACT-R14-23/-25 werden im atomaren
   v20/v21-Fenster ohne Zwischenpoll ausgeübt.
+- Das v20/v21-Fenster endete sicher mit Rollback: Cutover `2dbfa3c` / Run
+  `34160428748`; produktive sensible Capture-Diagnostik vor jedem V2-Write als
+  F-ACT-R14-34 erkannt. Kein Write, Retry oder Delete. Rollback `40c4b93` /
+  Run `34160860095`; Live-Index `1e68bef3...ecb7`, Live-SW
+  `33c99bcd...b573`, V1/V2/R13 1/0/2, Root-SW v21. Frischer aktualisierter
+  V1-Client bootet ohne Fehler. V1 69 mit geschütztem Hash
+  `459f2056...007d`, V2 0/0/0 mit Leerhash `4f53cda1...b945`; keine
+  Datenmutation oder Löschung. R14 bleibt OPEN.
+- U11R16 2026-09-07T23:02:12+02:00: 58/46, gültig und `CONTINUE`;
+  40/7 seit U11R15 für vollständiges Atomfenster einschließlich sicherem
+  v21-Rollback und minimalem Postimage. Kein Diagnose-/Repairblock angehängt;
+  Resume vor F-ACT-R14-34.
+- F34 wurde anschließend read-only exakt auf die seit 4be058b1 bestehende
+  Shared-Intake-Diagnostik eingegrenzt. F30 war auf `vitals.js`/calcMAP
+  beschränkt. Minimalfix, Privacy-Negativvertrag, inhaltsfreies Browserorakel
+  und monotone v22/v23-Releasefolge sind vorbereitet; Produktcode und
+  Produktion blieben unverändert.
+- U11R17 2026-09-07T23:13:05+02:00: 43/44, gültig und
+  `CONTINUE_WITH_CAUTION`; 15/2 seit U11R16 für genau diesen bounded
+  Diagnose-/Vorbereitungsblock. Der Block ist vollständig geschlossen; kein
+  Fix-/Retestblock wird in derselben Restricted-Work-Episode begonnen.
+- U11R18 2026-09-08T07:18:55+02:00: 97/99, gültig und `CONTINUE`;
+  `POST_REHYDRATION_BASELINE`, Rehydration ist SUNK_USAGE. Der kohärente
+  F34-Repair-/Retestblock wurde zugelassen.
+- F34 ist im API-Modul lokal minimal korrigiert. Intake-/Vitals-Privacy 4/4,
+  21/21 direkt invalidierte Contracts, C3/R8/R13, Parser, Syntax und das
+  synthetische v21→v22/v22→v23-Releasebrowserorakel sind PASS. Das reale
+  Productbrowser-Orakel meldet jedoch 36 sensitive-pattern Treffer ohne
+  Inhaltsausgabe und öffnet F35 P1 im gemeinsamen Intake-Stack. Produktion
+  blieb unverändert; kein Manifest, Preflight, Commit, Push, Deploy oder Write.
+- U11R19 2026-09-08T07:39:48+02:00: 66/95, gültig und `CONTINUE`; 31/4 seit
+  U11R18 für F34-Repair, v22-Materialisierung, direkte Revalidation,
+  Browserorakel, F35-Eingrenzung und sichere Dokumentationspostcondition.
+  Kein zweiter Fixblock nach dem neuen P1-Finding; sichere Pause vor F35.
+- U11R20 2026-09-08T07:52:14+02:00: 57/93, gültig und `CONTINUE`;
+  `POST_REHYDRATION_BASELINE` für den neuen Ownerauftrag. Zugelassen wurde nur
+  der begrenzte Repair-Bugreport mit fokussierter V2-Blockeranalyse.
+- D-ACT-R14-27 trennt F35 als bestehenden gemeinsamen MIDAS-Repairbacklog von
+  der Activity-V2-Funktionsclosure. F35 bleibt offen und ein allgemeiner
+  Privacy-PASS bleibt unzulässig; es wird aber keine umfassende Intake-
+  Aufräumwelle an R14 angehängt. Der neue Bugreport erfasst F01-F35 vollständig.
+- F36 beweist den echten aktuellen V2-Operatorblocker: Der erhaltene alte
+  Recovery-Draft bleibt über der 1440-Minuten-Grenze nicht commitfähig. Der
+  bestehende Single-Draft-Vertrag erlaubt einen frischen Smoke-Draft nur nach
+  bewusst bestätigtem UI-Discard. Kein weiterer ungefixter V2-Codefehler wurde
+  bewiesen und kein Produktcode geändert.
+- U11R21 2026-09-08T08:02:35+02:00: 44/91, gültig und `CONTINUE`; 13/2 seit
+  U11R20. Dokumentations-/Analyseblock vollständig geschlossen; kein Fix,
+  Test, Preflight, Commit, Push, Deploy oder Write. Sichere Pause vor der
+  ausdrücklichen F36-Ownerentscheidung und neuem passenden P1/P2.
+- D-ACT-R14-28: Stephan erlaubt ausdrücklich, den alten Recovery-Draft samt
+  bisherigen Eingaben und gespeicherter Request-ID nach dem v22-Boot sichtbar
+  über „Entwurf verwerfen“ zu löschen. Danach wird ein frischer Katalog-v2-
+  Smoke-Draft mit neuer Request-ID erstellt. Die Erlaubnis gilt erst innerhalb
+  eines separat freigegebenen Cutoverfensters und autorisiert für sich keinen
+  Commit, Push, Deploy oder Write. V1-/V2-Datenbankdaten bleiben unberührt.
+- U11R22 2026-09-08T08:10:42+02:00: 36/90, gültig und `CONTINUE`; 8/1 seit
+  U11R21 für F36-Erklärung, D-ACT-R14-28 und vollständigen Roadmap-/Evidence-/
+  Repairreport-Sync. Kein zweiter bounded oder technischer Block; Resume ist
+  bereit für ein frisches Gate vor lokaler Closure, Manifest und Preflight.
+- U11R23 2026-09-08T12:24:23+02:00: 98/86, gültig und `CONTINUE`;
+  `POST_REHYDRATION_BASELINE`, Rehydration ist SUNK_USAGE. Zugelassen wurde
+  ausschließlich die F34-/Releaseinvalidierungsclosure, Manifestbildung und
+  der produktive Read-only-Preflight.
+- EV-ACT-R14-L18/PRE09: F34 ist lokal vollständig geschlossen. Drei
+  Releasebrowserpfade und das reale lokale v22-Productbrowser-Orakel sind PASS;
+  F34-eigene sensitive Treffer 0, bekannter F35-Shared-Zähler 36 ohne
+  Inhaltsausgabe. 24/24 direkte Verträge, 13/13 Nachlauf, 31 Syntax, zwei
+  Parser, diff-check und native Fullreviews PASS. Finales 50-Dateien-Manifest
+  `179c9df6...29e1`; realer Git-P1-Deltascope 35 Code/Test plus drei R14-Dokus
+  = 38 Dateien.
+- PRE09 bestätigt read-only HEAD/origin/Pages `40c4b93`, Run 34160860095,
+  V1/V2/R13 `1/0/2`, Root-SW v21, Auth 1/0 anonym, V1 69 mit unverändertem
+  Hash `459f2056...007d`, V2 0/0/0 mit Leerhash `4f53cda1...b945`, Katalog
+  78/80/0 sowie R13 69 reine V1-Units und 0 Mixed-Source-Tage. Kein Payloadread,
+  Write oder Delete; die regulär erfassten Vitals berühren die Activity-
+  Baseline nicht.
+- U11R24 2026-09-08T12:48:39+02:00: 46/77, gültig und `CONTINUE`; 52/9 seit
+  U11R23 für den vollständig geschlossenen lokalen Block. Produktion bleibt
+  unverändert; die operative 72/21-Grenze ist in diesem Bucket nicht mehr
+  erfüllt.
+- D-ACT-R14-29: Stephan erteilt konditional gemeinsames P1/P2 für genau das
+  vorbereitete v22/v23-Fenster einschließlich D-ACT-R14-28-Draftdiscard,
+  genau eines V2-Smoke-Writes, Reader-/Dual-Write-Nachweisen, normalem R9-
+  Smoke-Delete und vollständigem datenverlustfreiem v23-Rollback bei einem
+  Pflichtfehler. Die Freigabe ist noch nicht ausgeübt. Bei einem nächsten
+  frischen gültigen Gate ab 72/21 und unverändertem PRE09, Manifest und Scope
+  ist keine erneute P1/P2- oder Boundary-Rückfrage erforderlich.
 
 ### S5.6-Postimage 2026-08-31
 

@@ -4,10 +4,10 @@
  * Description: Schreibt und aktualisiert system_comment-Einträge (Trendpilot etc.) in der Tabelle health_events.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=21';
-import { fetchWithAuth } from '../core/http.js?v=21';
-import { getUserId } from '../auth/core.js?v=21';
-import { sbSelect } from './select.js?v=21';
+import { baseUrlFromRest } from '../core/client.js?v=22';
+import { fetchWithAuth } from '../core/http.js?v=22';
+import { getUserId } from '../auth/core.js?v=22';
+import { sbSelect } from './select.js?v=22';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =

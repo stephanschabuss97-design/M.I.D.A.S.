@@ -13,8 +13,8 @@
  */
 
 // SUBMODULE: imports @internal - Core-HTTP und Authentifizierung
-import { fetchWithAuth } from '../core/http.js?v=21';
-import { getUserId } from '../auth/core.js?v=21';
+import { fetchWithAuth } from '../core/http.js?v=22';
+import { getUserId } from '../auth/core.js?v=22';
 
 // SUBMODULE: globals @internal - Diagnose- und Utility-Hilfen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

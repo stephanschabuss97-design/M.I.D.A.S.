@@ -47,6 +47,9 @@ $supabaseModulePaths = @(
   'assets/js/boot-auth.js'
 )
 $productPaths = @($restoredProductPaths + $supabaseModulePaths) | Select-Object -Unique
+$preparedSourceHashes = @{
+  'app/supabase/api/intake.js' = '420b8bc3e1fc8bdca5db5929db102500c3c2ce4e82bfe3dfb9052ba3c158d36a'
+}
 
 foreach ($relativePath in $productPaths) {
   & git -C $repositoryRoot cat-file -e "$sourceCommit`:$relativePath"
@@ -55,7 +58,13 @@ foreach ($relativePath in $productPaths) {
   }
   & git -C $repositoryRoot diff --quiet -- $relativePath
   if ($LASTEXITCODE -ne 0) {
-    throw "The cutover product path has an uncommitted change: $relativePath."
+    if (-not $preparedSourceHashes.ContainsKey($relativePath)) {
+      throw "The cutover product path has an uncommitted change: $relativePath."
+    }
+    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $repositoryRoot $relativePath)).Hash.ToLowerInvariant()
+    if ($actualHash -ne $preparedSourceHashes[$relativePath]) {
+      throw "The cutover prepared source fingerprint does not match: $relativePath."
+    }
   }
 }
 
@@ -138,14 +147,14 @@ $overlayHosts = @"
   <div id="activityV2ExportHost" hidden></div>
 "@
 $indexSource = Replace-Exactly $indexSource '  </main>' $overlayHosts 'main close'
-$indexSource = Replace-Exactly $indexSource 'href="app/app.css"' 'href="app/app.css?v=20"' 'app stylesheet'
+$indexSource = Replace-Exactly $indexSource 'href="app/app.css"' 'href="app/app.css?v=22"' 'app stylesheet'
 foreach ($relativePath in $captureScripts) {
-  $indexSource = Replace-Exactly $indexSource "src=`"$relativePath`"" "src=`"${relativePath}?v=20`"" "script $relativePath"
+  $indexSource = Replace-Exactly $indexSource "src=`"$relativePath`"" "src=`"${relativePath}?v=22`"" "script $relativePath"
 }
-$indexSource = Replace-Exactly $indexSource 'src="app/supabase/index.js"' 'src="app/supabase/index.js?v=20"' 'Supabase module'
-$indexSource = Replace-Exactly $indexSource 'src="assets/js/boot-auth.js"' 'src="assets/js/boot-auth.js?v=20"' 'Supabase auth boot module'
-$indexSource = Replace-Exactly $indexSource 'src="app/modules/doctor-stack/charts/index.js"' 'src="app/modules/doctor-stack/charts/index.js?v=20"' 'Doctor chart module'
-$indexSource = Replace-Exactly $indexSource 'src="assets/js/main.js"' 'src="assets/js/main.js?v=20"' 'main script'
+$indexSource = Replace-Exactly $indexSource 'src="app/supabase/index.js"' 'src="app/supabase/index.js?v=22"' 'Supabase module'
+$indexSource = Replace-Exactly $indexSource 'src="assets/js/boot-auth.js"' 'src="assets/js/boot-auth.js?v=22"' 'Supabase auth boot module'
+$indexSource = Replace-Exactly $indexSource 'src="app/modules/doctor-stack/charts/index.js"' 'src="app/modules/doctor-stack/charts/index.js?v=22"' 'Doctor chart module'
+$indexSource = Replace-Exactly $indexSource 'src="assets/js/main.js"' 'src="assets/js/main.js?v=22"' 'main script'
 $indexNewline = if ($indexSource.Contains("`r`n")) { "`r`n" } else { "`n" }
 $indexSource = $indexSource.TrimEnd([char[]]("`r`n")) + $indexNewline
 [IO.File]::WriteAllText($indexPath, $indexSource, [Text.UTF8Encoding]::new($false))
@@ -154,12 +163,12 @@ $cssPath = Join-Path $repositoryRoot 'app/app.css'
 $cssSource = [IO.File]::ReadAllText($cssPath)
 foreach ($relativePath in $captureStyles) {
   $importPath = $relativePath.Replace('app/', './')
-  $cssSource = Replace-Exactly $cssSource "url(`"$importPath`")" "url(`"${importPath}?v=20`")" "style $relativePath"
+  $cssSource = Replace-Exactly $cssSource "url(`"$importPath`")" "url(`"${importPath}?v=22`")" "style $relativePath"
 }
 [IO.File]::WriteAllText($cssPath, $cssSource, [Text.UTF8Encoding]::new($false))
 
 foreach ($relativePath in $supabaseModulePaths) {
-  Set-ReleaseModuleVersion $relativePath '20'
+  Set-ReleaseModuleVersion $relativePath '22'
 }
 
 $mainPath = Join-Path $repositoryRoot 'assets/js/main.js'
@@ -172,26 +181,26 @@ $mainSource = Replace-Exactly $mainSource $lifecycleNeedle $lifecycleReplacement
 
 $workerPath = Join-Path $repositoryRoot 'service-worker.js'
 $workerSource = [IO.File]::ReadAllText($workerPath)
-$workerSource = Replace-Exactly $workerSource "const CACHE_VERSION = 'v18';" "const CACHE_VERSION = 'v20';" 'service worker version'
+$workerSource = Replace-Exactly $workerSource "const CACHE_VERSION = 'v18';" "const CACHE_VERSION = 'v22';" 'service worker version'
 foreach ($relativePath in $captureScripts + $captureStyles) {
-  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=20')" "worker asset $relativePath"
+  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=22')" "worker asset $relativePath"
 }
 foreach ($relativePath in @('app/app.css', 'app/supabase/index.js', 'assets/js/main.js')) {
-  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=20')" "worker asset $relativePath"
+  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=22')" "worker asset $relativePath"
 }
 $workerNewline = if ($workerSource.Contains("`r`n")) { "`r`n" } else { "`n" }
-$chartAsset = "  toUrl('app/modules/doctor-stack/charts/index.js?v=20'),"
-$mainAsset = "  toUrl('assets/js/main.js?v=20'),"
+$chartAsset = "  toUrl('app/modules/doctor-stack/charts/index.js?v=22'),"
+$mainAsset = "  toUrl('assets/js/main.js?v=22'),"
 if ($workerSource.Contains($chartAsset)) {
-  throw 'The cutover source already contains the V20 Doctor chart worker asset.'
+  throw 'The cutover source already contains the V22 Doctor chart worker asset.'
 }
 $workerSource = Replace-Exactly $workerSource $mainAsset "$chartAsset$workerNewline$mainAsset" 'Doctor chart worker asset anchor'
 $supabaseWorkerAssets = ($supabaseModulePaths |
   Where-Object { $_ -ne 'assets/js/boot-auth.js' } |
-  ForEach-Object { "  toUrl('$($_)?v=20')," }) -join $workerNewline
-$supabaseRootAsset = "  toUrl('app/supabase/index.js?v=20'),"
+  ForEach-Object { "  toUrl('$($_)?v=22')," }) -join $workerNewline
+$supabaseRootAsset = "  toUrl('app/supabase/index.js?v=22'),"
 $workerSource = Replace-Exactly $workerSource $supabaseRootAsset $supabaseWorkerAssets 'complete Supabase ESM worker graph'
-$workerSource = Replace-Exactly $workerSource "  toUrl('assets/js/boot-auth.js')," "  toUrl('assets/js/boot-auth.js?v=20')," 'Supabase auth boot worker asset'
+$workerSource = Replace-Exactly $workerSource "  toUrl('assets/js/boot-auth.js')," "  toUrl('assets/js/boot-auth.js?v=22')," 'Supabase auth boot worker asset'
 $fallbackNeedle = @"
 const getNavigateFallbackResponse = async (request) => {
   const direct = await caches.match(request);
@@ -228,12 +237,12 @@ $workerSource = Replace-Exactly $workerSource 'test(request.url);' 'test(new URL
 [IO.File]::WriteAllText($workerPath, $workerSource, [Text.UTF8Encoding]::new($false))
 
 $postimage = [IO.File]::ReadAllText($workerPath)
-if (-not $postimage.Contains("const CACHE_VERSION = 'v20';") -or
-    -not $postimage.Contains("activity-product-controller.js?v=20") -or
-    -not $postimage.Contains("app/supabase/api/reports.js?v=20") -or
-    -not $postimage.Contains("assets/js/boot-auth.js?v=20") -or
+if (-not $postimage.Contains("const CACHE_VERSION = 'v22';") -or
+    -not $postimage.Contains("activity-product-controller.js?v=22") -or
+    -not $postimage.Contains("app/supabase/api/reports.js?v=22") -or
+    -not $postimage.Contains("assets/js/boot-auth.js?v=22") -or
     [IO.File]::ReadAllText($indexPath).Contains('<div id="activityV2SessionHost"></div>' + [Environment]::NewLine + '            <div id="activityV2HistoryHost"')) {
-  throw 'The V20 V2 productload postimage validation failed.'
+  throw 'The V22 V2 productload postimage validation failed.'
 }
 
-Write-Output 'R14_V2_PRODUCTLOAD_CUTOVER_V20_READY'
+Write-Output 'R14_V2_PRODUCTLOAD_CUTOVER_V22_READY'

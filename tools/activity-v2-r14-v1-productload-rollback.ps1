@@ -70,7 +70,7 @@ $versionNeedle = "const CACHE_VERSION = 'v13';"
 if ([regex]::Matches($workerSource, [regex]::Escape($versionNeedle)).Count -ne 1) {
   throw 'The restored service worker does not contain the exact v13 baseline token.'
 }
-$workerSource = $workerSource.Replace($versionNeedle, "const CACHE_VERSION = 'v21';")
+$workerSource = $workerSource.Replace($versionNeedle, "const CACHE_VERSION = 'v23';")
 
 $assetNeedle = "  toUrl('assets/js/ui-tabs.js'),"
 $v1Asset = "  toUrl('app/modules/vitals-stack/activity/index.js'),"
@@ -115,18 +115,18 @@ function Set-ReleaseModuleVersion {
 
 $indexPath = Join-Path $repositoryRoot 'index.html'
 $indexSource = [IO.File]::ReadAllText($indexPath)
-$indexSource = Replace-Exactly $indexSource 'href="app/app.css"' 'href="app/app.css?v=21"' 'app stylesheet'
-$indexSource = Replace-Exactly $indexSource 'src="app/modules/vitals-stack/activity/index.js"' 'src="app/modules/vitals-stack/activity/index.js?v=21"' 'V1 Activity script'
-$indexSource = Replace-Exactly $indexSource 'src="app/supabase/index.js"' 'src="app/supabase/index.js?v=21"' 'Supabase module'
-$indexSource = Replace-Exactly $indexSource 'src="assets/js/boot-auth.js"' 'src="assets/js/boot-auth.js?v=21"' 'Supabase auth boot module'
-$indexSource = Replace-Exactly $indexSource 'src="app/modules/doctor-stack/charts/index.js"' 'src="app/modules/doctor-stack/charts/index.js?v=21"' 'Doctor chart module'
-$indexSource = Replace-Exactly $indexSource 'src="assets/js/main.js"' 'src="assets/js/main.js?v=21"' 'main script'
+$indexSource = Replace-Exactly $indexSource 'href="app/app.css"' 'href="app/app.css?v=23"' 'app stylesheet'
+$indexSource = Replace-Exactly $indexSource 'src="app/modules/vitals-stack/activity/index.js"' 'src="app/modules/vitals-stack/activity/index.js?v=23"' 'V1 Activity script'
+$indexSource = Replace-Exactly $indexSource 'src="app/supabase/index.js"' 'src="app/supabase/index.js?v=23"' 'Supabase module'
+$indexSource = Replace-Exactly $indexSource 'src="assets/js/boot-auth.js"' 'src="assets/js/boot-auth.js?v=23"' 'Supabase auth boot module'
+$indexSource = Replace-Exactly $indexSource 'src="app/modules/doctor-stack/charts/index.js"' 'src="app/modules/doctor-stack/charts/index.js?v=23"' 'Doctor chart module'
+$indexSource = Replace-Exactly $indexSource 'src="assets/js/main.js"' 'src="assets/js/main.js?v=23"' 'main script'
 $indexNewline = if ($indexSource.Contains("`r`n")) { "`r`n" } else { "`n" }
 $indexSource = $indexSource.TrimEnd([char[]]("`r`n")) + $indexNewline
 [IO.File]::WriteAllText($indexPath, $indexSource, [Text.UTF8Encoding]::new($false))
 
 foreach ($relativePath in $supabaseModulePaths) {
-  Set-ReleaseModuleVersion $relativePath '21'
+  Set-ReleaseModuleVersion $relativePath '23'
 }
 
 $mainPath = Join-Path $repositoryRoot 'assets/js/main.js'
@@ -141,21 +141,21 @@ foreach ($relativePath in @(
   'app/supabase/index.js',
   'assets/js/main.js'
 )) {
-  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=21')" "worker asset $relativePath"
+  $workerSource = Replace-Exactly $workerSource "toUrl('$relativePath')" "toUrl('${relativePath}?v=23')" "worker asset $relativePath"
 }
 $workerNewline = if ($workerSource.Contains("`r`n")) { "`r`n" } else { "`n" }
-$chartAsset = "  toUrl('app/modules/doctor-stack/charts/index.js?v=21'),"
-$mainAsset = "  toUrl('assets/js/main.js?v=21'),"
+$chartAsset = "  toUrl('app/modules/doctor-stack/charts/index.js?v=23'),"
+$mainAsset = "  toUrl('assets/js/main.js?v=23'),"
 if ($workerSource.Contains($chartAsset)) {
-  throw 'The rollback source already contains the V21 Doctor chart worker asset.'
+  throw 'The rollback source already contains the V23 Doctor chart worker asset.'
 }
 $workerSource = Replace-Exactly $workerSource $mainAsset "$chartAsset$workerNewline$mainAsset" 'Doctor chart worker asset anchor'
 $supabaseWorkerAssets = ($supabaseModulePaths |
   Where-Object { $_ -ne 'assets/js/boot-auth.js' } |
-  ForEach-Object { "  toUrl('$($_)?v=21')," }) -join $workerNewline
-$supabaseRootAsset = "  toUrl('app/supabase/index.js?v=21'),"
+  ForEach-Object { "  toUrl('$($_)?v=23')," }) -join $workerNewline
+$supabaseRootAsset = "  toUrl('app/supabase/index.js?v=23'),"
 $workerSource = Replace-Exactly $workerSource $supabaseRootAsset $supabaseWorkerAssets 'complete Supabase ESM worker graph'
-$workerSource = Replace-Exactly $workerSource "  toUrl('assets/js/boot-auth.js')," "  toUrl('assets/js/boot-auth.js?v=21')," 'Supabase auth boot worker asset'
+$workerSource = Replace-Exactly $workerSource "  toUrl('assets/js/boot-auth.js')," "  toUrl('assets/js/boot-auth.js?v=23')," 'Supabase auth boot worker asset'
 $fallbackNeedle = @"
 const getNavigateFallbackResponse = async (request) => {
   const direct = await caches.match(request);
@@ -192,13 +192,13 @@ $workerSource = Replace-Exactly $workerSource 'test(request.url);' 'test(new URL
 [IO.File]::WriteAllText($workerPath, $workerSource, [Text.UTF8Encoding]::new($false))
 
 $postimage = [IO.File]::ReadAllText($workerPath)
-if (-not $postimage.Contains("const CACHE_VERSION = 'v21';") -or
-    -not $postimage.Contains("app/modules/vitals-stack/activity/index.js?v=21") -or
-    -not $postimage.Contains("app/modules/doctor-stack/charts/index.js?v=21") -or
-    -not $postimage.Contains("app/supabase/api/reports.js?v=21") -or
-    -not $postimage.Contains("assets/js/boot-auth.js?v=21") -or
+if (-not $postimage.Contains("const CACHE_VERSION = 'v23';") -or
+    -not $postimage.Contains("app/modules/vitals-stack/activity/index.js?v=23") -or
+    -not $postimage.Contains("app/modules/doctor-stack/charts/index.js?v=23") -or
+    -not $postimage.Contains("app/supabase/api/reports.js?v=23") -or
+    -not $postimage.Contains("assets/js/boot-auth.js?v=23") -or
     $postimage.Contains("activity/v2/activity-product-controller.js")) {
-  throw 'The V21 V1 productload postimage validation failed.'
+  throw 'The V23 V1 productload postimage validation failed.'
 }
 
-Write-Output 'R14_V1_PRODUCTLOAD_ROLLBACK_V21_READY'
+Write-Output 'R14_V1_PRODUCTLOAD_ROLLBACK_V23_READY'

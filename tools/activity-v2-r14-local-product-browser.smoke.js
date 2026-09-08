@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { chromium } = require('playwright');
 
-const BASE = 'http://127.0.0.1:8766/?r14=v20';
+const BASE = 'http://127.0.0.1:8766/?r14=v22';
+const sensitiveConsolePattern = /(?:\b(?:uid|user_id|day|id|payload|water_ml|salt_g|protein_g|sys|dia)\s*=|\b(?:health_events|request[_-]?id)\b)/i;
+const intakeApiDiagnosticPattern = /(?:loadIntakeToday|\[intake\] (?:POST|cleanup))/i;
 const supabaseGraph = Object.freeze([
   'app/supabase/index.js',
   'app/supabase/core/state.js',
@@ -35,7 +37,15 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
   const context = await browser.newContext({ serviceWorkers: 'allow' });
   const page = await context.newPage();
   const pageErrors = [];
+  let sensitiveConsoleHits = 0;
+  let intakeApiSensitiveConsoleHits = 0;
   page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('console', (message) => {
+    const text = message.text();
+    if (!sensitiveConsolePattern.test(text)) return;
+    sensitiveConsoleHits += 1;
+    if (intakeApiDiagnosticPattern.test(text)) intakeApiSensitiveConsoleHits += 1;
+  });
   try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => Boolean(window.AppModules?.activityV2?.productController));
@@ -52,7 +62,7 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
       const registration = await navigator.serviceWorker.register('service-worker.js');
       await navigator.serviceWorker.ready;
       const cacheKeys = await caches.keys();
-      const shell = await caches.open('midas-shell-v20');
+      const shell = await caches.open('midas-shell-v22');
       const shellUrls = (await shell.keys()).map((request) => request.url);
       return {
         v2Scripts,
@@ -70,33 +80,33 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
         supabaseResourceUrls: performance.getEntriesByType('resource')
           .map((entry) => entry.name)
           .filter((url) => url.includes('/app/supabase/') || url.includes('/assets/js/boot-auth.js')),
-        workerV20: worker.includes("const CACHE_VERSION = 'v20';"),
+        workerV22: worker.includes("const CACHE_VERSION = 'v22';"),
         lifecyclePreflight: typeof window.AppModules.activityV2.productLifecycle?.preflightSessionCommit
       };
     });
     assert.equal(state.v2Scripts.length, 15);
-    assert.ok(state.v2Scripts.every((src) => src.endsWith('?v=20')));
+    assert.ok(state.v2Scripts.every((src) => src.endsWith('?v=22')));
     assert.deepEqual(state.v1WriterScripts, []);
-    assert.equal(state.appCss, 'app/app.css?v=20');
+    assert.equal(state.appCss, 'app/app.css?v=22');
     assert.ok(state.overlayParents.every((entry) => entry.parent === 'BODY'));
     assert.ok(state.overlayParents.every((entry) => entry.transformedAncestor === false));
-    assert.equal(state.workerV20, true);
+    assert.equal(state.workerV22, true);
     assert.equal(state.lifecyclePreflight, 'function');
-    assert.ok(state.cacheKeys.includes('midas-shell-v20'));
+    assert.ok(state.cacheKeys.includes('midas-shell-v22'));
     assert.ok(state.supabaseResourceUrls.length >= supabaseGraph.length);
-    assert.ok(state.supabaseResourceUrls.every((url) => new URL(url).search === '?v=20'));
+    assert.ok(state.supabaseResourceUrls.every((url) => new URL(url).search === '?v=22'));
     assert.equal(new Set(state.supabaseResourceUrls.map((url) => new URL(url).pathname)).size,
       supabaseGraph.length);
     for (const relativePath of supabaseGraph) {
-      assert.ok(state.shellUrls.some((url) => url.endsWith(`/${relativePath}?v=20`)), relativePath);
+      assert.ok(state.shellUrls.some((url) => url.endsWith(`/${relativePath}?v=22`)), relativePath);
     }
     for (const suffix of [
-      '/app/app.css?v=20',
-      '/app/modules/vitals-stack/activity/v2/session-shell.js?v=20',
-      '/app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=20',
-      '/app/supabase/index.js?v=20',
-      '/app/modules/doctor-stack/charts/index.js?v=20',
-      '/assets/js/main.js?v=20'
+      '/app/app.css?v=22',
+      '/app/modules/vitals-stack/activity/v2/session-shell.js?v=22',
+      '/app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=22',
+      '/app/supabase/index.js?v=22',
+      '/app/modules/doctor-stack/charts/index.js?v=22',
+      '/assets/js/main.js?v=22'
     ]) {
       assert.ok(state.shellUrls.some((url) => url.endsWith(suffix)), suffix);
     }
@@ -119,13 +129,21 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
     }));
     assert.equal(offlineState.controlled, true);
     assert.equal(offlineState.v2Scripts.length, 15);
-    assert.ok(offlineState.v2Scripts.every((src) => src.endsWith('?v=20')));
+    assert.ok(offlineState.v2Scripts.every((src) => src.endsWith('?v=22')));
     assert.deepEqual(offlineState.v1WriterScripts, []);
-    assert.ok(offlineState.supabaseResourceUrls.every((url) => new URL(url).search === '?v=20'));
+    assert.ok(offlineState.supabaseResourceUrls.every((url) => new URL(url).search === '?v=22'));
     assert.equal(new Set(offlineState.supabaseResourceUrls.map((url) => new URL(url).pathname)).size,
       supabaseGraph.length);
     assert.deepEqual(pageErrors, []);
-    process.stdout.write('R14_LOCAL_V20_PRODUCT_BROWSER_PASS fresh_online=1 fresh_offline=1\n');
+    assert.equal(
+      intakeApiSensitiveConsoleHits,
+      0,
+      `intake_api_sensitive_console_hits=${intakeApiSensitiveConsoleHits}`
+    );
+    process.stdout.write(
+      `R14_LOCAL_V22_PRODUCT_BROWSER_PASS fresh_online=1 fresh_offline=1 ` +
+      `intake_api_sensitive_console_hits=0 shared_sensitive_console_hits=${sensitiveConsoleHits}\n`
+    );
   } finally {
     await context.close();
     await browser.close();
