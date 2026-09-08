@@ -14,9 +14,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Core-, Auth- und UI-Abhängigkeiten
-import { fetchWithAuth } from '../core/http.js?v=22';
-import { getUserId } from '../auth/core.js?v=22';
-import { showLoginOverlay, hideLoginOverlay } from '../auth/ui.js?v=22';
+import { fetchWithAuth } from '../core/http.js?v=23';
+import { getUserId } from '../auth/core.js?v=23';
+import { showLoginOverlay, hideLoginOverlay } from '../auth/ui.js?v=23';
 
 // SUBMODULE: globals @internal - globale Hilfsfunktionen und Diagnose-Hooks
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

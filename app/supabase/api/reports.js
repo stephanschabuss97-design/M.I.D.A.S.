@@ -4,8 +4,8 @@
  * Description: Wraps the midas-monthly-report Edge Function so the Doctor View can request manual reports.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=22';
-import { fetchWithAuth } from '../core/http.js?v=22';
+import { baseUrlFromRest } from '../core/client.js?v=23';
+import { fetchWithAuth } from '../core/http.js?v=23';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =

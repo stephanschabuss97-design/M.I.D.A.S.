@@ -17,7 +17,7 @@
  */
 
 // SUBMODULE: imports @internal - bindet Auth-Abhängigkeiten für Grace-Handling
-import { scheduleAuthGrace, finalizeAuthState } from '../auth/core.js?v=22';
+import { scheduleAuthGrace, finalizeAuthState } from '../auth/core.js?v=23';
 
 // SUBMODULE: globals @internal - sichert window/document Handles ab
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
