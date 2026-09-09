@@ -46,6 +46,25 @@ async function inspectReachability(page) {
   });
 }
 
+async function runDiscardThenFreshCommit(browser) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
+  const consoleErrors = [];
+  const pageErrors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.goto(`${BASE}?mode=discard&phase=seed&autorun=1`, {
+    waitUntil: 'networkidle'
+  });
+  await page.locator('#harness-status[data-result="pass"]').waitFor();
+  assert.equal(await page.title(), 'Activity V2 Last Mile · DISCARD · PASS');
+  assert.deepEqual(consoleErrors, []);
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+}
+
 (async () => {
   const browser = await chromium.launch({
     executablePath: browserExecutable,
@@ -80,7 +99,8 @@ async function inspectReachability(page) {
       await page.locator('.activity-v2-session-commit-status[data-tone="error"]').waitFor();
       await context.close();
     }
-    process.stdout.write('R14_LAST_MILE_BROWSER_AGED_VIEWPORT_PASS 4/4\n');
+    await runDiscardThenFreshCommit(browser);
+    process.stdout.write('R14_LAST_MILE_BROWSER_PASS aged_viewports=4/4 discard_fresh_commit=1/1\n');
   } finally {
     await browser.close();
   }

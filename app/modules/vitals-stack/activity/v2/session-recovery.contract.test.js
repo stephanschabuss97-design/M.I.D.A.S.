@@ -33,6 +33,13 @@ const RECOVERY_SCHEMA_V2 = 'midas.activity-session-recovery.v2';
 const COMMIT_INTENT_SCHEMA = 'midas.activity-session-commit-intent.v1';
 const COMMIT_ATTEMPT_SCHEMA = 'midas.activity-session-commit-attempt.v1';
 const SLOT_KEY = 'active_session';
+const DRAFT_SET_VALUE_KEYS = [
+  'reps',
+  'duration_sec',
+  'distance_m',
+  'weight_kg',
+  'assistance_kg'
+];
 const UUIDS = [
   '10000000-0000-4000-8000-000000000001',
   '10000000-0000-4000-8000-000000000002',
@@ -433,6 +440,13 @@ function createDraft(runtime, {
   return draft;
 }
 
+function createCommittableDraft(runtime, options) {
+  const draft = createDraft(runtime, options);
+  const itemKey = draft.getSnapshot().items[0].item_key;
+  draft.setSetField(itemKey, 1, 'reps', '1');
+  return draft;
+}
+
 function activeRecord(snapshot, {
   generation = 0,
   sequence = 1,
@@ -499,6 +513,25 @@ function commitIntent(snapshot, {
   preparedAt = new Date(TIMES[2]).toISOString()
 } = {}) {
   const elapsed = Date.parse(preparedAt) - Date.parse(snapshot.started_at);
+  const projectSets = (sets) => {
+    const projected = sets.map((set, setIndex) => ({
+      set_order: setIndex + 1,
+      reps: integer(set.reps),
+      duration_sec: integer(set.duration_sec),
+      distance_m: numeric(set.distance_m),
+      weight_kg: numeric(set.weight_kg),
+      assistance_kg: numeric(set.assistance_kg)
+    }));
+    while (
+      projected.length > 0 &&
+      DRAFT_SET_VALUE_KEYS.every(
+        (fieldKey) => projected.at(-1)[fieldKey] === null
+      )
+    ) {
+      projected.pop();
+    }
+    return projected;
+  };
   return {
     commit_intent_schema_version: COMMIT_INTENT_SCHEMA,
     request_id: snapshot.request_id,
@@ -519,14 +552,7 @@ function commitIntent(snapshot, {
         duration_min: integer(item.duration_min),
         distance_km: numeric(item.distance_km),
         note: item.note,
-        sets: item.sets.map((set, setIndex) => ({
-          set_order: setIndex + 1,
-          reps: integer(set.reps),
-          duration_sec: integer(set.duration_sec),
-          distance_m: numeric(set.distance_m),
-          weight_kg: numeric(set.weight_kg),
-          assistance_kg: numeric(set.assistance_kg)
-        }))
+        sets: projectSets(item.sets)
       }))
     }
   };
@@ -1390,7 +1416,9 @@ test('v1 continue and autosave stay v1 while v2 continue and autosave stay v2', 
 
 test('prepare synchronously locks mutation and migrates exact v1 draft only on transaction complete', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime, { note: 'prepare fixture' }).getSnapshot();
+  const source = createCommittableDraft(runtime, {
+    note: 'prepare fixture'
+  }).getSnapshot();
   const initial = activeRecord(source, { generation: 4, sequence: 7 });
   const fake = createFakeIndexedDb(initial);
   const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
@@ -1423,9 +1451,57 @@ test('prepare synchronously locks mutation and migrates exact v1 draft only on t
   assert.equal(setup.reads.time, 0);
 });
 
+test('R14 recovery accepts the commit projection that omits only trailing empty strength rows', async () => {
+  const runtime = loadRuntime();
+  const draftController = createDraft(runtime);
+  const itemKey = draftController.getSnapshot().items[0].item_key;
+  draftController.setSetField(itemKey, 1, 'reps', '8');
+  const source = draftController.getSnapshot();
+  const intent = commitIntent(source);
+  intent.payload.items[0].sets = [intent.payload.items[0].sets[0]];
+
+  const fake = createFakeIndexedDb(v2ActiveRecord(source, { sequence: 3 }));
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+  controller.continueSession();
+
+  const prepared = await controller.prepareCommit(intent);
+  assert.deepEqual(plain(prepared), plain(intent));
+  assert.deepEqual(fake.control.getRecord().commit_intent, plain(intent));
+  assert.equal(fake.control.getRecord().write_sequence, 4);
+});
+
+test('R14 recovery still rejects a projected strength row after an empty gap', async () => {
+  const runtime = loadRuntime();
+  const draftController = createDraft(runtime);
+  const itemKey = draftController.getSnapshot().items[0].item_key;
+  draftController.setSetField(itemKey, 2, 'reps', '8');
+  const source = draftController.getSnapshot();
+  const intent = commitIntent(source);
+  intent.payload.items[0].sets = [{
+    ...intent.payload.items[0].sets[1],
+    set_order: 1
+  }];
+
+  const fake = createFakeIndexedDb(v2ActiveRecord(source, { sequence: 3 }));
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+  controller.continueSession();
+
+  await assertRecoveryError(
+    () => controller.prepareCommit(intent),
+    'INVALID_COMMIT_INTENT'
+  );
+  assert.equal(fake.control.getRecord().commit_intent, null);
+});
+
 test('attempt claim is monotonic and persistent-first; release attempt one unlocks only after complete', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime, { note: 'attempt fixture' }).getSnapshot();
+  const source = createCommittableDraft(runtime, {
+    note: 'attempt fixture'
+  }).getSnapshot();
   const intent = commitIntent(source);
   const initial = v2ActiveRecord(source, { intent, sequence: 2 });
   const fake = createFakeIndexedDb(initial);
@@ -1466,7 +1542,9 @@ test('attempt claim is monotonic and persistent-first; release attempt one unloc
 
 test('prepare snapshot faults stay asynchronous, unlocked and never reach storage', async () => {
   const runtime = loadRuntimeWithSnapshotFault();
-  const source = createDraft(runtime, { note: 'prepare snapshot fault' }).getSnapshot();
+  const source = createCommittableDraft(runtime, {
+    note: 'prepare snapshot fault'
+  }).getSnapshot();
   const intent = commitIntent(source);
   const initial = v2ActiveRecord(source, { sequence: 2 });
   const fake = createFakeIndexedDb(initial);
@@ -1490,7 +1568,9 @@ test('prepare snapshot faults stay asynchronous, unlocked and never reach storag
 
 test('attempt and release snapshot faults stay asynchronous and never reach storage', async () => {
   const runtime = loadRuntimeWithSnapshotFault();
-  const source = createDraft(runtime, { note: 'snapshot fault fixture' }).getSnapshot();
+  const source = createCommittableDraft(runtime, {
+    note: 'snapshot fault fixture'
+  }).getSnapshot();
   const intent = commitIntent(source);
   const initial = v2ActiveRecord(source, { intent, sequence: 2 });
   const fake = createFakeIndexedDb(initial);
@@ -1527,7 +1607,7 @@ test('attempt and release snapshot faults stay asynchronous and never reach stor
 
 test('attempt two cannot release and stale observation cannot steal a persisted claim', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime).getSnapshot();
+  const source = createCommittableDraft(runtime).getSnapshot();
   const intent = commitIntent(source);
   const firstAttempt = commitAttempt(1, UUIDS[2]);
   const initial = v2ActiveRecord(source, { intent, attempt: firstAttempt });
@@ -1570,7 +1650,7 @@ test('attempt two cannot release and stale observation cannot steal a persisted 
 
 test('complete requires the locally held current claim and tombstones only on transaction complete', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime).getSnapshot();
+  const source = createCommittableDraft(runtime).getSnapshot();
   const intent = commitIntent(source);
   const initial = v2ActiveRecord(source, {
     intent,
@@ -1608,7 +1688,7 @@ test('complete requires the locally held current claim and tombstones only on tr
 
 test('malformed v2 commit truth stays quarantined and byte-content unchanged', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime).getSnapshot();
+  const source = createCommittableDraft(runtime).getSnapshot();
   const intent = commitIntent(source);
   intent.payload.duration_min += 1;
   const malformed = v2ActiveRecord(source, { intent });
@@ -1627,7 +1707,7 @@ test('malformed v2 commit truth stays quarantined and byte-content unchanged', a
 
 test('invalid preparation has no lock side effect and reload requires a matching locally held attempt', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime).getSnapshot();
+  const source = createCommittableDraft(runtime).getSnapshot();
   const v1Fake = createFakeIndexedDb(activeRecord(source));
   const v1Store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: v1Fake.indexedDB });
   const v1Setup = createOpenOptions(runtime, v1Store);
@@ -1684,7 +1764,7 @@ test('invalid preparation has no lock side effect and reload requires a matching
 
 test('destroy stays terminal when an in-flight claim settles after storage close', async () => {
   const runtime = loadRuntime();
-  const source = createDraft(runtime).getSnapshot();
+  const source = createCommittableDraft(runtime).getSnapshot();
   const intent = commitIntent(source);
   const fake = createFakeIndexedDb(v2ActiveRecord(source, { intent }));
   const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });

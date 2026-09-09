@@ -58,11 +58,11 @@ const r10R14ProductloadContractSha256 =
   'e6d62f15d7e1b783214246761d6448c3f2b1deb0e6dadf8d39fe1f6ebed44f2a';
 const r14SupabaseReleaseHashes = Object.freeze({
   'app/supabase/api/reports.js':
-    '351420a351d8e6731d4d8a6dfefaa11a77dbfbd63ab998988d0b9aa9f71917ed',
+    '58f2cecdaa360222c64817f90d159569b654ebda1d87a1e76c6df6f294f4ee4c',
   'app/supabase/api/trendpilot.js':
-    '6e8a9fa5a654d7f032ac909020132e4c92d0d5be357283639aa1bd30da510d3b',
+    'dd434c3222472738984c67b0a2551011b18263b47d86e54b9dcd0d0810b37cfa',
   'app/supabase/api/vitals.js':
-    '3ad1d20cc51c9d85014bf139064af24a924a6801047021615cc346dc7f27e276'
+    '6bd3ca31f0b4abfee4639e9a984f1f307bc6c7f0fbc021e5e28d469eab177c1f'
 });
 const r10NegativeOracleProtectedPaths = Object.freeze(
   r10NegativeOraclePaths.filter(
@@ -203,8 +203,8 @@ const productIndex = read('index.html');
 const productWorker = read('service-worker.js');
 for (const relativePath of r14CapturePaths) {
   requireCondition(
-    productIndex.split(`src="${relativePath}?v=22"`).length - 1 === 1 &&
-      productWorker.split(`toUrl('${relativePath}?v=22')`).length - 1 === 1,
+    productIndex.split(`src="${relativePath}?v=24"`).length - 1 === 1 &&
+      productWorker.split(`toUrl('${relativePath}?v=24')`).length - 1 === 1,
     'PRODUCT_V2_LOAD'
   );
 }

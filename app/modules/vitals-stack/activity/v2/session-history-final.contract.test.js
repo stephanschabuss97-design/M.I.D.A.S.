@@ -48,8 +48,8 @@ test('T-ACT-R14-02 activates R9 history without crossing R7/R8 state ownership',
     canonicalizationSource
   ].join('\n');
 
-  assert.equal((indexSource.match(/src="app\/modules\/vitals-stack\/activity\/v2\/session-history\.js\?v=20"/g) || []).length, 1);
-  assert.equal((workerSource.match(/toUrl\('app\/modules\/vitals-stack\/activity\/v2\/session-history\.js\?v=20'\)/g) || []).length, 1);
+  assert.equal((indexSource.match(/src="app\/modules\/vitals-stack\/activity\/v2\/session-history\.js\?v=24"/g) || []).length, 1);
+  assert.equal((workerSource.match(/toUrl\('app\/modules\/vitals-stack\/activity\/v2\/session-history\.js\?v=24'\)/g) || []).length, 1);
   assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
   assert.match(v1Reserve, /addActivity/);
   assert.doesNotMatch(

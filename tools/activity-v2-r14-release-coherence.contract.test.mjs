@@ -52,7 +52,7 @@ const captureScripts = [
   'activity-product-controller.js'
 ].map((file) => `app/modules/vitals-stack/activity/v2/${file}`);
 
-test('R14 v22 release-critical URLs cannot hit unversioned or v20 runtime entries', () => {
+test('R14 v24 release-critical URLs cannot hit unversioned or v22 runtime entries', () => {
   const critical = [
     'app/app.css',
     'app/supabase/index.js',
@@ -61,11 +61,11 @@ test('R14 v22 release-critical URLs cannot hit unversioned or v20 runtime entrie
     ...captureScripts
   ];
   for (const relativePath of critical) {
-    const releaseUrl = `${relativePath}?v=22`;
+    const releaseUrl = `${relativePath}?v=24`;
     assert.match(index, new RegExp(releaseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.match(worker, new RegExp(releaseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.notEqual(releaseUrl, relativePath);
-    assert.notEqual(releaseUrl, `${relativePath}?v=20`);
+    assert.notEqual(releaseUrl, `${relativePath}?v=22`);
   }
   for (const stylesheet of [
     'session-shell.css',
@@ -73,11 +73,11 @@ test('R14 v22 release-critical URLs cannot hit unversioned or v20 runtime entrie
     'activity-coaching-export-shell.css',
     'activity-product-controller.css'
   ]) {
-    assert.match(css, new RegExp(`${stylesheet.replace('.', '\\.')}\\?v=22`));
+    assert.match(css, new RegExp(`${stylesheet.replace('.', '\\.')}\\?v=24`));
   }
-  assert.match(supabaseIndex, /from '\.\/auth\/index\.js\?v=22'/);
-  assert.match(supabaseIndex, /from '\.\/api\/vitals\.js\?v=22'/);
-  assert.match(authIndex, /from '\.\/core\.js\?v=22'/);
+  assert.match(supabaseIndex, /from '\.\/auth\/index\.js\?v=24'/);
+  assert.match(supabaseIndex, /from '\.\/api\/vitals\.js\?v=24'/);
+  assert.match(authIndex, /from '\.\/core\.js\?v=24'/);
   assert.match(worker, /test\(new URL\(request\.url\)\.pathname\)/);
 });
 
@@ -89,25 +89,25 @@ test('R14 worker reads fallbacks and assets only from its own release caches', (
   assert.doesNotMatch(worker, /return caches\.match\(toUrl\('offline\.html'\)\)/);
 });
 
-test('R14 v22 installs one fully versioned Supabase ESM graph', () => {
-  assert.match(index, /src="app\/supabase\/index\.js\?v=22"/);
-  assert.match(index, /src="assets\/js\/boot-auth\.js\?v=22"/);
+test('R14 v24 installs one fully versioned Supabase ESM graph', () => {
+  assert.match(index, /src="app\/supabase\/index\.js\?v=24"/);
+  assert.match(index, /src="assets\/js\/boot-auth\.js\?v=24"/);
 
   for (const relativePath of supabaseModuleGraph) {
     const source = read(relativePath);
     assert.match(worker, new RegExp(
-      `toUrl\\('${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=22'\\)`
-    ), `${relativePath} must be installed in the v22 shell cache`);
+      `toUrl\\('${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=24'\\)`
+    ), `${relativePath} must be installed in the v24 shell cache`);
 
     const localImports = [...source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]+\.js(?:\?v=\d+)?)['"]/g)];
     for (const [, specifier] of localImports) {
-      assert.match(specifier, /\?v=22$/, `${relativePath} has an unversioned or mixed import: ${specifier}`);
+      assert.match(specifier, /\?v=24$/, `${relativePath} has an unversioned or mixed import: ${specifier}`);
     }
   }
-  assert.match(read('assets/js/boot-auth.js'), /from "\.\.\/\.\.\/app\/supabase\/index\.js\?v=22"/);
+  assert.match(read('assets/js/boot-auth.js'), /from "\.\.\/\.\.\/app\/supabase\/index\.js\?v=24"/);
 });
 
-test('R14 v23 rollback changes every release-critical V1 URL again', () => {
+test('R14 v25 rollback changes every release-critical V1 URL again', () => {
   for (const relativePath of [
     'app/app.css',
     'app/modules/vitals-stack/activity/index.js',
@@ -115,10 +115,10 @@ test('R14 v23 rollback changes every release-critical V1 URL again', () => {
     'app/modules/doctor-stack/charts/index.js',
     'assets/js/main.js'
   ]) {
-    assert.match(rollback, new RegExp(`${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=23`));
+    assert.match(rollback, new RegExp(`${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=25`));
   }
   assert.match(rollback, /\$supabaseModulePaths/);
   assert.match(rollback, /Set-ReleaseModuleVersion/);
-  assert.match(rollback, /assets\/js\/boot-auth\.js\?v=23/);
-  assert.match(rollback, /app\/supabase\/api\/reports\.js\?v=23/);
+  assert.match(rollback, /assets\/js\/boot-auth\.js\?v=25/);
+  assert.match(rollback, /app\/supabase\/api\/reports\.js\?v=25/);
 });

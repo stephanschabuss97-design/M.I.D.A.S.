@@ -121,6 +121,7 @@
     'weight_kg',
     'assistance_kg'
   ]);
+  const DRAFT_SET_VALUE_KEYS = Object.freeze(PAYLOAD_SET_KEYS.slice(1));
   const OBSERVATION_KEYS = Object.freeze(['kind', 'value']);
   const STATE_KEYS = Object.freeze([
     'state',
@@ -407,6 +408,22 @@
   }
 
   function validatePayloadItem(item, draftItem, itemIndex) {
+    const draftSets = draftItem?.sets;
+    if (!isDenseArray(draftSets)) return false;
+    const projectedDraftSets = [];
+    let trailingEmptyStarted = false;
+    for (const draftSet of draftSets) {
+      const empty = DRAFT_SET_VALUE_KEYS.every(
+        (fieldKey) => draftSet?.[fieldKey] === null
+      );
+      if (empty) {
+        trailingEmptyStarted = true;
+        continue;
+      }
+      if (trailingEmptyStarted) return false;
+      projectedDraftSets.push(draftSet);
+    }
+    if (draftSets.length > 0 && projectedDraftSets.length === 0) return false;
     if (
       !hasExactOrderedKeys(item, PAYLOAD_ITEM_KEYS) ||
       item.item_key !== draftItem?.item_key ||
@@ -421,7 +438,7 @@
       item.distance_km !== normalizedDraftNumber(draftItem?.distance_km, false) ||
       !isDenseArray(item.sets) ||
       item.sets.length > SET_LIMIT ||
-      item.sets.length !== draftItem?.sets?.length
+      item.sets.length !== projectedDraftSets.length
     ) {
       return false;
     }
@@ -434,21 +451,21 @@
         isNullableFiniteNonnegative(set.distance_m) &&
         isNullableFiniteNonnegative(set.weight_kg) &&
         isNullableFiniteNonnegative(set.assistance_kg) &&
-        set.reps === normalizedDraftNumber(draftItem.sets[setIndex].reps, true) &&
+        set.reps === normalizedDraftNumber(projectedDraftSets[setIndex].reps, true) &&
         set.duration_sec === normalizedDraftNumber(
-          draftItem.sets[setIndex].duration_sec,
+          projectedDraftSets[setIndex].duration_sec,
           true
         ) &&
         set.distance_m === normalizedDraftNumber(
-          draftItem.sets[setIndex].distance_m,
+          projectedDraftSets[setIndex].distance_m,
           false
         ) &&
         set.weight_kg === normalizedDraftNumber(
-          draftItem.sets[setIndex].weight_kg,
+          projectedDraftSets[setIndex].weight_kg,
           false
         ) &&
         set.assistance_kg === normalizedDraftNumber(
-          draftItem.sets[setIndex].assistance_kg,
+          projectedDraftSets[setIndex].assistance_kg,
           false
         )
     );

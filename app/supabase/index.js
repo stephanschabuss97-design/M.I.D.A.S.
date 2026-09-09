@@ -15,19 +15,19 @@
  */
 
 // SUBMODULE: imports @internal - bindet Supabase-Submodule (Core, Auth, API)
-import * as state from './core/state.js?v=23';
-import * as client from './core/client.js?v=23';
-import * as http from './core/http.js?v=23';
-import * as auth from './auth/index.js?v=23';
-import * as realtime from './realtime/index.js?v=23';
-import * as intake from './api/intake.js?v=23';
-import * as vitals from './api/vitals.js?v=23';
-import * as notes from './api/notes.js?v=23';
-import * as select from './api/select.js?v=23';
-import * as push from './api/push.js?v=23';
-import * as systemComments from './api/system-comments.js?v=23';
-import * as trendpilot from './api/trendpilot.js?v=23';
-import * as reports from './api/reports.js?v=23';
+import * as state from './core/state.js?v=24';
+import * as client from './core/client.js?v=24';
+import * as http from './core/http.js?v=24';
+import * as auth from './auth/index.js?v=24';
+import * as realtime from './realtime/index.js?v=24';
+import * as intake from './api/intake.js?v=24';
+import * as vitals from './api/vitals.js?v=24';
+import * as notes from './api/notes.js?v=24';
+import * as select from './api/select.js?v=24';
+import * as push from './api/push.js?v=24';
+import * as systemComments from './api/system-comments.js?v=24';
+import * as trendpilot from './api/trendpilot.js?v=24';
+import * as reports from './api/reports.js?v=24';
 
 // SUBMODULE: aggregation @internal - kombiniert alle Module, erkennt doppelte Exporte
 const MODULE_SOURCES = [

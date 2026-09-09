@@ -65,10 +65,17 @@ test('R14 Last-Mile harness crosses click, commit, recovery, semantics and Data 
     'activityV2.dataAccess',
     "mode === 'unknown'",
     'requestBodies[0] !== requestBodies[1]',
-    "mode === 'recovery' && phase === 'resume' ? 100 : 1",
+    "['recovery', 'discard'].includes(mode) && phase === 'resume' ? 100 : 1",
     "markers.add('reauth_surface_preserved')",
     "fail('reauth changed the active session surface')"
   ].forEach((token) => assert.ok(script.includes(token), `missing ${token}`));
+});
+
+test('R14 Last-Mile harness covers discard then fresh commit through real recovery storage', () => {
+  assert.match(script, /mode === 'discard'/);
+  assert.match(script, /data-action="discard-recovery"/);
+  assert.match(script, /markers\.add\('recovery_discarded'\)/);
+  assert.match(script, /fresh product start unavailable after discard/);
 });
 
 test('R14 Last-Mile harness preflights aged drafts through the real composition without transport', () => {

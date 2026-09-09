@@ -10,7 +10,7 @@ const browserExecutable = process.env.MIDAS_BROWSER_EXECUTABLE || [
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
 ].find((candidate) => fs.existsSync(candidate));
 
-let release = 'v21';
+let release = 'v23';
 let graphMode = 'legacy';
 
 const releaseQuery = (current) => `?v=${current.slice(1)}`;
@@ -183,28 +183,28 @@ async function expectTransition(page, base, nextRelease, nextMode, expected) {
   const base = `http://127.0.0.1:${address.port}/`;
   const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
   try {
-    const partial = await controlledPage(browser, base, 'v21', 'legacy');
-    await expectTransition(partial.page, base, 'v22', 'partial', 'mixed');
-    assert.match(await partial.page.locator('body').getAttribute('data-roots'), /v21/);
-    assert.match(await partial.page.locator('body').getAttribute('data-roots'), /v22/);
-    assert.match(await partial.page.locator('body').getAttribute('data-cores'), /v21/);
-    assert.match(await partial.page.locator('body').getAttribute('data-cores'), /v22/);
+    const partial = await controlledPage(browser, base, 'v23', 'legacy');
+    await expectTransition(partial.page, base, 'v24', 'partial', 'mixed');
+    assert.match(await partial.page.locator('body').getAttribute('data-roots'), /v23/);
+    assert.match(await partial.page.locator('body').getAttribute('data-roots'), /v24/);
+    assert.match(await partial.page.locator('body').getAttribute('data-cores'), /v23/);
+    assert.match(await partial.page.locator('body').getAttribute('data-cores'), /v24/);
     await partial.context.close();
 
-    const cutover = await controlledPage(browser, base, 'v21', 'legacy');
-    await expectTransition(cutover.page, base, 'v22', 'coherent', 'coherent');
+    const cutover = await controlledPage(browser, base, 'v23', 'legacy');
+    await expectTransition(cutover.page, base, 'v24', 'coherent', 'coherent');
     await cutover.context.close();
 
-    const rollback = await controlledPage(browser, base, 'v22', 'coherent');
-    await expectTransition(rollback.page, base, 'v23', 'coherent', 'coherent');
+    const rollback = await controlledPage(browser, base, 'v24', 'coherent');
+    await expectTransition(rollback.page, base, 'v25', 'coherent', 'coherent');
     await rollback.context.close();
 
-    const offline = await controlledPage(browser, base, 'v22', 'coherent');
+    const offline = await controlledPage(browser, base, 'v24', 'coherent');
     await offline.context.setOffline(true);
     await offline.page.reload({ waitUntil: 'networkidle' });
     assert.equal(await offline.page.locator('body').getAttribute('data-boot'), 'coherent');
-    assert.equal(await offline.page.locator('body').getAttribute('data-roots'), 'v22');
-    assert.equal(await offline.page.locator('body').getAttribute('data-cores'), 'v22');
+    assert.equal(await offline.page.locator('body').getAttribute('data-roots'), 'v24');
+    assert.equal(await offline.page.locator('body').getAttribute('data-cores'), 'v24');
     await offline.context.close();
 
     process.stdout.write(

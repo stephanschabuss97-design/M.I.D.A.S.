@@ -128,7 +128,7 @@ requireCondition(readOnlyProteinBlock.includes("select: 'day,kg'"), 'LATEST_WEIG
 requireCondition(!/\b(?:insert|upsert|update|delete|rpc)\b/i.test(readOnlyProteinBlock), 'PROJECTION_READ_ONLY');
 requireCondition(protein.includes('loadStoredContext,'), 'PROJECTION_EXPORT');
 
-requireCondition(worker.includes("const CACHE_VERSION = 'v22'"), 'WORKER_V22');
+requireCondition(worker.includes("const CACHE_VERSION = 'v24'"), 'WORKER_V24');
 requireCondition(appCss.includes('@import url("./styles/hub.css?v=11")'), 'HUB_CSS_VERSIONED_IMPORT');
 requireCondition(
   count(worker, "toUrl('app/styles/hub.css?v=11')") === 1,

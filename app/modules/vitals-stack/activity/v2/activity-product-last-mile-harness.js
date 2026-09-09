@@ -9,7 +9,7 @@
   const exportHost = root.document.getElementById('activity-v2-export-host');
   const url = new URL(root.location.href);
   const requestedMode = url.searchParams.get('mode');
-  const mode = ['success', 'unknown', 'recovery', 'misdirect', 'reauth', 'aged'].includes(requestedMode)
+  const mode = ['success', 'unknown', 'recovery', 'discard', 'misdirect', 'reauth', 'aged'].includes(requestedMode)
     ? requestedMode
     : 'success';
   const phase = url.searchParams.get('phase') === 'resume' ? 'resume' : 'seed';
@@ -23,8 +23,12 @@
   let lastProductState = null;
   let diagnosticStage = 'not_started';
   let diagnosticCode = null;
-  let uuidSequence = mode === 'recovery' && phase === 'resume' ? 100 : 1;
-  let clock = Date.parse('2026-09-05T10:00:00.000Z');
+  let uuidSequence = ['recovery', 'discard'].includes(mode) && phase === 'resume' ? 100 : 1;
+  let clock = Date.parse(
+    mode === 'discard' && phase === 'resume'
+      ? '2026-09-07T10:00:00.000Z'
+      : '2026-09-05T10:00:00.000Z'
+  );
 
   function fail(message) {
     throw new Error(message);
@@ -312,8 +316,11 @@
     if (reps.length === 0 || reps.length !== weights.length) {
       fail('real shell fields unavailable');
     }
-    reps.forEach((input) => setInputValue(input, '8'));
-    weights.forEach((input) => setInputValue(input, '50'));
+    const rows = mode === 'discard' ? [0] : reps.map((_, index) => index);
+    rows.forEach((index) => {
+      setInputValue(reps[index], '8');
+      setInputValue(weights[index], '50');
+    });
   }
 
   function assertPass() {
@@ -385,14 +392,27 @@
         },
         createRequestId: makeUuid,
         createLeaseToken: makeUuid,
-        confirmDiscard: async () => false,
+        confirmDiscard: async () => mode === 'discard',
         refreshActivityConsumers: async () => true
       });
       controller.subscribe((state) => {
         lastProductState = state;
       });
       await controller.setAuthenticated(true);
-      if (mode === 'recovery' && phase === 'resume') {
+      if (mode === 'discard' && phase === 'resume') {
+        const discard = productHost.querySelector('[data-action="discard-recovery"]');
+        if (!discard || discard.disabled) fail('product recovery discard unavailable');
+        discard.click();
+        const start = await waitFor(
+          () => {
+            const candidate = productHost.querySelector('[data-action="start-session"]');
+            return candidate && !candidate.disabled ? candidate : null;
+          },
+          'fresh product start unavailable after discard'
+        );
+        markers.add('recovery_discarded');
+        start.click();
+      } else if (mode === 'recovery' && phase === 'resume') {
         const resume = productHost.querySelector('[data-action="continue-session"]');
         if (!resume || resume.disabled) fail('product recovery resume unavailable');
         resume.click();
@@ -434,13 +454,13 @@
         }
         markers.add('reauth_surface_preserved');
       }
-      if (mode === 'recovery' && phase === 'seed') {
+      if (['recovery', 'discard'].includes(mode) && phase === 'seed') {
         await waitFor(
           () => [...sessionHost.querySelectorAll('[aria-label="Lokaler Wiederherstellungsstatus"]')]
             .some((element) => element.textContent === 'Lokal gesichert'),
           'recovery draft was not persisted'
         );
-        root.location.replace('?mode=recovery&phase=resume&autorun=1');
+        root.location.replace(`?mode=${mode}&phase=resume&autorun=1`);
         return;
       }
       const finish = sessionHost.querySelector('[data-action="finish"]');
@@ -472,6 +492,9 @@
         'real commit did not settle'
       );
       assertPass();
+      if (mode === 'discard' && !markers.has('recovery_discarded')) {
+        fail('recovery discard path was not completed');
+      }
       status.dataset.result = 'pass';
       status.textContent = `${mode}: COMMITTED · PASS`;
       root.document.title = `Activity V2 Last Mile · ${mode.toUpperCase()} · PASS`;

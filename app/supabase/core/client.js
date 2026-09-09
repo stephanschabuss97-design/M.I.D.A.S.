@@ -18,7 +18,7 @@
  */
 
 // SUBMODULE: imports @internal - Supabase State-Verwaltung
-import { supabaseState } from './state.js?v=23';
+import { supabaseState } from './state.js?v=24';
 
 // SUBMODULE: constants & globals @internal - globale Handles und Logging
 const supabaseLog = { debugLogPii: false };
