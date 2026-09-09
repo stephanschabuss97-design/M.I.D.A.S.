@@ -2,15 +2,16 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-08-28
+Stand: 2026-09-09
 
 R13 ist `DONE`: Die fünf read-only Consumer sind produktiv auf dem gemeinsamen
-SQL26-Vertrag aktiv und mit Activity V1 paritätisch bewiesen. Activity V1
-bleibt alleiniger produktiver Capturewriter; Activity V2 bleibt bei 0/0/0.
+SQL26-Vertrag aktiv und mit Activity V1/V2 paritätisch bewiesen. R14 ist
+`DONE`: Activity V2 ist der einzige produktive Capturewriter; der bewiesene
+Smoke-Datensatz wurde anschließend über R9 gelöscht, daher steht V2 wieder bei
+0/0/0. Activity V1 bleibt unverändert lesbar und als Rollbackreserve im Repo.
 C3 ist ebenfalls `DONE`: Training ist eine eigene Hub-Produktfläche, Vitals
 enthält nur BP/Body/Lab und der Protein-Kontextdialog projiziert gespeicherte
-Werte read-only. R14 darf als einziger Schritt den Activity-V2-Capture und den
-finalen Android-PWA-Cutover aktivieren.
+Werte read-only. Android bleibt aus R14 transparent `DEFERRED / NOT PASS`.
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
@@ -1948,7 +1949,12 @@ Capture-Pfad wechseln, ohne gleichzeitig die gesamte Navigation umzubauen.
 
 ### R14 - Activity V2 Capture Cutover and Android PWA Validation
 
-Status: `FINAL_CORE_GATE`; erst nach abgeschlossenem C3 planen.
+Status: `DONE` (2026-09-09); v24 produktiv, Activity V2 alleiniger Writer,
+Web-/PWA-, Write-, Reader- und R9-Smoke-Delete-Nachweis PASS. Android
+`DEFERRED / NOT PASS`.
+
+- [R14 Roadmap](<archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md>)
+- [R14 Evidence](<archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md>)
 
 Ziel:
 

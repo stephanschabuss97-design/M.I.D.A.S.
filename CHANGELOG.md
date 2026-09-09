@@ -14,6 +14,15 @@ erhalten.
 
 ### Added
 
+- R14 aktiviert Activity V2 als einzigen produktiven Training-Capture mit
+  IndexedDB-Recovery, retry-idempotentem Session-Commit, History, Detail,
+  Correction/Delete und Coaching-Export. Der Activity-V1-Writer ist aus dem
+  Productload entfernt; historische V1-Daten und die unveränderten R13-
+  Consumer bleiben lesbar. Root-SW v24 und die geprüfte datenverlustfreie
+  V1-Inverse v25 sichern den Web-/PWA-Cutover. Der produktive Smoke-Write,
+  Reader und bestätigte R9-Delete sind PASS; Android bleibt owner-deferred und
+  wird nicht als PASS ausgewiesen.
+
 - C3 führt `Training` als eigene Hub-Produktflaeche unmittelbar nach Vitals
   ein, trennt Profile und Activity auf dedizierte Assets und ergänzt das
   Dashboard um ein zugängliches Protein-Ziel mit read-only Kontextdialog.

@@ -1,18 +1,19 @@
 ﻿# Activity Module - Functional Overview
 
-## C3-Produktionsstand (2026-08-28)
+## R14-Produktionsstand (2026-09-09)
 
 R13 ist `DONE`: Doctor View, Range-Arztbericht, Health Export V3, Protein
 Target und Trendpilot verwenden produktiv den gemeinsamen ownergebundenen
-V1-/V2-Read-Vertrag aus SQL26. Activity V1 bleibt bis R14 der einzige
-Capturewriter; Activity V2 Sessions/Items/Sets stehen produktiv weiterhin auf
-0/0/0. C3 ist `DONE`: Training besitzt eine eigene Hub-Produktfläche mit
-eigenem Datum, während Vitals nur BP, Body und Lab enthält. Ausschließlich
-R14 besitzt weiterhin den Activity-V2-Capture- und Android-PWA-Cutover.
+V1-/V2-Read-Vertrag aus SQL26. R14 ist `DONE`: Activity V2 ist im produktiven
+v24-Productload der einzige Capturewriter. Der reale Smoke-Write wurde in
+History, Detail, Coaching-Export und R13 genau einmal nachgewiesen und nur der
+Smoke-Datensatz danach über R9 gelöscht; deshalb ist der aktuelle V2-Stand
+wieder 0/0/0. Activity V1 bleibt unverändert lesbar und als Repository-
+Rollbackreserve erhalten. Android ist transparent `DEFERRED / NOT PASS`.
 
 Kurze Einordnung:
-- Produktiver Stand: Activity V1 erfasst eine Trainingseinheit pro Tag
-  (Aktivitaet + Dauer + Notiz).
+- Produktiver Stand: Activity V2 erfasst Sessions mit Items und Sets; neue
+  Drafts verwenden Katalog v2, Recovery die gespeicherte Katalogversion.
 - Activity-V2-Grundlage: R1-Semantik, R2-Datenbankvertrag, die isolierte
   R3-Draft-/Shell-Grundlage, C2-Katalogversion 2, R4-Suche/Last-Performance,
   R5-Strength-Set-Editor, R6-Duration-/Distance-Editor, R7-IndexedDB-Draft-
@@ -21,8 +22,9 @@ Kurze Einordnung:
   verdrahtete R10-Coaching-Export, der gemeinsame R11-V1-/V2-
   Read-Consumervertrag und die isolierten R12-Protein-/Trendpilot-Adapter sind
   bereitgestellt. SQL26 ist produktiv installiert; die fünf read-only
-  Consumer lesen V1/V2 gemeinsam, während die Erfassung weiterhin V1 schreibt.
-- Rolle innerhalb von MIDAS: liefert Activity-Daten fuer Arzt-Ansicht und Berichte.
+  Consumer lesen V1/V2 gemeinsam, während die Erfassung seit R14 nur V2 schreibt.
+- Rolle innerhalb von MIDAS: Capture schreibt Activity-V2-Sessions; die
+  unveränderten R13-Reader liefern V1 und V2 an Arzt-Ansicht und Berichte.
 - Abgrenzung: kein Tracking, keine automatische Erkennung, keine Gamification.
 
 Related docs:
@@ -53,6 +55,8 @@ Related docs:
 - [Activity V2 R13 Roadmap](<../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
 - [Activity V2 R13 Evidence](<../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>)
 - [Activity V2 C3 Roadmap](<../archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
+- [Activity V2 R14 Roadmap](<../archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md>)
+- [Activity V2 R14 Evidence](<../archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md>)
 - [Activity V2 Catalog Maintenance Runbook](<../reference/activity-v2/Catalog Maintenance Runbook.md>)
 
 ---
@@ -545,7 +549,7 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ## 3. Datenmodell / Storage
 
-### Activity V1 - sichtbarer Produktvertrag
+### Activity V1 - Legacy- und Rollbackvertrag
 
 - Tabelle: `health_events`
 - Type: `activity_event`
@@ -558,7 +562,7 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - View: `v_events_activity`
 - RPCs: `activity_add`, `activity_list`, `activity_delete`
 
-### Activity V2 R2 - bereitgestellter Speichervertrag
+### Activity V2 R2/R14 - produktiver Speichervertrag
 
 - Katalogprojektion: `health_activity_catalog_entries`
 - Historie: `health_activity_sessions` ->
@@ -571,7 +575,7 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - C2 nutzt dieselbe Tabelle additiv: v1 bleibt 78, v2 ist ein vollständiger
   80er-Snapshot. Seit R8 akzeptiert der Commit jede vorhandene
   unveränderliche Payload-Katalogversion statt nur der höchsten; echte
-  Sessionnutzung bleibt bis zum R14-Capture-Cutover gesperrt.
+  Sessionnutzung ist seit dem R14-Capture-Cutover produktiv aktiv.
 
 ### Activity V2 R3-R8 - Draft-, Recovery- und Commitvertrag
 
@@ -583,8 +587,8 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - Reload-Recovery ist im isolierten R7-Harness bewiesen. Site-Datenlöschung,
   anderes Browserprofil oder anderes Gerät besitzen keinen gemeinsamen Slot.
 - R8 verbindet dieselbe Recovery intern mit dem Commit-Core. Die lokale
-  Browser-PWA ist bewiesen; der echte Android-Prozess-Reclaim blieb mangels
-  ADB-Gerät unausgeführt. Beides bleibt außerhalb des Produkts.
+  Browser-PWA ist produktiv bewiesen; der echte Android-Prozess-Reclaim blieb
+  gemäß Ownerentscheidung unausgeführt und ist `DEFERRED / NOT PASS`.
 
 ### Activity V2 R9 - History- und Lifecyclevertrag
 
@@ -643,21 +647,21 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 ### 4.2 User-Trigger
 - Eigenstaendiges Training-Panel `#hubTrainingPanel` unmittelbar nach Vitals.
-- `#trainingDate` ist die Source of Truth für den Trainingstag und unabhängig
-  vom Vitals-Datum.
-- Button `Speichern` triggert `activity_add`.
-- `Zuruecksetzen` leert Aktivitaet, Dauer und Notiz, nicht das Training-Datum.
+- Die Activity-V2-Session-Shell führt durch Suche, Set-/Dauer-/Distanzeditor,
+  Recovery, Abschluss, History, Detail und Coaching-Export.
+- `Session abschließen` triggert genau den Activity-V2-Commitpfad; unbekannte
+  Antworten erlauben nur den identischen Retry.
 
 ### 4.3 Verarbeitung
-- Client-Validierung: Aktivitaet Pflicht, Dauer >= 1.
-- Event `activity:changed` bei add/delete/load.
+- Katalog-, Zeit-, Item- und Setvalidierung laufen vor dem Transport.
+- Event `activity:changed` erst nach bestätigtem Commit und ohne Detailpayload.
 - Fehler: diag + UI-Fehleranzeige.
 
 ### 4.4 Persistenz
-- Speicherung per RPC `activity_add(day, payload)`.
-- Datum kommt ausschließlich aus `#trainingDate`.
-- Activity V1 bleibt der einzige produktive Writer. Die Activity-V2-Capture-
-  Scripts sind bis R14 nicht in die produktive App geladen; es gibt kein Dual Write.
+- Speicherung erfolgt atomar per Activity-V2-Session-Commit mit stabiler
+  Request-ID und kataloggebundener Semantik.
+- Activity V2 ist der einzige produktive Writer. Activity V1 bleibt aus dem
+  Productload entfernt; es gibt kein Dual Write.
 
 ### 4.5 Isolierter R4-Harness
 
@@ -754,9 +758,8 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
   produktiv auf Paritaet aktiviert.
 - C3: `DONE`; eigenständige Training-Produktfläche und read-only Protein-
   Kontextdialog sind stabil, ohne Writerwechsel.
-- R14: Activity-V2-Capture und Coaching-Download in der stabilisierten
-  Produktfläche aktivieren
-  sowie den finalen Android-PWA-Smoke durchführen.
+- R14: `DONE`; Activity-V2-Capture, Recovery, History/Detail, Coaching-Download
+  und Web-/PWA-Cutover sind produktiv bewiesen. Android bleibt owner-deferred.
 
 ---
 
@@ -776,18 +779,16 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
   Commit-Core, History/Detail/Correction/Delete und der vollständige read-only
   Coaching-Export, der gemeinsame Doctor-/Report-Read-Vertrag sowie die puren
   Protein-/Trendpilot-Adapter sind implementiert. SQL 22 bis SQL 25 sind
-  produktiv bestätigt. R13 hat die read-only Consumer aktiviert; die V2-
-  Capture-Runtime bleibt isoliert und es gibt keinen produktiven Writer-Cutover.
-- Dependencies (hard): `health_events` + RPCs `activity_add/list/delete`,
-  eigenes Training-Datum, Doctor-Training-Tab.
+  produktiv bestätigt. R13 hat die read-only Consumer aktiviert; R14 hat die
+  V2-Capture-Runtime als einzigen Writer produktiv aktiviert.
+- Dependencies (hard): Activity-V2-Session-RPCs, Katalogsnapshot, Recovery,
+  R13-Consumer und Doctor-Training-Tab.
 - Dependencies (soft): Range-Arztbericht/Edge-Function fuer Aggregation.
-- Known issues / risks: nur 1 Eintrag pro Tag; falsch gewähltes Training-Datum
-  ergibt den falschen Tag; keine Uhrzeit.
-- Activity-V2-Risiko: Commit/Recovery sind lokal, disposable und im Browser
-  bewiesen. Der reale Android-PWA-Prozess-Reclaim wurde in R8 nicht ausgeführt;
-  Gerätewechsel liegt außerhalb des lokalen Recoveryvertrags. Produktive
-  Read-Consumerintegration ist seit R13 produktiv; Capture-Cutover und finaler
-  Android-Smoke bleiben R14.
+- Legacy-Grenze: Activity V1 bleibt auf einen Eintrag pro Tag beschränkt; der
+  produktive V2-Sessionvertrag erlaubt mehrere Sessions pro Kalendertag.
+- Activity-V2-Risiko: Commit/Recovery und der produktive Web-/PWA-Pfad sind
+  bewiesen. Der reale Android-PWA-Prozess-Reclaim bleibt owner-deferred;
+  Gerätewechsel liegt außerhalb des lokalen Recoveryvertrags.
 - R9-Review-Risiko: Alle berechtigten Findings aus vier erfolgreichen
   CodeRabbit-Läufen sind korrigiert und invalidierte Checks grün. Ein weiterer
   finaler Null-Lauf wurde rate-limitiert und daher nicht als PASS gewertet;
@@ -894,8 +895,8 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 
 - Eigenstaendiges Training-Panel speichert und rendert mit eigenem Datum korrekt.
 - Keine offenen Logs/Errors im Flow.
-- R1-R13/C2 und C3 sind `DONE`. Activity V1 bleibt der einzige produktive
-  Writer; ausschließlich R14 darf den V2-Capture-Cutover und den finalen
-  Android-PWA-Smoke ausführen.
+- R1-R14/C2 und C3 sind `DONE`. Activity V2 ist der einzige produktive Writer;
+  Activity V1 bleibt unverändert lesbare Legacy- und Repository-Rollbackreserve.
+- Android-E2E bleibt gemäß Ownerentscheidung `DEFERRED / NOT PASS`.
 - Doku aktuell (Spec + Overview).
 

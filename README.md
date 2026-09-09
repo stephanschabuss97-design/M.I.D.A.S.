@@ -191,9 +191,12 @@ Capture ist die taegliche Erfassungsflaeche fuer:
 - Koerperwerte
 - Laborwerte
 
-Training besitzt eine eigene Produktoberflaeche. In C3 verwendet sie weiterhin
-den bestehenden Activity-V1-Pfad; Capture bleibt damit der einzige Writer,
-während Activity V2 bis R14 als produktiver Capture-Pfad verborgen bleibt.
+Training besitzt eine eigene Produktoberflaeche und verwendet seit R14
+produktive Activity-V2-Sessions als einzigen Schreibpfad. Neue Drafts verwenden
+Katalog v2; Recovery und Replay bleiben an die gespeicherte Katalogversion und
+dieselbe Request-ID gebunden. Activity V1 nimmt keine neuen Writes mehr an,
+bleibt aber über die unveränderten R13-Reader lesbar und als Repository-
+Productloadreserve erhalten.
 Die Datenbasis speist Doctor View, Reports, Trendpilot und Teile des
 Assistant-Kontexts.
 
@@ -293,7 +296,7 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 |------|------|------|------|
 | Hub | zentraler Einstieg, Navigation, Dashboard, Voice-Gate | `app/modules/hub/index.js` | [`docs/modules/Hub Module Overview.md`](docs/modules/Hub%20Module%20Overview.md) |
 | Capture / Vitals | Tageserfassung für BP, Body und Lab | `app/modules/vitals-stack/vitals/index.js` | [`docs/modules/Capture Module Overview.md`](docs/modules/Capture%20Module%20Overview.md) |
-| Activity / Training | eigenständige Trainingsoberfläche; in C3 weiterhin Activity-V1-Writer | `app/modules/vitals-stack/activity/index.js` | [`docs/modules/Activity Module Overview.md`](docs/modules/Activity%20Module%20Overview.md) |
+| Activity / Training | eigenständige Trainingsoberfläche mit produktivem Activity-V2-Session-Capture | `app/modules/vitals-stack/activity/v2/activity-product-controller.js` | [`docs/modules/Activity Module Overview.md`](docs/modules/Activity%20Module%20Overview.md) |
 | Intake | Wasser, Salz, Protein, Tages-Medikationsflow | `app/modules/intake-stack/intake/index.js` | [`docs/modules/Intake Module Overview.md`](docs/modules/Intake%20Module%20Overview.md) |
 | Medication | Medikamentenverwaltung, Tagesstatus, Low-Stock | `app/modules/intake-stack/medication/index.js` | [`docs/modules/Medication Module Overview.md`](docs/modules/Medication%20Module%20Overview.md) |
 | Assistant | Text-Assistant, lokale Actions, LLM-Fallback | `app/modules/assistant-stack/assistant/index.js` | [`docs/modules/Assistant Module Overview.md`](docs/modules/Assistant%20Module%20Overview.md) |

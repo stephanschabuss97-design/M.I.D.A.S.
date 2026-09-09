@@ -9,11 +9,11 @@ werden nicht als PASS eingetragen.
 | Feld | Wert |
 | --- | --- |
 | Zugehörige Roadmap | `docs/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap.md` |
-| Status | `S5.4/S5.5 V24/V25 ATOMIC WINDOW IN PROGRESS; P1/P2 EXERCISED; R14 OPEN` |
+| Status | `DONE; V24 PRODUCT CUTOVER PASS; S6 SYNCHRONIZED AND ARCHIVED` |
 | Evidence-Owner | `R14` |
 | Baseline-Commit | `4be058b1b2e59f410ea8a6e3a4e5af9fdb86b652` |
 | Umgebungen | `lokal / Browser / PWA / produktiv read-only / produktiv write; Android gemäß D-ACT-R14-17 owner-deferred` |
-| Produktive Wirkung | `v22 wurde ausgeliefert; genau ein Abschlussversuch eines frischen v2-Drafts scheiterte fail-closed. Kein Retry oder Write. Datenverlustfreier V1-Productloadrollback über 6c9e722/v23 vollständig PASS; V2 bleibt 0/0/0. F37 ist danach ausschließlich lokal korrigiert und als v24/v25-Paket geprüft; keine neue Außenwirkung.` |
+| Produktive Wirkung | `v24 ist über 4ef1153 / Pages 34340915792 live und Activity V2 ist der einzige produktive Writer. Genau ein V2-Smoke-Write erzeugte 1/1/1 und bestand History, Detail, Export, R13 sowie No-Dual-Write; anschließend wurde ausschließlich dieser Datensatz bestätigt über R9 gelöscht. Aktuell V1 69 unverändert und V2 0/0/0. v25-Rollback nicht erforderlich.` |
 | Archivziel | `docs/archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md` |
 
 ## Nachweisvertrag
@@ -147,7 +147,8 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-L16 | F34 Repair / F35 Finding | API-Privacyfix und reales lokales Productbrowser-Orakel | nur lokal; keine Außen- oder Datenwirkung | Intake-API nur abstrakte Marker; statischer Privacyvertrag 4/4, 21/21 direkte Contracts plus C3/R8/R13, Parser/Syntax und synthetischer Releasebrowser PASS. Reales v22-Productbrowser-Orakel meldet 36 Treffer ohne Inhaltsausgabe; 24 day-Label-Treffer klassifiziert als 16 Capture-Refresh und 8 Medication; 42 statische diagnosekritische Intake-Stack-Call-Sites. | PARTIAL PASS / P1 FINDING |
 | EV-ACT-R14-L17 | Repair-Findings und V2-Blockeranalyse | vollständige F01-F35-Klassifikation sowie F36-Recovery-/Operatorgrenze | nur Dokumentation und fokussierte Sourceanalyse; keine Tests oder Außenwirkung | Kein weiterer ungefixter V2-Codefehler bewiesen. F35 als vorbestehender gemeinsamer MIDAS-Backlog separiert. F36: erhaltener gealterter Recovery-Draft ist nicht commitfähig; `startSession()` verlangt leeren Recoveryzustand und einzig vorhandene Auflösung ist der bestätigte normale UI-Discard oder Erhalt mit weiterem Cutoverstopp. | F36 OWNER DECISION REQUIRED |
 | EV-ACT-R14-L18 | F34 finale Closure / v22-v23 Release | F34-spezifische Privacy, Productload, Offline, Wechselpfade und native Fullreviews | nur lokal; kein Commit/Push/Deploy/Write/Delete | Intake-API-sensitive Browserdiagnostik 0; bekannter F35-Shared-Zähler 36 ohne Inhaltsausgabe. 24/24 direkte Contracts, 13/13 gezielter Nachlauf, 31 Syntax, zwei Parser und diff-check PASS. Isolierte v21/v22/v23-Materialisierung, synthetischer Mischzustand, reale v21→v22-/v22→v23-Transitions, Fresh-v22→Offline sowie lokaler v22-Productbrowser PASS. Native Delta-/Contract-/Security-/Privacy-/Cache-/Rollback-/Consumerreviews PASS; Backend/SQL/Android-Diff und Secretmuster 0. 50-Dateien-Release-Manifest `179c9df6...29e1`; realer P1-Deltascope 35 Code/Test plus drei R14-Dokumente = 38 Dateien. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
-| EV-ACT-R14-L19 | F37 Repair / v24-v25 Closure | reale Draftprojektion, Last-Mile, Release-/Offlinepfade und native Fullreviews | nur lokal; kein Commit/Push/Deploy/Write/Delete | Exakter isolierter Produktionsdraft-Replay bewies vor Fix INVALID_COMMIT_INTENT/item.set_count und Transport 0: Recovery verglich den kompakten Commitpayload mit allen drei Draftzeilen. Minimalfix projiziert wie Commit nur zusammenhängende nichtleere Sets, erlaubt leere Schlusszeilen und lehnt Lücken/all-empty weiter ab. Danach genau ein Transport und committed. Last-Mile 4/4+1/1, 317/317 Node, C3/R8/R13, synthetische Releasekohärenz, reale v23→v24-/v24→v25-Transitions, Fresh-v24→Offline, lokaler v24-Productbrowser, 39 Syntax, zwei Parser, diff-check und native Fullreviews PASS. Backend/SQL/Android-Diff 0; 84/84 Deno weiterhin gültig. 57-Dateien-Release-Manifest `e97f887b...b963`; realer P1-Deltascope 43 Code/Test/Produkt plus drei R14-Dokumente = 46 Dateien. | PASS LOCAL / PRODUCTIVE REPROOF PENDING |
+| EV-ACT-R14-L19 | F37 Repair / v24-v25 Closure | reale Draftprojektion, Last-Mile, Release-/Offlinepfade und native Fullreviews | lokal plus produktiver v24-Reproof | Exakter isolierter Produktionsdraft-Replay bewies vor Fix INVALID_COMMIT_INTENT/item.set_count und Transport 0: Recovery verglich den kompakten Commitpayload mit allen drei Draftzeilen. Minimalfix projiziert wie Commit nur zusammenhängende nichtleere Sets, erlaubt leere Schlusszeilen und lehnt Lücken/all-empty weiter ab. Danach genau ein Transport und committed. Last-Mile 4/4+1/1, 317/317 Node, C3/R8/R13, synthetische Releasekohärenz, reale v23→v24-/v24→v25-Transitions, Fresh-v24→Offline, lokaler v24-Productbrowser, 39 Syntax, zwei Parser, diff-check und native Fullreviews PASS. Produktiv erreichte v24 genau einen Write, vollständige Reader und ausschließlich den R9-Smoke-Delete ohne Retry oder Dual Write. | PASS / PRODUCTIVE REPROOF PASS |
+| EV-ACT-R14-L20 | S5.4-S5.6 v24-Produktpostimage | Productload, PWA, Write, Reader, Delete und Datenintegrität | produktiv gemäß D-ACT-R14-30 | Commit `4ef1153812f067a61f13d08a0889bff1319bbcf7`, Pages-Run `34340915792`, Live V1/V2/R13 `0/1/2`, Root-SW v24. Fresh, Upgrade, stale-client, Offline und Recovery PASS. Genau ein Write ohne Retry erzeugte 1/1/1; History, Detail, Export und R13 PASS, kein V1-/Dual-Write. Bestätigter R9-Delete nur des Smoke-Datensatzes; danach V1 69 unverändert und V2 0/0/0. | PASS / V24 ACTIVE |
 
 ## Evidence-Gültigkeit und Invalidation
 
@@ -203,17 +204,20 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-W15 | v22-Web-/PWA-Cutover | D-ACT-R14-29 | V2-Productload und Root-SW v22 | 42a0858 / Run 34245115560; Live-Index/Worker v22, V1/V2/R13 0/1/2; Fresh/Update, Recovery und bestätigter Draftdiscard PASS | PASS, danach wegen F37 zurückgerollt |
 | EV-ACT-R14-W16 | genau ein frischer v22-Abschlussversuch | D-ACT-R14-29 | genau eine V2-Session nur nach frischem v2-Draft | Alter Draft bestätigt verworfen; frischer Katalog-v2-Draft mit minimal gültigem Set. Genau ein Abschlussklick führte unmittelbar zu „Activity V2 ist derzeit nicht verfügbar“. Kein Retry; V2 0/0/0; Recovery erhalten; kein Delete. | FAIL-CLOSED / NO WRITE |
 | EV-ACT-R14-W17 | v23-Productload-Rollback auf V1 | D-ACT-R14-29 bedingt | Webcode zurück; Daten unverändert | 6c9e722 / Run 34247698890; Live-Index/SW exakt Commit, V1/V2/R13 1/0/2, SW v23; aktualisierter frischer V1-Client und geschützte Datenpostcondition PASS | PASS ROLLBACK |
+| EV-ACT-R14-W18 | v24-Web-/PWA-Cutover | D-ACT-R14-30 | V2-Productload und Root-SW v24 | 4ef1153 / Run 34340915792; Live V1/V2/R13 0/1/2; Fresh, Upgrade, stale-client, Offline und Recovery PASS | PASS / ACTIVE |
+| EV-ACT-R14-W19 | genau ein v24-Smoke-Write und Reader-Reproof | D-ACT-R14-30 | genau eine V2-Session mit Items/Sets | Ein normaler Abschluss, kein Retry; V2 1/1/1, V1 unverändert 69, kein Dual Write; History, Detail, Coaching-Export und R13 PASS | PASS |
+| EV-ACT-R14-W20 | normaler R9-Smoke-Delete | D-ACT-R14-30 plus unmittelbare Ownerbestätigung | ausschließlich erzeugten Smoke-Datensatz entfernen | Genau dieser Datensatz bestätigt über die R9-UI gelöscht; danach V2 0/0/0, V1 69 unverändert und R13 wieder ohne V2-/Mixed-Source-Einheit | PASS |
 
 ## Vorher-/Nachher-Nachweis
 
 | Merkmal | Vorher | Nachher | Status |
 | --- | --- | --- | --- |
-| sichtbarer Capture | Activity V1 | nach bedingtem v23-Rollback wieder Activity V1 | PASS ROLLBACK |
-| V1-Produktcallsite | genau eine | während v22 null; v23-Rollbackpostimage wieder genau eine | PASS ROLLBACK |
-| V1-Historie | 69 mit geschütztem Hash | keine Cutovermutation oder -löschung; Vor-/Nachbaseline 69 mit identischem Hash | PASS / NO MUTATION |
-| V2 Sessions/Items/Sets | 0/0/0 | genau ein v22-Abschlussversuch, kein persistierter Write; weiterhin 0/0/0 | PASS NO WRITE |
-| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; aus unveränderter Baseline 69 reine V1-Units und 0 Mixed-Source-Days | PASS |
-| Root-SW | v21 vor dem Fenster | v22 Cutover, danach monoton v23 Rollback | PASS ROLLBACK |
+| sichtbarer Capture | Activity V1 | Activity V2 als einziger produktiver Capturepfad | PASS CUTOVER |
+| V1-Produktcallsite | genau eine | null V1-Writerload/-callsite; genau ein V2-Productcontroller | PASS / NO DUAL WRITE |
+| V1-Historie | 69 mit geschütztem Hash | 69 mit unverändertem geschütztem Hash | PASS / NO MUTATION |
+| V2 Sessions/Items/Sets | 0/0/0 | Smoke-Nachweis 1/1/1; nach bestätigtem R9-Delete wieder 0/0/0 | PASS WRITE / DELETE |
+| R13 Reader | V1-paritätisch | zwei Readerloads unverändert; begrenzter Snapshot während Smoke 25 V1 + 1 V2, danach 25 V1 + 0 V2; jeweils 0 Mixed-Source-Tage | PASS |
+| Root-SW | v23 vor dem Fenster | v24 produktiv; v25-Rollback nicht erforderlich | PASS CUTOVER |
 
 ## Deploy- und Runtime-Nachweise
 
@@ -229,6 +233,8 @@ Nicht als Evidence zulässig:
 | EV-ACT-R14-P08 | R13 Consumer aktuelles Postimage | zwei unveränderte Productloads; `midas.activity-consumer.v1` | 69 reine V1-Units, 0 Mixed-Source-Days | read-only | PASS |
 | EV-ACT-R14-P09 | Pages/Web viertes Fenster | `2dbfa3c` / `34160428748`; Rollback `40c4b93` / `34160860095` | v20 Live-Productload und Upgrade erreicht; Privacy-Pflichtfehler vor Write; v21 V1-only, frischer aktualisierter Client und Datenintegrität PASS | kein Write, Retry oder Delete | PASS ROLLBACK / PRODUCT PRIVACY FAIL |
 | EV-ACT-R14-P10 | Pages/Web fünftes Fenster | `42a0858` / `34245115560`; Rollback `6c9e722` / `34247698890` | v22 Productload/Recovery und bestätigter alter Draftdiscard PASS; frischer v2-Abschluss fail-closed; v23 V1-only, frischer aktualisierter Client und Datenintegrität PASS | kein persistierter Write, kein Retry oder Delete | PASS ROLLBACK / PRODUCT FAIL |
+| EV-ACT-R14-P11 | Pages/Web sechstes Fenster | `4ef1153` / `34340915792` | v24 Productload, Fresh, Upgrade, stale-client, Offline und Recovery PASS | genau ein V2-Write 1/1/1, anschließend ausschließlich R9-Smoke-Delete auf 0/0/0 | PASS CUTOVER / ACTIVE |
+| EV-ACT-R14-P12 | R13 Consumer finales S5.6-Postimage | zwei unveränderte Productloads; `midas.activity-consumer.v1` | während Smoke genau eine V2-Einheit zusätzlich, nach Delete wieder nur V1; 0 Mixed-Source-Tage | read-only | PASS |
 
 ## Findings und Korrekturen
 
@@ -260,7 +266,7 @@ Nicht als Evidence zulässig:
 | F-ACT-R14-34 | v20 S5.4 + lokaler Retest | P2 / Privacy / produktive Browserdiagnostik | `app/supabase/api/intake.js` lokal auf abstrakte Start-, Ergebnis- und Fehlercodes reduziert; Rückgabe-, Transport-, Persistenz- und Fehlerobjektvertrag unverändert. | Intake-/Vitals-Privacy, lokales Productbrowser-Orakel und alle releaseinvalidierten Checks PASS; F34-eigene sensitive Treffer 0. Allgemeiner F35-Privacyfund bleibt transparent offen. | fixed locally / productive reproof pending |
 | F-ACT-R14-35 | lokaler F34-Retest | P2 / Privacy / gemeinsamer Intake-Stack | Reales Browserorakel zählt 36 sensitive-pattern Treffer ohne Inhaltsausgabe. Frischer Klassifikationslauf weist 24 day-Label-Treffer 16 Capture-Refresh- und 8 Medication-Diagnosen zu; statische Analyse klassifiziert 42 Prüfkandidaten in `app/modules/intake-stack/intake/index.js`. | Gemäß D-ACT-R14-27 im separaten Repair-Bugreport erhalten; kein bewiesener V2-Funktionsfehler und keine übereifrige R14-Aufräumwelle. Kein allgemeiner MIDAS-Privacy-PASS. | open / shared repair backlog |
 | F-ACT-R14-36 | fokussierte V2-Blockeranalyse | P1 / Recovery-Draft / produktiver Smoke | Der erhaltene Draft überschreitet die bewiesene 1440-Minuten-Grenze und bleibt durch den write-freien Preflight unverändert. Der Single-Draft-Controller erlaubt einen neuen Draft erst nach leerem Recoveryzustand; vorhandener normaler UI-Discard ist bestätigungspflichtig. | D-ACT-R14-28 erlaubt im nächsten separat freigegebenen v22/v23-Fenster den sichtbaren normalen UI-Discard. Danach frischer Katalog-v2-Draft mit neuer Request-ID; keine stille Mutation oder Datenbanklöschung. | owner-resolved / productive execution pending |
-| F-ACT-R14-37 | v22 S5.5 + lokaler Repair | P1 / produktiver V2-Abschluss / Recovery-Intentprojektion | Ursache bewiesen und minimal korrigiert: Recovery verglich den payloadseitig korrekt kompaktierten Setgraph mit allen drei Draftzeilen. Recovery verwendet nun dieselbe Projektion nichtleerer zusammenhängender Sets wie Commit; nur leere Schlusszeilen werden ausgelassen, Lücken/all-empty bleiben fail-closed. | Exakter Produktionsdraft-Replay vor/nach Fix, Last-Mile 4/4+1/1, 317 Node, Release-/Offline-/Syntax-/Parserchecks und native Fullreviews PASS. Kein produktiver Write; v24/v25-Reproof offen. | fixed locally / productive reproof pending |
+| F-ACT-R14-37 | v22 S5.5 + lokaler Repair + v24 Reproof | P1 / produktiver V2-Abschluss / Recovery-Intentprojektion | Ursache bewiesen und minimal korrigiert: Recovery verglich den payloadseitig korrekt kompaktierten Setgraph mit allen drei Draftzeilen. Recovery verwendet nun dieselbe Projektion nichtleerer zusammenhängender Sets wie Commit; nur leere Schlusszeilen werden ausgelassen, Lücken/all-empty bleiben fail-closed. | Exakter Produktionsdraft-Replay vor/nach Fix, Last-Mile 4/4+1/1, 317 Node, Release-/Offline-/Syntax-/Parserchecks und native Fullreviews PASS. Produktiv v24 genau ein Write, Reader PASS und R9-Delete; kein Retry oder Dual Write. | closed / productive reproof PASS |
 
 ### Dirty-Stop Recovery Receipt 2026-09-06
 
@@ -527,7 +533,22 @@ Nicht als Evidence zulässig:
 
 ## Finaler Evidence-Digest
 
-### Aktuelles Postimage 2026-09-08
+### S6-Abschluss 2026-09-09
+
+- U12 `2026-09-09T13:15:17+02:00`: 99 % 5h / 100 % Woche, gültig und
+  `CONTINUE`; reiner Dokumentations-/Archivblock zugelassen.
+- README, Activity-/Capture-/Hub-Overviews, Activity-Masterplan, HCR-033 und
+  Changelog wurden auf das reale v24-Produktpostimage synchronisiert.
+- Roadmap und Evidence wurden gemeinsam als `(DONE)` archiviert. Fremde
+  Worktreeänderungen blieben unangetastet.
+- R14 schließt ohne offenes P0/P1-Finding. F35 bleibt als separater gemeinsamer
+  MIDAS-Repairbacklog bestehen und ist kein Activity-V2-Cutoverblocker.
+- Android bleibt `DEFERRED BY OWNER / NOT PASS`; kein Android-/ADB-Nachweis
+  wird erfunden. U13 `2026-09-09T13:23:48+02:00` lieferte 86 % 5h / 98 %
+  Woche und wird ausschließlich als `FINAL_OBSERVATION` geführt; der DONE-
+  Stand wird dadurch nicht zurückgestuft.
+
+### Evidence-Verlauf 2026-09-08 bis 2026-09-09
 
 - V18-Cutover `0fa44e2` / Run `34022878621` und Web/PWA-/Recovery-Smokes
   PASS; produktiver Abschluss vor Transport fail-closed, kein Retry und kein
@@ -706,14 +727,50 @@ Nicht als Evidence zulässig:
   identischer Retry bei unbekannter Antwort, History/Detail/Export/R13 und
   Dual-Write-Nachweis, normaler R9-Delete nur des Smoke-Datensatzes sowie bei
   Pflichtfehler der vollständige datenverlustfreie v25-Rollback. Nach grünem
-  S6 sind Abschlusscommit und Push freigegeben. Entscheidung noch nicht
-  ausgeübt; Ausübung erst nach frischem erlaubendem Usage-/Driftgate.
+  S6 sind Abschlusscommit und Push freigegeben. Die Entscheidung war an dieser
+  historischen Grenze noch nicht ausgeübt; die spätere Ausübung ist im
+  v24-S5.6-Postimage dokumentiert.
 - U11R29 2026-09-09T12:32:28+02:00: 92/25, gültig und `CONTINUE`;
   `POST_REHYDRATION_BASELINE`, Rehydration ist SUNK_USAGE. HEAD/origin/Pages,
   v23-Produktpostimage, PRE10, Manifest `e97f887b...b963` und 46-Dateien-Scope
   sind unverändert. Operational Floor 72/21 und Full-Closure-Floor 81/21 sind
   erfüllt; `PRIMARY_ALLOWED`. D-ACT-R14-30 wird ausgeübt und das atomare
   v24/v25-Fenster ohne Zwischenpoll begonnen.
+- D-ACT-R14-30 ist vollständig ausgeübt: Der 46-Dateien-Scope wurde als
+  `4ef1153812f067a61f13d08a0889bff1319bbcf7` gepusht; Pages-Run
+  `34340915792` ist erfolgreich. v24 ist aktiv, der freigegebene v25-Rollback
+  war nicht erforderlich. Die separat erteilte Freigabe für Abschlusscommit
+  und Push bleibt bis zum grünen S6 gültig.
+- Produktpostimage: Live-Index `939e1fcf...3a5`, Live-SW
+  `cdaca426...a87ec`, V1/V2/R13-Loads `0/1/2`, Root-SW v24. Fresh, Upgrade,
+  stale-client, Offline und Recovery PASS. Genau ein Abschluss ohne Retry
+  erzeugte V2 1/1/1; V1 blieb 69. History, Detail, Coaching-Export, R13 und
+  fehlender Dual Write PASS.
+- Nach unmittelbarer Ownerbestätigung wurde ausschließlich der Smoke-Datensatz
+  über den normalen R9-UI-Flow gelöscht. Danach V1 69 unverändert, V2 0/0/0;
+  der begrenzte R13-Snapshot enthält wieder 25 V1/0 V2 und 0 Mixed-Source-Tage.
+  Geschützte Hashes wurden ohne Request-ID-, Payload- oder Gesundheitsdetails
+  erfasst. Android bleibt `DEFERRED BY OWNER / NOT PASS`.
+- U11R30 2026-09-09T13:01:56+02:00: 17/14, gültig und `SAFE_CLOSURE`;
+  75/11 seit U11R29 für das vollständige atomare Fenster samt sicherer
+  Produkt- und Datenpostcondition. S5.6 ist PASS. U12/S6 beginnen erst in
+  einem frischen erlaubenden Block; R14 bleibt bis dahin OPEN.
+
+### S5.6-Postimage 2026-09-09
+
+- Cutover: `4ef1153812f067a61f13d08a0889bff1319bbcf7`, Pages-Run
+  `34340915792`, Live-Index `939e1fcf...3a5`, Live-SW
+  `cdaca426...a87ec`, V1/V2/R13 `0/1/2`, Root-SW v24.
+- Web/PWA: Fresh, Upgrade, kontrollierter stale-client, Offline und Recovery
+  PASS; keine relevante Konsolenfehlermeldung oder sensible Ausgabe im
+  Abschluss-/Delete-Zeitfenster.
+- Write: genau ein normaler Abschluss, kein Retry; V2 1/1/1, V1 unverändert
+  69, kein Dual Write. History, Detail, Coaching-Export und R13 PASS.
+- Delete: nach unmittelbarer Ownerbestätigung nur den Smoke-Datensatz über
+  R9 gelöscht; danach V2 0/0/0, V1 69 unverändert und R13 ohne V2-/Mixed-
+  Source-Einheit im begrenzten Snapshot.
+- Android: `DEFERRED BY OWNER / NOT PASS`. v25-Rollback nicht erforderlich.
+- Urteil: `PRODUCT POSTIMAGE PASS / V24 CUTOVER ACTIVE / S6 PENDING USAGE`.
 
 ### S5.6-Postimage 2026-08-31
 

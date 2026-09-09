@@ -28,6 +28,31 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 
 ## Testfälle
 
+### HCR-033 - R14 aktiviert Activity V2 als einzigen produktiven Writer
+
+- Vertrag: archivierte R14-Roadmap und Evidence sowie Activity-, Capture- und
+  Hub-Overviews.
+- Ebene: lokale Fullmatrix und native Reviews, produktiver Pages-/Web-/PWA-
+  Cutover, genau ein kontrollierter Write, read-only Consumer und bestätigter
+  R9-Smoke-Delete.
+- Voraussetzung: R13 und C3 `DONE`; produktives V1-Postimage mit Root-SW v23,
+  gültiger Recovery-/Commitvertrag und datenverlustfreie V1-Inverse v25.
+- Ausführung: v24-Productload mit genau einem V2-Controller und null V1-
+  Writercallsite ausrollen; Fresh, Upgrade, stale-client, Offline und Recovery
+  prüfen. Genau eine kataloggebundene Session ohne Retry speichern, fehlenden
+  Dual Write sowie History, Detail, Coaching-Export und R13 prüfen und nur
+  diesen Datensatz bestätigt über den normalen R9-UI-Flow löschen.
+- Erwartung: Activity V2 bleibt alleiniger produktiver Writer; Activity V1-
+  Daten bleiben unverändert lesbar. Request-ID und Recovery bleiben stabil,
+  Cache v24 ist kohärent und die höhere v25-V1-Inverse löscht keine Daten.
+- Abschlussnachweis 2026-09-09: `PASS`. Commit `4ef1153`, Pages-Run
+  `34340915792`, Live V1/V2/R13 `0/1/2`, Root-SW v24. Genau ein Write erzeugte
+  V2 1/1/1 ohne V1-/Dual-Write; History, Detail, Export und R13 PASS. Nach
+  bestätigtem R9-Delete V2 0/0/0 und V1 unverändert 69. v25-Rollback nicht
+  erforderlich. Android bleibt gemäß Ownerentscheidung `DEFERRED / NOT PASS`.
+- Invalidiert durch: erneuten V1-Writerload, zweiten V2-Writer, Änderung an
+  Commit-/Recovery-/Request-ID-, R13-, Productload-, Cache- oder Rollbackpfad.
+
 ### HCR-032 - C3 trennt Training und projiziert Protein-Kontext read-only
 
 - Vertrag: archivierte C3-Roadmap sowie Activity-, Capture-, Hub-, Profile-

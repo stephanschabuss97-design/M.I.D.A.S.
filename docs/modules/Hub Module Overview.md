@@ -44,8 +44,8 @@ Related docs:
 - Carousel und Quickbar verwenden dieselbe produktive Reihenfolge:
   `assistant-voice`, `intake`, `vitals`, `training`, `appointments`,
   `assistant-text`, `doctor`, `chart`, `profile`.
-- `training` öffnet das eigenständige Training-Panel; der Hub delegiert den
-  Save an Activity V1 und besitzt keine Writerlogik.
+- `training` öffnet das eigenständige Training-Panel; der Hub orchestriert nur
+  und die Activity-V2-Produktcomposition besitzt die Writerlogik.
 - `assistant-voice` ist nicht mehr immer sichtbar, sondern haengt am Assistant-Surface-Vertrag.
 - Die produktive Voice-Initialisierung laeuft direkt; ein alter `VOICE_PARKED`-Zwischenguard existiert nicht mehr.
 - Voice wird ueber Boot-/Auth-/Gate-Status kontrolliert geoeffnet oder blockiert.
@@ -210,7 +210,7 @@ Related docs:
 - Hub ist stabiler zentraler Voice- und Panel-Einstieg.
 - Kein zweiter produktiver Voice-Einstieg ausserhalb des MIDAS-Slots.
 - Pending-Context- und Gate-Helfer sind fuer Text und Voice konsistent.
-- Training ist eine eigene Hub-Produktfläche, während Activity V1 der einzige
-  Writer und Activity V2 bis R14 verborgen bleibt.
+- Training ist eine eigene Hub-Produktfläche mit Activity V2 als einzigem
+  produktiven Writer; der Hub bleibt writerfrei.
 - Das Dashboard erklaert gespeicherten Protein-Kontext ausschließlich read-only.
 - Dokumentation ist auf dem produktiven Hub-Zuschnitt.

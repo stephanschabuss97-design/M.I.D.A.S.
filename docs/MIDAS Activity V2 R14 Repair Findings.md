@@ -5,7 +5,8 @@
 Dieses Dokument ist der Bug- und Repair-Backlog der R14-Ausführung. Es trennt
 Activity-V2-Blocker von allgemeinen MIDAS-Funden, Testproblemen und
 Prozesskorrekturen. Die aktive Roadmap und ihre Evidence bleiben für die
-Ausführung autoritativ.
+Ausführung bis zum Abschluss autoritativ; danach sind die gemeinsam
+archivierten `(DONE)`-Roadmap und Evidence das R14-Postimage.
 
 MIDAS ist eine persönliche Single-User-Anwendung. Ein während R14 gefundener
 Bestandsfehler wird deshalb nicht automatisch Teil des Activity-V2-Cutovers.
@@ -25,11 +26,11 @@ Activity-V2-PASS ausgegeben.
 
 | Bereich | Stand |
 | --- | --- |
-| Produktion | Activity V1 einziger Writer, R13 unverändert, Root-SW v23; HEAD/origin 6c9e722 |
-| V2-Daten | Sessions/Items/Sets 0/0/0; kein Dual Write |
+| Produktion | Activity V2 einziger Writer, R13 unverändert, Root-SW v24; HEAD/origin `4ef1153812f067a61f13d08a0889bff1319bbcf7` |
+| V2-Daten | Produktiver Smoke 1/1/1 vollständig bewiesen und ausschließlich über R9 gelöscht; aktuell 0/0/0, V1 unverändert 69, kein Dual Write |
 | Lokaler V2-Code | bekannte Funktionsfehler F25/F26/F37 und F34-spezifische Privacygrenze geschlossen und lokal revalidiert |
 | Lokaler Releasegraph | bekannte Releasefehler F29/F31/F32 geschlossen; v24/v25 lokal vollständig revalidiert |
-| Aktueller V2-Blocker | kein offenes lokales P0/P1-Finding; D-ACT-R14-30 erteilt P1/P2, produktiver v24-Write-/Reader-/Delete-Reproof steht aus |
+| Aktueller V2-Blocker | keiner; R14 ist DONE, v24 produktiv und S5.6/S6 PASS |
 | Allgemeiner MIDAS-Backlog | F35: bestehende Intake-Diagnostik; nicht durch Activity V2 eingeführt |
 
 ## Findings F01 bis F37
@@ -272,20 +273,27 @@ als repariert oder als allgemeinen Privacy-PASS auszugeben.
   v23→v24-/v24→v25- und Fresh-v24→Offline-Pfade, lokaler v24-Productbrowser,
   39 Syntax-, zwei Parserchecks, `git diff --check` und native Fullreviews sind
   PASS. Backend/SQL unverändert; 84/84 Deno-Evidence bleibt gültig.
-- Status: `fixed locally / productive reproof pending`.
+- Status: `closed / productive reproof PASS`. Der v24-Produktpfad erzeugte
+  genau 1/1/1, bestand History, Detail, Export und R13 ohne V1-/Dual-Write und
+  löschte anschließend ausschließlich den Smoke-Datensatz über R9.
 
 ## Abschlussurteil
 
-Es ist derzeit kein offenes lokales R14-P0/P1-Finding bewiesen. Für den
-Cutover fehlen nur noch:
+Es ist kein offenes lokales R14-P0/P1-Finding bewiesen. Der v24-Cutover und
+das S5.6-Produktpostimage sind vollständig PASS:
 
-- ein frisches erlaubendes Usage-/Driftgate zur Ausübung des durch
-  D-ACT-R14-30 bereits freigegebenen v24/v25-Fensters;
-- der produktive Reproof der lokal geschlossenen F25/F26/F34/F37- und
-  Releasepfade;
-- genau ein erfolgreicher V2-Write ohne Dual Write, History/Detail/Export/R13
-  und der normale R9-Delete des Smoke-Datensatzes;
-- das reguläre S5.6-/S6-Postimage nach diesem erfolgreichen Smoke.
+- Activity V2 ist der einzige produktive Writer; V1 bleibt unveränderte
+  historische Readerquelle und Rollbackreserve.
+- Genau ein V2-Smoke-Write erzeugte 1/1/1 ohne Retry oder Dual Write.
+- History, Detail, Coaching-Export und R13 bestanden.
+- Ausschließlich der Smoke-Datensatz wurde bestätigt über R9 gelöscht;
+  aktuell V2 0/0/0 und V1 unverändert 69.
+- Root-SW v24 ist aktiv; der v25-Rollback war nicht erforderlich.
+- Android bleibt transparent `DEFERRED / NOT PASS`.
+
+Die administrative Abschlussphase U12/S6 ist ebenfalls PASS: Sources of Truth
+sind synchronisiert, Roadmap und Evidence gemeinsam als `(DONE)` archiviert
+und der Abschlusscommit/-push durch D-ACT-R14-30 freigegeben. R14 ist DONE.
 
 Das aktuelle 57-Dateien-Release-Manifest lautet
 `e97f887b7c6da0b96447e46c30eda0c3db6c71e7857579d4bd168b99d233b963`.
@@ -293,8 +301,9 @@ Der nächste Git-P1-Scope umfasst 43 Code-/Test-/Produktdateien plus Roadmap,
 Evidence und dieses Repair-Dokument, insgesamt 46 Dateien. PRE10 ist PASS;
 lokale Versionen sind v24 für Cutover und v25 für die V1-Inverse.
 D-ACT-R14-29 ist verbraucht und darf nicht wiederverwendet werden.
-D-ACT-R14-30 ist für genau ein unverändertes v24/v25-Fenster konditional
-erteilt und noch nicht ausgeübt.
+D-ACT-R14-30 wurde für das erfolgreiche v24-Fenster vollständig ausgeübt; die
+darin separat erteilte Freigabe für Abschlusscommit und Push nach grünem S6
+bleibt gültig.
 
 Allgemeine MIDAS-Funde bleiben in diesem Dokument sichtbar, werden aber nicht
 ohne Activity-V2-Bezug im R14-Cutover weiterbearbeitet.

@@ -2,7 +2,7 @@
 
 Kurze Einordnung:
 - Zweck: zentrale Vitals-Eingabeoberflaeche für BP, Body und Lab.
-- Rolle innerhalb von MIDAS: primäres Vitals-Capture-Panel, Quelle für Arzt-Ansicht und Reports; der bestehende Activity-V1-Writer bleibt Teil der Capture-Grenze, wird aber über die eigenständige Training-Produktfläche bedient.
+- Rolle innerhalb von MIDAS: primäres Vitals-Capture-Panel für BP, Body und Lab; die eigenständige Training-Produktfläche schreibt seit R14 ausschließlich Activity V2.
 - Abgrenzung: keine Analyse/Reports, kein Export, keine Charts.
 
 Related docs:
@@ -61,8 +61,8 @@ Related docs:
 - Auswahl des Datums im Vitals-Panel.
 - Saves pro Vitals-Tab (BP/Body/Lab).
 - Reset-Buttons leeren Panels.
-- Training besitzt im eigenen Panel ein unabhaengiges Datum und ruft weiterhin
-  den bestehenden Activity-V1-Writer auf.
+- Training besitzt im eigenen Panel den Activity-V2-Sessionflow; Capture selbst
+  bleibt für BP, Body und Lab zuständig.
 
 ### 4.3 Verarbeitung
 - Validierungen pro Vitals-Domain (BP- und Lab-Pflichtfelder).
@@ -72,9 +72,9 @@ Related docs:
 ### 4.4 Persistenz
 - BP/Body/Lab via Supabase API (REST/RPC, je Modul).
 - Nach Save: Reset, UI-Refresh, Diagnose-Logs.
-- Die eigenständige Training-Produktfläche schreibt in C3 weiterhin über
-  den unveränderten Capture-/Activity-V1-RPC `activity_add`; es gibt kein
-  Dual Write und keinen produktiven Activity-V2-Capture.
+- Die eigenständige Training-Produktfläche schreibt seit R14 ausschließlich
+  über den atomaren Activity-V2-Session-Commit. Der Activity-V1-Writer ist aus
+  dem Productload entfernt; es gibt kein Dual Write.
 
 ---
 
@@ -157,6 +157,6 @@ Related docs:
 
 - Alle Vitals-Capture-Tabs speichern ohne Errors.
 - UI reagiert konsistent auf Datumsaenderung.
-- Die Activity-V1-Persistenz bleibt unverändert und Activity V2 produktiv verborgen.
+- BP/Body/Lab bleiben unverändert; Training nutzt produktiv nur Activity V2.
 - Doku aktuell.
 
