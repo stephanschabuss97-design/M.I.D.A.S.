@@ -1,0 +1,152 @@
+{
+  "receiptVersion": "midas-kasrkin-ownership-cleanup/1",
+  "receiptId": "w6-m-midas-ownership-20260919",
+  "status": "W6_M_COMPLETE",
+  "verifiedAt": "2026-09-19T20:57:54.7888709+02:00",
+  "consumer": "MIDAS",
+  "wave": "W6-M",
+  "admission": {
+    "measuredAt": "2026-09-19T20:43:11.9958512+02:00",
+    "valid": true,
+    "schemaVersion": 3,
+    "sensorVersion": "3.1.0",
+    "status": "OK",
+    "fiveHourRemaining": 100,
+    "weeklyRemaining": 76,
+    "decision": "CONTINUE",
+    "admission": "PRIMARY_ALLOWED"
+  },
+  "release": {
+    "releaseId": "kasrkin-2a0d185b0b04a93f",
+    "releaseFingerprint": "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
+    "payloadDigest": "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
+    "installationReceiptSha256": "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187",
+    "sourceCandidateId": "source-candidate-a57d05e3aab820a1",
+    "bindingSha256": "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3"
+  },
+  "authority": {
+    "decisionSemanticsOwner": "KASRKIN",
+    "executableDetailSource": "PINNED_INSTALLED_RELEASE",
+    "projectExecutionOwner": "MIDAS",
+    "projectConsultationContract": "docs/templates/MIDAS Roadmap Workflow Contract.md",
+    "activeActivation": ".kasrkin/activation.json",
+    "activeActivationSha256": "be16df5190e9ff46ff5b1685acfe063f8290d03a440a8e7a43496c56a4a2d99a",
+    "secondActivePolicyAuthority": false
+  },
+  "changedFiles": [
+    {
+      "root": "MIDAS",
+      "path": "AGENTS.md",
+      "preimageSha256": "efc63ed8ef49ec8fcd2052fcdfffe7814da614f2982d1cbd65ef8291a24d3a86",
+      "postimageSha256": "97f3a381618ee60eb5266f470a7188b01a9e7cc8de4efa5cfb5632a616271882"
+    },
+    {
+      "root": "MIDAS",
+      "path": "docs/DEV_ENVIRONMENT.md",
+      "preimageSha256": "eec99ac8b8415258b5fda73e13b6da754d92a847d79c68b382876a1ab351ffa4",
+      "postimageSha256": "ead0d55d095b06fdd5c2fde5ac136223c91d735db326eca07cc90bf8bef2adbf"
+    },
+    {
+      "root": "MIDAS",
+      "path": "docs/templates/MIDAS Roadmap Workflow Contract.md",
+      "preimageSha256": "783997dc9126498eaaa751bdae0416faf9e2464c34628e4909eb278cf7f06bb2",
+      "postimageSha256": "a90f2bb77ce591aeeab976bf5f4d8935ada59c5065115973e942fc051f120610"
+    },
+    {
+      "root": "MIDAS",
+      "path": "docs/templates/README.md",
+      "preimageSha256": "513b0dc938b6bf0688a3604c3769de70b372019fb20785545c35e0eb7e0cac67",
+      "postimageSha256": "d9cc9d82b0226b6a0e4b194ae5556c3af3e1bd4b1a3870e38584345d382b1453"
+    },
+    {
+      "root": "MIDAS",
+      "path": "docs/templates/MIDAS Roadmap Template.md",
+      "preimageSha256": "7620560af5179e66f0755426e079f10a10ae2dac3139879a7913ae43d8a41bc0",
+      "postimageSha256": "1d8e4650ae4eab8985e8fe9666544971264528a8eae2f1890141c8d66335c843"
+    },
+    {
+      "root": "MIDAS",
+      "path": "docs/templates/MIDAS Roadmap Evidence Template.md",
+      "preimageSha256": "8700675193b6531ad3061ffd71ace9d1d6aed89af80f6bf356fd1f5decde6692",
+      "postimageSha256": "b010412979481af1459eef5ea406467c5090b7e3e13b78535c4edd4cddf82b6f"
+    },
+    {
+      "root": "MIDAS",
+      "path": ".kasrkin/activation.json",
+      "preimageSha256": null,
+      "postimageSha256": "be16df5190e9ff46ff5b1685acfe063f8290d03a440a8e7a43496c56a4a2d99a"
+    },
+    {
+      "root": "MIDAS",
+      "path": ".kasrkin/Test-MidasKasrkinActivation.ps1",
+      "preimageSha256": null,
+      "postimageSha256": "71301c98a528bb7e6a3da0e32dd86955bf5f313f2b8ac74e70c30cea88fb7812"
+    },
+    {
+      "root": "CODEX_TOOLS",
+      "path": "README.md",
+      "preimageSha256": "f917ff4fa90d5a16f3bc249202619f6e0d8219c520e4be92d4416b8c9b9e1cf7",
+      "postimageSha256": "935bb44de6cf817e5fb8bb229e4c45d450ee4f252183c1f2cc5afd61d501a047"
+    },
+    {
+      "root": "CODEX_TOOLS",
+      "path": "docs/architecture/README.md",
+      "preimageSha256": "35ca256ea4a74db8b0fe9b81675a18d123f71f3d2110575fcedf63d96014dfdd",
+      "postimageSha256": "c08939ef59157ad1cb59deb9479db4aa524bc36f22105af976803db5b38ff038"
+    },
+    {
+      "root": "CODEX_TOOLS",
+      "path": "docs/architecture/KASRKIN Integration.md",
+      "preimageSha256": null,
+      "postimageSha256": "d2a2e780b1a28a22466e9cf7b2cd74e30f98a5c4c9b937525293aa7df87feb9a"
+    }
+  ],
+  "proof": {
+    "activeActivationSuite": "MIDAS-KASRKIN-W6M-ACTIVATION",
+    "activeActivationPassed": true,
+    "consultationArtifacts": 8,
+    "foreignCwd": "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs",
+    "foreignCwdVersionAndValidate": "PASS",
+    "commandPath": "C:\\Users\\steph\\.local\\bin\\kasrkin.cmd",
+    "sourceCandidateProof": "PASS_47_FILES_7_SUITES_106_CASES",
+    "newPowerShellParser": "PASS_1_OF_1",
+    "jsonParse": "PASS",
+    "diffCheck": "PASS",
+    "texW5001": "CLOSED"
+  },
+  "protectedState": {
+    "legacyActivationSha256": "50f93f15f9698c433b30c883dae7b5e5b64ee93e93a946ede0ac11ccef744af3",
+    "legacyActivationActive": false,
+    "migrationInventorySha256": "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775",
+    "w4ReceiptSha256": "0aeb7bc4945211eb038c350a2d487701277a92bcc77d0d5ad0249e9491c0be29",
+    "w5ReceiptSha256": "062abb1247bd6e4a36c85171ac6ed9b31986c5a338cb964687272d1a75a45737",
+    "hestiaBindingSha256": "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
+    "hestiaConsumerReceiptSha256": "669b74d0329f4f21ef52f7c1cb0effbd2be97adbde50f3f0fd9ed1f7d4a58688",
+    "runtimeStatePathChanged": false,
+    "additionalUsageWriter": false,
+    "argusComponentCreated": false,
+    "policyChanged": false,
+    "commitCreated": false
+  },
+  "rollback": {
+    "boundary": "B6M",
+    "ready": true,
+    "preflightLegacyActivation": "PASS_10_OF_10",
+    "postimageLegacyDrift": "EXPECTED_INACTIVE_CONTRACT_HASH_MISMATCH",
+    "restoreTogether": [
+      "six MIDAS consumer-contract preimages",
+      "remove .kasrkin/activation.json and its proof script",
+      "restore codex-tools navigation preimages and remove the W6 integration document"
+    ],
+    "preserve": [
+      ".kasrkin/binding.json",
+      "installed KASRKIN release",
+      "Rainmeter UsageState.json",
+      "tools/codex-usage legacy tree",
+      "H.E.S.T.I.A.",
+      "ARGUS pilot archive"
+    ],
+    "postcheck": "legacy activation returns PASS_10_OF_10 and MIDAS binding still resolves the installed release"
+  },
+  "nextStep": "SEPARATE_W6_H_BOUNDARY_WITH_FRESH_USAGE_GATE"
+}

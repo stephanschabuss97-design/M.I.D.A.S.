@@ -1,0 +1,360 @@
+{
+    "schemaVersion":  1,
+    "receiptId":  "w7-archive-rehome-retirement-20260920",
+    "status":  "W7_COMPLETE",
+    "completedAt":  "2026-09-20T06:43:34.9418582+02:00",
+    "ownerScope":  "W7_ARCHIVE_REHOME_AND_EXACT_MANIFESTED_RETIREMENT",
+    "admission":  {
+                      "phaseA":  {
+                                     "measuredAt":  "2026-09-20T06:23:20.0821866+02:00",
+                                     "valid":  true,
+                                     "fiveHourRemaining":  100,
+                                     "weeklyRemaining":  63,
+                                     "decision":  "CONTINUE"
+                                 },
+                      "w7":  {
+                                 "measuredAt":  "2026-09-20T06:26:44.9324104+02:00",
+                                 "valid":  true,
+                                 "fiveHourRemaining":  95,
+                                 "weeklyRemaining":  63,
+                                 "decision":  "CONTINUE"
+                             }
+                  },
+    "candidateManifest":  {
+                              "path":  "docs/tooling-extraction/w7-retirement-candidate-manifest.json",
+                              "bytes":  214340,
+                              "sha256":  "6770c2a59a9466f8e6a32e946df935e7e387998dfd541329eb9e543369df559b",
+                              "candidateCount":  11,
+                              "candidateFileInstances":  440,
+                              "referencePreimages":  13,
+                              "immutableAfterBinding":  true
+                          },
+    "archive":  {
+                    "formerRoot":  "C:\\Users\\steph\\Archives\\ARGUS-PILOT\\v1.2-v1.6",
+                    "currentRoot":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6",
+                    "meaning":  "ORGANIZATIONAL_LEGACY_ARCHIVE",
+                    "samePhysicalDrive":  true,
+                    "disasterRecovery":  false,
+                    "completeTreeFileCount":  202,
+                    "completeTreeBytes":  1836756,
+                    "completeTreeDigest":  "b5bca7bc2ecffeaa9a82a3a32574a56753e50cebdf2a49b3ace0f936d5d030b9",
+                    "payloadFileCount":  197,
+                    "payloadBytes":  1707140,
+                    "payloadDigest":  "b991822dfc4976a7dca17df03e1cb16c2bd6910f1306e1f233cd600804a3fc16",
+                    "archiveManifestSha256":  "39b2ad43fe61d1ac249e87e02b21b197d53239d0a76f50bbc404c1d14cd872fc",
+                    "archiveProofSha256":  "98c53dbb469197e0a23d781a3239978da8873af77f9c3dc5b66a9b946cadf0de",
+                    "foreignCwdProof":  "PASS",
+                    "externalReferenceProof":  "PASS",
+                    "disposableRestore":  "PASS_REMOVED",
+                    "formerRootRetiredLast":  true
+                },
+    "retirements":  [
+                        {
+                            "candidateId":  "midas-legacy-kasrkin-tree",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\tools\\codex-usage",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  37,
+                            "bytes":  232325,
+                            "inventoryDigest":  "502a1fb35e247429efc8b1e4c7a6b34050df21bc40ffb1bc29b334619fc81e68",
+                            "successorType":  "CODEX_TOOLS_SOURCE_AND_INSTALLED_RELEASE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\kasrkin\\tools\\codex-usage",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "midas-kasrkin-overview",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs\\modules\\KASRKIN Module Overview.md",
+                            "kind":  "FILE",
+                            "fileCount":  1,
+                            "bytes":  4528,
+                            "inventoryDigest":  "311858c18d233553396485ee52b18dd2b094fc3c02cecafbfbd268e01144a737",
+                            "successorType":  "CODEX_TOOLS_SOURCE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\kasrkin\\docs\\modules\\KASRKIN Module Overview.md",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "midas-guard-evolution-notes",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs\\Codex Usage Guard Evolution Notes.md",
+                            "kind":  "FILE",
+                            "fileCount":  1,
+                            "bytes":  110303,
+                            "inventoryDigest":  "3b7108c7dd58a51705ee7e93bc86474e3c4e51bd727d819153851dd2301f2ed2",
+                            "successorType":  "CODEX_TOOLS_SOURCE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\kasrkin\\docs\\Codex Usage Guard Evolution Notes.md",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "hestia-legacy-kasrkin-tree",
+                            "path":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A\\tools\\codex-usage",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  2,
+                            "bytes":  32331,
+                            "inventoryDigest":  "2a5c615a0a0b6660bbd462200658b4bc0e8e77efad689e275585ac41f1f0a099",
+                            "successorType":  "CODEX_TOOLS_SOURCE_AND_INSTALLED_RELEASE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\kasrkin\\tools\\codex-usage",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-overview",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs\\modules\\A.R.G.U.S. Module Overview.md",
+                            "kind":  "FILE",
+                            "fileCount":  1,
+                            "bytes":  7271,
+                            "inventoryDigest":  "dad0f47110ca447eb8c8c1030cb6527a744b8ba6a0dbf2bbab654721f9078042",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\MIDAS\\docs\\modules\\A.R.G.U.S. Module Overview.md",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-campaign-document",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs\\Codex Model Benchmark V1 Campaign.md",
+                            "kind":  "FILE",
+                            "fileCount":  1,
+                            "bytes":  30666,
+                            "inventoryDigest":  "b57367a2bf79122952b5d41b69780a3dcf45c2adfc6c6ac034e238e64409dc09",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\MIDAS\\docs\\Codex Model Benchmark V1 Campaign.md",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-benchmark-root",
+                            "path":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S\\docs\\benchmark\\codex-model-benchmark-v1",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  70,
+                            "bytes":  598918,
+                            "inventoryDigest":  "1a540b6c58220b96c52c0323afedc7af6a3c3b6b4908eba9eeab9ef5cabcddbb",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\MIDAS\\docs\\benchmark\\codex-model-benchmark-v1",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-console",
+                            "path":  "C:\\Users\\steph\\Projekte\\argus-operator-console.html",
+                            "kind":  "FILE",
+                            "fileCount":  1,
+                            "bytes":  45302,
+                            "inventoryDigest":  "0b4a99a36c049cfa552780a8b1f9fe4a8f6bacbcdebb510da503e8a6ad4495c6",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\Projects\\argus-operator-console.html",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-stage-root",
+                            "path":  "C:\\Users\\steph\\ARGUS-RUN-STAGES",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  122,
+                            "bytes":  1024489,
+                            "inventoryDigest":  "91ef51ab550b2a67f56398b70e3617315eb11cc01b10baf98cd870fda5805a33",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\ARGUS-RUN-STAGES",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "argus-evidence-root",
+                            "path":  "C:\\Users\\steph\\ARGUS-RUN-EVIDENCE",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  2,
+                            "bytes":  494,
+                            "inventoryDigest":  "8ddee6b0728a71e73958fafe220e2ff77f83aed69736bb4195361ed7101b7a4f",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6\\origins\\ARGUS-RUN-EVIDENCE",
+                            "retired":  true
+                        },
+                        {
+                            "candidateId":  "former-w4-archive-root",
+                            "path":  "C:\\Users\\steph\\Archives\\ARGUS-PILOT\\v1.2-v1.6",
+                            "kind":  "DIRECTORY",
+                            "fileCount":  202,
+                            "bytes":  1836756,
+                            "inventoryDigest":  "b5bca7bc2ecffeaa9a82a3a32574a56753e50cebdf2a49b3ace0f936d5d030b9",
+                            "successorType":  "NEW_ARGUS_LEGACY_ARCHIVE",
+                            "successorPath":  "C:\\Users\\steph\\Projekte\\Backup\\Old\\ARGUS-PILOT\\v1.2-v1.6",
+                            "retired":  true
+                        }
+                    ],
+    "release":  {
+                    "releaseId":  "kasrkin-2a0d185b0b04a93f",
+                    "releaseFingerprint":  "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
+                    "payloadDigest":  "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
+                    "installationReceiptSha256":  "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187",
+                    "stableCommand":  "C:\\Users\\steph\\.local\\bin\\kasrkin.cmd",
+                    "stableCommandSha256":  "2fbadf6f54ec1bffbff2d2afdadc2a277fc9a96d50ee883ab0ea52066b1a2712",
+                    "sourceCandidateProof":  "PASS_47_FILES_7_SUITES_106_CASES"
+                },
+    "consumers":  {
+                      "midas":  {
+                                    "activationSha256":  "43519f0623efad4cc4d4304a6b03c2860a512009399994351da90028e7602fe8",
+                                    "proofSha256":  "636d49ac32ef5c623be8e8a66f66505a08dd06bd490df66e22c600249fe0f625",
+                                    "status":  "PASS_RETIRED_W7",
+                                    "consultationArtifacts":  8,
+                                    "foreignCwd":  "PASS"
+                                },
+                      "hestia":  {
+                                     "activationSha256":  "f2305ec0074951a40db4d97b5fe7bc87e62f1b406883e5b31e2d0c1c7575dd6b",
+                                     "proofSha256":  "175ce18602118df08f0a575fa052b5ec61951f1a666c54034e84c6bbca28e16d",
+                                     "status":  "PASS_RETIRED_W7",
+                                     "consultationArtifacts":  8,
+                                     "foreignCwd":  "PASS"
+                                 }
+                  },
+    "protectedState":  {
+                           "migrationInventorySha256":  "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775",
+                           "midasBindingSha256":  "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
+                           "hestiaBindingSha256":  "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
+                           "externalSessionSha256":  "461c0cc6aa4182c142b63fc9ad4521ee856b67bb8e0eb410b3a4a5dd435ef8ee",
+                           "statePath":  "C:\\Users\\steph\\Documents\\Rainmeter\\Skins\\illustro\\Tokens\\UsageState.json",
+                           "rainmeterSensorSha256":  "3d8f8601d67e33193566cc4273faf517ed32915d8b758d4a5c5c60e08037c8d1",
+                           "installedSensorSha256":  "3d8f8601d67e33193566cc4273faf517ed32915d8b758d4a5c5c60e08037c8d1",
+                           "sensorsByteIdentical":  true,
+                           "additionalWriterCreated":  false,
+                           "activePolicyChanged":  false,
+                           "argusV1Started":  false,
+                           "commitCreated":  false
+                       },
+    "changedReferenceFiles":  [
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "AGENTS.md",
+                                      "preimageSha256":  "97f3a381618ee60eb5266f470a7188b01a9e7cc8de4efa5cfb5632a616271882",
+                                      "postimageSha256":  "e878e2209594c45091765e84f6a97b425b8abd6b472b8b0ea5d3cb95ca6d776c",
+                                      "postimageBytes":  7483
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "docs\\DEV_ENVIRONMENT.md",
+                                      "preimageSha256":  "ead0d55d095b06fdd5c2fde5ac136223c91d735db326eca07cc90bf8bef2adbf",
+                                      "postimageSha256":  "357fd8c961de3b59f6730dba5d9d6bb48236f5c00087f1ff8994b329f67cc4f7",
+                                      "postimageBytes":  43567
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "docs\\templates\\MIDAS Roadmap Workflow Contract.md",
+                                      "preimageSha256":  "a90f2bb77ce591aeeab976bf5f4d8935ada59c5065115973e942fc051f120610",
+                                      "postimageSha256":  "48acd9c3140fcdfb65804296ed4488bb4a1f1f32fa0fd496bac2422c485ee373",
+                                      "postimageBytes":  49697
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "README.md",
+                                      "preimageSha256":  "b36bed9ca3c2866eea6df0d07c408f8ad7c68540fa9e4a3a0757c70918567dc2",
+                                      "postimageSha256":  "36f9cd708c70dbbe613d36d6525a26a412e832c51b75daa9d2e748805ce00e9d",
+                                      "postimageBytes":  34213
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  ".kasrkin\\activation.json",
+                                      "preimageSha256":  "be16df5190e9ff46ff5b1685acfe063f8290d03a440a8e7a43496c56a4a2d99a",
+                                      "postimageSha256":  "43519f0623efad4cc4d4304a6b03c2860a512009399994351da90028e7602fe8",
+                                      "postimageBytes":  3295
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  ".kasrkin\\Test-MidasKasrkinActivation.ps1",
+                                      "preimageSha256":  "71301c98a528bb7e6a3da0e32dd86955bf5f313f2b8ac74e70c30cea88fb7812",
+                                      "postimageSha256":  "636d49ac32ef5c623be8e8a66f66505a08dd06bd490df66e22c600249fe0f625",
+                                      "postimageBytes":  4368
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "docs\\Tooling Extraction and Workspace Cleanup Roadmap.md",
+                                      "preimageSha256":  "e05a721170059a9c208648269b0e83cd896d8636fcf2a8afd68c29a895de3a21",
+                                      "postimageSha256":  "7a86677fc311023ea26ba77eee2c2d2e088538549b559ab5e14c34283632b6b7",
+                                      "postimageBytes":  181799
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+                                      "path":  "docs\\Tooling Extraction and Workspace Cleanup Evidence.md",
+                                      "preimageSha256":  "8cfedf021e1faa63ee4b7f3a06d9a2f271db5a319bdb72dc90e2895d867756f4",
+                                      "postimageSha256":  "c3ecb8f24be5cbce4c0ba93a8cd1bb13e6934da3d7cad7968701bca3580c96aa",
+                                      "postimageBytes":  115570
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+                                      "path":  "AGENTS.md",
+                                      "preimageSha256":  "ff2459206f6b497bc4d5d239f57ffca3644f3bcdd93d6e28a0b2be9747d6a51e",
+                                      "postimageSha256":  "8eb96fbd660c8ae71b1a5178ce6008ae2d3722130cf3133e61818683b56a62be",
+                                      "postimageBytes":  5610
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+                                      "path":  "docs\\DEV_ENVIRONMENT.md",
+                                      "preimageSha256":  "c52ccae9ec3be5ad81b89c00cbb5a7687aec1cbd7af7abd89e93a5d573825753",
+                                      "postimageSha256":  "2020f30e171638b602059e0f93f001776e86f0db4eb91ca4775fc1b11c1c1660",
+                                      "postimageBytes":  13832
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+                                      "path":  ".gitignore",
+                                      "preimageSha256":  "8e960c268c739f8a2c1373c6bd1c6033324e3a4685226a496572ed22349e8f2f",
+                                      "postimageSha256":  "d068835825b1467e0eec0293b714c1d5f5e215717207a5cfe7c9076aba48686e",
+                                      "postimageBytes":  427
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+                                      "path":  ".kasrkin\\activation.json",
+                                      "preimageSha256":  "0b258623fe176c050eb2ac35420d8edc09e086fee2b0b29d0fc28ba6e46bf418",
+                                      "postimageSha256":  "f2305ec0074951a40db4d97b5fe7bc87e62f1b406883e5b31e2d0c1c7575dd6b",
+                                      "postimageBytes":  3309
+                                  },
+                                  {
+                                      "root":  "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+                                      "path":  ".kasrkin\\Test-HestiaKasrkinActivation.ps1",
+                                      "preimageSha256":  "7b5524dd490b1229c121255f82f14a2deacfb2240b6cfcc232c7ec5afff2e752",
+                                      "postimageSha256":  "175ce18602118df08f0a575fa052b5ec61951f1a666c54034e84c6bbca28e16d",
+                                      "postimageBytes":  4370
+                                  }
+                              ],
+    "proofArtifacts":  [
+                           {
+                               "path":  "docs\\tooling-extraction\\Post-W7 Migration Closure Review.md",
+                               "bytes":  17143,
+                               "sha256":  "e6e573d4c0d5964de521d4138bedbe84cfb1ef82839a93a32f589eb47110aefa"
+                           },
+                           {
+                               "path":  "docs\\tooling-extraction\\w7-retirement-candidate-manifest.json",
+                               "bytes":  214340,
+                               "sha256":  "6770c2a59a9466f8e6a32e946df935e7e387998dfd541329eb9e543369df559b"
+                           },
+                           {
+                               "path":  "docs\\tooling-extraction\\Invoke-W7ArchiveRehome.ps1",
+                               "bytes":  7979,
+                               "sha256":  "6b086e61c000231027065ff947cbdd8056df9b1f8ee48d9a74c862c14fe9fec4"
+                           },
+                           {
+                               "path":  "docs\\tooling-extraction\\New-W7RollbackStaging.ps1",
+                               "bytes":  6282,
+                               "sha256":  "aad16f3d0169e51d264aa26cabf67292082dfee5584048e8446d9924a3936e40"
+                           },
+                           {
+                               "path":  "docs\\tooling-extraction\\Invoke-W7Retirement.ps1",
+                               "bytes":  11049,
+                               "sha256":  "a772dff8c5df5e271a05016646d8ac10e386051224fad59c84de22576773a4a1"
+                           },
+                           {
+                               "path":  "docs\\tooling-extraction\\Remove-W7RollbackStaging.ps1",
+                               "bytes":  1541,
+                               "sha256":  "8fda1fbcfd6ba67743529479216e2b900dd28ed6ef5cb2f56888e0a98cc56363"
+                           }
+                       ],
+    "rollback":  {
+                     "boundaries":  [
+                                        "B7",
+                                        "B7H"
+                                    ],
+                     "exactStagingCreatedAndValidated":  true,
+                     "used":  false,
+                     "temporaryStagingRemoved":  true,
+                     "permanentArgusRecovery":  "NEW_BYTE_IDENTICAL_ARCHIVE",
+                     "permanentKasrkinRecovery":  "VERSIONED_CODEX_TOOLS_SOURCE_INSTALLED_RELEASE_AND_RECEIPTS"
+                 },
+    "checks":  {
+                   "powershellParser":  "PASS_6_OF_6",
+                   "jsonParse":  "PASS",
+                   "diffCheck":  "PASS",
+                   "trailingWhitespace":  "PASS",
+                   "localLinks":  "PASS",
+                   "privacySecrets":  "PASS",
+                   "p0p1":  "NONE",
+                   "scheduledUsageWriters":  "PASS_NONE"
+               },
+    "nextStep":  "POST_W7_CLOSURE_REVIEW_OWNER_AUTHORIZATION_AND_FRESH_USAGE_GATE_REQUIRED"
+}

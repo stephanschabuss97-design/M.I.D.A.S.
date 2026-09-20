@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "w4-argus-pilot-archive-20260919",
+  "status": "W4_COMPLETE",
+  "completedAt": "2026-09-19T16:30:54.4845994+02:00",
+  "archivePayloadProofCompletedAt": "2026-09-19T16:24:57.2829872+02:00",
+  "ownerScope": "W4_LEGACY_PILOT_ARCHIVE_ONLY",
+  "archive": {
+    "archiveId": "argus-pilot-v1.2-v1.6",
+    "root": "C:\\Users\\steph\\Archives\\ARGUS-PILOT\\v1.2-v1.6",
+    "payloadFileCount": 197,
+    "payloadBytes": 1707140,
+    "payloadDigestAlgorithm": "SHA256_OF_UTF8_LF_JOINED_SORTED_RECORDS_ARCHIVE_RELATIVE_PATH_BYTE_LENGTH_SHA256",
+    "payloadDigest": "b991822dfc4976a7dca17df03e1cb16c2bd6910f1306e1f233cd600804a3fc16",
+    "emptyDirectoryCount": 1,
+    "metadata": {
+      "README.md": {
+        "bytes": 1310,
+        "sha256": "bb48126fdf60ddff4f6063a045c2c3cf7d3eef86fd25570ba87ae953307a628e"
+      },
+      "archive-manifest.json": {
+        "bytes": 122178,
+        "sha256": "39b2ad43fe61d1ac249e87e02b21b197d53239d0a76f50bbc404c1d14cd872fc"
+      },
+      "archive-proof.json": {
+        "bytes": 674,
+        "sha256": "98c53dbb469197e0a23d781a3239978da8873af77f9c3dc5b66a9b946cadf0de"
+      },
+      "Test-ArgusPilotArchive.ps1": {
+        "bytes": 3079,
+        "sha256": "081570661d6bb3bc34b5470f5d46d0dde69a9a665a9865bacd37c850a42af082"
+      },
+      "Restore-ArgusPilotArchive.ps1": {
+        "bytes": 2375,
+        "sha256": "4f8d9a199b31d817262027f3bf89089b21293bada3955f97964411a60ccfb2b5"
+      }
+    }
+  },
+  "sourcePreimages": {
+    "midasHead": "52010c7b778e24018975e4dd0e1a9fd2a60fd690",
+    "migrationInventorySha256": "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775",
+    "overviewSha256": "d1b4bd1e3efd8809b40473a368a0a16a8600fdf80dcd46600a4eea263fdc29f0",
+    "campaignSha256": "339612294a5f2e177a50e0f1e9476cd0dc0c7d479854f3f6e31383483e9fb9d7",
+    "benchmarkInventoryDigest": "968de96bbe461d039d01c70062d7bef29df9c5a70c7047000841252166c0d677",
+    "consoleSha256": "e04955dc5192e6bfd8e8c7c2b8f3036718c2b5c93d62e76dcf477e66f1a4f4a8",
+    "stageInventoryDigest": "5b60c588ea160dbc509d87731e1f5b0c656623a9594599b60734db0fdf8af105",
+    "evidenceInventoryDigest": "a1ece8c305d81333a144c2c3a85dbbcbf960bb140bacb0f9be008e6d97e8cdec"
+  },
+  "externalReferences": [
+    {
+      "logicalSourceId": "argus-run01-archived-session",
+      "owner": "CODEX_RUNTIME",
+      "disposition": "EXTERNAL_DO_NOT_TOUCH",
+      "path": "C:\\Users\\steph\\.codex\\archived_sessions\\rollout-2026-09-12T19-33-05-01a096ae-1267-7a13-8372-04b6f52ea6c8.jsonl",
+      "bytes": 547717,
+      "sha256": "461c0cc6aa4182c142b63fc9ad4521ee856b67bb8e0eb410b3a4a5dd435ef8ee",
+      "copied": false,
+      "validatedAtArchiveTime": true
+    }
+  ],
+  "proof": {
+    "stagingValidation": "PASS",
+    "finalForeignCwdValidation": "PASS",
+    "externalReferenceValidation": "PASS",
+    "disposableRestore": "PASS",
+    "disposableRestoreRemoved": true,
+    "sourcePostcopyValidation": "PASS",
+    "originalsRetained": true,
+    "historicalBytesRewritten": false,
+    "pilotExecuted": false,
+    "newArgusV1Implemented": false,
+    "noOverwrite": true
+  },
+  "rollback": {
+    "boundary": "B4",
+    "originalsRemainAuthoritativeAtOriginalPaths": true,
+    "archiveTargetWasAbsentBeforeW4": true,
+    "retirementRequiresSeparateW7OwnerAuthorization": true
+  }
+}

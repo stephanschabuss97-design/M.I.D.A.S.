@@ -39,6 +39,11 @@ eine gemeinsame Reasoning-Stufe. Ein notwendiger Reasoning-Wechsel wird als
 Wellengrenze vorab benannt; er wird nicht während eines laufenden Auftrags
 vorausgesetzt.
 
+Die eingetragene Reasoning-Stufe wird nicht still erhöht. Ist die tatsächlich
+in der Oberfläche konfigurierte Stufe für den Agenten nicht maschinenlesbar,
+lautet der Nachweis `NOT_OBSERVABLE`; eine behauptete Verifikation oder
+automatische Korrektur ist unzulässig.
+
 - S1, S2 und S3 werden jeweils als deterministischer Gesamtblock mit Contract
   Review und Findings-Korrektur abgeschlossen.
 - Eine Roadmap darf S1 bis S3 und optional S4R als eine autonome
@@ -86,10 +91,33 @@ vorausgesetzt.
 - `Owner Gate`: Eine fachliche Entscheidung, produktive Wirkung, externe oder
   irreversible Aktion, Scope-Ausweitung oder ausdrücklich reservierte
   Freigabe ist erforderlich. Der Agent stoppt mit einem kompakten Briefing.
+- Eine erteilte Owner-Freigabe bleibt gültig, solange ihr fingerprintgebundener
+  Scope, Preflight und Runtimepostimage unverändert sind. Sie wird nicht erneut
+  erfragt. Eine technisch notwendige Handlung des Owners ist separat als
+  `OPERATOR_ACTION_REQUIRED` mit einer exakten Anweisung zu formulieren und ist
+  kein neues Approval-Gate.
 - Ein Abschnittsende allein ist kein Owner-Gate. Fortschrittsmeldungen bleiben
   informativ und verlangen keine Antwort, solange kein Stop-Grund eintritt.
 
 ## Usage-aware Continuation Gates
+
+Aktiver Governance-Vertrag seit `2026-09-13`: `guard-vnext/1`. Die durch
+`.kasrkin/binding.json` exakt gebundene KASRKIN-Releaseimplementierung ist die
+einzige ausführbare Detailquelle für Usage-Bands, Arbeitszulassung, Floors,
+Owner Boundary, Restricted-Work-Episode, Safe Closure, LIMIT und Evidence
+Reuse. Diese MIDAS-Datei besitzt den projektspezifischen Vertrag dafür, wann
+KASRKIN konsultiert wird und wie zugelassene Arbeit atomar ausgeführt,
+beweisbar geschlossen oder zurückgerollt wird. Die nachstehenden Regeln sind
+die menschenlesbare MIDAS-Konsultationsprojektion, keine zweite unabhängige
+Policy. Bei einem Widerspruch zu Binding, Release, Config, Schemas oder
+Policyausgabe gilt `CONTRACT_DRIFT`: keine neue Arbeit beginnen.
+
+`AGENTS.md` erzwingt den Einstieg; `docs/DEV_ENVIRONMENT.md` besitzt Sensor-,
+Validator- und Bedienverträge. `.kasrkin/activation.json` bindet Release und
+Consumerprojektion per Fingerprint. W7 hat die frühere lokale Implementierung
+nach bewiesenem Cutover retiret; Recovery verwendet die gebundene Installation,
+die bewiesene `codex-tools`-Source und versionierte Receipts. Keine dieser
+Quellen führt selbst Tools, Dateiänderungen oder Produktaktionen aus.
 
 Die lokale Codex-Usage-Telemetrie begrenzt, ob ein neuer Arbeitsblock sicher
 begonnen werden darf. Sie garantiert nicht, dass ein laufender Block ohne
@@ -152,39 +180,253 @@ nur wenn beide Messungen dieselbe `resetAtEpoch` besitzen.
 - Prozentwerte und Deltas werden nicht aus Chatmeldungen, Rainmeter-Anzeige
   oder früheren Erinnerungswerten rekonstruiert.
 
-### Entscheidungsklassen
+### Usage-Entscheidungsklassen
 
 `SAFE_CLOSURE` hat Vorrang vor `CONTINUE_WITH_CAUTION`; diese wiederum vor
-`CONTINUE`.
+`CONTINUE`. Diese drei Klassen beschreiben ausschließlich den Budgetzustand.
+Empirische Reserve und Owner Boundary entscheiden anschließend separat über
+die Zulassung des konkreten Primärblocks.
 
 <!-- markdownlint-disable MD013 -->
 
 | Entscheidung | Messlage | Erlaubte Folge |
 | --- | --- | --- |
-| `CONTINUE` | 5h `> 40 %` und Woche `> 20 %`; vorhandene empirische Reserve reicht | nächsten geplanten kohärenten Block ausführen |
-| `CONTINUE_WITH_CAUTION` | 5h `25-40 %` oder Woche `10-20 %`, ohne Safe-Closure-Grund | höchstens einen kurzen, lokalen, reversiblen und ausdrücklich resumierbaren Block ausführen; danach erneut messen |
-| `SAFE_CLOSURE` | 5h `< 25 %` oder Woche `< 10 %`; State fehlt, ist partial/failed/stale; oder vorhandene empirische Reserve reicht nicht | keinen neuen Haupt- oder Ausführungsblock beginnen; sicheren Handoff herstellen |
+| `CONTINUE` | 5h `> 40 %` und Woche `> 20 %` | Primärblockzulassung anhand Klasse, Reserve und Gates bestimmen |
+| `CONTINUE_WITH_CAUTION` | 5h `25-40 %` oder Woche `10-20 %`, ohne Safe-Closure-Grund | höchstens einen kurzen, lokalen, reversiblen und ausdrücklich resumierbaren bounded Arbeitsblock dieser Restricted-Work-Episode zulassen; danach erneut messen |
+| `SAFE_CLOSURE` | 5h `< 25 %` oder Woche `< 10 %`; State fehlt oder ist partial/failed/stale | keinen neuen Haupt- oder Ausführungsblock beginnen; sicheren Handoff herstellen |
 
 <!-- markdownlint-enable MD013 -->
 
 Die Grenzen sind inklusiv: exakt `25 %` im 5h-Fenster oder `10 %` im
 Wochenfenster ist Caution, exakt `40 %` beziehungsweise `20 %` noch nicht
 Continue. Der technische Sensorstatus `OK` ist keine dieser Entscheidungen.
+Der kanonische Validator prüft und verdichtet den Telemetriestate.
+`PRIMARY_OWNER_BOUNDARY_ALLOWED` ist keine Validatorausgabe, sondern eine in
+der Roadmap protokollierte Arbeitszulassung auf Basis der validierten Messung,
+der Reserveformel, der Fingerprints und der Owner-Annahme.
 
 ### Empirische Blockreserve
 
-Sobald reale Vergleichswerte derselben Roadmap und desselben Resetzyklus
-vorliegen, verwendet S4R für jeden Bucket den höchsten beobachteten Verbrauch
-eines vergleichbaren Blocks, multipliziert mit `1,5`. Mittelwerte und
-erfundene Schätzwerte sind verboten.
-Die Reserve reicht nur, wenn der projizierte Rest nach dem nächsten Block im
-5h-Fenster mindestens `25 %` und im Wochenfenster mindestens `10 %` beträgt.
-Andernfalls gilt `SAFE_CLOSURE`.
+Sobald reale Vergleichswerte derselben Roadmap vorliegen, verwendet S4R für
+jeden Bucket den höchsten beobachteten Verbrauch eines fachlich und operativ
+vergleichbaren vollständigen Blocks, multipliziert mit `1,5`, als bevorzugte
+Startreserve. Mittelwerte und erfundene Schätzwerte sind verboten. Der
+Vergleich muss Resetgrenzen respektieren; ein abgeschlossener Block darf als
+historischer Kostenwert über Resetzyklen hinweg verwendet werden, sein Delta
+darf aber nicht über eine Resetgrenze rekonstruiert werden.
 
-Fehlen vergleichbare Messungen, wird keine numerische Reserve erfunden. Dann
+Die Reserve beschreibt ausschließlich den noch ausstehenden Arbeitsblock samt
+seinen noch offenen Postconditions. Bereits abgeschlossene Session-
+Rehydration ist `SUNK_USAGE`: Sie ist im aktuellen Restwert enthalten und darf
+nicht nochmals als zukünftiger Bedarf auf Blockverbrauch oder Closure-Reserve
+aufgeschlagen werden. Müssen nach dem Gate wegen Invalidation weitere Quellen
+gelesen oder Preflights erneuert werden, zählen nur diese noch offenen Arbeiten
+zum Primärblock.
+
+Die empirische Reserve besitzt zwei getrennte Mindestgrenzen. Der
+`OPERATIONAL_SAFETY_FLOOR` ist je Bucket:
+
+`höchster beobachteter vergleichbarer vollständiger Blockverbrauch bis zur`
+`bewiesenen sicheren Produkt- oder Rollbackpostcondition`
+`+ ein Prozentpunkt Sensorauflösung`
+
+Der `AUTONOMOUS_FULL_CLOSURE_FLOOR` ist je Bucket:
+
+`OPERATIONAL_SAFETY_FLOOR`
+`+ höchste vergleichbare echte CLOSURE_ONLY-Kosten, soweit diese nicht bereits`
+`im vollständigen Blockreceipt enthalten sind`
+
+Die `25 %`-/`10 %`-Safe-Closure-Schwellen sind Zustandsgrenzen und keine
+Kostenwerte. Sie werden niemals als pauschale Closure-Kosten addiert. Als
+`CLOSURE_ONLY` zählen ausschließlich notwendige Postchecks, Roadmap-/Evidence-
+und Resume-Sync sowie der sichere Handoff nach dem Primärblock. Eine spätere
+Ursachenanalyse, Reparatur, erneute Fullmatrix oder ein neuer Review sind neue
+Blöcke und dürfen keinen Floor des vorherigen Blocks erhöhen. Enthält ein
+vollständiger Cost Receipt die Closure bereits nachweislich, wird sie nicht ein
+zweites Mal addiert. Ein für den Operational Safety Floor verwendetes Receipt
+muss mindestens die sichere Runtime-, Daten- und Rollbackpostcondition sowie
+einen minimalen operationalen Postimage-/Resume-Fakt enthalten. Fehlt dies,
+ist es kein zulässiges Operational-Receipt.
+
+Der zusätzliche Prozentpunkt je Bucket schützt gegen die ganzzahlige
+Sensorauflösung. Er ist kein allgemeiner Sicherheitsmultiplikator. Fehlt eine
+vergleichbare Closure-Messung und enthält auch der vollständige
+Vergleichsblock keine Closure, ist nur der Autonomous Full-Closure Floor nicht
+vollständig empirisch belegt. Die Roadmap muss dies als Forecast ausweisen;
+eine Owner Boundary bleibt nur bei belastbarem Operational Safety Floor
+verfügbar.
+
+Keiner der Floors ersetzt das für die Arbeitsklasse vorgeschriebene
+Usage-Band. Die effektive Operational- beziehungsweise Full-Closure-Grenze ist
+je Bucket der strengere Wert aus dem jeweiligen empirischen Floor und dem
+kleinsten ganzzahligen Sensorwert, der das erforderliche Band erfüllt. Für
+einen Boundary-Pfad im Band `CONTINUE` sind das bei den aktuellen Schwellen
+mindestens `41 %` im 5h- und `21 %` im Wochenfenster. Roadmap und Briefing
+weisen beide empirischen und effektiven Floors getrennt aus.
+
+Liegt die Messung unter dem belastbar ermittelten effektiven Operational Safety
+Floor, gilt für den geplanten Primärblock `PRIMARY_REJECTED_FOR_RESERVE`; eine
+Owner Boundary kann das nicht überstimmen. Das Usage-Band bleibt davon
+getrennt und kann höchstens eine unabhängige sichere Restarbeit zulassen.
+Liegt die Messung mindestens auf dem effektiven Operational Safety Floor, aber
+unter dem effektiven Autonomous Full-Closure Floor, kann der Owner den
+unmittelbaren Start über `PRIMARY_OWNER_BOUNDARY_ALLOWED` akzeptieren. Damit
+übernimmt er ausschließlich das Risiko, dass die umfassende administrative
+Closure in einen späteren Block fällt; die sichere operative Postcondition
+bleibt zwingend Teil des gestarteten Blocks.
+
+Die bevorzugte Reserve bleibt der höhere Wert aus `1,5 x` vollständigem
+Vergleichsblock und Autonomous Full-Closure Floor. Bruchteile werden erst nach
+der Berechnung je Bucket auf den nächsten ganzen Prozentpunkt aufgerundet.
+Überschreitet der rohe Preferred-Wert die physische Bucketkapazität, wird er als
+`PREFERRED_UNATTAINABLE` dokumentiert.
+Er bleibt ein konservatives Signal, wird nicht still auf `100 %` umgedeutet
+und darf keinen erreichbaren Floor ersetzen oder einen Start sperren, der den
+Full-Closure- beziehungsweise Owner-Boundary-Vertrag erfüllt.
+
+### Machbarkeitsinvariante
+
+Der Operational Safety Floor muss mit dem verfügbaren Bucket und dem
+vorgeschriebenen Post-Rehydration-Gate grundsätzlich erreichbar sein. Ist er
+rechnerisch größer als die Bucketkapazität oder durch seinen eigenen
+Pflichtprozess nachweislich nicht erreichbar, lautet das Vertragsfinding
+`POLICY_INFEASIBLE`. Der Agent
+wartet dann nicht auf eine identische unmögliche Messlage und fordert nicht
+wiederholt dasselbe Gate an. Vor weiterer Primärarbeit müssen Kostenklassen,
+Closure-Zuordnung oder Blockschnitt korrigiert und erneut reviewed werden.
+
+Liegt eine frische Messung im Band `CONTINUE` mindestens auf dem effektiven
+Operational Safety Floor, aber unter dem effektiven Autonomous Full-Closure
+Floor, darf der Primärblock einmalig als
+`PRIMARY_OWNER_BOUNDARY_ALLOWED` zugelassen werden. Diese
+Arbeitszulassung entspricht dem historischen Namen
+`CONTINUE_OWNER_BOUNDARY`. Dafür müssen alle folgenden Bedingungen erfüllt
+sein:
+
+1. Der nächste Block ist exakt benannt, atomar, bounded und mit einem realen
+   vollständigen Vergleichsblock belastbar vergleichbar.
+2. Scope, Releasequellen, Preflight und Rollback sind fingerprintgebunden und
+   seit dem Vergleich beziehungsweise letzten Nachweis unverändert oder
+   gezielt neu validiert.
+3. Es handelt sich nicht um Discovery, ungebundene Diagnose, integriertes
+   Review oder einen erstmalig ausgeführten Block unbekannter Größe.
+4. Alle Produkt-, Security-, Daten-, Deploy-, SQL-, Device- und sonstigen
+   Owner-Gates sind unabhängig davon erfüllt.
+5. Der Agent nennt Preferred-Wert samt Erreichbarkeit, Operational Safety
+   Floor, Autonomous Full-Closure Floor, beide effektiven Grenzen, aktuelle
+   Messung und das konkrete reine Closure-Risiko genau einmal. Der Owner
+   akzeptiert danach den unmittelbaren Start ausdrücklich.
+
+Die Annahme wird als fingerprintgebundene Einmalentscheidung protokolliert.
+Eine direkte Owner-Antwort wird nicht durch eine zweite identische
+Usage-Abfrage oder wiederholte Ablehnungsdiskussion entwertet. Erst eine
+nicht unmittelbare Wiederaufnahme, Scope-/Fingerprint-/Runtimeänderung oder
+ein neues Finding invalidiert sie und verlangt ein neues Gate. Der Boundary-
+Pfad schwächt niemals die operative Mindestreserve oder andere
+Sicherheitsgates. Er darf nur die umfassende administrative Closure vertagen.
+
+Liegt die Messung mindestens auf dem effektiven Autonomous Full-Closure Floor
+und sind alle übrigen Gates erfüllt, ist `PRIMARY_ALLOWED` verfügbar. Der
+höhere Preferred-Wert bleibt auch dann rein advisory und verlangt weder eine
+Owner Boundary noch weiteres Warten.
+
+Fehlen vergleichbare Messungen, wird keine numerische Reserve erfunden und
+`PRIMARY_OWNER_BOUNDARY_ALLOWED` ist nicht verfügbar. Dann
 entscheiden statische Schwellen zusammen mit S4R-Größenklasse,
 Reversibilität, Resumierbarkeit und realer Blockform. Ein großer oder nicht
 sicher resumierbarer Block darf unter Caution nicht begonnen werden.
+
+### Arbeitszulassung und sichere Restarbeit
+
+Die Usage-Entscheidung beschreibt den Budgetzustand. Sie ist nicht identisch
+mit der Zulassung eines konkreten Arbeitsblocks. Jede Roadmap hält deshalb
+zusätzlich fest:
+
+- `PRIMARY_ALLOWED`: Der geplante Primärblock passt zum Usage-, Reserve- und
+  Sicherheitsvertrag.
+- `PRIMARY_OWNER_BOUNDARY_ALLOWED`: Der unveränderte Primärblock ist über den
+  engen `CONTINUE_OWNER_BOUNDARY`-Vertrag zugelassen.
+- `PRIMARY_REJECTED_FOR_RESERVE`: Der Primärblock bleibt vollständig gesperrt;
+  höchstens sichere unabhängige Restarbeit darf geprüft werden.
+- `PRIMARY_REJECTED_FOR_CONTRACT`: Ein fachlicher, Security-, Daten-, Owner-
+  oder sonstiger Stop-Vertrag sperrt Primärblock und Restarbeit, soweit der
+  konkrete Stop nicht ausschließlich `CLOSURE_ONLY` erlaubt.
+
+Ein abgelehnter Primärblock darf niemals künstlich in kleinere Teile zerlegt
+werden. Insbesondere bleiben `DIAGNOSTIC_UNBOUNDED`, `INTEGRATED_REVIEW` und
+`PRODUCTIVE_CUTOVER` als Ganzes gesperrt, wenn ihre Zulassung fehlt.
+
+Aktive Blockklassen:
+
+- `BOUNDED_DOCUMENTATION`: bekannte Dokumente, enger Delta-Scope, bekannte
+  günstige Checks und klare Postcondition,
+- `BOUNDED_LOCAL`: bekannte Dateien, Änderung, Toolklassen, Checks,
+  Reversibilität, Stop-Grenze und Postcondition,
+- `DISCOVERY_BOUNDED`: bekannte konkrete Frage und begrenzte Quellen; derzeit
+  keine automatisch zulässige Restarbeitsklasse,
+- `DIAGNOSTIC_UNBOUNDED`: Ursache, Lösung oder Toolbreite unbekannt,
+- `INTEGRATED_REVIEW`: vollständige Test-/Browser-/Reviewwelle,
+- `PRODUCTIVE_CUTOVER`: externe Wirkung samt Postchecks und möglichem Rollback,
+- `CLOSURE_ONLY`: ausschließlich Evidence, Status, Context Receipt, Resume
+  Card und Handoff ohne neue Produktarbeit.
+
+Eine Diagnose darf nur als `BOUNDED_LOCAL` gelten, wenn Frage, erwarteter
+Codepfad, erlaubte Dateien und Tools, datenschutzsichere Marker, Abschlusschecks
+und Stopbedingung vor Beginn vollständig bekannt sind. „Ursache finden“ bleibt
+`DIAGNOSTIC_UNBOUNDED`. Reproduktion, Fix, Last-Mile-Harness, Fullmatrix und
+Abschlussreview sind bei lokal sicherem Zwischenstand getrennte kohärente
+Blöcke; gemeinsame Evidence allein macht sie nicht atomar.
+
+Bei `PRIMARY_REJECTED_FOR_RESERVE` ist höchstens ein bereits dokumentierter
+Fallback der Klassen `BOUNDED_DOCUMENTATION` oder `BOUNDED_LOCAL` zulässig.
+Der Kandidat muss vor Beginn einen eigenen Zweck, erlaubte Dateien und Tools,
+verbotene Primary-Flächen, Abschlusschecks und eine sichere Postcondition
+besitzen. Er darf den Primärblock weder teilweise ausführen noch seine gültigen
+Fingerprints, Preflights, Test-/Review-Evidence oder Rollbackbereitschaft
+invalidieren. Wäre eine Invalidation unvermeidbar, muss ihre vollständige
+Revalidierung selbst im bounded Fallback enthalten und reserveseitig gedeckt
+sein; andernfalls gilt `CLOSURE_ONLY`.
+
+Die Suche nach Restarbeit ist selbst bounded. Sie darf ausschließlich Resume
+Card, Statusmatrix, bereits offene bounded Findings, dokumentierte Follow-ups,
+Evidence-/Doku-Lücken und die bestehende Invalidation Map prüfen. Sie startet
+keine breite Repo-Suche, neue Architekturplanung oder offene Diagnose. Ist dort
+kein eindeutiger Kandidat vorhanden, gilt `CLOSURE_ONLY`.
+
+Existieren mehrere gültige Kandidaten, hat notwendige Closure immer Vorrang.
+Danach werden ausschließlich solche Fallbacks bevorzugt, die den nächsten
+Einstieg nachweisbar günstiger oder sicherer machen: zuerst Context-/Postimage-
+Pflege, dann bereits identifiziertes bounded Hardening, erforderlicher Doku-
+Sync und zuletzt sonstige vorbereitende Arbeit. Usage nur zu verbrauchen ist
+kein fachlicher Nutzen; die Closure Reserve bleibt unberührt.
+
+Eine `RESTRICTED_WORK_EPISODE` gilt, sobald das Usage-Band
+`CONTINUE_WITH_CAUTION` lautet oder der Primärblock als
+`PRIMARY_REJECTED_FOR_RESERVE` abgelehnt wird. Pro Episode darf höchstens ein
+neuer bounded Arbeitsblock beginnen, unabhängig davon, ob er der geplante
+Primärblock oder ein Fallback ist. Die aktive Roadmap speichert dafür Grund,
+beide Resetidentitäten und `AVAILABLE` oder `CONSUMED`.
+
+Nach Verbrauch der Episode ist bis zu einer neuen Episode nur `CLOSURE_ONLY`
+zulässig. Eine neue Episode beginnt erst nach `RESET_CROSSED`, validiertem
+`ADJUSTMENT` oder `CONTINUE` zusammen mit `PRIMARY_ALLOWED`. Der Zustand wird
+nicht aus dem Chatverlauf geschätzt.
+
+Verliert ein Fallback während der Ausführung seine Boundedness, gilt
+`BOUNDEDNESS_BREACH`: Scope und Toolbreite nicht erweitern, sicheren lokalen
+Stand herstellen, Finding und Invalidation dokumentieren, soweit sicher
+synchronisieren und stoppen. „Bereits begonnen“ ist keine Erlaubnis zur
+Fortsetzung.
+
+Ein Gate reserviert keine Quota. Große, integrierte oder produktive Blöcke
+setzen voraus, dass während ihrer Ausführung kein weiterer materieller
+Codex-Workload desselben Kontingents parallel gestartet wird. Eine spätere
+Extension darf dazu höchstens advisory warnen.
+
+Meldet der kanonische Validator `LIMIT` oder `0 %`, gilt nach Erhalt dieses
+Ergebnisses `FINAL_RESPONSE_ONLY`: keine neue Arbeit, kein neuer Toolaufruf und
+keine Restarbeit. Eine möglicherweise noch zustellbare Abschlussantwort ist
+keine planbare Closure Reserve.
 
 ### Safe Closure und Dokumentation
 
@@ -273,6 +515,15 @@ Vor dem grünen S4 Readiness Review sind ausdrücklich festzulegen:
 - ob Cleanup, Scheduler, Secrets oder externe Automationen betroffen sind,
 - welche Producer und Consumer kompatibel bleiben müssen.
 
+Sind Secrets, Scheduler, Workflows, Edge Functions oder produktive Auth-Pfade
+betroffen, erstellt S4R vor der Blockfreigabe eine Secret-Readiness-Matrix nach
+`docs/DEV_ENVIRONMENT.md`. Sie dokumentiert ausschließlich Namen, Consumer,
+kanonischen Speicherort, lokale Erforderlichkeit und Owner-Gate. Secret-Werte
+bleiben außerhalb von Roadmap, Evidence, Logs und Antworten. Jeder freigegebene
+Cutoverblock muss seine benötigten Secrets bereits an den vorgesehenen
+Speicherorten vorfinden; eine pauschale lokale Spiegelung aller Remote-Secrets
+ist kein zulässiger Ersatz für Readiness.
+
 Eine offene Grundsatzfrage blockiert S4. Ändert sich der Produktvertrag nach
 S4R dennoch:
 
@@ -300,6 +551,20 @@ Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
 4. Nur der aktuelle Schritt samt Exit-Kriterium.
 5. `git status --short` und der relevante Diff.
 6. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
+
+Das erste kanonische Usage-Gate nach dieser Lesewelle wird als
+`POST_REHYDRATION_BASELINE` behandelt. Sein Restwert ist die reale verfügbare
+Nettokapazität für den nächsten Block. Rehydrationsverbrauch wird nur dann als
+exaktes Delta ausgewiesen, wenn unmittelbar davor ein kanonischer Checkpoint
+mit identischen Reset-IDs existiert. Ohne diese Vorhermessung wird weder ein
+Stand von `100 %` angenommen noch ein Delta erfunden.
+
+Die Rehydration bleibt bei der Planung eines noch nicht begonnenen neuen Chats
+Teil des Gesamtforecasts. Sobald sie beim Wiedereinstieg abgeschlossen ist,
+wechselt sie jedoch von prognostizierter Arbeit zu `SUNK_USAGE` und darf die
+Zulassung des folgenden Blocks nicht ein zweites Mal belasten. Der aktuelle
+Restwert sowie der für den verbleibenden Block geltende Operational Safety
+Floor und Autonomous Full-Closure Floor entscheiden weiterhin unverändert.
 
 Bei großen Quellen wird zuerst nach dem relevanten Symbol, Abschnitt,
 Producer oder Consumer gesucht und anschließend nur der zur aktuellen
@@ -418,7 +683,13 @@ S4R erstellt vor jeder Umsetzung eine Aufwandsprognose:
 - erwartete teure Testpässe und externe Reviewläufe,
 - notwendige Context-Rehydration, Toolinteraktionen, Fehlersuche sowie
   Dokumentations-, Evidence- und Postcondition-Arbeit,
-- empfohlene autonome Wellen samt Reasoning-Stufe und Stopppunkten.
+- empfohlene autonome Wellen samt Reasoning-Stufe und Stopppunkten,
+- bei produktiven UI-Schreibpfaden das Last-Mile-Orakel vom echten
+  Benutzerereignis bis Data Access/Transport,
+- bei vorbereitetem Cutover das erwartete aktuelle, Forward- und
+  Rollbackpostimage sowie einen günstigen Zielpostimage-Precheck,
+- bei produktivem Pflichtfehler die Grenze zwischen atomarem Rollback/
+  Postcheck und einer erst danach beginnenden Diagnosewelle.
 
 Die Prognose ist eine Steuerungshilfe, keine Zeilen- oder Dateiquote. Wenige
 Dateien oder geänderte Zeilen beweisen keinen kurzen Block. Bei
@@ -456,11 +727,32 @@ getrennte Produktentscheidungen einen klareren Vertrag ergeben.
 - CodeRabbit ist eine zusätzliche unabhängige Kontrolle und keine Source of
   Truth. Mehrdeutige Produkt- oder Vertragsfindings bleiben Owner-Gates;
   Ausfall oder Nichtverfügbarkeit werden sichtbar dokumentiert.
+- Vor einer teuren Fullmatrix prüft ein günstiges Precheck-Orakel, ob lokaler
+  Productload, Cacheversion und erwartetes Zielpostimage zum Testmodus passen.
+  Eine bekannt falsche Forward-/Rollbackkonfiguration wird nicht erst durch
+  eine vollständige erwartbar rote Matrix erkannt.
+- Ein ausgeschöpftes externes Reviewbudget verhindert keinen gezielten nativen
+  Review. Umgekehrt wird ein nativer Review nicht als weiterer CodeRabbit-Lauf
+  oder Ersatz für fehlende externe Evidence bezeichnet.
 - Der externe Review verwendet ausschließlich den in
   `docs/DEV_ENVIRONMENT.md` verifizierten Aufruf `coderabbit`. Schlägt Shim,
   WSL-CLI oder Authentifizierung fehl, endet der externe Reviewpfad mit einem
   sichtbaren Evidence-Gap. Innerhalb der Roadmap wird keine alternative CLI
   installiert und kein nativer Review als CodeRabbit-Ergebnis bezeichnet.
+
+## Produktiver Fehler- und Diagnosevertrag
+
+Ein produktiver Cutoverblock umfasst bei einem Pflichtfehler ausschließlich
+den vorbereiteten Rollback, Datenintegritätschecks, Runtimepostcheck und den
+sicheren Evidence-/Resume-Abschluss. Offene Ursachenforschung wird nicht an
+diesen atomaren Block angehängt.
+
+Nach dem Rollback beginnt Diagnose nur nach einem neuen Usage-Gate. Sie wird in
+Reproduktion, minimalen Fix, gezieltes Last-Mile-Orakel und erst danach
+invalidierte Fullmatrix/Reviews getrennt, sofern jeder Zwischenstand lokal
+sicher und resumierbar ist. Ein Dirty Stop macht unfertige Patches und nicht
+abgeschlossene Browserergebnisse unverwendbar; bereits bewiesene Rollback- und
+Datenpostconditions bleiben gültig.
 
 ## Reviewtiefen
 

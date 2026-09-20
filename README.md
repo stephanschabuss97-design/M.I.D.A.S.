@@ -323,6 +323,13 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 | Bootflow | Start- und Initialisierungssequenz | [`docs/modules/bootflow overview.md`](docs/modules/bootflow%20overview.md) |
 | Android Widget | nativer Android-Node fuer Homescreen-Snapshot, Sync und minimalen Launcher | [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md) |
 
+### Entwicklungs- und Governance-Tools
+
+| Bereich | Zweck | Overview |
+|------|------|------|
+| KASRKIN | lokal installierte Codex-Usage-Governance aus `codex-tools`; MIDAS ist versionsgebundener Consumer | [KASRKIN Source](../codex-tools/apps/kasrkin/README.md) · [Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md) |
+| A.R.G.U.S. | organisatorisches Legacy-Archiv und fertiger Handoff für einen separaten V1.0-Produkt-Lifecycle | [V1.0-Handoff](docs/tooling-extraction/ARGUS%20V1.0%20Product%20Handoff.md) · [W7-Receipt](docs/tooling-extraction/w7-retirement-receipt.json) · [W5-Receipt](docs/tooling-extraction/w5-argus-v1-handoff-receipt.json) · [historisches W4-Receipt](docs/tooling-extraction/w4-argus-pilot-archive-receipt.json) |
+
 ---
 
 ## Dokumentationshierarchie
@@ -350,6 +357,13 @@ Wichtige Einstiegspunkte:
 - [`docs/modules/Profile Module Overview.md`](docs/modules/Profile%20Module%20Overview.md)
 - [`docs/modules/Hydration Target Module Overview.md`](docs/modules/Hydration%20Target%20Module%20Overview.md)
 - [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md)
+- [KASRKIN Source](../codex-tools/apps/kasrkin/README.md)
+- [KASRKIN Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md)
+- [A.R.G.U.S. V1.0 Product Handoff](docs/tooling-extraction/ARGUS%20V1.0%20Product%20Handoff.md)
+- [A.R.G.U.S. W7-Retirement-Receipt](docs/tooling-extraction/w7-retirement-receipt.json)
+- [A.R.G.U.S. W5-Handoff-Receipt](docs/tooling-extraction/w5-argus-v1-handoff-receipt.json)
+- [A.R.G.U.S. W4-Archivreceipt](docs/tooling-extraction/w4-argus-pilot-archive-receipt.json)
+- [Post-W7 Migration Closure Report](docs/tooling-extraction/Post-W7%20Migration%20Closure%20Report.md) · [Review-Vertrag](docs/tooling-extraction/Post-W7%20Migration%20Closure%20Review.md)
 - [`docs/qa/README.md`](docs/qa/README.md)
 - [`docs/qa/release-readiness.md`](docs/qa/release-readiness.md)
 - [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md) als Kompatibilitätsindex für

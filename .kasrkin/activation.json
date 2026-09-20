@@ -1,0 +1,89 @@
+{
+  "activationVersion": "midas-kasrkin-activation/1",
+  "consumer": "MIDAS",
+  "activatedAt": "2026-09-19T20:51:04.3727030+02:00",
+  "authority": {
+    "decisionSemanticsOwner": "KASRKIN",
+    "decisionDetailSource": "PINNED_INSTALLED_RELEASE",
+    "projectExecutionOwner": "MIDAS",
+    "projectContract": "docs/templates/MIDAS Roadmap Workflow Contract.md"
+  },
+  "binding": {
+    "path": ".kasrkin/binding.json",
+    "sha256": "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
+    "releaseId": "kasrkin-2a0d185b0b04a93f",
+    "releaseFingerprint": "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
+    "payloadDigest": "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
+    "receiptSha256": "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187",
+    "sourceCandidateId": "source-candidate-a57d05e3aab820a1"
+  },
+  "consultationArtifacts": [
+    {
+      "role": "KASRKIN_INTEGRATION_CONTRACT",
+      "path": "C:\\Users\\steph\\Projekte\\codex-tools\\docs\\architecture\\KASRKIN Integration.md",
+      "sha256": "d2a2e780b1a28a22466e9cf7b2cd74e30f98a5c4c9b937525293aa7df87feb9a"
+    },
+    {
+      "role": "MIDAS_AGENT_ENFORCEMENT",
+      "path": "AGENTS.md",
+      "sha256": "e878e2209594c45091765e84f6a97b425b8abd6b472b8b0ea5d3cb95ca6d776c"
+    },
+    {
+      "role": "MIDAS_SENSOR_OPERATIONS",
+      "path": "docs/DEV_ENVIRONMENT.md",
+      "sha256": "357fd8c961de3b59f6730dba5d9d6bb48236f5c00087f1ff8994b329f67cc4f7"
+    },
+    {
+      "role": "MIDAS_WORKFLOW_CONSULTATION",
+      "path": "docs/templates/MIDAS Roadmap Workflow Contract.md",
+      "sha256": "48acd9c3140fcdfb65804296ed4488bb4a1f1f32fa0fd496bac2422c485ee373"
+    },
+    {
+      "role": "MIDAS_TEMPLATE_INDEX",
+      "path": "docs/templates/README.md",
+      "sha256": "d9cc9d82b0226b6a0e4b194ae5556c3af3e1bd4b1a3870e38584345d382b1453"
+    },
+    {
+      "role": "MIDAS_ROADMAP_TEMPLATE",
+      "path": "docs/templates/MIDAS Roadmap Template.md",
+      "sha256": "1d8e4650ae4eab8985e8fe9666544971264528a8eae2f1890141c8d66335c843"
+    },
+    {
+      "role": "MIDAS_EVIDENCE_TEMPLATE",
+      "path": "docs/templates/MIDAS Roadmap Evidence Template.md",
+      "sha256": "b010412979481af1459eef5ea406467c5090b7e3e13b78535c4edd4cddf82b6f"
+    },
+    {
+      "role": "MIDAS_ACTIVATION_PROOF",
+      "path": ".kasrkin/Test-MidasKasrkinActivation.ps1",
+      "sha256": "636d49ac32ef5c623be8e8a66f66505a08dd06bd490df66e22c600249fe0f625"
+    }
+  ],
+  "runtime": {
+    "statePath": "C:\\Users\\steph\\Documents\\Rainmeter\\Skins\\illustro\\Tokens\\UsageState.json",
+    "schemaVersion": 3,
+    "sensorVersion": "3.1.0"
+  },
+  "legacyRollback": {
+    "status": "RETIRED_W7",
+    "retiredAt": "2026-09-20T06:36:11.7147544+02:00",
+    "sourceRoot": "tools/codex-usage",
+    "active": false,
+    "successors": [
+      {
+        "role": "CODEX_TOOLS_SOURCE",
+        "path": "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\kasrkin\\tools\\codex-usage"
+      },
+      {
+        "role": "PINNED_INSTALLED_RELEASE",
+        "path": "C:\\Users\\steph\\.local\\share\\kasrkin\\releases\\kasrkin-2a0d185b0b04a93f"
+      }
+    ]
+  },
+  "constraints": {
+    "policyChanged": false,
+    "runtimeStateMoved": false,
+    "additionalUsageWriter": false,
+    "hestiaChanged": false
+  }
+}

@@ -21,6 +21,12 @@ bleiben bewusst außerhalb dieses Ordners. Sie sind lebende MIDAS-Quellen,
 keine Roadmap-Vorlagen. `docs/QA_CHECKS.md` ist nur ein
 Kompatibilitätsindex für ältere Links.
 
+Die Templates besitzen keine eigene KASRKIN-Policy. Der Workflow-Vertrag
+beschreibt die MIDAS-spezifische Konsultation und Ausführungswirkung; die
+Entscheidungssemantik stammt ausschließlich aus dem durch
+`.kasrkin/binding.json` gebundenen Release. Die aktive Projektion ist in
+`.kasrkin/activation.json` fingerprintgebunden.
+
 ## Neue Roadmap erstellen
 
 1. `README.md` und `docs/DEV_ENVIRONMENT.md` lesen.
@@ -112,6 +118,13 @@ bleiben dennoch getrennt nachvollziehbar.
   statische und gegebenenfalls Browser-/Device-Testmatrix, danach der native
   Code- und Contract Review. Unveränderte S4-Full-Review-Evidence wird dabei
   referenziert und nicht erneut erzeugt.
+- Bei produktiven UI-Schreibpfaden muss S4R ein vollständiges Last-Mile-Orakel
+  vom Benutzerereignis bis Data Access/Transport planen. Getrennte
+  Komponententests sind dafür keine ausreichende Cutover-Evidence.
+- Reproduktion, Fix, Last-Mile-Harness und Fullmatrix werden als getrennte
+  lokale Blöcke geplant, wenn ihre Zwischenstände sicher resumierbar sind.
+- Vor einer teuren Fullmatrix bestätigt ein günstiger Precheck das erwartete
+  Productload-, Cache- und Zielpostimage.
 - Bei Codeänderungen folgt in S5 genau ein geplanter initialer CodeRabbit-Lauf
   als zusätzliche unabhängige Kontrolle. Findings werden gesammelt gegen
   Roadmap, Produktvertrag und reale Implementierung bewertet und niemals blind
@@ -123,6 +136,9 @@ bleiben dennoch getrennt nachvollziehbar.
   P0/P1-, Security-, Datenintegritäts- oder Vertragsrisiko eröffnet oder der
   Owner sie ausdrücklich beauftragt. Gewöhnliche Nitpicks starten keine
   unbeschränkte Reviewspirale.
+- Ein ausgeschöpftes CodeRabbit-Budget sperrt keinen nativen Review. Eine
+  bestehende Owner-Freigabe wird bei unverändertem Fingerprint nicht erneut
+  erfragt; notwendige UI-Handlungen werden separat als Operatoraktion benannt.
 - Ein technisch oder fachlich mehrdeutiges Finding bleibt ein Owner-Gate. Ein
   nicht verfügbarer externer Review wird mit Grund dokumentiert und nicht
   durch ein behauptetes Ergebnis ersetzt.
@@ -134,6 +150,15 @@ S5 und S6 sind getrennte kohärente Abschlussblöcke. Nach S5 wird vor S6 ein
 neues Usage-Gate ausgeführt. Eine nach einem abgeschlossenen S5-Prüfblock
 notwendige eigenständige Korrektur-/Retest-Welle erhält ebenfalls ein Gate,
 wenn bereits eine sichere Resume-Grenze vorliegt.
+
+Ein Usage-Gate bewertet Budget und konkrete Arbeitszulassung getrennt. Passt
+der geplante Block nicht, bleibt er vollständig gesperrt und darf nicht in
+kleinere Teile zerlegt werden. Eine Roadmap kann höchstens einen bereits
+benannten, unabhängigen `BOUNDED_DOCUMENTATION`- oder `BOUNDED_LOCAL`-Fallback
+pro `RESTRICTED_WORK_EPISODE` vorbereiten. Diese Episode gilt im Caution-Band
+und bei einem nur wegen Reserve abgelehnten Primärblock. Der Fallback darf
+keine gültige Evidence oder Precondition des Primärblocks invalidieren. Ohne
+eindeutigen Kandidaten folgt `CLOSURE_ONLY`.
 
 Der Roadmap-Richtwert von ungefähr 80 KB oder 1.200 Zeilen ist kein hartes
 Limit. Überschreitungen sind zulässig, wenn eine sinnvolle Kompaktierung
@@ -191,6 +216,13 @@ Toolzustand geändert haben. Er ist kein zweites Arbeitsprotokoll. Ist seine
 Baseline nicht mehr aktuell oder eine Invalidation-Bedingung eingetreten, wird
 der betroffene Nachweis gezielt erneuert statt der gesamte Projektkontext neu
 eingelesen.
+
+Ein erfolgreicher Toolprozess belegt nicht automatisch vollständigen
+Modellkontext. Der Context Receipt unterscheidet deshalb bei relevanten Reads
+`COMPLETE`, `FOCUSED_COMPLETE`, `TRUNCATED`, `PARTIAL` und `FAILED` sowie
+separat `SUFFICIENT`, `INSUFFICIENT` oder `NOT_REQUIRED` für die aktuelle
+Rehydration. Truncation darf niemals als vollständiger Read wiederverwendet
+werden.
 
 Ein fingerprintgebundener Context-Receipt-Eintrag darf einen wiederholten
 Rohread nur ersetzen, wenn Fingerprint und Source exakt stimmen, die aktuelle

@@ -1,0 +1,103 @@
+{
+  "receiptVersion": "midas-kasrkin-consumer-cutover/1",
+  "consumer": "MIDAS",
+  "wave": "W3-M",
+  "verifiedAt": "2026-09-19T15:57:06.2258152+02:00",
+  "projectRoot": "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+  "binding": {
+    "path": ".kasrkin/binding.json",
+    "bytes": 361,
+    "sha256": "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
+    "bindingVersion": "kasrkin-project-binding/1",
+    "releaseId": "kasrkin-2a0d185b0b04a93f",
+    "releaseFingerprint": "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
+    "payloadDigest": "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
+    "installationReceiptSha256": "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187"
+  },
+  "command": {
+    "name": "kasrkin",
+    "shimPath": "C:\\Users\\steph\\.local\\bin\\kasrkin.cmd",
+    "checkoutIndependent": true,
+    "neverUsesLatest": true
+  },
+  "changedFiles": [
+    {
+      "role": "AGENT_ENFORCEMENT_REFERENCE",
+      "path": "AGENTS.md",
+      "preimageSha256": "5ff1e41e3aaed5c9fae1fd26e278a66105e4694845867b1f728a142172d1f0bc",
+      "postimageSha256": "efc63ed8ef49ec8fcd2052fcdfffe7814da614f2982d1cbd65ef8291a24d3a86"
+    },
+    {
+      "role": "PRODUCT_NAVIGATION",
+      "path": "README.md",
+      "preimageSha256": "ef8e541d7f81ae1909b73b8e2e31a2ef121ef5df9c1ce7a25bdc2d65be060529",
+      "postimageSha256": "3f5033d4615c242cb9f05d7ef06bf0c3cb53f7b664edef629bf1cc3f58b08986"
+    },
+    {
+      "role": "SENSOR_OPERATIONS_CONTRACT",
+      "path": "docs/DEV_ENVIRONMENT.md",
+      "preimageSha256": "93079ca97aee4e75b854ddbec65a72760a7a4f8a5a31bbcd3dc8b5e71e33c287",
+      "postimageSha256": "eec99ac8b8415258b5fda73e13b6da754d92a847d79c68b382876a1ab351ffa4"
+    },
+    {
+      "role": "CANONICAL_WORKFLOW_CONTRACT",
+      "path": "docs/templates/MIDAS Roadmap Workflow Contract.md",
+      "preimageSha256": "8c91cb658d00f69ec71bfafb703415d04cda62e8b1f94f49519b3ef9451ad378",
+      "postimageSha256": "783997dc9126498eaaa751bdae0416faf9e2464c34628e4909eb278cf7f06bb2"
+    },
+    {
+      "role": "MIDAS_GUARD_ACTIVATION",
+      "path": "tools/codex-usage/guard-activation.json",
+      "preimageSha256": "e7c3c5bdd9ecc7d50999050f2c01a0ad4eaeed5fd6e5f7ea8d019ba62aaf7016",
+      "postimageSha256": "50f93f15f9698c433b30c883dae7b5e5b64ee93e93a946ede0ac11ccef744af3"
+    }
+  ],
+  "proof": {
+    "rootVersionExit": 0,
+    "foreignCwdVersionExit": 0,
+    "validatorExit": 0,
+    "validatorMeasuredAt": "2026-09-19T15:57:06.2258152+02:00",
+    "envelopeExit": 0,
+    "envelopeVersion": "guard-telemetry/1",
+    "envelopeResult": "VALID",
+    "installedPolicy": "PASS_REUSED_FROM_FINGERPRINT_IDENTICAL_ATTEMPT_02",
+    "activationPassed": 10,
+    "activationFailed": 0,
+    "legacyBmValidatorExit": 0,
+    "unbound": {
+      "exitCode": 2,
+      "code": "KASRKIN_PROJECT_BINDING_MISSING"
+    },
+    "drift": {
+      "exitCode": 2,
+      "code": "KASRKIN_BINDING_RECEIPT_HASH_MISMATCH"
+    },
+    "temporaryFixtureRemoved": true
+  },
+  "runtime": {
+    "statePath": "C:\\Users\\steph\\Documents\\Rainmeter\\Skins\\illustro\\Tokens\\UsageState.json",
+    "statePathChanged": false,
+    "sensorSha256": "3d8f8601d67e33193566cc4273faf517ed32915d8b758d4a5c5c60e08037c8d1",
+    "rainmeterInstalledAndReleaseSensorsByteIdentical": true,
+    "additionalScheduledUsageWriters": 0
+  },
+  "boundaries": {
+    "oldMidasSourceRetained": true,
+    "hestiaChanged": false,
+    "hestiaHead": "f7335e3190550f6e2da024f33d9de959e5d97de7",
+    "activePolicyChanged": false,
+    "migrationInventoryChanged": false,
+    "migrationInventorySha256": "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775",
+    "commitCreated": false
+  },
+  "rollback": {
+    "id": "BM",
+    "bindingPreimage": "ABSENT",
+    "restoreChangedFilesTogether": true,
+    "restoreToPreimageHashes": true,
+    "legacyValidatorPath": "tools/codex-usage/Test-CodexUsageState.ps1",
+    "preserveInstalledRelease": true,
+    "preserveRainmeterState": true,
+    "preserveHestia": true
+  }
+}

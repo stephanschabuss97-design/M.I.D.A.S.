@@ -101,10 +101,16 @@ keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
 
 - Refresh-Skript:
   `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\GetCodexUsage.ps1`
-- Kanonische Repo-Kopie:
-  `tools/codex-usage/GetCodexUsage.ps1`.
-- Kanonischer State-Validator:
-  `tools/codex-usage/Test-CodexUsageState.ps1`.
+- Versionsgebundener KASRKIN-Einstieg: stabiler Command `kasrkin` mit der
+  projektlokalen Bindung `.kasrkin/binding.json`.
+- Projektbezogene Aktivierungs- und Konsultationsbindung:
+  `.kasrkin/activation.json`; read-only Proof:
+  `.kasrkin/Test-MidasKasrkinActivation.ps1`.
+- Kanonischer State-Validator-Aufruf: `kasrkin validate -Refresh`.
+- Die frühere lokale Implementierung wurde in W7 nach bewiesenem KASRKIN-
+  Cutover retiret. Recovery stützt sich auf die gebundene Installation,
+  `codex-tools`-Source und versionierte Receipts, nicht auf eine zweite lokale
+  Toolkopie.
 - Autoritativer State:
   `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\UsageState.json`
 - Erwartetes Schema: `schemaVersion = 3`.
@@ -117,18 +123,16 @@ keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
 - Reset-Credits sind optionale Kontextinformation und erhöhen nie rechnerisch
   das verbleibende 5h- oder Wochenbudget.
 
-Die Repo-Kopie ist die versionierte Source of Truth. Änderungen werden zuerst
-dort vorgenommen und danach in den Rainmeter-Pfad installiert; beide Kopien
-müssen anschließend bytegleich sein.
+Die KASRKIN-Source of Truth liegt in `codex-tools`; MIDAS bindet eine konkrete
+lokal installierte Releaseidentität und verwendet niemals `latest`. Der
+Rainmeter-Sensor und der Sensor im gebundenen Release müssen bytegleich bleiben.
+MIDAS besitzt seit W7 keine duplizierte lokale KASRKIN-Implementierung mehr.
 
 Unmittelbar vor jedem Usage-Gate wird genau ein Refresh ausgeführt und danach
 der gespeicherte State mit dem kanonischen Validator geprüft:
 
 ```powershell
-$codexUsageValidator = 'C:\Users\steph\Projekte\M.I.D.A.S\tools\codex-usage\Test-CodexUsageState.ps1'
-$usageValidation = & 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' `
-  -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass `
-  -File $codexUsageValidator -Refresh
+$usageValidation = & kasrkin validate -Refresh
 if ($LASTEXITCODE -ne 0) {
   throw "Codex usage state validation failed with exit code $LASTEXITCODE."
 }
@@ -138,7 +142,8 @@ $usageState = $usageValidation | ConvertFrom-Json
 Ein State ist für eine Continuation-Entscheidung nur frisch und vollständig,
 wenn alle folgenden Bedingungen erfüllt sind:
 
-- Installierte und kanonische Skriptkopie besitzen denselben SHA-256.
+- Rainmeter-Sensor und Sensor des gebundenen KASRKIN-Releases besitzen
+  denselben SHA-256.
 - `schemaVersion` ist exakt `3` und `sensorVersion` exakt `3.1.0`.
 - `status` ist exakt `OK`, `LOW` oder `LIMIT`; `WAIT`, `STALE`, `ERROR`,
   `PARTIAL` und unbekannte Werte sind ungültig.
@@ -165,6 +170,22 @@ aus. Sein Exitcode `0` ist der kanonische Nachweis, dass Hash-, Schema-,
 Versions-, Status-, Bucket- und Freshnessvertrag gemeinsam erfüllt sind. Der
 Agent entscheidet auf dieser Ausgabe; das rohe `UsageState.json` wird nicht
 eigenständig neu interpretiert.
+
+Die validierte Telemetrie ist ausschließlich Eingang des aktiven
+Guard-vNext-Vertrags. Usage-Bands, Floors, Owner Boundary,
+Restricted-Work-Episode, Safe Closure, LIMIT, Evidence-Reuse und erlaubte
+Arbeitsklassen gehören der durch `.kasrkin/binding.json` exakt gebundenen
+KASRKIN-Implementierung. Der MIDAS-Workflowvertrag besitzt nur den
+projektspezifischen Konsultations-, Ausführungs- und Abschlussvertrag. Seine
+menschenlesbare Projektion darf KASRKIN nicht überstimmen; ein Widerspruch ist
+Contract Drift und sperrt neue Arbeit. `.kasrkin/activation.json` bindet beide
+Seiten per Fingerprint. KASRKIN führt selbst keine zugelassene Arbeit aus und
+schwächt keine anderen Gates.
+
+Workflowzustände werden weder aus Rainmeter noch aus Chattext rekonstruiert.
+Ein `LIMIT`- oder `0 %`-Ergebnis wird ausschließlich gemäß dem zentralen
+Workflowvertrag behandelt. Die möglicherweise noch zustellbare Antwort ist
+keine planbare Graceful-Stop-Reserve.
 
 Der Sensor liest die Limits aus dem lokal authentifizierten Codex-App-Server.
 Diese lokale Schnittstelle ist eine beobachtete Abhängigkeit und kein von
@@ -474,6 +495,10 @@ Wichtig:
 - In Roadmaps mit Codeaenderungen gehoert CodeRabbit ausschließlich in S5:
   ein Initiallauf und maximal ein Verifikationslauf. S1-S4 sowie Doku-only-
   Roadmaps verwenden native Reviews ohne externen CodeRabbit-Aufruf.
+- Ein ausgeschöpftes oder nicht verfügbares CodeRabbit-Budget betrifft nur den
+  externen Reviewpfad. Ein gezielter nativer Review bleibt ein eigener lokaler
+  Check und wird ausschließlich durch seinen Scope, das Usage-Gate und den
+  Roadmapvertrag begrenzt.
 - Schlaegt der kanonische Shim oder die Authentifizierung fehl, wird der
   externe Review gestoppt und der konkrete Fehler dokumentiert. Innerhalb
   einer Roadmap wird weder eine alternative CLI installiert noch ein manueller
@@ -909,6 +934,19 @@ Relevante Dateien:
 
 Browser-/PWA-Smokes sind oft manuell sinnvoller als schweres Testtooling.
 
+Für produktive UI-Schreibpfade reicht ein Paar getrennter Komponententests
+nicht als Last-Mile-Nachweis. Ein Harness oder Browser-Orakel muss den realen
+Weg vom DOM-Ereignis über den aktuell gebundenen Listener, die aktive Shell-
+und Lifecycleinstanz, Commit/Recovery und Data Access bis zum Transport
+zusammenhängend prüfen. Zustandsmarker bleiben payloadfrei und dürfen weder
+Gesundheitsdaten noch Secrets ausgeben.
+
+Reload-Harnesses müssen persistierte Identitäten realistisch behandeln.
+Deterministische UUID-, Lease- oder Request-ID-Generatoren werden nach einem
+simulierten Reload so fortgesetzt, dass sie nicht mit erhaltenem State
+kollidieren. Ein rotes Harness-Orakel wird vor jeder Produktkorrektur als
+Testfehler oder realer Produktfehler klassifiziert.
+
 ### Playwright
 
 Global installiert, bewusst nicht als MIDAS-Projektdependency:
@@ -981,6 +1019,27 @@ Hinweis:
 
 - `.env.supabase.local` enthaelt lokale Arbeitswerte, aber nicht zwingend alle Remote-Secrets.
 - Supabase Function Env und GitHub Actions Secrets koennen zusaetzliche Werte im jeweiligen Dashboard enthalten.
+- `.env.supabase.local` ist ein kuratiertes lokales Operator-Bundle und kein
+  vollstaendiger Secret-Tresor oder Spiegel aller Remote-Secrets.
+- Ein Remote-Secret wird nur lokal gespiegelt, wenn ein konkreter lokaler Test,
+  Diagnose-, Deploy- oder Recoverypfad seinen Wert tatsaechlich benoetigt.
+
+Vor einer Roadmap mit Secrets, Scheduler-, Workflow-, Edge- oder produktiver
+Auth-Wirkung erstellt S4R eine Secret-Readiness-Matrix ohne Werte:
+
+| Feld | Bedeutung |
+| --- | --- |
+| Secret-Name | Exakter erwarteter Variablen- oder Dashboardname |
+| Consumer | Werkzeug, Workflow, Function oder Runtime, die den Wert benoetigt |
+| Kanonischer Speicherort | Supabase, GitHub, lokales Operator-Bundle oder Passwortmanager |
+| Lokal erforderlich | `ja` nur bei einem konkreten lokalen Consumer, sonst `nein` |
+| Owner-Gate | Zeitpunkt und Freigabe vor Eintrag, Rotation oder produktiver Nutzung |
+
+Alle fuer einen freigegebenen Cutoverblock notwendigen Secrets muessen vor
+Beginn dieses Blocks an ihrem vorgesehenen Speicherort verfuegbar sein. Ein
+erst waehrend des Cutovers unerwartet fehlendes Secret ist ein sichtbares
+Readiness-Finding; es wird nicht durch das pauschale Kopieren weiterer Secrets
+in `.env.supabase.local` umgangen.
 
 Regeln:
 

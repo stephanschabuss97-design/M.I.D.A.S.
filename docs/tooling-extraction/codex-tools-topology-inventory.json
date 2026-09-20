@@ -1,0 +1,183 @@
+{
+  "schemaVersion": "codex-tools-topology-inventory/1",
+  "capturedAt": "2026-09-19T11:00:39.4016844+02:00",
+  "status": "W3_T_DISCOVERY_COMPLETE",
+  "discoveryMode": "FOCUSED_METADATA_AND_CONTRACT_DISCOVERY",
+  "scopeRoot": "C:\\Users\\steph\\Projekte",
+  "sourceAddendum": {
+    "path": "C:\\Users\\steph\\Desktop\\Addendum — Codex Tools Monorepo, Shared Workstation Tooling & Revised Extraction Direction.md",
+    "sha256": "981ee6702a4a0eeef356e94753e48f798798db59a8a6eb9ea9fa81000bf313e0",
+    "role": "OWNER_DIRECTION_INPUT_NOT_SELF_EXECUTING"
+  },
+  "priorInventory": {
+    "path": "docs/tooling-extraction/migration-inventory.json",
+    "sha256": "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775",
+    "disposition": "IMMUTABLE_W0_EVIDENCE"
+  },
+  "roots": [
+    {
+      "id": "midas",
+      "path": "C:\\Users\\steph\\Projekte\\M.I.D.A.S",
+      "classification": "PRODUCT_REPOSITORY",
+      "git": true,
+      "orientation": ["README.md", "AGENTS.md", "docs/DEV_ENVIRONMENT.md"],
+      "disposition": "REMAINS_PROJECT_LOCAL"
+    },
+    {
+      "id": "hestia",
+      "path": "C:\\Users\\steph\\Projekte\\H.E.S.T.I.A",
+      "classification": "PRODUCT_REPOSITORY",
+      "git": true,
+      "orientation": ["README.md", "AGENTS.md", "docs/DEV_ENVIRONMENT.md"],
+      "disposition": "REMAINS_PROJECT_LOCAL"
+    },
+    {
+      "id": "kasrkin",
+      "path": "C:\\Users\\steph\\Projekte\\kasrkin",
+      "classification": "OWNED_TOOL_PRODUCT_SOURCE_CANDIDATE",
+      "git": true,
+      "fileCountObserved": 71,
+      "bytesObserved": 555622,
+      "sourceCandidateId": "source-candidate-2c264ced0d6645f1",
+      "disposition": "REHOME_CANDIDATE_FOR_CODEX_TOOLS_APPS_KASRKIN"
+    },
+    {
+      "id": "hydro-rush",
+      "path": "C:\\Users\\steph\\Projekte\\Hydro Rush",
+      "classification": "PRODUCT_WORKSPACE",
+      "git": false,
+      "fileCountObserved": 16,
+      "bytesObserved": 162813,
+      "disposition": "REMAINS_PROJECT_LOCAL_FUTURE_ORIENTATION_BASELINE_ONLY"
+    },
+    {
+      "id": "hd2-modding",
+      "path": "C:\\Users\\steph\\Projekte\\Game Mods\\HD2 Modding",
+      "classification": "DOMAIN_WORKSPACE_WITH_LOCAL_TOOLCHAIN",
+      "git": false,
+      "fileCountObserved": 8126,
+      "bytesObserved": 43483237157,
+      "disposition": "REMAINS_DOMAIN_WORKSPACE_FUTURE_SEPARATE_DISCOVERY"
+    },
+    {
+      "id": "hd2-tools",
+      "path": "C:\\Users\\steph\\Projekte\\Game Mods\\HD2 Modding\\tools",
+      "classification": "PORTABLE_EXTERNAL_PAYLOADS_PLUGINS_AND_RUNTIME",
+      "git": false,
+      "fileCountObserved": 6033,
+      "bytesObserved": 1968659971,
+      "disposition": "NEVER_BULK_COPY_TO_SOURCE_MONOREPO"
+    },
+    {
+      "id": "hd2-mod-updater",
+      "path": "C:\\Users\\steph\\Projekte\\Game Mods\\HD2 Modding\\HD2 Mod Updater",
+      "classification": "OWNED_DESKTOP_PRODUCT_CONCEPT",
+      "git": false,
+      "fileCountObserved": 12,
+      "bytesObserved": 16235,
+      "disposition": "FUTURE_INDEPENDENT_PRODUCT_DECISION_NOT_CURRENT_TOOLCHAIN_MOVE"
+    },
+    {
+      "id": "x4-modding",
+      "path": "C:\\Users\\steph\\Projekte\\Game Mods\\X4 Modding",
+      "classification": "DOMAIN_WORKSPACE_UNCLASSIFIED_TOOLING",
+      "git": false,
+      "fileCountObserved": 7337,
+      "bytesObserved": 1252276300,
+      "disposition": "REMAINS_DOMAIN_WORKSPACE_FUTURE_SEPARATE_DISCOVERY"
+    },
+    {
+      "id": "projects-docs",
+      "path": "C:\\Users\\steph\\Projekte\\docs",
+      "classification": "LEGACY_CROSS_PROJECT_CONTEXT_DOCUMENTS",
+      "git": false,
+      "fileCountObserved": 3,
+      "bytesObserved": 71838,
+      "disposition": "PRESERVE_FUTURE_CLASSIFICATION_NO_CURRENT_MOVE"
+    },
+    {
+      "id": "projects-backup",
+      "path": "C:\\Users\\steph\\Projekte\\Backup",
+      "classification": "BACKUP_AND_HISTORICAL_DATA",
+      "git": false,
+      "fileCountObserved": 147,
+      "bytesObserved": 308051593,
+      "disposition": "EXCLUDED_DO_NOT_TOUCH"
+    },
+    {
+      "id": "gladius",
+      "path": "C:\\Users\\steph\\Projekte\\Gladius",
+      "classification": "INCOMPLETE_PROJECT_WITH_PYTHON_ENVIRONMENT",
+      "git": false,
+      "fileCountObserved": 1665,
+      "bytesObserved": 39368335,
+      "disposition": "NO_PROVEN_TOOLING_MOVE_FUTURE_PROJECT_DISCOVERY"
+    },
+    {
+      "id": "g915-chatter-guard",
+      "path": "C:\\Users\\steph\\Projekte\\G915 Chatter Guard",
+      "classification": "EXTERNAL_UPSTREAM_REPOSITORY",
+      "git": true,
+      "disposition": "EXTERNAL_DO_NOT_TOUCH"
+    }
+  ],
+  "repositoryModels": [
+    {
+      "id": "SOURCE_MONOREPO",
+      "result": "SELECTED",
+      "reason": "Single owner, small owned source, no active KASRKIN release history, and long-term maintenance value outweigh repository-level coupling when component and payload boundaries are enforced."
+    },
+    {
+      "id": "WORKSPACE_HUB_INDEPENDENT_REPOSITORIES",
+      "result": "VALID_FALLBACK",
+      "reason": "Strongest isolation model, retained if component autonomy or byte-preserving re-home cannot be proven."
+    },
+    {
+      "id": "DEFER_REHOME",
+      "result": "VALID_FALLBACK",
+      "reason": "Use only if immediate re-home invalidates semantics or creates disproportionate proof cost."
+    }
+  ],
+  "selectedTarget": {
+    "model": "SOURCE_MONOREPO",
+    "root": "C:\\Users\\steph\\Projekte\\codex-tools",
+    "initialComponent": "apps/kasrkin",
+    "sourceOnly": true,
+    "runtimePayloadsExternal": true,
+    "componentContractsLocal": true,
+    "sharedWorkflowAuthority": false,
+    "initialDirectoriesNotAuthorized": [
+      "apps/argus",
+      "apps/desktop-companion",
+      "apps/hd2-mod-updater",
+      "toolchains/hd2",
+      "toolchains/x4",
+      "tools/blender"
+    ]
+  },
+  "programBoundary": {
+    "midasRoadmapOwns": [
+      "W3-T topology reconciliation",
+      "KASRKIN source re-home proof",
+      "KASRKIN installation and MIDAS/H.E.S.T.I.A. consumer cutovers",
+      "ARGUS historical archive and V1 handoff",
+      "MIDAS/H.E.S.T.I.A. cleanup"
+    ],
+    "futureCodexToolsProgramOwns": [
+      "broader workstation tooling inventory",
+      "HD2 toolchain discovery and extraction",
+      "X4 tooling discovery and extraction",
+      "generic helper normalization",
+      "tool catalog and maintenance verification"
+    ]
+  },
+  "constraints": [
+    "No large third-party or portable payload is copied into Git by default.",
+    "No project domain data is centralized as tooling.",
+    "No root-level shared workflow or semantic governance authority is created.",
+    "No current project depends on the codex-tools checkout at runtime.",
+    "KASRKIN is copied in parallel and byte-proven before any old root retirement.",
+    "The old KASRKIN root remains intact through W3-T and W3-I.",
+    "No W3-I installation or consumer cutover occurs before green W3-T."
+  ]
+}

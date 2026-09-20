@@ -30,6 +30,10 @@ contract question. A validated Context Receipt may replace a repeated raw read
 only when its source fingerprint matches exactly, the current question is fully
 covered, and no invalidation or exact-source requirement applies. Otherwise
 read the authoritative source. The receipt is a cache, never a source of truth.
+A completed tool process is not proof that its full output reached the model.
+Record relevant reads as complete, focused-complete, truncated, partial, or
+failed, and never reuse truncated output as sufficient context without a
+focused follow-up read.
 
 ## Working Rules
 
@@ -56,6 +60,10 @@ read the authoritative source. The receipt is a cache, never a source of truth.
   WSL CLI. Do not reinstall CodeRabbit when this command is available.
 - If the canonical command or authentication fails, stop the external review
   and report the prerequisite. Do not improvise an alternate installation.
+- An exhausted or unavailable CodeRabbit budget blocks only further external
+  CodeRabbit runs. It never invalidates existing evidence or prohibits a
+  scoped native review; that review remains subject to its own usage, scope,
+  and roadmap gates.
 - Rerun only checks invalidated by changed files or contracts. A full rerun is
   required only when shared behavior, security, data integrity, or the roadmap
   explicitly demands it.
@@ -74,6 +82,18 @@ read the authoritative source. The receipt is a cache, never a source of truth.
   insufficient. Large work receives an owner briefing before S4.
 - Keep the Resume Card, Context Receipt, and Evidence current enough for a
   fresh chat to continue without reconstructing the whole project history.
+- Do not silently raise a roadmap's configured reasoning level. If the active
+  UI/runtime level is not observable, record that limitation instead of
+  claiming it was verified.
+- A still-valid, fingerprint-bound owner approval is not requested again.
+  When only Stephan can perform a required UI action, issue one exact operator
+  instruction; do not present it as another approval gate.
+- For a productive UI write path, component tests alone are insufficient.
+  S4R and S5 must identify and prove the real last-mile chain from user gesture
+  through active listener and lifecycle state to data access and transport.
+- After a failed productive attempt, complete rollback and postchecks first.
+  Root-cause diagnosis is a new block with its own usage gate and resumable
+  postcondition; local or read-only does not make open diagnosis atomic.
 
 ## Usage-Aware Continuation
 
@@ -85,9 +105,24 @@ read the authoritative source. The receipt is a cache, never a source of truth.
   or remembered values.
 - Refresh and validate the telemetry with the canonical commands documented in
   `docs/DEV_ENVIRONMENT.md`; do not reinterpret the raw JSON ad hoc.
-- Missing, partial, failed, or stale telemetry forbids starting another major
-  block. Finish the current atomic block safely, synchronize Roadmap and Resume
-  Card, and stop at a resumable boundary.
+- In this initialized consumer, invoke KASRKIN through the stable `kasrkin`
+  command from the project tree. Its resolver must validate the project-local
+  `.kasrkin/binding.json` and exact installed release before dispatch. W7
+  retired the duplicated local implementation; recovery uses the proven
+  `codex-tools` source, installed release and receipts under an explicit
+  rollback boundary.
+- The exact installed KASRKIN release owns the Guard-vNext decision semantics,
+  including admission, reserve, owner-boundary, restricted-work,
+  anti-splitting, fallback, Safe-Closure, LIMIT, and evidence-reuse behavior.
+  `docs/templates/MIDAS Roadmap Workflow Contract.md` owns when MIDAS must
+  consult that decision oracle and how MIDAS executes and closes admitted
+  work. `.kasrkin/activation.json` fingerprint-binds this consumer projection;
+  do not recreate the formulas or state transitions here.
+- Missing, partial, failed, or stale telemetry forbids a new major block. Close
+  the current atomic block safely and preserve an exact resume boundary.
+- A validator result of `LIMIT` or `0%` permits only the final user response:
+  no new tool call, mutation, fallback, or documentation block.
 - Usage gates never interrupt an atomic block already in progress and never
   weaken product, security, owner, deploy, SQL, device, or external-write
-  gates. The workflow contract owns the continuation decision and thresholds.
+  gates. KASRKIN owns the decision semantics; the MIDAS workflow contract owns
+  their project-specific consultation and execution effect.

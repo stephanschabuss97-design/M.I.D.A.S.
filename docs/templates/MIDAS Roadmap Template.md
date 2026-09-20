@@ -29,6 +29,7 @@ Ausführungsblock.
 | Ausführungsmodell | `GPT-5.6 Sol` |
 | Reasoning-Standard | `Medium / High / Extra High` |
 | Reasoning-Ausnahmen | `[Schritt: Stufe + Begründung / keine]` |
+| Reasoning-Preflight | `[CONFIRMED / NOT_OBSERVABLE; keine stille Erhöhung]` |
 | Autonome Discovery Wave | `S1-S3` / `S1-S4R` / `deaktiviert` |
 | Autonomieprofil | `local-full` / `gated` / `manual` |
 | Maximal autonomer Endpunkt | `[S3 / S4R / S4.x / S5 / S6]` |
@@ -70,8 +71,10 @@ dupliziert sie nicht.
   2. `README.md`
   3. `docs/DEV_ENVIRONMENT.md`
   4. `docs/templates/MIDAS Roadmap Workflow Contract.md`
-  5. `Pflichtreferenzen aus dem Abschnitt Referenzen`
-  6. `git status --short und nur der relevante Diff`
+  5. `.kasrkin/activation.json` und bei Usage-relevanter Arbeit deren
+     fingerprintgebundene KASRKIN-Detailquelle`
+  6. `Pflichtreferenzen aus dem Abschnitt Referenzen`
+  7. `git status --short und nur der relevante Diff`
 - Startschritt:
   - `[S1 oder aktueller Resume-Schritt]`
 - Freigegebener autonomer Block:
@@ -80,18 +83,23 @@ dupliziert sie nicht.
   - `[local-full/gated/manual; Sx]`
 - Reasoning-Wellen:
   - `[Schrittbereich: Stufe; Stop vor notwendigem Stufenwechsel]`
+- Reasoning-Preflight:
+  - `[konfigurierte Stufe bestätigt / NOT_OBSERVABLE; niemals ungeprüft eine
+    höhere Stufe behaupten]`
 - Interne Continuation Gates:
   - `Nach jedem freigegebenen Discovery-Hauptschritt Full Review,
     Findings-Korrektur und Status-Sync; bei PASS ohne Owner-Gate automatisch
     fortfahren.`
 - Usage-Continuation-Gates:
   - `Vor dem ersten Hauptblock und vor jedem späteren Haupt- oder kohärenten
-    Ausführungsblock gemäß zentralem Workflow-Vertrag; Safe Closure ist eine
-    Stop-Bedingung.`
+    Ausführungsblock KASRKIN über den MIDAS-Konsultationsvertrag anwenden;
+    Safe Closure ist eine Stop-Bedingung.`
 - Erlaubte Autonomie:
   - `[lokale Reads/Edits/Tests gemäß Tool Permissions]`
 - Owner-Gates:
   - `[Deploy / produktives SQL / Device / Workflow / none]`
+- Operatoraktionen:
+  - `[konkrete notwendige UI-Handlung / none; keine doppelte Freigabefrage]`
 - Stop-Bedingungen:
   - `Quellenwiderspruch, fehlender Produktvertrag, Scope-Ausweitung oder
     nicht erteilte produktive Freigabe`
@@ -144,6 +152,18 @@ Hauptschritt, S4-Ausführungsblock sowie vor Pausen ersetzen.
 - Letzter Usage-Checkpoint / Entscheidung:
   - `[Ux; Messzeit; CONTINUE / CONTINUE_WITH_CAUTION / SAFE_CLOSURE /
     FINAL_OBSERVATION / pending]`
+- Rehydrationsstatus:
+  - `[POST_REHYDRATION_BASELINE; exaktes Delta nur mit kanonischer
+    Vorhermessung derselben Reset-IDs / NOT_APPLICABLE]`
+- Primärblock / Zulassung:
+  - `[Block-ID und Klasse; PRIMARY_ALLOWED /
+    PRIMARY_OWNER_BOUNDARY_ALLOWED / PRIMARY_REJECTED_FOR_RESERVE /
+    PRIMARY_REJECTED_FOR_CONTRACT / pending]`
+- Restricted-Work-Episode:
+  - `[Grund CAUTION / PRIMARY_REJECTED_FOR_RESERVE; Resetidentitäten;
+    AVAILABLE / CONSUMED / nicht relevant]`
+- Erlaubter Fallback:
+  - `[Fallback-ID und Klasse / CLOSURE_ONLY / none]`
 - Runtime-/Deploy-Stand:
   - `[Version / SQL-Stand / nicht relevant]`
 - Offene Owner-Freigaben:
@@ -158,6 +178,10 @@ eintragen. Keine Werte schätzen und keine vollständigen JSON-Snapshots
 kopieren. Ein Delta ist nur innerhalb derselben Resetidentität zulässig;
 `RESET_CROSSED` und `ADJUSTMENT` beginnen eine neue Baseline. Die Resume Card
 übernimmt ausschließlich den letzten Checkpoint und die aktuelle Entscheidung.
+Die erste Messung nach abgeschlossener Session-Rehydration ist die
+`POST_REHYDRATION_BASELINE`. Bereits dafür verbrauchte Usage ist `SUNK_USAGE`
+und wird nicht nochmals zur prospektiven Blockreserve addiert. Ohne kanonische
+Vorhermessung mit denselben Reset-IDs wird kein Rehydrationsdelta erfunden.
 Eine optionale Abschlussmessung ist nur nach vollständig erfüllten
 S6-Postconditions als `FINAL_OBSERVATION` zulässig; sie autorisiert keinen
 neuen Block und folgt der Sonderregel im zentralen Workflow-Vertrag.
@@ -166,7 +190,7 @@ neuen Block und folgt der Sonderregel im zentralen Workflow-Vertrag.
 
 | ID | Grenze / nächster Block | Messzeit | 5h Rest / Reset | Woche Rest / Reset | Verbrauch 5h / Woche | Ereignis | Entscheidung |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| U0 | `vor [erstem Hauptblock]` | `pending` | `pending` | `pending` | `Baseline` | `pending` | `pending` |
+| U0 | `vor [erstem Hauptblock]` | `pending` | `pending` | `pending` | `Baseline` | `POST_REHYDRATION_BASELINE / NOT_APPLICABLE` | `pending` |
 | U1 | `nach [Block] / vor [Block]` | `pending` | `pending` | `pending` | `pending` | `pending` | `pending` |
 
 <!-- markdownlint-enable MD013 -->
@@ -175,7 +199,25 @@ neuen Block und folgt der Sonderregel im zentralen Workflow-Vertrag.
   - `[Discovery-Hauptschritte und in S4R freigegebene S4-Blöcke; S5 und S6
     getrennt; gegebenenfalls eigenständige S5-Korrektur-/Retest-Welle]`
 - Vergleichbare Blöcke für empirische Reserve:
-  - `[IDs / noch keine; niemals schätzen]`
+  - `[IDs / noch keine; vollständiger Blockverbrauch, echte CLOSURE_ONLY-
+    Kosten, ein Punkt Sensorpuffer, Operational Safety Floor, Autonomous
+    Full-Closure Floor, beide effektiven Zulassungsgrenzen und roher
+    Preferred-Wert getrennt ausweisen; PREFERRED_UNATTAINABLE nur für einen
+    unerreichbaren Preferred-Wert und POLICY_INFEASIBLE nur für einen
+    unerreichbaren Operational Safety Floor verwenden; SUNK_USAGE nicht
+    doppelt zählen; niemals schätzen]`
+- Owner-Boundary-Entscheidung:
+  - `[nicht relevant / aktuelle Messung, bevorzugte Reserve, harte
+    operative Mindestreserve, autonome Full-Closure-Reserve, beide effektiven
+    Grenzen, Fingerprints, akzeptiertes reines Closure-Risiko und explizite
+    Einmalannahme]`
+- Vorab bekannte sichere Fallbacks:
+  - `[höchstens konkrete BOUNDED_DOCUMENTATION-/BOUNDED_LOCAL-Kandidaten mit
+    Zweck, Dateien/Tools, verbotenen Primary-Flächen, Checks und Postcondition;
+    sonst CLOSURE_ONLY]`
+- Primary-Evidence-Schutz:
+  - `[Fingerprints/Preflights/Evidence-IDs, die ein Fallback nicht invalidieren
+    darf]`
 - Safe-Closure-Handoff:
   - `[Statusmarker, letzter abgeschlossener Block, genau nächstes Gate]`
 
@@ -190,6 +232,10 @@ chronologische Arbeitsgeschichte eintragen.
   - `[Pfade oder none]`
 - Gelesene Sources of Truth:
   - `[Pfad: Stand/Fingerprint und betroffener Vertrag]`
+  - `Read Completeness je entscheidungsrelevantem großen oder fokussierten
+    Read: [COMPLETE / FOCUSED_COMPLETE / TRUNCATED / PARTIAL / FAILED]`
+  - `Rehydration: [SUFFICIENT / INSUFFICIENT / NOT_REQUIRED samt abgedeckter
+    Vertragsfrage]`
 - Validated Context Reuse, nur für große stabile Sources:
   - `Source: [Pfad]`
   - `Fingerprint: [exakter Hash/Stand]`
@@ -454,6 +500,19 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
 - Kohärenz-/Atomaritätsgrenze je Ausführungsblock:
   - `[welcher Zustand innerhalb des Blocks nicht sicher teilbar ist und welche
     Postcondition eine saubere Resume-Grenze herstellt]`
+- Diagnosewellen:
+  - `[Reproduktion / minimaler Fix / Last-Mile-Harness / invalidierte
+    Fullmatrix und Review getrennt; Zusammenlegung nur bei unsicherem
+    Zwischenzustand]`
+- Last-Mile-Orakel bei produktivem UI-Write:
+  - `[DOM-Geste -> aktiver Listener -> Shell/Lifecycle -> Commit/Recovery ->
+    Data Access -> Transport; Test-/Evidence-ID / nicht relevant]`
+- Zielpostimage-Precheck:
+  - `[aktuelles, Forward- und Rollbackpostimage samt günstigem Orakel / nicht
+    relevant]`
+- Produktiver Fehlerpfad:
+  - `[Rollback + Daten-/Runtimepostcheck atomar; Diagnose erst nach neuem Gate
+    / nicht relevant]`
 - Usage-Gates zwischen Ausführungsblöcken:
   - `[Ux vor Block A; Ux nach Block A/vor Block B; Ux vor S5; Ux nach S5/vor
     S6; bei separater S5-Korrektur-/Retest-Welle zusätzlich davor]`
@@ -473,8 +532,18 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `Context-Rehydration / Toolinteraktionen / Fehlersuche: [kurz]`
   - `Doku / Evidence / Postconditions: [kurz]`
   - `Empfohlene autonome Wellen samt Reasoning: [Schrittbereich: Stufe]`
-  - `Usage-Reserve: [reale vergleichbare Checkpoints × 1,5 / keine Daten;
-    statische Schwellen plus Resumierbarkeitsurteil]`
+  - `Usage-Reserve: [reale vergleichbare Checkpoints; Operational Safety Floor
+    = vollständiger Block bis zur sicheren Produkt-/Rollbackpostcondition + 1
+    Punkt Sensorauflösung; Autonomous Full-Closure Floor = Operational Safety
+    Floor + noch nicht enthaltene echte CLOSURE_ONLY-Kosten; effektive Grenzen
+    jeweils mit erforderlichem Usage-Band; Preferred = höherer Wert aus × 1,5
+    und Full-Closure Floor; 25/10 nie als Kosten addieren; Machbarkeit und
+    Boundary verfügbar ja/nein; fehlende Daten nie schätzen]`
+  - `Blockklasse: [BOUNDED_DOCUMENTATION / BOUNDED_LOCAL /
+    DISCOVERY_BOUNDED / DIAGNOSTIC_UNBOUNDED / INTEGRATED_REVIEW /
+    PRODUCTIVE_CUTOVER / CLOSURE_ONLY]`
+  - `Fallbackvertrag: [keiner / genau ein vorab bounded Kandidat;
+    Anti-Splitting, Primary-Invalidation und Boundedness-Breach geprüft]`
   - `Owner-Briefing bei large: [PASS / nicht relevant]`
 - Readiness-Findings/Korrekturen:
   - `[kurz oder none]`
@@ -542,21 +611,29 @@ gehören zur realen Blockgröße.
 
 Deterministische Reihenfolge:
 
-1. Vollständige relevante lokale, statische und gegebenenfalls
+1. Mit einem günstigen Precheck bestätigen, dass Productload, Cacheversion,
+   Runtime- und Zielpostimage zum vorgesehenen Testmodus passen.
+2. Vollständige relevante lokale, statische und gegebenenfalls
    Browser-/Device-Testmatrix ausführen.
-2. Nativen Full Code und Contract Review des finalen Gesamtdiffs durchführen.
-3. Bei Codeänderungen genau einen geplanten initialen CodeRabbit-Lauf über den
+3. Bei produktiven UI-Schreibpfaden das vollständige Last-Mile-Orakel
+   ausführen; getrennte Komponententests allein genügen nicht.
+4. Nativen Full Code und Contract Review des finalen Gesamtdiffs durchführen.
+5. Bei Codeänderungen genau einen geplanten initialen CodeRabbit-Lauf über den
    kanonischen `coderabbit`-Aufruf gegen denselben finalen Diff ausführen.
-4. Jedes externe Finding gesammelt gegen Roadmap, Produktvertrag und reale
+6. Jedes externe Finding gesammelt gegen Roadmap, Produktvertrag und reale
    Implementierung bewerten; nichts blind korrigieren.
-5. Berechtigte Findings gebündelt und minimal korrigieren und alle dadurch
+7. Berechtigte Findings gebündelt und minimal korrigieren und alle dadurch
    invalidierten Checks wiederholen.
-6. Genau einen geplanten CodeRabbit-Verifikationslauf auf dem korrigierten Diff
+8. Genau einen geplanten CodeRabbit-Verifikationslauf auf dem korrigierten Diff
    ausführen. Weitere Läufe nur bei neuem P0/P1-, Security-, Datenintegritäts-
    oder Vertragsrisiko oder auf ausdrücklichen Owner-Auftrag; gewöhnliche
    Nitpicks eröffnen keine unbeschränkte Reviewspirale.
-7. Mehrdeutige Produktentscheidungen als Owner-Gate behandeln. Einen nicht
+9. Mehrdeutige Produktentscheidungen als Owner-Gate behandeln. Einen nicht
    verfügbaren externen Review mit Grund dokumentieren und nicht ersetzen.
+
+Ein ausgeschöpftes CodeRabbit-Budget sperrt keinen nativen Review. Beide
+Prüfpfade bleiben getrennt und unterliegen ihren eigenen Usage- und
+Scope-Gates.
 
 Externes Reviewbudget:
 

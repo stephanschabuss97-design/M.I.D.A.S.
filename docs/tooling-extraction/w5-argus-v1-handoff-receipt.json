@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "w5-argus-v1-handoff-20260919",
+  "status": "W5_COMPLETE",
+  "completedAt": "2026-09-19T16:37:00.4726360+02:00",
+  "ownerScope": "ARGUS_V1_PRODUCT_HANDOFF_ONLY",
+  "admission": {
+    "measuredAt": "2026-09-19T16:34:39.3754451+02:00",
+    "valid": true,
+    "schemaVersion": 3,
+    "sensorVersion": "3.1.0",
+    "sensorStatus": "OK",
+    "fiveHourRemaining": 32,
+    "weeklyRemaining": 79,
+    "fiveHourResetAtEpoch": 1789843380,
+    "weeklyResetAtEpoch": 1790412165,
+    "decision": "CONTINUE_WITH_CAUTION",
+    "workClass": "BOUNDED_DOCUMENTATION",
+    "restrictedWorkEpisode": "CONSUMED"
+  },
+  "handoff": {
+    "path": "docs/tooling-extraction/ARGUS V1.0 Product Handoff.md",
+    "bytes": 7863,
+    "sha256": "26cc81ec8bd868466530fb2370bc28217e823e0a80375777ce09647ec94d294c"
+  },
+  "boundInputs": {
+    "pitch": {
+      "path": "C:\\Users\\steph\\Desktop\\A.R.G.U.S. V1.0 Pitch.md",
+      "bytes": 35686,
+      "sha256": "45884afea39df16c7baf8116ea1a9ff1664cb05546f0119c7ebb7b87e227ddfc"
+    },
+    "pilotArchive": {
+      "root": "C:\\Users\\steph\\Archives\\ARGUS-PILOT\\v1.2-v1.6",
+      "payloadDigest": "b991822dfc4976a7dca17df03e1cb16c2bd6910f1306e1f233cd600804a3fc16",
+      "manifestSha256": "39b2ad43fe61d1ac249e87e02b21b197d53239d0a76f50bbc404c1d14cd872fc",
+      "proofSha256": "98c53dbb469197e0a23d781a3239978da8873af77f9c3dc5b66a9b946cadf0de",
+      "w4ReceiptSha256": "0aeb7bc4945211eb038c350a2d487701277a92bcc77d0d5ad0249e9491c0be29"
+    },
+    "monorepoTopology": {
+      "path": "docs/tooling-extraction/codex-tools-topology-inventory.json",
+      "sha256": "bf478bac2fa0a6627ed279aedaebfbcfdc15945f506346073fb6d08ebd9b687e",
+      "decision": "W3T-OD-03"
+    },
+    "migrationInventorySha256": "d252e9bae2f2f0e6ef07d1d61c0fca7ffbd24cb4901ba41b0263a128dc359775"
+  },
+  "target": {
+    "sourceMonorepo": "C:\\Users\\steph\\Projekte\\codex-tools",
+    "plannedComponentRoot": "C:\\Users\\steph\\Projekte\\codex-tools\\apps\\argus",
+    "supersededStandaloneProposal": "C:\\Users\\steph\\Projekte\\argus",
+    "componentRootExists": false,
+    "standaloneRootExists": false,
+    "sourceOnly": true,
+    "componentSemanticsLocal": true,
+    "sharedWorkflowAuthority": false
+  },
+  "boundaries": {
+    "productImplemented": false,
+    "componentCreated": false,
+    "runtimeOrDataRootCreated": false,
+    "pilotPayloadImported": false,
+    "pilotArchiveChanged": false,
+    "benchmarkRun": false,
+    "consumerChanged": false,
+    "commitCreated": false
+  },
+  "rollback": {
+    "boundary": "B5",
+    "documentationOnly": true,
+    "handoffMayBeCorrectedOrWithdrawnAdditively": true,
+    "pilotArchiveMustRemainUnchanged": true,
+    "monorepoDecisionMustRemainUnchanged": true
+  },
+  "nextStep": "SEPARATE_ARGUS_V1_PRODUCT_ROADMAP_OWNER_AUTHORIZATION_REQUIRED"
+}

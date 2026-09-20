@@ -36,6 +36,7 @@ Terminal-Rohdaten eintragen.
 | Verantwortlicher Schritt | `[S4.x / S5.x / S6]` |
 | Umgebungen | `lokal / disposable / produktiv read-only / produktiv write` |
 | Baseline-Commit | `[SHA]` |
+| KASRKIN-Binding / Activation | `[Release-ID; Binding-Hash; Activation-Hash]` |
 | Externes Reviewbudget | `S1-S4: 0; S5 bei Codeänderung: 1 Initial + 1 Verifikation; Doku-only: 0` |
 | Archivziel | `docs/archive/[Titel] Evidence (DONE).md` |
 
