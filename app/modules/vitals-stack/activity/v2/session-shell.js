@@ -1582,6 +1582,7 @@
     panel.append(header, content);
     return {
       panel,
+      intro,
       timer,
       close,
       search,
@@ -2459,6 +2460,7 @@
         setRow.dataset.itemKey = item.item_key;
         setRow.dataset.setOrder = String(set.set_order);
         setRow.dataset.state = rowState.state;
+        setRow.dataset.fieldCount = String(derived.fieldKeys.length);
         setRow.appendChild(
           makeElement(
             document,
@@ -2674,6 +2676,12 @@
             'span',
             'activity-v2-session-item-label',
             entry.label
+          ),
+          makeElement(
+            document,
+            'span',
+            'activity-v2-session-item-equipment',
+            EQUIPMENT_LABELS[entry.equipment]
           )
         );
         const actions = makeElement(
@@ -2707,11 +2715,7 @@
         actions.append(up, down, remove);
         let history = null;
         if (loadLastPerformance) {
-          history = makeElement(
-            document,
-            'section',
-            'activity-v2-session-history'
-          );
+          history = makeElement(document, 'section', 'activity-v2-session-history');
           history.dataset.itemKey = item.item_key;
           history.setAttribute('aria-live', 'polite');
           history.setAttribute('aria-label', `Letzte Ausführung für ${entry.label}`);
@@ -2735,6 +2739,7 @@
       });
 
       ui.itemList.replaceChildren(listFragment);
+      ui.intro.dataset.hasItems = String(nextState.snapshot.items.length > 0);
       ui.empty.hidden = nextState.snapshot.items.length > 0;
       ui.itemList.hidden = nextState.snapshot.items.length === 0;
       ui.itemCount.textContent = `${nextState.snapshot.items.length} ${
