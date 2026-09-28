@@ -20,8 +20,8 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Core-State & Client-Helfer
-import { supabaseState } from '../core/state.js?v=24';
-import { ensureSupabaseClient, maskUid } from '../core/client.js?v=24';
+import { supabaseState } from '../core/state.js?v=29';
+import { ensureSupabaseClient, maskUid } from '../core/client.js?v=29';
 
 // SUBMODULE: globals @internal - Diagnose- und Window-Hilfen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -726,39 +726,46 @@ export async function isLoggedInFast({ timeout = 400 } = {}) {
 export function watchAuthState() {
   if (!supabaseState.sbClient) return;
   if (!supabaseState.sbClient.auth?.onAuthStateChange) return;
-  const { data: { subscription } = {} } =
-    supabaseState.sbClient.auth.onAuthStateChange(async (event, session) => {
-      const logged = !!session;
-      if (logged) {
-        callUserUi(session?.user?.email || '');
-        const newUid = session?.user?.id || null;
-        if (newUid) {
-          if (supabaseState.lastUserId && supabaseState.lastUserId !== newUid) {
-            globalWindow?.AppModules?.doctor?.resetDoctorState?.();
-          }
-          supabaseState.lastUserId = newUid;
-          diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
+  let authEventVersion = 0;
+  const handleAuthStateChange = async (event, session, version) => {
+    const logged = !!session;
+    if (logged) {
+      if (version !== authEventVersion) return;
+      callUserUi(session?.user?.email || '');
+      const newUid = session?.user?.id || null;
+      if (newUid) {
+        if (supabaseState.lastUserId && supabaseState.lastUserId !== newUid) {
+          globalWindow?.AppModules?.doctor?.resetDoctorState?.();
         }
-        await syncActivityV2Authentication(true);
-        finalizeAuthState(true);
-        await afterLoginBoot();
-        await (globalWindow?.setupRealtime || defaultSetupRealtime)();
-        globalWindow?.requestUiRefresh?.().catch((err) =>
-          diag.add?.('ui refresh err: ' + (err?.message || err))
-        );
-        try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
-        try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
-        return;
+        supabaseState.lastUserId = newUid;
+        diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
       }
+      await syncActivityV2Authentication(true);
+      if (version !== authEventVersion) return;
+      finalizeAuthState(true);
+      await afterLoginBoot();
+      if (version !== authEventVersion) return;
+      await (globalWindow?.setupRealtime || defaultSetupRealtime)();
+      if (version !== authEventVersion) return;
+      globalWindow?.requestUiRefresh?.().catch((err) =>
+        diag.add?.('ui refresh err: ' + (err?.message || err))
+      );
+      try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
+      if (version !== authEventVersion) return;
+      try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
+      return;
+    }
 
     if (isAndroidNativeAuthOwnerContext()) {
       const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
+      if (version !== authEventVersion) return;
       const bootstrapStatus = bootstrapState?.status || 'missing';
       if (bootstrapStatus === 'session-staged') {
         diag.add?.('[auth] webview signed out while native session still staged; reimport session');
         try {
           await applyAndroidBootstrapSession();
         } catch (_) {}
+        if (version !== authEventVersion) return;
         scheduleAuthGrace();
         return;
       }
@@ -766,13 +773,24 @@ export function watchAuthState() {
 
     stageSignedOutState();
     await syncActivityV2Authentication(false);
+    if (version !== authEventVersion) return;
 
     if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       finalizeAuthState(false);
     } else {
       scheduleAuthGrace();
     }
-  });
+  };
+  const { data: { subscription } = {} } =
+    supabaseState.sbClient.auth.onAuthStateChange((event, session) => {
+      const version = ++authEventVersion;
+      // Supabase auth callbacks must return before work that may call the client.
+      setTimeout(() => {
+        handleAuthStateChange(event, session, version).catch(() => {
+          diag.add?.('[auth] state change handling failed');
+        });
+      }, 0);
+    });
   return subscription || null;
 }
 

@@ -12,7 +12,7 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 | 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | abgeschlossen; von Stephan auch am Handy akzeptiert |
 | 2 | Mobile Sessionansicht vertikal verdichten | mittel | abgeschlossen; Web- und Handyansicht von Stephan akzeptiert |
 | 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | abgeschlossen; von Stephan am Handy akzeptiert |
-| 4 | Sessionabschluss nach Fensterwechsel oder Neustart reparieren | offen, vermutlich am größten | offen |
+| 4 | Sessionabschluss nach längerer Hintergrundphase reparieren | offen, vermutlich am größten | lokaler Fix geprüft; Handytest offen |
 
 ## 1. Export bleibt in der Trainingsansicht
 
@@ -76,11 +76,13 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 ## 4. Sessionabschluss nach Unterbrechung
 
-**Beobachtung:** Ein durchgehend geöffneter Draft lässt sich abschließen. Nach Fensterwechsel oder App-Neustart und erneutem Öffnen der laufenden Session misslingt der Abschluss. Ein „Sessiontoken-Bug“ ist eine Vermutung, keine Diagnose.
+**Beobachtung:** Beim ersten Training blieb der Abschluss nach längerer Nutzung anderer Android-Apps bei „Session wird gespeichert …“ stehen. Nach Schließen und Neustart von MIDAS ließ sich derselbe erhaltene Draft abschließen. Ein kurzer Zwei-Minuten-Test mit mehreren Fensterwechseln funktionierte. Damit ist eine längere Hintergrundphase oder eine Token-Erneuerung verdächtig; der konkrete Geräteauslöser ist noch nicht bewiesen.
 
 **Ziel:** Auch ein fortgesetzter Draft lässt sich zuverlässig und genau einmal abschließen. Bei unklarer Serverantwort bleiben derselbe Commit-Intent und dieselbe Request-ID für einen kontrollierten Retry erhalten.
 
-**Prüfung:** Den Fehler zuerst im produktnahen Ablauf reproduzieren und die Grenze zwischen Draft, IndexedDB-Recovery, Auth/Lifecycle, Commit und UI bestimmen. Danach Fensterwechsel, Reload/Neustart, Fortsetzen, Abschluss, Unknown Outcome und History-Eintrag als vollständige Kette prüfen. Keine spekulative Änderung an Token-, SQL- oder Commitlogik.
+**Prüfung:** Den Abschluss nach längerer Hintergrundphase und abgewiesenem Access Token prüfen. Danach Fensterwechsel, Reload/Neustart, Fortsetzen, Abschluss, Unknown Outcome und History-Eintrag als vollständige Kette prüfen. Commit-Intent, Request-ID, SQL und medizinische Consumer bleiben unverändert.
+
+**Lokaler Befund und Fix 2026-09-28:** Der Edge-Harness mit dem echten `fetchWithAuth` zeigte zwei Fehler: Ein hängendes `refreshSession()` ließ den Abschluss über den zehnsekündigen Request-Timeout hinaus warten; nach erfolgreichem Refresh verwendete der zweite Request erneut den alten Header und erhielt 401. Ein separater kontrollierter Auth-Callback-Harness reproduzierte den dokumentierten Supabase-Deadlock: Der bisherige asynchrone Callback wartete auf Realtime-Arbeit, die ihrerseits auf die Auth-Erneuerung wartete. Lokal sind Auth-Callbacks nun synchron mit nachgelagerter Arbeit; verspätete Ereignisse dürfen neuere Auth-Zustände nicht überschreiben. Der Refresh ist begrenzt und der Header wird danach frisch aufgebaut. Für die PWA-Auslieferung wurden Supabase-Importgraph und Service Worker gemeinsam auf v29 gesetzt. Die lokalen Harnessfälle für Refresh, hängenden Refresh, Logout während hängendem Realtime-Aufbau, Activity-Reauth, Recovery und Unknown/Retry sowie die frische v29-Cache-Installation bestanden. Die ursprüngliche Android-Situation wurde damit noch nicht auf dem Gerät reproduziert; Punkt 4 bleibt bis zum Praxistest offen.
 
 ## Arbeitsgrenzen
 

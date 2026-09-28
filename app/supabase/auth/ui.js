@@ -17,9 +17,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Core-State & Auth-Helpers
-import { supabaseState } from '../core/state.js?v=24';
-import { ensureSupabaseClient, isServiceRoleKey } from '../core/client.js?v=24';
-import { requireSession } from './core.js?v=24';
+import { supabaseState } from '../core/state.js?v=29';
+import { ensureSupabaseClient, isServiceRoleKey } from '../core/client.js?v=29';
+import { requireSession } from './core.js?v=29';
 
 // SUBMODULE: globals @internal - globale Handles & Diagnose-Hooks
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

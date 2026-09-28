@@ -4,10 +4,10 @@
  * Description: Lies/aktualisiert Trendpilot-Events (warning/critical) aus der Trendpilot-Tabelle.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=24';
-import { fetchWithAuth } from '../core/http.js?v=24';
-import { getUserId } from '../auth/core.js?v=24';
-import { sbSelect } from './select.js?v=24';
+import { baseUrlFromRest } from '../core/client.js?v=29';
+import { fetchWithAuth } from '../core/http.js?v=29';
+import { getUserId } from '../auth/core.js?v=29';
+import { sbSelect } from './select.js?v=29';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =

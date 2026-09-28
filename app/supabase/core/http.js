@@ -16,7 +16,7 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Client und Header-Cache-Funktionen
-import { ensureSupabaseClient } from './client.js?v=24';
+import { ensureSupabaseClient } from './client.js?v=29';
 import {
   getCachedHeaders,
   getCachedHeadersAt,
@@ -24,7 +24,7 @@ import {
   setHeaderPromise,
   cacheHeaders,
   clearHeaderCache
-} from './state.js?v=24';
+} from './state.js?v=29';
 
 // SUBMODULE: globals @internal - Diagnostik-Objekt und globale Handles
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -107,6 +107,7 @@ const logRequestFailure = (label, status, durationMs, detail) => {
 // SUBMODULE: util @internal - Sleep-Helper für Backoff-Zeiten
 const sleep = (ms = 0) =>
   new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+const AUTH_REFRESH_TIMEOUT_MS = 10000;
 
 // SUBMODULE: withRetry @public - generischer Wiederholungsmechanismus mit Exponential Backoff
 export async function withRetry(fn, { tries = 3, base = 300 } = {}) {
@@ -148,12 +149,26 @@ export async function fetchWithAuth(makeRequest, { tag = '', retry401 = true, ma
   const loadHeaders = async (forceRefresh = false) => {
     if (forceRefresh) {
       diag.add?.(`[auth] refresh start ${tag || 'request'}`);
+      let refreshTimer;
       try {
-        await supa.auth.refreshSession();
+        await Promise.race([
+          supa.auth.refreshSession(),
+          new Promise((_, reject) => {
+            refreshTimer = setTimeout(
+              () => reject(new Error('auth-refresh-timeout')),
+              AUTH_REFRESH_TIMEOUT_MS
+            );
+          })
+        ]);
       } catch (refreshErr) {
-        diag.add?.(`[auth] refresh error: ${refreshErr?.message || refreshErr}`);
+        const timeoutLabel = refreshErr?.message === 'auth-refresh-timeout' ? ' timeout' : '';
+        diag.add?.(`[auth] refresh failed ${tag || 'request'}${timeoutLabel}`);
+      } finally {
+        clearTimeout(refreshTimer);
       }
       diag.add?.(`[auth] refresh end ${tag || 'request'}`);
+      // A refreshed Supabase session must not reuse the previous bearer header.
+      clearHeaderCache();
     }
     const cachedHeaders = getCachedHeaders();
     const cachedAt = getCachedHeadersAt();
@@ -161,7 +176,7 @@ export async function fetchWithAuth(makeRequest, { tag = '', retry401 = true, ma
       diag.add?.('[headers] cache hit');
       return cachedHeaders;
     }
-    return await getHeaders();
+    return await getHeaders({ forceRefresh });
   };
 
   // Request-Ausführung mit Timeout und Wiederholungen
