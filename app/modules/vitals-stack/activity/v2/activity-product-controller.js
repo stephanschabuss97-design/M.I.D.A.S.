@@ -1044,6 +1044,9 @@
         backButton.addEventListener('click', closeExport);
         options.exportHost.appendChild(exportUi.rootElement);
         options.exportHost.appendChild(backButton);
+        options.exportHost.setAttribute('role', 'dialog');
+        options.exportHost.setAttribute('aria-modal', 'true');
+        options.exportHost.setAttribute('aria-labelledby', exportUi.heading.id);
       } catch {
         try {
           backButton?.removeEventListener('click', closeExport);
@@ -1139,6 +1142,32 @@
       scheduleSurfaceReconcile();
     }
 
+    function handleExportKeydown(event) {
+      if (stateSnapshot.active_surface !== 'export') return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeExport();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(
+        options.exportHost.querySelectorAll('button, input, a[href]')
+      ).filter((element) =>
+        !element.disabled && element.getClientRects().length > 0
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
     function waitForCommitSettlement() {
       const commit = currentCommitState();
       if (!commit || !['preparing', 'committing'].includes(commit.state)) {
@@ -1202,6 +1231,9 @@
       exportController = null;
       exportRootElement = null;
       clearHost(options.exportHost);
+      options.exportHost.removeAttribute('role');
+      options.exportHost.removeAttribute('aria-modal');
+      options.exportHost.removeAttribute('aria-labelledby');
     }
 
     async function flushRecoveryBeforeTeardown() {
@@ -1279,6 +1311,7 @@
         destroyed = true;
         ui.rootElement.removeEventListener('click', handleClick);
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
+        options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);
         if (surfaceReconcileTimer !== null && typeof root.clearTimeout === 'function') {
           root.clearTimeout(surfaceReconcileTimer);
@@ -1322,6 +1355,7 @@
     try {
       ui.rootElement.addEventListener('click', handleClick);
       options.sessionHost.addEventListener('click', handleSurfaceInteraction, true);
+      options.exportHost.addEventListener('keydown', handleExportKeydown, true);
       document.addEventListener('keydown', handleSurfaceInteraction, true);
       options.host.appendChild(ui.rootElement);
       render();
@@ -1329,6 +1363,7 @@
       try {
         ui.rootElement.removeEventListener('click', handleClick);
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
+        options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);
       } catch {
         // Failed mount leaves no product listener behind.

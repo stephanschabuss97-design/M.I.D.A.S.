@@ -36,6 +36,44 @@
   display: none;
 }
 
+#activityV2ExportHost:not([hidden]) {
+  position: fixed;
+  z-index: 10001;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background: #071019;
+  color: #f2f8f9;
+  color-scheme: dark;
+}
+
+#activityV2ExportHost > .activity-v2-product-export,
+#activityV2ExportHost > .activity-v2-product-action {
+  width: min(100%, 640px);
+  flex: 0 0 auto;
+}
+
+#activityV2ExportHost > .activity-v2-product-export {
+  padding: clamp(16px, 4vw, 28px);
+  border: 1px solid rgba(173, 202, 218, 0.16);
+  border-radius: 16px;
+  background: rgba(17, 31, 43, 0.94);
+}
+
+#activityV2ExportHost .activity-v2-product-surface-title,
+#activityV2ExportHost .activity-v2-product-export-status {
+  margin: 0;
+}
+
 .activity-v2-product-export,
 .activity-v2-product-export-form,
 .activity-v2-product-export-custom {

@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v24';
+const CACHE_VERSION = 'v25';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -17,12 +17,12 @@ const CORE_ASSETS = [
   toUrl('./'),
   toUrl('index.html'),
   toUrl('offline.html'),
-  toUrl('app/app.css?v=24'),
+  toUrl('app/app.css?v=25'),
   toUrl('app/styles/hub.css?v=11'),
   toUrl('app/modules/vitals-stack/activity/v2/session-shell.css?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.css?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.css?v=24'),
-  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.css?v=24'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.css?v=25'),
   toUrl('assets/img/Activity_v2.png'),
   toUrl('assets/img/Personal_data_v3.png'),
   toUrl('app/core/boot-flow.js'),
@@ -52,7 +52,7 @@ const CORE_ASSETS = [
   toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.js?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js?v=24'),
-  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=24'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=25'),
   toUrl('app/supabase/index.js?v=24'),
   toUrl('app/supabase/core/state.js?v=24'),
   toUrl('app/supabase/core/client.js?v=24'),
