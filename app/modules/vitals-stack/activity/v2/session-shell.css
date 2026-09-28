@@ -529,6 +529,12 @@
   color: var(--activity-v2-accent);
 }
 
+.activity-v2-session-quick-add,
+.activity-v2-session-quick-search-backdrop,
+.activity-v2-session-picker-close {
+  display: none !important;
+}
+
 .activity-v2-session-note {
   min-height: 7.5rem;
   resize: vertical;
@@ -1101,6 +1107,60 @@
 }
 
 @media (max-width: 640px) {
+  .activity-v2-session-quick-add:not([hidden]) {
+    position: fixed;
+    z-index: 3;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: inline-flex !important;
+    min-height: 48px;
+    border: 1px solid var(--activity-v2-line-strong);
+    border-radius: 999px;
+    color: #061b16;
+    background: var(--activity-v2-accent-strong);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  .activity-v2-session-quick-search-backdrop:not([hidden]) {
+    position: fixed;
+    z-index: 4;
+    inset: 0;
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .activity-v2-session-picker-card[data-docked="true"] {
+    position: fixed;
+    z-index: 5;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    background: #11202b;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  }
+
+  .activity-v2-session-picker-card[data-docked="true"]
+    .activity-v2-session-picker-close:not([hidden]) {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    display: inline-flex !important;
+    min-height: 44px;
+  }
+
+  .activity-v2-session-picker-card[data-docked="true"]
+    .activity-v2-session-section-title {
+    padding-right: 6rem;
+  }
+
   .activity-v2-session-intro[data-has-items="true"] {
     display: none;
   }
@@ -1139,7 +1199,7 @@
     padding:
       0.75rem
       max(0.75rem, env(safe-area-inset-right))
-      max(1.5rem, env(safe-area-inset-bottom))
+      max(5rem, env(safe-area-inset-bottom))
       max(0.75rem, env(safe-area-inset-left));
     scrollbar-gutter: auto;
   }

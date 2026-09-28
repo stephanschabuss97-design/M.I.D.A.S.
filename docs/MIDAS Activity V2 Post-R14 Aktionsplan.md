@@ -1,7 +1,7 @@
 # MIDAS Activity V2 – Aktionsplan nach R14
 
 Stand: 2026-09-28
-Status: Punkt 2 abgeschlossen; Punkt 1 im Webfluss akzeptiert (Android-Prüfung offen); Punkte 3 und 4 offen
+Status: Punkte 1 und 2 abgeschlossen; Punkt 3 veröffentlicht (Handyprüfung offen); Punkt 4 offen
 
 ## Zweck und Reihenfolge
 
@@ -9,9 +9,9 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 | Nr. | Thema | Vermuteter Aufwand | Status |
 | --- | --- | --- | --- |
-| 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | Webfluss von Stephan akzeptiert; Android offen |
+| 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | abgeschlossen; von Stephan auch am Handy akzeptiert |
 | 2 | Mobile Sessionansicht vertikal verdichten | mittel | abgeschlossen; Web- und Handyansicht von Stephan akzeptiert |
-| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | offen |
+| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | veröffentlicht; Handyprüfung offen |
 | 4 | Sessionabschluss nach Fensterwechsel oder Neustart reparieren | offen, vermutlich am größten | offen |
 
 ## 1. Export bleibt in der Trainingsansicht
@@ -24,9 +24,11 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 **Detektivbefund 2026-09-28:** Der R10-Export wurde in R14 produktiv eingebunden. `#activityV2ExportHost` liegt direkt unter `body`, bleibt aber im normalen Seitenfluss (`position: static`, `z-index: auto`). Das offene Hub-Panel und seine Hub-Abdeckung liegen als feste Ebenen darüber (`z-index: 40` beziehungsweise `30`). Ein lokaler Edge-/Playwright-CSS-Nachweis bei `390 × 844` traf bei offenem Panel über den Export-Controls die Hub-Ebene; nach dem Schließen traf derselbe Punkt den Export-Button. Der Test verwendete die echte Produkt-CSS und synthetische Controls, aber weder Login noch Export-RPC. Außerdem wird die isolierte R10-Export-CSS produktiv importiert und setzt globale helle `:root`-/`body`-Styles; das erklärt den hellen Bereich unter dem Hauptinhalt und muss beim Fix mitgeprüft werden. R14-Finding F29 hatte die Overlayhosts wegen des transformierten Hub-Panels bewusst unter `body` verlegt. Der Fix soll diese Grenze erhalten und den Export-Host als eigene bedienbare Ebene gestalten; der echte Produktfluss bleibt danach als Nachweis erforderlich.
 
-**Lokaler Fix 2026-09-28:** Der Export-Host bleibt unter `body` und liegt geöffnet als dunkle, bildschirmfüllende und eigenständig scrollbare Ebene über dem Hub-Panel. Escape schließt nur den Export; der Fokus bleibt währenddessen in der Exportansicht und kehrt danach zum Exportknopf zurück. Die PWA-Cache-Version wurde für die geänderten Assets auf `v25` gehoben. Im lokalen Edge-Test bei `390 × 844` waren Zeitraumwahl und Rückkehr bei offenem Hub-Panel bedienbar; Escape, Tab-Umlauf und Fokus-Rückgabe funktionierten. Der Test lief mit dem echten Produktcontroller und einem lokalen Fake-Transport, ohne Login oder produktiven Export-RPC. Ein Durchlauf auf Stephans Android-Gerät samt echtem Download und Draft-Erhalt steht noch aus; der Webfluss wurde anschließend von Stephan akzeptiert.
+**Lokaler Fix 2026-09-28:** Der Export-Host bleibt unter `body` und liegt geöffnet als dunkle, bildschirmfüllende und eigenständig scrollbare Ebene über dem Hub-Panel. Escape schließt nur den Export; der Fokus bleibt währenddessen in der Exportansicht und kehrt danach zum Exportknopf zurück. Die PWA-Cache-Version wurde für die geänderten Assets auf `v25` gehoben. Im lokalen Edge-Test bei `390 × 844` waren Zeitraumwahl und Rückkehr bei offenem Hub-Panel bedienbar; Escape, Tab-Umlauf und Fokus-Rückgabe funktionierten. Der Test lief mit dem echten Produktcontroller und einem lokalen Fake-Transport, ohne Login oder produktiven Export-RPC. Zum Zeitpunkt dieses lokalen Tests stand der Android-Durchlauf noch aus; der Webfluss wurde anschließend von Stephan akzeptiert.
 
-**Web-Abnahme 2026-09-28:** Stephan hat den Fix auf dem Live Server angesehen und für den Webfluss akzeptiert. Commit `851f73c` ist auf `origin/main`. Android-PWA, echter Download und Draft-Erhalt wurden dabei nicht gesondert nachgewiesen; diese Geräteprüfung bleibt offen und ändert die Web-Abnahme nicht.
+**Web-Abnahme 2026-09-28:** Stephan hat den Fix auf dem Live Server angesehen und für den Webfluss akzeptiert. Commit `851f73c` ist auf `origin/main`. Android-PWA, echter Download und Draft-Erhalt wurden bei dieser ersten Abnahme nicht gesondert nachgewiesen.
+
+**Geräte-Abnahme 2026-09-28:** Stephan hat Punkt 1 nach der Handyprüfung als grün und abgeschlossen gemeldet. Einzelne Teilschritte des Geräteflusses wurden in dieser Rückmeldung nicht separat protokolliert.
 
 ## 2. Mobile Sessionansicht verdichten
 
@@ -67,6 +69,8 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 **Ziel:** Solange die ursprüngliche Suchkarte sichtbar ist, bleibt der heutige Einstieg bestehen. Sobald sie beim Abwärtsscrollen aus dem sichtbaren Bereich verschwindet, erscheint rechts ein mit dem Daumen erreichbarer Zugang. Er holt das Suchfeld für die nächste Übung herein; es entsteht kein Karussell und kein zweiter fachlicher Such- oder Draftpfad.
 
 **Prüfung:** Ein- und Ausblendung beim Scrollen, Suche und kanonische Auswahl am Listenende, Tastatur und Fokus, Rückkehr zur Session sowie Verhalten bei kurzem Viewport und offenem Dialog prüfen. Punkt 2 bildet die Layoutgrundlage.
+
+**Lokale Umsetzung 2026-09-28:** Auf schmalen Ansichten erscheint nach dem Herausscrollen der oberen Suchkarte rechts unten „Übung hinzufügen“. Der Button blendet dieselbe Suchkarte als kleines Panel über der Session ein; Suche und Draft-Auswahl bleiben dieselben. Schließen oder Escape bringt den Fokus zum Button zurück, eine Auswahl schließt das Panel vor dem Fokuswechsel zum Item. Ohne Sichtbarkeits-API bleibt der Button mobil ständig verfügbar. Rückfallpunkt ist der lokale Branch `backup/activity-v2-pre-quick-add` auf `30168bb`. Im isolierten Edge-Harness funktionierten Ein-/Ausblendung, Auswahl und Escape bei 390 × 844 und 320 × 600 ohne horizontalen Überlauf oder Konsolenfehler; bei acht Treffern scrollt das Panel intern. Schließen ließ die Scrollposition unverändert, auf Desktop blieb der Button verborgen, und der Fallback ohne Sichtbarkeits-API wurde geprüft. 60 gezielte Contract-Tests bestanden. Die produktive Android-Ansicht und der eingeloggte Produktfluss stehen noch zur Sichtprüfung aus.
 
 ## 4. Sessionabschluss nach Unterbrechung
 

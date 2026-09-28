@@ -1024,6 +1024,54 @@ test('local search is limited, canonical, nested-click safe and duplicate aware'
   assert.equal(panel.querySelector('.activity-v2-session-count').textContent, '1 Eintrag');
 });
 
+test('mobile quick add reuses the picker and closes before focusing the selected item', () => {
+  const runtime = createRuntime({ useSemanticsV2: true });
+  let visibilityChanged;
+  let disconnected = false;
+  runtime.context.matchMedia = () => ({ matches: true });
+  runtime.context.IntersectionObserver = class {
+    constructor(callback, options) {
+      visibilityChanged = callback;
+      assert.equal(options.root.className, 'activity-v2-session-content');
+    }
+    observe(target) {
+      assert.equal(target.className, 'activity-v2-session-picker-slot');
+    }
+    disconnect() {
+      disconnected = true;
+    }
+  };
+  const { shell, panel } = mountRuntime(runtime);
+  const quickAdd = actionElement(panel, 'open-quick-search');
+  const picker = panel.querySelector('.activity-v2-session-picker-card');
+  const search = panel.querySelector('.activity-v2-session-search');
+  shell.open({ opener: runtime.opener });
+  assert.equal(quickAdd.hidden, true);
+
+  visibilityChanged([{ isIntersecting: false }]);
+  assert.equal(quickAdd.hidden, false);
+  click(panel, quickAdd);
+  assert.equal(picker.dataset.docked, 'true');
+  assert.equal(runtime.document.activeElement, search);
+  assert.equal(panel.querySelectorAll('.activity-v2-session-search').length, 1);
+
+  typeSearch(panel, 'High Row');
+  pressKey(runtime, search, 'Escape');
+  assert.equal(picker.dataset.docked, 'false');
+  assert.equal(shell.isOpen(), true);
+  assert.equal(runtime.document.activeElement, quickAdd);
+  assert.equal(runtime.draft.getSnapshot().items.length, 0);
+
+  click(panel, quickAdd);
+  typeSearch(panel, 'High Row');
+  selectSearchResult(panel, 'high_row');
+  assert.equal(picker.dataset.docked, 'false');
+  assert.equal(runtime.draft.getSnapshot().items[0].item_key, 'high_row');
+  assert.equal(runtime.document.activeElement.dataset.itemKey, 'high_row');
+  shell.destroy();
+  assert.equal(disconnected, true);
+});
+
 test('search start, empty, malformed, keyboard and Escape states are deterministic', async () => {
   const runtime = createRuntime({ useSemanticsV2: true });
   let confirmCalls = 0;

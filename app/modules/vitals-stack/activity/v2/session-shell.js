@@ -1462,7 +1462,33 @@
     searchResults.id = searchResultsId;
     searchResults.hidden = true;
     pickerField.append(pickerLabel, search, searchStatus, searchResults);
-    pickerCard.append(pickerHeading, pickerField);
+    const pickerClose = setButton(
+      makeElement(document, 'button', 'activity-v2-session-picker-close'),
+      'close-quick-search',
+      'Schließen',
+      'Übungssuche schließen'
+    );
+    pickerClose.hidden = true;
+    pickerCard.append(pickerHeading, pickerClose, pickerField);
+    const pickerSlot = makeElement(document, 'div', 'activity-v2-session-picker-slot');
+    pickerSlot.appendChild(pickerCard);
+    const quickSearchBackdrop = makeElement(
+      document,
+      'button',
+      'activity-v2-session-quick-search-backdrop'
+    );
+    quickSearchBackdrop.type = 'button';
+    quickSearchBackdrop.dataset.action = 'close-quick-search';
+    quickSearchBackdrop.setAttribute('aria-label', 'Übungssuche schließen');
+    quickSearchBackdrop.setAttribute('aria-hidden', 'true');
+    quickSearchBackdrop.setAttribute('tabindex', '-1');
+    quickSearchBackdrop.hidden = true;
+    const quickAdd = setButton(
+      makeElement(document, 'button', 'activity-v2-session-quick-add'),
+      'open-quick-search',
+      'Übung hinzufügen'
+    );
+    quickAdd.hidden = true;
 
     const itemsSection = makeElement(
       document,
@@ -1575,16 +1601,22 @@
       recoveryStatus.setAttribute('aria-label', 'Lokaler Wiederherstellungsstatus');
     }
 
-    content.append(intro, pickerCard, itemsSection, noteCard);
+    content.append(intro, pickerSlot, itemsSection, noteCard);
     if (recoveryStatus) content.append(recoveryStatus);
     if (commitCard) content.append(commitCard);
     content.append(status);
-    panel.append(header, content);
+    panel.append(header, content, quickSearchBackdrop, quickAdd);
     return {
       panel,
+      content,
       intro,
       timer,
       close,
+      pickerCard,
+      pickerSlot,
+      pickerClose,
+      quickSearchBackdrop,
+      quickAdd,
       search,
       searchStatus,
       searchResults,
@@ -1630,6 +1662,9 @@
     let closeGuardPromise = null;
     let closeGuardGeneration = 0;
     let searchState = { mode: 'closed', entries: [] };
+    let pickerVisible = true;
+    let pickerDocked = false;
+    let pickerObserver = null;
     let lookupGeneration = 0;
     let lookupStates = new Map();
     let unsubscribeRecovery = null;
@@ -1976,6 +2011,64 @@
       if (clearQuery) ui.search.value = '';
       searchState = { mode: 'closed', entries: [] };
       renderSearchState();
+    }
+
+    function syncQuickAdd() {
+      const mobile = root.matchMedia?.('(max-width: 640px)').matches === true;
+      ui.quickAdd.hidden =
+        !openState || !mobile || pickerVisible || pickerDocked || ui.quickAdd.disabled;
+    }
+
+    function setPickerDocked(docked, restoreFocus = false) {
+      if (pickerDocked === docked) return;
+      if (docked) {
+        const height = ui.pickerCard.getBoundingClientRect?.().height;
+        if (height) ui.pickerSlot.style.minHeight = `${height}px`;
+      } else {
+        ui.pickerSlot.style.minHeight = '';
+        closeSearch(true);
+      }
+      pickerDocked = docked;
+      ui.pickerCard.dataset.docked = String(docked);
+      ui.pickerClose.hidden = !docked;
+      ui.quickSearchBackdrop.hidden = !docked;
+      syncQuickAdd();
+      if (docked) focusElement(ui.search);
+      else if (restoreFocus) focusElement(ui.quickAdd);
+    }
+
+    function startPickerObserver() {
+      pickerVisible = true;
+      if (typeof root.IntersectionObserver === 'function') {
+        try {
+          pickerObserver = new root.IntersectionObserver(
+            (entries) => {
+              pickerVisible = entries[0]?.isIntersecting !== false;
+              syncQuickAdd();
+            },
+            { root: ui.content }
+          );
+          pickerObserver.observe(ui.pickerSlot);
+        } catch {
+          try {
+            pickerObserver?.disconnect();
+          } catch {
+            // A failed observer must not prevent the session from opening.
+          }
+          pickerObserver = null;
+          pickerVisible = false;
+        }
+      } else {
+        pickerVisible = false;
+      }
+      syncQuickAdd();
+    }
+
+    function stopPickerObserver() {
+      pickerObserver?.disconnect();
+      pickerObserver = null;
+      pickerVisible = true;
+      syncQuickAdd();
     }
 
     function runSearch() {
@@ -2619,6 +2712,8 @@
       const guarded =
         closeGuardPromise !== null || !sessionCommitAllowsMutation();
       ui.search.disabled = guarded;
+      ui.quickAdd.disabled = guarded;
+      syncQuickAdd();
       ui.note.disabled = guarded;
       ui.searchResults.querySelectorAll('button').forEach((button) => {
         if (button.dataset.action === 'select-search-result') {
@@ -2842,8 +2937,9 @@
     }
 
     function getFocusableElements() {
+      const scope = pickerDocked ? ui.pickerCard : ui.panel;
       return Array.from(
-        ui.panel.querySelectorAll('button, input, select, textarea')
+        scope.querySelectorAll('button, input, select, textarea')
       ).filter(
         (element) =>
           !element.disabled &&
@@ -2895,6 +2991,12 @@
         event.preventDefault();
         event.stopPropagation?.();
         controller.requestClose('escape');
+        return;
+      }
+      if (event.key === 'Escape' && pickerDocked) {
+        event.preventDefault();
+        event.stopPropagation?.();
+        setPickerDocked(false, true);
         return;
       }
       if (event.key === 'ArrowDown' && keyTarget === ui.search) {
@@ -2993,6 +3095,7 @@
         (item) => item.item_key === itemKey
       );
       if (alreadyIncluded) {
+        setPickerDocked(false);
         closeSearch(true);
         setStatus('Eintrag ist bereits in der Session.', 'notice');
         focusItemRow(itemKey);
@@ -3000,6 +3103,7 @@
       }
       try {
         draft.addItem(itemKey);
+        setPickerDocked(false);
         closeSearch(true);
         render();
         setStatus('Eintrag hinzugefügt.', 'success');
@@ -3039,6 +3143,14 @@
       const target = findActionButton(event.target);
       const action = target?.dataset?.action;
       if (!action || target.disabled) return;
+      if (action === 'open-quick-search') {
+        setPickerDocked(true);
+        return;
+      }
+      if (action === 'close-quick-search') {
+        setPickerDocked(false, true);
+        return;
+      }
       if (action === 'close') {
         controller.requestClose('close_button');
         return;
@@ -3289,6 +3401,8 @@
       commitActionFocusPending = false;
       if (!openState) return true;
       stopTimerScheduler();
+      setPickerDocked(false);
+      stopPickerObserver();
       unbindListeners();
       unlockBackground();
       ui.panel.hidden = true;
@@ -3322,12 +3436,14 @@
         bindListeners();
         openState = true;
         activeDocuments.set(document, controller);
+        startPickerObserver();
         syncTimerScheduler();
         focusPicker();
         if (sessionCommit) applySessionCommitState();
         reconcileLookupDom();
       } catch (error) {
         stopTimerScheduler();
+        stopPickerObserver();
         unbindListeners();
         unlockBackground();
         ui.panel.hidden = true;
