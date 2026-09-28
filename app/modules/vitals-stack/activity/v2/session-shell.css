@@ -1113,6 +1113,8 @@
     right: max(0.75rem, env(safe-area-inset-right));
     bottom: max(1rem, env(safe-area-inset-bottom));
     display: inline-flex !important;
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
     min-height: 48px;
     border: 1px solid var(--activity-v2-line-strong);
     border-radius: 999px;
@@ -1153,6 +1155,7 @@
     top: 0.55rem;
     right: 0.55rem;
     display: inline-flex !important;
+    width: max-content;
     min-height: 44px;
   }
 

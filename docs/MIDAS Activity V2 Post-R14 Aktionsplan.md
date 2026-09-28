@@ -1,7 +1,7 @@
 # MIDAS Activity V2 – Aktionsplan nach R14
 
 Stand: 2026-09-28
-Status: Punkte 1 und 2 abgeschlossen; Punkt 3 veröffentlicht (Handyprüfung offen); Punkt 4 offen
+Status: Punkte 1 bis 3 abgeschlossen; Punkt 4 offen
 
 ## Zweck und Reihenfolge
 
@@ -11,7 +11,7 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 | --- | --- | --- | --- |
 | 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | abgeschlossen; von Stephan auch am Handy akzeptiert |
 | 2 | Mobile Sessionansicht vertikal verdichten | mittel | abgeschlossen; Web- und Handyansicht von Stephan akzeptiert |
-| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | veröffentlicht; Handyprüfung offen |
+| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | abgeschlossen; von Stephan am Handy akzeptiert |
 | 4 | Sessionabschluss nach Fensterwechsel oder Neustart reparieren | offen, vermutlich am größten | offen |
 
 ## 1. Export bleibt in der Trainingsansicht
@@ -70,7 +70,9 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 **Prüfung:** Ein- und Ausblendung beim Scrollen, Suche und kanonische Auswahl am Listenende, Tastatur und Fokus, Rückkehr zur Session sowie Verhalten bei kurzem Viewport und offenem Dialog prüfen. Punkt 2 bildet die Layoutgrundlage.
 
-**Lokale Umsetzung 2026-09-28:** Auf schmalen Ansichten erscheint nach dem Herausscrollen der oberen Suchkarte rechts unten „Übung hinzufügen“. Der Button blendet dieselbe Suchkarte als kleines Panel über der Session ein; Suche und Draft-Auswahl bleiben dieselben. Schließen oder Escape bringt den Fokus zum Button zurück, eine Auswahl schließt das Panel vor dem Fokuswechsel zum Item. Ohne Sichtbarkeits-API bleibt der Button mobil ständig verfügbar. Rückfallpunkt ist der lokale Branch `backup/activity-v2-pre-quick-add` auf `30168bb`. Im isolierten Edge-Harness funktionierten Ein-/Ausblendung, Auswahl und Escape bei 390 × 844 und 320 × 600 ohne horizontalen Überlauf oder Konsolenfehler; bei acht Treffern scrollt das Panel intern. Schließen ließ die Scrollposition unverändert, auf Desktop blieb der Button verborgen, und der Fallback ohne Sichtbarkeits-API wurde geprüft. 60 gezielte Contract-Tests bestanden. Die produktive Android-Ansicht und der eingeloggte Produktfluss stehen noch zur Sichtprüfung aus.
+**Lokale Umsetzung 2026-09-28:** Auf schmalen Ansichten erscheint nach dem Herausscrollen der oberen Suchkarte rechts unten „Übung hinzufügen“. Der Button blendet dieselbe Suchkarte als kleines Panel über der Session ein; Suche und Draft-Auswahl bleiben dieselben. Schließen oder Escape bringt den Fokus zum Button zurück, eine Auswahl schließt das Panel vor dem Fokuswechsel zum Item. Ohne Sichtbarkeits-API bleibt der Button mobil ständig verfügbar. Rückfallpunkt ist der lokale Branch `backup/activity-v2-pre-quick-add` auf `30168bb`. Im isolierten Edge-Harness funktionierten Ein-/Ausblendung, Auswahl und Escape bei 390 × 844 und 320 × 600 ohne horizontalen Überlauf oder Konsolenfehler; bei acht Treffern scrollt das Panel intern. Schließen ließ die Scrollposition unverändert, auf Desktop blieb der Button verborgen, und der Fallback ohne Sichtbarkeits-API wurde geprüft. 60 gezielte Contract-Tests bestanden. Zum Zeitpunkt dieser lokalen Prüfung standen die produktive Android-Ansicht und der eingeloggte Produktfluss noch zur Sichtprüfung aus.
+
+**Handy-Abnahme und kleine Nachbesserung 2026-09-28:** Stephan ist mit Punkt 3 auf dem Handy zufrieden und erklärt ihn für abgeschlossen. Sein Screenshot zeigte den unteren Button über fast die ganze Breite. Ursache war die mobile globale `button { width: 100%; }`-Regel der produktiv importierten Export-CSS; der isolierte Harness lud diese CSS nicht. Der Quick-Add-Button und der Schließen-Button des Suchpanels erhalten deshalb in der Session-CSS ausdrücklich Inhaltsbreite. Der Check mit der gesamten Produkt-CSS zeigte wieder einen kompakten Button rechts; die PWA-Assetversion wurde auf `v28` gesetzt. Die optische Nachbesserung wurde noch nicht erneut auf Android angesehen.
 
 ## 4. Sessionabschluss nach Unterbrechung
 

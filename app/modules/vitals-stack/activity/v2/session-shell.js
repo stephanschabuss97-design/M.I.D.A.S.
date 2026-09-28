@@ -1486,6 +1486,7 @@
     const quickAdd = setButton(
       makeElement(document, 'button', 'activity-v2-session-quick-add'),
       'open-quick-search',
+      'Übung hinzufügen',
       'Übung hinzufügen'
     );
     quickAdd.hidden = true;
