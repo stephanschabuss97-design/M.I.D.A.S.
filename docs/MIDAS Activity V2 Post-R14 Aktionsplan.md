@@ -1,7 +1,7 @@
 # MIDAS Activity V2 – Aktionsplan nach R14
 
 Stand: 2026-09-28
-Status: Punkte 1 und 2 im Webfluss akzeptiert; Android-Prüfung offen; Punkte 3 und 4 offen
+Status: Punkt 2 abgeschlossen; Punkt 1 im Webfluss akzeptiert (Android-Prüfung offen); Punkte 3 und 4 offen
 
 ## Zweck und Reihenfolge
 
@@ -10,7 +10,7 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 | Nr. | Thema | Vermuteter Aufwand | Status |
 | --- | --- | --- | --- |
 | 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | Webfluss von Stephan akzeptiert; Android offen |
-| 2 | Mobile Sessionansicht vertikal verdichten | mittel | Webansicht von Stephan akzeptiert; Android offen |
+| 2 | Mobile Sessionansicht vertikal verdichten | mittel | abgeschlossen; Web- und Handyansicht von Stephan akzeptiert |
 | 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | offen |
 | 4 | Sessionabschluss nach Fensterwechsel oder Neustart reparieren | offen, vermutlich am größten | offen |
 
@@ -52,11 +52,13 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 **Prüffokus für die Sichtprüfung:** Eine Kraftübung mit und ohne Gewicht, eine Dauer-/Distanzübung, leere und lange Notizen, fehlende oder umfangreiche Historie, Fehlertexte und große Schrift. Ziel ist eine deutlich kürzere Übungskarte bei unverändert großen Touchzielen und gleicher Datenbedeutung.
 
-**Layout-Umsetzung 2026-09-28:** Die vorhandene Session-Shell wurde gezielt verdichtet: Geräteart im Kartenkopf, mobil nebeneinanderliegende Satzfelder mit 44-px-Löschziel, kleinere Innenabstände und eine Reihe für Kartenaktionen. Die letzte Ausführung mit ihren Werten bleibt auf PC und Handy direkt sichtbar; eine zwischenzeitliche Aufklappvariante wurde nach Stephans Rückmeldung wieder entfernt. Nach dem ersten Item entfällt die Einleitung nur auf schmalen Viewports. Bei höchstens 350 px brechen Satznummer und Löschziel in eine eigene Zeile um; Feldfehler bleiben unter den Eingaben. Der bestehende Draft-, Lookup-, Commit- und Datenvertrag wurde nicht geändert. Die PWA-Assetreferenzen sind lokal auf `v26` vorbereitet. Im synthetischen Browser-Harness bei 390 × 844 blieben die letzten Werte direkt sichtbar; die betrachteten Drei-Satz-Karten maßen etwa 810 px statt zuvor 1240 beziehungsweise 1467 px. Bei 320 × 800 trat auch mit langer historischer Notiz kein horizontaler Überlauf auf. Beide Werte sind Harness-Messungen, keine produktiven Sessiondaten. Stephan hat die Webansicht akzeptiert; die Prüfung am Handy steht noch aus.
+**Layout-Umsetzung 2026-09-28:** Die vorhandene Session-Shell wurde gezielt verdichtet: Geräteart im Kartenkopf, mobil nebeneinanderliegende Satzfelder mit 44-px-Löschziel, kleinere Innenabstände und eine Reihe für Kartenaktionen. Die letzte Ausführung mit ihren Werten bleibt auf PC und Handy direkt sichtbar; eine zwischenzeitliche Aufklappvariante wurde nach Stephans Rückmeldung wieder entfernt. Nach dem ersten Item entfällt die Einleitung nur auf schmalen Viewports. Bei höchstens 350 px brechen Satznummer und Löschziel in eine eigene Zeile um; Feldfehler bleiben unter den Eingaben. Der bestehende Draft-, Lookup-, Commit- und Datenvertrag wurde nicht geändert. Die PWA-Assetreferenzen wurden auf `v26` gesetzt. Im synthetischen Browser-Harness bei 390 × 844 blieben die letzten Werte direkt sichtbar; die betrachteten Drei-Satz-Karten maßen etwa 810 px statt zuvor 1240 beziehungsweise 1467 px. Bei 320 × 800 trat auch mit langer historischer Notiz kein horizontaler Überlauf auf. Beide Werte sind Harness-Messungen, keine produktiven Sessiondaten. Stephan hat die Webansicht akzeptiert.
 
-**Rückfallpunkt:** Der lokale Git-Branch `backup/activity-v2-pre-compact-cards` zeigt auf `851f73c`, den Stand vor diesem Layoutentwurf. Vor einer Rücknahme nur die geänderten Code- und Assetdateien gegen diesen Branch prüfen und gezielt wiederherstellen; der Aktionsplan und andere unbeteiligte lokale Änderungen bleiben erhalten. Der Rückfallpunkt bleibt lokal; die Web-Umsetzung wird auf `main` veröffentlicht.
+**Rückfallpunkt:** Der lokale Git-Branch `backup/activity-v2-pre-compact-cards` zeigt auf `851f73c`, den Stand vor diesem Layoutentwurf. Vor einer Rücknahme nur die geänderten Code- und Assetdateien gegen diesen Branch prüfen und gezielt wiederherstellen; der Aktionsplan und andere unbeteiligte lokale Änderungen bleiben erhalten. Der Rückfallpunkt bleibt lokal; die Umsetzung wurde als `642bc23` auf `main` veröffentlicht.
 
 **Nativer Review:** Ein schmaler Ein-Feld-Satz bekam im ersten Entwurf zu wenig Eingabebreite; im 320-px-Fallback nutzt er jetzt die verfügbare Breite. Die PWA-Referenzen für CSS/JS sind auf `v26` abgestimmt. Der History-Block nutzt wieder den vorherigen, stets sichtbaren Lesepfad. Die reale Android-PWA und persönliche Sessiondaten wurden dafür nicht verwendet.
+
+**Geräte-Abnahme 2026-09-28:** Stephan hat die veröffentlichte Ansicht am Handy geprüft und bestätigt, dass sie gut aussieht. Punkt 2 ist damit abgeschlossen.
 
 ## 3. Nächste Übung ohne Rückscrollen hinzufügen
 
