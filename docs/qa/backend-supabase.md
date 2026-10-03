@@ -137,6 +137,12 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   `search_path` und Aufruf als `anon`, `authenticated` sowie `service_role` prüfen.
 - Erwartung: Nur beabsichtigte Rollen dürfen exakt die versionierte Signatur
   aufrufen; privilegierte Funktionen besitzen einen begrenzten internen Vertrag.
+- C4-Delta: SQL27 behält die Writer-/History-/Export-ACLs bei.
+  `activity_protein_days(date,date)` ist ownergebunden, die separate
+  `activity_protein_days_for_owner(uuid,date,date)` nur für den Service-Pfad.
+  Anonyme/fremde Principals und direkte DML bleiben gesperrt; SQL26 ungefiltert.
+- Nachweisroute: [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>), EV-C4-L01,
+  EV-C4-P01/P02; zusätzlich BS-003/004/005/006/007/012 und IM-013.
 - Invalidiert durch: RPC-Signatur, Function-Security, Grants oder Search Path.
 - Cleanup: Isoliertes Testschema verwerfen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)

@@ -1,8 +1,28 @@
 # MIDAS Roadmap Workflow Contract
 
-Dieser stabile Vertrag definiert, wie MIDAS-Roadmaps erstellt, fortgesetzt,
-reviewt und abgeschlossen werden. Aktive Roadmaps referenzieren ihn, kopieren
-ihn aber nicht vollständig.
+Dieser Vertrag ergänzt [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md)
+um MIDAS-spezifische medizinische, Daten-, Security-, Evidence-, S1–S6- und
+KASRKIN-Konsultationsregeln. Neue Roadmaps verwenden die zentrale Dokumentform
+plus diese lokalen Regeln; laufende und historische Roadmaps bleiben eingefroren.
+
+## Environment Capability Preflight
+
+Vor READY einer neuen toolabhängigen Roadmap den BLUEPRINT-Preflight über das
+[lokale Overlay](../DEV_ENVIRONMENT.md) und nur benötigte
+[ATLAS-Abschnitte](../../../codex-tools/environment/DEV_ENVIRONMENT.md) ausführen.
+Benötigte Capabilities bestimmen, Wesentliches read-only verifizieren und in
+Startkarte/Context Receipt festhalten:
+
+| Capability | Zweck/Anforderung | ATLAS-Abschnitt | Status | Prüfcommand/-datum |
+| --- | --- | --- | --- | --- |
+| konkrete Fähigkeit | konkreter MIDAS-Bedarf | gezielter Verweis | AVAILABLE_VERIFIED / AVAILABLE_UNVERIFIED_OR_STALE / MISSING / INCOMPATIBLE / NOT_REQUIRED | Nachweis |
+
+MISSING/INCOMPATIBLE blockiert READY mit OWNER_TOOLING_DECISION_REQUIRED.
+Stephan entscheidet Setup, vorhandene Alternative oder Scopeänderung. Erst ein
+separat freigegebener Setupblock darf installieren/aktualisieren; dessen
+Postcondition enthält Verifikation und Aktualisierung des ATLAS-Abschnitts.
+Capability-Readiness ersetzt keine medizinische, Daten-, Secret-, Device- oder
+produktive Freigabe. Resume-Chats verwenden den Receipt bis zur Invalidation.
 
 ## Geltung
 
@@ -471,40 +491,10 @@ Arbeit autorisieren oder fehlende Nachweise ersetzen.
 
 ## Chat- und Kontextvertrag
 
-- Ein langfristiger MIDAS-Denkraum darf für Vision, Brainstorming,
-  Trade-offs und Roadmap-Erstellung bestehen bleiben.
-- Jede Roadmap wird grundsätzlich in einem eigenen Ausführungs-Chat
-  umgesetzt. Damit bleibt der aktive Kontext auf einen kohärenten Auftrag
-  begrenzt.
-- Der Denkraum ist kein Ausführungsnachweis und keine Source of Truth.
-  Verbindliche Entscheidungen müssen vor Beginn der Umsetzung in Roadmap,
-  Decision Log oder Produktdokumentation stehen.
-- Jede Roadmap enthält eine kompakte Ausführungs-Chat-Startkarte. Sie benennt
-  Referenzreihenfolge, Startschritt, Modell, Reasoning-Standard,
-  Abweichungsknoten, Owner-Gates und Stop-Bedingungen.
-- Der initiale Contract Review enthält einen Fresh-Chat-Test: Ziel,
-  Entscheidungen, Referenzen, Autonomie, Gates und nächster Schritt müssen
-  allein aus Roadmap und verlinkten Sources of Truth eindeutig hervorgehen.
-  Eine notwendige Information, die nur im Denkraum steht, ist ein
-  Contract-Finding.
-- Ein frischer Ausführungs-Chat liest die angegebenen Quellen selbst. Der
-  Owner muss weder die Projektgeschichte neu erzählen noch lange Dokumente in
-  den Startprompt kopieren.
-- Fehlt ein notwendiger Vertrag oder widersprechen sich Quellen, wird nicht
-  geraten. Der Widerspruch wird als Finding dokumentiert und bei
-  sicherheits-, daten- oder produktrelevanter Wirkung blockiert.
-- Eine neue Follow-up-Roadmap erhält einen neuen Ausführungs-Chat. Kleine,
-  vertragstreue Korrekturen innerhalb derselben Roadmap bleiben im bestehenden
-  Ausführungs-Chat.
-- Lange Chatverläufe, vollständige Logs und unnötige Toolausgaben werden
-  vermieden. Entscheidungen, relevante Fehler und Postconditions bleiben
-  erhalten; Rauschen wird lokal abgelegt oder kompakt zusammengefasst.
-- Nur für den aktuellen Schritt benötigte MCP-Server, Plugins und externe
-  Quellen werden aktiv verwendet.
-
-Prompt Caching kann den Verbrauch beeinflussen, ist aber kein garantierter
-MIDAS-Vertrag. Weder die Korrektheit der Umsetzung noch die Wahl notwendiger
-Reasoning-Stufen darf von vermuteten Cache-Laufzeiten oder Cache Hits abhängen.
+Startkarte, Fresh-Chat-Test und Context Receipt folgen BLUEPRINT. MIDAS trennt
+weiterhin Denkraum und eigenen Ausführungs-Chat je Roadmap; kleine vertragstreue
+Korrekturen bleiben im bestehenden Chat. Cache-Verhalten begründet weder
+Freigaben noch Modell-/Reasoningwechsel.
 
 ## Scope-Freeze und spätere Grundsatzänderungen
 
@@ -543,89 +533,21 @@ Evidence nicht parallel.
 
 ## Session-Rehydration
 
-Bei Fortsetzung in einem neuen Chat wird in dieser Reihenfolge gelesen:
+Lesepfad und Invalidation folgen BLUEPRINT. Zusätzlich bleiben in MIDAS
+AGENTS, Root-README, aktive Roadmap, Resume Card, Findings, Dirty Boundary,
+aktueller Diff, geänderte Codeflächen und produktive Owner-Gates Live-Kontext.
+Fingerprintgebundener Reuse verlangt exakte Sourceidentität, vollständige
+Frageabdeckung und keine Invalidation/Exact-Source-Pflicht; sonst READ_ORIGINAL.
+Read Completeness sowie SUFFICIENT/INSUFFICIENT/NOT_REQUIRED werden ausdrücklich
+unterschieden. Abgeschnittene Ausgabe gilt nicht als vollständiger Read.
 
-1. Ausführungs-Chat-Startkarte, Roadmap-Metadaten und Session Resume Card.
-2. Context Receipt.
-3. Entscheidungslog und Findings.
-4. Nur der aktuelle Schritt samt Exit-Kriterium.
-5. `git status --short` und der relevante Diff.
-6. Nur Referenzen, die der aktuelle Schritt oder ein Finding benötigt.
-
-Das erste kanonische Usage-Gate nach dieser Lesewelle wird als
-`POST_REHYDRATION_BASELINE` behandelt. Sein Restwert ist die reale verfügbare
-Nettokapazität für den nächsten Block. Rehydrationsverbrauch wird nur dann als
-exaktes Delta ausgewiesen, wenn unmittelbar davor ein kanonischer Checkpoint
-mit identischen Reset-IDs existiert. Ohne diese Vorhermessung wird weder ein
-Stand von `100 %` angenommen noch ein Delta erfunden.
-
-Die Rehydration bleibt bei der Planung eines noch nicht begonnenen neuen Chats
-Teil des Gesamtforecasts. Sobald sie beim Wiedereinstieg abgeschlossen ist,
-wechselt sie jedoch von prognostizierter Arbeit zu `SUNK_USAGE` und darf die
-Zulassung des folgenden Blocks nicht ein zweites Mal belasten. Der aktuelle
-Restwert sowie der für den verbleibenden Block geltende Operational Safety
-Floor und Autonomous Full-Closure Floor entscheiden weiterhin unverändert.
-
-Bei großen Quellen wird zuerst nach dem relevanten Symbol, Abschnitt,
-Producer oder Consumer gesucht und anschließend nur der zur aktuellen
-Vertragsfrage nötige Bereich gelesen. Pauschale Vollreads, wiederholte große
-Suchausgaben und identische Quellenausschnitte ohne Invalidation sind zu
-vermeiden. Bei Unsicherheit, fehlendem Treffer oder einer Exact-Source-Pflicht
-wird die autoritative Quelle ausreichend breit gelesen.
-
-Der Context Receipt wird in S1 angelegt und enthält kompakt:
-
-- Baseline-Commit und relevante Dirty Files,
-- die für den Scope gelesenen Sources of Truth samt Stand oder Fingerprint,
-- gültige Evidence-/Test-IDs und ihre Invalidation-Bedingungen,
-- relevante Tool-, Runtime- und Auth-Verfügbarkeit ohne Secretmaterial.
-
-Für eine große, stabile und tatsächlich wiederverwendete Source darf der
-Context Receipt zusätzlich enthalten:
-
-- Source und exakten Fingerprint,
-- validierenden Schritt beziehungsweise Evidence-ID,
-- wiederverwendbare Aussagen,
-- Invalidation Trigger,
-- Fragen, für die das Original zwingend gelesen werden muss.
-
-Dieser Eintrag ist nur ein abgeleiteter Cache. `REUSE_VALIDATED_CONTEXT` ist
-zulässig, wenn Source und Fingerprint exakt stimmen, die aktuelle Frage
-vollständig abgedeckt ist und weder Finding, Invalidation noch
-Exact-Source-Pflicht vorliegt. In allen anderen Fällen gilt `READ_ORIGINAL`.
-`AGENTS.md`, Root-`README.md`, aktive Roadmap, Resume Card, Findings, aktueller
-Diff, Dirty Boundary, geänderte Codeflächen und produktive Owner-Gates werden
-immer live gelesen.
-
-Nach einem Ausführungsblock wird nur ein tatsächlich geänderter Receipt-Eintrag
-ersetzt. Stimmt die Baseline nicht mehr, wurde eine relevante Datei geändert,
-ist ein Quellen-Fingerprint veraltet oder trat eine Invalidation-Bedingung ein,
-wird der betroffene Kontext gezielt rehydriert. Der Receipt ist weder
-chronologisches Protokoll noch Ersatz für Roadmap, Evidence oder Git.
-
-Ein breiter Re-Read der jeweils relevanten Quellen ist nur erforderlich:
-
-- beim initialen S1, soweit kein gültiger fingerprintgebundener Receipt die
-  konkrete Frage vollständig abdeckt,
-- im S4 Readiness Review, soweit S1-S3 betroffen sind,
-- bei einem Contract-Finding mit unklarer Herkunft.
-
-Vollständige Toolausgaben werden bei Bedarf in temporäre lokale Logs
-geschrieben. In Roadmap, Evidence und Chat gehören nur entscheidungsrelevante
-Fehler, Zähler, Versionen, Hashes und Postconditions. Ein Terminaltranskript ist
-kein zusätzlicher Nachweis.
-
-S6 liest die vertragsrelevanten Roadmap-Abschnitte, Findings, Evidence,
-geänderten Dateien und betroffenen Source-of-Truth-Dokus erneut. Historische
-Ergebnisprotokolle werden nur bei einem Widerspruch vollständig gelesen.
-
-Der Session-Handoff:
-
-- bleibt unter ungefähr 35 Zeilen,
-- wird nach jedem Hauptschritt, jedem S4-Ausführungsblock und vor Pausen
-  ersetzt,
-- enthält nur gültigen Iststand, nächste Aktion, Findings, Nachweise und Gates,
-- wird nicht als chronologisches Arbeitsprotokoll verwendet.
+Das erste Gate nach Rehydration ist POST_REHYDRATION_BASELINE. Ein Delta setzt
+einen echten vorherigen Checkpoint mit identischen Reset-IDs voraus; niemals
+100 Prozent oder Verbrauch erfinden. Bereits verbrauchte Rehydration ist
+SUNK_USAGE und wird nicht nochmals prognostiziert; KASRKIN-Reserve bleibt bindend.
+S1 und S4R lesen relevante Quellen ausreichend, bei Contract-Finding auch breiter.
+S6 prüft relevante Roadmapteile, Findings, Evidence und geänderte SoT erneut.
+Der Handoff bleibt ungefähr unter 35 Zeilen und ersetzt seinen Vorgänger.
 
 ## Evidence-Vertrag
 

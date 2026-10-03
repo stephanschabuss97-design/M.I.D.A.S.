@@ -99,14 +99,14 @@ test('T-ACT-R10-12 validates complete response before creating parseable downloa
   assert.equal(calls, 1);
   assert.deepEqual(transitions, ['idle', 'loading', 'ready']);
   assert.deepEqual(JSON.parse(JSON.stringify(state.counts)), {
-    sessions: 2, items: 3, sets: 1
+    sessions: 2, items: 3, sets: 1, protein_excluded: 1
   });
   assert.equal(state.download.filename, 'midas-activity-coaching_2026-02-22_2026-08-22.json');
   const blob = harness.urls.get(state.download.url);
   assert.equal(blob.type, 'application/json;charset=utf-8');
   assert.equal(blob.size, state.download.bytes);
   const downloaded = JSON.parse(await blob.text());
-  assert.equal(downloaded.schema_version, 'midas.activity-coaching-export.v1');
+  assert.equal(downloaded.schema_version, 'midas.activity-coaching-export.v2');
   assert.equal(downloaded.completeness.session_count, 2);
   harness.context.AppModules.activityV2.coachingExport.validateExport(downloaded);
   const url = state.download.url;

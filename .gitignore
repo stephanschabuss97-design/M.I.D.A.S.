@@ -39,6 +39,10 @@ backend/**/*.key
 .tmp/
 *.tmp
 
+# Local usage evidence and generated browser-test results
+.kasrkin/work/
+test-results/
+
 *.keystore
 twa/android.keystore
 twa/keystore.properties

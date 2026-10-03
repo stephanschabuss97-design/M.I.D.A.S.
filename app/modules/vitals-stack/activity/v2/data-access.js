@@ -4,8 +4,8 @@
   const REQUEST_SCHEMA = 'midas.activity-session.v1';
   const COMMIT_RESULT_SCHEMA = 'midas.activity-session-result.v1';
   const LOOKUP_RESULT_SCHEMA = 'midas.activity-last-performance.v1';
-  const HISTORY_PAGE_SCHEMA = 'midas.activity-session-history-page.v1';
-  const DETAIL_SCHEMA = 'midas.activity-session-detail.v1';
+  const HISTORY_PAGE_SCHEMA = 'midas.activity-session-history-page.v2';
+  const DETAIL_SCHEMA = 'midas.activity-session-detail.v2';
   const REPLACEMENT_SCHEMA = 'midas.activity-session-replacement.v1';
   const MUTATION_RESULT_SCHEMA = 'midas.activity-session-mutation-result.v1';
   const DEFAULT_HISTORY_LIMIT = 20;
@@ -43,7 +43,8 @@
     'note',
     'schema_version',
     'started_at',
-    'title'
+    'title',
+    'protein_target_relevant'
   ]);
   const ITEM_KEYS = Object.freeze([
     'distance_km',
@@ -169,6 +170,11 @@
       violation();
     }
     return Object.fromEntries(expected.map((key) => [key, descriptors[key].value]));
+  }
+
+  function assertBoolean(value) {
+    if (typeof value !== 'boolean') violation();
+    return value;
   }
 
   function assertDenseArray(value, min, max) {
@@ -588,6 +594,8 @@
       'started_at'
     ]);
     if (payload.schema_version !== REQUEST_SCHEMA) violation();
+    if (Object.prototype.hasOwnProperty.call(payload, 'protein_target_relevant') &&
+        typeof payload.protein_target_relevant !== 'boolean') violation();
 
     const { semantics, catalog } = resolveCommitSemantics(
       selected.semanticsProvided,
@@ -617,19 +625,23 @@
     }
     items.sort((left, right) => left.item_order - right.item_order);
 
+    const normalizedPayload = {
+      schema_version: REQUEST_SCHEMA,
+      catalog_version: catalogVersion,
+      started_at: payload.started_at,
+      ended_at: payload.ended_at,
+      duration_min: assertInteger(payload.duration_min, 1, 1440),
+      title: normalizeOptionalText(payload.title, 120),
+      note: normalizeOptionalText(payload.note, 500),
+      items
+    };
+    if (Object.prototype.hasOwnProperty.call(payload, 'protein_target_relevant')) {
+      normalizedPayload.protein_target_relevant = payload.protein_target_relevant;
+    }
     return {
       requestId,
       semantics,
-      payload: {
-        schema_version: REQUEST_SCHEMA,
-        catalog_version: catalogVersion,
-        started_at: payload.started_at,
-        ended_at: payload.ended_at,
-        duration_min: assertInteger(payload.duration_min, 1, 1440),
-        title: normalizeOptionalText(payload.title, 120),
-        note: normalizeOptionalText(payload.note, 500),
-        items
-      }
+      payload: normalizedPayload
     };
   }
 
@@ -1097,6 +1109,7 @@
       'day',
       'title',
       'duration_min',
+      'protein_target_relevant',
       'item_count',
       'revision'
     ]);
@@ -1106,6 +1119,7 @@
       day: assertDay(item.day),
       title: assertCanonicalOptionalText(item.title, 120),
       duration_min: assertInteger(item.duration_min, 1, 1440),
+      protein_target_relevant: assertBoolean(item.protein_target_relevant),
       item_count: assertInteger(item.item_count, 1, 50),
       revision: assertRevision(item.revision)
     };
@@ -1294,6 +1308,7 @@
       'day',
       'title',
       'duration_min',
+      'protein_target_relevant',
       'note',
       'items'
     ]);
@@ -1321,6 +1336,7 @@
       day: assertDay(detail.day),
       title: assertCanonicalOptionalText(detail.title, 120),
       duration_min: assertInteger(detail.duration_min, 1, 1440),
+      protein_target_relevant: assertBoolean(detail.protein_target_relevant),
       note: assertCanonicalOptionalText(detail.note, 500),
       items
     });
@@ -1393,12 +1409,21 @@
   }
 
   function normalizeReplacement(value) {
-    const replacement = assertExactDataKeys(value, [
+    const keys = [
       'schema_version',
       'duration_min',
       'note',
       'items'
-    ]);
+    ];
+    const hasRelevance = Object.prototype.hasOwnProperty.call(
+      value ?? {},
+      'protein_target_relevant'
+    );
+    const replacement = assertExactDataKeys(
+      value,
+      hasRelevance ? [...keys, 'protein_target_relevant'] : keys
+    );
+    if (hasRelevance && typeof replacement.protein_target_relevant !== 'boolean') violation();
     if (replacement.schema_version !== REPLACEMENT_SCHEMA) violation();
     assertDenseArray(replacement.items, 1, 50);
     const items = replacement.items.map((item, index) =>
@@ -1407,12 +1432,14 @@
     if (new Set(items.map((item) => item.item_key)).size !== items.length) {
       violation();
     }
-    return {
+    const normalized = {
       schema_version: REPLACEMENT_SCHEMA,
       duration_min: assertInteger(replacement.duration_min, 1, 1440),
       note: normalizeExplicitNullableText(replacement.note, 500),
       items
     };
+    if (hasRelevance) normalized.protein_target_relevant = replacement.protein_target_relevant;
+    return normalized;
   }
 
   function normalizeReplaceOptions(value) {

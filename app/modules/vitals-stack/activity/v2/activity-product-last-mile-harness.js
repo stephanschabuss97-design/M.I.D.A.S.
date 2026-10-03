@@ -9,14 +9,17 @@
   const exportHost = root.document.getElementById('activity-v2-export-host');
   const url = new URL(root.location.href);
   const requestedMode = url.searchParams.get('mode');
-  const mode = ['success', 'unknown', 'recovery', 'discard', 'misdirect', 'reauth', 'aged'].includes(requestedMode)
+  const mode = ['success', 'unknown', 'recovery', 'discard', 'misdirect', 'reauth', 'aged', 'protein_error'].includes(requestedMode)
     ? requestedMode
     : 'success';
   const phase = url.searchParams.get('phase') === 'resume' ? 'resume' : 'seed';
+  const manualTap = url.searchParams.get('manual') === '1';
   const markers = new Set();
   const commitStates = [];
   const requestBodies = [];
   const responseLedger = new Map();
+  const proteinBodies = [];
+  let profileSyncCount = 0;
   let finishCalls = 0;
   let retryCalls = 0;
   let controller = null;
@@ -141,6 +144,7 @@
   function installControlledTransport() {
     Object.defineProperty(root.AppModules, 'supabase', {
       value: Object.freeze({
+        supabaseState: { authState: 'auth' },
         baseUrlFromRest(value) {
           return String(value).replace(/\/rest\/v1\/?$/, '');
         },
@@ -156,6 +160,13 @@
       return 'https://activity-v2-last-mile.invalid/rest/v1/';
     };
     root.fetch = async (url, options) => {
+      if (String(url).endsWith('/functions/v1/midas-protein-targets')) {
+        proteinBodies.push(JSON.parse(options.body));
+        if (mode === 'protein_error' && proteinBodies.length === 1) {
+          return { ok: false, status: 502, text: async () => 'secret' };
+        }
+        return response({ ok: true, skipped: false });
+      }
       if (!String(url).endsWith('/rest/v1/rpc/activity_v2_commit_session')) {
         return response(null);
       }
@@ -173,6 +184,11 @@
         throw new TypeError('controlled response loss');
       }
       return response(makeCommitResult(rpcBody, outcome));
+    };
+    root.AppModules.profile = {
+      sync: async () => { profileSyncCount++; },
+      getSyncStatus: () => ({ status: 'ready' }),
+      getData: () => ({ protein_target_max: 90 })
     };
   }
 
@@ -273,6 +289,7 @@
             requestClose: real.requestClose,
             isOpen: real.isOpen,
             refreshLastPerformance: real.refreshLastPerformance,
+            setProteinRefreshState: real.setProteinRefreshState,
             destroy: real.destroy
           });
         } catch (error) {
@@ -350,6 +367,11 @@
         if (!commitStates.includes(state)) fail(`missing commit state: ${state}`);
       });
     if (commitStates.at(-1) !== 'committed') fail('commit did not settle');
+    const committedPayload = JSON.parse(requestBodies[0]).p_payload;
+    const expectedRelevance = !['success', 'unknown', 'recovery'].includes(mode);
+    if (committedPayload.protein_target_relevant !== expectedRelevance) {
+      fail('protein relevance transport drift');
+    }
     if (mode === 'misdirect' && !markers.has('misdirected_click_reproduced')) {
       fail('misdirected click symptom was not reproduced');
     }
@@ -393,7 +415,9 @@
         createRequestId: makeUuid,
         createLeaseToken: makeUuid,
         confirmDiscard: async () => mode === 'discard',
-        refreshActivityConsumers: async () => true
+        refreshActivityConsumers: async () => true,
+        getProteinRefreshState: root.AppModules.protein.getActivityRefreshState,
+        refreshProteinTargets: root.AppModules.protein.refreshAfterActivity
       });
       controller.subscribe((state) => {
         lastProductState = state;
@@ -427,6 +451,31 @@
       );
       if (!(mode === 'recovery' && phase === 'resume')) {
         addValidItemThroughShell(activityV2);
+      }
+      if (['success', 'unknown'].includes(mode) ||
+          (mode === 'recovery' && phase === 'seed')) {
+        const toggle = sessionHost.querySelector('[data-action="toggle-protein-relevance"]');
+        if (!toggle || toggle.disabled) fail('real protein relevance toggle unavailable');
+        if (manualTap && mode === 'success') {
+          await waitFor(
+            () => toggle.getAttribute('aria-pressed') === 'true',
+            'real mobile protein relevance tap unavailable',
+            10000
+          );
+        } else {
+          toggle.click();
+        }
+        if (toggle.getAttribute('aria-pressed') !== 'true') {
+          fail('protein relevance listener did not update draft');
+        }
+        markers.add('protein_relevance_toggled');
+      }
+      if (mode === 'recovery' && phase === 'resume') {
+        const toggle = sessionHost.querySelector('[data-action="toggle-protein-relevance"]');
+        if (!toggle || toggle.getAttribute('aria-pressed') !== 'true') {
+          fail('protein relevance was not recovered after reload');
+        }
+        markers.add('protein_relevance_recovered');
       }
       if (mode === 'aged') {
         clock += 24 * 60 * 60 * 1000;
@@ -479,7 +528,11 @@
         markers.add('misdirected_click_reproduced');
       }
       markers.add('listener_bound');
-      finish.click();
+      if (manualTap && mode === 'success') {
+        await waitFor(() => finishCalls === 1, 'real mobile finish tap unavailable', 10000);
+      } else {
+        finish.click();
+      }
       if (mode === 'unknown') {
         const retry = await waitFor(
           () => sessionHost.querySelector('[data-action="retry"]'),
@@ -491,6 +544,25 @@
         () => commitStates.at(-1) === 'committed',
         'real commit did not settle'
       );
+      if (mode === 'protein_error') {
+        const proteinRetry = await waitFor(() => {
+          const button = sessionHost.querySelector('[data-action="retry-protein-refresh"]');
+          return button && !button.hidden ? button : null;
+        }, 'protein retry not visible after failure');
+        const notice = sessionHost.querySelector('.activity-v2-session-protein-status');
+        if (!notice.textContent.includes('Training gespeichert; Proteinziel noch nicht aktualisiert.') ||
+            proteinBodies.length !== 1 || profileSyncCount !== 0) fail('protein failure contract drift');
+        if (url.searchParams.get('manualProteinRetry') === '1') {
+          await waitFor(() => proteinBodies.length === 2, 'manual protein retry missing', 10000);
+        } else proteinRetry.click();
+      }
+      await waitFor(() => root.AppModules.protein.getActivityRefreshState().status === 'ready',
+        'protein acknowledgement and Profile reload missing');
+      if (proteinBodies.length !== (mode === 'protein_error' ? 2 : 1) ||
+          profileSyncCount !== 1 || proteinBodies.some((body) =>
+            body.trigger !== 'activity_save' || body.force !== false || body.dayIso !== null || body.weight_kg !== null)) {
+        fail('protein transport drift');
+      }
       assertPass();
       if (mode === 'discard' && !markers.has('recovery_discarded')) {
         fail('recovery discard path was not completed');

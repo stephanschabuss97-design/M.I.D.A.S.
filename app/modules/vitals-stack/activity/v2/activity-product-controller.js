@@ -23,7 +23,9 @@
     'createRequestId',
     'createLeaseToken',
     'confirmDiscard',
-    'refreshActivityConsumers'
+    'refreshActivityConsumers',
+    'getProteinRefreshState',
+    'refreshProteinTargets'
   ]);
   const CONTROLLER_KEYS = Object.freeze([
     'getState',
@@ -79,7 +81,9 @@
     'createRequestId',
     'createLeaseToken',
     'confirmDiscard',
-    'refreshActivityConsumers'
+    'refreshActivityConsumers',
+    'getProteinRefreshState',
+    'refreshProteinTargets'
   ]);
   const RECOVERY_METHODS = Object.freeze([
     'getState',
@@ -293,9 +297,15 @@
 
     rootElement.appendChild(heading);
     rootElement.appendChild(status);
+    const proteinStatus = createElement(document, 'p', 'activity-v2-product-protein-status');
+    proteinStatus.setAttribute('role', 'status');
+    proteinStatus.setAttribute('aria-live', 'polite');
+    const proteinRetry = createButton(document, 'retry-protein-refresh', 'Proteinziel erneut aktualisieren');
+    rootElement.appendChild(proteinStatus);
+    rootElement.appendChild(proteinRetry);
     rootElement.appendChild(primaryActions);
     rootElement.appendChild(secondaryActions);
-    return { rootElement, status, start, resume, discard, history, exportButton };
+    return { rootElement, status, proteinStatus, proteinRetry, start, resume, discard, history, exportButton };
   }
 
   function appendLabeledRadio(document, fieldset, value, text, checked = false) {
@@ -412,6 +422,15 @@
     let sessionShellController = null;
     let commitNotificationSent = false;
     let historyController = null;
+    let unsubscribeHistory = null;
+    let proteinRefresh = options.getProteinRefreshState();
+    if (!hasExactDataKeys(proteinRefresh, ['status', 'trigger']) ||
+        !['idle', 'pending', 'error', 'ready'].includes(proteinRefresh.status) ||
+        (proteinRefresh.status !== 'idle' &&
+         !['activity_save', 'activity_correction', 'activity_delete'].includes(proteinRefresh.trigger))) {
+      fail('INVALID_OPTIONS');
+    }
+    let proteinRevision = 0;
     let historyShellController = null;
     let historyBackButton = null;
     let exportController = null;
@@ -494,6 +513,17 @@
     }
 
     function render() {
+      const mutationLabel = proteinRefresh.trigger === 'activity_delete' ? 'Training gelöscht' : 'Training gespeichert';
+      const proteinMessage = {
+        idle: '',
+        pending: `${mutationLabel}; Proteinziel wird aktualisiert.`,
+        error: `${mutationLabel}; Proteinziel noch nicht aktualisiert.`,
+        ready: `${mutationLabel}; Proteinziel aktualisiert.`
+      }[proteinRefresh.status];
+      ui.proteinStatus.textContent = proteinMessage;
+      ui.proteinStatus.hidden = !authenticated || proteinRefresh.status === 'idle';
+      ui.proteinRetry.hidden = !authenticated || proteinRefresh.status !== 'error';
+      sessionShellController?.setProteinRefreshState(proteinRefresh.status, proteinMessage, retryProteinRefresh);
       const state = stateSnapshot.state;
       ui.status.textContent = COPY[state] || COPY.blocked;
       ui.status.setAttribute('role', state === 'blocked' || state === 'unknown' ? 'alert' : 'status');
@@ -728,9 +758,47 @@
     function notifyCommittedConsumers() {
       if (commitNotificationSent) return;
       commitNotificationSent = true;
+      refreshProtein('activity_save');
       Promise.resolve()
         .then(() => options.refreshActivityConsumers())
         .catch(() => {});
+    }
+
+    function refreshProtein(trigger) {
+      const revision = ++proteinRevision;
+      proteinRefresh = { status: 'pending', trigger };
+      render();
+      Promise.resolve().then(() => {
+        if (destroyed || !authenticated) throw new Error('auth_required');
+        return options.refreshProteinTargets(trigger);
+      }).then((result) => {
+        if (result?.ok !== true) throw new Error('refresh_unconfirmed');
+        if (revision === proteinRevision && !destroyed) {
+          proteinRefresh = { status: 'ready', trigger };
+          render();
+        }
+      }).catch(() => {
+        if (revision === proteinRevision && !destroyed) {
+          proteinRefresh = { status: 'error', trigger };
+          render();
+        }
+      });
+    }
+
+    function retryProteinRefresh() {
+      if (!destroyed && authenticated && proteinRefresh.status === 'error') {
+        refreshProtein(proteinRefresh.trigger);
+      }
+    }
+
+    function handleProteinRefreshState() {
+      if (destroyed) return;
+      const next = options.getProteinRefreshState();
+      if (!hasExactDataKeys(next, ['status', 'trigger']) ||
+          !['idle', 'pending', 'error', 'ready'].includes(next.status) ||
+          (next.status !== 'idle' && !['activity_save', 'activity_correction', 'activity_delete'].includes(next.trigger))) return;
+      proteinRefresh = next;
+      render();
     }
 
     function handleCommitState(state) {
@@ -783,6 +851,7 @@
           'requestClose',
           'isOpen',
           'refreshLastPerformance',
+          'setProteinRefreshState',
           'destroy'
         ]);
       } catch (error) {
@@ -965,6 +1034,7 @@
       let controller = null;
       let shell = null;
       let backButton = null;
+      let unsubscribe = null;
       try {
         controller = options.sessionHistory.create({
           adapter: historyAdapter(),
@@ -983,8 +1053,26 @@
         backButton = createButton(document, 'close-history', 'Zurück zum Training');
         backButton.addEventListener('click', closeHistory);
         options.historyHost.appendChild(backButton);
+        let previousCorrection = null;
+        let previousDeletion = null;
+        unsubscribe = controller.subscribe((next) => {
+          if (!destroyed && authenticated) {
+            if (next.correction.status === 'confirmed' && previousCorrection !== 'confirmed') {
+              refreshProtein('activity_correction');
+              Promise.resolve().then(() => options.refreshActivityConsumers()).catch(() => {});
+            }
+            if (next.deletion.status === 'confirmed' && previousDeletion !== 'confirmed') {
+              refreshProtein('activity_delete');
+              Promise.resolve().then(() => options.refreshActivityConsumers()).catch(() => {});
+            }
+          }
+          previousCorrection = next.correction.status;
+          previousDeletion = next.deletion.status;
+        });
+        if (typeof unsubscribe !== 'function') fail('HISTORY_COMPOSITION_FAILED');
       } catch {
         try {
+          unsubscribe?.();
           backButton?.removeEventListener('click', closeHistory);
           backButton?.remove();
           shell?.destroy?.();
@@ -1000,6 +1088,7 @@
         fail('HISTORY_COMPOSITION_FAILED');
       }
       historyController = controller;
+      unsubscribeHistory = unsubscribe;
       historyShellController = shell;
       historyBackButton = backButton;
     }
@@ -1200,6 +1289,8 @@
     }
 
     function teardownSecondarySurfaces() {
+      unsubscribeHistory?.();
+      unsubscribeHistory = null;
       try {
         historyBackButton?.removeEventListener('click', closeHistory);
         historyShellController?.destroy();
@@ -1288,7 +1379,8 @@
         'continue-session': continueSession,
         'discard-recovery': discardRecoveredSession,
         'open-history': openHistory,
-        'open-export': openExport
+        'open-export': openExport,
+        'retry-protein-refresh': retryProteinRefresh
       };
       Promise.resolve()
         .then(() => actions[button.dataset.action]?.())
@@ -1313,6 +1405,7 @@
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
         options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);
+        document.removeEventListener('protein:refresh-state', handleProteinRefreshState);
         if (surfaceReconcileTimer !== null && typeof root.clearTimeout === 'function') {
           root.clearTimeout(surfaceReconcileTimer);
         }
@@ -1357,6 +1450,7 @@
       options.sessionHost.addEventListener('click', handleSurfaceInteraction, true);
       options.exportHost.addEventListener('keydown', handleExportKeydown, true);
       document.addEventListener('keydown', handleSurfaceInteraction, true);
+      document.addEventListener('protein:refresh-state', handleProteinRefreshState);
       options.host.appendChild(ui.rootElement);
       render();
     } catch {
@@ -1365,6 +1459,7 @@
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
         options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);
+        document.removeEventListener('protein:refresh-state', handleProteinRefreshState);
       } catch {
         // Failed mount leaves no product listener behind.
       }

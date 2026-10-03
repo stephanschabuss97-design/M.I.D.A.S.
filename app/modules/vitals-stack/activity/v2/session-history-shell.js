@@ -23,6 +23,7 @@
     'openCorrection',
     'setCorrectionDurationMin',
     'setCorrectionNote',
+    'setCorrectionProteinTargetRelevant',
     'addCorrectionItem',
     'removeCorrectionItem',
     'moveCorrectionItem',
@@ -324,6 +325,8 @@
           ),
           text(document, 'span', '', `Rev. ${item.revision}`)
         );
+        metrics.append(text(document, 'span', '', item.protein_target_relevant
+          ? 'Zählt fürs Proteinziel' : 'Vom Proteinziel ausgenommen'));
         opener.append(primary, metrics);
         row.append(opener);
         list.append(row);
@@ -661,6 +664,16 @@
 
       const form = document.createElement('div');
       form.className = 'activity-v2-history-correction-form';
+      const relevance = button(document,
+        working.protein_target_relevant
+          ? 'Vom Proteinziel ausnehmen'
+          : 'Vom Proteinziel ausgenommen ✓',
+        'correction-protein-relevance', {
+          className: 'activity-v2-history-button activity-v2-history-protein-toggle',
+          focusKey: 'correction-protein-relevance', disabled
+        });
+      relevance.setAttribute('aria-pressed', working.protein_target_relevant ? 'false' : 'true');
+      form.append(relevance);
       const sessionFields = document.createElement('div');
       sessionFields.className = 'activity-v2-history-field-grid';
       sessionFields.append(
@@ -960,6 +973,8 @@
       meta.className = 'activity-v2-history-meta';
       [
         ['Dauer', `${value.duration_min} Minuten`],
+        ['Proteinziel', value.protein_target_relevant
+          ? 'Zählt fürs Proteinziel' : 'Vom Proteinziel ausgenommen'],
         ['Einträge', String(value.items.length)],
         ['Katalog', `Version ${value.catalog_version}`],
         ['Revision', value.revision]
@@ -1065,6 +1080,10 @@
       } else if (action === 'correction-save') {
         await controller.saveCorrection();
         focusByKey('correction-close');
+      } else if (action === 'correction-protein-relevance') {
+        controller.setCorrectionProteinTargetRelevant(
+          !state.correction.working_copy.protein_target_relevant);
+        focusByKey('correction-protein-relevance');
       } else if (action === 'correction-retry') {
         await controller.retryCorrection();
         focusByKey('correction-close');

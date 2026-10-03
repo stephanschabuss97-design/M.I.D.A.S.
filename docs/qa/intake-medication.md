@@ -204,5 +204,14 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   auslösen.
 - Erwartung: Body-Save triggert die Funktion, Activity beeinflusst das Band und
   der berechnete Profilbereich aktualisiert Intake und Assistant-Consumer.
-- Invalidiert durch: Body-Hook, Activity-Fenster, Protein-Faktor oder Consumer.
+- C4-Delta: Save/Correction/Delete und sichtbaren Refresh-/Retry-Vertrag
+  prüfen; Default, ausschließlich ausgenommene und gemischte V1-/V2-Tage über
+  SQL27, pro Wiener Tag höchstens eins. Nur Protein filtert. Doctor-Lock,
+  Body-/Scheduler-Principals, Cooldown, fehlendes Gewicht und sichere Fehler
+  bleiben erhalten; Retry schreibt kein Training erneut. Produktiv ist
+  `protein_activity_score_28d` das Orakel, nicht Zielgramm bei Doctor-Lock.
+- Nachweisroute: [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>), EV-C4-L03,
+  EV-C4-P02/P04, EV-C4-S5-G18; Activity-Vertrag HCR-034.
+- Invalidiert durch: Body-Hook, Activity-Fenster, SQL27-Projektion,
+  Activityrefresh, Protein-Faktor oder Consumer.
 - Cleanup: Isolierte Body-, Activity- und Profil-Fixtures verwerfen.

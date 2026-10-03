@@ -1,7 +1,8 @@
 'use strict';
 
 (function initActivityV2SessionDraft(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const LEGACY_DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v4';
   const ITEM_LIMIT = 50;
   const NOTE_LIMIT = 500;
   const SET_LIMIT = 50;
@@ -44,8 +45,12 @@
     'revision',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
+  const LEGACY_SNAPSHOT_KEYS = Object.freeze(
+    SNAPSHOT_KEYS.filter((key) => key !== 'protein_target_relevant')
+  );
   const DRAFT_ITEM_KEYS = Object.freeze([
     'item_key',
     'item_order',
@@ -392,7 +397,7 @@
       : createSetRecord(setOrder, set);
   }
 
-  function createSnapshot({ requestId, catalogVersion, revision, startedAt, note, items }) {
+  function createSnapshot({ requestId, catalogVersion, revision, startedAt, note, proteinTargetRelevant = true, items }) {
     return deepFreeze({
       draft_schema_version: DRAFT_SCHEMA_VERSION,
       request_id: requestId,
@@ -400,6 +405,7 @@
       revision,
       started_at: startedAt,
       note,
+      protein_target_relevant: proteinTargetRelevant,
       items: items.map((item, index) => withItemOrder(item, index + 1))
     });
   }
@@ -464,9 +470,11 @@
   }
 
   function validateRestoredSnapshot(snapshot, catalogState) {
+    const legacy = snapshot?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
     if (
-      !hasExactOrderedKeys(snapshot, SNAPSHOT_KEYS) ||
-      snapshot.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      !hasExactOrderedKeys(snapshot, legacy ? LEGACY_SNAPSHOT_KEYS : SNAPSHOT_KEYS) ||
+      (!legacy && snapshot.draft_schema_version !== DRAFT_SCHEMA_VERSION) ||
+      (!legacy && typeof snapshot.protein_target_relevant !== 'boolean') ||
       typeof snapshot.request_id !== 'string' ||
       !UUID_RE.test(snapshot.request_id) ||
       snapshot.request_id !== snapshot.request_id.toLowerCase() ||
@@ -615,6 +623,7 @@
         revision: snapshot.revision + 1,
         startedAt,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items: [
           ...snapshot.items,
           createItemRecord(itemKey, snapshot.items.length + 1, catalogEntry)
@@ -639,6 +648,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items
       });
       return snapshot;
@@ -669,6 +679,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items
       });
       return snapshot;
@@ -688,6 +699,26 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
+        items: snapshot.items
+      });
+      return snapshot;
+    }
+
+    function setProteinTargetRelevant(value) {
+      if (typeof value !== 'boolean') fail('INVALID_PROTEIN_RELEVANCE');
+      if (
+        snapshot.draft_schema_version === DRAFT_SCHEMA_VERSION &&
+        snapshot.protein_target_relevant === value
+      ) return snapshot;
+      assertRevisionAvailable(snapshot);
+      snapshot = createSnapshot({
+        requestId: snapshot.request_id,
+        catalogVersion: snapshot.catalog_version,
+        revision: snapshot.revision + 1,
+        startedAt: snapshot.started_at,
+        note: snapshot.note,
+        proteinTargetRelevant: value,
         items: snapshot.items
       });
       return snapshot;
@@ -705,6 +736,7 @@
         revision: 0,
         startedAt: null,
         note: null,
+        proteinTargetRelevant: true,
         items: []
       });
       catalogState = nextCatalogState;
@@ -730,6 +762,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items: replaceItem(snapshot.items, itemIndex, nextItem)
       });
       return snapshot;
@@ -757,6 +790,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items: replaceItem(snapshot.items, itemIndex, nextItem)
       });
       return snapshot;
@@ -798,6 +832,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items: replaceItem(snapshot.items, itemIndex, nextItem)
       });
       return snapshot;
@@ -837,6 +872,7 @@
         revision: snapshot.revision + 1,
         startedAt: snapshot.started_at,
         note: snapshot.note,
+        proteinTargetRelevant: snapshot.protein_target_relevant ?? true,
         items: replaceItem(snapshot.items, itemIndex, nextItem)
       });
       return snapshot;
@@ -849,6 +885,7 @@
       removeItem,
       moveItem,
       setNote,
+      setProteinTargetRelevant,
       discard,
       addSet,
       removeSet,

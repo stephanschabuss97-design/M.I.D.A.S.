@@ -213,6 +213,7 @@ test('create returns the exact pristine immutable draft with dynamic catalog dat
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -226,15 +227,17 @@ test('create returns the exact pristine immutable draft with dynamic catalog dat
     'revision',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
   assert.deepEqual(plain(snapshot), {
-    draft_schema_version: 'midas.activity-session-draft.v3',
+    draft_schema_version: 'midas.activity-session-draft.v4',
     request_id: UUIDS[0],
     catalog_version: 23,
     revision: 0,
     started_at: null,
     note: null,
+    protein_target_relevant: true,
     items: []
   });
   assert.equal(controller.getSnapshot(), snapshot);
@@ -286,6 +289,7 @@ test('restore preserves an exact mixed draft by reference without replaying depe
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -316,14 +320,38 @@ test('restore preserves an exact mixed draft by reference without replaying depe
   const discarded = restored.discard();
   assert.equal(idReads, 1);
   assert.deepEqual(plain(discarded), {
-    draft_schema_version: 'midas.activity-session-draft.v3',
+    draft_schema_version: 'midas.activity-session-draft.v4',
     request_id: UUIDS[1],
     catalog_version: 7,
     revision: 0,
     started_at: null,
     note: null,
+    protein_target_relevant: true,
     items: []
   });
+});
+
+test('C4 relevance changes revision once and legacy v3 upgrades only on mutation', () => {
+  const { api, controller, semantics } = createController();
+  controller.addItem('alpha_item');
+  const initial = controller.getSnapshot();
+  assert.equal(initial.protein_target_relevant, true);
+  assert.equal(controller.setProteinTargetRelevant(true), initial);
+  assertDraftError(() => controller.setProteinTargetRelevant('false'), 'INVALID_PROTEIN_RELEVANCE');
+  const excluded = controller.setProteinTargetRelevant(false);
+  assert.equal(excluded.revision, initial.revision + 1);
+  assert.equal(excluded.protein_target_relevant, false);
+  assert.equal(controller.setNote('Kein Proteinziel').protein_target_relevant, false);
+
+  const legacy = plain(initial);
+  legacy.draft_schema_version = 'midas.activity-session-draft.v3';
+  delete legacy.protein_target_relevant;
+  const restored = api.restore(legacy, { semantics });
+  assert.equal(restored.getSnapshot(), legacy);
+  assert.equal(restored.setProteinTargetRelevant(true).draft_schema_version,
+    'midas.activity-session-draft.v4');
+  assert.equal(restored.getSnapshot().revision, legacy.revision + 1);
+  assert.equal(restored.getSnapshot().protein_target_relevant, true);
 });
 
 test('default semantics dependency consumes the real R1 catalog without hardcoding', () => {
@@ -1190,12 +1218,13 @@ test('discard is atomic and replaces only request identity and captured catalog 
   const discarded = controller.discard();
   assert.equal(getIdReads(), 2);
   assert.deepEqual(plain(discarded), {
-    draft_schema_version: 'midas.activity-session-draft.v3',
+    draft_schema_version: 'midas.activity-session-draft.v4',
     request_id: UUIDS[1],
     catalog_version: 9,
     revision: 0,
     started_at: null,
     note: null,
+    protein_target_relevant: true,
     items: []
   });
   assert.notEqual(discarded.request_id, dirty.request_id);

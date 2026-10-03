@@ -1,10 +1,13 @@
 'use strict';
 
 (function initActivityV2SessionCommit(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const LEGACY_DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v4';
   const PAYLOAD_SCHEMA_VERSION = 'midas.activity-session.v1';
-  const COMMIT_INTENT_SCHEMA_VERSION =
+  const LEGACY_COMMIT_INTENT_SCHEMA_VERSION =
     'midas.activity-session-commit-intent.v1';
+  const COMMIT_INTENT_SCHEMA_VERSION =
+    'midas.activity-session-commit-intent.v2';
   const ITEM_LIMIT = 50;
   const SET_LIMIT = 50;
   const SESSION_NOTE_LIMIT = 500;
@@ -54,6 +57,7 @@
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -141,8 +145,12 @@
     'revision',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
+  const LEGACY_SNAPSHOT_KEYS = Object.freeze(
+    SNAPSHOT_KEYS.filter((key) => key !== 'protein_target_relevant')
+  );
   const DRAFT_ITEM_KEYS = Object.freeze([
     'item_key',
     'item_order',
@@ -169,6 +177,10 @@
     'note',
     'items'
   ]);
+  const PAYLOAD_KEYS_V2 = Object.freeze([
+    ...PAYLOAD_KEYS,
+    'protein_target_relevant'
+  ]);
   const PAYLOAD_ITEM_KEYS = Object.freeze([
     'item_key',
     'item_order',
@@ -194,11 +206,13 @@
     'payload'
   ]);
   const PROJECTION_KEYS = Object.freeze([
+    'draft_schema_version',
     'request_id',
     'draft_revision',
     'catalog_version',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
   const STRENGTH_POLICY_SIGNATURES = new Set([
@@ -485,9 +499,11 @@
     } catch {
       fail('INVALID_DRAFT');
     }
+    const legacy = draft?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
     if (
-      !hasExactOrderedKeys(draft, SNAPSHOT_KEYS) ||
-      draft.draft_schema_version !== DRAFT_SCHEMA_VERSION
+      !hasExactOrderedKeys(draft, legacy ? LEGACY_SNAPSHOT_KEYS : SNAPSHOT_KEYS) ||
+      (!legacy && draft.draft_schema_version !== DRAFT_SCHEMA_VERSION) ||
+      (!legacy && typeof draft.protein_target_relevant !== 'boolean')
     ) {
       fail('INVALID_DRAFT');
     }
@@ -790,11 +806,13 @@
     );
     validateSessionFields(draft);
     return deepFreeze({
+      draft_schema_version: draft.draft_schema_version,
       request_id: draft.request_id,
       draft_revision: draft.revision,
       catalog_version: draft.catalog_version,
       started_at: draft.started_at,
       note: draft.note,
+      protein_target_relevant: draft.protein_target_relevant ?? true,
       items
     });
   }
@@ -863,7 +881,7 @@
   }
 
   function payloadFromProjection(projection, endedAt, durationMin) {
-    return {
+    const payload = {
       schema_version: PAYLOAD_SCHEMA_VERSION,
       catalog_version: projection.catalog_version,
       started_at: projection.started_at,
@@ -873,19 +891,27 @@
       note: projection.note,
       items: projection.items
     };
+    if (projection.draft_schema_version === DRAFT_SCHEMA_VERSION) {
+      payload.protein_target_relevant = projection.protein_target_relevant;
+    }
+    return payload;
   }
 
   function normalizeIntentAgainstProjection(intent, projection) {
+    const legacy = projection.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
+    const intentVersion = legacy
+      ? LEGACY_COMMIT_INTENT_SCHEMA_VERSION : COMMIT_INTENT_SCHEMA_VERSION;
     if (
       !hasExactOrderedKeys(intent, COMMIT_INTENT_KEYS) ||
-      intent.commit_intent_schema_version !== COMMIT_INTENT_SCHEMA_VERSION ||
+      intent.commit_intent_schema_version !== intentVersion ||
       intent.request_id !== projection.request_id ||
       !UUID_RE.test(intent.request_id) ||
       intent.draft_revision !== projection.draft_revision ||
       intent.catalog_version !== projection.catalog_version ||
       !isCanonicalTimestamp(intent.prepared_at) ||
-      !hasExactOrderedKeys(intent.payload, PAYLOAD_KEYS) ||
+      !hasExactOrderedKeys(intent.payload, legacy ? PAYLOAD_KEYS : PAYLOAD_KEYS_V2) ||
       intent.payload.schema_version !== PAYLOAD_SCHEMA_VERSION ||
+      (!legacy && intent.payload.protein_target_relevant !== projection.protein_target_relevant) ||
       intent.payload.catalog_version !== projection.catalog_version ||
       intent.payload.started_at !== projection.started_at ||
       intent.payload.ended_at !== intent.prepared_at ||
@@ -918,7 +944,7 @@
       fail('INVALID_COMMIT_INTENT');
     }
     return deepFreeze({
-      commit_intent_schema_version: COMMIT_INTENT_SCHEMA_VERSION,
+      commit_intent_schema_version: intentVersion,
       request_id: projection.request_id,
       draft_revision: projection.draft_revision,
       catalog_version: projection.catalog_version,
@@ -937,7 +963,8 @@
     const durationMin = durationFor(projection.started_at, endedAt);
     return normalizeIntentAgainstProjection(
       {
-        commit_intent_schema_version: COMMIT_INTENT_SCHEMA_VERSION,
+        commit_intent_schema_version: projection.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION
+          ? LEGACY_COMMIT_INTENT_SCHEMA_VERSION : COMMIT_INTENT_SCHEMA_VERSION,
         request_id: projection.request_id,
         draft_revision: projection.draft_revision,
         catalog_version: projection.catalog_version,

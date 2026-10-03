@@ -83,13 +83,13 @@ test('T-ACT-R14-04 keeps R13 readers, Doctor, Edge and the V1 rollback source ex
     assert.equal(workerSource.split(`toUrl('${relativePath}')`).length - 1, 1);
   }
   assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
-  assert.match(workerSource, /const CACHE_VERSION = 'v24'/);
+  assert.match(workerSource, /const CACHE_VERSION = 'v31'/);
 });
 
 test('T-ACT-R14-04 integrated isolation activates only the planned R14/R13 product loads', () => {
   const output = execFileSync(
     process.execPath,
-    [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs')],
+    [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs'), '--c4'],
     { cwd: repoRoot, encoding: 'utf8' }
   );
   assert.equal(
@@ -97,7 +97,7 @@ test('T-ACT-R14-04 integrated isolation activates only the planned R14/R13 produ
     'PASS protected=8 product_v2_loads=15 core_network_edges=0 ' +
       'r11_product_loads=4 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
       'recovery_deletes=0 local_worker_scope=1 r10_negative_oracles=19 ' +
-      'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1\n'
+      'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1 c4_contract=1\n'
   );
 });
 

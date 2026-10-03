@@ -1,6 +1,36 @@
 ﻿# Activity Module - Functional Overview
 
-## R14-Produktionsstand (2026-09-09)
+## C4-Produktionsstand (2026-10-03)
+
+Activity V2 bleibt der einzige produktive Capturewriter. SQL27 ergänzt
+`health_activity_sessions.protein_target_relevant` als `boolean NOT NULL
+DEFAULT true`. Bestehende und neue Sessions zählen; nur die bewusste Ausnahme
+setzt `false`. Alte Payloads und Recovery-Drafts ohne Feld verwenden `true`.
+Draft, Recovery, Commit-Fingerprint, R9-Korrektur, History und vollständiger
+R10-Coaching-Export verwenden denselben Wert.
+
+Nur Protein liest `activity_protein_days(date,date)` beziehungsweise den
+geschützten Scheduler-Pfad `activity_protein_days_for_owner(uuid,date,date)`.
+Ein Wiener Tag zählt einmal bei V1 oder mindestens einer berücksichtigten
+V2-Session. Doctor, Range-Arztbericht, Health Export und Trendpilot behalten
+den ungefilterten SQL26-Vertrag. Ausgenommene Sessions bleiben vollständige
+Ist-Daten in History und Export.
+
+Save, Correction und Delete lösen denselben Proteinrefresh aus. Bei einem
+Refreshfehler bleibt das Training gespeichert; ein sichtbarer Retry wiederholt
+nur den Proteinrefresh. Der Owner hat den echten Score-Zyklus `7 → 8 → 7`
+und den öffentlichen Pages-Zugang bestätigt. S5 ist mit dokumentierter
+Abweichung der nicht aufgezeichneten Test-Vorabnachweise abgeschlossen.
+Android ist ausdrücklich OWNER-WAIVED, kein PASS. Produktives `false` hat
+existiert: kein blindes Rollback auf alte Protein-Consumer oder Entfernen der Spalte.
+
+Runtime: SQL27-Migration `20261003144855`, Protein-Edge v32,
+main/Pages `06638359facf67c524294249cca170b0955955ef`, Root-SW v31.
+[C4 Roadmap](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>) und [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>):
+EV-C4-L01–L03, EV-C4-S5-G03–G06, EV-C4-P01–P04, EV-C4-S5-G18.
+R15 erhält diesen Default, benötigt aber weiterhin seinen eigenen G0.
+
+## Historischer R14-Produktionsstand (2026-09-09)
 
 R13 ist `DONE`: Doctor View, Range-Arztbericht, Health Export V3, Protein
 Target und Trendpilot verwenden produktiv den gemeinsamen ownergebundenen
@@ -649,6 +679,11 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - Eigenstaendiges Training-Panel `#hubTrainingPanel` unmittelbar nach Vitals.
 - Die Activity-V2-Session-Shell führt durch Suche, Set-/Dauer-/Distanzeditor,
   Recovery, Abschluss, History, Detail und Coaching-Export.
+- Auf schmalen Ansichten bleiben letzte Ausführung und aktuelle Sätze in
+  kompakten Übungskarten sichtbar. Nach dem Scrollen unter die obere Suche
+  öffnet „Übung hinzufügen“ dieselbe Suche am unteren Bildschirmrand.
+- Die Zeitraumsauswahl des Coaching-Exports öffnet innerhalb der
+  Trainingsansicht, ohne diese für die Bedienung zu schließen.
 - `Session abschließen` triggert genau den Activity-V2-Commitpfad; unbekannte
   Antworten erlauben nur den identischen Retry.
 
@@ -747,8 +782,8 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 ## 9. Erweiterungspunkte / Zukunft
 
 - Aktivitaetskategorien, Intensitaet, Marker.
-- Protein Target konsumiert Activity-Tage über den in R13 aktivierten
-  gemeinsamen read-only Vertrag; C3 fuegt keine neue Berechnung hinzu.
+- Protein Target konsumiert seit C4 isolierte Protein-Tage aus SQL27;
+  der gemeinsame SQL26-Vertrag bleibt für die anderen Consumer ungefiltert.
 - Trend/Chart-Ansichten fuer Activity.
 - R11: Doctor-/Report-Zusammenfassung und Health Export V3 sind auf Basis des
   bewiesenen V1-/V2-Kompatibilitätsvertrags isoliert bereit.

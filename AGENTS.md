@@ -17,8 +17,13 @@
 2. Read the relevant `docs/modules/*.md` files for module contracts.
 3. For roadmap work, follow `docs/templates/README.md` and
    `docs/templates/MIDAS Roadmap Workflow Contract.md`.
-4. The active roadmap and its Evidence file govern the current execution.
-5. Archived `DONE` roadmaps are historical evidence, not active instructions.
+4. Before finalizing a new tool-dependent roadmap, perform the Environment
+   Capability Preflight in the local workflow contract. Use the local overlay
+   and only needed ATLAS sections; missing/incompatible tools require an owner
+   decision and never authorize installation. BLUEPRINT supplies the shared
+   authoring core; MIDAS retains its medical, data and assurance rules.
+5. The active roadmap and its Evidence file govern the current execution.
+6. Archived `DONE` roadmaps are historical evidence, not active instructions.
 
 Read only the references relevant to the current task. Reuse still-valid
 evidence instead of repeatedly reopening unchanged files or rerunning unchanged
@@ -126,6 +131,13 @@ focused follow-up read.
   weaken product, security, owner, deploy, SQL, device, or external-write
   gates. KASRKIN owns the decision semantics; the MIDAS workflow contract owns
   their project-specific consultation and execution effect.
+
+## PRISM
+
+- Only on an explicit PRISM review request, use the canonical
+  [PRISM entry point](../codex-tools/docs/prism/README.md). Ordinary idea discussions
+  do not activate PRISM. Preserve MIDAS medical, data, security and execution
+  gates; a review neither authorizes nor automatically implements changes.
 
 
 ## Installed KASRKIN Endphase (Activation/2)

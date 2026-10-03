@@ -6,11 +6,8 @@ import {
   activityEdgePrincipalLog,
   createActivityEdgePrincipal,
 } from "../_shared/activity-edge-principal.ts";
-import {
-  ActivityConsumerRuntimeError,
-  createActivityConsumerRuntime,
-} from "../_shared/activity-consumer-runtime.ts";
-import { createActivityMedicalContext } from "../_shared/activity-medical-context.ts";
+import { ActivityConsumerRuntimeError } from "../_shared/activity-consumer-runtime.ts";
+import { createProteinActivityRuntime } from "./protein-activity-days.ts";
 import { deriveProteinActivityCompatibility } from "./activity-compatibility.ts";
 
 declare const Deno: {
@@ -25,7 +22,13 @@ const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type TriggerKind = "body_save" | "manual" | "scheduler";
+type TriggerKind =
+  | "body_save"
+  | "manual"
+  | "scheduler"
+  | "activity_save"
+  | "activity_correction"
+  | "activity_delete";
 
 type ProteinTargetInput = {
   trigger?: TriggerKind | null;
@@ -156,7 +159,10 @@ const normalizeInput = (raw: ProteinTargetInput): NormalizedInput => {
     raw.trigger != null &&
     raw.trigger !== "manual" &&
     raw.trigger !== "body_save" &&
-    raw.trigger !== "scheduler"
+    raw.trigger !== "scheduler" &&
+    raw.trigger !== "activity_save" &&
+    raw.trigger !== "activity_correction" &&
+    raw.trigger !== "activity_delete"
   ) {
     throw new ProteinRequestError();
   }
@@ -290,7 +296,7 @@ const calcAgeYears = (birthDateIso: string, refDateIso: string) => {
 
 type ProteinHandlerDependencies = {
   createPrincipal?: typeof createActivityEdgePrincipal;
-  activityRuntime?: ReturnType<typeof createActivityConsumerRuntime>;
+  activityRuntime?: ReturnType<typeof createProteinActivityRuntime>;
   now?: () => Date;
 };
 
@@ -300,7 +306,7 @@ export const createProteinTargetsHandler = (
   const createPrincipal = dependencies.createPrincipal ??
     createActivityEdgePrincipal;
   const activityRuntime = dependencies.activityRuntime ??
-    createActivityConsumerRuntime();
+    createProteinActivityRuntime();
   const readNow = dependencies.now ?? (() => new Date());
 
   return async (req: Request) => {
@@ -334,7 +340,10 @@ export const createProteinTargetsHandler = (
         if (weight != null) {
           raw.weight_kg = weight;
         }
-        if (!raw.dayIso && latestBody?.day) {
+        if (
+          !raw.dayIso && latestBody?.day &&
+          !String(raw.trigger).startsWith("activity_")
+        ) {
           raw.dayIso = latestBody.day;
         }
       }
@@ -343,12 +352,8 @@ export const createProteinTargetsHandler = (
       const requestNow = readNow();
       const todayIso = input.dayIso || viennaTodayIso(requestNow);
       const fromIso = subDaysIso(todayIso, 27);
-      const activitySnapshot = await activityRuntime.loadSnapshot(
+      const activityContext = await activityRuntime.loadDays(
         principal,
-        { from: fromIso, to: todayIso },
-      );
-      const activityContext = createActivityMedicalContext(
-        activitySnapshot,
         { from: fromIso, to: todayIso },
       );
       const activityMeta = deriveProteinActivityCompatibility(activityContext);

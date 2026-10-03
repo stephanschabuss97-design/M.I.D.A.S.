@@ -22,6 +22,28 @@
   const getAuthState = () => getSupabaseState()?.authState || 'unknown';
   let latestWeightCache = null;
   let latestWeightPromise = null;
+  const ACTIVITY_TRIGGERS = ['activity_save', 'activity_correction', 'activity_delete'];
+  const REFRESH_MARKER_KEY = 'midas:protein-activity-refresh';
+  let storedRefreshTrigger = null;
+  try {
+    const marker = global.localStorage?.getItem(REFRESH_MARKER_KEY);
+    if (ACTIVITY_TRIGGERS.includes(marker)) storedRefreshTrigger = marker;
+  } catch { /* Storage denial still leaves the in-memory status usable. */ }
+  let activityRefreshState = Object.freeze({
+    status: storedRefreshTrigger ? 'error' : 'idle', trigger: storedRefreshTrigger
+  });
+  let activityRefreshTail = Promise.resolve();
+  let activityRefreshRevision = 0;
+  const getActivityRefreshState = () => activityRefreshState;
+  const publishActivityRefresh = (status, trigger, revision) => {
+    if (revision !== activityRefreshRevision) return;
+    activityRefreshState = Object.freeze({ status, trigger });
+    try {
+      if (status === 'ready') global.localStorage?.removeItem(REFRESH_MARKER_KEY);
+      else global.localStorage?.setItem(REFRESH_MARKER_KEY, trigger);
+    } catch { /* Never turn a confirmed Activity write into a storage failure. */ }
+    global.document?.dispatchEvent(new CustomEvent('protein:refresh-state'));
+  };
 
   const loadLatestStoredWeight = async () => {
     if (latestWeightCache && Number.isFinite(latestWeightCache.value)) {
@@ -154,9 +176,8 @@
     );
 
     if (!response.ok) {
-      const msg = await response.text().catch(() => '');
-      diag.add?.(`[protein] edge fail ${response.status} ${msg || ''}`);
-      const err = new Error(msg || `protein targets failed (${response.status})`);
+      diag.add?.(`[protein] edge fail ${response.status}`);
+      const err = new Error('Das Proteinziel konnte nicht aktualisiert werden.');
       err.status = response.status;
       err.code = 'protein_edge_failed';
       throw err;
@@ -179,8 +200,47 @@
     return result;
   }
 
+  // Serialise confirmed mutations, without replaying any Activity write on retry.
+  function refreshAfterActivity(trigger) {
+    if (!ACTIVITY_TRIGGERS.includes(trigger)) {
+      return Promise.reject(new Error('Ungültiger Protein-Refresh.'));
+    }
+    const revision = ++activityRefreshRevision;
+    publishActivityRefresh('pending', trigger, revision);
+    const operation = activityRefreshTail.then(async () => {
+      try {
+        const result = await recomputeTargets({ trigger });
+        if (result?.ok !== true || result.dry_run === true ||
+            (result.skipped !== false &&
+             !(result.skipped === true && result.reason === 'cooldown_unchanged'))) {
+          throw new Error('Protein-Aktualisierung nicht bestätigt.');
+        }
+        const profile = appModules.profile;
+        if (typeof profile?.sync !== 'function' || typeof profile?.getSyncStatus !== 'function') {
+          throw new Error('Profil-Aktualisierung nicht verfügbar.');
+        }
+        // Drain a read that started before the Edge acknowledgement, then read freshly.
+        if (profile.getSyncStatus().status === 'loading') await profile.sync({ reason: trigger });
+        if (getAuthState() !== 'auth') throw new Error('Nicht angemeldet');
+        await profile.sync({ reason: trigger });
+        if (getAuthState() !== 'auth' || profile.getSyncStatus().status !== 'ready' || !profile.getData?.()) {
+          throw new Error('Profil-Aktualisierung nicht bestätigt.');
+        }
+        publishActivityRefresh('ready', trigger, revision);
+        return Object.freeze({ ok: true });
+      } catch {
+        publishActivityRefresh('error', trigger, revision);
+        throw new Error('Das Training ist bestätigt; das Proteinziel ist noch nicht aktualisiert.');
+      }
+    });
+    activityRefreshTail = operation.catch(() => {});
+    return operation;
+  }
+
   appModules.protein = Object.assign(appModules.protein || {}, {
     recomputeTargets,
+    refreshAfterActivity,
+    getActivityRefreshState,
     loadStoredContext,
     _callProteinTargets: callProteinTargets
   });

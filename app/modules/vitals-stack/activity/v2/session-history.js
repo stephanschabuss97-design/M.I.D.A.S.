@@ -1,7 +1,7 @@
 'use strict';
 
 (function initActivityV2SessionHistory(root) {
-  const PAGE_SCHEMA = 'midas.activity-session-history-page.v1';
+  const PAGE_SCHEMA = 'midas.activity-session-history-page.v2';
   const UUID_RE =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -73,6 +73,7 @@
     'day',
     'title',
     'duration_min',
+    'protein_target_relevant',
     'item_count',
     'revision'
   ]);
@@ -224,6 +225,7 @@
       !Number.isSafeInteger(value.duration_min) ||
       value.duration_min < 1 ||
       value.duration_min > 1440 ||
+      typeof value.protein_target_relevant !== 'boolean' ||
       !Number.isSafeInteger(value.item_count) ||
       value.item_count < 1 ||
       value.item_count > 50 ||
@@ -820,6 +822,8 @@
       mutateCorrection('setDurationMin', [value]);
     const setCorrectionNote = (value) =>
       mutateCorrection('setNote', [value]);
+    const setCorrectionProteinTargetRelevant = (value) =>
+      mutateCorrection('setProteinTargetRelevant', [value]);
     const addCorrectionItem = (itemKey) =>
       mutateCorrection('addItem', [itemKey]);
     const removeCorrectionItem = (itemKey) =>
@@ -935,6 +939,7 @@
         summary.day !== current.day ||
         summary.title !== current.title ||
         summary.duration_min !== current.duration_min ||
+        summary.protein_target_relevant !== current.protein_target_relevant ||
         summary.item_count !== current.items.length ||
         summary.revision !== current.revision
       ) {
@@ -1568,6 +1573,7 @@
       openCorrection,
       setCorrectionDurationMin,
       setCorrectionNote,
+      setCorrectionProteinTargetRelevant,
       addCorrectionItem,
       removeCorrectionItem,
       moveCorrectionItem,

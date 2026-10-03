@@ -510,6 +510,9 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 - Beachte die lokale Tooling-/Check-Dokumentation in
   [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md), bevor du Annahmen ueber
   Deno, Supabase CLI, GitHub CLI, Android/ADB oder Deploy-Faehigkeit triffst.
+  Es ist das Projekt-Overlay; gemeinsame Installationsfakten gehören zu ATLAS.
+  Neue Roadmaps nutzen BLUEPRINT über den lokalen Template-Einstieg und führen
+  vor READY den Capability-Preflight aus; medizinische und produktive Gates bleiben lokal.
 - Nutze fuer neue Roadmaps den Einstieg unter
   [`docs/templates/README.md`](docs/templates/README.md); aktive Roadmaps
   bleiben waehrend der Arbeit direkt unter `docs/`.

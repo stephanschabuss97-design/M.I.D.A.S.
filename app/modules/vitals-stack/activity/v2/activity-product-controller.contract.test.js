@@ -455,6 +455,9 @@ function createFixture({
       return shell;
     },
     render: () => {},
+    setProteinRefreshState: (status, message, retry) => {
+      shell.protein = { status, message, retry };
+    },
     requestClose: async () => {
       calls.push('shell.requestClose');
       shell.opened = false;
@@ -537,6 +540,7 @@ function createFixture({
         historyCreateOptions = value;
         return {
           refreshAdmission: () => {},
+          subscribe: () => () => {},
           destroy: () => calls.push('history.destroy')
         };
       }
@@ -582,6 +586,11 @@ function createFixture({
     confirmDiscard: () => confirmDiscard,
     refreshActivityConsumers: function refreshActivityConsumers() {
       calls.push(`refreshActivityConsumers:${arguments.length}`);
+    },
+    getProteinRefreshState: () => ({ status: 'idle', trigger: null }),
+    refreshProteinTargets: async (trigger) => {
+      calls.push(`refreshProteinTargets:${trigger}`);
+      return { ok: true };
     }
   };
   return {
@@ -591,6 +600,7 @@ function createFixture({
     calls,
     getRecovery: () => activeRecovery,
     getCommit: () => activeCommit,
+    getShell: () => shell,
     getCommitOptions: () => activeCommitOptions,
     getHistoryOptions: () => historyCreateOptions,
     getExportRoot: () => exportRoot
@@ -671,7 +681,7 @@ test('S4.2 basis renders safe German entry UI, exact public state and focus', as
   const fixture = createFixture();
   const controller = productController.mount(fixture.options);
   const rootElement = fixture.hosts[0].children[0];
-  const [heading, status, primary, secondary] = rootElement.children;
+  const [heading, status, , , primary, secondary] = rootElement.children;
 
   assert.equal(rootElement.dataset.activityV2R14Surface, 'capture-entry');
   assert.equal(heading.textContent, 'Training');
@@ -982,4 +992,62 @@ test('S4.3 unknown recovery is quarantined and cannot be discarded', async () =>
     (error) => error.code === 'INVALID_STATE'
   );
   assert.equal(fixture.calls.includes('recovery.discard'), false);
+});
+
+
+test('C4 failed Protein refresh keeps committed state; only explicit Retry calls Protein again', async () => {
+  const fixture = createFixture();
+  let attempts = 0;
+  fixture.options.refreshProteinTargets = async (trigger) => {
+    assert.equal(trigger, 'activity_save');
+    if (++attempts === 1) throw new Error('private transport error');
+    return { ok: true };
+  };
+  const controller = loadModule().mount(fixture.options);
+  await controller.setAuthenticated(true);
+  await controller.startSession();
+  fixture.getCommit().publish(freezeCommitState('committed'));
+  fixture.getCommit().publish(freezeCommitState('committed'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 1);
+  assert.equal(controller.getState().state, 'committed');
+  assert.equal(fixture.getShell().protein.status, 'error');
+  assert.equal(fixture.getShell().protein.message, 'Training gespeichert; Proteinziel noch nicht aktualisiert.');
+  fixture.getShell().protein.retry();
+  fixture.getShell().protein.retry();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 2);
+  assert.equal(fixture.getShell().protein.status, 'ready');
+  assert.equal(fixture.calls.filter(x => x === 'commit.create').length, 1);
+});
+
+test('C4 observes confirmed History correction and delete once and skips error/unknown states', async () => {
+  const fixture = createFixture();
+  let listener;
+  fixture.options.sessionHistory.create = () => ({
+    refreshAdmission() {}, destroy() {}, subscribe(fn) { listener = fn; return () => { listener = null; }; }
+  });
+  const controller = loadModule().mount(fixture.options);
+  await controller.setAuthenticated(true);
+  await controller.openHistory();
+  const next = (correction, deletion) => listener({ correction: { status: correction }, deletion: { status: deletion } });
+  next('unknown', 'error'); next('refreshing', 'idle'); next('confirmed', 'idle');
+  next('confirmed', 'idle'); next('confirmed', 'deleting'); next('confirmed', 'confirmed');
+  next('confirmed', 'confirmed');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(fixture.calls.filter(x => x.startsWith('refreshProteinTargets')),
+    ['refreshProteinTargets:activity_correction', 'refreshProteinTargets:activity_delete']);
+  await controller.destroy();
+  assert.equal(listener, null);
+});
+
+test('C4 restored stale marker presents a retry without replaying an Activity write', async () => {
+  const fixture = createFixture();
+  fixture.options.getProteinRefreshState = () => ({ status: 'error', trigger: 'activity_delete' });
+  const controller = loadModule().mount(fixture.options);
+  await controller.setAuthenticated(true);
+  const element = fixture.hosts[0].children[0];
+  assert.equal(element.children[2].textContent, 'Training gelöscht; Proteinziel noch nicht aktualisiert.');
+  assert.equal(element.children[3].hidden, false);
+  assert.equal(fixture.calls.some(x => x.startsWith('refreshProteinTargets')), false);
 });

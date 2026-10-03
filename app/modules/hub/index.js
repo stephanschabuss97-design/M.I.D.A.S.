@@ -784,7 +784,10 @@
       return;
     }
 
-    status.textContent = 'Gespeicherte Werte; es wird nichts neu berechnet.';
+    const refreshStatus = appModules.protein?.getActivityRefreshState?.().status;
+    status.textContent = ['pending', 'error'].includes(refreshStatus)
+      ? 'Training bestätigt; Proteinziel noch nicht aktualisiert. Retry im Training verfügbar.'
+      : 'Gespeicherte Werte; es wird nichts neu berechnet.';
     setProteinContextValue(
       'target-range',
       formatStoredProteinRange(projection?.targetMin, projection?.targetMax, ' g/Tag'),
@@ -1881,9 +1884,13 @@
   const ASSISTANT_CONTEXT_LOADING_HINT = 'Aktualisiere...';
 
   const renderAssistantContextExtras = (profile) => {
-    const proteinText =
+    const storedProteinText =
       formatTargetRange(profile?.protein_target_min, profile?.protein_target_max, 'g') ||
       formatTargetRange(profile?.protein_target, null, 'g');
+    const refreshStatus = appModules.protein?.getActivityRefreshState?.().status;
+    const proteinText = ['pending', 'error'].includes(refreshStatus)
+      ? `${storedProteinText || '-- g'} · noch nicht aktualisiert`
+      : storedProteinText;
     const ckdStage = typeof profile?.ckd_stage === 'string' ? profile.ckd_stage.trim() : '';
     const renderInto = (refs, { keepVisible = false } = {}) => {
       if (!refs?.container) return;
@@ -2623,6 +2630,15 @@
       refreshAssistantContext({ reason: 'profile:changed', forceRefresh: true })?.catch?.((err) => {
         diag.add?.('[assistant-chat] profile context refresh err: ' + (err?.message || err));
       });
+    });
+    doc?.addEventListener('protein:refresh-state', () => {
+      renderAssistantContextExtras(appModules.profile?.getData?.() || assistantProfileSnapshot);
+      if (proteinContextDialogState.open && proteinContextDialogState.root?.dataset.state === 'data') {
+        const refreshStatus = appModules.protein?.getActivityRefreshState?.().status;
+        proteinContextDialogState.status.textContent = ['pending', 'error'].includes(refreshStatus)
+          ? 'Training bestätigt; Proteinziel noch nicht aktualisiert. Retry im Training verfügbar.'
+          : 'Gespeicherte Werte; es wird nichts neu berechnet.';
+      }
     });
     global.addEventListener('assistant:meal-followup-request', (event) => {
       requestMealFollowupSuggestion(event?.detail);

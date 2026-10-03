@@ -9,9 +9,12 @@ Kein globaler PATHwrite oder Fallback zum bisherigen Shared-Shim.
 
 # MIDAS Dev Environment
 
-Dieses Dokument beschreibt die lokale Entwicklungsumgebung fuer MIDAS. Es ist bewusst fuer Stephan und fuer kuenftige LLM-/Coding-Agent-Chats geschrieben: Ein neuer Chat soll schnell erkennen, welche lokalen Werkzeuge vorhanden sind, welche Checks moeglich sind und welche Grenzen gelten.
-
-Dieses Dokument ist kein Produktkonzept und keine vollstaendige Architektur-Doku. Es beschreibt die lokale Werkstatt: verfuegbare Tools, erlaubte Checks, Standardbefehle und klare Grenzen fuer Deploys, Secrets und produktive Runtime-Aktionen.
+Dieses Dokument ist das MIDAS-Projekt-Overlay. Owner ist Stephan; MIDAS besitzt
+Nutzung, Anforderungen und Sicherheitsgrenzen. Gemeinsame Installationsstände
+und Pfade gehören zur [ATLAS-Workstation-SoT](../../codex-tools/environment/DEV_ENVIRONMENT.md).
+Normale Projektarbeit erfordert keinen zentralen Full-Read. Bei Toolabhängigkeit
+nur passende Abschnitte und den [Capability-Preflight](../../codex-tools/environment/README.md)
+lesen; das Ergebnis gehört in Startkarte/Context Receipt der neuen Roadmap.
 
 ## Ziel
 
@@ -108,8 +111,7 @@ Continuation Gates bei lokaler Roadmap-Ausführung auf Stephans Windows-PC.
 Rainmeter zeigt denselben Zustand nur für Menschen an; die Kachel selbst ist
 keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
 
-- Refresh-Skript:
-  `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\GetCodexUsage.ps1`
+- Gemeinsame Sensor-/State-Pfade: [ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#kasrkin-installation-und-state-pfade).
 - Versionsgebundener KASRKIN-Einstieg: stabiler Command `kasrkin` mit der
   projektlokalen Bindung `.kasrkin/binding.json`.
 - Projektbezogene Aktivierungs- und Konsultationsbindung:
@@ -120,8 +122,7 @@ keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
   Cutover retiret. Recovery stützt sich auf die gebundene Installation,
   `codex-tools`-Source und versionierte Receipts, nicht auf eine zweite lokale
   Toolkopie.
-- Autoritativer State:
-  `C:\Users\steph\Documents\Rainmeter\Skins\illustro\Tokens\UsageState.json`
+- Autoritativer Quota-State: `UsageState.json` am zentral dokumentierten Ort.
 - Erwartetes Schema: `schemaVersion = 3`.
 - Erwartete Sensorversion: `sensorVersion = 3.1.0`.
 - Pflicht-Buckets: `fiveHour` mit `windowDurationMins = 300` und `weekly` mit
@@ -227,31 +228,12 @@ git status --short
 - Bei Doku-/Code-Aenderungen gezielt patchen und danach mindestens `git diff --check` ausfuehren.
 - Bei Backend-Aenderungen immer die relevante Edge Function plus Modul-/Roadmap-Doku gegenlesen.
 
-## Installierte Kernwerkzeuge
+## Projektnutzung gemeinsamer Werkzeuge
 
-Letzter verifizierter Basis-Toolchain-Abgleich: 11.07.2026. CodeRabbit wurde
-separat am 23.08.2026 verifiziert.
-
-| Werkzeug | Verifizierter Stand |
-| --- | --- |
-| Git | `2.55.0.windows.2` |
-| Node.js / npm | `24.18.0` / `11.18.0` |
-| ripgrep | `15.1.0` |
-| VS Code | `1.127.0` |
-| Deno | `2.9.2` |
-| Supabase CLI | `2.109.1` |
-| Docker Desktop / Engine | `4.81.0` / `29.6.1` |
-| WSL / Ubuntu | `2.6.1.0` / `24.04.3 LTS` |
-| PostgreSQL Client in WSL | `psql 16.14` |
-| GitHub CLI | `2.96.0` |
-| Python | `3.14.6` |
-| Microsoft OpenJDK | `17.0.19` |
-| Android Command-line Tools / ADB | `21.0` / `37.0.0` |
-| Playwright | `1.61.1` |
-| CodeRabbit CLI in WSL | `0.7.5` |
-
-Die Befehle in den jeweiligen Abschnitten bleiben die Source of Truth. Die
-Tabelle ist ein datierter Referenzstand und kein Versions-Pin fuer das Repo.
+Aktuelle Versionen und Installationspfade stehen ausschließlich in
+[ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md). Die folgenden
+Abschnitte besitzen MIDAS-Commands und Grenzen, keine globale Versionswahrheit.
+Android-SDK-/JDK-Anforderungen bleiben im lokalen Android-Abschnitt.
 
 ### Git
 
@@ -332,133 +314,22 @@ rg --files app backend docs
 
 ### VS Code / Extensions
 
-VS-Code-CLI ist verfuegbar:
-
-```powershell
-code --version
-code --list-extensions
-```
-
-Fuer MIDAS besonders relevante installierte Extensions:
-
-| Extension | Zweck |
-| --- | --- |
-| `denoland.vscode-deno` | Deno Language Server fuer Supabase Edge Functions und `jsr:`-Imports |
-| `davidanson.vscode-markdownlint` | Markdownlint fuer Roadmaps, Modul-Dokus und Dev-Doku |
-| `github.vscode-github-actions` | GitHub Actions Workflow-Ansicht in VS Code |
-| `coderabbit.coderabbit-vscode` | CodeRabbit Review-Hinweise in VS Code |
-| `yandeu.five-server` | Lokaler Browser-Server fuer einfache PWA-/Frontend-Smokes |
-| `mechatroner.rainbow-csv` | Lesbarkeit fuer CSV-/Tabellen-Dateien |
-| `openai.chatgpt` | ChatGPT-Erweiterung in VS Code |
-
-Weitere installierte Extensions laut `code --list-extensions`:
-
-```text
-donjayamanne.githistory
-dotjoshjohnson.xml
-ms-dotnettools.csdevkit
-ms-dotnettools.csharp
-ms-dotnettools.vscode-dotnet-runtime
-ms-python.debugpy
-ms-python.python
-ms-python.vscode-pylance
-ms-python.vscode-python-envs
-visualstudiotoolsforunity.vstuc
-vscjava.vscode-gradle
-zhucy.project-tree
-```
-
-Wichtig:
-
-- Ein Agent kann die installierten Extensions lokal per `code --list-extensions` abfragen.
-- Die Doku bleibt trotzdem hilfreich, weil neue Chats sofort sehen, welche Editor-Werkzeuge erwartet werden duerfen.
-- Nach Extension-Installationen oder PATH-Aenderungen VS Code mit `Developer: Reload Window` oder komplettem Neustart aktualisieren.
+MIDAS verwendet den Deno Language Server für Edge Functions, Markdownlint für
+Dokumentation und die GitHub-Actions-Ansicht bei Workflowarbeit. Installation
+oder Authentifizierung einer Extension wird daraus nicht behauptet.
+`.vscode/settings.json` begrenzt die Deno-Nutzung auf den Backendbereich.
+Gemeinsamen Editorstand bei Bedarf in [ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#suche-und-vs-code)
+prüfen; kein automatisches Extension-Setup.
 
 ### CodeRabbit Reviews
 
-CodeRabbit besitzt in der MIDAS-Werkstatt vier getrennte Bestandteile:
-
-- VS-Code-Extension `coderabbit.coderabbit-vscode` fuer interaktive Hinweise
-  im Editor.
-- Codex-Plugin/Skill `coderabbit:code-review` fuer agentisch gefuehrte
-  Review- und Fixzyklen.
-- CodeRabbit CLI in Ubuntu/WSL fuer deterministische Reviews lokaler Git-Diffs.
-- Den versionierten Windows-Shim `tools/coderabbit.cmd`, der den aktuellen
-  Windows-Arbeitsordner an die bestehende WSL-CLI weiterreicht.
-
-Der kanonische Aufruf aus PowerShell, CMD und Codex ist:
-
-```powershell
-coderabbit --version
-```
-
-Der Shim liegt benutzerweit unter
-`C:\Users\steph\.local\bin\coderabbit.cmd`; seine versionierte Quelle ist
-`tools/coderabbit.cmd`. Die eigentliche CLI bleibt ausschließlich in WSL:
-
-```text
-/root/.local/bin/coderabbit
-```
-
-Verifizierter Stand am 23.08.2026:
-
-- CLI `0.7.5` ist in WSL installiert.
-- Agent-Authentifizierung ueber GitHub ist eingerichtet.
-- Die VS-Code-Extension und der Codex-Skill sind vorhanden.
-- Der Windows-Shim funktioniert aus MIDAS und aus Pfaden mit Leerzeichen.
-- Es gibt bewusst keine zweite Windows-CLI und keine Package-Dependency im
-  MIDAS-Repo. Der Shim enthaelt keine CLI und kein Secretmaterial.
-
-Installationszustand pruefen, ohne Account- oder Tokenwerte zu dokumentieren:
-
-```powershell
-code --list-extensions | Select-String -Pattern '^coderabbit\.coderabbit-vscode$'
-coderabbit --version
-$codeRabbitStatus = coderabbit auth status --agent | ConvertFrom-Json
-$codeRabbitStatus.authenticated
-```
-
-Ist `coderabbit` nach einem neuen Terminal nicht auffindbar, zuerst nur den
-Shim aus dem Repo wiederherstellen. Die WSL-CLI wird dabei nicht neu
-installiert:
-
-```powershell
-$codeRabbitBin = Join-Path $HOME '.local\bin'
-New-Item -ItemType Directory -Path $codeRabbitBin -Force | Out-Null
-Copy-Item -LiteralPath 'tools\coderabbit.cmd' -Destination $codeRabbitBin -Force
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (-not (@($userPath -split ';') -contains $codeRabbitBin)) {
-  $newUserPath = if ([string]::IsNullOrWhiteSpace($userPath)) {
-    $codeRabbitBin
-  } else {
-    "$($userPath.TrimEnd(';'));$codeRabbitBin"
-  }
-  [Environment]::SetEnvironmentVariable(
-    'Path',
-    $newUserPath,
-    'User'
-  )
-}
-```
-
-`C:\Users\steph\.local\bin` muss genau einmal im Benutzer-PATH stehen. Nach
-einer PATH-Aenderung VS Code neu laden. Nur wenn der direkte WSL-Check auf einer
-neuen oder neu eingerichteten Maschine ebenfalls fehlschlaegt, die WSL-CLI
-installieren:
-
-```powershell
-wsl.exe -d Ubuntu -u root -- bash -lc "curl -fsSL https://cli.coderabbit.ai/install.sh | sh"
-wsl.exe -d Ubuntu -u root -- /root/.local/bin/coderabbit --version
-```
-
-Fehlt danach die Agent-Authentifizierung, den Browser-Login starten und den
-Status erneut pruefen:
-
-```powershell
-coderabbit auth login --agent
-$codeRabbitStatus = coderabbit auth status --agent | ConvertFrom-Json
-$codeRabbitStatus.authenticated
-```
+MIDAS nutzt den kanonischen `coderabbit`-Command. Gemeinsame Installation und
+Versionsprüfung: [ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#coderabbit).
+Die lokale Shim-Quelle `tools/coderabbit.cmd` bleibt als Projekt-Recoveryquelle
+erhalten. Ein fehlender Command oder fehlende Authentifizierung stoppt den
+externen Review. Wiederherstellung, PATH-Änderung oder Login verlangen einen
+eigenen begrenzten Ownerauftrag; keine alternative Installation in einer Roadmap.
+Keine Account- oder Tokenwerte dokumentieren.
 
 Kanonischer Review eines noch nicht committeten MIDAS-Diffs:
 
@@ -520,13 +391,9 @@ Wichtig:
 - Keine `package.json`-, Lockfile- oder Repository-Dependency nur fuer diesen
   Reviewpfad erzeugen.
 
-Rollback des Windows-Shims, ohne WSL-Installation oder Authentifizierung zu
-veraendern:
-
-1. `C:\Users\steph\.local\bin\coderabbit.cmd` entfernen.
-2. Nur `C:\Users\steph\.local\bin` aus dem Benutzer-PATH entfernen, falls das
-   Verzeichnis nicht fuer andere Werkzeuge verwendet wird.
-3. `tools/coderabbit.cmd` bleibt die versionierte Wiederherstellungsquelle.
+Shim-Recovery bleibt ein eigener Ownerblock: Zielidentität und Ownership vor
+Änderungen prüfen, andere Nutzer des gemeinsamen Commandverzeichnisses bewahren
+und nur den genehmigten Diff zurückrollen. Die lokale Quelle bleibt erhalten.
 
 ### Deno
 
@@ -570,35 +437,10 @@ deno check backend/supabase/functions/midas-vision/index.ts
 
 ### Docker Desktop / WSL
 
-Docker Desktop ist mit dem WSL-2-Backend installiert und wurde mit einem
-neutralen `hello-world`-Container verifiziert.
-
-Installationspfade:
-
-```text
-C:\Program Files\Docker\Docker\Docker Desktop.exe
-C:\Program Files\Docker\Docker\resources\bin\docker.exe
-```
-
-Versions- und Daemon-Checks:
-
-```powershell
-docker --version
-docker version
-docker info
-docker context show
-```
-
-Falls ein bereits offenes VS-Code-Terminal den nach der Installation neuen
-PATH noch nicht kennt:
-
-```powershell
-$env:Path = "C:\Program Files\Docker\Docker\resources\bin;$env:Path"
-docker version
-```
-
-Nach einem Neustart von VS Code sollte kein manueller PATH-Zusatz mehr noetig
-sein. Der aktive Docker-Kontext ist `desktop-linux`.
+Installation und CLI-Prüfung stehen in
+[ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#docker-wsl-und-postgresql-client).
+MIDAS nutzt Docker/WSL nur bei bewusstem lokalem oder disposable Testbedarf.
+Ein laufender Daemon oder bestimmter Docker-Kontext wird nicht vorausgesetzt.
 
 Regeln:
 
@@ -611,20 +453,9 @@ Regeln:
 
 ### PostgreSQL Client (`psql`)
 
-Der schlanke PostgreSQL-Client ist in Ubuntu unter WSL installiert. Es wurde
-bewusst kein zweiter PostgreSQL-Server als Windows-Dienst angelegt.
-
-Version:
-
-```powershell
-wsl -d Ubuntu -- psql --version
-```
-
-Verifizierter Stand:
-
-```text
-psql (PostgreSQL) 16.14
-```
+MIDAS verwendet bei Bedarf den in
+[ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#docker-wsl-und-postgresql-client)
+beschriebenen WSL-Client; kein zusätzlicher Windows-Datenbankserver ist erforderlich.
 
 Der Client kann PostgreSQL-17-Server ansprechen. Verbindungsstrings,
 Passwoerter und lokale Supabase-Statuswerte duerfen nicht in Doku, Logs oder
@@ -632,34 +463,10 @@ Commits uebernommen werden.
 
 ### Supabase CLI
 
-Als gepruefte Standalone-Binary user-local installiert:
-
-```powershell
-supabase --version
-```
-
-Installationspfad:
-
-```text
-C:\Users\steph\AppData\Local\Programs\Supabase\supabase.exe
-C:\Users\steph\AppData\Local\Programs\Supabase\supabase-go.exe
-```
-
-Seit CLI v2.109.1 muessen der Windows-Shim `supabase.exe` und die eigentliche
-Go-CLI `supabase-go.exe` gemeinsam im Installationsordner liegen. Ein reiner
-`supabase --version`-Check kann eine fehlende Go-Binary uebersehen; deshalb
-zusaetzlich einen realen Hilfebefehl pruefen:
-
-```powershell
-supabase start --help
-```
-
-Falls ein bereits offenes VS-Code-Terminal den PATH noch nicht kennt:
-
-```powershell
-$env:Path += ";$env:LOCALAPPDATA\Programs\Supabase"
-supabase --version
-```
+MIDAS verwendet die gemeinsame Standalone-CLI aus
+[ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#supabase-cli).
+Keine globale npm-Installation als Ersatz. Der gezielte Hilfebefehl prüft die
+CLI-Verfügbarkeit, startet aber keinen lokalen Stack. Projektbefehle folgen hier.
 
 Verwendung:
 
@@ -774,43 +581,9 @@ MIDAS-Grant-Vertrag:
 
 ### GitHub CLI
 
-Systemweit installiert und direkt im `PATH` verfuegbar:
-
-```powershell
-gh --version
-```
-
-Primaerer Installationspfad:
-
-```text
-C:\Program Files\GitHub CLI\gh.exe
-```
-
-Ein synchronisierter user-lokaler Fallback ist ebenfalls vorhanden:
-
-```text
-C:\Users\steph\AppData\Local\Programs\GitHub CLI\bin\gh.exe
-```
-
-Direkter Fallback ohne `PATH`:
-
-```powershell
-& "$env:LOCALAPPDATA\Programs\GitHub CLI\bin\gh.exe" --version
-```
-
-Login pruefen oder bei neuer Maschine einrichten:
-
-```powershell
-gh auth status
-gh auth login
-```
-
-Aktueller MIDAS-Stand:
-
-- `gh auth status` ist auf diesem Rechner eingerichtet.
-- Account: `stephanschabuss97-design`.
-- Relevante Scopes fuer Repo-/Actions-Arbeit sind vorhanden, inklusive `repo` und `workflow`.
-- Tokens oder Secret-Werte werden nicht in Doku, Logs oder Commits uebernommen.
+Gemeinsame CLI und Prüfgrenzen: [ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#github-cli).
+Vor authentifizierter Projektarbeit den nötigen Zugriff prüfen; keine
+Account-, Scope- oder Tokenwerte als dauerhafte Environment-Wahrheit speichern.
 
 Verwendung:
 
@@ -862,7 +635,8 @@ android/
 
 ### JDK / Gradle
 
-Das systemweite `JAVA_HOME` zeigt auf Microsoft OpenJDK 17:
+MIDAS Android benötigt JDK 17. Die Auswahl ist vor Androidarbeit zu prüfen;
+dies ist eine Projektanforderung, keine aktuelle globale Installationsbehauptung:
 
 ```powershell
 [Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
@@ -958,21 +732,10 @@ Testfehler oder realer Produktfehler klassifiziert.
 
 ### Playwright
 
-Global installiert, bewusst nicht als MIDAS-Projektdependency:
-
-```powershell
-playwright.cmd --version
-```
-
-Aktueller Stand:
-
-- `playwright@1.61.1`
-- Chromium ist installiert.
-- Globaler Node-Modulpfad:
-
-```text
-C:\Users\steph\AppData\Roaming\npm\node_modules
-```
+MIDAS verwendet den gemeinsamen Playwright-Aufruf aus
+[ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#playwright).
+Vor einem echten Browsersmoke muss der benötigte Browser verfügbar sein;
+dieses Overlay behauptet keinen dauerhaften Browserpayloadzustand.
 
 Wichtig:
 
@@ -1244,3 +1007,36 @@ Diese Toolchain reicht fuer die normale MIDAS-Arbeit:
 - Git-/Diff-/Doku-Reviews mit lokalen Repo-Tools.
 
 Damit kann ein neuer LLM-/Coding-Agent die meisten MIDAS-Aufgaben lokal pruefen, ohne externe Annahmen ueber den alten Backend-Workspace zu machen.
+
+### Optionaler KASRKIN Reset-Hinweis
+
+Seit dem Paid-Credit-Consumerupdate vom 2026-09-20 ist
+`kasrkin-4f3f71b333dfe784` exakt
+gebunden. Der bestehende Gate-Aufruf `kasrkin validate -Refresh` bleibt unverändert.
+Optional kann `kasrkin validate -ResetAdvisory` die bereits vorhandene frische
+Telemetrie um einen rein informativen Reset-Hinweis ergänzen. Kein zusätzlicher
+Refresh oder dauerhafter Beobachtungsauftrag ist dafür vorgesehen.
+
+Nur bei VALID entsteht ein `kasrkin-validate-advisory/1`-Wrapper mit `telemetry`
+und `resetAdvisory`; bei LIMIT oder Fehler bleibt es beim kanonischen Envelope
+und Exitcode. Der optionale Wrapper ersetzt nicht das Ausgabeformat des normalen
+Usage-Gates. Ein erwarteter Reset erzeugt weder Budget noch Arbeitsfreigabe;
+Floors, LIMIT, Restricted Episode und Owner-/Fachgates bleiben unverändert.
+Die 300-Sekunden-Nähegrenze ist eine Versuchshypothese, kein bewiesenes Optimum.
+
+### Paid-Credit-Telemetrie
+
+Das gebundene Release ergänzt die regulären Usage-Fenster um die getrennte,
+maschinenlesbare Dimension `paidCredits`. Deren Quelle ist der lokale Codex
+App Server; der separate Runtime-State liegt in
+[zentral dokumentierten Runtime-Verzeichnis](../../codex-tools/environment/DEV_ENVIRONMENT.md#kasrkin-installation-und-state-pfade)
+als `PaidCreditState.json`.
+`UsageState.json`, dessen Writer und die reguläre Quota-Policy bleiben
+unverändert.
+
+Credit availability is not permission to spend. Ein positiver Creditstand,
+Rainmeter, ein erfolgreiches Validate oder eine frühere Freigabe autorisieren
+keine Nutzung. Paid Credits benötigen eine ausdrückliche, zeitlich und
+fingerprintgebundene Ownerfreigabe für exakt den aktuellen Arbeitsblock; alle
+MIDAS-, Security-, Data-, Review-, External-Write-, Floor-, Safe-Closure- und
+Anti-Splitting-Gates bleiben zusätzlich wirksam.

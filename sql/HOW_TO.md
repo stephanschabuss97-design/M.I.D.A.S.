@@ -7,6 +7,35 @@ status: draft
 
 Explain how SQL scripts in `sql/` are structured, how to run them safely, and how to add new module scripts in a consistent style.
 
+## Productive C4 Protein Relevance (2026-10-03)
+
+`27_Activity_Protein_Relevance.sql` ran once on the reviewed MIDAS project:
+migration `20261003144855`, SHA-256
+`83c04c31c377dea3015bfc77405638bed9972520c406542e63c50a89f8dcd3d6`.
+It adds `health_activity_sessions.protein_target_relevant boolean NOT NULL
+DEFAULT true`, preserves old payload defaults and synchronizes existing
+commit/correction/delete/history/export functions without a second writer.
+
+Only Protein uses `activity_protein_days(date,date)` and the service-only
+`activity_protein_days_for_owner(uuid,date,date)` via private
+`activity_protein_days_core`. Schema: `midas.activity-protein-days.v1`;
+the public readers are invoker functions. SQL26 remains the unfiltered
+Doctor/Report/Health/Trendpilot contract. Historical cutover counts are not
+a current data inventory.
+
+Fresh/rerun/reverse/legacy/CAS/auth proofs use only the disposable
+`tests/27_Activity_Protein_Relevance_fixture.sql`. Never rerun that fixture,
+SQL27, grants or synthetic writes in production without a new Owner gate.
+The reviewed reverse is `27_Activity_Protein_Relevance_Rollback.sql`;
+its availability is not permission. Productive `false` has existed, even
+though the Owner deleted the test. Current absence does not prove never-false.
+Do not blindly remove the column or restore old unfiltered Protein/SQL/PWA
+consumers; use a reviewed compatible forward fix.
+
+[C4 Evidence](<../docs/archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>),
+EV-C4-L01, EV-C4-P01–P04 and EV-C4-S5-G18 contain exact postimages and limits.
+Existing SQL26 records below remain historical; no repeated deployment.
+
 ## Productive Activity Consumer Runtime (R13, 2026-08-26)
 
 `26_Activity_Consumer_Runtime_Activation.sql` is the active production

@@ -1,7 +1,7 @@
-# MIDAS Activity V2 – Aktionsplan nach R14
+# MIDAS Activity V2 – Aktionsplan nach R14 (DONE)
 
-Stand: 2026-09-28
-Status: Punkte 1 bis 3 abgeschlossen; Punkt 4 offen
+Stand: 2026-09-29
+Status: Punkte 1 bis 4 abgeschlossen
 
 ## Zweck und Reihenfolge
 
@@ -11,8 +11,8 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 | --- | --- | --- | --- |
 | 1 | Export-Zeitraum innerhalb von Activity V2 bedienen | eher klein | abgeschlossen; von Stephan auch am Handy akzeptiert |
 | 2 | Mobile Sessionansicht vertikal verdichten | mittel | abgeschlossen; Web- und Handyansicht von Stephan akzeptiert |
-| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | abgeschlossen; von Stephan am Handy akzeptiert |
-| 4 | Sessionabschluss nach längerer Hintergrundphase reparieren | offen, vermutlich am größten | lokaler Fix geprüft; Handytest offen |
+| 3 | Suche für die nächste Übung am unteren Ende erreichbar machen | mittel bis größer | abgeschlossen; von Stephan am Handy akzeptiert, Gym-Bedienung nicht separat rückgemeldet |
+| 4 | Sessionabschluss nach längerer Hintergrundphase reparieren | vermutlich am größten | abgeschlossen; Fix `ddbcf4c` im Gym auf Android erfolgreich genutzt |
 
 ## 1. Export bleibt in der Trainingsansicht
 
@@ -74,6 +74,8 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 **Handy-Abnahme und kleine Nachbesserung 2026-09-28:** Stephan ist mit Punkt 3 auf dem Handy zufrieden und erklärt ihn für abgeschlossen. Sein Screenshot zeigte den unteren Button über fast die ganze Breite. Ursache war die mobile globale `button { width: 100%; }`-Regel der produktiv importierten Export-CSS; der isolierte Harness lud diese CSS nicht. Der Quick-Add-Button und der Schließen-Button des Suchpanels erhalten deshalb in der Session-CSS ausdrücklich Inhaltsbreite. Der Check mit der gesamten Produkt-CSS zeigte wieder einen kompakten Button rechts; die PWA-Assetversion wurde auf `v28` gesetzt. Die optische Nachbesserung wurde noch nicht erneut auf Android angesehen.
 
+**Abnahmestand:** Punkt 3 ist nach Stephans Handy-Rückmeldung für diesen Polishing-Pass abgeschlossen. Eine gesonderte Rückmeldung zur Bedienung während eines echten Trainings liegt noch nicht vor; daraus folgt derzeit kein neuer Arbeitsauftrag.
+
 ## 4. Sessionabschluss nach Unterbrechung
 
 **Beobachtung:** Beim ersten Training blieb der Abschluss nach längerer Nutzung anderer Android-Apps bei „Session wird gespeichert …“ stehen. Nach Schließen und Neustart von MIDAS ließ sich derselbe erhaltene Draft abschließen. Ein kurzer Zwei-Minuten-Test mit mehreren Fensterwechseln funktionierte. Damit ist eine längere Hintergrundphase oder eine Token-Erneuerung verdächtig; der konkrete Geräteauslöser ist noch nicht bewiesen.
@@ -82,7 +84,11 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 **Prüfung:** Den Abschluss nach längerer Hintergrundphase und abgewiesenem Access Token prüfen. Danach Fensterwechsel, Reload/Neustart, Fortsetzen, Abschluss, Unknown Outcome und History-Eintrag als vollständige Kette prüfen. Commit-Intent, Request-ID, SQL und medizinische Consumer bleiben unverändert.
 
-**Lokaler Befund und Fix 2026-09-28:** Der Edge-Harness mit dem echten `fetchWithAuth` zeigte zwei Fehler: Ein hängendes `refreshSession()` ließ den Abschluss über den zehnsekündigen Request-Timeout hinaus warten; nach erfolgreichem Refresh verwendete der zweite Request erneut den alten Header und erhielt 401. Ein separater kontrollierter Auth-Callback-Harness reproduzierte den dokumentierten Supabase-Deadlock: Der bisherige asynchrone Callback wartete auf Realtime-Arbeit, die ihrerseits auf die Auth-Erneuerung wartete. Lokal sind Auth-Callbacks nun synchron mit nachgelagerter Arbeit; verspätete Ereignisse dürfen neuere Auth-Zustände nicht überschreiben. Der Refresh ist begrenzt und der Header wird danach frisch aufgebaut. Für die PWA-Auslieferung wurden Supabase-Importgraph und Service Worker gemeinsam auf v29 gesetzt. Die lokalen Harnessfälle für Refresh, hängenden Refresh, Logout während hängendem Realtime-Aufbau, Activity-Reauth, Recovery und Unknown/Retry sowie die frische v29-Cache-Installation bestanden. Die ursprüngliche Android-Situation wurde damit noch nicht auf dem Gerät reproduziert; Punkt 4 bleibt bis zum Praxistest offen.
+**Lokaler Befund und Fix 2026-09-28:** Der Edge-Harness mit dem echten `fetchWithAuth` zeigte zwei Fehler: Ein hängendes `refreshSession()` ließ den Abschluss über den zehnsekündigen Request-Timeout hinaus warten; nach erfolgreichem Refresh verwendete der zweite Request erneut den alten Header und erhielt 401. Ein separater kontrollierter Auth-Callback-Harness reproduzierte den dokumentierten Supabase-Deadlock: Der bisherige asynchrone Callback wartete auf Realtime-Arbeit, die ihrerseits auf die Auth-Erneuerung wartete. Lokal sind Auth-Callbacks nun synchron mit nachgelagerter Arbeit; verspätete Ereignisse dürfen neuere Auth-Zustände nicht überschreiben. Der Refresh ist begrenzt und der Header wird danach frisch aufgebaut. Für die PWA-Auslieferung wurden Supabase-Importgraph und Service Worker gemeinsam auf v29 gesetzt. Die lokalen Harnessfälle für Refresh, hängenden Refresh, Logout während hängendem Realtime-Aufbau, Activity-Reauth, Recovery und Unknown/Retry sowie die frische v29-Cache-Installation bestanden. Die frühere Android-Situation wurde im lokalen Harness nicht auf dem Gerät nachgestellt.
+
+**Veröffentlichung 2026-09-28:** Commit `ddbcf4c` (`fix(activity-v2): recover session save after auth refresh`) ist auf `origin/main`; der Remote-Commit wurde abgeglichen. Der Fix änderte weder Commit-Intent noch Request-ID, SQL oder Activity-Consumer.
+
+**Geräte-Abnahme 2026-09-29:** Stephan konnte die Session bei seinem nächsten Training im Gym auf Android ohne Probleme speichern und meldet den Speicherfehler als behoben. Punkt 4 ist auf dieser Grundlage abgeschlossen. Die Rückmeldung belegt einen erfolgreichen echten Trainingsabschluss; sie dokumentiert weder einen gezielt provozierten Tokenablauf noch einen separaten Nachweis jedes Recovery-/Retry-Teilpfads. Der genaue Auslöser des früheren Hängers bleibt daher eine begründete technische Vermutung.
 
 ## Arbeitsgrenzen
 
@@ -93,6 +99,6 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 ## Kontext
 
-- [Activity-V2-Masterplan](Future%20trainingsmodule%20update%20thoughts.md)
-- [Activity Module Overview](modules/Activity%20Module%20Overview.md)
-- [R14 Repair Findings](MIDAS%20Activity%20V2%20R14%20Repair%20Findings.md)
+- [Activity-V2-Masterplan](../Future%20trainingsmodule%20update%20thoughts.md)
+- [Activity Module Overview](../modules/Activity%20Module%20Overview.md)
+- [R14 Repair Findings](../MIDAS%20Activity%20V2%20R14%20Repair%20Findings.md)

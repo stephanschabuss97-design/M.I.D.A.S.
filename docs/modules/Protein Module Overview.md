@@ -1,6 +1,29 @@
 # Protein Module - Functional Overview
 
-## C3-Produktionsstand (2026-08-28)
+## C4-Produktionsstand (2026-10-03)
+
+Protein-Edge v32 verwendet für den Activity-Score ausschließlich die
+SQL27-Projektion `midas.activity-protein-days.v1`: unterschiedliche Wiener
+Tage innerhalb der letzten 28 Tage zählen bei V1 oder einer nicht
+ausgenommenen V2-Session. Ein ausschließlich ausgenommener V2-Tag zählt nicht.
+Der allgemeine SQL26-Snapshot und Trendpilot-/Report-Pfade bleiben ungefiltert.
+
+`verify_jwt=false` und die bestehende In-Function-Auth bleiben erhalten:
+User-Bearer werden über Auth validiert, der Scheduler über seinen eigenen
+benannten Secret Key. Formel, ACT-Schwellen, CKD, Doctor-Lock und die
+bestehenden Body-/Scheduler-Verträge bleiben unverändert. Activity V2 ist
+seit R14 der einzige produktive Capturewriter.
+
+Save, Correction und Delete nutzen dieselbe Protein-Bridge. Ein Refreshfehler
+wird vom erfolgreichen Training-Write getrennt angezeigt; Retry wiederholt
+nur den Proteinrefresh. Owner-Score `7 → 8 → 7` und öffentlicher Pages-Zugang
+sind bestätigt. Ursprüngliche Test-Vorabnachweise fehlen und bleiben als
+Protokollabweichung dokumentiert. Android ist erlassen, nicht PASS.
+[C4 Roadmap](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>) und [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>):
+EV-C4-L03, EV-C4-P02/P04, EV-C4-S5-G18. Nach produktiven Ausnahmen ist ein
+Rollback auf alte ungefilterte Protein-Consumer kein sicherer Rückfall.
+
+## Historischer C3-Produktionsstand (2026-08-28)
 
 Protein Target v31 läuft produktiv mit `verify_jwt=false` und strikt
 serverseitiger In-Function-Auth: angemeldete Benutzer werden über Supabase
@@ -39,7 +62,7 @@ Related docs:
 
 | Datei | Zweck |
 | --- | --- |
-| `app/modules/vitals-stack/protein/index.js` | Modul-API, Edge-Call Bridge (`recomputeTargets`). |
+| `app/modules/vitals-stack/protein/index.js` | Gemeinsame Edge-Bridge (`recomputeTargets`, `refreshAfterActivity`) und sichtbarer Activity-Refresh-/Retry-Vertrag. |
 | `app/modules/vitals-stack/vitals/body.js` | Trigger nach Body-Save. |
 | `app/modules/profile/index.js` | Doctor-Lock Felder, Targets lesen/schreiben und gespeicherte Derived Fields für die read-only Projektion liefern. |
 | `app/modules/hub/index.js` | Profil-Payload für Assistant sowie read-only Protein-Kontextdialog. |
@@ -48,7 +71,9 @@ Related docs:
 | `sql/13_Activity_Event.sql` | Activity-Events (Count im 28d-Window). |
 | `sql/11_Lab_Event_Extension.sql` | CKD-Stufe aus `lab_event`. |
 | `backend/supabase/functions/midas-protein-targets/index.ts` | Edge Function (Compute + Write). |
-| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Produktiver purer Adapter für Aktivtage, ACT-Level und Modifier. |
+| `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Produktiver purer Adapter für Protein-Aktivtage, ACT-Level und Modifier. |
+| `backend/supabase/functions/midas-protein-targets/protein-activity-days.ts` | Isolierter C4-Vertrag für Protein-Tage. |
+| `sql/27_Activity_Protein_Relevance.sql` | Binäres Sessionfeld, kompatible RPCs und getrennte Protein-Projektionen. |
 
 ---
 
@@ -85,6 +110,8 @@ Related docs:
 
 ### 4.2 User-Trigger
 - Body-Save im Vitals/Body Panel.
+- Activity-Commit, gespeicherte R9-Korrektur und R9-Delete über
+  `activity_save`, `activity_correction` und `activity_delete`.
 - Optional: manueller Trigger (Debug/force, aktuell nicht genutzt).
 
 ### 4.3 Verarbeitung
@@ -92,11 +119,10 @@ Related docs:
 - Guards: Cooldown (7 Tage), Gewicht/Faktor unveraendert -> skip.
 - Berechnung: Age Base + Activity Modifier, CKD Faktor, Min/Max Target.
 - Doctor-Lock: nutzt `protein_doctor_factor` als Source of Truth (wenn aktiv); fehlt der Faktor, wird der Run skipped.
-- Activity bleibt Count-basiert (bewusste Sessions, keine Minuten).
-- Der in R12 isoliert bewiesene Adapter vereinigt seit R13 dieselben ACT-
-  Schwellen auf unterschiedlichen Wiener Aktivtagen aus dem ownergebundenen
-  SQL26-Snapshot. Solange R14 den Writer nicht umstellt, stammen produktive
-  Aktivitaeten weiterhin ausschließlich aus V1-`activity_event`-Zeilen.
+- Activity bleibt tagebasiert, ohne Minuten- oder Intensitätsgewichtung.
+  Seit C4 liefert SQL27 ausschließlich die berücksichtigten V1-/V2-Tage;
+  ACT-Schwellen und Modifier bleiben unverändert. Allgemeine Activity- und
+  Trendpilot-Consumer übernehmen diesen Filter nicht.
 - CKD-Stufe wird konservativ aufgeloest:
   - zuerst letztes `lab_event.payload.ckd_stage`
   - dann bestehendes `user_profile.protein_ckd_stage_g`
@@ -111,7 +137,8 @@ Related docs:
 ## 4.5 Berechnungslogik (v1, deterministisch)
 
 - Rolling Window: 28 Tage (inkl. heute, day >= today-27).
-- Activity Score: Anzahl `activity_event` im Window (Count).
+- Activity Score: unterschiedliche Wiener Tage mit V1 oder mindestens einer
+  V2-Session mit `protein_target_relevant=true`.
 - Activity Level:
   - ACT1: score < 2
   - ACT2: 2 <= score < 6
@@ -189,12 +216,16 @@ Related docs:
 - Public API: `AppModules.protein.recomputeTargets(...)` für den bestehenden
   Body-Save-Pfad sowie `AppModules.protein.loadStoredContext(profile)` für die
   rein lesende Hub-Projektion.
+- `AppModules.protein.refreshAfterActivity(trigger)` verbindet den aktiven
+  Activity-Lifecycle mit dem Edge-Transport und Profilreload. Fehler bleiben
+  sichtbar und retryfähig; kein zweiter Training-Write.
 - Source of Truth: `user_profile` Targets.
 - Side Effects: `profile.syncProfile` + `profile:changed`.
 - Constraints: Doctor-Lock nutzt Doctor-Faktor; fehlt der Faktor, wird der Run skipped. Cooldown verhindert Spam.
 - Externe Inputs: Body-Save, Activity-Count, CKD aus Lab.
 - Optional: manueller Recompute (force=true, aktuell nicht genutzt).
-- Optional: woechentlicher Recompute via GitHub Actions (Do->Fr Nacht, Service Role Bearer).
+- Wöchentlicher Scheduler via GitHub Actions mit eigenem benannten Secret Key;
+  kein User-Bearer und keine Lockerung der Principal-Grenze.
 
 ---
 
@@ -223,7 +254,8 @@ Related docs:
 
 ## 11. Status / Dependencies / Risks
 
-- Status: aktiv; R13-Consumer und C3-Hub-Projektion produktiv verdrahtet.
+- Status: aktiv; C4-Proteinprojektion, Activityrefresh und C3-Hub-Projektion
+  produktiv verdrahtet. Historische R13-/C3-Nachweise bleiben erhalten.
 - Dependencies (hard): `user_profile` Spalten, `activity_event`, `lab_event`, Edge Function.
 - Dependencies (soft): Profil-UI, Intake/Assistant Anzeige.
 - Known issues / risks: fehlendes `birth_date`, falsches Gewicht, fehlender Doctor-Faktor trotz Lock, fehlende CKD-Quelle im Auto-Pfad erzeugt Skip statt stillen Write.

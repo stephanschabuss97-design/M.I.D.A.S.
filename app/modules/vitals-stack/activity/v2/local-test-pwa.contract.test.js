@@ -92,9 +92,35 @@ test('S4.11 local worker stays isolated while R14 product owns the V2 capture ca
   assert.doesNotMatch(productIndex, /app\/modules\/vitals-stack\/activity\/index\.js/);
   assert.match(productIndex, /activity\/v2\/session-recovery\.js/);
   assert.doesNotMatch(productIndex, /test-pwa/);
-  assert.match(productWorker, /const CACHE_VERSION = 'v24'/);
+  assert.match(productWorker, /const CACHE_VERSION = 'v31'/);
   assert.match(productWorker, /activity\/v2\/session-recovery\.js/);
   assert.doesNotMatch(productWorker, /test-pwa|r8-local-test/);
+});
+
+test('C4 product cache binds every changed Activity asset to one version', () => {
+  const stylesheet = read('app/app.css');
+  const changedScripts = [
+    'session-draft.js', 'session-recovery.js', 'session-commit.js',
+    'activity-coaching-export.js', 'data-access.js', 'session-shell.js',
+    'session-correction.js', 'session-history.js', 'session-history-shell.js',
+    'activity-coaching-export-controller.js', 'activity-coaching-export-shell.js'
+  ];
+  const changedStyles = ['session-shell.css', 'session-history-shell.css'];
+  assert.match(productIndex, /app\/app\.css\?v=31/);
+  assert.match(productWorker, /app\/app\.css\?v=31/);
+  for (const name of changedScripts) {
+    const version = name === 'session-shell.js' ? 31 : 30;
+    const path = `app/modules/vitals-stack/activity/v2/${name}?v=${version}`;
+    assert.ok(productIndex.includes(path), `index missing ${name}`);
+    assert.ok(productWorker.includes(path), `worker missing ${name}`);
+  }
+  for (const name of changedStyles) {
+    const version = name === 'session-shell.js' ? 31 : 30;
+    const path = `app/modules/vitals-stack/activity/v2/${name}?v=${version}`;
+    assert.ok(productWorker.includes(path), `worker missing ${name}`);
+    assert.ok(stylesheet.includes(`./modules/vitals-stack/activity/v2/${name}?v=30`),
+      `stylesheet missing ${name}`);
+  }
 });
 
 test('S4.11 runbook keeps credentials ephemeral and device actions owner-gated', () => {
@@ -107,4 +133,12 @@ test('S4.11 runbook keeps credentials ephemeral and device actions owner-gated',
   assert.match(runbook, /kein(?:e|)\s+Uninstall/i);
   assert.match(runbook, /kein(?:e|)\s+physisches Recovery/i);
   assert.doesNotMatch(runbook, /service_role|eyJ[a-zA-Z0-9_-]{10,}\./);
+});
+
+test('C4 Protein mutation bridge and target currentness assets use the same product cache', () => {
+  for (const asset of ['assets/js/main.js', 'app/modules/vitals-stack/protein/index.js',
+    'app/modules/vitals-stack/activity/v2/activity-product-controller.js', 'app/modules/hub/index.js']) {
+    assert.ok(productIndex.includes(`${asset}?v=31`), asset);
+    assert.ok(productWorker.includes(`${asset}?v=31`), asset);
+  }
 });

@@ -28,6 +28,26 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 
 ## Testfälle
 
+### HCR-034 - C4 bewahrt Aktivität und isoliert Protein-Berücksichtigung
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [C4 Roadmap](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>) und [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>).
+- Ebene: lokale Draft-/Recovery-/Commit-/History-/Export-Verträge und echter
+  UI-Lifecycle bis zum Transport; produktive Aktionen nur owner-gated.
+- Voraussetzung: SQL27, kohärenter Productload und isolierte Fixtures;
+  produktiv nur ausdrücklich abgegrenzter Testtag mit Cleanup.
+- Aktion: Default/Ausnahme durch Recovery, Commit, Korrektur und Export verfolgen;
+  Save/Correction/Delete mit getrenntem Proteinrefresh prüfen.
+- Erwartung: ein Writer, stabiles `protein_target_relevant`, vollständige
+  Ist-Daten in History/Export, Retry ohne zweiten Commit. Nur Protein filtert;
+  Doctor, Report, Health Export und Trendpilot behalten alle Aktivitäten.
+- Verwandt: HCR-033 (Writer), IM-013 (Protein), BS-006/007/008 (Grants/RLS/RPC).
+  Ergebnisse und nicht beobachtete Teilpfade stehen ausschließlich in Evidence.
+- Invalidiert durch: SQL27, Draft-/Recovery-/Fingerprint-/CAS-/Exportvertrag,
+  aktive Listener/Lifecycle, Proteinbridge oder Productload.
+- Cleanup: nur den ausdrücklich freigegebenen Testdatensatz über R9 löschen;
+  keinen Produktivtest ohne Invalidation beziehungsweise erforderliches Gate.
+
 ### HCR-033 - R14 aktiviert Activity V2 als einzigen produktiven Writer
 
 - Vertrag: archivierte R14-Roadmap und Evidence sowie Activity-, Capture- und

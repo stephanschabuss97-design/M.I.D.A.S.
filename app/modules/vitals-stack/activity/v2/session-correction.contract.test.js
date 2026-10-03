@@ -90,7 +90,7 @@ function makeDetail(context, catalogVersion = 2) {
     note: 'Saved snapshot'
   });
   return {
-    schema_version: 'midas.activity-session-detail.v1',
+    schema_version: 'midas.activity-session-detail.v2',
     session_id: uuidFor(900),
     catalog_version: catalogVersion,
     revision: '7',
@@ -100,6 +100,7 @@ function makeDetail(context, catalogVersion = 2) {
     day: '2026-07-31',
     title: 'Immutable title',
     duration_min: 30,
+    protein_target_relevant: true,
     note: null,
     items: [snapshotItem(running, 1), historicalBench]
   };
@@ -127,6 +128,7 @@ test('S4.2 namespaces are exact, immutable and R14-product-loaded', () => {
     'getState',
     'setDurationMin',
     'setNote',
+    'setProteinTargetRelevant',
     'addItem',
     'removeItem',
     'moveItem',
@@ -234,6 +236,24 @@ test('T-ACT-R9-03 preserves immutable identity and snapshots while editing only 
   assert.equal(invalidDayError.code, 'INVALID_DETAIL');
 });
 
+test('C4 flag-only correction preserves CAS identity and toggles back to pristine', () => {
+  const harness = makeHarness();
+  const controller = harness.correction.create(makeDetail(harness.context));
+  const pristine = controller.getState();
+  assert.equal(pristine.workingCopy.protein_target_relevant, true);
+  assert.equal(controller.setProteinTargetRelevant(true), pristine);
+  const invalid = captureError(() => controller.setProteinTargetRelevant('false'));
+  assert.equal(invalid.code, 'INVALID_PROTEIN_RELEVANCE');
+  const excluded = controller.setProteinTargetRelevant(false);
+  assert.equal(excluded.status, 'dirty');
+  assert.equal(excluded.valid, true);
+  assert.equal(excluded.replacement.protein_target_relevant, false);
+  assert.equal(excluded.mutationRequest.expectedRevision, '7');
+  assert.equal(excluded.mutationRequest.expectedContentFingerprint, FINGERPRINT);
+  assert.equal(excluded.mutationRequest.session, excluded.replacement);
+  assert.equal(controller.setProteinTargetRelevant(true).status, 'pristine');
+});
+
 test('T-ACT-R9-04 builds exact replacement and canonical content with explicit nulls and order', () => {
   const harness = makeHarness();
   const controller = harness.correction.create(makeDetail(harness.context));
@@ -250,7 +270,8 @@ test('T-ACT-R9-04 builds exact replacement and canonical content with explicit n
     'catalog_version',
     'duration_min',
     'note',
-    'items'
+    'items',
+    'protein_target_relevant'
   ]);
   assert.equal(
     state.canonicalContent.schema_version,
@@ -282,7 +303,8 @@ test('T-ACT-R9-04 builds exact replacement and canonical content with explicit n
     'schema_version',
     'duration_min',
     'note',
-    'items'
+    'items',
+    'protein_target_relevant'
   ]);
   assert.deepEqual(Object.keys(state.replacement.items[0]), [
     'item_key',

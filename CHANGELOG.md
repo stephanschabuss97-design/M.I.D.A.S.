@@ -14,6 +14,16 @@ erhalten.
 
 ### Added
 
+- C4 erlaubt, ein vollständig gespeichertes Training bewusst nur vom Proteinziel
+  auszunehmen. Bestehende und neue Sessions zählen standardmäßig; der Wert
+  bleibt über Recovery, Commit, History-Korrektur und Coaching-Export erhalten.
+  Nur Protein zählt isolierte Wiener Aktivtage; andere Consumer behalten alle
+  Ist-Daten. Save/Correction/Delete aktualisieren Protein mit sichtbarem
+  Fehler-/Retry-Pfad ohne zweiten Training-Write. SQL27, Protein-Edge v32 und
+  Pages/SW v31 sind produktiv. Owner-Score und Pages-Zugang bestätigt;
+  fehlende Test-Vorabnachweise dokumentiert, Android ausdrücklich erlassen.
+  [Abschlussnachweise](<docs/archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>).
+
 - R14 aktiviert Activity V2 als einzigen produktiven Training-Capture mit
   IndexedDB-Recovery, retry-idempotentem Session-Commit, History, Detail,
   Correction/Delete und Coaching-Export. Der Activity-V1-Writer ist aus dem
@@ -67,6 +77,15 @@ erhalten.
 
 ### Changed
 
+- Activity V2 zeigt auf dem Handy kompaktere Übungskarten mit direkt sichtbarer
+  letzter Ausführung und bietet die bestehende Übungssuche nach dem Scrollen
+  auch am unteren Bildschirmrand an.
+- Der Coaching-Export lässt Zeitraumwahl und Rückkehr innerhalb der geöffneten
+  Trainingsansicht zu.
+- Der lokale Codex Usage Guard verwendet nach abgeschlossenem W0-W6-Rollout
+  `guard-vnext/1` als aktives, rein entscheidendes Governance-Orakel. Der
+  Legacy-kompatible Validatorpfad bleibt als getesteter Rollback erhalten;
+  automatische Tool-, Produkt-, Commit- und Deployaktionen bleiben verboten.
 - Der produktive Activity-V2-Commit-RPC akzeptiert nach dem kontrollierten
   SQL-22-Update jede vorhandene unveränderliche Katalogversion statt nur der
   höchsten. Idempotenz, RLS/ACL-Hardening, Activity V1 und die weiterhin
@@ -79,6 +98,14 @@ erhalten.
   Einzelwerte und Verlauf bleiben sekundäre, explizit geladene Werkzeuge.
 - Arztberichte verwenden einen expliziten Zeitraum bis maximal 400 inklusive
   Tage und ersetzen den bestehenden Bericht atomar in-place.
+
+### Fixed
+
+- Beim Activity-V2-Sessionabschluss begrenzen wir einen hängenden Auth-Refresh
+  und senden einen Retry nach erfolgreichem Refresh mit dem neuen Access Token.
+  Auth-Ereignisse blockieren die Erneuerung nicht mehr. Lokale Harness-Prüfungen
+  bestanden; Stephan konnte anschließend eine echte Gym-Session auf Android
+  problemlos abschließen.
 
 ### Removed
 
