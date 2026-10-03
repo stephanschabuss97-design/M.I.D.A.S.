@@ -1,7 +1,7 @@
 {
-  "activationVersion": "midas-kasrkin-activation/1",
+  "activationVersion": "midas-kasrkin-activation/2",
   "consumer": "MIDAS",
-  "activatedAt": "2026-09-19T20:51:04.3727030+02:00",
+  "activatedAt": "2026-10-03T13:38:19.312689+02:00",
   "authority": {
     "decisionSemanticsOwner": "KASRKIN",
     "decisionDetailSource": "PINNED_INSTALLED_RELEASE",
@@ -10,43 +10,42 @@
   },
   "binding": {
     "path": ".kasrkin/binding.json",
-    "sha256": "ff23b658b90d3f63b5dff0c874e0d33f999793665b9d7cc142c9163ee06eabf3",
-    "releaseId": "kasrkin-2a0d185b0b04a93f",
-    "releaseFingerprint": "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
-    "payloadDigest": "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
-    "receiptSha256": "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187",
-    "sourceCandidateId": "source-candidate-a57d05e3aab820a1"
+    "sha256": "89206851ca5fe930959f13863a4fb57adccfecbb62a6ab33da31e705dc86759d",
+    "releaseId": "kasrkin-846014632990bb03",
+    "releaseFingerprint": "846014632990bb0398ecc8dd450981b43e29186d3f31641487e65818b0dbf0fb",
+    "payloadDigest": "3be4e889eda5875f0750332f8f88357b0c14d8c70e7f038225281d8a0d7f5217",
+    "receiptSha256": "6762c3725a4cb2c78a48998c39910b3b898e4554d4bd9e43ac42fb42786f5517"
   },
   "consultationArtifacts": [
     {
       "role": "KASRKIN_INTEGRATION_CONTRACT",
-      "path": "C:\\Users\\steph\\Projekte\\codex-tools\\docs\\architecture\\KASRKIN Integration.md",
-      "sha256": "d2a2e780b1a28a22466e9cf7b2cd74e30f98a5c4c9b937525293aa7df87feb9a"
+      "path": ".kasrkin/integration.md",
+      "sha256": "d0c187fec1feddd3bf3f28e509e14619e947aaa56172f926a587d7c45f5336a6"
     },
     {
       "role": "MIDAS_AGENT_ENFORCEMENT",
       "path": "AGENTS.md",
-      "sha256": "e878e2209594c45091765e84f6a97b425b8abd6b472b8b0ea5d3cb95ca6d776c"
+      "sha256": "313a3b3c973899fb26aac9e51bbe7b5f67b21dda6aa6ab9a4e02dff9e9729a16"
     },
     {
       "role": "MIDAS_SENSOR_OPERATIONS",
       "path": "docs/DEV_ENVIRONMENT.md",
-      "sha256": "357fd8c961de3b59f6730dba5d9d6bb48236f5c00087f1ff8994b329f67cc4f7"
+      "sha256": "57653a779990a3be3f61c1fce613462bc9f7465736c7714414e2ff613d1b9b11"
     },
     {
       "role": "MIDAS_WORKFLOW_CONSULTATION",
       "path": "docs/templates/MIDAS Roadmap Workflow Contract.md",
-      "sha256": "48acd9c3140fcdfb65804296ed4488bb4a1f1f32fa0fd496bac2422c485ee373"
+      "sha256": "96eb0aac14616caa62055bba43ef79748681d2625d9cbc0447869f93150d54ce"
     },
     {
       "role": "MIDAS_TEMPLATE_INDEX",
       "path": "docs/templates/README.md",
-      "sha256": "d9cc9d82b0226b6a0e4b194ae5556c3af3e1bd4b1a3870e38584345d382b1453"
+      "sha256": "29a8b132f369baa25bc1f8cb591b55603485dd4d08b60b1d619a35d3512047d7"
     },
     {
       "role": "MIDAS_ROADMAP_TEMPLATE",
       "path": "docs/templates/MIDAS Roadmap Template.md",
-      "sha256": "1d8e4650ae4eab8985e8fe9666544971264528a8eae2f1890141c8d66335c843"
+      "sha256": "b712a772414aa9acfda9e654f041798c14ae0fc593f434828d0bcdc7a9d94668"
     },
     {
       "role": "MIDAS_EVIDENCE_TEMPLATE",
@@ -56,13 +55,21 @@
     {
       "role": "MIDAS_ACTIVATION_PROOF",
       "path": ".kasrkin/Test-MidasKasrkinActivation.ps1",
-      "sha256": "636d49ac32ef5c623be8e8a66f66505a08dd06bd490df66e22c600249fe0f625"
+      "sha256": "d6ade996a8b566bd2a9f572b91f278c073f397e70b5660f4b01180c8427a4aeb"
+    },
+    {
+      "role": "MIDAS_COMMAND_SELECTION",
+      "path": ".kasrkin/command.json",
+      "sha256": "a8c168df1bd50c4ef6b3604ac810fc254ed458fecf63147bc3a60f7f217f01ab"
     }
   ],
   "runtime": {
     "statePath": "C:\\Users\\steph\\Documents\\Rainmeter\\Skins\\illustro\\Tokens\\UsageState.json",
     "schemaVersion": 3,
-    "sensorVersion": "3.1.0"
+    "sensorVersion": "3.1.0",
+    "paidCreditStatePath": "C:\\Users\\steph\\Documents\\Rainmeter\\Skins\\illustro\\Tokens\\PaidCreditState.json",
+    "paidCreditSchemaVersion": 1,
+    "paidCreditSensorVersion": "1.0.0"
   },
   "legacyRollback": {
     "status": "RETIRED_W7",
@@ -76,14 +83,20 @@
       },
       {
         "role": "PINNED_INSTALLED_RELEASE",
-        "path": "C:\\Users\\steph\\.local\\share\\kasrkin\\releases\\kasrkin-2a0d185b0b04a93f"
+        "path": "C:\\Users\\steph\\.local\\share\\kasrkin-gate-v1\\releases\\kasrkin-846014632990bb03"
       }
     ]
   },
   "constraints": {
-    "policyChanged": false,
+    "regularQuotaPolicyChanged": false,
+    "paidCreditPolicyAdded": true,
     "runtimeStateMoved": false,
-    "additionalUsageWriter": false,
-    "hestiaChanged": false
+    "additionalQuotaWriter": false,
+    "separatePaidCreditWriter": true,
+    "hestiaChanged": true,
+    "endphasePolicyAdded": true
+  },
+  "paidCredits": {
+    "ownerAuthorization": "NOT_GRANTED"
   }
 }

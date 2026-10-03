@@ -1,7 +1,7 @@
 {
   "bindingVersion": "kasrkin-project-binding/1",
-  "releaseId": "kasrkin-2a0d185b0b04a93f",
-  "releaseFingerprint": "2a0d185b0b04a93f9794da885e5f200ba5cc6aacbd82063c44c6d115b9fd5658",
-  "payloadDigest": "c51e6b3ab528c528b44669992fd3a2fc112e4094ba09c3c04e7750523bb2137b",
-  "receiptSha256": "1abdce21dd17c9a0ce9fda9cd86db0de71cb13b799515351040a16b362f96187"
+  "releaseId": "kasrkin-846014632990bb03",
+  "releaseFingerprint": "846014632990bb0398ecc8dd450981b43e29186d3f31641487e65818b0dbf0fb",
+  "payloadDigest": "3be4e889eda5875f0750332f8f88357b0c14d8c70e7f038225281d8a0d7f5217",
+  "receiptSha256": "6762c3725a4cb2c78a48998c39910b3b898e4554d4bd9e43ac42fb42786f5517"
 }

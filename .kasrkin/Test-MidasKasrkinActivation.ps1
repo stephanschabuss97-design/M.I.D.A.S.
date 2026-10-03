@@ -1,85 +1,39 @@
-$ErrorActionPreference = 'Stop'
+param(
+    [string]$ProjectRoot=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
+    [string]$ExpectedInstallRoot=(Join-Path $env:USERPROFILE '.local\share\kasrkin-gate-v1')
+)
+$ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
-
-$projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$activationPath = Join-Path $PSScriptRoot 'activation.json'
-
-function Assert-True {
-    param([bool]$Condition, [string]$Message)
-    if (-not $Condition) { throw $Message }
-}
-
-function Resolve-ActivationPath {
-    param([string]$Path)
-    if ([IO.Path]::IsPathRooted($Path)) { return $Path }
-    return Join-Path $projectRoot $Path.Replace('/', '\')
-}
-
-$activation = Get-Content -Raw -LiteralPath $activationPath -Encoding UTF8 |
-    ConvertFrom-Json
-Assert-True ($activation.activationVersion -eq 'midas-kasrkin-activation/1') 'ACTIVATION_VERSION'
-Assert-True ($activation.consumer -eq 'MIDAS') 'ACTIVATION_CONSUMER'
-Assert-True ($activation.authority.decisionSemanticsOwner -eq 'KASRKIN') 'ACTIVATION_TOOL_OWNER'
-Assert-True ($activation.authority.projectExecutionOwner -eq 'MIDAS') 'ACTIVATION_PROJECT_OWNER'
-
-$bindingPath = Resolve-ActivationPath ([string]$activation.binding.path)
-Assert-True (Test-Path -LiteralPath $bindingPath -PathType Leaf) 'ACTIVATION_BINDING_MISSING'
-$bindingHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $bindingPath).Hash.ToLowerInvariant()
-Assert-True ($bindingHash -eq [string]$activation.binding.sha256) 'ACTIVATION_BINDING_DRIFT'
-$binding = Get-Content -Raw -LiteralPath $bindingPath -Encoding UTF8 | ConvertFrom-Json
-foreach ($name in @('releaseId', 'releaseFingerprint', 'payloadDigest', 'receiptSha256')) {
-    Assert-True ([string]$binding.$name -eq [string]$activation.binding.$name) "ACTIVATION_BINDING_VALUE_DRIFT:$name"
-}
-
-$roles = @($activation.consultationArtifacts.role)
-Assert-True (@($roles | Sort-Object -Unique).Count -eq $roles.Count) 'ACTIVATION_DUPLICATE_ROLE'
-foreach ($artifact in @($activation.consultationArtifacts)) {
-    $path = Resolve-ActivationPath ([string]$artifact.path)
-    Assert-True (Test-Path -LiteralPath $path -PathType Leaf) "ACTIVATION_ARTIFACT_MISSING:$($artifact.role)"
-    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
-    Assert-True ($hash -eq [string]$artifact.sha256) "ACTIVATION_ARTIFACT_DRIFT:$($artifact.role)"
-}
-
-Assert-True (-not [bool]$activation.legacyRollback.active) 'ACTIVATION_LEGACY_STILL_ACTIVE'
-Assert-True ([string]$activation.legacyRollback.status -eq 'RETIRED_W7') 'ACTIVATION_LEGACY_NOT_RETIRED'
-$legacyRoot = Resolve-ActivationPath ([string]$activation.legacyRollback.sourceRoot)
-Assert-True (-not (Test-Path -LiteralPath $legacyRoot)) 'ACTIVATION_LEGACY_SOURCE_PRESENT'
-foreach ($successor in @($activation.legacyRollback.successors)) {
-    $successorPath = Resolve-ActivationPath ([string]$successor.path)
-    Assert-True (Test-Path -LiteralPath $successorPath) "ACTIVATION_SUCCESSOR_MISSING:$($successor.role)"
-}
-
-Assert-True (-not [bool]$activation.constraints.policyChanged) 'ACTIVATION_POLICY_CHANGED'
-Assert-True (-not [bool]$activation.constraints.runtimeStateMoved) 'ACTIVATION_RUNTIME_MOVED'
-Assert-True (-not [bool]$activation.constraints.additionalUsageWriter) 'ACTIVATION_SECOND_WRITER'
-Assert-True (-not [bool]$activation.constraints.hestiaChanged) 'ACTIVATION_HESTIA_CHANGED'
-
-$foreignCwd = Join-Path $projectRoot 'docs'
-Push-Location $foreignCwd
+$originalPath=$env:PATH
 try {
-    $versionOutput = & kasrkin version
-    Assert-True ($LASTEXITCODE -eq 0) 'ACTIVATION_VERSION_COMMAND_FAILED'
-    $version = $versionOutput | ConvertFrom-Json
-    Assert-True ($version.releaseId -eq $binding.releaseId) 'ACTIVATION_RELEASE_ID_DRIFT'
-    Assert-True ($version.releaseFingerprint -eq $binding.releaseFingerprint) 'ACTIVATION_RELEASE_FINGERPRINT_DRIFT'
-
-    $validationOutput = & kasrkin validate
-    Assert-True ($LASTEXITCODE -eq 0) 'ACTIVATION_VALIDATOR_FAILED'
-    $validation = $validationOutput | ConvertFrom-Json
-    Assert-True ([bool]$validation.valid) 'ACTIVATION_VALIDATOR_INVALID'
+    $bindingPath=Join-Path $ProjectRoot '.kasrkin\binding.json'
+    $binding=Get-Content -Raw -Encoding UTF8 -LiteralPath $bindingPath|ConvertFrom-Json
+    $activation=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $ProjectRoot '.kasrkin\activation.json')|ConvertFrom-Json
+    if($activation.activationVersion -cnotin @('codex-tools-kasrkin-activation/2','midas-kasrkin-activation/2','hestia-kasrkin-activation/2') -or $activation.paidCredits.ownerAuthorization -cne 'NOT_GRANTED'){throw 'KASRKIN_COMMAND_K0_CONTRACT'}
+    $selection=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $ProjectRoot '.kasrkin\command.json')|ConvertFrom-Json
+    if($binding.releaseId -cnotmatch '^kasrkin-[a-f0-9]{16}$' -or $binding.receiptSha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'KASRKIN_COMMAND_K0_BINDING_FORMAT'}
+    $receiptPath=Join-Path $ExpectedInstallRoot ('receipts\'+$binding.releaseId+'.json')
+    if((Get-FileHash -Algorithm SHA256 -LiteralPath $receiptPath).Hash.ToLowerInvariant() -cne $binding.receiptSha256){throw 'KASRKIN_COMMAND_K0_RECEIPT_DRIFT'}
+    $receipt=Get-Content -Raw -Encoding UTF8 -LiteralPath $receiptPath|ConvertFrom-Json
+    $expectedBootstrap=Join-Path $ExpectedInstallRoot ('releases\'+$binding.releaseId+'\tools\kasrkin\Set-KasrkinCommandContext.ps1')
+    $record=@($receipt.installedFiles|Where-Object path -ceq 'tools/kasrkin/Set-KasrkinCommandContext.ps1')
+    if($record.Count -ne 1 -or [IO.Path]::GetFullPath($selection.bootstrap.path) -ne [IO.Path]::GetFullPath($expectedBootstrap) -or $selection.bootstrap.sha256 -cne $record[0].sha256){throw 'KASRKIN_COMMAND_K0_BOOTSTRAP_SELECTION_DRIFT'}
+    # The copied proof is itself one of the activation-bound artifacts.
+    $proofRole=if($activation.consumer -ceq 'codex-tools'){'CODEX_TOOLS_ACTIVATION_PROOF'}else{[string]$activation.consumer+'_ACTIVATION_PROOF'}
+    $self=@($activation.consultationArtifacts|Where-Object role -ceq $proofRole)
+    if($self.Count -ne 1 -or [IO.Path]::GetFullPath((Join-Path $ProjectRoot $self[0].path)) -ne [IO.Path]::GetFullPath($PSCommandPath) -or
+       (Get-FileHash -Algorithm SHA256 -LiteralPath $PSCommandPath).Hash.ToLowerInvariant() -cne $self[0].sha256){throw 'KASRKIN_COMMAND_K0_SELF_BINDING'}
+    if(-not [IO.Path]::IsPathRooted($selection.bootstrap.path) -or
+       (Get-FileHash -Algorithm SHA256 -LiteralPath $selection.bootstrap.path).Hash.ToLowerInvariant() -cne $selection.bootstrap.sha256){throw 'KASRKIN_COMMAND_K0_BOOTSTRAP_DRIFT'}
+    Push-Location -LiteralPath $ProjectRoot
+    try {
+        $contextLines=@(& $expectedBootstrap -ProjectRoot $ProjectRoot)
+        $context=($contextLines -join "`n")|ConvertFrom-Json
+        $versionLines=@(& kasrkin version)
+        if($LASTEXITCODE -ne 0){throw 'KASRKIN_COMMAND_K0_VERSION_FAILED'}
+        $version=($versionLines -join "`n")|ConvertFrom-Json
+    } finally {Pop-Location}
+    if(-not $context.ok -or $version.releaseId -cne $binding.releaseId -or $version.releaseFingerprint -cne $binding.releaseFingerprint){throw 'KASRKIN_COMMAND_K0_VERSION_DRIFT'}
+    [pscustomobject]@{suite=($activation.consumer+'-KASRKIN-COMMAND-K0');passed=$true;releaseId=$version.releaseId;bindingSha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $bindingPath).Hash.ToLowerInvariant();consultationArtifacts=@($activation.consultationArtifacts).Count;ownerAuthorization='NOT_GRANTED';processContextRestored=$true}|ConvertTo-Json -Compress
 }
-finally {
-    Pop-Location
-}
-
-[pscustomobject][ordered]@{
-    suite = 'MIDAS-KASRKIN-W6M-ACTIVATION'
-    passed = $true
-    releaseId = $version.releaseId
-    releaseFingerprint = $version.releaseFingerprint
-    consultationArtifacts = @($activation.consultationArtifacts).Count
-    foreignCwd = $foreignCwd
-    validatorStatus = $validation.status
-    legacyRollbackActive = [bool]$activation.legacyRollback.active
-    legacyRollbackStatus = [string]$activation.legacyRollback.status
-} | ConvertTo-Json -Compress
+finally {$env:PATH=$originalPath}

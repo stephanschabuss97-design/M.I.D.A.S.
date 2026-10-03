@@ -126,3 +126,28 @@ focused follow-up read.
   weaken product, security, owner, deploy, SQL, device, or external-write
   gates. KASRKIN owns the decision semantics; the MIDAS workflow contract owns
   their project-specific consultation and execution effect.
+
+
+## Installed KASRKIN Endphase (Activation/2)
+
+- In every new PowerShell process, verify the local .kasrkin/command.json,
+  binding, installation receipt and installed bootstrap bytes. Invoke that
+  bootstrap with -ProjectRoot set to this project before kasrkin. Get-Command
+  kasrkin must resolve the selected shim. No fallback, alias shadowing or
+  persistent PATH change. Refresh with kasrkin validate -Refresh -Envelope.
+- The pinned installed release owns usage decisions; this project's workflow
+  owns product, medical/data/security/review, owner and external-write gates.
+- Normal CONTINUE work may use regular admission. CAUTION or rejected primary
+  work requires kasrkin gate -Endphase with a frozen complete plan and -Start,
+  an allowed effectiveDecision and persisted permit before the first work
+  action. Low-level policy or a W1 CAUTION result alone is insufficient.
+- Complete the same permit with -CompletionPath after verification, review,
+  evidence, documentation and closure. Measure freshly for each next whole
+  block. These Endphase rules supersede the older one-block/SMALL restriction
+  only for work admitted under this installed Endphase contract.
+- First failure stops at the defined Finding/rollback boundary; no automatic
+  diagnosis, fix or retry. Missing costs, capacity, episode and substantive
+  gates remain separate reasons. Never invent AVAILABLE state or history.
+- Owner exceptions require genuine finite scope/release-bound authorization.
+  Controlled serial usage is required; no account-wide reservation is claimed.
+  Paid-credit availability grants no spend. LIMIT/0 is final-response-only.

@@ -957,3 +957,15 @@ PASS behauptet.
 - Roadmap und optionale Evidence werden mit `(DONE)` archiviert.
 - Commit und Push bleiben Owner-Aktionen.
 - Temporäre Arbeitsnotizen bleiben keine zweite Source of Truth.
+
+
+## Aktive Endphase-Konsultation (2026-10-03)
+
+Die Endphase-Regeln im Root-AGENTS und .kasrkin/integration.md gelten für
+den jetzt gebundenen Release. Fachliche Wahrheit, Roadmap-Scope, S5-Review,
+produktive Writes und Ownergates bleiben MIDAS-eigen. Der Cutover
+startet keine Produktroadmap. Reguläre Entscheidung und effektive Endphase-
+Zulassung bleiben getrennt; alte SMALL-/Ein-Block-Cautionprojektionen gelten
+nur für die unveränderte Legacyentscheidung, nicht als zusätzliche Sperre
+eines gültig persistierten Endphasepermits. Fehlende History braucht den
+exakten einmaligen Ownerbudgetvertrag. Kein pauschaler Reviewdefault.
