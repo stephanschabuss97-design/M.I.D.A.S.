@@ -1,7 +1,7 @@
 'use strict';
 
 (function initActivityV2SessionCorrection(root) {
-  const DETAIL_SCHEMA = 'midas.activity-session-detail.v1';
+  const DETAIL_SCHEMA = 'midas.activity-session-detail.v2';
   const UUID_RE =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const FINGERPRINT_RE = /^[0-9a-f]{64}$/;
@@ -21,6 +21,7 @@
     'day',
     'title',
     'duration_min',
+    'protein_target_relevant',
     'note',
     'items'
   ]);
@@ -313,6 +314,7 @@
       catalog_version: value.catalog_version,
       duration_min: value.duration_min,
       note: value.note,
+      protein_target_relevant: value.protein_target_relevant,
       items: value.items.map((item, index) =>
         makeItem(item, { item_order: index + 1 })
       )
@@ -338,7 +340,8 @@
       typeof detail.ended_at !== 'string' ||
       !TIMESTAMP_RE.test(detail.ended_at) ||
       new Date(detail.ended_at).toISOString() !== detail.ended_at ||
-      detail.ended_at < detail.started_at
+      detail.ended_at < detail.started_at ||
+      typeof detail.protein_target_relevant !== 'boolean'
     ) {
       fail('INVALID_DETAIL');
     }
@@ -410,6 +413,7 @@
       catalog_version: initialProjection.canonicalContent.catalog_version,
       duration_min: initialProjection.canonicalContent.duration_min,
       note: initialProjection.canonicalContent.note,
+      protein_target_relevant: detail.protein_target_relevant,
       items: initialProjection.canonicalContent.items
     });
     const originalText = JSON.stringify(workingCopy);
@@ -422,16 +426,29 @@
       const dirty = JSON.stringify(workingCopy) !== originalText;
       let projection = null;
       try {
-        projection = project(workingCopy);
+        projection = project({
+          catalog_version: workingCopy.catalog_version,
+          duration_min: workingCopy.duration_min,
+          note: workingCopy.note,
+          items: workingCopy.items
+        });
       } catch {
         projection = null;
       }
+      const replacement = projection === null ? null : deepFreeze({
+        ...projection.replacement,
+        protein_target_relevant: workingCopy.protein_target_relevant
+      });
+      const canonicalContent = projection === null ? null : deepFreeze({
+        ...projection.canonicalContent,
+        protein_target_relevant: workingCopy.protein_target_relevant
+      });
       state = deepFreeze({
         status: dirty ? 'dirty' : 'pristine',
         valid: projection !== null,
         workingCopy,
-        replacement: projection?.replacement || null,
-        canonicalContent: projection?.canonicalContent || null,
+        replacement,
+        canonicalContent,
         mutationRequest:
           projection === null
             ? null
@@ -439,7 +456,7 @@
                 sessionId: detail.session_id,
                 expectedRevision: detail.revision,
                 expectedContentFingerprint: detail.content_fingerprint,
-                session: projection.replacement
+                session: replacement
               }
       });
       return state;
@@ -475,6 +492,12 @@
       const next = normalizeNote(value);
       if (next === workingCopy.note) return state;
       return replaceWorking({ note: next });
+    }
+
+    function setProteinTargetRelevant(value) {
+      if (typeof value !== 'boolean') fail('INVALID_PROTEIN_RELEVANCE');
+      if (value === workingCopy.protein_target_relevant) return state;
+      return replaceWorking({ protein_target_relevant: value });
     }
 
     function addItem(itemKey) {
@@ -618,6 +641,7 @@
       getState,
       setDurationMin,
       setNote,
+      setProteinTargetRelevant,
       addItem,
       removeItem,
       moveItem,

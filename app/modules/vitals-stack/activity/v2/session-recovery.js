@@ -7,9 +7,12 @@
   const SLOT_KEY = 'active_session';
   const RECOVERY_SCHEMA_VERSION_V1 = 'midas.activity-session-recovery.v1';
   const RECOVERY_SCHEMA_VERSION_V2 = 'midas.activity-session-recovery.v2';
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
-  const COMMIT_INTENT_SCHEMA_VERSION =
+  const LEGACY_DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v4';
+  const LEGACY_COMMIT_INTENT_SCHEMA_VERSION =
     'midas.activity-session-commit-intent.v1';
+  const COMMIT_INTENT_SCHEMA_VERSION =
+    'midas.activity-session-commit-intent.v2';
   const COMMIT_ATTEMPT_SCHEMA_VERSION =
     'midas.activity-session-commit-attempt.v1';
   const PAYLOAD_SCHEMA_VERSION = 'midas.activity-session.v1';
@@ -50,6 +53,7 @@
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -61,6 +65,7 @@
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'addSet',
     'removeSet',
     'setSetField',
@@ -105,6 +110,10 @@
     'note',
     'items'
   ]);
+  const PAYLOAD_KEYS_V2 = Object.freeze([
+    ...PAYLOAD_KEYS,
+    'protein_target_relevant'
+  ]);
   const PAYLOAD_ITEM_KEYS = Object.freeze([
     'item_key',
     'item_order',
@@ -137,8 +146,12 @@
     'revision',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
+  const LEGACY_SNAPSHOT_KEYS = Object.freeze(
+    SNAPSHOT_KEYS.filter((key) => key !== 'protein_target_relevant')
+  );
   const JSON_NODE_LIMIT = 50000;
   const JSON_DEPTH_LIMIT = 100;
   const ITEM_LIMIT = 50;
@@ -478,17 +491,21 @@
   ) {
     try {
       intent = protectedJsonClone(intent, code);
+      const legacy = draft?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
       if (
         !hasExactOrderedKeys(intent, COMMIT_INTENT_KEYS) ||
-        intent.commit_intent_schema_version !== COMMIT_INTENT_SCHEMA_VERSION ||
+        intent.commit_intent_schema_version !== (legacy
+          ? LEGACY_COMMIT_INTENT_SCHEMA_VERSION
+          : COMMIT_INTENT_SCHEMA_VERSION) ||
         typeof intent.request_id !== 'string' ||
         !UUID_RE.test(intent.request_id) ||
         intent.request_id !== draft?.request_id ||
         intent.draft_revision !== draft?.revision ||
         intent.catalog_version !== draft?.catalog_version ||
         !isCanonicalCommitTimestamp(intent.prepared_at) ||
-        !hasExactOrderedKeys(intent.payload, PAYLOAD_KEYS) ||
+        !hasExactOrderedKeys(intent.payload, legacy ? PAYLOAD_KEYS : PAYLOAD_KEYS_V2) ||
         intent.payload.schema_version !== PAYLOAD_SCHEMA_VERSION ||
+        (!legacy && intent.payload.protein_target_relevant !== draft.protein_target_relevant) ||
         intent.payload.catalog_version !== draft.catalog_version ||
         intent.payload.started_at !== draft.started_at ||
         intent.payload.ended_at !== intent.prepared_at ||
@@ -581,8 +598,16 @@
       !Number.isSafeInteger(record.persisted_revision) ||
       record.persisted_revision < 1 ||
       !isCanonicalTimestamp(record.saved_at) ||
-      !hasExactOrderedKeys(record.draft, SNAPSHOT_KEYS) ||
-      record.draft.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      !hasExactOrderedKeys(
+        record.draft,
+        record.draft?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION
+          ? LEGACY_SNAPSHOT_KEYS : SNAPSHOT_KEYS
+      ) ||
+      ![LEGACY_DRAFT_SCHEMA_VERSION, DRAFT_SCHEMA_VERSION].includes(
+        record.draft.draft_schema_version
+      ) ||
+      (record.draft.draft_schema_version === DRAFT_SCHEMA_VERSION &&
+        typeof record.draft.protein_target_relevant !== 'boolean') ||
       record.draft.request_id !== record.request_id ||
       record.draft.revision !== record.persisted_revision ||
       !Number.isSafeInteger(record.draft.catalog_version) ||
@@ -632,9 +657,11 @@
       fail('INVALID_OPTIONS');
     }
     draft = protectedJsonClone(draft, 'INVALID_DRAFT_STATE');
+    const legacyDraft = draft?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
     if (
-      !hasExactOrderedKeys(draft, SNAPSHOT_KEYS) ||
-      draft.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      !hasExactOrderedKeys(draft, legacyDraft ? LEGACY_SNAPSHOT_KEYS : SNAPSHOT_KEYS) ||
+      (!legacyDraft && draft.draft_schema_version !== DRAFT_SCHEMA_VERSION) ||
+      (!legacyDraft && typeof draft.protein_target_relevant !== 'boolean') ||
       typeof draft.request_id !== 'string' ||
       !UUID_RE.test(draft.request_id) ||
       !Number.isSafeInteger(draft.catalog_version) ||
@@ -1694,6 +1721,7 @@
         removeItem: null,
         moveItem: null,
         setNote: null,
+        setProteinTargetRelevant: null,
         discard() {
           assertMutable();
           fail('PERSISTENT_DISCARD_REQUIRED');
@@ -1766,6 +1794,12 @@
         continuedPhase === 'recoverable' ? 'saved' : continuedPhase,
         continuedPhase === 'recoverable' ? null : continuedReason
       );
+      if (
+        rawDraft.getSnapshot().draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION &&
+        confirmedIntent === null
+      ) {
+        onMutation(rawDraft.setProteinTargetRelevant(true));
+      }
       return managedDraft;
     }
 

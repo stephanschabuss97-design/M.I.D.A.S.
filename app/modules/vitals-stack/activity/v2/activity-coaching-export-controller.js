@@ -184,7 +184,9 @@
           counts: {
             sessions: exportValue.completeness.session_count,
             items: exportValue.completeness.item_count,
-            sets: exportValue.completeness.set_count
+            sets: exportValue.completeness.set_count,
+            protein_excluded: exportValue.sessions.filter(
+              (session) => session.protein_target_relevant === false).length
           }
         });
       } catch (error) {

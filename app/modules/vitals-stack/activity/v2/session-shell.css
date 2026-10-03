@@ -1016,7 +1016,7 @@
 
 .activity-v2-session-commit-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 0.65rem 1rem;
   margin-top: 1rem;
@@ -1051,9 +1051,39 @@
 
 .activity-v2-session-commit-card > [data-action="finish"],
 .activity-v2-session-commit-card > [data-action="retry"] {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  min-width: min(15rem, 100%);
+  grid-column: 1;
+  grid-row: auto;
+  width: 100%;
+  min-height: 3rem;
+}
+
+.activity-v2-session-protein-toggle {
+  grid-column: 1;
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--activity-v2-line-strong);
+  border-radius: 0.75rem;
+  color: var(--activity-v2-text);
+  background: rgba(148, 163, 184, 0.16);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-v2-session-protein-toggle[aria-pressed="true"] {
+  border-color: #6ce0c6;
+  color: #91ebca;
+  background: rgba(108, 224, 198, 0.18);
+}
+
+.activity-v2-session-protein-toggle:focus-visible {
+  outline: 3px solid rgba(108, 224, 198, 0.45);
+  outline-offset: 3px;
+}
+
+.activity-v2-session-protein-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .activity-v2-session-commit-card > button[hidden] {

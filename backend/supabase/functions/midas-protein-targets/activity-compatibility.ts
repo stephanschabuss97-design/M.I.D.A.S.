@@ -1,7 +1,7 @@
 import {
-  type ActivityMedicalContext,
-  validateActivityMedicalContext,
-} from "../_shared/activity-medical-context.ts";
+  type ProteinActivityDays,
+  validateProteinActivityDays,
+} from "./protein-activity-days.ts";
 
 const SAFE_MESSAGE = "The protein activity context is invalid.";
 
@@ -22,11 +22,11 @@ export class ProteinActivityCompatibilityError extends Error {
 }
 
 export const deriveProteinActivityCompatibility = (
-  contextValue: ActivityMedicalContext,
+  contextValue: ProteinActivityDays,
 ): Readonly<ProteinActivityCompatibility> => {
-  let context: ActivityMedicalContext;
+  let context: ProteinActivityDays;
   try {
-    context = validateActivityMedicalContext(contextValue);
+    context = validateProteinActivityDays(contextValue);
   } catch {
     throw new ProteinActivityCompatibilityError();
   }

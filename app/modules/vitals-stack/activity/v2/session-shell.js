@@ -1,7 +1,8 @@
 'use strict';
 
 (function initActivityV2SessionShell(root) {
-  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const LEGACY_DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v3';
+  const DRAFT_SCHEMA_VERSION = 'midas.activity-session-draft.v4';
   const NOTE_LIMIT = 500;
   const ITEM_LIMIT = 50;
   const SET_LIMIT = 50;
@@ -29,6 +30,7 @@
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -119,10 +121,14 @@
     'draft_schema_version',
     'items',
     'note',
+    'protein_target_relevant',
     'request_id',
     'revision',
     'started_at'
   ]);
+  const LEGACY_SNAPSHOT_KEYS = Object.freeze(
+    SNAPSHOT_KEYS.filter((key) => key !== 'protein_target_relevant')
+  );
   const DRAFT_ITEM_KEYS = Object.freeze([
     'item_key',
     'item_order',
@@ -726,10 +732,12 @@
   }
 
   function validateSnapshot(snapshot, catalogState) {
-    if (!hasExactKeys(snapshot, SNAPSHOT_KEYS)) fail('INVALID_DRAFT_STATE');
+    const legacy = snapshot?.draft_schema_version === LEGACY_DRAFT_SCHEMA_VERSION;
+    if (!hasExactKeys(snapshot, legacy ? LEGACY_SNAPSHOT_KEYS : SNAPSHOT_KEYS)) fail('INVALID_DRAFT_STATE');
     assertFrozenTree(snapshot);
     if (
-      snapshot.draft_schema_version !== DRAFT_SCHEMA_VERSION ||
+      (!legacy && snapshot.draft_schema_version !== DRAFT_SCHEMA_VERSION) ||
+      (!legacy && typeof snapshot.protein_target_relevant !== 'boolean') ||
       typeof snapshot.request_id !== 'string' ||
       !UUID_RE.test(snapshot.request_id) ||
       !Number.isSafeInteger(snapshot.catalog_version) ||
@@ -1573,6 +1581,23 @@
           'Session sicher abschließen'
         )
       : null;
+    const proteinToggle = sessionCommitEnabled
+      ? setButton(
+          makeElement(document, 'button', 'activity-v2-session-protein-toggle'),
+          'toggle-protein-relevance', 'Vom Proteinziel ausnehmen',
+          'Vom Proteinziel ausnehmen'
+        )
+      : null;
+    proteinToggle?.setAttribute('aria-pressed', 'false');
+    const proteinRefreshStatus = makeElement(document, 'p', 'activity-v2-session-protein-status');
+    proteinRefreshStatus.setAttribute('role', 'status');
+    proteinRefreshStatus.setAttribute('aria-live', 'polite');
+    proteinRefreshStatus.hidden = true;
+    const proteinRefreshRetry = setButton(
+      makeElement(document, 'button', 'activity-v2-session-protein-retry'),
+      'retry-protein-refresh', 'Proteinziel erneut aktualisieren', 'Proteinziel erneut aktualisieren'
+    );
+    proteinRefreshRetry.hidden = true;
     if (commitCard) {
       commitCard.setAttribute('aria-label', 'Sessionabschluss');
       commitStatus.setAttribute('role', 'status');
@@ -1585,7 +1610,10 @@
           'Session abschließen'
         ),
         commitStatus,
-        commitAction
+        proteinToggle,
+        commitAction,
+        proteinRefreshStatus,
+        proteinRefreshRetry
       );
     }
 
@@ -1628,7 +1656,10 @@
       recoveryStatus,
       commitCard,
       commitStatus,
+      proteinToggle,
       commitAction,
+      proteinRefreshStatus,
+      proteinRefreshRetry,
       status
     };
   }
@@ -1907,6 +1938,14 @@
       }
       ui.commitAction.disabled =
         presentation.busy || closeGuardPromise !== null;
+      if (ui.proteinToggle) {
+        const excluded = currentState?.snapshot.protein_target_relevant === false;
+        ui.proteinToggle.setAttribute('aria-pressed', excluded ? 'true' : 'false');
+        ui.proteinToggle.textContent = excluded
+          ? 'Vom Proteinziel ausgenommen ✓' : 'Vom Proteinziel ausnehmen';
+        ui.proteinToggle.disabled = !sessionCommitAllowsMutation() ||
+          closeGuardPromise !== null;
+      }
       ui.close.disabled = sessionCommitLocksClose();
       if (!openState) {
         commitActionFocusPending = false;
@@ -2716,6 +2755,7 @@
       ui.quickAdd.disabled = guarded;
       syncQuickAdd();
       ui.note.disabled = guarded;
+      if (ui.proteinToggle) ui.proteinToggle.disabled = guarded;
       ui.searchResults.querySelectorAll('button').forEach((button) => {
         if (button.dataset.action === 'select-search-result') {
           button.disabled = guarded;
@@ -2842,6 +2882,12 @@
         nextState.snapshot.items.length === 1 ? 'Eintrag' : 'Einträge'
       }`;
       ui.note.value = nextState.snapshot.note || '';
+      if (ui.proteinToggle) {
+        const excluded = nextState.snapshot.protein_target_relevant === false;
+        ui.proteinToggle.setAttribute('aria-pressed', excluded ? 'true' : 'false');
+        ui.proteinToggle.textContent = excluded
+          ? 'Vom Proteinziel ausgenommen ✓' : 'Vom Proteinziel ausnehmen';
+      }
       if (!timerFrozen) ui.timer.textContent = nextState.timer.label;
       else if (frozenTimerLabel !== null) ui.timer.textContent = frozenTimerLabel;
       currentState = nextState;
@@ -3144,6 +3190,10 @@
       const target = findActionButton(event.target);
       const action = target?.dataset?.action;
       if (!action || target.disabled) return;
+      if (action === 'retry-protein-refresh') {
+        proteinRefreshRetryAction?.();
+        return;
+      }
       if (action === 'open-quick-search') {
         setPickerDocked(true);
         return;
@@ -3158,6 +3208,18 @@
       }
       if (action === 'finish' || action === 'retry') {
         runSessionCommitAction(action);
+        return;
+      }
+      if (action === 'toggle-protein-relevance') {
+        if (!sessionCommitAllowsMutation() || closeGuardPromise) return;
+        try {
+          draft.setProteinTargetRelevant(
+            currentState?.snapshot.protein_target_relevant === false);
+          render();
+          focusElement(ui.proteinToggle);
+        } catch {
+          setStatus('Der Proteinziel-Status konnte nicht geändert werden.', 'error');
+        }
         return;
       }
       if (action === 'retry-lookup') {
@@ -3580,12 +3642,25 @@
       searchState = { mode: 'closed', entries: [] };
     }
 
+    let proteinRefreshRetryAction = null;
+    function setProteinRefreshState(status, message, retry) {
+      if (destroyed) return;
+      if (!['idle', 'pending', 'error', 'ready'].includes(status) || typeof message !== 'string' || typeof retry !== 'function') {
+        fail('INVALID_OPTIONS');
+      }
+      proteinRefreshRetryAction = status === 'error' ? retry : null;
+      ui.proteinRefreshStatus.textContent = message;
+      ui.proteinRefreshStatus.hidden = status === 'idle';
+      ui.proteinRefreshRetry.hidden = status !== 'error';
+    }
+
     controller = deepFreeze({
       open,
       render,
       requestClose,
       isOpen,
       refreshLastPerformance,
+      setProteinRefreshState,
       destroy
     });
 

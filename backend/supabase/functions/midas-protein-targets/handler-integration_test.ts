@@ -3,11 +3,7 @@ import {
   type ActivityEdgePrincipal,
   ActivityEdgePrincipalError,
 } from "../_shared/activity-edge-principal.ts";
-import { createActivityConsumerRuntime } from "../_shared/activity-consumer-runtime.ts";
-import {
-  type ActivityConsumerUnit,
-  aggregateActivityUnits,
-} from "../midas-monthly-report/activity-consumer.ts";
+import { createProteinActivityRuntime } from "./protein-activity-days.ts";
 import { createProteinTargetsHandler } from "./index.ts";
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
@@ -29,31 +25,18 @@ const assertEquals = (actual: unknown, expected: unknown) => {
   }
 };
 
-const uuid = (value: number) =>
-  `10000000-0000-4000-8000-${String(value).padStart(12, "0")}`;
-
-const snapshotFor = (activeDays: number) => {
-  const units: ActivityConsumerUnit[] = Array.from(
+const snapshotFor = (activeDays: number) => ({
+  schema_version: "midas.activity-protein-days.v1",
+  timezone: "Europe/Vienna",
+  range: RANGE,
+  active_days: Array.from(
     { length: activeDays },
-    (_, index) => {
-      const day = new Date(
-        Date.parse("2026-08-01T00:00:00.000Z") + index * 86_400_000,
-      )
-        .toISOString().slice(0, 10);
-      return {
-        source: index % 2 ? "activity_v2" : "activity_v1",
-        id: uuid(index + 1),
-        day,
-        occurred_at: `${day}T10:00:00.000Z`,
-        label: "Aktivität",
-        duration_min: 30,
-        note: null,
-        item_count: index % 2 ? 1 : null,
-      };
-    },
-  );
-  return aggregateActivityUnits(units, RANGE, TODAY);
-};
+    (_, index) =>
+      new Date(Date.parse("2026-08-01T00:00:00Z") + index * 86_400_000)
+        .toISOString().slice(0, 10),
+  ),
+  active_day_count: activeDays,
+});
 
 type FakeQueryRecord = {
   table: string;
@@ -223,7 +206,7 @@ const run = async (
   const fake = createFakeClient(options);
   const handler = createProteinTargetsHandler({
     createPrincipal: createPrincipalFactory(fake.client, mode),
-    activityRuntime: createActivityConsumerRuntime({ today: () => TODAY }),
+    activityRuntime: createProteinActivityRuntime({ today: () => TODAY }),
     now: () => new Date(NOW),
   });
   const response = await handler(request(body));
@@ -237,6 +220,44 @@ const assertOwnerFilters = (queries: FakeQueryRecord[]) => {
     assert(!Object.hasOwn(query.updatePayload ?? {}, "user_id"));
   });
 };
+
+Deno.test("C4 confirmed save/correction/delete use current Vienna window and stored Body weight", async () => {
+  for (
+    const trigger of ["activity_save", "activity_correction", "activity_delete"]
+  ) {
+    for (const count of [0, 1, 2, 6]) {
+      const result = await run({ trigger }, {
+        snapshot: snapshotFor(count),
+        bodyRows: [{ payload: { kg: 80 }, ts: "2026-05-01T10:00:00Z" }],
+        profile: cooldownProfile(),
+        labRows: [{ payload: { ckd_stage: "G2" } }],
+      });
+      assertEquals(result.response.status, 200);
+      assertEquals(result.rpcCalls, [{
+        functionName: "activity_protein_days",
+        payload: { p_from: RANGE.from, p_to: TODAY },
+      }]);
+      if (count === 2) {
+        assertEquals(result.payload.reason, "cooldown_unchanged");
+      } else {
+        assertEquals(result.payload.skipped, false);
+        assertEquals(result.payload.computed.activity_score_28d, count);
+        assertEquals(
+          result.queries.filter((q) => q.operation === "update").length,
+          1,
+        );
+      }
+      assertOwnerFilters(result.queries);
+    }
+  }
+  const missing = await run({ trigger: "activity_save" });
+  assertEquals(missing.response.status, 400);
+  assertEquals(missing.rpcCalls.length, 0);
+  assertEquals(
+    missing.queries.filter((q) => q.operation === "update").length,
+    0,
+  );
+});
 
 Deno.test("T-ACT-R13-05 user body-save/manual dry-runs preserve formula and never write", async () => {
   for (const trigger of ["body_save", "manual"]) {
@@ -272,7 +293,7 @@ Deno.test("T-ACT-R13-05 user body-save/manual dry-runs preserve formula and neve
       version: "v1.3-auto",
     });
     assertEquals(result.rpcCalls, [{
-      functionName: "activity_consumer_snapshot",
+      functionName: "activity_protein_days",
       payload: { p_from: RANGE.from, p_to: RANGE.to },
     }]);
     assertEquals(
@@ -303,7 +324,7 @@ Deno.test("T-ACT-R13-05 scheduler resolves weight server-side and uses the servi
   assertEquals(result.payload.computed.activity_score_28d, 6);
   assertEquals(result.payload.computed.version, "v1.3-auto");
   assertEquals(result.rpcCalls, [{
-    functionName: "activity_consumer_snapshot_for_owner",
+    functionName: "activity_protein_days_for_owner",
     payload: { p_from: RANGE.from, p_to: RANGE.to, p_owner: OWNER },
   }]);
   const updates = result.queries.filter((entry) =>
@@ -452,7 +473,7 @@ Deno.test("T-ACT-R13-05 maps auth failures without reads, owner data, or raw err
   const handler = createProteinTargetsHandler({
     createPrincipal: () =>
       Promise.reject(new ActivityEdgePrincipalError("UNAUTHORIZED")),
-    activityRuntime: createActivityConsumerRuntime({ today: () => TODAY }),
+    activityRuntime: createProteinActivityRuntime({ today: () => TODAY }),
     now: () => new Date(NOW),
   });
   const response = await handler(request({ trigger: "scheduler" }));

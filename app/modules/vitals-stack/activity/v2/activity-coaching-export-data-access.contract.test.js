@@ -32,7 +32,7 @@ function response(status, body, jsonError = null) {
 
 function emptyExport(overrides = {}) {
   return {
-    schema_version: 'midas.activity-coaching-export.v1',
+    schema_version: 'midas.activity-coaching-export.v2',
     generated_at: '2026-08-22T12:00:00.000Z',
     timezone: 'Europe/Vienna',
     range: { ...RANGE, inclusive: true },

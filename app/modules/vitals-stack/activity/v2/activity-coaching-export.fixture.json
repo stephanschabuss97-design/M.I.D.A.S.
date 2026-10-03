@@ -1,5 +1,5 @@
 {
-  "schema_version": "midas.activity-coaching-export.v1",
+  "schema_version": "midas.activity-coaching-export.v2",
   "generated_at": "2026-08-22T12:00:00.000Z",
   "timezone": "Europe/Vienna",
   "range": {
@@ -41,6 +41,7 @@
       "started_at": "2026-06-15T09:00:00.000Z",
       "ended_at": "2026-06-15T10:00:00.000Z",
       "duration_min": 60,
+      "protein_target_relevant": true,
       "title": "Frühtraining",
       "note": null,
       "items": [
@@ -114,6 +115,7 @@
       "started_at": "2026-08-20T16:30:00.000Z",
       "ended_at": "2026-08-20T17:30:00.000Z",
       "duration_min": 60,
+      "protein_target_relevant": false,
       "title": null,
       "note": "Ausdauer",
       "items": [

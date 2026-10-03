@@ -276,6 +276,7 @@ function makeHistoryItem(number, startedAt = R9_RESPONSE_TIME, values = {}) {
     duration_min: 30,
     item_count: 1,
     revision: '1',
+    protein_target_relevant: true,
     ...values
   };
 }
@@ -283,7 +284,7 @@ function makeHistoryItem(number, startedAt = R9_RESPONSE_TIME, values = {}) {
 function makeHistoryPage(items, hasMore = false) {
   const last = items.at(-1);
   return {
-    schema_version: 'midas.activity-session-history-page.v1',
+    schema_version: 'midas.activity-session-history-page.v2',
     items,
     has_more: hasMore,
     next_cursor: hasMore
@@ -296,7 +297,7 @@ function makeDetail(context, values = {}) {
   const running = context.AppModules.activityV2.semantics.getEntryByKey('running');
   const bench = context.AppModules.activityV2.semantics.getEntryByKey('bench_press');
   return {
-    schema_version: 'midas.activity-session-detail.v1',
+    schema_version: 'midas.activity-session-detail.v2',
     session_id: uuidFor(900),
     catalog_version: 1,
     revision: '9223372036854775807',
@@ -307,6 +308,7 @@ function makeDetail(context, values = {}) {
     title: 'Morning',
     duration_min: 30,
     note: null,
+    protein_target_relevant: true,
     items: [
       {
         item_key: 'running',
@@ -1341,6 +1343,47 @@ test('R9 history and detail enforce exact bounded immutable response contracts',
       retryable: true
     }
   );
+});
+
+test('C4 relevance rejects malformed reads and preserves correction transport bytes', async () => {
+  const pageHarness = makeHarness();
+  pageHarness.state.fetchImpl = async () => makeResponse(200,
+    makeHistoryPage([makeHistoryItem(900, R9_RESPONSE_TIME,
+      { protein_target_relevant: 'false' })]));
+  assertDomainError(await captureError(pageHarness.api.listSessions()), {
+    code: 'REQUEST_FAILED', operation: 'listSessions', retryable: true
+  });
+
+  const detailHarness = makeHarness();
+  const missing = makeDetail(detailHarness.context);
+  delete missing.protein_target_relevant;
+  detailHarness.state.fetchImpl = async () => makeResponse(200, missing);
+  assertDomainError(await captureError(detailHarness.api.loadSessionDetail(missing.session_id)), {
+    code: 'REQUEST_FAILED', operation: 'loadSessionDetail', retryable: true
+  });
+
+  const replaceHarness = makeHarness();
+  const excluded = { ...makeReplacement(), protein_target_relevant: false };
+  replaceHarness.state.fetchImpl = async (_url, options) => {
+    assert.equal(JSON.parse(options.body).p_replacement.protein_target_relevant, false);
+    return makeResponse(200, {
+      schema_version: 'midas.activity-session-mutation-result.v1',
+      operation: 'replace', outcome: 'updated', session_id: uuidFor(900),
+      revision: '2', content_fingerprint: 'b'.repeat(64)
+    });
+  };
+  await replaceHarness.api.replaceSession({
+    sessionId: uuidFor(900), expectedRevision: '1',
+    expectedContentFingerprint: FINGERPRINT, session: excluded
+  });
+  assert.equal(replaceHarness.state.calls.length, 1);
+  const invalid = { ...excluded, protein_target_relevant: 0 };
+  assertDomainError(await captureError(replaceHarness.api.replaceSession({
+    sessionId: uuidFor(900), expectedRevision: '1',
+    expectedContentFingerprint: FINGERPRINT, session: invalid
+  })), { code: 'INVALID_SESSION', operation: 'replaceSession',
+    retryable: false, mutationState: 'not_applied' });
+  assert.equal(replaceHarness.state.calls.length, 1);
 });
 
 test('R9 mutations preserve decimal CAS bytes and separate mutationState from R8 commitState', async () => {

@@ -1,16 +1,11 @@
 import {
-  type ActivityConsumerUnit,
-  aggregateActivityUnits,
-} from "../midas-monthly-report/activity-consumer.ts";
-import { createActivityMedicalContext } from "../_shared/activity-medical-context.ts";
-import {
   deriveProteinActivityCompatibility,
   ProteinActivityCompatibilityError,
 } from "./activity-compatibility.ts";
 
 const TODAY = "2026-08-23";
 const WINDOW = { from: "2026-05-04", to: "2026-05-31" };
-const RANGE = { ...WINDOW, inclusive_days: 28 };
+const RANGE = { ...WINDOW, inclusive_days: 28 } as const;
 
 const assert = (condition: boolean, message = "Assertion failed") => {
   if (!condition) throw new Error(message);
@@ -26,45 +21,17 @@ const assertEquals = (actual: unknown, expected: unknown) => {
   }
 };
 
-const uuid = (value: number) =>
-  `10000000-0000-4000-8000-${String(value).padStart(12, "0")}`;
-
-const unit = (
-  id: number,
-  day: string,
-  source: ActivityConsumerUnit["source"],
-  detailVariant = false,
-): ActivityConsumerUnit => ({
-  source,
-  id: uuid(id),
-  day,
-  occurred_at: `${day}T10:00:00.000Z`,
-  label: detailVariant ? `Andere Aktivität ${id}` : `Aktivität ${id}`,
-  duration_min: detailVariant ? 999 : 30,
-  note: detailVariant ? "Andere Detaildaten" : null,
-  item_count: source === "activity_v1" ? null : detailVariant ? 50 : 1,
-});
-
 const contextFor = (
   days: string[],
-  detailVariant = false,
-  sameDayMixed = false,
-) => {
-  const units = days.map((day, index) =>
-    unit(
-      index + 1,
-      day,
-      index % 2 === 0 ? "activity_v1" : "activity_v2",
-      detailVariant,
-    )
-  );
-  if (sameDayMixed && days.length) {
-    units.push(unit(90, days[0], "activity_v2", detailVariant));
-    units.push(unit(91, days[0], "activity_v2", detailVariant));
-  }
-  const snapshot = aggregateActivityUnits(units, RANGE, TODAY);
-  return createActivityMedicalContext(snapshot, WINDOW);
-};
+  _detailVariant = false,
+  _sameDayMixed = false,
+) => ({
+  schema_version: "midas.activity-protein-days.v1" as const,
+  timezone: "Europe/Vienna" as const,
+  range: RANGE,
+  active_days: days,
+  active_day_count: days.length,
+});
 
 const DAYS = [
   "2026-05-04",
@@ -94,23 +61,6 @@ Deno.test("T-ACT-R12-02 preserves ACT thresholds and modifiers", () => {
     });
     assert(Object.isFrozen(result));
   }
-});
-
-Deno.test("T-ACT-R12-02 counts mixed same-day units once", () => {
-  const result = deriveProteinActivityCompatibility(
-    contextFor(DAYS.slice(0, 2), false, true),
-  );
-  assertEquals(result, {
-    active_days_28d: 2,
-    activity_level: "ACT2",
-    activity_modifier: 0.2,
-  });
-});
-
-Deno.test("T-ACT-R12-02 ignores source and training details", () => {
-  const baseline = deriveProteinActivityCompatibility(contextFor(DAYS));
-  const varied = deriveProteinActivityCompatibility(contextFor(DAYS, true));
-  assertEquals(varied, baseline);
 });
 
 Deno.test("T-ACT-R12-02 sanitizes invalid contexts", () => {

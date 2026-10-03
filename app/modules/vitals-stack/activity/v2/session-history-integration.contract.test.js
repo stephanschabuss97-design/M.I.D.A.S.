@@ -64,7 +64,7 @@ function snapshotItem(entry, itemOrder, values = {}) {
 function makeDetail(context) {
   const semantics = context.AppModules.activityV2.semanticsV2;
   return {
-    schema_version: 'midas.activity-session-detail.v1',
+    schema_version: 'midas.activity-session-detail.v2',
     session_id: SESSION_ID,
     catalog_version: 2,
     revision: '7',
@@ -75,6 +75,7 @@ function makeDetail(context) {
     title: 'Integration',
     duration_min: 30,
     note: null,
+    protein_target_relevant: true,
     items: [
       snapshotItem(semantics.getEntryByKey('running'), 1),
       snapshotItem(semantics.getEntryByKey('bench_press'), 2)
@@ -95,6 +96,7 @@ function detailFromReplacement(context, detail, replacement) {
     ).toISOString(),
     duration_min: replacement.duration_min,
     note: replacement.note,
+    protein_target_relevant: replacement.protein_target_relevant,
     items: replacement.items.map((item) => {
       const snapshot = existing.get(item.item_key) ||
         snapshotItem(semantics.getEntryByKey(item.item_key), item.item_order);
@@ -126,7 +128,8 @@ function summary(detail) {
     title: detail.title,
     duration_min: detail.duration_min,
     item_count: detail.items.length,
-    revision: detail.revision
+    revision: detail.revision,
+    protein_target_relevant: detail.protein_target_relevant
   };
 }
 
@@ -155,7 +158,7 @@ function makeRuntime() {
       transport.calls.push({ rpc, body: clone(body) });
       if (rpc === 'activity_v2_list_sessions') {
         return makeResponse(200, {
-          schema_version: 'midas.activity-session-history-page.v1',
+          schema_version: 'midas.activity-session-history-page.v2',
           items: transport.detail === null ? [] : [summary(transport.detail)],
           has_more: false,
           next_cursor: null

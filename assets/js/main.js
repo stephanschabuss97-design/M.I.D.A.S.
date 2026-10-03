@@ -349,7 +349,13 @@ async function mountActivityV2Product(authenticated) {
     createRequestId: createActivityV2Uuid,
     createLeaseToken: createActivityV2Uuid,
     confirmDiscard: ({ message }) => window.confirm(message),
-    refreshActivityConsumers: refreshActivityV2Consumers
+    refreshActivityConsumers: refreshActivityV2Consumers,
+    getProteinRefreshState: () => window.AppModules.protein.getActivityRefreshState(),
+    refreshProteinTargets: async (trigger) => {
+      await window.AppModules.protein.refreshAfterActivity(trigger);
+      await requestUiRefresh({ reason: trigger });
+      return { ok: true };
+    }
   });
   await activityV2ProductController.setAuthenticated(Boolean(authenticated));
 }

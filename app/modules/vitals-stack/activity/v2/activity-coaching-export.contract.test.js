@@ -167,6 +167,7 @@ function makeSession(overrides = {}) {
     started_at: '2026-02-28T09:00:00.000Z',
     ended_at: '2026-02-28T10:00:00.000Z',
     duration_min: 60,
+    protein_target_relevant: true,
     title: 'Frühtraining',
     note: null,
     items: [makeDurationItem(), makeStrengthItem()],
@@ -176,7 +177,7 @@ function makeSession(overrides = {}) {
 
 function validExport() {
   return {
-    schema_version: 'midas.activity-coaching-export.v1',
+    schema_version: 'midas.activity-coaching-export.v2',
     generated_at: '2026-08-31T12:00:00.000Z',
     timezone: 'Europe/Vienna',
     range: {

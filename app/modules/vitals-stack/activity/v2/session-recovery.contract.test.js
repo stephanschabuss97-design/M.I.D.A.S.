@@ -31,6 +31,7 @@ const SAFE_MESSAGE =
 const RECOVERY_SCHEMA = 'midas.activity-session-recovery.v1';
 const RECOVERY_SCHEMA_V2 = 'midas.activity-session-recovery.v2';
 const COMMIT_INTENT_SCHEMA = 'midas.activity-session-commit-intent.v1';
+const COMMIT_INTENT_SCHEMA_V2 = 'midas.activity-session-commit-intent.v2';
 const COMMIT_ATTEMPT_SCHEMA = 'midas.activity-session-commit-attempt.v1';
 const SLOT_KEY = 'active_session';
 const DRAFT_SET_VALUE_KEYS = [
@@ -532,29 +533,32 @@ function commitIntent(snapshot, {
     }
     return projected;
   };
+  const legacy = snapshot.draft_schema_version === 'midas.activity-session-draft.v3';
+  const payload = {
+    schema_version: 'midas.activity-session.v1',
+    catalog_version: snapshot.catalog_version,
+    started_at: snapshot.started_at,
+    ended_at: preparedAt,
+    duration_min: Math.max(1, Math.round(elapsed / 60000)),
+    title: null,
+    note: snapshot.note,
+    items: snapshot.items.map((item, itemIndex) => ({
+      item_key: item.item_key,
+      item_order: itemIndex + 1,
+      duration_min: integer(item.duration_min),
+      distance_km: numeric(item.distance_km),
+      note: item.note,
+      sets: projectSets(item.sets)
+    }))
+  };
+  if (!legacy) payload.protein_target_relevant = snapshot.protein_target_relevant;
   return {
-    commit_intent_schema_version: COMMIT_INTENT_SCHEMA,
+    commit_intent_schema_version: legacy ? COMMIT_INTENT_SCHEMA : COMMIT_INTENT_SCHEMA_V2,
     request_id: snapshot.request_id,
     draft_revision: snapshot.revision,
     catalog_version: snapshot.catalog_version,
     prepared_at: preparedAt,
-    payload: {
-      schema_version: 'midas.activity-session.v1',
-      catalog_version: snapshot.catalog_version,
-      started_at: snapshot.started_at,
-      ended_at: preparedAt,
-      duration_min: Math.max(1, Math.round(elapsed / 60000)),
-      title: null,
-      note: snapshot.note,
-      items: snapshot.items.map((item, itemIndex) => ({
-        item_key: item.item_key,
-        item_order: itemIndex + 1,
-        duration_min: integer(item.duration_min),
-        distance_km: numeric(item.distance_km),
-        note: item.note,
-        sets: projectSets(item.sets)
-      }))
-    }
+    payload
   };
 }
 
@@ -1141,6 +1145,7 @@ test('open missing exposes exact controller state and pristine managed draft wit
     'removeItem',
     'moveItem',
     'setNote',
+    'setProteinTargetRelevant',
     'discard',
     'addSet',
     'removeSet',
@@ -1412,6 +1417,37 @@ test('v1 continue and autosave stay v1 while v2 continue and autosave stay v2', 
   assert.equal(v2Fake.control.getRecord().recovery_schema_version, RECOVERY_SCHEMA_V2);
   assert.equal(v2Fake.control.getRecord().commit_intent, null);
   assert.equal(v2Fake.control.getRecord().commit_attempt, null);
+});
+
+test('C4 legacy recovery upgrades editable v3 but preserves a frozen v1 intent', async () => {
+  const runtime = loadRuntime();
+  const modern = createCommittableDraft(runtime).getSnapshot();
+  const legacy = plain(modern);
+  legacy.draft_schema_version = 'midas.activity-session-draft.v3';
+  delete legacy.protein_target_relevant;
+
+  const editableFake = createFakeIndexedDb(v2ActiveRecord(legacy));
+  const editableStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: editableFake.indexedDB });
+  const editableSetup = createOpenOptions(runtime, editableStore);
+  const editable = await runtime.recoveryApi.open(editableSetup.options);
+  const upgraded = editable.continueSession().getSnapshot();
+  assert.equal(upgraded.draft_schema_version, 'midas.activity-session-draft.v4');
+  assert.equal(upgraded.protein_target_relevant, true);
+  assert.equal(upgraded.revision, legacy.revision + 1);
+  editableSetup.scheduler.runNext();
+  await waitForState(editable, 'saved');
+  assert.equal(editableFake.control.getRecord().draft.protein_target_relevant, true);
+
+  const frozenIntent = commitIntent(legacy);
+  const frozenFake = createFakeIndexedDb(v2ActiveRecord(legacy, { intent: frozenIntent }));
+  const frozenStore = runtime.recoveryApi.createIndexedDbStore({ indexedDB: frozenFake.indexedDB });
+  const frozenSetup = createOpenOptions(runtime, frozenStore);
+  const frozen = await runtime.recoveryApi.open(frozenSetup.options);
+  const continued = frozen.continueSession().getSnapshot();
+  assert.equal(continued.draft_schema_version, 'midas.activity-session-draft.v3');
+  assert.equal(Object.hasOwn(continued, 'protein_target_relevant'), false);
+  assert.deepEqual(plain(frozen.getCommitIntent()), frozenIntent);
+  assert.deepEqual(frozenFake.control.getRecord(), v2ActiveRecord(legacy, { intent: frozenIntent }));
 });
 
 test('prepare synchronously locks mutation and migrates exact v1 draft only on transaction complete', async () => {

@@ -83,7 +83,7 @@ function makeDetail(context, number = 901) {
   const running = semantics.getEntryByKey('running');
   const bench = semantics.getEntryByKey('bench_press');
   return {
-    schema_version: 'midas.activity-session-detail.v1',
+    schema_version: 'midas.activity-session-detail.v2',
     session_id: uuidFor(number),
     catalog_version: 2,
     revision: '7',
@@ -93,6 +93,7 @@ function makeDetail(context, number = 901) {
     day: '2026-07-31',
     title: 'Immutable title',
     duration_min: 30,
+    protein_target_relevant: true,
     note: null,
     items: [
       snapshotItem(running, 1),
@@ -111,6 +112,7 @@ function makeSummary(number, startedAt, title = null) {
     day: startedAt.slice(0, 10),
     title,
     duration_min: 30,
+    protein_target_relevant: true,
     item_count: 2,
     revision: '7'
   };
@@ -123,6 +125,7 @@ function summaryFromDetail(detail) {
     day: detail.day,
     title: detail.title,
     duration_min: detail.duration_min,
+    protein_target_relevant: detail.protein_target_relevant,
     item_count: detail.items.length,
     revision: detail.revision
   };
@@ -130,7 +133,7 @@ function summaryFromDetail(detail) {
 
 function makePage(items, hasMore = false) {
   return {
-    schema_version: 'midas.activity-session-history-page.v1',
+    schema_version: 'midas.activity-session-history-page.v2',
     items,
     has_more: hasMore,
     next_cursor: hasMore
@@ -284,6 +287,7 @@ test('Block C namespaces and controller surfaces are exact, frozen and R14-produ
     'openCorrection',
     'setCorrectionDurationMin',
     'setCorrectionNote',
+    'setCorrectionProteinTargetRelevant',
     'addCorrectionItem',
     'removeCorrectionItem',
     'moveCorrectionItem',

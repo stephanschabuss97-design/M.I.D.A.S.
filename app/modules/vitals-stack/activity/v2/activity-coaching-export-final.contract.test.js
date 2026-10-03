@@ -13,6 +13,7 @@ const fixture = JSON.parse(
   read('app/modules/vitals-stack/activity/v2/activity-coaching-export.fixture.json')
 );
 const sql24 = read('sql/24_Activity_V2_Coaching_Export.sql');
+const sql27 = read('sql/27_Activity_Protein_Relevance.sql');
 
 const EXPECTED = Object.freeze({
   top: ['schema_version', 'generated_at', 'timezone', 'range', 'units', 'completeness', 'quality', 'sessions'],
@@ -20,7 +21,7 @@ const EXPECTED = Object.freeze({
   units: ['session_duration', 'item_duration', 'item_distance', 'set_duration', 'set_distance', 'weight', 'assistance', 'repetitions'],
   completeness: ['status', 'truncated', 'session_count', 'item_count', 'set_count'],
   quality: ['status', 'cautions'],
-  session: ['session_id', 'catalog_version', 'revision', 'day', 'started_at', 'ended_at', 'duration_min', 'title', 'note', 'items'],
+  session: ['session_id', 'catalog_version', 'revision', 'protein_target_relevant', 'day', 'started_at', 'ended_at', 'duration_min', 'title', 'note', 'items'],
   item: ['item_key', 'item_order', 'item_label_snapshot', 'tracking_mode_snapshot', 'equipment_snapshot', 'load_comparability_snapshot', 'field_policy_snapshot', 'category', 'muscle_groups', 'sport_tags', 'duration_min', 'distance_km', 'note', 'sets'],
   set: ['set_order', 'tracking_mode', 'reps', 'duration_sec', 'distance_m', 'weight_kg', 'assistance_kg']
 });
@@ -60,11 +61,13 @@ function splitSqlArguments(source, callStart) {
 }
 
 function buildKeys(anchor) {
-  const anchorIndex = sql24.indexOf(anchor);
+  const exportStart = sql27.indexOf('create or replace function public.activity_v2_coaching_export');
+  assert.notEqual(exportStart, -1);
+  const anchorIndex = sql27.indexOf(anchor, exportStart);
   assert.notEqual(anchorIndex, -1, `missing SQL anchor ${anchor}`);
-  const callStart = sql24.lastIndexOf('pg_catalog.jsonb_build_object(', anchorIndex);
+  const callStart = sql27.lastIndexOf('pg_catalog.jsonb_build_object(', anchorIndex);
   assert.notEqual(callStart, -1);
-  const args = splitSqlArguments(sql24, callStart);
+  const args = splitSqlArguments(sql27, callStart);
   assert.equal(args.length % 2, 0);
   return args.filter((_, index) => index % 2 === 0).map((argument) => {
     const match = /^'([^']+)'$/.exec(argument);
@@ -93,7 +96,7 @@ function distinct(entries, selector) {
 }
 
 test('T-ACT-R10-13 SQL and client JSON field sets stay exactly aligned', () => {
-  assert.deepEqual(buildKeys("'schema_version', 'midas.activity-coaching-export.v1'"), EXPECTED.top);
+  assert.deepEqual(buildKeys("'schema_version', 'midas.activity-coaching-export.v2'"), EXPECTED.top);
   assert.deepEqual(buildKeys("'from', p_from::text"), EXPECTED.range);
   assert.deepEqual(buildKeys("'session_duration', 'min'"), EXPECTED.units);
   assert.deepEqual(buildKeys("'status', 'complete'"), EXPECTED.completeness);
@@ -184,8 +187,8 @@ test('T-ACT-R14-03 activates R10 only through the V2 product composition', () =>
     'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js',
     'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js'
   ]) {
-    assert.equal((productEntry.match(new RegExp(`src="${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=24"`, 'g')) || []).length, 1);
-    assert.equal((productCache.match(new RegExp(`toUrl\\('${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=24'\\)`, 'g')) || []).length, 1);
+    assert.equal((productEntry.match(new RegExp(`src="${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=30"`, 'g')) || []).length, 1);
+    assert.equal((productCache.match(new RegExp(`toUrl\\('${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=30'\\)`, 'g')) || []).length, 1);
   }
   const adjacentPaths = [
     'app/modules/vitals-stack/activity/index.js',

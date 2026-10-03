@@ -445,21 +445,25 @@ test('S4.1 maps a real mixed v2 draft into exact canonical item payloads', () =>
   const projection = runtime.core.projectDraft(snapshot, semantics);
 
   assert.deepEqual(Object.keys(projection), [
+    'draft_schema_version',
     'request_id',
     'draft_revision',
     'catalog_version',
     'started_at',
     'note',
+    'protein_target_relevant',
     'items'
   ]);
   assert.deepEqual(
     plain(projection),
     {
+      draft_schema_version: 'midas.activity-session-draft.v4',
       request_id: REQUEST_ID,
       draft_revision: snapshot.revision,
       catalog_version: 2,
       started_at: '2026-08-10T08:00:00.000Z',
       note: 'Training',
+      protein_target_relevant: true,
       items: [
         {
           item_key: strength.key,
@@ -793,9 +797,10 @@ test('S4.2 creates exact payload and intent with one clock read and deep freeze'
     'duration_min',
     'title',
     'note',
-    'items'
+    'items',
+    'protein_target_relevant'
   ]);
-  assert.equal(intent.commit_intent_schema_version, 'midas.activity-session-commit-intent.v1');
+  assert.equal(intent.commit_intent_schema_version, 'midas.activity-session-commit-intent.v2');
   assert.equal(intent.request_id, snapshot.request_id);
   assert.equal(intent.draft_revision, snapshot.revision);
   assert.equal(intent.catalog_version, snapshot.catalog_version);

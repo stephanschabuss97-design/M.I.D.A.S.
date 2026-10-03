@@ -772,6 +772,7 @@ test('mount validates exact options, dependencies and scheduler pairs before DOM
     removeItem() {},
     moveItem() {},
     setNote() {},
+    setProteinTargetRelevant() {},
     discard() {},
     addSet() {},
     removeSet() {},
@@ -1230,6 +1231,7 @@ test('T-ACT-R9-16 refreshLastPerformance fences generations and returns terminal
     'requestClose',
     'isOpen',
     'refreshLastPerformance',
+    'setProteinRefreshState',
     'destroy'
   ]);
   mounted.shell.open({ opener: runtime.opener });
@@ -1537,6 +1539,7 @@ test('lookup races keep late remove, close, guard and destroy settlements cache-
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard() {},
     addSet: (key) => runtime.draft.addSet(key),
     removeSet: (key, order) => runtime.draft.removeSet(key, order),
@@ -1777,6 +1780,7 @@ test('confirmation and discard failures preserve draft, timer, focus and open sh
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard() {
       discardCalls += 1;
       throw new Error('private discard detail');
@@ -1896,6 +1900,7 @@ test('recovery status patches only its polite region and preserves draft UI stat
     removeItem: (key) => rawDraft.removeItem(key),
     moveItem: (key, order) => rawDraft.moveItem(key, order),
     setNote: (note) => rawDraft.setNote(note),
+    setProteinTargetRelevant: (value) => rawDraft.setProteinTargetRelevant(value),
     discard: () => {
       throw new Error('raw managed discard must not run');
     },
@@ -1992,6 +1997,7 @@ test('recovery close awaits only persistent discard and failure remains retryabl
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard() {
       rawDiscardCalls += 1;
       throw new Error('raw managed discard must not run');
@@ -2104,6 +2110,7 @@ test('destroy invalidates a pending confirmation without late discard or DOM eff
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard() {
       discardCalls += 1;
       return runtime.draft.discard();
@@ -2156,6 +2163,7 @@ test('draft-v3 item, set, policy and catalog violations fail before DOM mutation
     removeItem() {},
     moveItem() {},
     setNote() {},
+    setProteinTargetRelevant() {},
     discard() {},
     addSet() {},
     removeSet() {},
@@ -2228,6 +2236,7 @@ test('expected draft failures stay open, preserve state and report a safe status
     removeItem() {},
     moveItem() {},
     setNote() {},
+    setProteinTargetRelevant() {},
     discard() {},
     addSet() {},
     removeSet() {},
@@ -3017,6 +3026,7 @@ test('set and item mutation failures restore stable Draft values, copy and focus
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard: () => runtime.draft.discard(),
     addSet() { throw new Error('private add detail'); },
     removeSet() { throw new Error('private remove detail'); },
@@ -3087,6 +3097,7 @@ test('item no-ops stay DOM-free and post-mutation breaches never stale-rollback'
     removeItem: (key) => runtime.draft.removeItem(key),
     moveItem: (key, order) => runtime.draft.moveItem(key, order),
     setNote: (note) => runtime.draft.setNote(note),
+    setProteinTargetRelevant: (value) => runtime.draft.setProteinTargetRelevant(value),
     discard: () => runtime.draft.discard(),
     addSet: (key) => runtime.draft.addSet(key),
     removeSet: (key, order) => runtime.draft.removeSet(key, order),
@@ -3363,7 +3374,7 @@ test('S4.9 drives finish, safe focus, retry, cleanup and terminal success withou
     panel.querySelector('.activity-v2-session-commit-status').textContent,
     'Session gespeichert.'
   );
-  assert.equal(panel.querySelector('.activity-v2-session-commit-card').querySelector('button').hidden, true);
+  assert.equal(panel.querySelector('.activity-v2-session-commit-card').querySelectorAll('button').at(-1).hidden, true);
   assert.equal(runtime.document.activeElement, actionElement(panel, 'close'));
 });
 

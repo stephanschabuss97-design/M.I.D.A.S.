@@ -1,7 +1,7 @@
 'use strict';
 
 (function initActivityV2CoachingExport(root) {
-  const EXPORT_SCHEMA = 'midas.activity-coaching-export.v1';
+  const EXPORT_SCHEMA = 'midas.activity-coaching-export.v2';
   const TIMEZONE = 'Europe/Vienna';
   const SAFE_MESSAGE = 'The activity coaching export is invalid.';
   const RANGE_KEYS = Object.freeze(['from', 'to', 'inclusive']);
@@ -47,6 +47,7 @@
     'session_id',
     'catalog_version',
     'revision',
+    'protein_target_relevant',
     'day',
     'started_at',
     'ended_at',
@@ -547,6 +548,7 @@
       session.ended_at < session.started_at ||
       formatViennaDay(Date.parse(session.started_at)) !== session.day ||
       !isIntegerInRange(session.duration_min, 1, 1440) ||
+      typeof session.protein_target_relevant !== 'boolean' ||
       !(session.title === null || isCanonicalText(session.title, 120)) ||
       !(session.note === null || isCanonicalText(session.note, 500))
     ) {

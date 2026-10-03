@@ -17,6 +17,42 @@ const git = (args) => execFileSync('git', args, {
   encoding: 'utf8',
   stdio: ['ignore', 'pipe', 'pipe']
 }).trim();
+const c4Mode = process.argv.slice(2).length === 1 && process.argv[2] === '--c4';
+requireCondition(process.argv.length === 2 || c4Mode, 'UNKNOWN_MODE');
+// C4 may change these exact reviewed postimages. Every other negative
+// consumer remains protected; the original R14 mode keeps its old boundary.
+const c4SourceHashes = Object.freeze({
+  'app/modules/vitals-stack/activity/v2/session-draft.js':
+    'f685329d646c4310ef6a0c7251fa4b9625674595e3977c888b29de6da9daa144',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js':
+    'df4870bfe6e50c73abc5804ca5dd295abaad8c401b1658ba0fcc6af506001c4c',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.contract.test.js':
+    'fe6df0f7237468287d2f11a454d08ff7a74623215dd7fbbdd2643dae8b43a99a',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.fixture.json':
+    '47cbd5df9b1d0fc05f7100233e5aa386b09f0577aed3faf0ae34ff0b096fb35e',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js':
+    '1684c793f531ac01b8ac04f859cc35dd27d90dc0a4cd43ed117fa0eafc97e9b8',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.contract.test.js':
+    'f824d71325784e12f3140c4757c9667d22b60eceb868a7f469e38b8a0144baaa',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-data-access.contract.test.js':
+    '21c82e310103e4426c1afff7cc187bfcdb3938d9a0e3214d72ce8ab9e92ba031',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js':
+    '052dd34a5d23e5d87816aa724064964a35f8eb4919f32b099de8849eec74b6db',
+  'app/modules/vitals-stack/protein/index.js':
+    '3b9e179c4c1f8f2730e8fb3a4f3026b74bc8a9f9e9d4047e8153e0a1ce26e18b',
+  'app/modules/vitals-stack/protein/activity-refresh.contract.test.js':
+    '7aa9bf0ce5a8942be5c9f1d48bd6892fc71ebdf703c54288c4982453e2d5e867'
+});
+const sourceHash = (relativePath) => createHash('sha256')
+  .update(read(relativePath).replace(/\r\n/g, '\n')).digest('hex');
+const assertProtectedChanges = (paths, code) => {
+  const tracked = git(['diff', '--name-only', 'HEAD', '--', ...paths]);
+  const untracked = git(['ls-files', '--others', '--exclude-standard', '--', ...paths]);
+  const changed = [tracked, untracked].filter(Boolean).flatMap((value) => value.split('\n'));
+  requireCondition(changed.every((relativePath) =>
+    Object.hasOwn(c4SourceHashes, relativePath) &&
+    sourceHash(relativePath) === c4SourceHashes[relativePath]), code);
+};
 
 const protectedPaths = Object.freeze([
   'public/manifest.json',
@@ -63,6 +99,16 @@ const r14SupabaseReleaseHashes = Object.freeze({
     'dd434c3222472738984c67b0a2551011b18263b47d86e54b9dcd0d0810b37cfa',
   'app/supabase/api/vitals.js':
     '6bd3ca31f0b4abfee4639e9a984f1f307bc6c7f0fbc021e5e28d469eab177c1f'
+});
+// C4 starts from the documented ddbcf4c baseline, after the September auth
+// recovery fix. These readers are unchanged by C4; normalize checkout EOLs.
+const c4SupabaseBaselineHashes = Object.freeze({
+  'app/supabase/api/reports.js':
+    '271eebd5b96d0ee5ae77e8ecc7a54b06bc2daab24402af7577da8e3b990a67d9',
+  'app/supabase/api/trendpilot.js':
+    '6f5835146ef071dfe70d1fc79524fcba1fbf1fb732547ee56871eee9c39de31b',
+  'app/supabase/api/vitals.js':
+    '5647ec62781299d10ab47f6adb45e21d82c3eddc3f0ca727b4487f1182f4238f'
 });
 const r10NegativeOracleProtectedPaths = Object.freeze(
   r10NegativeOraclePaths.filter(
@@ -146,14 +192,21 @@ const r13ProductReaderPaths = Object.freeze([
   'app/modules/doctor-stack/doctor/health-export-v3.js'
 ]);
 
-requireCondition(
-  git(['diff', '--name-only', 'HEAD', '--', ...protectedPaths]) === '',
-  'PROTECTED_DIFF'
-);
-requireCondition(
-  git(['status', '--porcelain=v1', '--untracked-files=all', '--', ...protectedPaths]) === '',
-  'PROTECTED_STATUS'
-);
+if (c4Mode) {
+  assertProtectedChanges(protectedPaths, 'C4_PROTECTED_DIFF');
+  for (const [relativePath, expectedHash] of Object.entries(c4SourceHashes)) {
+    requireCondition(sourceHash(relativePath) === expectedHash, 'C4_SOURCE_DRIFT');
+  }
+} else {
+  requireCondition(
+    git(['diff', '--name-only', 'HEAD', '--', ...protectedPaths]) === '',
+    'PROTECTED_DIFF'
+  );
+  requireCondition(
+    git(['status', '--porcelain=v1', '--untracked-files=all', '--', ...protectedPaths]) === '',
+    'PROTECTED_STATUS'
+  );
+}
 requireCondition(
   createHash('sha256')
     .update(read(explicitGrantsPath).replace(/\r\n/g, '\n'))
@@ -161,25 +214,33 @@ requireCondition(
     r11ExplicitGrantsSha256,
   'EXPLICIT_GRANTS_SOURCE'
 );
+if (c4Mode) {
+  assertProtectedChanges(r10NegativeOracleProtectedPaths, 'C4_NEGATIVE_ORACLE_DIFF');
+} else {
+  requireCondition(
+    git(['diff', '--name-only', 'HEAD', '--', ...r10NegativeOracleProtectedPaths]) === '',
+    'R10_NEGATIVE_ORACLE_DIFF'
+  );
+  requireCondition(
+    git([
+      'status', '--porcelain=v1', '--untracked-files=all', '--',
+      ...r10NegativeOracleProtectedPaths
+    ]) === '',
+    'R10_NEGATIVE_ORACLE_STATUS'
+  );
+}
 requireCondition(
-  git(['diff', '--name-only', 'HEAD', '--', ...r10NegativeOracleProtectedPaths]) === '',
-  'R10_NEGATIVE_ORACLE_DIFF'
-);
-requireCondition(
-  git([
-    'status', '--porcelain=v1', '--untracked-files=all', '--',
-    ...r10NegativeOracleProtectedPaths
-  ]) === '',
-  'R10_NEGATIVE_ORACLE_STATUS'
-);
-requireCondition(
-  createHash('sha256').update(read(r10R14ProductloadContractPath)).digest('hex') ===
-    r10R14ProductloadContractSha256,
+  (c4Mode ? sourceHash(r10R14ProductloadContractPath) :
+    createHash('sha256').update(read(r10R14ProductloadContractPath)).digest('hex')) ===
+    (c4Mode ? c4SourceHashes[r10R14ProductloadContractPath] : r10R14ProductloadContractSha256),
   'R10_R14_PRODUCTLOAD_CONTRACT'
 );
-for (const [relativePath, expectedHash] of Object.entries(r14SupabaseReleaseHashes)) {
+for (const [relativePath, expectedHash] of Object.entries(
+  c4Mode ? c4SupabaseBaselineHashes : r14SupabaseReleaseHashes
+)) {
   requireCondition(
-    createHash('sha256').update(read(relativePath)).digest('hex') === expectedHash,
+    createHash('sha256').update(c4Mode
+      ? read(relativePath).replace(/\r\n/g, '\n') : read(relativePath)).digest('hex') === expectedHash,
     'R14_SUPABASE_RELEASE_CONTRACT'
   );
 }
@@ -202,9 +263,14 @@ const productSources = [
 const productIndex = read('index.html');
 const productWorker = read('service-worker.js');
 for (const relativePath of r14CapturePaths) {
+  const matches = [...productIndex.matchAll(new RegExp(
+    `src="${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=(\\d+)"`, 'g'
+  ))];
+  const version = c4Mode && matches.length === 1 ? matches[0][1] : '24';
   requireCondition(
-    productIndex.split(`src="${relativePath}?v=24"`).length - 1 === 1 &&
-      productWorker.split(`toUrl('${relativePath}?v=24')`).length - 1 === 1,
+    (!c4Mode || matches.length === 1) &&
+    productIndex.split(`src="${relativePath}?v=${version}"`).length - 1 === 1 &&
+      productWorker.split(`toUrl('${relativePath}?v=${version}')`).length - 1 === 1,
     'PRODUCT_V2_LOAD'
   );
 }
@@ -320,5 +386,6 @@ process.stdout.write(
   `r11_product_loads=${r11ProductLoads} unsafe_diagnostics=0 secret_material=0 test_dml=0 ` +
   'recovery_deletes=0 local_worker_scope=1 ' +
   `r10_negative_oracles=${r10NegativeOraclePaths.length} ` +
-  `r11_isolated=${r11IsolatedPaths.length} r13_read_seam=1 r14_capture_seam=1\n`
+  `r11_isolated=${r11IsolatedPaths.length} r13_read_seam=1 r14_capture_seam=1` +
+  (c4Mode ? ' c4_contract=1\n' : '\n')
 );

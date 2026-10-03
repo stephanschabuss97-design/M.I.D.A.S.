@@ -66,7 +66,7 @@
       if (state.status === 'idle') status.textContent = 'Zeitraum auswählen und Export laden.';
       if (state.status === 'loading') status.textContent = 'Aktivitätsdaten werden gelesen.';
       if (state.status === 'ready') {
-        status.textContent = `${state.counts.sessions} Sessions, ${state.counts.items} Einträge und ${state.counts.sets} Sätze bereit.`;
+        status.textContent = `${state.counts.sessions} Sessions, ${state.counts.items} Einträge und ${state.counts.sets} Sätze bereit. Davon ${state.counts.protein_excluded} vom Proteinziel ausgenommen.`;
       }
       if (state.status === 'empty') status.textContent = 'Keine Sessions im gewählten Zeitraum. Der vollständige leere Export ist bereit.';
       if (state.status === 'error') {
