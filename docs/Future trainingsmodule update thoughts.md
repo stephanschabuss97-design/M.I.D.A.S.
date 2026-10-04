@@ -2,7 +2,7 @@
 
 ## Roadmap der Roadmaps für das zukünftige Trainings- und Aktivitätsmodul
 
-Stand: 2026-10-03
+Stand: 2026-10-04
 
 R14 ist `DONE`: Activity V2 bleibt der einzige produktive Capturewriter;
 historische V1-Daten bleiben lesbar. C3 ist `DONE`: Training ist eine eigene
@@ -16,7 +16,12 @@ behalten den ungefilterten SQL26-Vertrag. SQL27, Protein-Edge v32 und
 Pages/SW v31 sind belegt. Owner-Score `7 → 8 → 7` und öffentlicher Zugang
 bestätigt; fehlende ursprüngliche Test-Vorabnachweise bleiben dokumentierte
 Protokollabweichung. C4-Android ist OWNER-WAIVED, nicht PASS; die historischen
-R14-Geräte-Nachweisgrenzen bleiben unverändert. R15 benötigt seinen eigenen G0.
+R14-Geräte-Nachweisgrenzen bleiben unverändert. R15 hat seinen eigenen G0
+und S1–S4R bestanden; Dateiimport und letzter lokaler Plan sind implementiert
+und S5 LOCAL ist geprüft. R15 ist DONE: Pages/SW v32 auf main publiziert und
+von GitHub gebaut, S6 abgeschlossen und Roadmap/Evidence archiviert. Stephan
+nimmt nach erfolgreichem Live-Server-Test den Abschluss mit den dokumentierten
+T06-/T07- und öffentlichen HTTP-Nachweisgrenzen ab; kein Device-PASS behauptet.
 
 Status: Fachliches Zielbild und Planungsquelle. R1, die additive unsichtbare
 R2-Datenbankgrundlage, die isolierte R3-Draft-/Shell-Grundlage, C2-
@@ -333,9 +338,10 @@ vorbereiteter Startzustand:
 - MIDAS validiert jeden Key gegen den tatsächlich geladenen Katalog. Dass
   Codex Zugriff auf die Semantikdateien hatte, ersetzt diese Laufzeitprüfung
   nicht.
-- Nach Bestätigung erzeugt der Import denselben normalen Session-Draft wie
-  manuelles Hinzufügen. Mit dem ersten übernommenen Item startet dieselbe
-  Sessionuhr.
+- Nach vollständiger Validierung der ausgewählten Datei erzeugt der Import
+  direkt denselben normalen Session-Draft wie manuelles Hinzufügen. Es gibt
+  keine zusätzliche Vorschau oder Startbestätigung. Mit dem ersten übernommenen
+  Item startet dieselbe Sessionuhr.
 - Für jedes Item lädt R4 weiterhin die letzte vollständige reale Ausführung,
   damit Gewicht und Wiederholungen nicht aus dem Gedächtnis geschätzt werden
   müssen. Die aktuellen Eingabefelder bleiben leer.
@@ -352,12 +358,22 @@ verändert werden. Eine echte Kataloglücke wird zuerst zu Hause über den
 kontrollierten Katalogpflegeweg geschlossen und danach in einer neu erzeugten
 Vorlage verwendet.
 
-Der minimale maschinenlesbare Vorlagenvertrag wird erst in R15 endgültig
-eingefroren.
-Als Ausgangspunkt gilt ein Schema wie
-`midas.activity-session-template.v1` mit `schema_version`,
-`catalog_version`, einem Anzeigenamen und geordneten `items`. R15 benötigt in
-der ersten Ausbaustufe weder eine Supabase-Plantabelle noch MCP-Schreibzugriff.
+R15 friert `midas.activity-session-template.v1` ein: exakt `schema_version`,
+`catalog_version`, `name` und geordnete `items`; jedes Item enthält exakt
+`item_order` und `item_key`. Der normalisierte Anzeigename hat 1–80 Zeichen,
+die Datei höchstens 64 KiB und die Liste 1–50 aktive, eindeutige Übungen mit
+fortlaufender Reihenfolge ab 1. Katalogversion und Keys müssen zum geladenen
+Katalog passen; zusätzliche Felder und doppelte JSON-Properties sind ungültig.
+Der Anzeigename bleibt reiner Text und keine Sessionnotiz.
+
+[Kanonisches Schema](reference/activity-v2/activity-session-template-v1.schema.json)
+und [gültiges Beispiel](reference/activity-v2/activity-session-template-v1.example.json)
+beschreiben den Erzeugungsvertrag. Die Grundlage bleibt ausschließlich der
+bestehende Coachingexport; keine Exporterweiterung oder Zusatzkatalogdatei.
+Der letzte erfolgreich importierte Plan bleibt getrennt von Recovery als
+eine lokale Komfortkopie pro Owner verfügbar. Eine fehlgeschlagene
+Cachespeicherung verhindert keinen gültigen Start. R15 benötigt weder
+Supabase-Plantabelle noch MCP-Schreibzugriff.
 
 ### 4.6 Vollständige Aktivität und consumer-spezifische Protein-Relevanz
 
@@ -2100,8 +2116,13 @@ Dateiimport heraus.
 
 ### R15 - Prepared Session Template Import V1
 
-Status: `POST-CORE`; erst nach stabilem Activity-V2-Kern, abgeschlossenem C4
-und realer Nutzung planen. R15 hängt fachlich von R4, R7-R9, dem produktiven
+Status: `DONE / 2026-10-04`; Pages/SW v32 gebaut, S5/S6 abgeschlossen.
+Owner-Abnahme nach erfolgreichem Live-Server-Test mit dokumentierten
+Nachweisgrenzen, kein unabhängig belegter Produktiv-/Android-Smoke.
+G0, S1–S4R, Parser/Cache/Integration und die integrierte lokale Prüfung sind
+abgeschlossen. [Roadmap](<archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Roadmap (DONE).md>)
+und [Evidence](<archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>)
+sind als (DONE) archiviert. R15 hängt fachlich von R4, R7-R9, dem produktiven
 R14-Cutover und dem C4-Relevanzvertrag ab, nicht von einer bestimmten
 Retention-Entscheidung in R16. R10 liefert den
 Coaching-Ist-Export, ist aber nicht dasselbe Schema und kein direkter
@@ -2114,22 +2135,23 @@ Ziel:
 - exakte Validierung von Schema, `catalog_version`, `item_key` und Reihenfolge
 - kanonisches maschinenlesbares JSON-Schema und eine gültige Beispieldatei als
   Erzeugungsvertrag für Codex und einen späteren MCP bereitstellen
-- vor der Draft-Erzeugung eine kompakte Vorschau mit Planname,
-  Katalogversion, Übungsanzahl und geordneter Übungsliste anzeigen; erst die
-  Bestätigung `Training starten` erzeugt den Draft und startet den Timer
+- `Import` neben `Export`: die vollständig gültige ausgewählte Datei startet
+  direkt die normale Session; keine Vorschau und kein zweiter Startbutton
+- abgebrochene oder ungültige Dateiauswahl erzeugt keinen neuen Draft, Timer,
+  Lookup oder Cachewrite; vor der Auswahl gilt die ausdrücklich bestätigte
+  Fortsetzen-/Verwerfenentscheidung für eine vorhandene oder recoverte Session
 - keine Zielgewichte, Zielwiederholungen, Satzvorgaben oder vorbefüllten
   Ist-Leistungen importieren
-- nach Bestätigung einen gewöhnlichen Activity-V2-Draft erzeugen und den
-  bestehenden R4-Historienlookup je Item verwenden
+- nach vollständiger Validierung einen gewöhnlichen Activity-V2-Draft erzeugen
+  und den bestehenden R4-Historienlookup je Item verwenden
 - vorhandenen veränderten Draft niemals still überschreiben
-- die zuletzt bestätigt gestartete Vorlage als normalisierten,
+- die zuletzt erfolgreich importierte Vorlage als normalisierten,
   ownergebundenen `last_used_template` getrennt vom R7-Recovery-Draft lokal in
   IndexedDB halten und vor jeder Wiederverwendung vollständig neu validieren
-- auf der Startfläche `Letzten Plan laden`, `JSON auswählen` und
-  `Freies Training` als gleichwertige Wege anbieten; spontane Änderungen der
-  laufenden Session verändern die gespeicherte Vorlage nicht
-- verständliche Fehler mit optional kopierbaren technischen Details liefern,
-  ohne Teilimport, Ersatzübung oder freien Fallback-Key
+- `Letzten Plan laden` startet nach Revalidierung direkt den einen letzten
+  Plan; `Import` und freies Training bleiben erreichbar. Spontane Änderungen
+  der laufenden Session verändern die gespeicherte Vorlage nicht
+- verständliche Fehler ohne Teilimport, Ersatzübung oder freien Fallback-Key
 - den zuletzt validierten Plan mit lokal verfügbarem Katalog auch offline
   laden können
 - freie Änderung der importierten Übungsliste während der Session
@@ -2394,10 +2416,15 @@ sein.
 
 ### O-9 Vorbereitete Session-Vorlage
 
-Entschieden für die spätere R15:
+Für R15 umgesetzt und als DONE abgenommen; Nachweisgrenzen in der archivierten Evidence:
 
-- Codex darf aus einer gemeinsamen Trainingsanalyse eine JSON-Übungsliste für
-  die nächste Einheit erstellen.
+- Codex/LLM erstellt nach gemeinsamer Analyse des vorhandenen Coachingexports
+  der letzten sechs Monate oder länger eine JSON-Übungsliste für die nächste
+  Einheit. Plan beibehalten oder vorhandene Übungen tauschen ist gleichermaßen
+  gültig; kein Zusatzkatalog und keine Änderung des Exports.
+- Ownerentscheidung vom 2026-10-03: `Import` neben `Export`, gültige Datei
+  startet direkt ohne Vorschau oder zweite Bestätigung. Ein letzter Plan wird
+  lokal wiederverwendet. Die frühere Vorschauentscheidung ist supersediert.
 - Die Vorlage enthält ausschließlich gültige Katalogidentitäten,
   Katalogversion, Reihenfolge und harmlose Anzeigenmetadaten.
 - Keine Zielgewichte, Zielwiederholungen, Satzanzahl oder Ist-Leistung werden
@@ -2411,9 +2438,10 @@ Entschieden für die spätere R15:
 
 Zuständig:
 
-- R15 friert Dateischema, Import-UX, Fehlermeldungen und Desktop-/Android-PWA-
-  Smokes ein. Ein späterer MCP darf dasselbe Schema transportieren, ist aber
-  keine Voraussetzung.
+- R15 hat Dateischema, direkten Import und einen letzten lokalen Plan
+  eingefroren. Desktop-/Mobilbrowser-Smokes sind lokal belegt; produktiver
+  unsaved Import und eigene Androidentscheidung bleiben owner-gated.
+  Ein späterer MCP darf dasselbe Schema transportieren, ist keine Voraussetzung.
 
 ### O-10 Eigene Trainingsproduktfläche und Protein-Erklärung
 

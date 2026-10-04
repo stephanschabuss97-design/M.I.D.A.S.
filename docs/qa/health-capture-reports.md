@@ -28,6 +28,43 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 
 ## Testfälle
 
+### HCR-035 - R15 startet vorbereitete Sessions über den normalen Writer
+
+- Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
+  [R15 Roadmap](<../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Roadmap (DONE).md>),
+  [R15 Evidence](<../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>)
+  und [Vorlagenschema](../reference/activity-v2/activity-session-template-v1.schema.json).
+- Ebene: gebündelte lokale Parser-/Cache-/Controller-/Consumerchecks und eine
+  isolierte echte Browserwelle Desktop und 390×844; 320px nur Layoutcheck.
+  Produktiver unsaved Import und Android nur mit eigener Ownerentscheidung.
+- Voraussetzung: kohärenter Productload einschließlich CSS-/SW-Consumer,
+  geladener Katalog und disposable Cache/Recovery sowie kontrollierter
+  Data-Access-/RPC-Transport. Vorhandene Nachweise gemäß Invalidation übernehmen.
+- Aktion: T-R15-01/02 validieren unveränderten/geänderten Plan, Grenzen und
+  ungültige Identitäten, Ownerbindung, Replace, Cachefehler und Timeout.
+  T-R15-03 prüft aktive Datei-/Last-Plan-Listener, Abbruch, Busy/Race,
+  Logout/Destroy, bestehende/recoverte Sessions und atomare normale Übernahme.
+  T-R15-04 folgt der realen Dateiaktion bis zum normalen Save-Transportstub.
+  T-R15-05 prüft tatsächliche Script-/Parent-CSS-/SW-Verdrahtung, mobilen
+  Recoveryreload, Offline-Last-Plan und schmale Darstellung.
+- Erwartung: direkter Start ohne Vorschau/zweiten Startbutton, reine
+  Metadaten/aktive eindeutige Keys/Reihenfolge, leere Ist-Felder, normaler Timer
+  und Lookup, C4-Default `true`, kein stilles Überschreiben. Genau ein letzter
+  Plan pro Owner; Sessionänderungen ersetzen ihn nicht. Cachefehler ist
+  fail-soft, Name bleibt Text, Recovery-DB/Store/Version und normaler
+  Writer/Commit/Correction bleiben geschützt. Abbruch/ungültige Datei erzeugen
+  keinen neuen Draft oder Write; die bestehende Abbruch-Statusmeldung ist
+  außerhalb des Reparaturscopes.
+- Produktive Grenze: T-R15-06 erst nach freigegebener Publikation und lokalen
+  Cache-/Recovery-Testwrites; gültig importieren, nicht als Training speichern,
+  genau den neuen Draft normal verwerfen. T-R15-07 benötigt Android-Smoke oder
+  explizite OWNER-WAIVED/DEFERRED-Entscheidung, nie angenommenes PASS.
+- Invalidiert durch: Parser/Schema/Kataloggrenze → T01; Cache/Owner-/Updatezeitpunkt
+  → T02 und betroffene T03/T05; Listener/Draftübernahme/Lifecycle → T03/T04;
+  Script-/CSS-/SW-/Offlinevertrag → betroffene T04/T05; anderer publizierter
+  Build → T06; Device-/Pickerfinding → T07. Unveränderte C4-/SQL-/Protein-/
+  Doctor-Volltests und funktionale Browserwellen nicht vorsorglich wiederholen.
+
 ### HCR-034 - C4 bewahrt Aktivität und isoliert Protein-Berücksichtigung
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),

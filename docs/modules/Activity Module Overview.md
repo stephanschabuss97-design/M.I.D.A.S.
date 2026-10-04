@@ -1,5 +1,53 @@
 ﻿# Activity Module - Functional Overview
 
+## R15 — abgeschlossener Vorlagenimport (2026-10-04)
+
+R15 ist DONE. S5 LOCAL und S6 sind abgeschlossen; Root-SW/Assetkette v32
+ist auf main publiziert und von GitHub Pages gebaut. Stephan bestätigt einen
+erfolgreichen Live-Server-Test und nimmt den Abschluss mit den zentral
+dokumentierten Nachweisgrenzen ab. Ein unabhängiger produktiver T06-Import
+und Android-T07 werden nicht als ausgeführt behauptet. C4 bleibt die fachliche
+Baseline; sein historischer Pages-/SW-Stand war v31.
+
+`Import` steht neben `Export`. Eine vollständig gültige ausgewählte JSON-Datei
+startet unmittelbar die normale editierbare Trainingssession, ohne Vorschau
+oder zweiten Startbutton. Vor einer vorhandenen oder recoverten Session gilt
+der bestehende Fortsetzen-/Verwerfenvertrag; sie wird niemals still ersetzt.
+Abbruch und ungültige Datei erzeugen keinen neuen Draft, Timer, Lookup oder
+Vorlagencachewrite. Die bestehende „Activity V2 ist derzeit nicht verfügbar“-
+Meldung nach Abbruch bleibt außerhalb des R15-Reparaturscopes.
+
+`session-template.js` validiert `midas.activity-session-template.v1`:
+ausschließlich `schema_version`, passende `catalog_version`, getrimmter
+Anzeigename mit 1–80 Zeichen und 1–50 geordnete Items mit `item_order` und
+aktiven, eindeutigen `item_key`s. Dateien sind auf 64 KiB begrenzt;
+zusätzliche Felder, doppelte JSON-Properties und ungültige Identitäten werden
+abgelehnt. Grundlage der Planerstellung ist allein der bestehende
+Coachingexport; ein unveränderter Plan ist ebenfalls gültig.
+
+`session-template-cache.js` hält genau einen letzten normalisierten Plan pro
+Owner in der getrennten IndexedDB `midas_activity_v2_templates`, Version 1,
+Store `last_used_template`. `Letzten Plan laden` revalidiert ihn und startet
+direkt, auch mit lokal verfügbarem Katalog offline. Sessionänderungen ersetzen
+den gespeicherten Plan nicht. Eine Cacheoperation ist auf 2 Sekunden begrenzt;
+ein Cachefehler verhindert keinen gültigen Importstart. Logout und Destroy
+invalidieren ausstehende Datei-/Cacheoperationen.
+
+Die normale Draft-Factory, erster Item-Timer, R4-Lookup, R7-Recovery,
+R8-Commit und R9-Correction bleiben maßgeblich. Ein optionaler validierter
+Snapshot in `recovery.startNew` wird erst nach Annahme des normalen
+Sessiongraphs explizit geflusht. Recovery-DB, Store und Version bleiben
+unverändert. Ist-Leistungsfelder bleiben leer; Vorlagen enthalten keine
+Protein-Relevanz, und neue Drafts verwenden den C4-Default `true`.
+Der Vorlagenname wird als Text angezeigt und nicht als Sessionnotiz gespeichert.
+
+[Roadmap](<../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Roadmap (DONE).md>),
+[zentrale Evidence](<../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>),
+[JSON-Schema](../reference/activity-v2/activity-session-template-v1.schema.json),
+[Beispiel](../reference/activity-v2/activity-session-template-v1.example.json)
+und [HCR-035](../qa/health-capture-reports.md#hcr-035---r15-startet-vorbereitete-sessions-über-den-normalen-writer)
+führen Vertrag, Nachweise und Invalidation zusammen.
+
 ## C4-Produktionsstand (2026-10-03)
 
 Activity V2 bleibt der einzige produktive Capturewriter. SQL27 ergänzt
@@ -28,7 +76,7 @@ Runtime: SQL27-Migration `20261003144855`, Protein-Edge v32,
 main/Pages `06638359facf67c524294249cca170b0955955ef`, Root-SW v31.
 [C4 Roadmap](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>) und [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>):
 EV-C4-L01–L03, EV-C4-S5-G03–G06, EV-C4-P01–P04, EV-C4-S5-G18.
-R15 erhält diesen Default, benötigt aber weiterhin seinen eigenen G0.
+R15 erhält diesen Default; sein eigener G0 und die lokalen Prüfphasen sind bestanden.
 
 ## Historischer R14-Produktionsstand (2026-09-09)
 
@@ -59,7 +107,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
-- [Activity V2 Masterplan](../Future%20trainingsmodule%20update%20thoughts.md)
+- [Activity V2 Masterplan](<../Future trainingsmodule update thoughts.md>)
 - [Activity V2 R1 Catalog Baseline](<../archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
 - [Activity V2 R1 Roadmap](<../archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
 - [Activity V2 R2 Roadmap](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
@@ -808,6 +856,9 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 ## 11. Status / Dependencies / Risks
 
 - Status: aktiv; C3-Produktfläche implementiert, in Capture-Grenze, Doctor und Reports genutzt.
+- R15: DONE; direkter Dateiimport und ein letzter lokaler Plan, Pages/SW v32
+  gebaut, S5/S6 abgeschlossen. Owner-Abnahme mit transparenten T06-/T07- und
+  öffentlicher HTTP-Nachweisgrenzen in der archivierten Evidence.
 - Activity V2 R1-R12/C2: Semantik, additive produktive Datenbasis, lokaler
   Draft/Vollflaechen-Shell, vollständiger Katalog v2, lokale Suche/read-only
   Historie, Strength-/Duration-/Distance-Editor, lokale Draft-Recovery und der

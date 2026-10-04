@@ -7,12 +7,21 @@ Ausführungsevidence.
 MIDAS besitzt derzeit keine autoritative Gesamtversionsnummer. Bis zum ersten
 bewussten Release-Cut gilt `Unreleased` zusammen mit dem exakten Git-Commit.
 Die frühere Versions- und Unreleased-Historie bleibt im
-[Legacy-Changelog](docs/archive/history/MIDAS%20Legacy%20Changelog%20v0.1-v1.8%20and%20Unreleased.md)
+[Legacy-Changelog](<docs/archive/history/MIDAS Legacy Changelog v0.1-v1.8 and Unreleased.md>)
 erhalten.
 
 ## Unreleased
 
 ### Added
+
+- R15 ergänzt den geprüften Vorlagenimport neben Export: Eine vollständig
+  gültige JSON-Datei startet direkt die normale Trainingssession. Ein letzter
+  Plan bleibt getrennt von Recovery lokal wiederverwendbar; Ist-Leistungsfelder
+  bleiben leer, normaler Writer und C4-Protein-Default bleiben maßgeblich.
+  Schema und Beispiel sind als Erzeugungsvertrag bereitgestellt, ausschließlich
+  auf Basis des bestehenden Coachingexports. Web-/PWA-SW v32 ist auf main
+  publiziert und von GitHub Pages gebaut. R15 ist nach erfolgreichem
+  Live-Server-Test und Owner-Abnahme mit dokumentierten Nachweisgrenzen DONE. [Vertrag und Nachweise](<docs/archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>).
 
 - C4 erlaubt, ein vollständig gespeichertes Training bewusst nur vom Proteinziel
   auszunehmen. Bestehende und neue Sessions zählen standardmäßig; der Wert
