@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MIDAS prepared session template V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "catalog_version", "name", "items"],
+  "properties": {
+    "schema_version": { "const": "midas.activity-session-template.v1" },
+    "catalog_version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^\\S(?:[\\s\\S]*\\S)?$" },
+    "items": {
+      "type": "array", "minItems": 1, "maxItems": 50,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["item_order", "item_key"],
+        "properties": {
+          "item_order": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "item_key": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$comment": "Normalized content; file <=64 KiB. Runtime additionally requires the loaded catalog version, active unique keys and contiguous item_order from 1. Current performance and protein relevance are never imported."
+}

@@ -1759,7 +1759,7 @@
       };
     }
 
-    function startNew() {
+    function startNew(initialSnapshot) {
       if (quarantined || commitLock || confirmedIntent !== null) {
         fail('MUTATION_BLOCKED');
       }
@@ -1770,10 +1770,15 @@
         fail(phase === 'destroyed' ? 'CONTROLLER_DESTROYED' : 'INVALID_STATE');
       }
       const wasDegraded = phase === 'degraded';
-      const controller = draftApi.create(draftOptions(currentSemantics));
+      // A prepared start still belongs to this coordinator. Validate it before
+      // changing state; only the accepted product graph explicitly flushes it.
+      const controller = initialSnapshot === undefined
+        ? draftApi.create(draftOptions(currentSemantics))
+        : draftApi.restore(initialSnapshot, draftOptions(currentSemantics));
       rawDraft = controller;
       recoveredDraft = null;
       managedDraft = createManagedDraft(controller);
+      if (initialSnapshot !== undefined) pendingSnapshot = controller.getSnapshot();
       publish(wasDegraded ? 'degraded' : 'active', wasDegraded ? 'storage_error' : null);
       return managedDraft;
     }

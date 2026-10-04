@@ -32,6 +32,18 @@
   min-height: 44px;
 }
 
+.activity-v2-product-template-status,
+.activity-v2-template-origin {
+  margin: 0;
+  font-size: .875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.activity-v2-product-template-status[hidden] {
+  display: none;
+}
+
 .activity-v2-product-action[hidden] {
   display: none;
 }

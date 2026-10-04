@@ -9,7 +9,7 @@
   const exportHost = root.document.getElementById('activity-v2-export-host');
   const url = new URL(root.location.href);
   const requestedMode = url.searchParams.get('mode');
-  const mode = ['success', 'unknown', 'recovery', 'discard', 'misdirect', 'reauth', 'aged', 'protein_error'].includes(requestedMode)
+  const mode = ['success', 'unknown', 'recovery', 'discard', 'misdirect', 'reauth', 'aged', 'protein_error', 'r15'].includes(requestedMode)
     ? requestedMode
     : 'success';
   const phase = url.searchParams.get('phase') === 'resume' ? 'resume' : 'seed';
@@ -23,6 +23,7 @@
   let finishCalls = 0;
   let retryCalls = 0;
   let controller = null;
+  let r15Recovery = null;
   let lastProductState = null;
   let diagnosticStage = 'not_started';
   let diagnosticCode = null;
@@ -76,6 +77,7 @@
   }
 
   function makeUuid() {
+    if (mode === 'r15') return root.crypto.randomUUID();
     const tail = String(uuidSequence).padStart(12, '0');
     uuidSequence += 1;
     return `00000000-0000-4000-8000-${tail}`;
@@ -144,7 +146,7 @@
   function installControlledTransport() {
     Object.defineProperty(root.AppModules, 'supabase', {
       value: Object.freeze({
-        supabaseState: { authState: 'auth' },
+        supabaseState: { authState: 'auth', lastUserId: '00000000-0000-4000-8000-000000000001' },
         baseUrlFromRest(value) {
           return String(value).replace(/\/rest\/v1\/?$/, '');
         },
@@ -199,14 +201,15 @@
         diagnosticStage = 'recovery_open';
         try {
           const real = await realApi.open(options);
+          if (mode === 'r15') r15Recovery = real;
           diagnosticStage = 'recovery_opened';
           return deepFreeze({
             getState: real.getState,
             getDraft: real.getDraft,
-            startNew() {
+            startNew(initialSnapshot) {
               diagnosticStage = 'recovery_start_new';
               try {
-                const draft = real.startNew();
+                const draft = real.startNew(initialSnapshot);
                 diagnosticStage = 'recovery_started';
                 return draft;
               } catch (error) {
@@ -414,7 +417,7 @@
         },
         createRequestId: makeUuid,
         createLeaseToken: makeUuid,
-        confirmDiscard: async () => mode === 'discard',
+        confirmDiscard: async () => mode === 'discard' || (mode === 'r15' && root.r15ConfirmDiscard !== false),
         refreshActivityConsumers: async () => true,
         getProteinRefreshState: root.AppModules.protein.getActivityRefreshState,
         refreshProteinTargets: root.AppModules.protein.refreshAfterActivity
@@ -423,6 +426,20 @@
         lastProductState = state;
       });
       await controller.setAuthenticated(true);
+      if (mode === 'r15') {
+        root.__r15Harness = {
+          ready: true,
+          state: () => controller.getState(),
+          snapshot: () => r15Recovery?.getDraft()?.getSnapshot() || null,
+          requests: () => requestBodies.map(body => JSON.parse(body)),
+          markers: () => [...markers],
+          setAuthenticated: value => controller.setAuthenticated(value),
+          destroy: () => controller.destroy()
+        };
+        status.dataset.result = 'ready';
+        status.textContent = 'R15: isolierter Import bereit.';
+        return;
+      }
       if (mode === 'discard' && phase === 'resume') {
         const discard = productHost.querySelector('[data-action="discard-recovery"]');
         if (!discard || discard.disabled) fail('product recovery discard unavailable');

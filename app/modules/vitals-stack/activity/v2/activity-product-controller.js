@@ -214,7 +214,9 @@
   }
 
   function readOptions(value) {
-    if (!hasExactDataKeys(value, OPTION_KEYS)) fail('INVALID_OPTIONS');
+    const keys = hasOwn(value || {}, 'getOwnerId') ? [...OPTION_KEYS, 'getOwnerId'] : OPTION_KEYS;
+    if (!hasExactDataKeys(value, keys) ||
+        (hasOwn(value, 'getOwnerId') && typeof value.getOwnerId !== 'function')) fail('INVALID_OPTIONS');
     const document = value.host?.ownerDocument;
     if (!document || typeof document.createElement !== 'function') {
       fail('INVALID_OPTIONS');
@@ -294,6 +296,18 @@
     const exportButton = createButton(document, 'open-export', 'Export');
     secondaryActions.appendChild(history);
     secondaryActions.appendChild(exportButton);
+    const importButton = createButton(document, 'import-template', 'Import');
+    const lastPlan = createButton(document, 'load-last-template', 'Letzten Plan laden');
+    secondaryActions.appendChild(importButton);
+    secondaryActions.appendChild(lastPlan);
+    const templateFile = createElement(document, 'input');
+    templateFile.type = 'file';
+    templateFile.accept = '.json,application/json';
+    templateFile.hidden = true;
+    templateFile.dataset.role = 'template-file';
+    const templateStatus = createElement(document, 'p', 'activity-v2-product-template-status');
+    templateStatus.setAttribute('role', 'status');
+    templateStatus.setAttribute('aria-live', 'polite');
 
     rootElement.appendChild(heading);
     rootElement.appendChild(status);
@@ -305,7 +319,10 @@
     rootElement.appendChild(proteinRetry);
     rootElement.appendChild(primaryActions);
     rootElement.appendChild(secondaryActions);
-    return { rootElement, status, proteinStatus, proteinRetry, start, resume, discard, history, exportButton };
+    rootElement.appendChild(templateFile);
+    rootElement.appendChild(templateStatus);
+    return { rootElement, status, proteinStatus, proteinRetry, start, resume, discard, history, exportButton,
+      importButton, lastPlan, templateFile, templateStatus };
   }
 
   function appendLabeledRadio(document, fieldset, value, text, checked = false) {
@@ -439,6 +456,17 @@
     let exportBackButton = null;
     let lifecycleTail = Promise.resolve();
     let surfaceReconcileTimer = null;
+    let templateGeneration = 0;
+    let templateBusy = false;
+    let templatePicker = null;
+    let templateCache = null;
+    let lastTemplate = null;
+    let lastTemplateOwner = null;
+    let templateName = null;
+    let templateMessage = '';
+    let templateOrigin = null;
+    const templateApi = root.AppModules?.activityV2?.sessionTemplate;
+    const templateCacheApi = root.AppModules?.activityV2?.sessionTemplateCache;
     let stateSnapshot = createState(
       'blocked',
       'auth_required',
@@ -544,6 +572,15 @@
       ui.discard.disabled = hardBlocked || stateSnapshot.busy;
       ui.history.disabled = !authenticated || stateSnapshot.busy || state === 'destroyed';
       ui.exportButton.disabled = !authenticated || stateSnapshot.busy || state === 'destroyed';
+      const canImport = Boolean(templateApi && templateCacheApi && readTemplateOwner());
+      ui.importButton.hidden = !templateApi;
+      ui.lastPlan.hidden = !templateApi;
+      ui.importButton.disabled = !canImport || stateSnapshot.busy || templateBusy || state === 'destroyed';
+      ui.lastPlan.disabled = ui.importButton.disabled || !lastTemplate || lastTemplateOwner !== readTemplateOwner();
+      if (templateBusy) { ui.start.disabled = true; ui.resume.disabled = true; ui.discard.disabled = true; }
+      ui.templateStatus.textContent = templateMessage;
+      ui.templateStatus.hidden = !templateMessage;
+      renderTemplateOrigin();
       options.historyHost.hidden = stateSnapshot.active_surface !== 'history';
       options.exportHost.hidden = stateSnapshot.active_surface !== 'export';
     }
@@ -650,6 +687,200 @@
     function requireAuthenticated() {
       assertUsable();
       if (!authenticated) fail('AUTH_REQUIRED');
+    }
+
+    function readTemplateOwner() {
+      if (!authenticated || destroyed || destroyRequested) return null;
+      try {
+        const owner = options.getOwnerId ? options.getOwnerId()
+          : root.AppModules?.supabase?.supabaseState?.lastUserId;
+        return typeof owner === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(owner) ? owner : null;
+      } catch { return null; }
+    }
+
+    function renderTemplateOrigin() {
+      if (!templateName || !sessionShellController) { templateOrigin?.remove(); templateOrigin = null; return; }
+      const heading = options.sessionHost.querySelector?.('.activity-v2-session-heading-group');
+      if (!heading) return;
+      if (!templateOrigin) {
+        templateOrigin = createElement(document, 'p', 'activity-v2-template-origin');
+        templateOrigin.dataset.role = 'template-origin';
+        heading.appendChild(templateOrigin);
+      }
+      templateOrigin.textContent = `Vorlage: ${templateName}${templateMessage ? ` · ${templateMessage}` : ''}`;
+    }
+
+    function invalidateTemplateOperations() {
+      templateGeneration += 1;
+      templateBusy = false;
+      templatePicker = null;
+      lastTemplate = null;
+      lastTemplateOwner = null;
+      templateName = null;
+      templateMessage = '';
+      templateCache?.close();
+      templateCache = null;
+      templateOrigin?.remove();
+      templateOrigin = null;
+      ui.templateFile.value = '';
+    }
+
+    function getTemplateCache() {
+      if (!templateCache) templateCache = templateCacheApi.create();
+      return templateCache;
+    }
+
+    async function refreshLastTemplate() {
+      const owner = readTemplateOwner();
+      const generation = templateGeneration;
+      if (!owner || !templateApi || !templateCacheApi) return;
+      try {
+        const value = await getTemplateCache().load(owner);
+        if (generation !== templateGeneration || owner !== readTemplateOwner()) return;
+        lastTemplate = value === null ? null : templateApi.validate(value, options.semantics);
+        lastTemplateOwner = owner;
+      } catch {
+        if (generation !== templateGeneration || owner !== readTemplateOwner()) return;
+        lastTemplate = null;
+        lastTemplateOwner = null;
+      }
+      render();
+    }
+
+    function templateOperationIsCurrent(operation) {
+      return !destroyed && !destroyRequested && authenticated &&
+        operation.generation === templateGeneration && operation.owner === readTemplateOwner();
+    }
+
+    async function prepareTemplateEntry() {
+      requireAuthenticated();
+      if (templateBusy || !templateApi || !templateCacheApi || !readTemplateOwner() || stateSnapshot.busy) return null;
+      const operation = { generation: ++templateGeneration, owner: readTemplateOwner(), recovery: null };
+      templateBusy = true;
+      templateMessage = '';
+      render();
+      try {
+        await ensureRecovery();
+        if (!templateOperationIsCurrent(operation)) return null;
+        if (currentRecoveryState()?.state !== 'empty') {
+          if (sessionCommitController && currentCommitState()?.state !== 'editing') return null;
+          let discarded;
+          if (!sessionShellController && currentRecoveryState()?.state === 'recoverable') {
+            discarded = await discardRecoveredSession();
+          } else {
+            await continueSession();
+            if (sessionDraftController.getSnapshot().revision === 0) {
+              discarded = await options.confirmDiscard(deepFreeze({ message: 'Aktuelles Training für den Import verwerfen?', source: 'recovery_entry' }));
+              if (discarded === true && templateOperationIsCurrent(operation)) {
+                await runLifecycle(async () => {
+                  if (!templateOperationIsCurrent(operation)) return;
+                  await recoveryController.discard();
+                  await replaceFinishedRecovery();
+                });
+              }
+            } else discarded = await requestClose('api');
+          }
+          if (discarded !== true) return null;
+        }
+        if (!templateOperationIsCurrent(operation) || currentRecoveryState()?.state !== 'empty') return null;
+        operation.recovery = recoveryController;
+        return operation;
+      } finally {
+        if (operation.generation === templateGeneration &&
+            (!templateOperationIsCurrent(operation) || currentRecoveryState()?.state !== 'empty')) {
+          templateBusy = false;
+          render();
+        }
+      }
+    }
+
+    function finishTemplateOperation(operation, message = '') {
+      if (operation.generation !== templateGeneration) return;
+      templatePicker = null;
+      templateBusy = false;
+      templateMessage = message;
+      render();
+    }
+
+    async function acceptTemplate(value, operation, imported) {
+      return await runLifecycle(async () => {
+        if (!templateOperationIsCurrent(operation) || operation.recovery !== recoveryController ||
+            currentRecoveryState()?.state !== 'empty' || sessionShellController) return false;
+        const candidate = templateApi.compose(value, { semantics: options.semantics, sessionDraft: options.sessionDraft,
+          now: options.now, createRequestId: options.createRequestId });
+        try {
+          sessionDraftController = recoveryController.startNew(candidate.draft.getSnapshot());
+          createSessionGraph(sessionDraftController);
+          templateName = candidate.template.name;
+          openSession(imported ? ui.importButton : ui.lastPlan);
+        } catch (error) {
+          // Seeded recovery has not flushed yet: leave no partial imported record.
+          teardownSessionGraph();
+          resetRecovery();
+          await ensureRecovery();
+          throw error;
+        }
+        await recoveryController.flush();
+        if (!templateOperationIsCurrent(operation)) return true;
+        if (imported) {
+          try {
+            await getTemplateCache().save(operation.owner, candidate.template);
+            if (!templateOperationIsCurrent(operation)) return true;
+            lastTemplate = candidate.template;
+            lastTemplateOwner = operation.owner;
+          } catch {
+            if (templateOperationIsCurrent(operation)) finishTemplateOperation(operation, 'Training gestartet; der Plan konnte lokal nicht für die Wiederverwendung gespeichert werden.');
+            return true;
+          }
+        }
+        finishTemplateOperation(operation);
+        return true;
+      });
+    }
+
+    async function openTemplatePicker() {
+      if (templateBusy) return;
+      const operation = await prepareTemplateEntry();
+      if (!operation) { if (!templatePicker) { templateBusy = false; render(); } return; }
+      templatePicker = operation;
+      ui.templateFile.value = '';
+      ui.templateFile.click();
+    }
+
+    async function handleTemplateFile() {
+      const operation = templatePicker;
+      if (!operation || !templateOperationIsCurrent(operation)) return;
+      templatePicker = null;
+      const file = ui.templateFile.files?.[0];
+      ui.templateFile.value = '';
+      if (!file) { finishTemplateOperation(operation); return; }
+      try {
+        const value = await templateApi.readFile(file, options.semantics);
+        if (!(await acceptTemplate(value, operation, true))) finishTemplateOperation(operation, 'Der Trainingszustand hat sich geändert. Bitte den Import erneut auswählen.');
+      } catch {
+        if (templateOperationIsCurrent(operation)) finishTemplateOperation(operation, 'Die Trainingsvorlage ist ungültig oder konnte nicht gelesen werden. Bitte Schema, Katalogversion und Übungen prüfen.');
+      }
+    }
+
+    function cancelTemplatePicker() {
+      if (!templatePicker) return;
+      const operation = templatePicker;
+      finishTemplateOperation(operation);
+      templateGeneration += 1;
+    }
+
+    async function loadLastTemplate() {
+      if (templateBusy) return;
+      const value = lastTemplate;
+      const owner = lastTemplateOwner;
+      if (!value || owner !== readTemplateOwner()) return;
+      const operation = await prepareTemplateEntry();
+      if (!operation) { templateBusy = false; render(); return; }
+      try {
+        if (!(await acceptTemplate(value, operation, false))) finishTemplateOperation(operation, 'Der Trainingszustand hat sich geändert. Bitte erneut laden.');
+      } catch {
+        finishTemplateOperation(operation, 'Der letzte Plan ist mit dem aktuellen Katalog nicht verfügbar. Bitte eine gültige Datei importieren.');
+      }
     }
 
     function assertSemantics(value, catalogVersion) {
@@ -944,6 +1175,9 @@
     }
 
     function teardownSessionGraph() {
+      templateName = null;
+      templateOrigin?.remove();
+      templateOrigin = null;
       try {
         unsubscribeCommit?.();
       } catch {
@@ -1354,6 +1588,7 @@
     function setAuthenticated(nextAuthenticated) {
       assertUsable();
       if (typeof nextAuthenticated !== 'boolean') fail('INVALID_AUTH_STATE');
+      invalidateTemplateOperations();
       authenticated = nextAuthenticated;
       return runLifecycle(async () => {
         if (destroyed) fail('CONTROLLER_DESTROYED');
@@ -1365,6 +1600,7 @@
         if (destroyRequested) fail('CONTROLLER_DESTROYED');
         await ensureRecovery();
         reconcileProductState();
+        void refreshLastTemplate();
         if (stateSnapshot.state === 'idle') ui.start.focus();
         else if (stateSnapshot.state === 'recoverable') ui.resume.focus();
         return stateSnapshot;
@@ -1380,6 +1616,8 @@
         'discard-recovery': discardRecoveredSession,
         'open-history': openHistory,
         'open-export': openExport,
+        'import-template': openTemplatePicker,
+        'load-last-template': loadLastTemplate,
         'retry-protein-refresh': retryProteinRefresh
       };
       Promise.resolve()
@@ -1393,6 +1631,7 @@
       if (destroyed) return Promise.resolve(true);
       if (destroyRequested) return lifecycleTail.then(() => destroyed);
       destroyRequested = true;
+      invalidateTemplateOperations();
       authenticated = false;
       return runLifecycle(async () => {
         const closed = await shutdownComposition();
@@ -1402,6 +1641,8 @@
         }
         destroyed = true;
         ui.rootElement.removeEventListener('click', handleClick);
+        ui.templateFile.removeEventListener('change', handleTemplateFile);
+        ui.templateFile.removeEventListener('cancel', cancelTemplatePicker);
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
         options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);
@@ -1447,6 +1688,8 @@
     mountedDocuments.add(document);
     try {
       ui.rootElement.addEventListener('click', handleClick);
+      ui.templateFile.addEventListener('change', handleTemplateFile);
+      ui.templateFile.addEventListener('cancel', cancelTemplatePicker);
       options.sessionHost.addEventListener('click', handleSurfaceInteraction, true);
       options.exportHost.addEventListener('keydown', handleExportKeydown, true);
       document.addEventListener('keydown', handleSurfaceInteraction, true);
@@ -1456,6 +1699,8 @@
     } catch {
       try {
         ui.rootElement.removeEventListener('click', handleClick);
+        ui.templateFile.removeEventListener('change', handleTemplateFile);
+        ui.templateFile.removeEventListener('cancel', cancelTemplatePicker);
         options.sessionHost.removeEventListener('click', handleSurfaceInteraction, true);
         options.exportHost.removeEventListener('keydown', handleExportKeydown, true);
         document.removeEventListener('keydown', handleSurfaceInteraction, true);

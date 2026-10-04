@@ -1,0 +1,9 @@
+{
+  "schema_version": "midas.activity-session-template.v1",
+  "catalog_version": 2,
+  "name": "Beispiel – vertraute Übungen",
+  "items": [
+    { "item_order": 1, "item_key": "leg_curl" },
+    { "item_order": 2, "item_key": "romanian_deadlift" }
+  ]
+}

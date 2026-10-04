@@ -166,11 +166,113 @@ class FakeDocument {
   }
 }
 
-function loadModule() {
-  const window = { AppModules: {}, setTimeout, clearTimeout };
+function loadModule(window = { AppModules: {}, setTimeout, clearTimeout }) {
   vm.runInNewContext(source, { window, globalThis: window, setTimeout, clearTimeout });
   return window.AppModules.activityV2.productController;
 }
+
+function createR15Fixture({ cacheFails = false, ...options } = {}) {
+  const window = { AppModules: {}, setTimeout, clearTimeout };
+  for (const file of ['semantics.js', 'semantics-v2.js', 'session-draft.js', 'session-template.js']) {
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), { window, globalThis: window, TextEncoder });
+  }
+  const api = window.AppModules.activityV2;
+  const fixture = createFixture({ ...options, semanticsVersions: new Map([[1, api.semantics], [2, api.semanticsV2]]) });
+  let owner = '00000000-0000-4000-8000-000000000001';
+  let stored = null;
+  const cacheCalls = [];
+  api.sessionTemplateCache = { create: () => ({
+    load: async () => stored,
+    save: async (_owner, value) => { cacheCalls.push('save'); if (cacheFails) throw new Error('quota'); stored = value; },
+    close: () => cacheCalls.push('close')
+  }) };
+  fixture.options.sessionDraft = api.sessionDraft;
+  fixture.options.getOwnerId = () => owner;
+  fixture.options.now = () => Date.parse('2026-10-04T08:00:00.000Z');
+  const controller = loadModule(window).mount(fixture.options);
+  const entry = fixture.hosts[0].children[0];
+  const file = entry.querySelector('[data-role="template-file"]');
+  let pickerCalls = 0;
+  file.click = () => { pickerCalls += 1; };
+  const click = action => {
+    const button = entry.children.flatMap(child => child.children || []).find(child => child.dataset?.action === action);
+    for (const listener of entry.listeners.get('click')) listener({ target: button });
+  };
+  const choose = async text => {
+    file.files = [{ size: Buffer.byteLength(text), text: async () => text }];
+    for (const listener of file.listeners.get('change')) await listener();
+  };
+  return { ...fixture, controller, entry, file, click, choose, cacheCalls,
+    getStored: () => stored, getPickerCalls: () => pickerCalls, setOwner: value => { owner = value; } };
+}
+
+const r15File = JSON.stringify({ schema_version: 'midas.activity-session-template.v1', catalog_version: 2,
+  name: '<b>Einheit</b>', items: [{ item_order: 1, item_key: 'leg_curl' }] });
+const settleR15 = async () => { for (let i = 0; i < 8; i += 1) await new Promise(resolve => setImmediate(resolve)); };
+
+test('R15 T03: real entry listener composes normal session, one picker, last plan and cache failure', async () => {
+  for (const cacheFails of [false, true]) {
+    const fixture = createR15Fixture({ cacheFails });
+    await fixture.controller.setAuthenticated(true);
+    await settleR15();
+    fixture.click('import-template'); fixture.click('import-template');
+    await settleR15();
+    assert.equal(fixture.getPickerCalls(), 1);
+    await fixture.choose(r15File);
+    assert.equal(fixture.controller.getState().state, 'editing');
+    const draft = fixture.getRecovery().getDraft().getSnapshot();
+    assert.equal(draft.items[0].item_key, 'leg_curl');
+    assert.equal(draft.items[0].sets[0].reps, null);
+    assert.equal(draft.protein_target_relevant, true);
+    assert.ok(fixture.calls.indexOf('shell.open') < fixture.calls.indexOf('recovery.flush'));
+    assert.equal(fixture.cacheCalls.filter(call => call === 'save').length, 1);
+    assert.equal(fixture.getStored() === null, cacheFails);
+    assert.equal(fixture.entry.children.at(-1).textContent.includes('konnte lokal'), cacheFails);
+    await fixture.controller.destroy();
+  }
+});
+
+test('R15 T03: cancelled/invalid file and refused recovered draft leave normal session untouched', async () => {
+  const fixture = createR15Fixture();
+  await fixture.controller.setAuthenticated(true);
+  fixture.click('import-template'); await settleR15();
+  for (const listener of fixture.file.listeners.get('cancel')) listener();
+  assert.equal(fixture.getRecovery().getDraft(), null);
+  fixture.click('import-template'); await settleR15();
+  await fixture.choose('{');
+  assert.equal(fixture.calls.includes('recovery.startNew'), false);
+  assert.equal(fixture.cacheCalls.includes('save'), false);
+  await fixture.controller.destroy();
+  const recovered = createR15Fixture({ initialRecoveryState: 'recoverable', confirmDiscard: false });
+  await recovered.controller.setAuthenticated(true);
+  recovered.click('import-template'); await settleR15();
+  assert.equal(recovered.getPickerCalls(), 0);
+  assert.equal(recovered.calls.includes('recovery.discard'), false);
+  assert.equal(recovered.controller.getState().state, 'recoverable');
+  await recovered.controller.destroy();
+});
+
+test('R15 T03: late file after logout, destroy, owner change or another session cannot publish', async () => {
+  for (const boundary of ['logout', 'destroy', 'owner', 'session']) {
+    const fixture = createR15Fixture();
+    await fixture.controller.setAuthenticated(true);
+    fixture.click('import-template'); await settleR15();
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    fixture.file.files = [{ size: Buffer.byteLength(r15File), text: () => pending }];
+    const reading = [...fixture.file.listeners.get('change')][0]();
+    await settleR15();
+    if (boundary === 'logout') await fixture.controller.setAuthenticated(false);
+    if (boundary === 'destroy') await fixture.controller.destroy();
+    if (boundary === 'owner') fixture.setOwner('00000000-0000-4000-8000-000000000002');
+    if (boundary === 'session') await fixture.controller.startSession();
+    const starts = fixture.calls.filter(call => call === 'recovery.startNew').length;
+    release(r15File); await reading;
+    assert.equal(fixture.calls.filter(call => call === 'recovery.startNew').length, starts, boundary);
+    assert.equal(fixture.cacheCalls.includes('save'), false, boundary);
+    await fixture.controller.destroy();
+  }
+});
 
 function api(methods) {
   return Object.fromEntries(methods.map((method) => [method, () => {}]));
@@ -377,9 +479,9 @@ function createFixture({
     const recovery = {
       getState: () => state,
       getDraft: () => draft,
-      startNew: () => {
+      startNew: (snapshot) => {
         calls.push('recovery.startNew');
-        draft = makeDraft(2);
+        draft = snapshot ? { getSnapshot: () => snapshot } : makeDraft(2);
         publish(freezeRecoveryState('active'));
         return draft;
       },

@@ -1165,6 +1165,27 @@ test('open missing exposes exact controller state and pristine managed draft wit
   assert.deepEqual(states, ['empty', 'active']);
 });
 
+test('R15 T03: prepared normal snapshot validates atomically and writes only on accepted flush', async () => {
+  const runtime = loadRuntime();
+  const fake = createFakeIndexedDb();
+  const store = runtime.recoveryApi.createIndexedDbStore({ indexedDB: fake.indexedDB });
+  const setup = createOpenOptions(runtime, store);
+  const controller = await runtime.recoveryApi.open(setup.options);
+  const snapshot = createDraft(runtime).getSnapshot();
+  assert.throws(() => controller.startNew({ ...plain(snapshot), items: [{ invalid: true }] }));
+  assert.equal(controller.getState().state, 'empty');
+  assert.equal(controller.getDraft(), null);
+  const managed = controller.startNew(snapshot);
+  assert.deepEqual(plain(managed.getSnapshot()), plain(snapshot));
+  assert.equal(setup.scheduler.callbacks.length, 0);
+  assert.equal(fake.control.getRecord(), undefined);
+  await controller.flush();
+  assert.equal(controller.getState().state, 'saved');
+  assert.ok(fake.control.getRecord());
+  assert.throws(() => controller.startNew(snapshot));
+  controller.destroy();
+});
+
 test('real mutations enqueue once, canonical no-ops enqueue nothing and save the latest state', async () => {
   const runtime = loadRuntime();
   const fake = createFakeIndexedDb();

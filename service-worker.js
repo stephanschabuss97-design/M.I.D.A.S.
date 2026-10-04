@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v31';
+const CACHE_VERSION = 'v32';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -17,12 +17,12 @@ const CORE_ASSETS = [
   toUrl('./'),
   toUrl('index.html'),
   toUrl('offline.html'),
-  toUrl('app/app.css?v=31'),
+  toUrl('app/app.css?v=32'),
   toUrl('app/styles/hub.css?v=11'),
   toUrl('app/modules/vitals-stack/activity/v2/session-shell.css?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.css?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.css?v=24'),
-  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.css?v=25'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.css?v=32'),
   toUrl('assets/img/Activity_v2.png'),
   toUrl('assets/img/Personal_data_v3.png'),
   toUrl('app/core/boot-flow.js'),
@@ -41,7 +41,9 @@ const CORE_ASSETS = [
   toUrl('app/modules/vitals-stack/activity/v2/semantics.js?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/semantics-v2.js?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/session-draft.js?v=30'),
-  toUrl('app/modules/vitals-stack/activity/v2/session-recovery.js?v=30'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-template.js?v=32'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-template-cache.js?v=32'),
+  toUrl('app/modules/vitals-stack/activity/v2/session-recovery.js?v=32'),
   toUrl('app/modules/vitals-stack/activity/v2/session-commit.js?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/session-canonicalization.js?v=24'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export.js?v=30'),
@@ -52,7 +54,7 @@ const CORE_ASSETS = [
   toUrl('app/modules/vitals-stack/activity/v2/session-history-shell.js?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js?v=30'),
-  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=31'),
+  toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=32'),
   toUrl('app/supabase/index.js?v=29'),
   toUrl('app/supabase/core/state.js?v=29'),
   toUrl('app/supabase/core/client.js?v=29'),
