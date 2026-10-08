@@ -4,18 +4,18 @@
   "scope": "PROCESS_ONLY",
   "releaseBinding": {
     "bindingVersion": "kasrkin-project-binding/1",
-    "releaseId": "kasrkin-846014632990bb03",
-    "releaseFingerprint": "846014632990bb0398ecc8dd450981b43e29186d3f31641487e65818b0dbf0fb",
-    "payloadDigest": "3be4e889eda5875f0750332f8f88357b0c14d8c70e7f038225281d8a0d7f5217",
-    "receiptSha256": "6762c3725a4cb2c78a48998c39910b3b898e4554d4bd9e43ac42fb42786f5517"
+    "releaseId": "kasrkin-5e4c28677939712a",
+    "releaseFingerprint": "5e4c28677939712ab038484c2732d24b8ec9a2a1fbba3d41e9bc344656bcd200",
+    "payloadDigest": "6823efdf36e5e31de59a7691e794e3659ab4e73906c31640d9461633f056e2b6",
+    "receiptSha256": "b20ac547e5beb8c5d559519e1ad0f1a2ef1d3811b2de3dfef64ede7186710b73"
   },
   "shim": {
-    "path": "C:\\Users\\steph\\.local\\share\\kasrkin-gate-v1\\bin\\kasrkin.cmd",
-    "bytes": 237,
-    "sha256": "f42d1b3762631e8d1a8884b84e16e603e1515e5bc43bc6edfbc5790aa3bfe20f"
+    "path": "C:\\Users\\steph\\.local\\share\\kasrkin-admin-v1\\bin\\kasrkin.cmd",
+    "bytes": 238,
+    "sha256": "ddf1bb4629e101c1f1fd620d9aa8f6b83292f08d93b728dd5100d62d6b8765ce"
   },
   "bootstrap": {
-    "path": "C:\\Users\\steph\\.local\\share\\kasrkin-gate-v1\\releases\\kasrkin-846014632990bb03\\tools\\kasrkin\\Set-KasrkinCommandContext.ps1",
+    "path": "C:\\Users\\steph\\.local\\share\\kasrkin-admin-v1\\releases\\kasrkin-5e4c28677939712a\\tools\\kasrkin\\Set-KasrkinCommandContext.ps1",
     "bytes": 4635,
     "sha256": "f2a301eacab944070b4cf34808b7b29a866741e074073045b9b9b2f63b2f731b"
   },

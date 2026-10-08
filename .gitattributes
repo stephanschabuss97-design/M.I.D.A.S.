@@ -10,3 +10,15 @@
 *.jpg binary
 *.ico binary
 *.pdf binary
+# KASRKIN activation records and consultation roles require exact byte preservation.
+".kasrkin/Test-MidasKasrkinActivation.ps1" -text
+".kasrkin/activation.json" -text
+".kasrkin/binding.json" -text
+".kasrkin/command.json" -text
+".kasrkin/integration.md" -text
+"AGENTS.md" -text
+"docs/DEV_ENVIRONMENT.md" -text
+"docs/templates/MIDAS Roadmap Evidence Template.md" -text
+"docs/templates/MIDAS Roadmap Template.md" -text
+"docs/templates/MIDAS Roadmap Workflow Contract.md" -text
+"docs/templates/README.md" -text

@@ -1,6 +1,6 @@
 param(
     [string]$ProjectRoot=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [string]$ExpectedInstallRoot=(Join-Path $env:USERPROFILE '.local\share\kasrkin-gate-v1')
+    [string]$ExpectedInstallRoot
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -9,9 +9,13 @@ try {
     $bindingPath=Join-Path $ProjectRoot '.kasrkin\binding.json'
     $binding=Get-Content -Raw -Encoding UTF8 -LiteralPath $bindingPath|ConvertFrom-Json
     $activation=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $ProjectRoot '.kasrkin\activation.json')|ConvertFrom-Json
-    if($activation.activationVersion -cnotin @('codex-tools-kasrkin-activation/2','midas-kasrkin-activation/2','hestia-kasrkin-activation/2') -or $activation.paidCredits.ownerAuthorization -cne 'NOT_GRANTED'){throw 'KASRKIN_COMMAND_K0_CONTRACT'}
+    if($activation.activationVersion -cnotin @('codex-tools-kasrkin-activation/2','midas-kasrkin-activation/2','hestia-kasrkin-activation/2','codex-tools-kasrkin-activation/3','midas-kasrkin-activation/3','hestia-kasrkin-activation/3') -or $activation.paidCredits.ownerAuthorization -cne 'NOT_GRANTED'){throw 'KASRKIN_COMMAND_K0_CONTRACT'}
     $selection=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $ProjectRoot '.kasrkin\command.json')|ConvertFrom-Json
     if($binding.releaseId -cnotmatch '^kasrkin-[a-f0-9]{16}$' -or $binding.receiptSha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'KASRKIN_COMMAND_K0_BINDING_FORMAT'}
+    if([string]::IsNullOrWhiteSpace($ExpectedInstallRoot)){
+        if(-not [IO.Path]::IsPathRooted($selection.bootstrap.path)){throw 'KASRKIN_COMMAND_K0_BOOTSTRAP_SELECTION_DRIFT'}
+        $ExpectedInstallRoot=[IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $selection.bootstrap.path) '..\..\..\..'))
+    }
     $receiptPath=Join-Path $ExpectedInstallRoot ('receipts\'+$binding.releaseId+'.json')
     if((Get-FileHash -Algorithm SHA256 -LiteralPath $receiptPath).Hash.ToLowerInvariant() -cne $binding.receiptSha256){throw 'KASRKIN_COMMAND_K0_RECEIPT_DRIFT'}
     $receipt=Get-Content -Raw -Encoding UTF8 -LiteralPath $receiptPath|ConvertFrom-Json

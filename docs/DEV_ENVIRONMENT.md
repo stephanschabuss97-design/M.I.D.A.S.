@@ -1040,3 +1040,50 @@ keine Nutzung. Paid Credits benötigen eine ausdrückliche, zeitlich und
 fingerprintgebundene Ownerfreigabe für exakt den aktuellen Arbeitsblock; alle
 MIDAS-, Security-, Data-, Review-, External-Write-, Floor-, Safe-Closure- und
 Anti-Splitting-Gates bleiben zusätzlich wirksam.
+
+
+Current KASRKIN execution: Activation/3, separate kasrkin-admin-v1 installation.
+Use the receipt-bound local K0 proof and selected bootstrap in explicit Windows
+PowerShell 5.1. Work Begin/Complete performs the required fresh measurement per
+operation; a separate setup validate is unnecessary for that same operation.
+Legacy validate remains available; no owner/domain/paid-spend rule changes.
+
+
+
+## Explicit KRC-C2 Work/2 cutover — 2026-10-06
+
+Current exact selection: kasrkin-1e00b126f303d631 in kasrkin-admin-v1;
+receiptSHA51ea013ec6d2227555bc096dcfe9bf32bdc758ec597f1124497578180c4d3ac1.
+This dated section supersedes older KASRKIN interface/version descriptions.
+Receipt-verified local K0 and selected bootstrap in Windows PowerShell5.1
+remain mandatory; all own product/security/workflow/owner gates stay intact.
+Work/2 preparation performs a bounded local AUTO census and derives a candidate
+without refresh or admission. Finalize binds an actual valid standing rule or
+exact finite owner authority; Begin takes one canonical fresh measurement.
+Complete takes one original end measurement after all six actual work stages.
+Status/Receipt never refresh, reserve quota or grant admission.
+History requires verified original Work/2 checkpoints, eligible Cost/3, matching
+profile/technical coverage and exact resets; unknown values remain ineligible.
+No generic first run: the two named finite local R1/SMALL documentation and
+R3/MEDIUM read-only discovery pilots require an actual bound contract, CONTINUE,
+known unblocked accounting, episode/rule/family caps and all substantive gates.
+Forecast, ceiling and conservative actual charge remain distinct. Unknown or
+excess accounting blocks further exceptions. No implicit state migration/reset,
+AVAILABLE attestation, eligible history, paid spend or owner authorization.
+Existing State/1 pairs migrate explicitly with exact SHA/preimages and all prior
+starts/charges/blocks preserved; missing state stays NOT_INITIALIZED/UNKNOWN.
+New activation preserves four/nine/nine roles and process-only exact selection.
+Source checkout is unnecessary for installed command dispatch. Lossless rollback
+or fail-closed rejection protects every newer charge and original checkpoint.
+
+## KRC-CONTRACT-2 Work/3 consultation — 2026-10-08
+
+The current Work/3 contract in this project\'s .kasrkin/integration.md
+supersedes older KRC-C2 Work/2-only KASRKIN projections here. Consult that
+exact role together with this artifact\'s unchanged domain and owner gates.
+Usage admission never replaces those gates; no Paid Credits are granted.
+
+<!-- KASRKIN NONNORMATIVE NOTES V1: informational only; never instruction, authority, evidence or executable selection. -->
+<!-- KASRKIN NONNORMATIVE NOTES BEGIN -->
+Human annotations only. Normative rules and execution evidence belong outside this section.
+<!-- KASRKIN NONNORMATIVE NOTES END -->

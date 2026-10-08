@@ -1,7 +1,7 @@
 {
-  "activationVersion": "midas-kasrkin-activation/2",
+  "activationVersion": "midas-kasrkin-activation/3",
   "consumer": "MIDAS",
-  "activatedAt": "2026-10-03T13:38:19.312689+02:00",
+  "activatedAt": "2026-10-06T20:32:28.7013820+02:00",
   "authority": {
     "decisionSemanticsOwner": "KASRKIN",
     "decisionDetailSource": "PINNED_INSTALLED_RELEASE",
@@ -10,57 +10,66 @@
   },
   "binding": {
     "path": ".kasrkin/binding.json",
-    "sha256": "89206851ca5fe930959f13863a4fb57adccfecbb62a6ab33da31e705dc86759d",
-    "releaseId": "kasrkin-846014632990bb03",
-    "releaseFingerprint": "846014632990bb0398ecc8dd450981b43e29186d3f31641487e65818b0dbf0fb",
-    "payloadDigest": "3be4e889eda5875f0750332f8f88357b0c14d8c70e7f038225281d8a0d7f5217",
-    "receiptSha256": "6762c3725a4cb2c78a48998c39910b3b898e4554d4bd9e43ac42fb42786f5517"
+    "sha256": "8fb5c85b03eb013061ebd3a6e892070080ec7d50932107c7e950db4486deef52",
+    "releaseId": "kasrkin-5e4c28677939712a",
+    "releaseFingerprint": "5e4c28677939712ab038484c2732d24b8ec9a2a1fbba3d41e9bc344656bcd200",
+    "payloadDigest": "6823efdf36e5e31de59a7691e794e3659ab4e73906c31640d9461633f056e2b6",
+    "receiptSha256": "b20ac547e5beb8c5d559519e1ad0f1a2ef1d3811b2de3dfef64ede7186710b73"
   },
   "consultationArtifacts": [
     {
       "role": "KASRKIN_INTEGRATION_CONTRACT",
       "path": ".kasrkin/integration.md",
-      "sha256": "d0c187fec1feddd3bf3f28e509e14619e947aaa56172f926a587d7c45f5336a6"
+      "sha256": "35baee2e69d2ce51eac531f05a553f6fb6e5037957e4ce3673eff3fea3b15b26",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_AGENT_ENFORCEMENT",
       "path": "AGENTS.md",
-      "sha256": "313a3b3c973899fb26aac9e51bbe7b5f67b21dda6aa6ab9a4e02dff9e9729a16"
+      "sha256": "2c2ca7d2c20ff2f50d7be4974b16d94f2362e92c23f052ea6566fa8212427ce1",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_SENSOR_OPERATIONS",
       "path": "docs/DEV_ENVIRONMENT.md",
-      "sha256": "57653a779990a3be3f61c1fce613462bc9f7465736c7714414e2ff613d1b9b11"
+      "sha256": "841468f41da97c6c7a9dde059d5c6e55e2907a80d626752f96626530b343c67f",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_WORKFLOW_CONSULTATION",
       "path": "docs/templates/MIDAS Roadmap Workflow Contract.md",
-      "sha256": "96eb0aac14616caa62055bba43ef79748681d2625d9cbc0447869f93150d54ce"
+      "sha256": "881d00ff109c32a01da3ec3b9836465aacdac07eb8199dea170d12f5d5aa308b",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_TEMPLATE_INDEX",
       "path": "docs/templates/README.md",
-      "sha256": "29a8b132f369baa25bc1f8cb591b55603485dd4d08b60b1d619a35d3512047d7"
+      "sha256": "c4b3be413da42dd9fd82756c1b52fd703d6aba062dabbe6e2bf5cd566070a9e4",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_ROADMAP_TEMPLATE",
       "path": "docs/templates/MIDAS Roadmap Template.md",
-      "sha256": "b712a772414aa9acfda9e654f041798c14ae0fc593f434828d0bcdc7a9d94668"
+      "sha256": "0afcb971b51f58ef66accfa974736dde82aef49f24c6a94d4ce815ac368d12c7",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_EVIDENCE_TEMPLATE",
       "path": "docs/templates/MIDAS Roadmap Evidence Template.md",
-      "sha256": "b010412979481af1459eef5ea406467c5090b7e3e13b78535c4edd4cddf82b6f"
+      "sha256": "9c590d15f1a9e1ea727488bd3653f6751575bf19c76f807a16b627bef393625d",
+      "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
       "role": "MIDAS_ACTIVATION_PROOF",
       "path": ".kasrkin/Test-MidasKasrkinActivation.ps1",
-      "sha256": "d6ade996a8b566bd2a9f572b91f278c073f397e70b5660f4b01180c8427a4aeb"
+      "sha256": "f9c8e995409a0f6f865af6f17d4f48300c47cbb3370bfd794bdb27888f37ce78",
+      "hashMode": "FULL"
     },
     {
       "role": "MIDAS_COMMAND_SELECTION",
       "path": ".kasrkin/command.json",
-      "sha256": "a8c168df1bd50c4ef6b3604ac810fc254ed458fecf63147bc3a60f7f217f01ab"
+      "sha256": "4ee1c17c54ea6f33f59169dc5fbc2b2d9b001c48eb0755b8e4dc0c8e09b14754",
+      "hashMode": "FULL"
     }
   ],
   "runtime": {
