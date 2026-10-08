@@ -200,7 +200,7 @@ Activation/3 excludes only the explicitly nonnormative notes body on approved
 document roles. All other bytes, legend/markers, references, local identity,
 product/workflow/security/owner rules and executable selections remain protected.
 Notes are never instructions, authority, execution evidence or command selection.
-See [KASRKIN Work Operation](../codex-tools/apps/kasrkin/docs/KASRKIN%20Work%20Operation.md) for the request/report
+See [KASRKIN Manual](../codex-tools/apps/kasrkin/docs/KASRKIN%20Manual.md#work3-schnittstelle) for the request/report
 schema and recovery boundaries. No persistent PATH or automatic reactivation.
 
 

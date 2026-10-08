@@ -26,7 +26,7 @@
     {
       "role": "MIDAS_AGENT_ENFORCEMENT",
       "path": "AGENTS.md",
-      "sha256": "2c2ca7d2c20ff2f50d7be4974b16d94f2362e92c23f052ea6566fa8212427ce1",
+      "sha256": "73c09e6eb20bd501da22c2d44fe9e2d30d7705bf82357e110025da1828e5020c",
       "hashMode": "EXCLUDE_NON_NORMATIVE_NOTES_V1"
     },
     {
