@@ -1,6 +1,76 @@
 # MIDAS Supabase Modernization — Startpaket für den nächsten Bucket
 
-## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlicht, 2026-10-09
+## Aktueller Wiedereinstieg — D29 / G3 freigegeben, Preflight abgeschlossen, 2026-10-09
+
+Owner D29: „Dann los mit G3 … Mach alles sauber und archiviere die roadmap.
+Volle freigabe“. Benannter G3-Backend-/Key-/Store-/Incidentcutover beauftragt;
+keine erneute allgemeine Freigabefrage. Konkrete aktuelle Readiness und sichere
+vollständige Zulassung bleiben vor produktiver Ausführung erforderlich.
+Web/Auth v34 bereits veröffentlicht/verifiziert:7cd5a9c + Doku dbb03a1 (D28).
+F22 OWNER_CONFIRMED_FIXED; lokale Ownerlogin/Doctor/Report/BP-Nachweise gültig.
+
+G3-Preflight eigenständig PRIMARY_ALLOWED, Originalpermit vor Arbeit;
+Start07:05:45+02 VALID48/39 Rest, HEURISTIC8–14/2–4 MEDIUM inklusive Closure,
+Reserve25/10 einmal zusätzlich. Acht aktuelle deployed Functionstände samt
+Abhängigkeiten/Flags separat frisch gesichert; vorhandene CLI2.109.1,
+API-Deploy ohne Docker und acht ausführbare Source-Reversebefehle vorbereitet.
+Kein Deploy, Key-/Secretwrite, Dispatch, Push, SQL-/Geräte-/Signing-/Legacyeffekt.
+
+F23/P1 G3_READINESS_OPEN: Incident live verify_jwt=true ist inkompatibel mit
+dem vorbereiteten apikey-only Named-Secretcaller. Der nächste volle Cutover
+muss die einzige Flagänderung Incident true→false zusammen mit geprüftem
+Body-Named-Key-/Ownerguard umfassen; sieben andere Flags unverändert.
+Kein offener Handler, keine Authorization-Fallbackfreigabe. Der ältere
+Paketvorschlag „alle Flags unverändert“ ist für Incident damit invalidiert.
+
+default Publishable existiert; protein_targets_scheduler/trendpilot_scheduler
+existieren. monthly_report_backend/incidents_push_scheduler fehlen;
+MIDAS_OWNER_USER_ID fehlt, GitHub INCIDENTS_PUSH_SECRET_KEY fehlt.
+Die drei alten Scheduler-Ownerwerte sind über Management nicht lesbar:
+Gleichheit UNKNOWN. Authentifizierter nicht-anonymer Owner muss durch echtes
+aktuelles getUser bestätigt werden; kein Admin-/Cache-/User-ID-Fallback.
+Reservierte SUPABASE_* Maps vorhanden; Inhalt/Runtimepropagation UNKNOWN.
+Offizieller Vertrag: automatisch injizierte Maps, nicht manuell überschreiben;
+Customsecrets sofort wirksam, Supabase_-Präfix für manuelle Writes gesperrt.
+Keytyp+Name gemeinsam auswählen: Publishable und Secret heißen beide default.
+
+Konkreter vollständiger nächster Cutover: HEURISTIC18–30/4–8 MEDIUM,
+Reserve25/10 genau einmal, Bedarf55/18. Noch kein produktiver Begin/Permit;
+nicht kleiner teilen oder Forecast senken. Storevorbereitung, kontrollierte
+Incidents-Schedulerpause/Stillstand, acht Deploys, Callercommit/-push,
+Auth-/Nullwirkungspostchecks, Reverse, Review/Doku/Receipt/Closure enthalten.
+Eine Pause ist Teil dieses kontrollierten G3-Fensters, kein automatischer Run.
+Positive AI-/Gesundheits-/Push-/Gerätetests brauchen realen benannten Testumfang;
+Owner-AI bleibt deaktiviert. Keine künstlichen klinischen Daten/Providerkosten.
+
+Preflight original CLOSED / COMPLETED_SUCCESS:48/39 →43/39 Rest,
+Delta5/0pp5h/Weekly, Ende2026-10-09T07:13:46+02. Separates Accounting14/4,
+keine genaue Auftragskostenmessung; Weeklydelta0 bei1ppSensorauflösung ist
+kein Nullkostennachweis. Cost/3 ineligible (Attribution/Overhead/volle Bounds
+UNKNOWN).106 tatsächlich erfasste Checks PASS; keine Runtime-Smokes.
+Docscommit/-push erfolgt in eigenem vollständig zugelassenem D29-Publikations-
+block; dessen Originalbundle/Usage/Context unter
+`.kasrkin/work/supa-g3-doc-publish-candidate-20261009` und
+`.kasrkin/work/supa-g3-doc-publish-20261009`. Kein neuer produktiver G3-Begin.
+
+Originalbundle `.kasrkin/work/supa-g3-preflight-v2-candidate-20261009/bundle.json`;
+aktueller Context/Originalusage/Source-Reverse/Readiness unter
+`.kasrkin/work/supa-g3-preflight-20261009`. End/Receipt ausschließlich Original
+Complete; completiongebundene Evidence unverändert, Ableitungen separat.
+59 historische Schutzfingerprints plus acht fresh Functionpreimages erhalten;
+voller Files-/Toolcallcensus/Attribution/Messoverhead UNKNOWN/null, keine
+Eligible History/Nullkosten/übernommenen W1-Obergrenzen/Paid Credits.
+
+Parent/Child/Evidence/Execution Pack ACTIVE. Gesamt-DONE/Archiv erst nach
+realen W4-Android-/Widget-, W5-Legacyfrei-/Job-/Abschalt- und W6-Exitnachweisen;
+G3-Arbeitsfreigabe ersetzt keine Acceptance. HS256 CURRENT/ES256 STANDBY,
+keine Rotation. Fremde Future-Thought-Löschung bewahrt; kein Reset/Stash.
+Nächster zulässiger Produktblock: echtes aktuelles Owner-getUser als technischen
+Nachweis herstellen, danach frische Zulassung des vollständigen G3-Fensters
+mit exakt gebundenen aktuellen Preimages/Stores/Incidentflaggrenze.
+
+
+## Historischer Wiedereinstieg — D28 / Web-v34 veröffentlicht, 2026-10-09
 
 LOCAL_OWNER_ACCEPTANCE_PASS: Stephan bestätigt echten Login ohne erneutes
 Overlay, Doctorunlock und erfolgreiche Reporterstellung01.01.2026–09.10.2026.
