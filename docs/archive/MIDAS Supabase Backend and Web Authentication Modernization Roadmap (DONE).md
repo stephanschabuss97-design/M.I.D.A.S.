@@ -1,10 +1,63 @@
-# MIDAS Supabase Backend and Web Authentication Modernization Roadmap
+# MIDAS Supabase Backend and Web Authentication Modernization Roadmap (DONE)
 
-## Aktueller Wiedereinstieg — D32 / G3/G4 technisch ausgerollt, 2026-10-09
+## D33 — Owner-Abschluss und Archiv, 2026-10-09
+
+Diese Karte ersetzt die Ausführungsanweisungen der historischen Stände unten.
+Stephan bestätigt den normalen Betrieb auf Live Server, PC und Android sowie
+erfolgreiche neue Arztberichte nach dem G3/G4-Cutover. Backend/Web ist für
+diesen bestehenden Produktumfang **DONE / OWNER_ACCEPTED**. Zusätzliche
+Runtime-, Provider-, Push- oder künstliche Captureproben entfallen auf seinen
+ausdrücklichen Abschlussauftrag. Nicht ausgeführte Proben erhalten kein PASS.
+
+**EV-D33-01:** Owner-Retest ohne Fehler. Der bereitgestellte Health Export V3
+wurde am 09.10.2026 um 12:34 Uhr (Europe/Vienna) erzeugt und mit den tatsächlichen
+unveränderten V3-/Activity-Consumer-Validatoren erfolgreich geprüft.
+SHA-256: `c74138ecd811494717854c57838a346cf56c59c8b4d92fb9fa1c483c0f416d4c`.
+Er meldet vollständige Domains und enthält die Datengrundlage, keinen Berichtstext.
+Render-/Berichterfolg ist Ownerbeobachtung. Gesundheitswerte, User-IDs und
+Rohdaten bleiben privat. Die genaue Android-Oberfläche sowie eine native
+APK-/Store-/Widgetmigration werden dadurch nicht zusätzlich technisch bewiesen.
+
+**Scopeabschluss:** Backend/Web-Child `(DONE)`; Parent, Programmevidence und
+Startpaket **CLOSED_BY_OWNER / PARTIAL_COMPLETION**, archiviert als `(CLOSED)`.
+W4 native Store-/Widgetmigration, W5 Legacyabschaltung und der davon abhängige
+vollständige W6-Roll-up sind zurückgestellt, nicht DONE. A6 bleibt unerfüllt:
+Legacy ist aktiv. HS256 CURRENT / ES256 STANDBY; keine Signingrotation.
+[Restumfang, Owner und wirksame G5/G6-Grenzen](<../MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md>).
+
+**Aktuelle Findings:** F22 OWNER_CONFIRMED_FIXED; F23 VERIFIED_RUNTIME.
+F04/F07/F16 sind für den ausgelieferten Auth-/Owner-/Named-Keyguardumfang
+geschlossen: D32 Runtime-/Store-/Caller-/Negativnachweise plus D33
+Owneracceptance. Daraus wird kein erfolgreicher Provider-/Pushsendetest.
+F05 ist auf Web geschlossen; die native Seite bleibt als Stephan zugeordnete,
+durch G5 vor nativer Migration wirksam begrenzte Watchlist im Restdokument.
+Historische L2-/S6-FINDING_ONLY-Receipts werden nicht nachträglich aufgewertet.
+
+**Prozessoverride:** Nach der frischen Ablehnung fordert Stephan ausdrücklich
+diesen reinen Datei-/Archiv-/Gitabschluss jetzt als User Override.
+**NOT_ADMITTED_OWNER_OVERRIDE**, kein zugelassener Work/3-Lauf. Letzte kanonische
+Beobachtung 13:02:04+02:00: 26/24 % Rest, Bedarf35/13 inklusive Reserve,
+PRIMARY_REJECTED_FOR_RESERVE, Permit=null. Originale Ablehnungen und frühere
+erfolgreiche Bundle-/Start-/Permit-/Completion-/End-/Receiptbelege bleiben
+unverändert. Kein nachträglicher Start/Complete und keine Eligible History.
+Kosten dieses Overrides, Attribution, Parallelismus und Messoverhead UNKNOWN.
+Private Overrideevidence und neuer Context Receipt:
+`.kasrkin/work/supa-owner-close-override-20261009/`.
+
+**Gitgrenze:** Abschluss-/Archiv-/Referenzänderungen und die nun ausdrücklich
+freigegebene Löschung der MIDAS-Kopie des KASRKIN-Future-Thought-Dokuments gehören
+zum Commit/Push. Operatorstore, Originalreceipts, Preimages und Gesundheitsdatei
+bleiben lokal. Produktbytes unverändert.
+
+**Fortsetzung:** Dieses Paket hat keinen aktiven Ausführungsauftrag mehr.
+Spätere native Migration oder Legacyabschaltung benötigt eigene konkrete
+Planung, Zulassung und Wirkungsgenehmigung gemäß Restarbeitsdokument.
+
+## Historie — D32 / G3/G4 technisch ausgerollt, 2026-10-09
 
 Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
 
-**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](templates/MIDAS%20Supabase%20Operator%20Env.example) und [Consumer-/Storezuordnung](MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../templates/MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
 
 **Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
 
@@ -299,12 +352,12 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Feld | Festlegung |
 | --- | --- |
 | ID / Typ | SUPA-BW-2026 / EXECUTION CHILD, Parent-W2/W3 |
-| Owner / Status | Stephan; L1-L3/S5/S6 historical local evidence; F22 OWNER_CONFIRMED_FIXED; Web v34 PUBLISHED; D32 eight Functions DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; PRODUCT_ACCEPTANCE_OPEN / ACTIVE |
-| Parent / Evidence | [Masterplan](<MIDAS Supabase API Key and Edge Authentication Modernization Masterplan.md>); [Programmevidence](<MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>), EV-W1/JP1/BW |
+| Owner / Status | Stephan; L1-L3/S5/S6 historical local evidence; F22 OWNER_CONFIRMED_FIXED; Web v34 PUBLISHED; D32 eight Functions DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; DONE / OWNER_ACCEPTED_D33 / ARCHIVED |
+| Parent / Evidence | [Masterplan](<MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Masterplan%20%28CLOSED%29.md>); [Programmevidence](<MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>), EV-W1/JP1/BW |
 | Revision / Freeze | BW-S4R-1 / 2026-10-08; lokale Scopegrenze unten; Produktfenster separat |
 | Risiko / Review | R3, Gesamtumfang LARGE; Full S1/S2/S3/S4R/S5/S6, Delta/Consumer S4 |
 | Modell / Reasoning | Vertragsstandard GPT-5.6 Sol, Planung Extra High / Umsetzung High / Produktfenster Extra High; tatsächliche Einstellung NOT_OBSERVABLE |
-| Authority | D32 exact whole Env/Key/Store/Scheduler/8-Function/Caller/Web/Commit/Push package GRANTED; G2 local preserved; G5/G6 NOT_GRANTED. Positive clinical/provider/push effects require exact test authority; no archive before real exits. |
+| Authority | D32 exact whole Env/Key/Store/Scheduler/8-Function/Caller/Web/Commit/Push package GRANTED; G2 local preserved; G5/G6 NOT_GRANTED. D33 owner accepts the delivered scope and closes additional live-smoke requirements; no new provider/push effects authorized. |
 | Git | 7cd5a9c813066affc4313a60e6a4b05cee6a63ad; Web/Auth veröffentlicht; Backend/Workflow/fremde Löschung uncommitted geschützt; kein Reset/Stash/Forcepush |
 
 Reentry: Pflichtquellen/Parent-Receipt, diese Karte, Findings und nächste offene
@@ -504,7 +557,7 @@ D21/G2 LOCAL_GRANTED bleibt, S4 NOT_STARTED_OWNER_DEFERRED. F18 ursprüngliche
 Ablehnung bleibt Historie, keine heutige erneute L1-Zulassung/Umsetzung.
 Keine automatische Warteschleife, kein Produktbeginn nach NB-1-Closure.
 
-Das [Startpaket NB-1](<MIDAS Supabase Modernization Next Bucket Execution Pack.md>)
+Das [Startpaket NB-1](<MIDAS%20Supabase%20Modernization%20Next%20Bucket%20Execution%20Pack%20%28CLOSED%29.md>)
 bindet genaue L1-Datei-/API-/Testgrenze,14 konkrete Bruchrisiken mit Orakeln,
 aktive Guard→Handler-Negativkette statt injizierter Principalfixture als
 Authbeweis, vorhandenen Browserharness an tatsächlichen SHA, Import-/Cache-/

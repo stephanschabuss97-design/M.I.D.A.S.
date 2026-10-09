@@ -8,7 +8,7 @@ SW und Offlineasset sowie Desktop/Mobil. Keine Page-/Consoleerrors.
 Die gehostete Session/SDK/Storage sind Fixtures; alle externen Transporte lokal
 abgefangen. Echte Ownerchecks Login/Doctor/Report/BP getrennt dokumentiert.
 Keine reale Provider-/Backend-/Geräteacceptance aus Fixtures ableiten.
-Prüfresultate und offene Gates: [Programmevidence](<../MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+Prüfresultate und offene Gates: [Programmevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
 
 
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix

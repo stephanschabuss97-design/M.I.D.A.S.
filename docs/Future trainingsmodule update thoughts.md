@@ -1957,7 +1957,7 @@ Ziel:
   im `apikey`-Header aktivieren; die globale Migration von PWA, Android,
   Incident Push und übrigen Edge Functions bleibt ausdrücklich außerhalb von
   R13 und folgt dem
-  [Supabase API Key and Edge Authentication Modernization Masterplan](<MIDAS Supabase API Key and Edge Authentication Modernization Masterplan.md>)
+  [Supabase API Key and Edge Authentication Modernization Masterplan](<archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Masterplan%20%28CLOSED%29.md>)
 - Trendpilot pro Request über einen gemeinsamen Snapshot-Umschlag statt über
   einen RPC pro Event versorgen; die 27-Tage-Erweiterung des Requestfensters
   gegen das SQL25-Maximum von 400 Tagen fail-closed auflösen

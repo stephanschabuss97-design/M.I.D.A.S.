@@ -3,8 +3,11 @@
 ## Supabase-Modernisierungsvertrag — D32 technisch ausgerollt
 
 Der folgende Vertrag ist mit Monthlyversion 66 unter D32 ausgerollt.
-Echter Owner-JWT und der benannte interne Mapstore sind bis zur sicheren
-Eingabeablehnung geprüft; ein neuer positiver Bericht nach Deploy bleibt offen.
+Echter Owner-JWT und der benannte interne Mapstore sind runtimegeprüft.
+D33: Stephan bestätigt neue Berichte nach Deploy ohne Fehler auf Live Server/PC
+und Android. Der bereitgestellte Health Export V3 bestand den vorhandenen
+Sourcevalidator; er enthält Daten, keinen Berichtstext. Render-/Berichterfolg
+ist Owneracceptance; keine zusätzliche APK-/Store-/Widgetmigration behauptet.
 Lokale Fixtures ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
 Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
 

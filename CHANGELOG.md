@@ -14,6 +14,13 @@ erhalten.
 
 ### Security
 
+- D33: Backend/Web-Supabase-Modernisierung nach Owner-Retest auf Live Server,
+  PC und Android abgeschlossen. Roadmaps/Evidence archiviert; der Gesamtplan
+  ist als Teilabschluss beendet. Native Store-/Widgetmigration und Legacy-
+  Abschaltung bleiben ausdrücklich zurückgestellt. Die obsolete MIDAS-Kopie
+  des KASRKIN-Future-Thought-Dokuments auf Ownerauftrag entfernt.
+
+
 - D32: Acht Supabase Functions mit verifiziertem festen Owner und strikten
   User-/Named-Keyguards veröffentlicht. Incident verwendet verify_jwt=false
   und einen ausschließlich benannten Schedulerkey; der GitHubcaller prüft
@@ -29,7 +36,7 @@ erhalten.
   unklare Antworten verlangen eine Prüfung des Speicherstands. Kohärentes
   PWA-Paket v34, echte lokale Medication-/SDK-/Logoutregression; Owner-Retest
   Login/Doctor/Report/BP bestätigt; Web-v34 auf GitHub Pages veröffentlicht und gehostet geprüft (D28),
-  produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen. [Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+  produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen. [Nachweise](<docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
 
 - Supabase-Modernisierung lokal vorbereitet und verifiziert: ein gemeinsamer
   Public-Key-/aktueller Sessionvertrag für Web, REST, Hub und Voice; strikte
@@ -39,7 +46,7 @@ erhalten.
   nutzbar, Navigationscachewrites sind lifecyclegebunden. Web-v34 ist veröffentlicht;
   Backendguards bleiben undeployt. Store-/Caller-/Key-Acceptance bleibt hinter
   konkreten G3-/übrigen G4-Freigaben. APK, aktive Signingrotation und Legacy-
-  Abschaltung bleiben offen. [Vertrag und lokale Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+  Abschaltung bleiben offen. [Vertrag und lokale Nachweise](<docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
 
 ### Added
 

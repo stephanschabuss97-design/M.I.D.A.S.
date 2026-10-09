@@ -1,10 +1,63 @@
-# MIDAS Supabase Modernization — Startpaket für den nächsten Bucket
+# MIDAS Supabase API Key and Edge Authentication Modernization — Execution Evidence (CLOSED)
 
-## Aktueller Wiedereinstieg — D32 / G3/G4 technisch ausgerollt, 2026-10-09
+## D33 — Owner-Abschluss und Archiv, 2026-10-09
+
+Diese Karte ersetzt die Ausführungsanweisungen der historischen Stände unten.
+Stephan bestätigt den normalen Betrieb auf Live Server, PC und Android sowie
+erfolgreiche neue Arztberichte nach dem G3/G4-Cutover. Backend/Web ist für
+diesen bestehenden Produktumfang **DONE / OWNER_ACCEPTED**. Zusätzliche
+Runtime-, Provider-, Push- oder künstliche Captureproben entfallen auf seinen
+ausdrücklichen Abschlussauftrag. Nicht ausgeführte Proben erhalten kein PASS.
+
+**EV-D33-01:** Owner-Retest ohne Fehler. Der bereitgestellte Health Export V3
+wurde am 09.10.2026 um 12:34 Uhr (Europe/Vienna) erzeugt und mit den tatsächlichen
+unveränderten V3-/Activity-Consumer-Validatoren erfolgreich geprüft.
+SHA-256: `c74138ecd811494717854c57838a346cf56c59c8b4d92fb9fa1c483c0f416d4c`.
+Er meldet vollständige Domains und enthält die Datengrundlage, keinen Berichtstext.
+Render-/Berichterfolg ist Ownerbeobachtung. Gesundheitswerte, User-IDs und
+Rohdaten bleiben privat. Die genaue Android-Oberfläche sowie eine native
+APK-/Store-/Widgetmigration werden dadurch nicht zusätzlich technisch bewiesen.
+
+**Scopeabschluss:** Backend/Web-Child `(DONE)`; Parent, Programmevidence und
+Startpaket **CLOSED_BY_OWNER / PARTIAL_COMPLETION**, archiviert als `(CLOSED)`.
+W4 native Store-/Widgetmigration, W5 Legacyabschaltung und der davon abhängige
+vollständige W6-Roll-up sind zurückgestellt, nicht DONE. A6 bleibt unerfüllt:
+Legacy ist aktiv. HS256 CURRENT / ES256 STANDBY; keine Signingrotation.
+[Restumfang, Owner und wirksame G5/G6-Grenzen](<../MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md>).
+
+**Aktuelle Findings:** F22 OWNER_CONFIRMED_FIXED; F23 VERIFIED_RUNTIME.
+F04/F07/F16 sind für den ausgelieferten Auth-/Owner-/Named-Keyguardumfang
+geschlossen: D32 Runtime-/Store-/Caller-/Negativnachweise plus D33
+Owneracceptance. Daraus wird kein erfolgreicher Provider-/Pushsendetest.
+F05 ist auf Web geschlossen; die native Seite bleibt als Stephan zugeordnete,
+durch G5 vor nativer Migration wirksam begrenzte Watchlist im Restdokument.
+Historische L2-/S6-FINDING_ONLY-Receipts werden nicht nachträglich aufgewertet.
+
+**Prozessoverride:** Nach der frischen Ablehnung fordert Stephan ausdrücklich
+diesen reinen Datei-/Archiv-/Gitabschluss jetzt als User Override.
+**NOT_ADMITTED_OWNER_OVERRIDE**, kein zugelassener Work/3-Lauf. Letzte kanonische
+Beobachtung 13:02:04+02:00: 26/24 % Rest, Bedarf35/13 inklusive Reserve,
+PRIMARY_REJECTED_FOR_RESERVE, Permit=null. Originale Ablehnungen und frühere
+erfolgreiche Bundle-/Start-/Permit-/Completion-/End-/Receiptbelege bleiben
+unverändert. Kein nachträglicher Start/Complete und keine Eligible History.
+Kosten dieses Overrides, Attribution, Parallelismus und Messoverhead UNKNOWN.
+Private Overrideevidence und neuer Context Receipt:
+`.kasrkin/work/supa-owner-close-override-20261009/`.
+
+**Gitgrenze:** Abschluss-/Archiv-/Referenzänderungen und die nun ausdrücklich
+freigegebene Löschung der MIDAS-Kopie des KASRKIN-Future-Thought-Dokuments gehören
+zum Commit/Push. Operatorstore, Originalreceipts, Preimages und Gesundheitsdatei
+bleiben lokal. Produktbytes unverändert.
+
+**Fortsetzung:** Dieses Paket hat keinen aktiven Ausführungsauftrag mehr.
+Spätere native Migration oder Legacyabschaltung benötigt eigene konkrete
+Planung, Zulassung und Wirkungsgenehmigung gemäß Restarbeitsdokument.
+
+## Historie — D32 / G3/G4 technisch ausgerollt, 2026-10-09
 
 Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
 
-**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](templates/MIDAS%20Supabase%20Operator%20Env.example) und [Consumer-/Storezuordnung](MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../templates/MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
 
 **Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
 
@@ -294,200 +347,287 @@ Push, Deploy, Dispatch, SQLwrite, Geräteaufruf oder Signing-/Legacyeffekt.
 Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 
 
-## Geltung und tatsächlicher Stand
+## Metadaten
 
-NB-1 / 2026-10-08. Verbindliche Ergänzung zum [Backend/Web-Child](<MIDAS Supabase Backend and Web Authentication Modernization Roadmap.md>), [Parent](<MIDAS Supabase API Key and Edge Authentication Modernization Masterplan.md>) und [Evidence](<MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>). Kein neues Produktprogramm.
-
-W1/JP1/S1–S4R original geschlossen; BW-S4R-1 READY_LOCAL und G2 LOCAL_GRANTED.
-Historisch unter D23: L1–L3 VERIFIED_LOCAL, S5 damals nächster vollständiger Block.
-Die folgenden NB-1-Startanweisungen sind Historie; aktueller Resume am Ende.
-Historisch S4/L1 DONE_LOCAL; L2 damals nächster Block. Historischer L1-Begin12:36 wurde bei38/75 Rest regulär ohne Permit
-abgelehnt;14/4 obere Spanne plus Reserve25/10 erfordert39/14. Historie bewahren.
-Owner D22 verschiebt jetzt die restliche Umsetzung ausdrücklich auf den
-nächsten wieder vollen 5h-Bucket und beauftragt bis dahin Vorbereitung samt
-Bruchrisiken. D21 bleibt lokale Autorität, D22 steuert den Zeitpunkt.
-Kein automatisches Polling/Warten/Starten und keine Produktwirkung in NB-1.
-
-NB-1 ist ein eigenständiges überprüfbares Vorbereitungsresultat, kein
-verkleinertes L1. Eigener Work/3-Begin12:46:04+02, PRIMARY_ALLOWED34/74;
-HEURISTIC3–8/0,5–2 MEDIUM mit gewöhnlichen Korrekturen/Verifikation/nativem
-Full Review/Evidence/Dokumentation/Closure; Reserve25/10 genau einmal.
-Originalbundle `.kasrkin/work/supa-bw-nextbucket-prep-20261008/bundle.json`.
-
-## Start nach dem tatsächlichen Reset
-
-1. Ownerfortsetzung in neuem Chat/Turn; dieses Paket, Parent/Child Resume und
-   Context Receipt benutzen. AGENTS/README-Lesepflicht und fingerprintgebundene
-   Governance/Modulquellen beachten. Kein kompletter Projekt-/Logscan.
-2. Gitstatus/HEAD sowie protected Source-/Harnessfingerprints vergleichen.
-   Fremde Löschung `docs/KASRKIN Future Thought - Artifact Lifecycle and Cost Learning.md`
-   schützen; eigene drei Roadmapdocs plus dieses Paket sind Auftragsänderungen.
-   Kein Reset/Stash/Commit/Push. Fremde Überschneidung zuerst sauber abgrenzen.
-3. Lokale command.json/binding, extern gepinnter Receipt-SHA und K0-Proofbytes,
-   Bootstraprolle/-bytes und ausgewählter Shim in explizitem PS5.1 verifizieren.
-   Vorhandener Wrapper `Invoke-Verified.ps1` im W1-Workbereich bleibt nutzbar
-   nur bei unverändertem überprüftem Hash/Binding; kein latest/reactivate/PATHfix.
-4. Tatsächlichen D21+D22-Auftrag an genau MIDAS/Release/Scope binden, neue
-   Vorbereitung/finale Bundle-IDs und aktuelle Dokumentfingerprints. Alte
-   abgelehnte Bundles/Ownercharges/UNKNOWN bleiben erhalten; keine automatische
-   State-/Authoritymigration oder erneuerte Quote aus Reset ableiten.
-5. Vollständiges L1 unverändert neu Prepare-binden; keine vorbereitende
-   validate-Messung. Frischer Begin misst den aktuellen Bucket und Reset-IDs.
-   D22: Umsetzung erst beim wieder vollen neuen 5h-Fenster. Eine Chatangabe100%
-   ersetzt keine kanonische Beobachtung. Nicht gestartet/Permit=null bedeutet
-   keine Arbeit, keine Completion und keine Legacy-Endphase-Retrykette.
-6. Erst PRIMARY_ALLOWED und original persistiertes Permit: ganze L1-Kette
-   umsetzen, verifizieren, Delta/Consumerreview, gewöhnliche lokale Fehler
-   korrigieren, Evidence/docs/sicherer Endzustand, originales Complete.
-7. L2 → L3 → L4/S5 → lokale S6-Bereitschaft jeweils aus tatsächlichem Ergebnis
-   neu dimensionieren/frisch zulassen. Keine alte Prozentmessung oder dieses
-   Startpaket als nächste Zulassung. LIMIT/FINAL_RESPONSE_ONLY final-only.
-
-Kein Versprechen, dass alles in einen Bucket passt: lokale Summe laut S4R
-40–76/11–21 HEURISTIC, keine gemessenen Kosten; Reserve/Weekly/Review und
-tatsächliche Korrekturen können ein weiteres Fenster erfordern. Kein Tokenburn.
-
-## L1 — konkrete lokale Datei-/API-/Testgrenze
-
-Genau vier gemeinsame Code-/Testdateien sind geplant:
-
-- Neu `_shared/edge-auth.ts`: lokale moderne Map-/Legacyübergangsauswahl,
-  fester `MIDAS_OWNER_USER_ID`, serverseitiger Ownergleichlauf, GetUser und
-  striktes `is_anonymous === false`, sanitisiertes Fehlerorakel; keine
-  generische Benutzerverwaltung oder Veränderung medizinischer Semantik.
-- Neu `_shared/edge-auth_test.ts`: synthetische positive/negative Corefälle
-  plus tatsächliche Protein/Trend-Handlerkette mit echtem Principal und
-  kontrollierter GetUser-/Query-/RPCfixture; keine Netz-/AI-/Pushwirkungen.
-- Änderung `_shared/activity-edge-principal.ts`: gemeinsamen Guard/Keyleser
-  verwenden, Schema/Exports/RPC-Kontext erhalten. Userclient bleibt RLS-JWT;
-  Secretpfad bleibt exakt zielbenannt und nur ohne Userbearer.
-- Änderung `_shared/activity-edge-principal_test.ts`: Userfixtures mit
-  explizitem Anonymousfeld, erlaubter fester Owner und konsistente Scheduler-
-  Owner; fremde IDs separat als Negative. Bestehende Cross-key/failed-bearer-
-  und Sanitizationfälle erhalten/erweitern.
-
-Keine Änderung an Protein-/Trendberechnung, SQL/RPCrollen, Bodyweight-/Range-
-oder Cooldown-/Doctorlock-Semantik. Die beiden Handler sind direkte Consumer-
-Review- und Integrationstestziele. Neue notwendige Änderung außerhalb dieser
-Grenze zuerst als tatsächliches Delta bewerten; nicht still hineinschreiben.
-
-Konkrete Negativorakel: missing/malformed/invalid/expired JWT, User=null,
-fremder oder anonymous User, fehlendes/falsches Anonymousfeld, GetUserexception/
-Authserverfehler, fehlender/ungültiger fester Owner, Schedulerownerdrift,
-public/wrong-name/legacy/sb_secret-in-Bearer, malformed/empty/missing selected
-Mapeintrag. Authfehler401, sichere Serverkonfig-/Authverfügbarkeit500. Keine
-Secret-/Owner-/Token-/Fehlerdetails im öffentlichen Resultat/Log.
-
-Die bestehenden `handler-integration_test.ts` beider Consumer injizieren
-`createPrincipalFactory`. Ihre Geschäfts-/RPC-/Ownerfilterorakel sind gültige
-Vorarbeit; sie beweisen nicht die neue Authprüfung. Deshalb im neuen gemeinsamen
-Test echte `createActivityEdgePrincipal` → `createProteinTargetsHandler` und
-`createTrendpilotHandler` verwenden. GetUser kontrolliert beantworten; denselben
-angeschlossenen Client/Fetchspy/RPCcounter beobachten. Negative müssen vor
-Daten/AI/Push enden. Ein unverbundener Fakeclient mit0 Calls wäre kein Beweis.
-
-## Bruchrisikomatrix und verpflichtende Orakel
-
-| ID | Konkreter Bruchpunkt | Gegenmaßnahme / Nachweis vor betroffenem Exit |
-| --- | --- | --- |
-| B01 | API-Key-only passiert laut aktuellem Headervertrag möglicherweise den Gatewaycheck; verify_jwt allein ist keine Userautorität | GetUser + Owner + Anonymous vor jedem Dateneffekt; alle acht Handlernegative mit zero-effect Orakel, Flags nicht pauschal ändern |
-| B02 | MIDAS_OWNER_USER_ID neu; vorhandene Schedulerowner könnten fehlen/abweichen | typgültigen festen Owner verlangen, alle drei Serverowner auf denselben Wert binden; fehlend/drift fail closed500. Lokale Fixtures heute, tatsächliches Storebinding erst G3 |
-| B03 | Moderne Map vorhanden aber leer/kaputt/ohne selected/default; stiller Fallback verschleiert Konfigfehler | Presence von Inhalt trennen; vorhandene defekte Map nie auf Legacy/Singular/anderen Mapkey umleiten. Expliziten Zielnamen/default verlangen und Negativfälle testen |
-| B04 | SDK1.4.1 besitzt eigene tolerant-parsende Map-/Singular-/first-entry-Fallbacks | eigene strikte Vorvalidierung/ausdrückliche Envübergabe vor SDK-Kontext. SDK Named-secret bindet supabaseAdmin tatsächlich an auth.keyName; User-/defaultkontext darf keinen impliziten ersten Key wählen |
-| B05 | Neuer Mapclient verwechselt Publickey/Session oder caller secret mit eigener interner Adminalias | Userclient apikey public + JWT Authorization, kein Adminfallback. Monthlyintern exakt monthly_report_backend; Incident exakt incidents_push_scheduler. Keine per-Key-SQL-Isolation behaupten |
-| B06 | Ungültiger Userbearer zusammen mit gültigem Schedulerkey wird zum Secretcaller | vorhandene Bearergrenze priorisiert: jeder vorhandene Bearer bleibt Userpfad, Fehler endet401/500; schedulerCalls=0 beweisen |
-| B07 | Alte Tabs/APKs schicken weiterhin Key-Bearer | Caller-Productload mit Legacy-public + Session zuerst bereitstellen, dann gegatete Backendguards; alte Caller fail closed mit Reload/Login/Updatepfad. Native Umsetzung eigener W4-Gate |
-| B08 | Neuer Client, alter Inflightgetter, Headercache und SDKlistener liefern fremde alte Generation | Konfiguration/Client/Sessiongeneration prüfen, alle Caches invalidieren, alte Completion darf neuen State nicht publizieren; race-Tests Key/Projekt/Sessionwechsel/Logout/Refresh/Timeout |
-| B09 | Konfigspeicherung ersetzt Client, aber neuer Authlistener fehlt oder alter läuft weiter | alte Subscription gezielt unsubscribe, neue genau einmal binden; Listener an eigenen Client binden. Deferred callback außerhalb SDKauth-Lock erhalten. Keine doppelte Boot-/Writeaktion |
-| B10 | Preflight blockiert Serviceworker; PWA alte Imports können trotzdem wirksam bleiben | S5 eigenes SW-aktives Harness, echte Cacheversion/Imports/CORE_ASSETS gemeinsam; kalt/warm/Waiting-SW/SKIP_WAITING/controllerchange/alterTab/offline/resume. v32 heute nur Preimage, nächste Version erst frisches L3-Preimage |
-| B11 | Browser-Restore/Nativebridge bringt privilegierten Key in IndexedDB oder überspringt UIprüfung | sämtliche tatsächlichen Reader/Client/Header fail closed; gegenwärtige Web-Writer UI und Androidbridge belegt. Native Validator/Store/Widgetpersistenz bleibt W4, Webfilter ersetzt dessen Abnahme nicht |
-| B12 | Incident-Function erwartet neuen Key, cron läuft noch mit Legacy-Authorization | Function/Secret/GitHubstore/Action gemeinsam unter G3 samt kontrolliertem Jobfenster und Reverse. Kein Dispatch heute; Scheduler-/Manualdiagnosevalidierung und Europe/Vienna-Schwellen bewahren |
-| B13 | Importieren eines heutigen AI/Monthly/Incidenthandlers startet Server oder scheitert an top-level Env/VAPID | L2 testbare Handlerfactory + import.meta.main passend vorhandener Dualhandler, produktives Serve erhalten; Fakeenv/Fetch/VAPID strikt vor Seiteneffekt. Keine Generics-/Algorithmusrefaktorisierung |
-| B14 | SDK-/Gatewaydoku oder Release/Sources/Host/Ownerauftrag driften nach Reset | genaue betroffene Fingerprints/verwendete Primärquelle refreshen. Unveränderte W1/JP1-Beweise reuse; Scope/Readiness bei echter Vertragsdrift gezielt invalidieren |
-
-SDK1.4.1 aus bereits vorhandenem Deno-Cache fokussiert gelesen:
-`create-supabase-context-tDtxd9x2.mjs` setzt im Secretmodus
-`createAdminClient({auth:{keyName:auth.keyName}})`; dieser explizite Name hat
-keinen first-entry-Fallback. Ohne Namen benutzen Admin-/Contextclient dagegen
-default und gegebenenfalls ersten Mapeintrag. `resolveKeys` priorisiert nur
-truthy plural, dann Singular; `parseKeys` liefert bei defektem JSON leere Map.
-Unser strikter Presence-/selected-entry-Vertrag darf nicht delegiert werden.
-Diese Klarstellung ergänzt BW-S4R-1, kein SDKupgrade oder Produkt-PASS.
-
-## Reproduzierbare lokale Prüfwege
-
-Vorhandene Deno-Flags am installierten2.9.7 per help überprüft. Im L1:
-
-```powershell
-deno test --cached-only --no-lock --allow-env=SUPABASE_URL,SUPABASE_PUBLISHABLE_KEYS,SUPABASE_SECRET_KEYS,SUPABASE_PUBLISHABLE_KEY,SUPABASE_SECRET_KEY,SUPABASE_JWKS,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,MIDAS_OWNER_USER_ID,PROTEIN_TARGETS_USER_ID,TRENDPILOT_USER_ID backend/supabase/functions/_shared/edge-auth_test.ts backend/supabase/functions/_shared/activity-edge-principal_test.ts backend/supabase/functions/midas-protein-targets/handler-integration_test.ts backend/supabase/functions/midas-trendpilot/handler-integration_test.ts
-deno check --cached-only --no-lock backend/supabase/functions/_shared/edge-auth.ts backend/supabase/functions/_shared/activity-edge-principal.ts backend/supabase/functions/midas-protein-targets/index.ts backend/supabase/functions/midas-trendpilot/index.ts
-git diff --check
-```
-
-Die zwei neuen Dateien existieren heute noch nicht. Diese Commands sind ein
-vorbereiteter Prüfvertrag, kein ausgeführter PASS. Kein --no-check/allow-net/
-allow-all/Download/Installation. Fixtures setzen Env nur synthetisch und stellen
-Preimages im finally wieder her; Produktionswerte nicht lesen/dumpen. Bei
-fehlendem cached Import konkreten Bedarf/Gate melden, keine Installation.
-L2 ergänzt nur tatsächlich benötigte fake OPENAI-/VAPID-/Incidentenvs.
-
-Vorhandener Browser-Preflight unverändert hashgebunden im Workbereich kopiert:
-`harness-preflight.cjs`, SHA256
-`556e46661184796e0b50d0f5659f1c68d9b8bf4c30f3e97d0ebeaee53e88644d`.
-Mit process-only NODE_PATH `C:/Users/steph/AppData/Roaming/npm/node_modules`
-und `node <kopierter Harness>` reproduzierbar; root MIDAS, eigener localhost-
-Port/Browserkontext. Temporäre QAartefakte außerhalb Git. Kein CUA-Dashboard-
-Navigationsauftrag aus diesem Test und keine neue Installation.
-
-Baseline: vollständige reale index.html, echter Konfiglistener/IndexedDB,
-Reload/IDLE, Carouselgesture, PINunlock, Doctorcreate/formsubmit, Reports-
-Fassade/Header/Transport bis sichtbarem synthetischen Fehler. Alle Remote-
-Requests lokal erfüllt; auch automatische lokale RPC-/DELETEfixtures erreichen
-keine echte Produktion. Die Stub-SDK liefert keine echte JWTverifikation.
-Heute nicht erneut ausgeführt, da unveränderte Sources/Harness exakt belegt.
-
-L3/L4 erweitern unter eigenem Permit: positive Reportantwort mit echtem
-Render/read-back/Reportlifecyclefixture; produktive Capturegeste durch aktiven
-Listener; reale Hubtext-/Voiceheaderquelle; Refresh/401retry/Logout/races;
-SW-aktives PWAupdate. Assertions müssen Routing/Sources/Listener/Effectcounts
-verbunden beobachten, nicht durch isolierte Testbuttons oder direkte Handler-
-Funktionsaufrufe die produktive UIkette ersetzen.
-
-## Produktfenster — reviewbare Vorbedingungen, keine Wirkung heute
-
-| Fenster | Fehlender konkreter Eingang / Forward / Reverse |
+| Feld | Wert |
 | --- | --- |
-| G3 Owner-/Keystores | ohne Werteausgabe echten MIDAS-User/Projektref und Gleichheit der drei Serverowner bestätigen, MIDAS_OWNER_USER_ID binden; fehlende Namen incidents_push_scheduler/monthly_report_backend und GH INCIDENTS_PUSH_SECRET_KEY konkret bereitstellen. Existierende Default-/Protein-/Trendkeys nicht neu anlegen. Sichere Referenzen/preimages, keine Secretwerte in Artefakten |
-| G4 Caller-Productload | exakt lokaler/main-/Pages-/SW-/Importpreimage; finaler S5-Gesamtdiff vorher grün. Commit/Push/Pageswirkung konkret freigeben. Legacy-public kompatibel zuerst, Authsession/Reload-Pfad beweisen; Reverse exakt eigenes Release, keine fremden Writes überschreiben |
-| G3 Functions/Incident | frische Versions-/Flags-/Source-/Secretnamen-/Storebindingpreimages; einzelne Function-/AIcost-/Push-/Dispatchsmokes konkret freigeben. Incidentaction und Function zusammen; negative/sichere Smokes vor kostenden Effekten. Reverse Source/Flags/Action/Bindings, kein blindes Folgeexperiment |
-| G4 Publishable/PWA | W2-Authacceptance und alterTab/APKgrenze, aktueller Publictyp/Projektbinding, Store/Clientcache/SW/importpreimage; Publishable/Postchecks/Reverse ohne Signingwechsel |
-| W4/G5 | eigenes natives S4R und Variante/Device/Session-/Store-/Widgetpostimage; keine Standard-APK-/Deviceannahme aus Webpreflight |
-| W5/W6 | alle wirklichen Caller/Stores/Scheduler/Web/native akzeptiert, dann konkrete Legacydisable-/Reversefreigabe; Roll-up nur mit echter Acceptance, kein DONE aus Planung |
+| Evidence-Owner | [SUPA-KEY-2026 Parent](<MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Masterplan%20%28CLOSED%29.md>) |
+| Gekoppeltes Child | [SUPA-BW-2026](<MIDAS%20Supabase%20Backend%20and%20Web%20Authentication%20Modernization%20Roadmap%20%28DONE%29.md>), W2/W3 |
+| Status / Stand | `ACTIVE`; W1 und lokale L1–L3 VERIFIED_LOCAL 2026-10-08; S5/S6 historisch lokal verifiziert; F22 LOCAL_FIXED / Owner-Retest offen; kein Programm-DONE |
+| Umgebung | W1 lokal und Supabase/GitHub read-only; JP1 ausdrücklich owner-gated produktiver Signing-Verwaltungsimport, Nachprüfung read-only |
+| Baseline-Commit | `781a64014c3744d785d8286455e5a3dc4cac0b1b` lokal und Remote-main |
+| KASRKIN | `kasrkin-5e4c28677939712a`, Work/3; Binding SHA `8fb5c85b03eb013061ebd3a6e892070080ec7d50932107c7e950db4486deef52` |
+| Review | W1 nativ Full; CodeRabbit S5 genau2 Läufe; F21-R1 nativ Full, keine dritte externe Verifikation |
 
-Wenn ein Pflichtsmoke fehlschlägt: originalen produktiven Block zuerst atomar
-reversen/postchecken/finding/closure, dann Diagnose separat neu zulassen.
-Gewöhnliche lokale autorisierte Korrekturen im originalen lokalen Block beheben.
-CodeRabbit ausschließlich gemeinsames S5: ein Initiallauf/maximal ein
-begründeter Verifikationslauf, kein Review jetzt oder je Produktteilfenster.
+## Nachweisvertrag
 
-## Nachweise, Review und Fortsetzung
+Diese Evidence friert Discovery und die nächste Planungsgrenze ein. Sie beweist
+keinen modernen produktiven Caller, keinen erfolgreichen Real-JWT-Smoke und
+keinen abgeschlossenen Cutover. Entscheidungsautorität bleibt im Parent.
+Keine Credentials, Key-/Tokenwerte, Gesundheitsdaten oder vollständigen Logs.
+Originale Usage-/Planrecords verbleiben im ignorierten projektlokalen Workbereich.
 
-EV-NB-01–05: actual Owner D22/Work3, gezielte Test-/Consumer-/SDK-/Cache-
-Risikoüberprüfung, dauerhafter Harnessreceipt/Quellpreimages, nativer Full
-Contract/Security/Scope/Recoveryreview und konsistentes vier-Dokument-Handoff.
-NB-1 Context-/Verification-/Originalcompletion unter
-`.kasrkin/work/supa-bw-nextbucket-20261008/`. UNKNOWN Attribution/Parallelusage/
-Overhead/volle tatsächliche Counts bleibt ineligible. Keine neue Liveinventory,
-kein geänderter Produktcode, keine neue Produktabnahme oder Freigabe aus NB-1.
+## W1-Baseline und read-only Nachweise
 
-Aktuelle offizielle Quellen gezielt geprüft: [Header/Gateway](https://supabase.com/docs/guides/functions/auth-headers), [Authmodi](https://supabase.com/docs/guides/functions/auth), [Env-Maps](https://supabase.com/docs/guides/functions/secrets), [Changelog](https://supabase.com/changelog).
-Index vom8. Oktober: Frameworkadapterdeprecation vom5. Oktober berührt den
-verwendeten Coreaufruf nicht; kein automatisches SDKupgrade daraus. JWKS-
-Standby/HS256current aus JP1 bleibt separate Signingrealität.
+| ID | Prüfung | Tatsächliches Ergebnis / Grenze |
+| --- | --- | --- |
+| EV-W1-01 | Minimalrefresh, Source-Receipt, Git | 41 alte Sourcefingerprints geprüft; 7 Governancequellen gedriftet und gezielt nachgelesen. Alle S01–S25 unverändert. Alte R13/R14-Evidence unverändert wiederverwendbar, kein heutiger Device-PASS. Fremde Löschung `docs/KASRKIN Future Thought - Artifact Lifecycle and Cost Learning.md` geschützt. |
+| EV-W1-02 | Externe Trustkette, PS5.1/K0/Bootstrap/Shim | Receipt SHA `b20ac547e5beb8c5d559519e1ad0f1a2ef1d3811b2de3dfef64ede7186710b73` vor Ausführung geprüft; lokale Proof-/Bootstrapbytes gegen Receiptrollen; K0 PASS, neun Consultation-Artefakte, exakter Application-Shim, nur Prozesskontext. Keine Reaktivierung/Migration. |
+| EV-W1-03 | Supabase-Projekt / Functions | Projekt `jlylmservssinsavlkdi`, `M.I.D.A.S.`, `ACTIVE_HEALTHY`, `eu-central-1`; acht aktive Functions. Tabelle unten. MCP get_project/list_edge_functions/get_edge_function; keine Function ausgeführt. |
+| EV-W1-04 | Deployed Source / Source-Preimage | 25 gelieferte Function-Dateivorkommen, 19 eindeutige Dateien; alle vom get_edge_function gelieferten Source-Texte identisch zum lokalen UTF-8-Text. Das ist kein Gleichheitsbeleg zwischen ZIP-/EZBR-Hash und Einzeldatei-SHA. Originalvergleich: `.kasrkin/work/supa-w1-work3-20261008/deployed-comparison.json`. |
+| EV-W1-05 | Keymetadaten ohne Reveal | CLI 2.109.1, `projects api-keys --help` und read-only Liste ohne `--reveal`; Legacy `anon/service_role`, je `default` publishable/secret, `protein_targets_scheduler` und `trendpilot_scheduler` secret vorhanden. Kein `incidents_push_scheduler`/`monthly_report_backend`. Liste beweist keine öffentliche Clientnutzung oder GitHub-Wertgleichheit. |
+| EV-W1-06 | Edge-Secretnamen | Neue `SUPABASE_PUBLISHABLE_KEYS`/`SUPABASE_SECRET_KEYS` vorhanden; Legacyenvs und `SUPABASE_JWKS` vorhanden; drei Ownerenvnamen vorhanden. Nur Namen aus `secrets list` projiziert, keine Mapwerte gelesen. OpenAI/VAPID-Bestand vorhanden und unverändert. |
+| EV-W1-07 | Signing-/Legacy-Metadaten | Auth Signing-Keyregistry `keys=[]`, öffentliche JWKS `keys=[]`; Legacy-Keyheader HS256. Legacy-Signing-Metadatenendpoint HTTP 404, laut Vertrag möglicher Legacyfall. Legacy-API-Keys `enabled=true`. Ergänzung: bestehende Edge-Dashboardseite JWT Keys bestätigt aktives Legacy-JWT-Secret; daraus HS256 gemäß offiziellem Signingvertrag. Beobachtung im lokalen signer-observation.json; keine UI-Aktion/Secretanzeige. Kein frischer User-JWT gelesen. GetUser bleibt Ausgangspunkt; Real-Token-Smoke vor produktiver Änderung erforderlich. |
+| EV-W1-08 | Legacy-Granularität / Reverse | Offizielles GET `/v1/projects/{ref}/api-keys/legacy` liefert einen gemeinsamen `enabled`-Wert. Offizielles PUT dokumentiert Disable/Re-enable derselben Legacygruppe. Unabhängiges anon-/service_role-Toggling nicht voraussetzen. Nur GET ausgeführt; PUT/G6 unfreigegeben. |
+| EV-W1-09 | GitHub Caller / Stores / Jobs | `gh` authentifiziert; Remote-main entspricht Baseline. Drei Workflows aktiv und Remote-Dateien exakt bytegleich zu lokal. Protein-/Trendsecretnamen vorhanden, Incident nutzt weiterhin `SUPABASE_SERVICE_ROLE_KEY`; neuer Incident-Secretname fehlt. Die letzten zwei Runs je Scheduler erfolgreich; Statusmetadaten, kein fachlicher Response-/Owner- oder Keygleichheitsbeweis. |
+| EV-W1-10 | Pages / Proxygrenze | Pages gebaut, Branch main, Root `/`, kein CNAME; kanonisch `https://stephanschabuss97-design.github.io/M.I.D.A.S./`. Hub wählt auf github.io/localhost direkten Supabasecaller; andere Hosts besitzen relative `/api/midas-*`-Alternative. Kein separater aktiver Proxy aus dieser canonical Pageskonfiguration belegt. Externer/neuer Host invalidiert den Callerfreeze. |
+| EV-W1-11 | SQL26-ACL / RLS / DB-Scheduler | Nur SELECT auf Katalog-/Cronmetadaten: Userwrapper nur authenticated; Ownerwrapper nur service_role; privater Core authenticated/service_role, anon jeweils ohne EXECUTE; alle drei SECURITY INVOKER. Fünf Kerntabellen RLS=true, jeweils vier Policies. `pg_cron` vorhanden, `pg_net` nicht; zwei aktive Retention-/Hygienejobs ohne geprüfte HTTP-/Targetendpointmarker. Keine Fachzeilen gelesen, kein SQLwrite. Policyinhalte/gesamte DB nicht neu auditiert. |
+| EV-W1-12 | Capabilities / kleinster Harness | Node 24.18.0, Deno 2.9.7/TS 6.0.3, Supabase CLI 2.109.1; tatsächlicher Supabase/GitHub-Lesezugriff grün. `deno test --cached-only --no-lock backend/supabase/functions/_shared/activity-edge-principal_test.ts`: 7 PASS/0 FAIL, synthetische lokale Authvertragstests. Kein Download/Upgrade, keine Produktmutation. Bestehende Edge-Dashboardseite ausschließlich für sichtbare Signerkonfiguration gelesen; kein Produktbrowser-/Device-/CodeRabbit-/Dockertest. |
 
-Nächster Schritt nach originaler NB-1-Closure: Umsetzung gemäß D22 im nächsten
-vollen Bucket, minimaler Receipt-/Git-/Trustrefresh, vollständiges L1 mit
-aktuellen fingerprints frisch Prepare/Begin. Nicht automatisch heute starten.
+### W1-Functionpreimage vor JP1
+
+| Function | Version | verify_jwt | Beleg / W2-Konsequenz |
+| --- | --- | --- | --- |
+| midas-assistant | 42 | true | Source ohne verpflichtenden In-Function-Userguard vor AI; F04 |
+| midas-transcribe | 29 | true | derselbe Guardbedarf; F04 |
+| midas-tts | 30 | true | derselbe Guardbedarf; F04 |
+| midas-vision | 41 | true | Userauflösung optional, künftig verbindlich; F04 |
+| midas-monthly-report | 61 | true | GetUser vorhanden; interne Legacyclients und Owner-/Anonymousziel prüfen |
+| midas-protein-targets | 32 | false | R13 v31 historisch; heutige v32 Source identisch, dualer Helper erhalten |
+| midas-trendpilot | 32 | false | bestehender dualer Helper erhalten |
+| midas-incident-push | 27 | true | Legacyalias/interner Serviceclient/Bodyownerpräzedenz; F07 |
+
+### Aktive Scheduler, ohne Dispatch
+
+| Workflow | GitHub Runbeleg | Consumer |
+| --- | --- | --- |
+| Protein Targets Weekly | `36974500045`, 2026-10-02, schedule, success | Freitag `0 1 * * 5`, named apikey |
+| Trendpilot Weekly | `37428301733`, 2026-10-06, schedule, success | Dienstag `0 1 * * 2`, named apikey |
+| Incidents Push | `37710822315`, 2026-10-08, schedule, success | definierte UTC-Ticks; Legacy-Bearer; erlaubte Manualdiagnose bewahren |
+
+Erfolgreiche Runs ersetzen keine negativen Authsmokes. GitHubsecretnamen
+beweisen weder URL-/Keywertgleichheit noch die Identität des Serverowners.
+Diese konkreten Bindungen werden ohne Wertausgabe an G3 bestätigt.
+
+## JP1 — erster Migrationsklick, aktuelles Postimage
+
+Eigener Ownerauftrag 2026-10-08: Migrate JWT secret im vorhandenen Edgefenster
+ausführen und Änderung/Roadmapauswirkung dokumentieren. D18/G-JWT-IMPORT-ONLY,
+kein aktiver Signingwechsel/Revoke/Delete/Legacydisable. W1-Originale bleiben
+historisches Preimage. Neue Autorität scoped auf diesen Block; kein W1-Ceiling-
+reset/Transfer, keine neue numerische Obergrenze erfunden, Paid Spend false.
+
+| ID | Tatsächlicher Nachweis | Ergebnis / Grenze |
+| --- | --- | --- |
+| EV-JP1-01 | Current Ownerauftrag, exakter PS5.1/Receipt/K0/Bootstrap/Shim, finaler Bundle/3, frischer Begin und vorher persistiertes ROADMAP-Permit | PRIMARY_ALLOWED/STARTED bei 63/79 Rest; HEURISTIC 3–8/0,5–2, MEDIUM, Reserve25/10 einmal; eigene Authority MIDAS-JWT-IMPORT-OWNER-20261008 |
+| EV-JP1-02 | Echter Browserbutton → Live-Migrationsdialog → exakt dessen Migrate-Submit → neue Current-/Standbytabelle | Registry-Created-at 2026-10-08 11:47:36 +02; CURRENT Legacy HS256, STANDBY ECC/P-256; kein Previously used, kein Rotate/Revoke/Delete. Screenshot dashboard-after-import.png plus dashboard-observation.json im lokalen Workbereich |
+| EV-JP1-03 | Gezielte neue read-only Signingregistry/Legacykeys/API-Keynamen/Functions/JWKS | Registry HS256 in_use, ES256 standby; Legacy enabled=true; gleiche sechs Keynamen/-typen; alle acht ACTIVE, Flags gleich W1; JWKS nur ES256-Standby. Rohwerte nicht gespeichert/ausgegeben |
+| EV-JP1-04 | Versionsdrift: erneuter get_edge_function-Abgleich genau der acht betroffenen Functions | AI43/30/31/42, Monthly62, Protein33, Trend33, Incident28; jeweils +1. Alle 25 Dateivorkommen/19 eindeutigen Quelltexte exakt W1; Dateimengen und gelieferte EZBR-Digests identisch. source-postimage.json; Ursache der Versionsbump nicht separat attestiert. Kein eigener Deploy |
+| EV-JP1-05 | Nativer Full Contract-/Security-/Scope-/Impactreview, geschützte Vorarbeit/Links/UTF-8/Diff | Neue Signingregistry/JWKS-/Versionsmetadaten invalidieren nur diese alten W1-Postimages. Gleiche Sourcebytes erhalten vorhandene Authhelper-Testevidence; kein unnötiger Deno-/Browserprodukt-/CodeRabbit-Neulauf |
+| EV-JP1-06 | Ehrliche Evidence/Parent/Child/Receipt-/Resume-Closure des ursprünglichen admitted Blocks | DONE_CONFIGURATION für JP1; kein W2–W6-/Real-JWT-/Produkt-PASS. Abschlussmessung/Receipt separat originalgebunden, UNKNOWN bleibt ineligible |
+
+Die öffentliche JWKS enthält jetzt den ES256-Standby. Das beweist **keine aktive
+ES256-Signierung**: Registry/Dashboard bestätigen HS256 in_use. GetUservertrag
+bleibt; kein getClaims-/JWKS-/SDKumbau aus bloßer Registrymigration.
+
+Der erste Request hatte ein falsches Kostenprofil-errorBoundary und wurde vor
+Bundle korrigiert. Der erste Begin lehnte die vorsorgliche irreversible
+Einstufung ab. Fokussierter nativer Review gegen die offizielle Ankündigung
+(dort explizit reversible Schritte inklusive initialem Import) und Signingdocs
+korrigierte die Einstufung an der unveränderten produktiven Authgrenze.
+Alte UI-Darstellung wird nicht als garantierter Unmigrate-Rückweg ausgegeben.
+Originale Ablehnung erhalten, keine State-/Charge-/Legacy-Endphaseumgehung.
+[Signing-Ablauf](https://supabase.com/docs/guides/auth/signing-keys#getting-started),
+[Offizielle Ankündigung](https://supabase.com/blog/jwt-signing-keys).
+
+Auswirkung: abgeschlossen ist die Einrichtung der Signing-Verwaltung samt
+Standby. Authguard-/Owner-/Anonymous-/Incident-/Serviceclientarbeit W2, Public-/
+PWA-/Cache W3, Android W4, Gesamtconsumerablösung/Legacydisable W5, Roll-up W6
+bleiben nötig. Signingrotation bleibt separat Non-Scope. Keine belastbare
+2/3-Fortschrittsbehauptung. Laufende Sessions/Appgesundheit wurden nicht durch
+echte User-/Gesundheits-/AI-/Push-Smokes geprüft und werden nicht als PASS
+behauptet. Der Plattformzustand passt zur vorgesehenen unveränderten Signierung.
+
+Originale JP1-Closure: CLOSED/COMPLETED_SUCCESS 2026-10-08T11:55:30.8344676+02:00; VALID, Rest 58 % 5h / 78 % Weekly, identische Reset-IDs 1791467429/1792036156. Kanonisches Delta 5/1, accountedCharge 8/2 separat; LOWER_BOUND_UNKNOWN_EXCESS / ACCOUNTING_ATTRIBUTION_UNKNOWN. Receipt PUBLISHED, nicht eligible/kalibrierbar (Bounds/Attribution/Overhead/Coverage/Parallelität UNKNOWN). Originale end.json/receipt.json maßgeblich, keine neue Messung/Zulassung.
+Die Publikation dieser Abschlusswerte spiegelt den Originalrecord; keine neue
+Facharbeit/Endmessung und kein neu erfundener Kostenbeleg. Geschützte
+Produkt-/Governancebytes, HEAD und fremde Löschung erneut unverändert.
+
+## Aktueller offizieller Zielvertrag
+
+2026-10-08 über Supabase-Dokumentations-MCP und öffentlichen Changelog geprüft.
+Die Headerreferenz beschreibt echte User-JWTs in Authorization und API-Keys in
+apikey. User-only Functions behalten zunächst ihren aktiven JWT-Gatewaycheck;
+zusätzlich sind GetUser, erlaubter fester MIDAS-Owner und Ablehnung anonymer
+Auth-Sessions vor jeder Daten-/AIwirkung erforderlich. Duale Scheduler bleiben
+mit ihrem konkreten named-secret-Handler und servergebundenen Owner geschützt.
+[Headervertrag](https://supabase.com/docs/guides/functions/auth-headers),
+[Authmodi](https://supabase.com/docs/guides/functions/auth)
+
+Die Migrationsseite enthält weiter die breitere Empfehlung, neue API-Keycaller
+ohne JWT mit verify_jwt=false im Handler zu prüfen. Das ist kein Auftrag, alle
+Userfunctionflags abzuschalten. Kein opaker API-Key im Bearer; ein Realuser-JWT
+plus Publishable-apikey wird getrennt geprüft. Keymaps sind nach Keynamen zu
+lesen; malformed/fehlende benötigte Einträge müssen fail closed enden.
+[Migration](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys)
+
+Signingrotation bleibt ein eigenes Thema. Leere JWKS ersetzt keine
+Authserververifikation. Der fehlende neue Signing-Keybestand und die Legacy-
+Metadaten bilden das Preimage; aktiver User-JWT-/Projektbezug wird vor dem
+ersten produktiven Fenster separat ohne Tokenausgabe nachgewiesen.
+[Signing](https://supabase.com/docs/guides/auth/signing-keys),
+[Signing-Keyregistry](https://supabase.com/docs/reference/api/v1-get-project-signing-keys)
+
+Gemeinsamer Legacy-Enablezustand und Re-enable-Vertrag sind read-only belegt.
+W5 benötigt weiterhin tatsächlichen Store-/Client-/Jobfreeze und G6.
+[Legacy-GET](https://supabase.com/docs/reference/api/v1-get-project-legacy-api-keys),
+[Legacy-Re-enable](https://supabase.com/docs/reference/api/v1-update-project-legacy-api-keys)
+
+Changelog: Frameworkadapter von @supabase/server deprecated; MIDAS verwendet
+den gepinnten createSupabaseContext-Import statt dieser Adapter. Kein belegter
+Upgradebedarf. Neuere PAT-/Middleware-/Postgres-/Selfhostthemen erweitern diesen
+Auth-/Keyscope nicht. [Changelog](https://supabase.com/changelog)
+
+## W1-Verifikation, nativer Full Review und sichere Closure
+
+| ID | Ergebnis | Aussagegrenze |
+| --- | --- | --- |
+| EV-W1-V01 | PASS: Quellen-/Git-/Trust-/Liveidentität nachvollziehbar | Runtimezustand zeitgebunden; source-/flag-/key-/host-/jobdrift invalidiert nur betroffenen Beleg |
+| EV-W1-V02 | PASS: Targetmatrix/Secret-Readiness/Reverse/G2–G6 getrennt | F04/F05/F07 und neuer F16 sind Produktfolgefindings, keine Codefixes |
+| EV-W1-V03 | PASS: kein pauschales verify_jwt=false/SDK-/Signing-/SQLprojekt | GetUservertrag bleibt; echte User-/Anonymous-/Owner-/Negativsmokes künftig |
+| EV-W1-V04 | PASS: vorhandener lokaler Helperharness 7/7 | kein Beweis für den neuen Owner-/Anonymousguard oder Real-JWTs |
+| EV-W1-V05 | PASS: Abschlussprüfung; verification.json im lokalen Workbereich | Links, UTF-8, Fingerprints, Schutzbytes, Diff und Fresh-Chat-Resume; konkreter Ergebnisrecord im lokalen Workbereich |
+
+F17 ist als Discoveryfinding geschlossen: Codex liest die bestehende
+JWT-Keys-Seite im Ownerbrowser; sichtbarer aktiver Legacyzustand entspricht
+HS256 laut Plattformvertrag. Keine Migration oder Secretanzeige. W1-Acceptance
+ist `DONE`; Child bleibt ein konkreter Draft vor S1–S4R/G2, kein READY.
+Ein echter User-JWT-/Projekt-/Owner-Smoke bleibt vor produktiver Wirkung nötig.
+
+## Originaler Work/3-Lauf
+
+Bundle: `.kasrkin/work/supa-w1-work3b-candidate-20261008/bundle.json`.
+Ownerauthority: `MIDAS-SUPA-W1-OWNER-20261008`, finite W1, 50/15 Obergrenzen,
+kein Paid Spend. HEURISTIC 20–40/4–10, MEDIUM, Closure enthalten; Reserve25/10
+einmal zusätzlich. Vollständiger AUTO_LOCAL-Census, keine eligible History.
+
+Begin 2026-10-08T11:03:38.4792825+02:00: VALID, PRIMARY_ALLOWED, STARTED;
+90/83 Rest, Reset-IDs `1791467429 / 1792036156`, originales ROADMAP-Permit.
+Die frühere ausgabefreie Beobachtung war unvollständig abgeholte Prozessausgabe;
+die separate Diagnosevorbereitung mit NONE-Census wurde regulär wegen
+HISTORY_CENSUS_INCOMPLETE abgelehnt, ohne Permit. Censuskorrektur und neue IDs
+haben weder Ablehnungen überschrieben noch State/History/Charges zurückgesetzt.
+
+Completion/2 nach tatsächlichem Review/Evidence/Dokumentabschluss erfolgreich
+geschlossen: originales end.json, 2026-10-08T11:33:26.7309291+02:00, VALID.
+73/80 Rest, identische Reset-IDs; kanonisches Delta17/3, konservative Verrechnung
+40/10 separat, LOWER_BOUND_UNKNOWN_EXCESS / ACCOUNTING_ATTRIBUTION_UNKNOWN.
+Receipt PUBLISHED, nicht eligible/kalibrierbar (Bounds/Attribution/Overhead/Coverage).
+Read-only Status revalidiert Originale, CLOSED; keine neue Zulassung.
+Erster Complete vor Messung wegen absolutem evidencePath abgewiesen; Originale
+erhalten, completion-v2.json korrigiert nur den relativen Referenzpfad. Kein
+neuer Start/Permit/zweite erfolgreiche Endmessung.
+Die folgende Publikation spiegelt diesen Originalabschluss, ohne neue Messung.
+W1-Acceptance ist erfüllt; Reportoutcome COMPLETED_SUCCESS. ActualBounds,
+Attribution und Beobachtungs-Overhead bleiben unbekannt, sofern nicht vollständig
+gezählt/belegt; Owner-Serialität ist keine technische accountweite Reservation.
+Originaler Endrecord/Cost3 bleibt maßgeblich; kein eligible Kostenbeleg behauptet.
+
+
+## BW — Child-S1–S4R, lokale Fortsetzungsautorität und Readiness
+
+| ID | Tatsächlicher Nachweis | Ergebnis / Aussagegrenze |
+| --- | --- | --- |
+| EV-BW-01 | D21 tatsächlicher Ownerauftrag, exakte eigene Projekt-/Release-/Scope-/Pathautorität, AUTO_LOCAL, originaler Work/3-Begin/persistiertes Permit | PRIMARY_ALLOWED53/77, HEURISTIC8–18/2–5 MEDIUM, Reserve25/10 einmal; kein50/15-W1-Transfer/Paid Spend/Accountingreset |
+| EV-BW-02 | gezielte aktive Header-/UI-/Client-/Authlifecycle-/Hub-/Voice-/Doctor-/Handler-/Incidentconsumerlektüre, aktuelle W1/JP1-Sourcebytes reuse | S1 DONE; gezielter Receipt in planning/context-receipt.json, kein umfassender neuer Projekt-/Logscan |
+| EV-BW-03 | eingefrorener fester MIDAS_OWNER_USER_ID/Anonymous-/Map-/Header-/Cache-/Serverownervertrag und kompatible Caller→Backendfolge | S2/S3 nativ Full geprüft; G3 tatsächliche sichere Owner-/Keybindungen offen. Kein Multiuser-/SDK-/SQL-/Signingprogramm |
+| EV-BW-04 | vorhandenes Playwright1.61.1 + Chromium149.0.7827.55, volle lokale MIDAS-Seite, echte Konfigspeichergeste/IndexedDB und Doctorunlock/Submit/Report/Dataaccess/Transport | PASS Capability/aktive synthetische Kette: Publickey apikey + SessionJWT Bearer, richtige Seite,0 Pageerrors. Alle Remoteanfragen lokal abgefangen; keine Live-KI-/Push-/Gesundheitswirkung. Temp/result.json und Screenshots |
+| EV-BW-05 | S4R vollständige lokale Blöcke L1–L4/S6, HEURISTIC/MEDIUM inklusive gewöhnlicher Korrekturen/Tests/native Reviews/Evidence/Closure, großes Ownerbriefing vor Code | READY_LOCAL/BW-S4R-1, G2 lokal erfüllt unter D21; jeder Block frisch zulassen, lokale40–76/11–21 Summenprognose keine Kostenmessung. S4/S5/S6 noch offen |
+| EV-BW-06 | S1/S2/S3/S4R je nativer Full Review, Schutzbytes/Git/Links/UTF-8/Scope/Gates/Receipt/Resume | erforderliche gezielte Dokumentkorrekturen im selben Block; Produktcode bis Planungsclosure unverändert; fremde Notizlöschung erhalten |
+
+Browserpreflight zeigt echte Listener/Lifecycle/Transport mit synthetischem
+SDK-/Session-/Queryadapter und lokal abgefangener Serverantwort, keine echte
+JWTverifikation oder live medizinische Abnahme. Vorversuche wurden wegen
+fehlender IDLE-/Carousel-/Doctor-PIN-Schritte im Harness korrigiert; kein
+Forced-click/Guardbypass/PASS aus einem bloßen Prozessabschluss. Capture/Report
+volle positive/negative/Reply/read-back/PWA-Matrix bleibt L3/L4-S5.
+
+Read- und Capabilityartefakte: .kasrkin/work/supa-bw-planning-20261008/
+und C:/Users/steph/AppData/Local/Temp/MIDAS-supa-bw-preflight/result.json;
+Screenshots config-preflight.png/report-transport-preflight.png. Temporärer
+Testscript außerhalb des Repos, keine Projektdependency/Browserinstallation.
+
+Originale Planungsclosure vorbereitet nach allen sechs tatsächlichen Stages;
+Complete publiziert dieselbe Start-/Endgrenze. UNKNOWN Parallelusage/Attribution/
+Bounds/Overhead bleibt ineligible, keine erfundenen Counts/kalibrierbaren Kosten.
+
+
+Originale BW-Planungsclosure CLOSED/COMPLETED_SUCCESS, 2026-10-08T12:33:06.8776861+02:00: Start53/77 → Ende41/75 Rest, kanonisches Delta12/2; accountedCharge18/5 separat, LOWER_BOUND_UNKNOWN_EXCESS/ACCOUNTING_ATTRIBUTION_UNKNOWN. Gleiche Reset-IDs1791467429/1792036156; receipt nicht eligible/kalibrierbar, Parallelusage/Attribution/Bounds/Overhead UNKNOWN. Kein zusätzlicher Refresh.
+
+
+EV-BW-07: L1-Prepare/Begin regulär ausgeführt, tatsächliche Ablehnung/Forecast/Reserve/Rest/Originale im lokalen Workbereich; kein Code-PASS, kein Worklauf ohne Permit.
+
+
+## Aktuelle L1-Zulassungsgrenze — kein Codebeginn
+
+2026-10-08T12:36:16.3022631+02:00: ein kanonischer frischer Work/3-Begin für
+den vollständigen L1-Block, VALID,38 % 5h /75 % Weekly Rest, gleiche Reset-IDs
+1791467429/1792036156. CAUTION / PRIMARY_REJECTED_FOR_RESERVE:
+Forecastobergrenze14/4 plus einmal Reserve25/10 = Startbedarf39/14.
+Kein Permit, kein start.json/Produktcode, keine L1-Completion erfinden.
+Prepare war erfolgreich/finaler Bundle unverändert; vor Prepare wurde nur der
+ungültige scopeKind LOCAL_CODE auf den tatsächlich zulässigen GENERAL korrigiert,
+Originalrequest/-fehler erhalten, dabei keine Messung oder Zulassung.
+
+Nächster zulässiger Schritt: bei tatsächlich ausreichender neuer Kapazität
+denselben vollständigen L1-Scope mit aktuellen Dokumentfingerprints neu Prepare-binden und frisch Begin-zulassen, nach PRIMARY_ALLOWED und
+persistiertem Originalpermit Authkern/Protein/Trend samt Tests/Review/Evidence/
+Closure umsetzen. Kein Legacy-Endphase-Retry, keine künstliche Forecastreduktion
+oder Blockteilung, keine Reserve-/Policy-/Stateänderung und keine Warteschleife.
+BW-S4R-1/G2 LOCAL_GRANTED bleibt gültig; S4 NOT_STARTED_OWNER_DEFERRED,
+L2/L3/S5/S6 und produktive G3–G6 offen. Ziel7±5 kann unter der aktuellen
+Reserve nicht erzwungen werden. Die38/75 sind eine Zulassungsbeobachtung,
+kein Cost-Receipt; Planungs-Originaldelta12/2 bleibt separat/ineligible.
+
+## NB-1 — eigenständige Vorbereitung für nächsten Bucket
+
+| ID | Tatsächlicher Nachweis | Ergebnis / Grenze |
+| --- | --- | --- |
+| EV-NB-01 | tatsächlicher D22/stehende MIDAS-Projekt-/Release-/Scopeautorität, eigener Work/3-Begin/Originalpermit | PRIMARY_ALLOWED34/74; keine neue L1-Zulassung, kein W1-Ceiling-/UNKNOWNreset |
+| EV-NB-02 | gezielte Protein/Trendtest-/Principal-/Authlistener-/SW-/Incidentaction-Consumerlektüre | konkrete14 Bruchrisiken/Test-/Reverseorakel; injizierte Principalfixture bisher kein neuer Auth-PASS |
+| EV-NB-03 | aktuell offizielle Docs/Changelog plus bereits gecachte SDK1.4.1-Primärbytes | Named-secret bindet Admin an exakten Namen; default/first-entry/plural/singular Parserfallbacks durch eigene strikte Mapgrenze vermeiden; keine SDK-/Signingänderung |
+| EV-NB-04 | vorhandener tatsächlicher Browserharness unverändert kopiert/SHAverified, Baselinepostimage wiederverwendet | durable Harness/Result/Commandreceipt, keine unnötige erneute Produktprüfung; volle SW-/positive Capture-/Reportacceptance offen |
+| EV-NB-05 | Native Full Scope/Security/Module/Tests/Owner/Reset/Recoveryreview, Sourcebytes/HEAD/Fremdgrenze/Markdownlinks/UTF-8 geprüft | dauerhaftes Startpaket, vier Roadmapdokumente/Receipt/Resume synchron; Productcode unberührt, Originalcompletion vorbereitet |
+
+
+## D22 — nächster Bucket und abgeschlossene Vorbereitung
+
+Owner 2026-10-08: restliche Umsetzung erst im wieder aufgefüllten nächsten
+5h-Bucket; bis dahin notwendige Vorbereitung einschließlich Bruchrisiken.
+D21/G2 LOCAL_GRANTED bleibt, S4 NOT_STARTED_OWNER_DEFERRED. F18 ursprüngliche
+Ablehnung bleibt Historie, keine heutige erneute L1-Zulassung/Umsetzung.
+Keine automatische Warteschleife, kein Produktbeginn nach NB-1-Closure.
+
+Das [Startpaket NB-1](<MIDAS%20Supabase%20Modernization%20Next%20Bucket%20Execution%20Pack%20%28CLOSED%29.md>)
+bindet genaue L1-Datei-/API-/Testgrenze,14 konkrete Bruchrisiken mit Orakeln,
+aktive Guard→Handler-Negativkette statt injizierter Principalfixture als
+Authbeweis, vorhandenen Browserharness an tatsächlichen SHA, Import-/Cache-/
+Listenergeneration und Caller→Backend/Incidentfenster/Reverse. S4R grün bleibt
+mit diesen präzisierenden Orakeln; kein neuer Produkt-/Live-JWT-PASS.
+
+NB-1 vollständig nativ Full reviewed; Tests/Quellen/Owner-/Usage-/Reset-/
+Externalwrite-/Reviewgrenzen konsistent. Kein geänderter Produktcode, kein
+CodeRabbitlauf/Deploy/Key-/Store-/SQL-/Geräte-/Commit-/Pushauftrag ausgeführt.
+Eigener originaler Begin PRIMARY_ALLOWED12:46:04+02 bei34/74 Rest, forecast
+HEURISTIC3–8/0,5–2 MEDIUM einschließlich aller Aktivitäten und Closure.
+Endmessung/Completion desselben Bundles separat original publizieren.
+
+Genau nächster Schritt: Ownerfortsetzung im nächsten aufgefüllten Bucket,
+minimaler Pflicht-/Receipt-/Git-/Trustrefresh, denselben ganzen L1-Scope mit
+aktuellen Fingerprints neu Prepare und kanonischem frischem Begin zulassen;
+erst PRIMARY_ALLOWED/persistiertes Permit Produktcode. Kein Legacyretry,
+Forecast-Tuning/Scope-Split, automatische State-/Authoritymigration oder
+Kosten-/Freigabetransfer aus früheren W1-/JP1-/KASRKINarbeiten.
 
 
 ## NB-1 Originalclosure und damaliger Resume (Historie; aktuell D23/L1)
@@ -1099,3 +1239,61 @@ Credits, Reserve erhalten, kein nachträgliches Forecast- oder Historyupgrade.
 Die kleine Publikation erfolgt nach Endmessung ohne zusätzliche Messung oder
 Nullkostenbehauptung. Nächster Schritt: ganzer F22-Reparaturblock mit neuen IDs
 frisch zulassen, sobald seine vollständige Spanne plus Reserve hineinpasst.
+
+## EV-F22-03–08 — original zugelassene lokale Ursachenklärung und Reparatur D27
+
+- EV-F22-03: aktuelles Pflichtrefresh/Gitgrenze/externe Receipt-SHA/K0/Bootstrap/
+  Binding/Shim verifiziert; Prepare ohne Messung, genau ein kanonischer Begin,
+  Originalpermit persistiert. Workdir `supa-bw-f22r2-20261009`, Bundle im eigenen
+  `supa-bw-f22r2-candidate-20261009`. Keine Reaktivierung alter Ablehnungen.
+- EV-F22-04: `reproduction-before.txt`: tatsächliche Sources/aktiver Listener,
+  17 Gruppen, 13 grün/4 erwartete Gegenbeweise. INITIAL_SESSION öffnete nach
+  erfolgtem gültigem Authzustand bei verspäteter Antwort erneut das Overlay.
+  Auch Refresh, Transportfehler und Kontextwechsel erfasst. Tokens sind reine
+  synthetische Fixtures; keine echten Werte ausgegeben.
+- EV-F22-05: HTTP-Fix und Notes-Consumerfix siehe aktuelle Sources. Neuer
+  Errorcode bezeichnet ausschließlich abgewiesene Antwort ohne bestätigte
+  Loginpflicht; Status401 bleibt aus Kompatibilitäts-/Fail-closed-Gründen.
+  Fehlende/abgelaufene aktuelle Session behält Loginpflicht. Recheckfehler,
+  Timeout und erneute Generationsänderung erhalten UNKNOWN, keine Autorisierung.
+  `frontend-closure.txt`: 24/24 Gruppen; bestehende Privacy-/Authfälle und neue
+  tatsächliche Listener-/Notes-/Race-/10s-Timeoutfälle, keine Writewiederholung.
+- EV-F22-06: `browser-result.json`: 33 benannte Gruppen, echte Produkt-Sources/
+  aktive Medication- und UI-Kette, aktueller/alter Worker, desktop1366x900/mobile
+  390x844; keine uncaught page-/Consoleerrors, alle Fremdtransporte lokal erfüllt.
+  `worker-after.txt`: 8/8 echte Workergruppen. Die erste neue Fixtureprüfung
+  las fälschlich die unveränderte u-hidden-Klasse statt tatsächlichem Display;
+  berichtigt und erneut geprüft, frühere Attemptoutputs erhalten. Kein neues
+  Produktfinding daraus abgeleitet. Screenshots außerhalb des Repositories:
+  `C:/Users/steph/AppData/Local/Temp/MIDAS-supa-bw-f22r2`.
+- EV-F22-07: `real-sdk-result.json`: 12 benannte Checks, tatsächlicher unveränderter
+  SDK2.45.4 (SHA8596965fe918e656600a1b568d3a168f5c0d3d22a600886bb6f44a6555db01e7).
+  INITIAL_SESSION automatisch, Visibility-Recovery erzeugt SIGNED_IN mit
+  unveränderter Session; public refreshSession erzeugt TOKEN_REFRESHED und
+  signOut(local) tatsächliches SIGNED_OUT. Keine private SDK-Methode genutzt.
+  Storage/User/Refreshresponses synthetisch, HTTP lokal erfüllt, WebSockets
+  lokal geschlossen. Keine reale Google-/Supabase-/Provider-Acceptance.
+  Der erste SDK-Probeversuch bewies die weitere Race-Stelle: ein erneut
+  invalidierter Recheck wurde zu früh als Loginpflicht gewertet. Im selben
+  zugelassenen Block korrigiert, gezielte Gegentests und SDK-Verifikation grün.
+  Der reduzierte SDK-Probe hat keine fachliche Intake-Fixture-Acceptance;
+  ursprünglicher Fixturetoast bleibt vom vollständig verbundenen Browserlauf getrennt.
+- EV-F22-08: nativer Full Contract/Security/Domain/Consumerreview und gezielte
+  Dokument-/Source-/Graph-/Gitprüfungen in `native-review.md`/`verification.json`.
+  Header-/Clientgeneration, Konfigwriterfence, Privileged-/anonymous-/expired-
+  Abwehr unverändert. Keine alten Antworten/Writes erneut freigegeben. Backend113
+  fingerprintgebunden unverändert wiederverwendet, CodeRabbit genau2 historische
+  S5-Läufe, keine dritte Ausführung. Fach-/Produktgates erhalten.
+
+Gezielt aktuelle offizielle Authereignisse geprüft:
+[onAuthStateChange](https://supabase.com/docs/reference/javascript/auth-onauthstatechange).
+Der [Changelogindex](https://supabase.com/changelog.md) wurde direkt gelesen;
+der relevante OAuth-Statuswechsel betrifft `/v1/oauth/token`, keinen hier
+implementierten 201-Vergleich: [offizieller Plattformvertrag](https://supabase.com/changelog/45468-breaking-change-oauth-token-endpoint-will-return-http-200-instead-of-201).
+Keine Plattforminventarisierung, Installation oder SDKupgrade.
+
+Scope-/Nachweisgrenze: Fehlerklasse deterministisch bewiesen; genauer gestriger
+Ownertrigger und reale Sessiongültigkeit nicht rückwirkend festgestellt. Lokale
+Sources repariert; Owner-Retest am eigenen Live Server steht aus. Spätere
+produktive Acceptance und G3–G6 bleiben separat. Frühere Findinglevel-Closures
+und abgelehnte Workbelege werden unverändert bewahrt, keine Historyaufwertung.

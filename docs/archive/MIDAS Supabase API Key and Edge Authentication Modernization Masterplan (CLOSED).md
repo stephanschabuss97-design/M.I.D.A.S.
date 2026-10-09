@@ -1,10 +1,63 @@
-# MIDAS Supabase API Key and Edge Authentication Modernization Masterplan
+# MIDAS Supabase API Key and Edge Authentication Modernization Masterplan (CLOSED)
 
-## Aktueller Wiedereinstieg — D32 / G3/G4 technisch ausgerollt, 2026-10-09
+## D33 — Owner-Abschluss und Archiv, 2026-10-09
+
+Diese Karte ersetzt die Ausführungsanweisungen der historischen Stände unten.
+Stephan bestätigt den normalen Betrieb auf Live Server, PC und Android sowie
+erfolgreiche neue Arztberichte nach dem G3/G4-Cutover. Backend/Web ist für
+diesen bestehenden Produktumfang **DONE / OWNER_ACCEPTED**. Zusätzliche
+Runtime-, Provider-, Push- oder künstliche Captureproben entfallen auf seinen
+ausdrücklichen Abschlussauftrag. Nicht ausgeführte Proben erhalten kein PASS.
+
+**EV-D33-01:** Owner-Retest ohne Fehler. Der bereitgestellte Health Export V3
+wurde am 09.10.2026 um 12:34 Uhr (Europe/Vienna) erzeugt und mit den tatsächlichen
+unveränderten V3-/Activity-Consumer-Validatoren erfolgreich geprüft.
+SHA-256: `c74138ecd811494717854c57838a346cf56c59c8b4d92fb9fa1c483c0f416d4c`.
+Er meldet vollständige Domains und enthält die Datengrundlage, keinen Berichtstext.
+Render-/Berichterfolg ist Ownerbeobachtung. Gesundheitswerte, User-IDs und
+Rohdaten bleiben privat. Die genaue Android-Oberfläche sowie eine native
+APK-/Store-/Widgetmigration werden dadurch nicht zusätzlich technisch bewiesen.
+
+**Scopeabschluss:** Backend/Web-Child `(DONE)`; Parent, Programmevidence und
+Startpaket **CLOSED_BY_OWNER / PARTIAL_COMPLETION**, archiviert als `(CLOSED)`.
+W4 native Store-/Widgetmigration, W5 Legacyabschaltung und der davon abhängige
+vollständige W6-Roll-up sind zurückgestellt, nicht DONE. A6 bleibt unerfüllt:
+Legacy ist aktiv. HS256 CURRENT / ES256 STANDBY; keine Signingrotation.
+[Restumfang, Owner und wirksame G5/G6-Grenzen](<../MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md>).
+
+**Aktuelle Findings:** F22 OWNER_CONFIRMED_FIXED; F23 VERIFIED_RUNTIME.
+F04/F07/F16 sind für den ausgelieferten Auth-/Owner-/Named-Keyguardumfang
+geschlossen: D32 Runtime-/Store-/Caller-/Negativnachweise plus D33
+Owneracceptance. Daraus wird kein erfolgreicher Provider-/Pushsendetest.
+F05 ist auf Web geschlossen; die native Seite bleibt als Stephan zugeordnete,
+durch G5 vor nativer Migration wirksam begrenzte Watchlist im Restdokument.
+Historische L2-/S6-FINDING_ONLY-Receipts werden nicht nachträglich aufgewertet.
+
+**Prozessoverride:** Nach der frischen Ablehnung fordert Stephan ausdrücklich
+diesen reinen Datei-/Archiv-/Gitabschluss jetzt als User Override.
+**NOT_ADMITTED_OWNER_OVERRIDE**, kein zugelassener Work/3-Lauf. Letzte kanonische
+Beobachtung 13:02:04+02:00: 26/24 % Rest, Bedarf35/13 inklusive Reserve,
+PRIMARY_REJECTED_FOR_RESERVE, Permit=null. Originale Ablehnungen und frühere
+erfolgreiche Bundle-/Start-/Permit-/Completion-/End-/Receiptbelege bleiben
+unverändert. Kein nachträglicher Start/Complete und keine Eligible History.
+Kosten dieses Overrides, Attribution, Parallelismus und Messoverhead UNKNOWN.
+Private Overrideevidence und neuer Context Receipt:
+`.kasrkin/work/supa-owner-close-override-20261009/`.
+
+**Gitgrenze:** Abschluss-/Archiv-/Referenzänderungen und die nun ausdrücklich
+freigegebene Löschung der MIDAS-Kopie des KASRKIN-Future-Thought-Dokuments gehören
+zum Commit/Push. Operatorstore, Originalreceipts, Preimages und Gesundheitsdatei
+bleiben lokal. Produktbytes unverändert.
+
+**Fortsetzung:** Dieses Paket hat keinen aktiven Ausführungsauftrag mehr.
+Spätere native Migration oder Legacyabschaltung benötigt eigene konkrete
+Planung, Zulassung und Wirkungsgenehmigung gemäß Restarbeitsdokument.
+
+## Historie — D32 / G3/G4 technisch ausgerollt, 2026-10-09
 
 Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
 
-**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](templates/MIDAS%20Supabase%20Operator%20Env.example) und [Consumer-/Storezuordnung](MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../templates/MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
 
 **Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
 
@@ -311,7 +364,7 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Größe / Zeit | Gesamtprogramm vorläufig `large` wegen Auth, Backend, PWA, Android, Tests, Review, Cutover/Reverse und Doku; S4R dimensioniert Blöcke; kontrolliert noch 2026 |
 | Aktuelle Freigabe | D32 exact whole Env/Key/Store/Scheduler/8-Function/Caller/Web/Commit/Push package GRANTED; G2 LOCAL_GRANTED; G3/G4 D32 granted, no clinical/provider/push/signing/legacy/device/SQL effects; G5/G6 NOT_GRANTED; earlier D8-D31 retained in Decision Log |
 | Produktwirkung / Git | JP1: ausdrücklich freigegebener Import in Signing-Keyverwaltung mit Standbyanlage; aktiver HS256 unverändert. L1–L3 lokal implementiert, nicht deployt; kein Commit/Push |
-| Evidence | [Programmevidence](<MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>), EV-W1-01–12; Parent ist Owner, W2/W3-Child teilt EV-IDs |
+| Evidence | [Programmevidence](<MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>), EV-W1-01–12; Parent ist Owner, W2/W3-Child teilt EV-IDs |
 | Archiv | Erst nach W6 und Gesamt-Acceptance mit `(DONE)` nach `docs/archive/` |
 
 Rolling Wave ist verbindlich: Remotezustand, Backend-/Callerwechsel, PWA-Cache,
@@ -434,47 +487,47 @@ heutige Sourcefingerprints wiederverwenden.
 
 | ID / Quelle (relativ zu docs/) | SHA-256-Präfix / Coverage | Vertrag / Exact-Source bei Drift |
 | --- | --- | --- |
-| G01: [AGENTS.md](<../AGENTS.md>) | `e28da5e925a71093 / COMPLETE` | MIDAS Scope/Lesepflicht/Review/KASRKIN |
-| G02: [AGENTS.md](<../../codex-tools/AGENTS.md>) | `56baddfb359f68ed / COMPLETE` | Werkstatt/Cross-Repo-Regeln |
-| G03: [MIDAS Roadmap Workflow Contract.md](<templates/MIDAS Roadmap Workflow Contract.md>) | `d22e944d221c6556 / COMPLETE` | S1-S6/R3/Evidence/Usage/Reasoning |
-| G04: [ROADMAP_AUTHORING_CONTRACT.md](<../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md>) | `d2bf138563449bc9 / COMPLETE` | BLUEPRINT-1/Routing/READY/Child/Freeze |
-| G05: [ROLLING_WAVE_ROADMAP_TEMPLATE.md](<../../codex-tools/docs/blueprint/ROLLING_WAVE_ROADMAP_TEMPLATE.md>) | `8381862a65cd389b / COMPLETE` | Parent/Wave/Review/Resume |
-| G06: [MIDAS Roadmap Template.md](<templates/MIDAS Roadmap Template.md>) | `442385dc2be8a5cd / FOCUSED_COMPLETE` | Pflichtfelder/S1/S2/S5/S6; weitere Phasen durch Workflow |
-| G07: [MIDAS Roadmap Evidence Template.md](<templates/MIDAS Roadmap Evidence Template.md>) | `f0e961cf8f00be67 / FOCUSED_COMPLETE` | Metadaten/Evidencevertrag; Runtimematrix bei Bedarf |
-| G08: [README.md](<templates/README.md>) | `4defa545770a8407 / COMPLETE` | Overlay und Templatezustaendigkeit |
-| G09: [DEV_ENVIRONMENT.md](<DEV_ENVIRONMENT.md>) | `25cc1986b2a37a5a / FOCUSED_COMPLETE` | Aktuelle Activation/Git/Edge/Browser/Android/bedingte DB |
-| G10: [DEV_ENVIRONMENT.md](<../../codex-tools/environment/DEV_ENVIRONMENT.md>) | `c6c8df065c9b3fff / FOCUSED_COMPLETE` | Relevante ATLAS CLI/Browser/Android/KASRKIN-Bereiche |
-| G11: [README.md](<../README.md>) | `cb45a8a4ff8f2657 / FOCUSED_COMPLETE` | Produkt/V2/Auth/Ownership/Architektur/Betrieb |
-| B01: [MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md](<archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>) | `ccdd3ec4a242c84d / FOCUSED_COMPLETE` | PRE09/PRE12/F45/F48/Finaldigest 394-420 |
-| B02: [MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md](<archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md>) | `00fd13710fb2a695 / FOCUSED_COMPLETE` | DONE-Metadaten/Startkarte/D-ACT-R14-17 |
-| B03: [Supabase Core Overview.md](<modules/Supabase Core Overview.md>) | `9b6e98456f4a536e / FOCUSED_COMPLETE` | R13-Auth/Scheduler/native Grenze |
-| B04: [Auth Module Overview.md](<modules/Auth Module Overview.md>) | `0c331f0246335c22 / FOCUSED_COMPLETE` | User/Session/Header/Doctor/native Auth |
-| B05: [Android Native Auth Module Overview.md](<modules/Android Native Auth Module Overview.md>) | `38428f6b13ff1e6c / FOCUSED_COMPLETE` | Komponenten/Stores/Owner/OAuth/Bridge/Logout |
-| S01: [client.js](<../app/supabase/core/client.js>) | `1978e684bd21add5 / COMPLETE` | Publicfilter/createClient/Android-Mirror |
-| S02: [http.js](<../app/supabase/core/http.js>) | `e971e0033683b25c / COMPLETE` | Headercache/Refresh/Transport |
-| S03: [ui.js](<../app/supabase/auth/ui.js>) | `c9db2e151cb1dde0 / FOCUSED_COMPLETE` | Configsave/Bearerpraefix/Keytypfilter |
-| S04: [main.js](<../assets/js/main.js>) | `0b7fa07d01646371 / FOCUSED_COMPLETE` | Config/980-1088 Header/JWT |
-| S05: [index.js](<../app/modules/hub/index.js>) | `0fb16e2874bec6a6 / FOCUSED_COMPLETE` | Endpoint/Proxywahl/Header/direkte AIcaller |
-| S06: [android-webview-auth-bridge.js](<../app/core/android-webview-auth-bridge.js>) | `a2bdc9ff5a04d988 / FOCUSED_COMPLETE` | Bootstrap/anonKey-Normalisierung/Configpersistenz |
-| S07: [activity-edge-principal.ts](<../backend/supabase/functions/_shared/activity-edge-principal.ts>) | `520f5ca048011ced / COMPLETE` | GetUser/named Secret/Serverowner/Imports |
-| S08: [index.ts](<../backend/supabase/functions/midas-monthly-report/index.ts>) | `e7bf04bb10682c55 / FOCUSED_COMPLETE` | GetUser/User-RPC/interne Legacyclients/Env |
-| S09: [index.ts](<../backend/supabase/functions/midas-incident-push/index.ts>) | `90c84baffcea2e41 / FOCUSED_COMPLETE` | Caller/Adminalias/Guard/Owner/VAPID |
-| S10: [index.ts](<../backend/supabase/functions/midas-assistant/index.ts>) | `8c31f1bf35f100f8 / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
-| S11: [index.ts](<../backend/supabase/functions/midas-transcribe/index.ts>) | `2372e717d638b10e / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
-| S12: [index.ts](<../backend/supabase/functions/midas-tts/index.ts>) | `5738928736078039 / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
-| S13: [index.ts](<../backend/supabase/functions/midas-vision/index.ts>) | `1314689457749148 / FOCUSED_COMPLETE` | Optionale getUser-Aufloesung ohne Pflichtguard |
-| S14: [auth-contract_test.ts](<../backend/supabase/functions/midas-incident-push/auth-contract_test.ts>) | `6afcebc3726b103b / COMPLETE` | Statischer Alias-Test, kein Runtimeauthbeweis |
-| S15: [config.toml](<../backend/supabase/config.toml>) | `ab8b7ba94595a565 / FOCUSED_COMPLETE` | Functionflag-Overrides/workdir |
-| S16: [protein-targets.yml](<../.github/workflows/protein-targets.yml>) | `6570099a05058942 / COMPLETE` | Named apikey/HTTPfail/Weeklycron |
-| S17: [trendpilot.yml](<../.github/workflows/trendpilot.yml>) | `2d37862ff61e2dd5 / COMPLETE` | Named apikey/HTTPfail/Weeklycron |
-| S18: [incidents-push.yml](<../.github/workflows/incidents-push.yml>) | `3d549f8fb1bb41d0 / COMPLETE` | Legacy-Bearer/Manual/UTC-Ticks/HTTPfail |
-| S19: [NativeAuthBootstrapValidator.kt](<../android/app/src/main/java/de/schabuss/midas/auth/NativeAuthBootstrapValidator.kt>) | `7495c8cfc1ea8982 / COMPLETE` | Bootstrap-Typfilter |
-| S20: [NativeAuthConfigResolver.kt](<../android/app/src/main/java/de/schabuss/midas/auth/NativeAuthConfigResolver.kt>) | `c07646ff11066a7a / COMPLETE` | Restorefallback ohne denselben Filter |
-| S21: [WidgetSyncRepository.kt](<../android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncRepository.kt>) | `f9f2c94c43f84d26 / FOCUSED_COMPLETE` | REST apikey/User-Bearer |
-| S22: [build.gradle.kts](<../android/app/build.gradle.kts>) | `08f996cf324ce012 / FOCUSED_COMPLETE` | BOM/Ktor/Buildvarianten |
-| S23: [index.html](<../index.html>) | `109f2fc0c8e60206 / FOCUSED_COMPLETE` | SDK-CDN/Config-UI/Importversion |
-| S24: [service-worker.js](<../service-worker.js>) | `4b9710e80c0085e4 / FOCUSED_COMPLETE` | Rootcache v32/Cutover |
-| S25: [26_Activity_Consumer_Runtime_Activation.sql](<../sql/26_Activity_Consumer_Runtime_Activation.sql>) | `71faf1865bb33fe7 / FOCUSED_COMPLETE` | 417-491 auth.uid-/Serviceowner-Wrapper/ACL |
+| G01: [AGENTS.md](<../../AGENTS.md>) | `e28da5e925a71093 / COMPLETE` | MIDAS Scope/Lesepflicht/Review/KASRKIN |
+| G02: [AGENTS.md](<../../../codex-tools/AGENTS.md>) | `56baddfb359f68ed / COMPLETE` | Werkstatt/Cross-Repo-Regeln |
+| G03: [MIDAS Roadmap Workflow Contract.md](<../templates/MIDAS%20Roadmap%20Workflow%20Contract.md>) | `d22e944d221c6556 / COMPLETE` | S1-S6/R3/Evidence/Usage/Reasoning |
+| G04: [ROADMAP_AUTHORING_CONTRACT.md](<../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md>) | `d2bf138563449bc9 / COMPLETE` | BLUEPRINT-1/Routing/READY/Child/Freeze |
+| G05: [ROLLING_WAVE_ROADMAP_TEMPLATE.md](<../../../codex-tools/docs/blueprint/ROLLING_WAVE_ROADMAP_TEMPLATE.md>) | `8381862a65cd389b / COMPLETE` | Parent/Wave/Review/Resume |
+| G06: [MIDAS Roadmap Template.md](<../templates/MIDAS%20Roadmap%20Template.md>) | `442385dc2be8a5cd / FOCUSED_COMPLETE` | Pflichtfelder/S1/S2/S5/S6; weitere Phasen durch Workflow |
+| G07: [MIDAS Roadmap Evidence Template.md](<../templates/MIDAS%20Roadmap%20Evidence%20Template.md>) | `f0e961cf8f00be67 / FOCUSED_COMPLETE` | Metadaten/Evidencevertrag; Runtimematrix bei Bedarf |
+| G08: [README.md](<../templates/README.md>) | `4defa545770a8407 / COMPLETE` | Overlay und Templatezustaendigkeit |
+| G09: [DEV_ENVIRONMENT.md](<../DEV_ENVIRONMENT.md>) | `25cc1986b2a37a5a / FOCUSED_COMPLETE` | Aktuelle Activation/Git/Edge/Browser/Android/bedingte DB |
+| G10: [DEV_ENVIRONMENT.md](<../../../codex-tools/environment/DEV_ENVIRONMENT.md>) | `c6c8df065c9b3fff / FOCUSED_COMPLETE` | Relevante ATLAS CLI/Browser/Android/KASRKIN-Bereiche |
+| G11: [README.md](<../../README.md>) | `cb45a8a4ff8f2657 / FOCUSED_COMPLETE` | Produkt/V2/Auth/Ownership/Architektur/Betrieb |
+| B01: [MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md](<MIDAS%20Activity%20V2%20R13%20Read-Consumer%20Activation%20and%20V1%20Parity%20Evidence%20%28DONE%29.md>) | `ccdd3ec4a242c84d / FOCUSED_COMPLETE` | PRE09/PRE12/F45/F48/Finaldigest 394-420 |
+| B02: [MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md](<MIDAS%20Activity%20V2%20R14%20Capture%20Cutover%20and%20Android%20PWA%20Validation%20Roadmap%20%28DONE%29.md>) | `00fd13710fb2a695 / FOCUSED_COMPLETE` | DONE-Metadaten/Startkarte/D-ACT-R14-17 |
+| B03: [Supabase Core Overview.md](<../modules/Supabase%20Core%20Overview.md>) | `9b6e98456f4a536e / FOCUSED_COMPLETE` | R13-Auth/Scheduler/native Grenze |
+| B04: [Auth Module Overview.md](<../modules/Auth%20Module%20Overview.md>) | `0c331f0246335c22 / FOCUSED_COMPLETE` | User/Session/Header/Doctor/native Auth |
+| B05: [Android Native Auth Module Overview.md](<../modules/Android%20Native%20Auth%20Module%20Overview.md>) | `38428f6b13ff1e6c / FOCUSED_COMPLETE` | Komponenten/Stores/Owner/OAuth/Bridge/Logout |
+| S01: [client.js](<../../app/supabase/core/client.js>) | `1978e684bd21add5 / COMPLETE` | Publicfilter/createClient/Android-Mirror |
+| S02: [http.js](<../../app/supabase/core/http.js>) | `e971e0033683b25c / COMPLETE` | Headercache/Refresh/Transport |
+| S03: [ui.js](<../../app/supabase/auth/ui.js>) | `c9db2e151cb1dde0 / FOCUSED_COMPLETE` | Configsave/Bearerpraefix/Keytypfilter |
+| S04: [main.js](<../../assets/js/main.js>) | `0b7fa07d01646371 / FOCUSED_COMPLETE` | Config/980-1088 Header/JWT |
+| S05: [index.js](<../../app/modules/hub/index.js>) | `0fb16e2874bec6a6 / FOCUSED_COMPLETE` | Endpoint/Proxywahl/Header/direkte AIcaller |
+| S06: [android-webview-auth-bridge.js](<../../app/core/android-webview-auth-bridge.js>) | `a2bdc9ff5a04d988 / FOCUSED_COMPLETE` | Bootstrap/anonKey-Normalisierung/Configpersistenz |
+| S07: [activity-edge-principal.ts](<../../backend/supabase/functions/_shared/activity-edge-principal.ts>) | `520f5ca048011ced / COMPLETE` | GetUser/named Secret/Serverowner/Imports |
+| S08: [index.ts](<../../backend/supabase/functions/midas-monthly-report/index.ts>) | `e7bf04bb10682c55 / FOCUSED_COMPLETE` | GetUser/User-RPC/interne Legacyclients/Env |
+| S09: [index.ts](<../../backend/supabase/functions/midas-incident-push/index.ts>) | `90c84baffcea2e41 / FOCUSED_COMPLETE` | Caller/Adminalias/Guard/Owner/VAPID |
+| S10: [index.ts](<../../backend/supabase/functions/midas-assistant/index.ts>) | `8c31f1bf35f100f8 / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
+| S11: [index.ts](<../../backend/supabase/functions/midas-transcribe/index.ts>) | `2372e717d638b10e / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
+| S12: [index.ts](<../../backend/supabase/functions/midas-tts/index.ts>) | `5738928736078039 / FOCUSED_COMPLETE` | Env/OpenAIauth/Handler-Userguardfrage |
+| S13: [index.ts](<../../backend/supabase/functions/midas-vision/index.ts>) | `1314689457749148 / FOCUSED_COMPLETE` | Optionale getUser-Aufloesung ohne Pflichtguard |
+| S14: [auth-contract_test.ts](<../../backend/supabase/functions/midas-incident-push/auth-contract_test.ts>) | `6afcebc3726b103b / COMPLETE` | Statischer Alias-Test, kein Runtimeauthbeweis |
+| S15: [config.toml](<../../backend/supabase/config.toml>) | `ab8b7ba94595a565 / FOCUSED_COMPLETE` | Functionflag-Overrides/workdir |
+| S16: [protein-targets.yml](<../../.github/workflows/protein-targets.yml>) | `6570099a05058942 / COMPLETE` | Named apikey/HTTPfail/Weeklycron |
+| S17: [trendpilot.yml](<../../.github/workflows/trendpilot.yml>) | `2d37862ff61e2dd5 / COMPLETE` | Named apikey/HTTPfail/Weeklycron |
+| S18: [incidents-push.yml](<../../.github/workflows/incidents-push.yml>) | `3d549f8fb1bb41d0 / COMPLETE` | Legacy-Bearer/Manual/UTC-Ticks/HTTPfail |
+| S19: [NativeAuthBootstrapValidator.kt](<../../android/app/src/main/java/de/schabuss/midas/auth/NativeAuthBootstrapValidator.kt>) | `7495c8cfc1ea8982 / COMPLETE` | Bootstrap-Typfilter |
+| S20: [NativeAuthConfigResolver.kt](<../../android/app/src/main/java/de/schabuss/midas/auth/NativeAuthConfigResolver.kt>) | `c07646ff11066a7a / COMPLETE` | Restorefallback ohne denselben Filter |
+| S21: [WidgetSyncRepository.kt](<../../android/app/src/main/java/de/schabuss/midas/widget/WidgetSyncRepository.kt>) | `f9f2c94c43f84d26 / FOCUSED_COMPLETE` | REST apikey/User-Bearer |
+| S22: [build.gradle.kts](<../../android/app/build.gradle.kts>) | `08f996cf324ce012 / FOCUSED_COMPLETE` | BOM/Ktor/Buildvarianten |
+| S23: [index.html](<../../index.html>) | `109f2fc0c8e60206 / FOCUSED_COMPLETE` | SDK-CDN/Config-UI/Importversion |
+| S24: [service-worker.js](<../../service-worker.js>) | `4b9710e80c0085e4 / FOCUSED_COMPLETE` | Rootcache v32/Cutover |
+| S25: [26_Activity_Consumer_Runtime_Activation.sql](<../../sql/26_Activity_Consumer_Runtime_Activation.sql>) | `71faf1865bb33fe7 / FOCUSED_COMPLETE` | 417-491 auth.uid-/Serviceowner-Wrapper/ACL |
 
 W1-Readstatus: G01/G02/G03/G08 aktuell COMPLETE; G06/G07/G09 gezielt
 FOCUSED_COMPLETE. G11 gemäß Lesepflicht COMPLETE. G04/G05/G10 gezielt
@@ -483,7 +536,7 @@ Alle B-/S-Fingerprints matchen exakt; frühere ausreichende Coverage wird als
 VALID_REUSE übernommen, keine neue volle Codelektüre behauptet. Abgeschnittene
 Pflichtausgaben wurden in fokussierten Ranges nachgeladen. Toolausgaben mit
 session_id wurden bei U4 bis zum echten Ende abgeholt; Teilausgabe kein Beleg.
-Neue Originale: [KASRKIN Manual](<../../codex-tools/apps/kasrkin/docs/KASRKIN Manual.md>)
+Neue Originale: [KASRKIN Manual](<../../../codex-tools/apps/kasrkin/docs/KASRKIN%20Manual.md>)
 Work/3/Trust/Messung/Recovery FOCUSED_COMPLETE, aktuelle `.kasrkin/integration.md`
 COMPLETE; volle SHA-/K0-/Commandbelege EV-W1-02. Gelieferte weitere Edgefiles
 und Livepostimages gebunden in EV-W1-03/04, keine Source-/ZIP-Hashverwechslung.
@@ -687,7 +740,7 @@ Operatoraktion einmal präzise anleiten, wenn nur Stephan sie ausführen kann.
 ## Aktuelle Work/3-Ausführung — 2026-10-08
 
 Die eigene receiptgebundene Auswahl und `.kasrkin/integration.md` bestimmen
-Work/3. Zentrale operative Quelle ist allein das [KASRKIN Manual](<../../codex-tools/apps/kasrkin/docs/KASRKIN Manual.md>),
+Work/3. Zentrale operative Quelle ist allein das [KASRKIN Manual](<../../../codex-tools/apps/kasrkin/docs/KASRKIN%20Manual.md>),
 hier nur Work/3/Vertrauen/Messung/Recovery konsultiert. Keine Referenz auf die
 entfernten drei früheren Betriebsdokumente als aktuellen Einstieg.
 
@@ -777,11 +830,11 @@ Real-JWT-/Session-/Consumer-Smokes entsprechend deren eigenem Gate.
 | W0 | Deep Dive, Parent, nativer Review/Korrektur | `DONE`; V1–V6 | G0/D8, kein Child |
 | JP1 | Vorgezogener Ownerauftrag: Signing-Verwaltungsimport | `DONE_CONFIGURATION`; aktiver HS256, neuer ES256-Standby; keine Wave-Acceptance ersetzt | G-JWT-IMPORT-ONLY/D18, EV-JP1-01–06 |
 | W1 | Aktuelles Source-/Remote-/Capabilitypostimage/Zielvertrag | `DONE`; Discovery/Full Review/Childdraft EV-W1 vorhanden, F17 geschlossen | U4 PRIMARY_ALLOWED; originaler Abschlussrecord maßgeblich |
-| W2 | Authenticated caller, Edgeguards, internal secrets/Incident | D32 eight Functions DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; positive product acceptance OPEN | W1/G2/Child-S4R satisfied; exact G3/G4 D32 granted |
-| W3 | PWA-Publishable/Cache/Session contract | Web v34 published; D32 actual local-origin Publishable config and seven real owner JWT routes verified; per-origin/positive product acceptance OPEN | Same Backend/Web child; G4 D32 |
-| W4 | Android/Widget Publishable, Restore/OAuth/Device | `PLANNED_COARSE`, nach Backend/Web | Natives Child-S4R/G5, ggf. G3 |
-| W5 | Gesamtmatrix/Recovery/Legacy-Deaktivierung | `PLANNED_COARSE`, nach W2–W4 | Abschalt-Child-S4R/G6, ggf. G3/G5 |
-| W6 | Belegte Doku/QA/Changelog/Roll-up/Archiv | `PLANNED_COARSE`, nach W5 | Frische Zulassung, Acceptance erfüllt; kein Child |
+| W2 | Authenticated caller, Edgeguards, internal secrets/Incident | DONE / OWNER_ACCEPTED_D33; exact8 runtime guards/maps/caller, live auth/null-effect proof | D32 G3/G4; D33 owner acceptance |
+| W3 | PWA-Publishable/Cache/Session contract | DONE / OWNER_ACCEPTED_D33 for deployed Web scope; normal PC/Android report confirmed; no all-native-store migration claim | D32 G4; D33 owner acceptance |
+| W4 | Android/Widget Publishable, Restore/OAuth/Device | DEFERRED_BY_OWNER / NOT_IMPLEMENTED; normal mobile report confirmed | Future own native Child-S4R/G5; recovery note |
+| W5 | Gesamtmatrix/Recovery/Legacy-Deaktivierung | DEFERRED_BY_OWNER / NOT_IMPLEMENTED; Legacy remains active | Future own shutdown Child-S4R/G6; recovery note |
+| W6 | Belegte Doku/QA/Changelog/Roll-up/Archiv | PARTIAL_OWNER_CLOSURE; delivered package archived; programme roll-up NOT_DONE | Full W6 depends on actual W4/W5/A1-A8 evidence |
 
 W1 → W2 → W3 → W4 → W5 → W6. Keine parallelen produktiven Cutover mit unklarer
 Repo-/Conversationzuordnung. W2/W3 besitzen unterschiedliche Acceptancegrenzen
@@ -1187,7 +1240,7 @@ D21/G2 LOCAL_GRANTED bleibt, S4 NOT_STARTED_OWNER_DEFERRED. F18 ursprüngliche
 Ablehnung bleibt Historie, keine heutige erneute L1-Zulassung/Umsetzung.
 Keine automatische Warteschleife, kein Produktbeginn nach NB-1-Closure.
 
-Das [Startpaket NB-1](<MIDAS Supabase Modernization Next Bucket Execution Pack.md>)
+Das [Startpaket NB-1](<MIDAS%20Supabase%20Modernization%20Next%20Bucket%20Execution%20Pack%20%28CLOSED%29.md>)
 bindet genaue L1-Datei-/API-/Testgrenze,14 konkrete Bruchrisiken mit Orakeln,
 aktive Guard→Handler-Negativkette statt injizierter Principalfixture als
 Authbeweis, vorhandenen Browserharness an tatsächlichen SHA, Import-/Cache-/
