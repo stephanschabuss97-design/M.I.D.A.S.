@@ -1,5 +1,9 @@
 # MIDAS QA - Push and Trendpilot
 
+## D32 runtime evidence - 2026-10-09
+
+113 cached local backend tests,20 Auth/Frontend tests and11 hosted fixture Browser/PWA checks passed. Fresh exact8 Function deploys/flags and33 source bytes verified.15 live scheduler negatives/null-effect tests,15 live User negatives and7 actual owner-JWT invalid-domain paths passed. Incident false plus strict named guard; other flags preserved. No clinical/provider/actual-push/device effects. Original launcher/adapter failures retained separately; only invalidated unloaded tests repeated. Evidence: active Supabase programme Evidence and ignored supa-g3-cutover-resume2-20261009 context. Positive post-deploy product acceptance remains OPEN; fixtures are not real Google/clinical acceptance.
+
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `PT-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
 [QA-Einstieg](README.md).
@@ -160,7 +164,9 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Aktion: Cron-Ausdrücke, `workflow_dispatch`, Requestfenster und User-Auflösung
   gegeneinander prüfen.
 - Erwartung: Es gibt 26 reguläre Runs pro Tag plus manuelle Smokes; Scheduler
-  sendet `window=all` und benötigt Secret- oder Request-User-ID.
+  sendet `window=all`; modernisierter Caller benötigt exakt benannten apikey
+  und übereinstimmenden festen Serverowner. Ein Bodyowner ersetzt diesen nie.
+  Workflow/Store/Function werden nur im gemeinsam freigegebenen G3-Fenster geändert.
 - Invalidiert durch: Workflow-Cron, Dispatch-Inputs, Payload oder User-Auflösung.
 
 ### PT-011 - Push-Hygiene schützt aktive Subscriptions
@@ -252,3 +258,16 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   warning/critical, ACK nur über den Button und Chart-Bänder passen zur Range.
 - Invalidiert durch: Trendpilot-UI, Popup, Ack, Doctor-Block oder Chart-Bänder.
 - Cleanup: Isolierte Trendpilot-Events nach dem UI-Test löschen.
+
+
+### PT-017 - Incidentauth bindet den Serverowner vor Pushwirkung
+
+- Vertrag: [Push Module Overview](<../modules/Push Module Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: echter Incidenthandler mit lokalen Auth/Env/Query/VAPID/Pushfixtures.
+- Aktion: benannten Key sowie falschen Namen, beliebige Authorization, Legacycaller und fehlenden/fremden Body-/Serverowner prüfen.
+- Erwartung: nur incidents_push_scheduler apikey, feste übereinstimmende Owner; abgelehnte Fälle vor Query/VAPID/Push, medizinische/manual/now/dry_run-Grenzen nach PT-001–010 unverändert.
+- Invalidiert durch: Incidentauth, Named-key-/Ownerstorevertrag, Requestguards oder Workflowcaller.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.

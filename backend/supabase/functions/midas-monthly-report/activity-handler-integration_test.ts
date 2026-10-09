@@ -3,6 +3,7 @@ import {
   type ActivityEdgePrincipal,
 } from "../_shared/activity-edge-principal.ts";
 import { createActivityConsumerRuntime } from "../_shared/activity-consumer-runtime.ts";
+import { createHandler } from "./index.ts";
 import { buildActivityReportPayload } from "./activity-report.ts";
 import {
   buildAndPersistRangeReport,
@@ -20,12 +21,12 @@ const fixtures = JSON.parse(
     ),
   ),
 );
-const productSource = await Deno.readTextFile(
-  new URL("./index.ts", import.meta.url),
-);
 const cases = Object.fromEntries(
   fixtures.cases.map((entry: DataRecord) => [entry.name, entry]),
 ) as Record<string, DataRecord>;
+const productSource = await Deno.readTextFile(
+  new URL("./index.ts", import.meta.url),
+);
 
 const assert = (condition: boolean, message = "Assertion failed") => {
   if (!condition) throw new Error(message);
@@ -141,23 +142,96 @@ const runHandlerSeam = async (
   return { rpcCalls, ...repository };
 };
 
-Deno.test("T-ACT-R13-04 wires one request-bound SQL25 snapshot before report persistence", () => {
-  assert(productSource.includes('Deno.env.get("SUPABASE_ANON_KEY")'));
-  assert(productSource.includes("createUserActivityPrincipal(token, userId)"));
-  assert(productSource.includes("activityRuntime.loadSnapshot("));
-  assert(
-    productSource.includes(
-      "buildActivityReportPayload(basePayload, activitySnapshot)",
-    ),
-  );
-  assert(
-    !productSource.includes('fetchSeries<ActivityEntry>("v_events_activity"'),
-  );
-  assert(!productSource.includes("activity_consumer_snapshot_for_owner"));
-  assert(
-    productSource.indexOf("activitySnapshotPromise") <
-      productSource.indexOf("buildAndPersistRangeReport({"),
-  );
+Deno.test("T-ACT-R13-04 real verified Monthly handler reads one RLS snapshot before report persistence", async () => {
+  const owner = "00000000-0000-4000-8000-000000000013";
+  const token = "fixture_header.fixture_payload.fixture_signature";
+  const publicKey = "sb_publishable_fixture_public",
+    secretKey = "sb_secret_fixture_monthly";
+  const origin = "https://midas-fixture.supabase.co";
+  const env: Record<string, string> = {
+    MIDAS_OWNER_USER_ID: owner,
+    SUPABASE_URL: origin,
+    SUPABASE_PUBLISHABLE_KEYS: JSON.stringify({ default: publicKey }),
+    SUPABASE_SECRET_KEYS: JSON.stringify({ monthly_report_backend: secretKey }),
+  };
+  const fixture = cases.empty;
+  const range = fixture.range as { from: string; to: string };
+  const calls: string[] = [];
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async (input, init) => {
+      const req = new Request(input, init), url = new URL(req.url);
+      assertEquals(url.origin, origin);
+      calls.push(`${req.method} ${url.pathname}`);
+      let result: unknown;
+      if (url.pathname === "/auth/v1/user") {
+        assertEquals(req.headers.get("apikey"), publicKey);
+        assertEquals(req.headers.get("authorization"), `Bearer ${token}`);
+        result = {
+          id: owner,
+          is_anonymous: false,
+          aud: "authenticated",
+          role: "authenticated",
+          app_metadata: {},
+          user_metadata: {},
+        };
+      } else if (url.pathname === "/rest/v1/rpc/activity_consumer_snapshot") {
+        assertEquals(req.headers.get("apikey"), publicKey);
+        assertEquals(req.headers.get("authorization"), `Bearer ${token}`);
+        const args = await req.json();
+        assertEquals(args, { p_from: range.from, p_to: range.to });
+        result = fixture.snapshot;
+      } else {
+        assertEquals(req.headers.get("apikey"), secretKey);
+        assert(!url.pathname.includes("v_events_activity"));
+        if (req.method === "POST") {
+          assertEquals(url.pathname, "/rest/v1/health_events");
+          const row = await req.json();
+          assertEquals(row.user_id, owner);
+          result = {
+            id: "fixture-report",
+            ts: row.ts,
+            day: range.to,
+            payload: row.payload,
+          };
+        } else {
+          assertEquals(url.searchParams.get("user_id"), `eq.${owner}`);
+          result = req.headers.get("accept")?.includes("object+json")
+            ? null
+            : [];
+        }
+      }
+      return new Response(JSON.stringify(result), {
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    const response = await createHandler((name) => env[name])(
+      new Request(origin, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, apikey: publicKey },
+        body: JSON.stringify({
+          report_type: "range_report",
+          from: range.from,
+          to: range.to,
+        }),
+      }),
+    );
+    assertEquals(response.status, 200);
+    assertEquals(calls[0], "GET /auth/v1/user");
+    const rpc = "POST /rest/v1/rpc/activity_consumer_snapshot",
+      write = "POST /rest/v1/health_events";
+    assertEquals(calls.filter((call) => call === rpc).length, 1);
+    assertEquals(calls.filter((call) => call === write).length, 1);
+    assert(calls.indexOf(rpc) < calls.indexOf(write));
+    const payload = await response.json();
+    assertEquals(payload.report.day, range.to);
+    assertEquals(
+      payload.report.payload.meta.activity.schema_version,
+      "midas.activity-consumer.v1",
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 
 Deno.test("T-ACT-R13-04 persists exact V1, V2, mixed, and empty projections", async () => {

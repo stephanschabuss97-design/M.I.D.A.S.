@@ -1,3 +1,9 @@
+import {
+  authenticateEdgeUser,
+  EdgeAuthError,
+  type EdgeEnvReader,
+  readEdgeEnv,
+} from "../_shared/edge-auth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: {
@@ -12,10 +18,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const TRANSCRIBE_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
 const TRANSCRIBE_MODEL = "gpt-4o-transcribe";
-const TARGET_UNITS = new Set(["ml", "l", "g", "kg", "min", "minute", "minuten"]);
+const TARGET_UNITS = new Set([
+  "ml",
+  "l",
+  "g",
+  "kg",
+  "min",
+  "minute",
+  "minuten",
+]);
 const DIRECT_NUMBER_WORDS = new Map<string, number>([
   ["null", 0],
   ["ein", 1],
@@ -156,7 +169,11 @@ function normalizeTranscriptSurfaceNumbers(value: string): string {
   let index = 0;
   while (index < tokens.length) {
     let replaced = false;
-    for (let consumed = Math.min(6, tokens.length - index - 1); consumed >= 1; consumed -= 1) {
+    for (
+      let consumed = Math.min(6, tokens.length - index - 1);
+      consumed >= 1;
+      consumed -= 1
+    ) {
       const unitToken = tokens[index + consumed];
       if (!TARGET_UNITS.has(unitToken)) continue;
       const phrase = tokens.slice(index, index + consumed).join("");
@@ -174,108 +191,128 @@ function normalizeTranscriptSurfaceNumbers(value: string): string {
   return normalized.join(" ").trim();
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+export const createHandler =
+  (readEnv: EdgeEnvReader = readEdgeEnv) => async (req: Request) => {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", { headers: corsHeaders });
+    }
 
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed, use POST" }),
-      {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-
-  if (!OPENAI_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: "OPENAI_API_KEY missing" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-
-  try {
-    const formData = await req.formData();
-    const audioFile = formData.get("audio") as File | null;
-
-    if (!audioFile) {
+    if (req.method !== "POST") {
       return new Response(
-        JSON.stringify({ error: "Missing audio file (form field 'audio')" }),
+        JSON.stringify({ error: "Method not allowed, use POST" }),
         {
-          status: 400,
+          status: 405,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
-    console.log(
-      "[midas-transcribe] received audio:",
-      audioFile.type,
-      audioFile.size,
-    );
+    try {
+      await authenticateEdgeUser(req, readEnv);
+    } catch (error) {
+      const safe = error instanceof EdgeAuthError
+        ? error
+        : new EdgeAuthError("SERVER_CONFIGURATION_UNAVAILABLE");
+      return new Response(JSON.stringify({ error: safe.publicMessage }), {
+        status: safe.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const openAiForm = new FormData();
-    openAiForm.append("file", audioFile);
-    openAiForm.append("model", TRANSCRIBE_MODEL);
-    openAiForm.append("response_format", "json");
-    openAiForm.append(
-      "prompt",
-      "Deutsch. Fuer klare Mengen- und Timerangaben nach Moeglichkeit Ziffern statt ausgeschriebener Zahlwoerter verwenden.",
-    );
-
-    const openAiRes = await fetch(TRANSCRIBE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: openAiForm,
-    });
-
-    if (!openAiRes.ok) {
-      const errText = await openAiRes.text();
-      console.error("[midas-transcribe] OpenAI error:", errText);
+    const OPENAI_API_KEY = readEnv("OPENAI_API_KEY") ?? "";
+    if (!OPENAI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Transcription failed", details: errText }),
+        JSON.stringify({ error: "OPENAI_API_KEY missing" }),
         {
-          status: 502,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
-    const result = await openAiRes.json();
-    const rawText = (result?.text ?? "").trim();
-    const surfaceNormalizedText = normalizeTranscriptSurfaceNumbers(rawText) || rawText;
+    try {
+      const formData = await req.formData();
+      const audioFile = formData.get("audio") as File | null;
 
-    console.log("[midas-transcribe] transcription complete", {
-      raw_length: rawText.length,
-      surface_length: surfaceNormalizedText.length,
-      surface_changed: surfaceNormalizedText !== rawText,
-    });
+      if (!audioFile) {
+        return new Response(
+          JSON.stringify({ error: "Missing audio file (form field 'audio')" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
 
-    return new Response(JSON.stringify({
-      text: rawText,
-      transcript: rawText,
-      raw_text: rawText,
-      surface_normalized_text: surfaceNormalizedText,
-      normalized_text: surfaceNormalizedText,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    console.error("[midas-transcribe] unexpected error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal error", details: String(err) }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-});
+      console.log(
+        "[midas-transcribe] received audio:",
+        audioFile.type,
+        audioFile.size,
+      );
+
+      const openAiForm = new FormData();
+      openAiForm.append("file", audioFile);
+      openAiForm.append("model", TRANSCRIBE_MODEL);
+      openAiForm.append("response_format", "json");
+      openAiForm.append(
+        "prompt",
+        "Deutsch. Fuer klare Mengen- und Timerangaben nach Moeglichkeit Ziffern statt ausgeschriebener Zahlwoerter verwenden.",
+      );
+
+      const openAiRes = await fetch(TRANSCRIBE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: openAiForm,
+      });
+
+      if (!openAiRes.ok) {
+        const errText = await openAiRes.text();
+        console.error("[midas-transcribe] OpenAI error:", errText);
+        return new Response(
+          JSON.stringify({ error: "Transcription failed", details: errText }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const result = await openAiRes.json();
+      const rawText = (result?.text ?? "").trim();
+      const surfaceNormalizedText =
+        normalizeTranscriptSurfaceNumbers(rawText) || rawText;
+
+      console.log("[midas-transcribe] transcription complete", {
+        raw_length: rawText.length,
+        surface_length: surfaceNormalizedText.length,
+        surface_changed: surfaceNormalizedText !== rawText,
+      });
+
+      return new Response(
+        JSON.stringify({
+          text: rawText,
+          transcript: rawText,
+          raw_text: rawText,
+          surface_normalized_text: surfaceNormalizedText,
+          normalized_text: surfaceNormalizedText,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    } catch (err) {
+      console.error("[midas-transcribe] unexpected error:", err);
+      return new Response(
+        JSON.stringify({ error: "Internal error", details: String(err) }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+  };
+
+if (import.meta.main) Deno.serve(createHandler());

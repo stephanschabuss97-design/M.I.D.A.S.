@@ -1,3 +1,9 @@
+import {
+  authenticateEdgeUser,
+  EdgeAuthError,
+  type EdgeEnvReader,
+  readEdgeEnv,
+} from "../_shared/edge-auth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: {
@@ -16,12 +22,7 @@ const corsHeaders: HeadersInit = {
 // OpenAI Config
 // ---------------------------------------------------------------------------
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/responses";
-const OPENAI_MODEL_TEXT =
-  Deno.env.get("OPENAI_ASSISTANT_MODEL") ?? "gpt-4.1-mini";
-const OPENAI_MODEL_VOICE =
-  Deno.env.get("OPENAI_ASSISTANT_MODEL_VOICE") ?? "gpt-4o-mini";
 
 const DEFAULT_REPLY = "Hallo Stephan, ich bin bereit.";
 const REQUEST_TIMEOUT_MS = 25_000;
@@ -219,8 +220,9 @@ const formatNumber = (
   fractionDigits = 0,
 ): string | null => {
   if (!isFiniteNumber(value)) return null;
-  const formatted =
-    fractionDigits > 0 ? value.toFixed(fractionDigits) : String(Math.round(value));
+  const formatted = fractionDigits > 0
+    ? value.toFixed(fractionDigits)
+    : String(Math.round(value));
   return unit ? `${formatted}${unit}` : formatted;
 };
 
@@ -256,7 +258,9 @@ const buildContextSummary = (rawContext: unknown): string | null => {
 
   if (ctx.profile) {
     const parts: string[] = [];
-    if (ctx.profile.ckd_stage) parts.push(`Nierenstatus: ${ctx.profile.ckd_stage}`);
+    if (ctx.profile.ckd_stage) {
+      parts.push(`Nierenstatus: ${ctx.profile.ckd_stage}`);
+    }
     const salt = formatNumber(ctx.profile.salt_limit_g, " g");
     if (salt) parts.push(`Salzlimit ${salt}/Tag`);
     const protein = formatNumber(ctx.profile.protein_limit_g, " g");
@@ -264,9 +268,13 @@ const buildContextSummary = (rawContext: unknown): string | null => {
     if (ctx.profile.medications?.length) {
       parts.push(`Medikation: ${ctx.profile.medications.join(", ")}`);
     }
-    if (ctx.profile.lifestyle_note) parts.push(`Lifestyle: ${ctx.profile.lifestyle_note}`);
+    if (ctx.profile.lifestyle_note) {
+      parts.push(`Lifestyle: ${ctx.profile.lifestyle_note}`);
+    }
     if (ctx.profile.smoker_status) {
-      parts.push(ctx.profile.smoker_status === "smoker" ? "Raucher" : "Nichtraucher");
+      parts.push(
+        ctx.profile.smoker_status === "smoker" ? "Raucher" : "Nichtraucher",
+      );
     }
     if (parts.length) lines.push(`Profil: ${parts.join(" | ")}`);
   }
@@ -281,7 +289,9 @@ const buildContextSummary = (rawContext: unknown): string | null => {
     if (protein) iParts.push(`Protein ${protein}`);
     if (iParts.length) {
       lines.push(
-        `Intake heute (${ctx.intake.dayIso || "aktueller Tag"}): ${iParts.join(", ")}`,
+        `Intake heute (${ctx.intake.dayIso || "aktueller Tag"}): ${
+          iParts.join(", ")
+        }`,
       );
     }
   }
@@ -295,9 +305,11 @@ const buildContextSummary = (rawContext: unknown): string | null => {
   }
 
   if (!lines.length) return null;
-  return `Kontextdaten für MIDAS (nur intern zur Einordnung nutzen):\n${lines
-    .map((line) => `- ${line}`)
-    .join("\n")}`;
+  return `Kontextdaten für MIDAS (nur intern zur Einordnung nutzen):\n${
+    lines
+      .map((line) => `- ${line}`)
+      .join("\n")
+  }`;
 };
 
 // ---------------------------------------------------------------------------
@@ -331,15 +343,26 @@ const buildChatMessages = (
     const lastUserIndex = [...sourceMessages]
       .map((m, i) => ({ m, i }))
       .reverse()
-      .find((x) => x.m?.role === "user" && typeof x.m.content === "string" && x.m.content.trim());
+      .find((x) =>
+        x.m?.role === "user" && typeof x.m.content === "string" &&
+        x.m.content.trim()
+      );
 
     if (lastUserIndex) {
       const i = lastUserIndex.i;
       const lastUser = sourceMessages[i].content.trim();
       const prevAssistant = [...sourceMessages.slice(0, i)]
         .reverse()
-        .find((m) => m?.role === "assistant" && typeof m.content === "string" && m.content.trim());
-      if (prevAssistant) chatMessages.push({ role: "assistant", content: prevAssistant.content.trim() });
+        .find((m) =>
+          m?.role === "assistant" && typeof m.content === "string" &&
+          m.content.trim()
+        );
+      if (prevAssistant) {
+        chatMessages.push({
+          role: "assistant",
+          content: prevAssistant.content.trim(),
+        });
+      }
       chatMessages.push({ role: "user", content: lastUser });
     }
     return chatMessages;
@@ -373,7 +396,9 @@ const extractSegmentText = (segment: unknown): string => {
   return "";
 };
 
-const extractRawTextFromCompletion = (completion: OpenAIResponse | undefined): string => {
+const extractRawTextFromCompletion = (
+  completion: OpenAIResponse | undefined,
+): string => {
   if (!completion) return "";
 
   if (typeof completion.output_text === "string") {
@@ -423,10 +448,9 @@ const extractAssistantResultFromCompletion = (
   try {
     const parsed = JSON.parse(raw) as { reply?: unknown; actions?: unknown };
 
-    const reply =
-      typeof parsed.reply === "string" && parsed.reply.trim()
-        ? parsed.reply.trim()
-        : DEFAULT_REPLY;
+    const reply = typeof parsed.reply === "string" && parsed.reply.trim()
+      ? parsed.reply.trim()
+      : DEFAULT_REPLY;
 
     const rawActions = Array.isArray(parsed.actions) ? parsed.actions : [];
     const actions: AssistantAction[] = rawActions
@@ -488,7 +512,10 @@ const buildTextFormatJsonSchema = () => ({
 // OpenAI Fetch (mit Timeout)
 // ---------------------------------------------------------------------------
 
-const fetchOpenAI = async (payload: Record<string, unknown>) => {
+const fetchOpenAI = async (
+  payload: Record<string, unknown>,
+  OPENAI_API_KEY: string,
+) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -510,144 +537,195 @@ const fetchOpenAI = async (payload: Record<string, unknown>) => {
 // Handler
 // ---------------------------------------------------------------------------
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed, use POST" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!OPENAI_API_KEY) {
-    console.error("[midas-assistant] OPENAI_API_KEY not set");
-    return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  let body: AssistantRequest;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const session_id =
-    typeof body.session_id === "string" && body.session_id.trim()
-      ? body.session_id.trim()
-      : "unknown-session";
-  const mode =
-    typeof body.mode === "string" && body.mode.trim() ? body.mode.trim() : "text";
-  const messages = body.messages;
-
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: "Missing 'messages' array" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const isVoice = mode === "voice";
-  const model = isVoice ? OPENAI_MODEL_VOICE : OPENAI_MODEL_TEXT;
-  const maxOutputTokens = isVoice ? 160 : 500;
-
-  try {
-    const chatMessages = buildChatMessages({ ...body, mode });
-
-    const isGpt5 = typeof model === "string" && model.startsWith("gpt-5");
-
-    const basePayload: Record<string, unknown> = {
-      model,
-      input: chatMessages,
-      temperature: 0.2,
-      max_output_tokens: maxOutputTokens,
-      store: false,
-      text: {
-        format: buildTextFormatJsonSchema(),
-      },
-    };
-
-    if (!isVoice && isGpt5) {
-      basePayload.reasoning = { effort: "minimal" };
-      basePayload.text = { ...(basePayload.text as Record<string, unknown>), verbosity: "low" };
+export const createHandler =
+  (readEnv: EdgeEnvReader = readEdgeEnv) => async (req: Request) => {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", { headers: corsHeaders });
     }
 
-    let openAiResponse = await fetchOpenAI(basePayload);
-    if (!openAiResponse.ok) {
-      const errorText = await openAiResponse.text();
-
-      if (shouldRetryWithout(errorText, "temperature")) {
-        const { temperature, ...payloadNoTemp } = basePayload;
-        openAiResponse = await fetchOpenAI(payloadNoTemp);
-      } else if (
-        shouldRetryWithout(errorText, "text") ||
-        shouldRetryWithout(errorText, "format") ||
-        shouldRetryWithout(errorText, "json_schema")
-      ) {
-        const clone: Record<string, unknown> = { ...basePayload };
-        if (clone.text && typeof clone.text === "object") {
-          const t = clone.text as Record<string, unknown>;
-          const { format, ...rest } = t;
-          clone.text = rest;
-        }
-        openAiResponse = await fetchOpenAI(clone);
-      } else {
-        console.error("[midas-assistant] OpenAI error:", errorText);
-        return new Response(
-          JSON.stringify({ error: "OpenAI request failed", details: errorText }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-    }
-
-    if (!openAiResponse.ok) {
-      const errorText2 = await openAiResponse.text();
-      console.error("[midas-assistant] OpenAI error (after retry):", errorText2);
+    if (req.method !== "POST") {
       return new Response(
-        JSON.stringify({ error: "OpenAI request failed", details: errorText2 }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Method not allowed, use POST" }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    const completion = (await openAiResponse.json()) as OpenAIResponse;
-    const result = extractAssistantResultFromCompletion(completion);
-
-    console.log("[midas-assistant] actions:", result.actions.map((a) => a.type));
-
-    const responsePayload = {
-      reply: result.reply,
-      actions: result.actions,
-      meta: {
-        model: completion.model ?? model,
-        session_id,
-        mode,
-      },
-    };
-
-    return new Response(JSON.stringify(responsePayload), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    const isAbort = msg.toLowerCase().includes("abort");
-    console.error("[midas-assistant] Unexpected error:", msg);
-
-    return new Response(
-      JSON.stringify({
-        error: isAbort ? "Upstream timeout" : "Internal server error",
-        details: msg,
-      }),
-      {
-        status: isAbort ? 504 : 500,
+    try {
+      await authenticateEdgeUser(req, readEnv);
+    } catch (error) {
+      const safe = error instanceof EdgeAuthError
+        ? error
+        : new EdgeAuthError("SERVER_CONFIGURATION_UNAVAILABLE");
+      return new Response(JSON.stringify({ error: safe.publicMessage }), {
+        status: safe.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-});
+      });
+    }
+
+    const OPENAI_API_KEY = readEnv("OPENAI_API_KEY") ?? "";
+    if (!OPENAI_API_KEY) {
+      console.error("[midas-assistant] OPENAI_API_KEY not set");
+      return new Response(
+        JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    let body: AssistantRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const session_id =
+      typeof body.session_id === "string" && body.session_id.trim()
+        ? body.session_id.trim()
+        : "unknown-session";
+    const mode = typeof body.mode === "string" && body.mode.trim()
+      ? body.mode.trim()
+      : "text";
+    const messages = body.messages;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Missing 'messages' array" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const isVoice = mode === "voice";
+    const model = isVoice
+      ? (readEnv("OPENAI_ASSISTANT_MODEL_VOICE") ?? "gpt-4o-mini")
+      : (readEnv("OPENAI_ASSISTANT_MODEL") ?? "gpt-4.1-mini");
+    const maxOutputTokens = isVoice ? 160 : 500;
+
+    try {
+      const chatMessages = buildChatMessages({ ...body, mode });
+
+      const isGpt5 = typeof model === "string" && model.startsWith("gpt-5");
+
+      const basePayload: Record<string, unknown> = {
+        model,
+        input: chatMessages,
+        temperature: 0.2,
+        max_output_tokens: maxOutputTokens,
+        store: false,
+        text: {
+          format: buildTextFormatJsonSchema(),
+        },
+      };
+
+      if (!isVoice && isGpt5) {
+        basePayload.reasoning = { effort: "minimal" };
+        basePayload.text = {
+          ...(basePayload.text as Record<string, unknown>),
+          verbosity: "low",
+        };
+      }
+
+      let openAiResponse = await fetchOpenAI(basePayload, OPENAI_API_KEY);
+      if (!openAiResponse.ok) {
+        const errorText = await openAiResponse.text();
+
+        if (shouldRetryWithout(errorText, "temperature")) {
+          const { temperature, ...payloadNoTemp } = basePayload;
+          openAiResponse = await fetchOpenAI(payloadNoTemp, OPENAI_API_KEY);
+        } else if (
+          shouldRetryWithout(errorText, "text") ||
+          shouldRetryWithout(errorText, "format") ||
+          shouldRetryWithout(errorText, "json_schema")
+        ) {
+          const clone: Record<string, unknown> = { ...basePayload };
+          if (clone.text && typeof clone.text === "object") {
+            const t = clone.text as Record<string, unknown>;
+            const { format, ...rest } = t;
+            clone.text = rest;
+          }
+          openAiResponse = await fetchOpenAI(clone, OPENAI_API_KEY);
+        } else {
+          console.error("[midas-assistant] OpenAI error:", errorText);
+          return new Response(
+            JSON.stringify({
+              error: "OpenAI request failed",
+              details: errorText,
+            }),
+            {
+              status: 502,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+      }
+
+      if (!openAiResponse.ok) {
+        const errorText2 = await openAiResponse.text();
+        console.error(
+          "[midas-assistant] OpenAI error (after retry):",
+          errorText2,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "OpenAI request failed",
+            details: errorText2,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const completion = (await openAiResponse.json()) as OpenAIResponse;
+      const result = extractAssistantResultFromCompletion(completion);
+
+      console.log(
+        "[midas-assistant] actions:",
+        result.actions.map((a) => a.type),
+      );
+
+      const responsePayload = {
+        reply: result.reply,
+        actions: result.actions,
+        meta: {
+          model: completion.model ?? model,
+          session_id,
+          mode,
+        },
+      };
+
+      return new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const isAbort = msg.toLowerCase().includes("abort");
+      console.error("[midas-assistant] Unexpected error:", msg);
+
+      return new Response(
+        JSON.stringify({
+          error: isAbort ? "Upstream timeout" : "Internal server error",
+          details: msg,
+        }),
+        {
+          status: isAbort ? 504 : 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+  };
+
+if (import.meta.main) Deno.serve(createHandler());

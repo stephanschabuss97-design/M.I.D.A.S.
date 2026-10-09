@@ -69,7 +69,13 @@ jobs:
             WINDOW="all"
           fi
 
-          curl --fail-with-body -sS -X POST "${{ secrets.INCIDENTS_PUSH_URL }}" \
+          INCIDENTS_PUSH_URL="${{ secrets.INCIDENTS_PUSH_URL }}"
+          if [ "$INCIDENTS_PUSH_URL" != "https://jlylmservssinsavlkdi.supabase.co/functions/v1/midas-incident-push" ]; then
+            echo "Incident endpoint does not match the fixed MIDAS project." >&2
+            exit 1
+          fi
+
+          curl --fail-with-body -sS -X POST "$INCIDENTS_PUSH_URL" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.INCIDENTS_PUSH_SECRET_KEY }}" \
             -d "{\"trigger\":\"$TRIGGER\",\"mode\":\"$MODE\",\"window\":\"$WINDOW\"}"

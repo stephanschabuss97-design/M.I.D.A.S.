@@ -364,3 +364,7 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# Named-key authentication is enforced by the strict Incident handler.
+[functions.midas-incident-push]
+verify_jwt = false

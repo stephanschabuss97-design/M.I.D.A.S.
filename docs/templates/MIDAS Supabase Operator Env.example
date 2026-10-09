@@ -1,0 +1,17 @@
+# MIDAS local operator bundle. Copy values only into ignored .env.supabase.local.
+# Never paste values into docs/logs or expose privileged keys to public clients.
+# Existing Credential Manager/CLI authentication remains separate.
+# Legacy service-role is retained only for authorized rollback, not new callers.
+SUPABASE_PROJECT_REF=
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+PROTEIN_TARGETS_SECRET_KEY=
+TRENDPILOT_SECRET_KEY=
+INCIDENTS_PUSH_URL=
+MONTHLY_REPORT_BACKEND_SECRET_KEY=
+INCIDENTS_PUSH_SECRET_KEY=
+MIDAS_OWNER_USER_ID=
+PROTEIN_TARGETS_USER_ID=
+TRENDPILOT_USER_ID=
+INCIDENTS_USER_ID=

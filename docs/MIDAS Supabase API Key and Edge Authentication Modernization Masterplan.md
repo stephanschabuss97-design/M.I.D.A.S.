@@ -1,5 +1,28 @@
 # MIDAS Supabase API Key and Edge Authentication Modernization Masterplan
 
+## Aktueller Wiedereinstieg — D32 / G3/G4 technisch ausgerollt, 2026-10-09
+
+Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
+
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](templates/MIDAS%20Supabase%20Operator%20Env.example) und [Consumer-/Storezuordnung](MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+
+**Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
+
+Frische Runtimepreimages aller acht Functions und ihrer JWT-Flags gesichert. Bestehende drei Schedulerowner stimmen per SHA-256-Storevergleich mit dem echten Owner überein; nicht überschrieben. `MIDAS_OWNER_USER_ID` neu gesetzt. Beide automatisch injizierten Keymaps entsprechen exakt den aktuellen fünf Secretkeys beziehungsweise dem Default-Publishable; keine manuelle SUPABASE-Mapänderung. GitHub `INCIDENTS_PUSH_SECRET_KEY` über stdin gesetzt und Metadaten gelesen; GitHub liefert keinen Klartext-/Digestreadback. Vorhandene URL- und Legacy-Stores bewahrt.
+
+Acht Functions seriell über den vorhandenen API-Deploypfad veröffentlicht. Runtime-Source-Readback: 33/33 Dateien bytegenau. F23 CLOSED / VERIFIED_RUNTIME: ausschließlich `midas-incident-push` verify_jwt true → false, verbunden mit striktem Named-Key-/Fixed-Ownerguard; sieben andere Flags bewahrt. Neue Versionen Assistant 47, Transcribe 34, TTS 35, Vision 46, Monthly 66, Protein 37, Trend 37, Incident 32. Scheduler im asymmetrischen Fenster kontrolliert pausiert, keine laufenden/wartenden Runs; Wiederherstellung erst nach Caller-Veröffentlichung und erfolgreichen Postchecks.
+
+Live-Smokes: 15 Scheduler-Key-/Bearer-/Nullwirkungstests und 15 User-Negativtests erfolgreich. Echte Owner-Userpfade erreichen ausschließlich ungültige Domaineingaben und stoppen vor Gesundheits-/Provider-/Pushwirkung. SDK-Fixtures bleiben als Fixtures gekennzeichnet: 113 Backendtests, 20 Auth-/Frontendtests sowie 11 gehostete Boot-/Medication-/Auth-/Logout-/cold/warm-PWA-Checks erfolgreich. Bestehende fingerprintgleiche v34-Update-/Report-/Capture-/Hub-/Voice-Belege weiterverwendet. Keine neuen echten Google-OAuth-, Logout-/Refresh-, Fremduser-/Anonymous-, klinischen oder Gerätetests behauptet.
+
+Lokale Adapterkorrekturen vollständig erhalten: fehlendes CLI-Reverseconfig aus frischen Flagmetadaten erzeugt; Testlauncherrechte/VM-Flag/NODE_PATH/WSL-LF korrigiert; leere erfolgreiche Secretantwort per frischem Digestreadback reconciliert, kein zweiter Ownerwrite. Der Browser-Prüfadapter zunächst mit falscher Factorysignatur beziehungsweise zusätzlichem REST-Prefer-Header; anhand der tatsächlichen Consumer korrigiert, keine Produktcodekorrektur daraus. Historische fehlgeschlagene Harnessanläufe nicht in PASS umgeschrieben. Nativer Full-Contract-/Security-/Consumerreview; weiterhin exakt zwei historische S5-CodeRabbitläufe, kein dritter Lauf.
+
+**Acceptance-/Archivgrenze:** technisch ausgerollt ist keine neue klinische Produktacceptance. Frühere Owner-Login-/Arztbericht-/BP-Beobachtungen bleiben gültige historische Belege, ersetzen keinen positiven Report-/Capture-Endpunktnachweis nach diesem Backenddeploy. Positive AI-/Pushwirkung wurde nicht freigegeben und nicht ausgeführt. Parent und Backend/Web-Child bleiben ACTIVE; kein (DONE), kein Archiv ohne Exitkriterien. Parent W4/W5/W6 bleiben offen. Fremde Future-Thought-Löschung bleibt außerhalb des eigenen Commits; Env, Tokens, private Receipts und Preimages außerhalb Git.
+
+Aktueller Context Receipt: `.kasrkin/work/supa-g3-cutover-resume2-20261009/context-receipt.json` plus externer SHA. Originalcomplete folgt erst auf tatsächliche vollständige sichere Closure; End-/Receiptpublikation separat, ohne Änderung eingefrorener Evidence. Aktuelle Ownerangabe: nur dieser Auftrag; technische Attribution, Messoverhead und vollständige Datei-/Toolzählung UNKNOWN/null. Keine historische UNKNOWN-History aufwerten.
+
+**Genau nächster fachlicher Schritt:** Stephan prüft nach dem Backendcutover in seiner normalen Web-/Live-Server-Session erneut die Arzt-Ansicht mit einem benötigten echten Bericht über vorhandene Daten. Keine künstliche BP-Messung oder Provider-/Pushprobe erzeugen. Ergebnis mit Zeitpunkt und verwendeter Oberfläche wertfrei erfassen; erst anhand der tatsächlichen offenen Acceptance-/Exitkriterien einen Child-Abschluss frisch zulassen. Kein Android-/Signing-/Legacycutover aus diesem Erfolg ableiten.
+
+
 ## Aktueller Wiedereinstieg — D29 / G3 freigegeben, Preflight abgeschlossen, 2026-10-09
 
 Owner D29: „Dann los mit G3 … Mach alles sauber und archiviere die roadmap.
@@ -272,7 +295,7 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Feld | Festlegung |
 | --- | --- |
 | ID / Form | `SUPA-KEY-2026 / Rolling Wave mit gezielten S1–S6 Execution Children` |
-| Status | `W1_DONE`; BW-S4R-1 READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5/S6 historisch lokal verifiziert; F22 OWNER_CONFIRMED_FIXED; Web-v34 PUBLISHED/VERIFIED_HOSTED D28, Backend/übrige W2/W3 nicht DONE |
+| Status | W1_DONE; L1-L3/S5/S6 historical local evidence; F22 OWNER_CONFIRMED_FIXED; Web v34 PUBLISHED; D32 eight backend Functions DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; W2/W3 PRODUCT_ACCEPTANCE_OPEN; W4/W5/W6 open |
 | Erstellt / aktualisiert | 2026-08-23 / W0-Neufassung 2026-10-05; gezielter W1-/Work3-Abgleich 2026-10-08 |
 | Revision / Freeze | `SUPA-RW-2 / 2026-10-08`; BLUEPRINT-1 / 2026-09-27; Fachinvarianten erhalten, aktuelle Work/3-Projektion unten |
 | Owner / Consumer | Stephan; `C:\Users\steph\Projekte\M.I.D.A.S` |
@@ -282,7 +305,7 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Modell / Reasoning | Lokaler Standard `GPT-5.6 Sol`; Erstellung/Initialreview `Extra High`, ausdrücklich angefordert; tatsächliche UI-/Runtime-Einstellung `NOT_OBSERVABLE` |
 | Ausführung | Standard `High`; produktiver Cutover/Rollback/Abschaltung `Extra High`; mechanischer S6-Sync `Medium` als getrennte Grenze, jeweils vor Blockstart festlegen |
 | Größe / Zeit | Gesamtprogramm vorläufig `large` wegen Auth, Backend, PWA, Android, Tests, Review, Cutover/Reverse und Doku; S4R dimensioniert Blöcke; kontrolliert noch 2026 |
-| Aktuelle Freigabe | D29 benanntes G3-Paket beauftragt, aktuelle Readiness F23 offen, keine produktive Ausführung; D28 Webpublikation abgeschlossen; historisch D24 erneuerte lokale S5/S6-Fortsetzung/Receipt-Ziel;  G1/W1 erneuert 2026-10-08: Ownerobergrenzen 50/15, aktuelle Serialität D13/D14, gewöhnliche lokale Korrekturen D15; U4 PRIMARY_ALLOWED/originales Permit. JP1 eigener G-JWT-IMPORT-ONLY unter D18; D21 lokale Fortsetzung, G2 LOCAL_GRANTED nach grünem BW-S4R-1; G3–G6 bleiben konkret gated; D8 nur W0 |
+| Aktuelle Freigabe | D32 exact whole Env/Key/Store/Scheduler/8-Function/Caller/Web/Commit/Push package GRANTED; G2 LOCAL_GRANTED; G3/G4 D32 granted, no clinical/provider/push/signing/legacy/device/SQL effects; G5/G6 NOT_GRANTED; earlier D8-D31 retained in Decision Log |
 | Produktwirkung / Git | JP1: ausdrücklich freigegebener Import in Signing-Keyverwaltung mit Standbyanlage; aktiver HS256 unverändert. L1–L3 lokal implementiert, nicht deployt; kein Commit/Push |
 | Evidence | [Programmevidence](<MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>), EV-W1-01–12; Parent ist Owner, W2/W3-Child teilt EV-IDs |
 | Archiv | Erst nach W6 und Gesamt-Acceptance mit `(DONE)` nach `docs/archive/` |
@@ -638,14 +661,15 @@ ist kein READY. Missing/Incompatible blockiert mit
 | D27 / 2026-10-09 | Owner erneuert ganzen F22-Diagnose-/Repair-/Review-/Closureblock; aktuelle Serialität bestätigt | Lokaler Fix/Regression nativ geprüft, Owner-Retest offen; originale Work/3-Zulassung95/47, keine Reserveausnahme/Paid Credits/Produktwirkung; G2 erhalten. |
 | D28 / 2026-10-09 | Owner bestätigt Login/Doctor/report und BP08.10.; wählt getesteten Web/Authstand committen/veröffentlichen, offene Roadmaps aktiv lassen | Exaktes Web-v34-Git/Pagesfenster plus Reverse/Postchecks; G3/übrige G4/G5/G6 offen, keine Backend-/Workflow-/fremde Löschwirkung. |
 | D29 / 2026-10-09 | Owner beauftragt vollen G3-Fortschritt und sauberen Gesamtabschluss/Archiv | Benanntes G3-Fenster autorisiert, Preflight eigenständig zugelassen; F23 Incidentgateway und fehlende Bindungen vor produktiver Ausführung klären, keine erfundene Acceptance/DONE. |
+| D32 / 2026-10-09 | Explicit whole Env/Key/Store/Scheduler/8-Function/Caller/Web/Commit/Push authority | Independent Env original CLOSED; whole cutover original admitted at83/33 with18-30/4-8 HEURISTIC plus25/10 reserve. No old50/15 ceiling, paid spend, clinical test, signing/legacy/native effects or foreign Git scope. |
 
 | Gate | Konkrete Entscheidung | Stand |
 | --- | --- | --- |
 | G0 | Masterplan verfassen/reviewen/korrigieren plus D8 | `GRANTED` nur W0 |
 | G1 | W1-Auftrag inkl. zielgebundener Live-Read-only-Inspektion plus frische KASRKIN-Zulassung | erneut GRANTED D13/D14; U4 PRIMARY_ALLOWED/CLOSED, W1 DONE; Signing F17 geschlossen. U3 bleibt historische Ablehnung |
 | G2 | W1-Zielvertrag/aktive Caller/Ownerpolitik, BW-S4R-1 und großes Briefing | `LOCAL_GRANTED` unter D21, grüne technische Readiness und frischer Work/3-Begin je Block; kein G3/G4 |
-| G3 | Benannte Keyanlage/Storebindung, Function-/Action-Cutover und Nullwirkungs-Smokes samt Reverse | `D29_OWNER_GRANTED / READINESS_OPEN_F23`; exaktes Paket aktualisieren/frieren; positive Testwirkungen konkretisieren, kein allgemeines Revoke/Rotation |
-| G4 | PWA-Productload/Cache-/Pages-Cutover, deployauslösender Commit/Push und Reverse | `G4_WEB_V34_GRANTED` D28, exakt Frontend/Tests/Docs und Pages; übrige Key-/Storewirkungen offen |
+| G3 | Named-key/store/8-Function/Incident cutover and safe null-effect tests with reverse | D32_OWNER_GRANTED / DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; positive clinical/provider/push acceptance OPEN; no rotation/revoke |
+| G4 | PWA/Productload/Pages/Caller/Public-config publication and reverse | D28 Web v34 published; D32 exact caller/store/public-config package GRANTED, local origin public config verified; per-origin product acceptance OPEN |
 | G5 | APK/Buildvariant, Device/Installation, reale Login-/Widget-/Push-/Write-Smokes und Testdatenbehandlung | `NOT_GRANTED` |
 | G6 | Legacy-Deaktivierung mit Plattformgranularität/Preimage/Wiederaktivierung/Postchecks | `NOT_GRANTED` |
 | G7 | Endgültige Löschung/aktive Signingrotation/irreversible Erweiterung | `NON_SCOPE`; JP1 autorisiert keine dieser Wirkungen |
@@ -749,8 +773,8 @@ Real-JWT-/Session-/Consumer-Smokes entsprechend deren eigenem Gate.
 | W0 | Deep Dive, Parent, nativer Review/Korrektur | `DONE`; V1–V6 | G0/D8, kein Child |
 | JP1 | Vorgezogener Ownerauftrag: Signing-Verwaltungsimport | `DONE_CONFIGURATION`; aktiver HS256, neuer ES256-Standby; keine Wave-Acceptance ersetzt | G-JWT-IMPORT-ONLY/D18, EV-JP1-01–06 |
 | W1 | Aktuelles Source-/Remote-/Capabilitypostimage/Zielvertrag | `DONE`; Discovery/Full Review/Childdraft EV-W1 vorhanden, F17 geschlossen | U4 PRIMARY_ALLOWED; originaler Abschlussrecord maßgeblich |
-| W2 | Authenticated Caller, Edgeguards, interne Secrets/Incident | [Backend/Web-Child](<MIDAS Supabase Backend and Web Authentication Modernization Roadmap.md>) S1–S4R DONE/READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5 VERIFIED_LOCAL D24 | W1 DONE; G2/Child-S4R; produktiv G3/G4 |
-| W3 | PWA-Publishable/Cache-/Sessionvertrag | LOCAL_IMPLEMENTED_L3; S5 VERIFIED_LOCAL; F22 OWNER_CONFIRMED_FIXED; Web-v34 PUBLISHED/VERIFIED_HOSTED D28, Key-/Storecutover weiter offen | Derselbe Backend/Web-Child, G4 |
+| W2 | Authenticated caller, Edgeguards, internal secrets/Incident | D32 eight Functions DEPLOYED_VERIFIED_AUTH_NULL_EFFECT; positive product acceptance OPEN | W1/G2/Child-S4R satisfied; exact G3/G4 D32 granted |
+| W3 | PWA-Publishable/Cache/Session contract | Web v34 published; D32 actual local-origin Publishable config and seven real owner JWT routes verified; per-origin/positive product acceptance OPEN | Same Backend/Web child; G4 D32 |
 | W4 | Android/Widget Publishable, Restore/OAuth/Device | `PLANNED_COARSE`, nach Backend/Web | Natives Child-S4R/G5, ggf. G3 |
 | W5 | Gesamtmatrix/Recovery/Legacy-Deaktivierung | `PLANNED_COARSE`, nach W2–W4 | Abschalt-Child-S4R/G6, ggf. G3/G5 |
 | W6 | Belegte Doku/QA/Changelog/Roll-up/Archiv | `PLANNED_COARSE`, nach W5 | Frische Zulassung, Acceptance erfüllt; kein Child |
@@ -994,7 +1018,7 @@ Folgeartefakt dieser Parent mit genannter Wave/Child.
 | F20 / P2 Configrollback | gescheiterte UI-Konfigspeicherung kann gemischten persistenten Pair hinterlassen | LOCAL_FIXED_S5; Keyinvalidierung/Restore/Fehlertext und reale einmalige/dauerhafte IDB-Fehler EV-S5-03/05 PASS |
 | F21 / P1 SW Cachefehler | erfolgreicher ungecachter HTTP200-Asset ging bei Cachepersistenzfehler verloren; Lookup/Navigation ähnlich betroffen | LOCAL_FIXED_F21_R1: tatsächliche Source-VM8 und aktive Browser21 PASS, nativer Fullreview; original S6 FINDING_ONLY unverändert |
 | F22 / P1 lokaler Auth-/UI-Boot | stale Antwort löste bei gültiger Session Login aus; lokaler Fix und Regression grün | CLOSED_LOCAL / OWNER_CONFIRMED_FIXED D28, echter Login/Doctor/Report bestätigt; kein produktiver Backendguardbeweis |
-| F23 / P1 G3-Readiness | Acht aktuelle Runtimepreimages gesichert; Incident verify_jwt=true versus apikey-only Caller, zwei Namedkeys/Owner-/GitHubbindung fehlen | OPEN / G3_READINESS_OPEN; kein produktiver Versuch, voller aktualisierter Cutover benötigt frische Zulassung und echten aktuellen OwnergetUser |
+| F23 / P1 G3 readiness | Incident gateway flag incompatible with named apikey caller; missing new bindings | CLOSED / VERIFIED_RUNTIME D32: exact Incident true-to-false plus strict guard, two named keys/Owner/GitHub binding and exact8 runtime postimages; historical D29 OPEN preserved |
 
 F04/F05/F07/F16 vor jeweiliger produktiver Grenze beheben/beweisen. D21 erlaubt
 lokale Codefixes erst nach grünem BW-S4R-1 und frischer Blockzulassung. Offene Live-/Tool-/Devicegates sperren Ausführung, nicht ehrliches

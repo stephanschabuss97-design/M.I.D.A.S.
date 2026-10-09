@@ -1,5 +1,10 @@
+import {
+  authenticateEdgeUser,
+  EdgeAuthError,
+  type EdgeEnvReader,
+  readEdgeEnv,
+} from "../_shared/edge-auth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -14,7 +19,7 @@ const corsHeaders: HeadersInit = {
 };
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/responses";
-const DEFAULT_VISION_MODEL = Deno.env.get("OPENAI_VISION_MODEL") ?? "gpt-4.1-mini";
+
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAX_OUTPUT_TOKENS = 400;
 const REQUEST_TIMEOUT_MS = 45_000;
@@ -89,13 +94,9 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 
 const okResponse = () => new Response("ok", { headers: corsHeaders });
 
-const getString = (value: unknown): string => (typeof value === "string" ? value : "");
-
-const getBearerToken = (req: Request): string | null => {
-  const h = req.headers.get("Authorization") || "";
-  if (h.startsWith("Bearer ")) return h.slice(7).trim();
-  return h.trim() || null;
-};
+const getString = (
+  value: unknown,
+): string => (typeof value === "string" ? value : "");
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
@@ -128,10 +129,15 @@ const approximateBase64Bytes = (base64: string): number => {
   return Math.ceil((base64.length * 3) / 4) - padding;
 };
 
-const formatNumber = (value: unknown, unit?: string, fractionDigits = 0): string | null => {
+const formatNumber = (
+  value: unknown,
+  unit?: string,
+  fractionDigits = 0,
+): string | null => {
   if (!isFiniteNumber(value)) return null;
-  const formatted =
-    fractionDigits > 0 ? value.toFixed(fractionDigits) : String(Math.round(value));
+  const formatted = fractionDigits > 0
+    ? value.toFixed(fractionDigits)
+    : String(Math.round(value));
   return unit ? `${formatted}${unit}` : formatted;
 };
 
@@ -147,8 +153,12 @@ const buildContextSummary = (rawContext: unknown): string | null => {
     if (salt) p.push(`Salzlimit ${salt}/Tag`);
     const protein = formatNumber(ctx.profile.protein_limit_g, " g");
     if (protein) p.push(`Proteinlimit ${protein}/Tag`);
-    if (ctx.profile.medications?.length) p.push(`Medikation: ${ctx.profile.medications.join(", ")}`);
-    if (ctx.profile.lifestyle_note) p.push(`Lifestyle: ${ctx.profile.lifestyle_note}`);
+    if (ctx.profile.medications?.length) {
+      p.push(`Medikation: ${ctx.profile.medications.join(", ")}`);
+    }
+    if (ctx.profile.lifestyle_note) {
+      p.push(`Lifestyle: ${ctx.profile.lifestyle_note}`);
+    }
     if (p.length) lines.push(`Profil: ${p.join(" | ")}`);
   }
 
@@ -170,13 +180,21 @@ const buildContextSummary = (rawContext: unknown): string | null => {
   }
 
   if (!lines.length) return null;
-  return `Kontext (nur zur Einordnung):\n${lines.map((l) => `- ${l}`).join("\n")}`;
+  return `Kontext (nur zur Einordnung):\n${
+    lines.map((l) => `- ${l}`).join("\n")
+  }`;
 };
 
-const buildVisionPrompt = (history?: string, customPrompt?: string, contextSummary?: string) => {
+const buildVisionPrompt = (
+  history?: string,
+  customPrompt?: string,
+  contextSummary?: string,
+) => {
   const lines = [...BASE_PROMPT_LINES];
   if (customPrompt && customPrompt.trim()) lines.push(customPrompt.trim());
-  if (contextSummary && contextSummary.trim()) lines.push(contextSummary.trim());
+  if (contextSummary && contextSummary.trim()) {
+    lines.push(contextSummary.trim());
+  }
   if (history && history.trim()) lines.push(`Historie:\n${history.trim()}`);
   return lines.join("\n");
 };
@@ -208,7 +226,9 @@ const coerceNumber = (value: unknown): number | null => {
   return null;
 };
 
-const collectTextCandidates = (completion: Record<string, unknown>): string[] => {
+const collectTextCandidates = (
+  completion: Record<string, unknown>,
+): string[] => {
   const candidates: string[] = [];
 
   const ot = (completion as { output_text?: unknown }).output_text;
@@ -223,12 +243,11 @@ const collectTextCandidates = (completion: Record<string, unknown>): string[] =>
       const content = item?.content;
       if (Array.isArray(content)) {
         for (const seg of content as any[]) {
-          const t =
-            typeof seg?.text === "string"
-              ? seg.text
-              : typeof seg?.output_text === "string"
-                ? seg.output_text
-                : null;
+          const t = typeof seg?.text === "string"
+            ? seg.text
+            : typeof seg?.output_text === "string"
+            ? seg.output_text
+            : null;
           if (t && t.trim()) candidates.push(t.trim());
         }
       }
@@ -238,8 +257,13 @@ const collectTextCandidates = (completion: Record<string, unknown>): string[] =>
   const choices = (completion as { choices?: unknown }).choices;
   if (Array.isArray(choices) && choices.length) {
     const first = choices[0] as any;
-    if (typeof first?.text === "string" && first.text.trim()) candidates.push(first.text.trim());
-    if (typeof first?.message?.content === "string" && first.message.content.trim()) {
+    if (typeof first?.text === "string" && first.text.trim()) {
+      candidates.push(first.text.trim());
+    }
+    if (
+      typeof first?.message?.content === "string" &&
+      first.message.content.trim()
+    ) {
       candidates.push(first.message.content.trim());
     }
   }
@@ -247,7 +271,9 @@ const collectTextCandidates = (completion: Record<string, unknown>): string[] =>
   return candidates;
 };
 
-const extractStructuredResult = (completion: Record<string, unknown>): StructuredResult | null => {
+const extractStructuredResult = (
+  completion: Record<string, unknown>,
+): StructuredResult | null => {
   const texts = collectTextCandidates(completion);
   for (const t of texts) {
     const parsed = safeJsonParse(t);
@@ -261,7 +287,9 @@ const extractStructuredResult = (completion: Record<string, unknown>): Structure
     const proteinRaw = coerceNumber(obj.protein_g);
 
     const salt = saltRaw === null ? null : clamp(roundTo(saltRaw, 1), 0, 40);
-    const protein = proteinRaw === null ? null : clamp(roundTo(proteinRaw, 1), 0, 120);
+    const protein = proteinRaw === null
+      ? null
+      : clamp(roundTo(proteinRaw, 1), 0, 120);
 
     return { summary, salt_g: salt, protein_g: protein };
   }
@@ -301,213 +329,229 @@ const fetchOpenAI = async (apiKey: string, body: Record<string, unknown>) => {
   }
 };
 
-const buildOptionalAuthClient = () => {
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  if (!url || !anon) return null;
-  try {
-    return createClient(url, anon, { auth: { persistSession: false } });
-  } catch {
-    return null;
-  }
-};
+export const createHandler =
+  (readEnv: EdgeEnvReader = readEdgeEnv) =>
+  async (req: Request): Promise<Response> => {
+    if (req.method === "OPTIONS") return okResponse();
+    if (req.method !== "POST") {
+      return jsonResponse(405, { error: "method-not-allowed" });
+    }
 
-const tryResolveUserId = async (token: string | null): Promise<string | null> => {
-  if (!token) return null;
-  const supa = buildOptionalAuthClient();
-  if (!supa) return null;
-  try {
-    const { data, error } = await supa.auth.getUser(token);
-    if (error || !data?.user?.id) return null;
-    return data.user.id;
-  } catch {
-    return null;
-  }
-};
+    let authenticated: Awaited<ReturnType<typeof authenticateEdgeUser>>;
+    try {
+      authenticated = await authenticateEdgeUser(req, readEnv);
+    } catch (error) {
+      const safe = error instanceof EdgeAuthError
+        ? error
+        : new EdgeAuthError("SERVER_CONFIGURATION_UNAVAILABLE");
+      return new Response(JSON.stringify({ error: safe.publicMessage }), {
+        status: safe.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") return okResponse();
-  if (req.method !== "POST") return jsonResponse(405, { error: "method-not-allowed" });
+    let payload: VisionRequest;
+    try {
+      payload = (await req.json()) as VisionRequest;
+    } catch (err) {
+      console.error("[midas-vision] invalid json", err);
+      return jsonResponse(400, { error: "invalid-json" });
+    }
 
-  let payload: VisionRequest;
-  try {
-    payload = (await req.json()) as VisionRequest;
-  } catch (err) {
-    console.error("[midas-vision] invalid json", err);
-    return jsonResponse(400, { error: "invalid-json" });
-  }
+    const rawImage = getString(payload.image_base64 ?? payload.imageBase64);
+    if (!rawImage) return jsonResponse(400, { error: "image_base64-required" });
 
-  const rawImage = getString(payload.image_base64 ?? payload.imageBase64);
-  if (!rawImage) return jsonResponse(400, { error: "image_base64-required" });
+    const imageBase64 = extractBase64(rawImage);
+    if (!imageBase64) {
+      return jsonResponse(400, { error: "image_base64-invalid" });
+    }
 
-  const imageBase64 = extractBase64(rawImage);
-  if (!imageBase64) return jsonResponse(400, { error: "image_base64-invalid" });
+    const approxBytes = approximateBase64Bytes(imageBase64);
+    if (approxBytes > MAX_IMAGE_BYTES) {
+      return jsonResponse(413, {
+        error: "image-too-large",
+        limit_bytes: MAX_IMAGE_BYTES,
+      });
+    }
 
-  const approxBytes = approximateBase64Bytes(imageBase64);
-  if (approxBytes > MAX_IMAGE_BYTES) {
-    return jsonResponse(413, { error: "image-too-large", limit_bytes: MAX_IMAGE_BYTES });
-  }
+    const openAiKey = readEnv("OPENAI_API_KEY") ?? "";
+    if (!openAiKey) {
+      console.error("[midas-vision] OPENAI_API_KEY missing");
+      return jsonResponse(500, { error: "openai-key-missing" });
+    }
 
-  const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
-  if (!openAiKey) {
-    console.error("[midas-vision] OPENAI_API_KEY missing");
-    return jsonResponse(500, { error: "openai-key-missing" });
-  }
+    const userId = authenticated.owner_id;
 
-  const token = getBearerToken(req);
-  const userId = await tryResolveUserId(token);
+    const sessionId = typeof payload.session_id === "string"
+      ? payload.session_id
+      : null;
+    const history = typeof payload.history === "string"
+      ? payload.history.trim()
+      : "";
+    const customPrompt = typeof payload.prompt === "string"
+      ? payload.prompt
+      : undefined;
 
-  const sessionId = typeof payload.session_id === "string" ? payload.session_id : null;
-  const history = typeof payload.history === "string" ? payload.history.trim() : "";
-  const customPrompt = typeof payload.prompt === "string" ? payload.prompt : undefined;
+    const contextSummary = typeof payload.context !== "undefined"
+      ? buildContextSummary(payload.context)
+      : null;
+    const userPrompt = buildVisionPrompt(
+      history,
+      customPrompt,
+      contextSummary || undefined,
+    );
 
-  const contextSummary =
-    typeof payload.context !== "undefined" ? buildContextSummary(payload.context) : null;
-  const userPrompt = buildVisionPrompt(history, customPrompt, contextSummary || undefined);
+    const mimeType = extractMimeType(rawImage) ?? "image/jpeg";
+    const imageUrl = rawImage.startsWith("data:")
+      ? rawImage
+      : `data:${mimeType};base64,${imageBase64}`;
 
-  const mimeType = extractMimeType(rawImage) ?? "image/jpeg";
-  const imageUrl = rawImage.startsWith("data:")
-    ? rawImage
-    : `data:${mimeType};base64,${imageBase64}`;
+    const model = readEnv("OPENAI_VISION_MODEL") ?? "gpt-4.1-mini";
+    const requestId = typeof crypto?.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`;
 
-  const model = DEFAULT_VISION_MODEL;
-  const requestId = typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-
-  const baseBody: Record<string, unknown> = {
-    model,
-    input: [
-      { role: "system", content: [{ type: "input_text", text: SYSTEM_PROMPT }] },
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: userPrompt },
-          { type: "input_image", image_url: imageUrl },
-        ],
+    const baseBody: Record<string, unknown> = {
+      model,
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: SYSTEM_PROMPT }],
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: userPrompt },
+            { type: "input_image", image_url: imageUrl },
+          ],
+        },
+      ],
+      max_output_tokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.2,
+      text: { format: TEXT_FORMAT },
+      metadata: {
+        source: "midas-vision",
+        session_id: sessionId,
+        request_id: requestId,
+        user_id: userId,
       },
-    ],
-    max_output_tokens: MAX_OUTPUT_TOKENS,
-    temperature: 0.2,
-    text: { format: TEXT_FORMAT },
-    metadata: {
-      source: "midas-vision",
+      store: false,
+    };
+
+    let completion: Record<string, unknown> = {};
+
+    try {
+      let { res, text } = await fetchOpenAI(openAiKey, baseBody);
+
+      if (!res.ok) {
+        const errText = text || "";
+        const tempUnsupported = shouldRetryWithout(errText, "temperature");
+        const textUnsupported = shouldRetryWithout(errText, "text") ||
+          shouldRetryWithout(errText, "json_schema") ||
+          shouldRetryWithout(errText, "format");
+
+        if (tempUnsupported || textUnsupported) {
+          const retryBody = { ...baseBody } as Record<string, unknown>;
+
+          if (tempUnsupported) {
+            const { temperature, ...rest } = retryBody;
+            Object.assign(retryBody, rest);
+            delete (retryBody as any).temperature;
+          }
+
+          if (textUnsupported) {
+            if (retryBody.text && typeof retryBody.text === "object") {
+              const t = retryBody.text as Record<string, unknown>;
+              const { format, ...restText } = t;
+              retryBody.text = restText;
+            }
+          }
+
+          ({ res, text } = await fetchOpenAI(openAiKey, retryBody));
+        }
+      }
+
+      if (!res.ok) {
+        console.error("[midas-vision] OpenAI error", {
+          status: res.status,
+          response_length: (text || "").length,
+        });
+        return jsonResponse(res.status, {
+          error: "openai-error",
+          details: text || res.statusText,
+        });
+      }
+
+      const parsed = safeJsonParse(text);
+      if (!parsed || typeof parsed !== "object") {
+        console.error("[midas-vision] openai invalid json", {
+          response_length: (text || "").length,
+        });
+        return jsonResponse(502, { error: "openai-invalid-json" });
+      }
+
+      completion = parsed as Record<string, unknown>;
+    } catch (err) {
+      console.error("[midas-vision] request failed", err);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return jsonResponse(504, { error: "upstream-timeout" });
+      }
+      return jsonResponse(502, {
+        error: "vision-request-failed",
+        details: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const structured = extractStructuredResult(completion);
+    if (!structured) {
+      console.error("[midas-vision] structured result missing", {
+        output_count: Array.isArray((completion as { output?: unknown }).output)
+          ? (completion as { output: unknown[] }).output.length
+          : 0,
+        has_output_text:
+          typeof (completion as { output_text?: unknown }).output_text ===
+            "string",
+      });
+      return jsonResponse(502, { error: "vision-empty" });
+    }
+
+    const reply = structured.summary.trim();
+    if (!reply) return jsonResponse(502, { error: "summary-missing" });
+
+    const output = Array.isArray((completion as { output?: unknown }).output)
+      ? ((completion as { output: unknown[] }).output)
+      : [];
+    const choices = Array.isArray((completion as { choices?: unknown }).choices)
+      ? ((completion as { choices: unknown[] }).choices)
+      : [];
+    const finishReason =
+      (output[0] as { finish_reason?: unknown })?.finish_reason ??
+        (choices[0] as { finish_reason?: unknown })?.finish_reason ??
+        (completion as { finish_reason?: unknown }).finish_reason ??
+        null;
+
+    const meta: Record<string, unknown> = {
+      model,
       session_id: sessionId,
       request_id: requestId,
       user_id: userId,
-    },
-    store: false,
+      finish_reason: finishReason,
+      usage: (completion as { usage?: unknown })?.usage ?? null,
+    };
+
+    if (payload.meta && typeof payload.meta === "object") {
+      meta.request_meta = payload.meta;
+    }
+
+    return jsonResponse(200, {
+      reply,
+      analysis: {
+        water_ml: null,
+        salt_g: structured.salt_g,
+        protein_g: structured.protein_g,
+      },
+      meta,
+    });
   };
 
-  let completion: Record<string, unknown> = {};
-
-  try {
-    let { res, text } = await fetchOpenAI(openAiKey, baseBody);
-
-    if (!res.ok) {
-      const errText = text || "";
-      const tempUnsupported = shouldRetryWithout(errText, "temperature");
-      const textUnsupported =
-        shouldRetryWithout(errText, "text") ||
-        shouldRetryWithout(errText, "json_schema") ||
-        shouldRetryWithout(errText, "format");
-
-      if (tempUnsupported || textUnsupported) {
-        const retryBody = { ...baseBody } as Record<string, unknown>;
-
-        if (tempUnsupported) {
-          const { temperature, ...rest } = retryBody;
-          Object.assign(retryBody, rest);
-          delete (retryBody as any).temperature;
-        }
-
-        if (textUnsupported) {
-          if (retryBody.text && typeof retryBody.text === "object") {
-            const t = retryBody.text as Record<string, unknown>;
-            const { format, ...restText } = t;
-            retryBody.text = restText;
-          }
-        }
-
-        ({ res, text } = await fetchOpenAI(openAiKey, retryBody));
-      }
-    }
-
-    if (!res.ok) {
-      console.error("[midas-vision] OpenAI error", {
-        status: res.status,
-        response_length: (text || "").length,
-      });
-      return jsonResponse(res.status, {
-        error: "openai-error",
-        details: text || res.statusText,
-      });
-    }
-
-    const parsed = safeJsonParse(text);
-    if (!parsed || typeof parsed !== "object") {
-      console.error("[midas-vision] openai invalid json", {
-        response_length: (text || "").length,
-      });
-      return jsonResponse(502, { error: "openai-invalid-json" });
-    }
-
-    completion = parsed as Record<string, unknown>;
-  } catch (err) {
-    console.error("[midas-vision] request failed", err);
-    if (err instanceof DOMException && err.name === "AbortError") {
-      return jsonResponse(504, { error: "upstream-timeout" });
-    }
-    return jsonResponse(502, {
-      error: "vision-request-failed",
-      details: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  const structured = extractStructuredResult(completion);
-  if (!structured) {
-    console.error("[midas-vision] structured result missing", {
-      output_count: Array.isArray((completion as { output?: unknown }).output)
-        ? ((completion as { output: unknown[] }).output).length
-        : 0,
-      has_output_text: typeof (completion as { output_text?: unknown }).output_text === "string",
-    });
-    return jsonResponse(502, { error: "vision-empty" });
-  }
-
-  const reply = structured.summary.trim();
-  if (!reply) return jsonResponse(502, { error: "summary-missing" });
-
-  const output = Array.isArray((completion as { output?: unknown }).output)
-    ? ((completion as { output: unknown[] }).output)
-    : [];
-  const choices = Array.isArray((completion as { choices?: unknown }).choices)
-    ? ((completion as { choices: unknown[] }).choices)
-    : [];
-  const finishReason =
-    ((output[0] as { finish_reason?: unknown })?.finish_reason ??
-      (choices[0] as { finish_reason?: unknown })?.finish_reason ??
-      (completion as { finish_reason?: unknown }).finish_reason ??
-      null);
-
-  const meta: Record<string, unknown> = {
-    model,
-    session_id: sessionId,
-    request_id: requestId,
-    user_id: userId,
-    finish_reason: finishReason,
-    usage: (completion as { usage?: unknown })?.usage ?? null,
-  };
-
-  if (payload.meta && typeof payload.meta === "object") {
-    meta.request_meta = payload.meta;
-  }
-
-  return jsonResponse(200, {
-    reply,
-    analysis: {
-      water_ml: null,
-      salt_g: structured.salt_g,
-      protein_g: structured.protein_g,
-    },
-    meta,
-  });
-});
+if (import.meta.main) Deno.serve(createHandler());

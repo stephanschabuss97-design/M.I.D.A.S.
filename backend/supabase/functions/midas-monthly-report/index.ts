@@ -1,12 +1,17 @@
+import {
+  authenticateEdgeUser,
+  EdgeAuthError,
+  type EdgeEnvReader,
+  readEdgeEnv,
+} from "../_shared/edge-auth.ts";
+import { readServerSecretKey, readServerUrl } from "../_shared/edge-auth.ts";
 import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   getIsoDayInTimeZone,
   NormalizedRange,
   readRangeReportRequest,
-  readUserBearerToken,
   REPORT_TIME_ZONE as REPORT_TZ,
-  RequestContractError,
   resolvePublicRequestErrorMessage,
   resolveRequestErrorStatus,
 } from "./request-contract.ts";
@@ -36,16 +41,6 @@ const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE_KEY) {
-  throw new Error("[midas-monthly-report] Supabase env missing");
-}
-
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
 const activityRuntime = createActivityConsumerRuntime();
 
 type BpEntry = {
@@ -85,24 +80,15 @@ type ActivityEntry = {
 };
 
 const createUserActivityPrincipal = (
-  token: string,
+  client: SupabaseClient,
   userId: string,
-): ActivityEdgePrincipal => {
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  return Object.freeze({
+): ActivityEdgePrincipal =>
+  Object.freeze({
     schema_version: ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
     mode: "user",
     owner_id: userId,
-    rpc_client: userClient as unknown as ActivityEdgeRpcClient,
+    rpc_client: client as unknown as ActivityEdgeRpcClient,
   });
-};
 
 const toNarrativeActivitySeries = (
   snapshot: Awaited<ReturnType<typeof activityRuntime.loadSnapshot>>,
@@ -173,17 +159,6 @@ const shiftIsoDate = (iso: string, days: number) => {
   if (Number.isNaN(d.getTime())) return iso;
   d.setUTCDate(d.getUTCDate() + days);
   return toISODate(d);
-};
-
-const requireUser = async (token: string) => {
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    throw new RequestContractError(
-      "Nutzer konnte nicht authentifiziert werden.",
-      401,
-    );
-  }
-  return data.user;
 };
 
 const formatDateDE = (iso: string | null) => {
@@ -366,6 +341,7 @@ const formatRangeMedicationRows = (data: RangeMedicationData) => {
 };
 
 const fetchRangeMedicationData = async (
+  supabase: SupabaseClient,
   userId: string,
   reportDay: string,
 ): Promise<RangeMedicationData> => {
@@ -406,6 +382,7 @@ const fetchRangeMedicationData = async (
 };
 
 const fetchSeries = async <T>(
+  supabase: SupabaseClient,
   table: string,
   userId: string,
   range: NormalizedRange,
@@ -1156,7 +1133,9 @@ const serializeError = (err: unknown) => {
   return String(err);
 };
 
-const reportRepository: RangeReportRepository = {
+const createReportRepository = (
+  supabase: SupabaseClient,
+): RangeReportRepository => ({
   find: async (userId: string) => {
     const { data, error } = await supabase
       .from("health_events")
@@ -1207,142 +1186,159 @@ const reportRepository: RangeReportRepository = {
     if (error) throw error;
     return data as RangeReportRow | null;
   },
-};
+});
 
 // ---------------------------------------------------------------------------
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return responseOk();
-  if (req.method !== "POST") {
-    return responseJson({ error: "Method not allowed, use POST" }, 405);
-  }
+export const createHandler =
+  (readEnv: EdgeEnvReader = readEdgeEnv) => async (req: Request) => {
+    if (req.method === "OPTIONS") return responseOk();
+    if (req.method !== "POST") {
+      return responseJson({ error: "Method not allowed, use POST" }, 405);
+    }
 
-  try {
-    const token = readUserBearerToken(req, SERVICE_ROLE_KEY);
-    const user = await requireUser(token);
-    const userId = user.id;
-    const { range, reportAnchorTs } = await readRangeReportRequest(req);
-    const activitySnapshotPromise = activityRuntime.loadSnapshot(
-      createUserActivityPrincipal(token, userId),
-      { from: range.from, to: range.to },
-    );
-    const medicationReportDay = getIsoDayInTimeZone(new Date(), REPORT_TZ);
-    const bpRange30 = {
-      from: shiftIsoDate(range.to, -29),
-      to: range.to,
-    };
-    const bpRange180 = {
-      from: shiftIsoDate(range.to, -179),
-      to: range.to,
-    };
+    try {
+      const authenticated = await authenticateEdgeUser(req, readEnv);
+      const userId = authenticated.owner_id;
+      // Named internal client is selected strictly; only an absent modern map permits the documented legacy transition.
+      const supabase = createClient(
+        readServerUrl(readEnv),
+        readServerSecretKey("monthly_report_backend", readEnv),
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
+          },
+        },
+      );
+      const { range, reportAnchorTs } = await readRangeReportRequest(req);
+      const activitySnapshotPromise = activityRuntime.loadSnapshot(
+        createUserActivityPrincipal(authenticated.client, userId),
+        { from: range.from, to: range.to },
+      );
+      const medicationReportDay = getIsoDayInTimeZone(new Date(), REPORT_TZ);
+      const bpRange30 = {
+        from: shiftIsoDate(range.to, -29),
+        to: range.to,
+      };
+      const bpRange180 = {
+        from: shiftIsoDate(range.to, -179),
+        to: range.to,
+      };
 
-    const profilePromise = supabase
-      .from("user_profile")
-      .select(
-        [
-          "full_name",
-          "birth_date",
-          "height_cm",
-          "is_smoker",
-        ].join(","),
-      )
-      .eq("user_id", userId)
-      .maybeSingle();
+      const profilePromise = supabase
+        .from("user_profile")
+        .select(
+          [
+            "full_name",
+            "birth_date",
+            "height_cm",
+            "is_smoker",
+          ].join(","),
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    const trendpilotPromise = supabase
-      .from("trendpilot_events_range")
-      .select(
-        [
-          "id",
-          "ts",
-          "type",
-          "severity",
-          "source",
-          "window_from",
-          "window_to",
-          "payload",
-        ].join(","),
-      )
-      .eq("user_id", userId)
-      .order("window_from", { ascending: false })
-      .order("ts", { ascending: false });
+      const trendpilotPromise = supabase
+        .from("trendpilot_events_range")
+        .select(
+          [
+            "id",
+            "ts",
+            "type",
+            "severity",
+            "source",
+            "window_from",
+            "window_to",
+            "payload",
+          ].join(","),
+        )
+        .eq("user_id", userId)
+        .order("window_from", { ascending: false })
+        .order("ts", { ascending: false });
 
-    const [
-      bpSeries,
-      bpSeries30,
-      bpSeries180,
-      bodySeries,
-      labSeries,
-      activitySnapshot,
-      medicationData,
-      profileResult,
-      trendpilotResult,
-    ] = await Promise.all([
-      fetchSeries<BpEntry>("v_events_bp", userId, range),
-      fetchSeries<BpEntry>("v_events_bp", userId, bpRange30),
-      fetchSeries<BpEntry>("v_events_bp", userId, bpRange180),
-      fetchSeries<BodyEntry>("v_events_body", userId, range),
-      fetchSeries<LabEntry>("v_events_lab", userId, range),
-      activitySnapshotPromise,
-      fetchRangeMedicationData(userId, medicationReportDay),
-      profilePromise,
-      trendpilotPromise,
-    ]);
+      const [
+        bpSeries,
+        bpSeries30,
+        bpSeries180,
+        bodySeries,
+        labSeries,
+        activitySnapshot,
+        medicationData,
+        profileResult,
+        trendpilotResult,
+      ] = await Promise.all([
+        fetchSeries<BpEntry>(supabase, "v_events_bp", userId, range),
+        fetchSeries<BpEntry>(supabase, "v_events_bp", userId, bpRange30),
+        fetchSeries<BpEntry>(supabase, "v_events_bp", userId, bpRange180),
+        fetchSeries<BodyEntry>(supabase, "v_events_body", userId, range),
+        fetchSeries<LabEntry>(supabase, "v_events_lab", userId, range),
+        activitySnapshotPromise,
+        fetchRangeMedicationData(supabase, userId, medicationReportDay),
+        profilePromise,
+        trendpilotPromise,
+      ]);
 
-    if (profileResult?.error) throw profileResult.error;
-    if (trendpilotResult?.error) throw trendpilotResult.error;
-    const profile = (profileResult?.data as ProfileRow | null) || null;
-    const trendpilotEntries = Array.isArray(trendpilotResult?.data)
-      ? (trendpilotResult.data as unknown as TrendpilotEntry[])
-      : [];
-    const activitySeries = toNarrativeActivitySeries(activitySnapshot);
-    const generatedAt = new Date().toISOString();
+      if (profileResult?.error) throw profileResult.error;
+      if (trendpilotResult?.error) throw trendpilotResult.error;
+      const profile = (profileResult?.data as ProfileRow | null) || null;
+      const trendpilotEntries = Array.isArray(trendpilotResult?.data)
+        ? (trendpilotResult.data as unknown as TrendpilotEntry[])
+        : [];
+      const activitySeries = toNarrativeActivitySeries(activitySnapshot);
+      const generatedAt = new Date().toISOString();
 
-    const report = await buildAndPersistRangeReport({
-      repository: reportRepository,
-      userId,
-      reportAnchorTs,
-      expectedDay: range.to,
-      generatedAt,
-      buildPayload: () => {
-        const narrative = buildNarrative({
-          range,
-          bpSeries,
-          bpSeries30,
-          bpSeries180,
-          bodySeries,
-          labSeries,
-          activitySeries,
-          profile,
-          medicationData,
-          trendpilotEntries,
-        });
+      const report = await buildAndPersistRangeReport({
+        repository: createReportRepository(supabase),
+        userId,
+        reportAnchorTs,
+        expectedDay: range.to,
+        generatedAt,
+        buildPayload: () => {
+          const narrative = buildNarrative({
+            range,
+            bpSeries,
+            bpSeries30,
+            bpSeries180,
+            bodySeries,
+            labSeries,
+            activitySeries,
+            profile,
+            medicationData,
+            trendpilotEntries,
+          });
 
-        const basePayload = {
-          subtype: "range_report",
-          period: { from: range.from, to: range.to },
-          report_type: "range_report",
-          summary: narrative.summary,
-          text: narrative.text,
-          meta: narrative.meta,
-          bp_series: bpSeries,
-          body_series: bodySeries,
-          lab_series: labSeries,
-          activity_series: activitySeries,
-        };
-        return buildActivityReportPayload(basePayload, activitySnapshot);
-      },
-    });
-    return responseJson(
-      { report, range, report_anchor_ts: reportAnchorTs },
-      200,
-    );
-  } catch (err) {
-    const message = serializeError(err);
-    console.error("[midas-monthly-report] error:", message);
-    const status = resolveRequestErrorStatus(err);
-    return responseJson(
-      { error: resolvePublicRequestErrorMessage(err) },
-      status,
-    );
-  }
-});
+          const basePayload = {
+            subtype: "range_report",
+            period: { from: range.from, to: range.to },
+            report_type: "range_report",
+            summary: narrative.summary,
+            text: narrative.text,
+            meta: narrative.meta,
+            bp_series: bpSeries,
+            body_series: bodySeries,
+            lab_series: labSeries,
+            activity_series: activitySeries,
+          };
+          return buildActivityReportPayload(basePayload, activitySnapshot);
+        },
+      });
+      return responseJson(
+        { report, range, report_anchor_ts: reportAnchorTs },
+        200,
+      );
+    } catch (err) {
+      if (err instanceof EdgeAuthError) {
+        return responseJson({ error: err.publicMessage }, err.status);
+      }
+      const message = serializeError(err);
+      console.error("[midas-monthly-report] error:", message);
+      const status = resolveRequestErrorStatus(err);
+      return responseJson(
+        { error: resolvePublicRequestErrorMessage(err) },
+        status,
+      );
+    }
+  };
+
+if (import.meta.main) Deno.serve(createHandler());

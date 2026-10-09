@@ -12,8 +12,8 @@ import {
 } from "./activity-edge-principal.ts";
 
 const USER_ID = "00000000-0000-4000-8000-000000000013";
-const PROTEIN_OWNER = "00000000-0000-4000-8000-000000000101";
-const TREND_OWNER = "00000000-0000-4000-8000-000000000102";
+const PROTEIN_OWNER = USER_ID;
+const TREND_OWNER = USER_ID;
 const TEST_URL = "https://midas-test.supabase.co";
 const PUBLISHABLE_KEY = `sb_publishable_${"p".repeat(48)}`;
 const PROTEIN_KEY = `sb_secret_${"a".repeat(48)}`;
@@ -79,7 +79,7 @@ const realContextDependency =
     await createSupabaseContext(request, { auth: options.auth, env }) as never;
 
 const fakeUserClient = (
-  user: { id?: unknown } | null,
+  user: { id?: unknown; is_anonymous?: unknown } | null,
   error: unknown = null,
   onToken: (token: string) => void = () => {},
 ) => ({
@@ -93,11 +93,14 @@ const fakeUserClient = (
 });
 
 const ownerReader = (name: string) =>
-  name === "PROTEIN_TARGETS_USER_ID"
-    ? PROTEIN_OWNER
-    : name === "TRENDPILOT_USER_ID"
-    ? TREND_OWNER
-    : undefined;
+  ({
+    MIDAS_OWNER_USER_ID: USER_ID,
+    PROTEIN_TARGETS_USER_ID: PROTEIN_OWNER,
+    TRENDPILOT_USER_ID: TREND_OWNER,
+    SUPABASE_URL: TEST_URL,
+    SUPABASE_PUBLISHABLE_KEYS: JSON.stringify(secretEnv.publishableKeys),
+    SUPABASE_SECRET_KEYS: JSON.stringify(secretEnv.secretKeys),
+  } as Record<string, string>)[name];
 
 Deno.test("T-ACT-R13-L01 freezes the two exact auth mode contracts", () => {
   assertEquals(ACTIVITY_EDGE_TARGETS.protein.authModes, [
@@ -115,9 +118,13 @@ Deno.test("T-ACT-R13-L01 freezes the two exact auth mode contracts", () => {
 
 Deno.test("T-ACT-R13-L01 authenticates a legacy user JWT through Supabase Auth", async () => {
   let observedToken = "";
-  const rpcClient = fakeUserClient({ id: USER_ID }, null, (token) => {
-    observedToken = token;
-  });
+  const rpcClient = fakeUserClient(
+    { id: USER_ID, is_anonymous: false },
+    null,
+    (token) => {
+      observedToken = token;
+    },
+  );
   const principal = await createActivityEdgePrincipal(
     new Request(TEST_URL, {
       headers: { Authorization: `Bearer ${LEGACY_USER_JWT}` },
@@ -127,8 +134,8 @@ Deno.test("T-ACT-R13-L01 authenticates a legacy user JWT through Supabase Auth",
       createContext: () => {
         throw new Error("secret validation must not run for a bearer caller");
       },
-      createUserClient: () => rpcClient,
       readEnv: ownerReader,
+      createUserClient: () => rpcClient,
     },
   );
   assertEquals(principal.schema_version, ACTIVITY_EDGE_PRINCIPAL_SCHEMA);
@@ -195,6 +202,7 @@ Deno.test("T-ACT-R13-L01 rejects public, legacy, bearer-secret and malformed cal
         }),
         "protein",
         {
+          readEnv: ownerReader,
           createUserClient: () =>
             fakeUserClient(
               null,
@@ -237,6 +245,7 @@ Deno.test("T-ACT-R13-L01 never falls back from a failed bearer to a scheduler se
             schedulerCalls += 1;
             return Promise.resolve({ data: null, error: null });
           },
+          readEnv: ownerReader,
           createUserClient: () =>
             fakeUserClient(
               null,
@@ -300,6 +309,7 @@ Deno.test("T-ACT-R13-L01 fails closed on owner or auth configuration", async () 
         }),
         "protein",
         {
+          readEnv: ownerReader,
           createUserClient: () => fakeUserClient({ id: "invalid-owner" }),
         },
       ),
@@ -315,6 +325,7 @@ Deno.test("T-ACT-R13-L01 fails closed on owner or auth configuration", async () 
         }),
         "protein",
         {
+          readEnv: ownerReader,
           createUserClient: () =>
             fakeUserClient(
               null,

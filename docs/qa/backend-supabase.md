@@ -1,5 +1,9 @@
 # MIDAS QA - Backend and Supabase
 
+## D32 runtime evidence - 2026-10-09
+
+113 cached local backend tests,20 Auth/Frontend tests and11 hosted fixture Browser/PWA checks passed. Fresh exact8 Function deploys/flags and33 source bytes verified.15 live scheduler negatives/null-effect tests,15 live User negatives and7 actual owner-JWT invalid-domain paths passed. Incident false plus strict named guard; other flags preserved. No clinical/provider/actual-push/device effects. Original launcher/adapter failures retained separately; only invalidated unloaded tests repeated. Evidence: active Supabase programme Evidence and ignored supa-g3-cutover-resume2-20261009 context. Positive post-deploy product acceptance remains OPEN; fixtures are not real Google/clinical acceptance.
+
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `BS-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
 [QA-Einstieg](README.md).
@@ -72,9 +76,10 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   fremde User-ID sind isoliert simulierbar.
 - Aktion: Den technischen Auth-Einstieg der betroffenen Function mit allen
   Varianten aufrufen.
-- Erwartung: Userpfad bindet an den authentifizierten User, Scheduler braucht
-  explizite Zielauflösung, fehlende oder widersprüchliche Identität wird vor
-  fachlichen Reads und Writes abgelehnt.
+- Erwartung: Userpfad verlangt GetUser, is_anonymous=false und exakt festen
+  MIDAS_OWNER_USER_ID. Scheduler benötigt exakt benannten Secretkey und
+  übereinstimmenden festen Serverowner; ungültiger Bearer fällt nie auf Secret
+  zurück. Fehlende/fremde Identität wird vor Daten-/AIwirkung abgelehnt.
 - Invalidiert durch: Edge-Auth, Scheduler-Caller, User-Auflösung oder Service Role.
 - Cleanup: Isolierte Auth-, Request- und Datenbankadapter verwerfen.
 
@@ -237,7 +242,7 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 ### BS-014 - Activity V2 C2 projiziert einen unveränderlichen Katalog v2
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
-  [C2 Catalog Contract](<../MIDAS Activity V2 C2 Catalog Version 2 Contract.md>)
+  [C2 Catalog Contract](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>)
   und [C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
 - Ebene: disposable + productive read-only
 - Ausführung: automated + owner-gated SQL
@@ -261,3 +266,29 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Cleanup: C2 selbst löscht produktiv nichts. Jede Bereinigung benötigt null
   v2-Referenzen und ein separates Owner-Gate.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
+
+
+### BS-015 - Moderne Servermaps wählen strikt vor Legacyfallback
+
+- Vertrag: [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: echte Shared-Auth-/SDK-Sources und lokale Env-/Fetchfixtures, kein Netzwerkrecht.
+- Aktion: fehlende, vorhandene leere/kaputte/typfalsche Maps und fehlende/falsche benannte Einträge durchspielen.
+- Erwartung: nur fehlende Map erlaubt internen typgültigen Legacyübergang; vorhandene Fehlkonfiguration scheitert vor Wirkung, Named-scheduler niemals über Legacycaller.
+- Invalidiert durch: Envparser, SDKauswahl, Named-key-Vertrag oder Backendauth.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+
+### BS-016 - Public-Keytyp ist kein Projekt- oder Userauthbeweis
+
+- Vertrag: [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: aktueller Public-Keyfilter und Config-/Clientreader in isolierter VM.
+- Aktion: modern public und Legacy-ANON lesen; Secret-/Service-/Usertoken, Whitespace, kaputte Struktur und stale cached Clientkonfiguration prüfen.
+- Erwartung: nur Publictypen akzeptiert, UIwrite ohne Bearerpräfix; SDKsession bleibt separate aktuelle Berechtigung, Endpointidentität wird gebunden; keine gültige Projektbindung aus Syntax ableiten.
+- Invalidiert durch: Keyfilter, ConfigUI/-Restore oder Endpoint-/Clientidentität.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.

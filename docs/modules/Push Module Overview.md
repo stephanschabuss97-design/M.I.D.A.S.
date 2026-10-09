@@ -1,5 +1,28 @@
 # Push Module - Functional Overview
 
+## Supabase-Modernisierungsvertrag — D32 technisch ausgerollt
+
+Der folgende Vertrag ist unter D32 für die acht Backendfunctions ausgerollt.
+Incident verwendet verify_jwt=false zusammen mit dem strikten Handlerguard;
+Caller und GitHub-Namedstore werden im kontrollierten Schedulerfenster übernommen.
+Live-Auth-/Nullwirkungstests ersetzen keine tatsächliche Push-Acceptance.
+Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Neuer Incidentcaller verwendet ausschließlich raw benannten
+  `incidents_push_scheduler` als apikey. Authorization/User-/Legacyfallback
+  wird abgelehnt, bevor Query/VAPID/Pushwirkung möglich ist.
+- MIDAS_OWNER_USER_ID und INCIDENTS_USER_ID müssen denselben festen Owner
+  binden. Optionaler Bodyowner darf nur identisch sein; er ersetzt keine
+  Serverbindung. Manual/now/dry_run, Wienzeit und medizinische Fälligkeit bleiben.
+- Workflowziel ist INCIDENTS_PUSH_SECRET_KEY, zusammen mit Function und Store
+  im kontrollierten G3-Fenster. Der Caller prüft das feste Projektziel vor
+  Secrettransport. Vorhandene Legacy-Stores bleiben für den eigenen Rückweg;
+  der normale Scheduler wird nach Postchecks wiederhergestellt, kein Dispatch.
+- Protein-/Trendpilot-User-/Named-schedulergrenzen bleiben getrennt und exakt;
+  Push bleibt Sicherheitsnetz, kein neuer Diagnose- oder Plattformowner.
+
+
 Kurze Einordnung:
 
 - Zweck: gestaffelte Medication-Reminder plus spaetere Incidents und ein klarer BP-Incident-Pfad.
@@ -362,7 +385,7 @@ Bis dahin gilt:
 
 ---
 
-## 12. Remote Push Setup-Notiz
+## 12. Historische produktive Remote-Push-Setupbaseline vor G3
 
 - Edge Function `midas-incident-push` muss deployed sein.
 - `sql/15_Push_Subscriptions.sql` muss produktiv eingespielt sein.
@@ -414,7 +437,7 @@ Bis dahin gilt:
 - Diagnose-Erfolge schalten lokale Suppression nicht frei.
 - Remote-Responses zeigen `acceptedSubscriptions`/`failedSubscriptions` mit sicheren Metadaten, aber keine Roh-Endpunkte oder Keys.
 - Scheduler-Vertrag ist 26 regulaere Runs pro Tag plus manuelle `workflow_dispatch`-Smokes.
-- Produktiver Scheduler braucht `INCIDENTS_USER_ID` als Function Secret oder eine explizite `user_id` im Request.
+- Modernisierter Scheduler benötigt feste übereinstimmende MIDAS_OWNER_USER_ID/INCIDENTS_USER_ID; ein Bodyowner ersetzt den Serverowner nie. Die produktive Übernahme bleibt G3-gated.
 - Touchlog zeigt Push-Wartung; Profil bleibt sichtbar push-frei.
 - BP bleibt konsistent incident-orientiert.
 - Push-Hygiene-Job, Owner, ACL, Schedule und Command entsprechen dem

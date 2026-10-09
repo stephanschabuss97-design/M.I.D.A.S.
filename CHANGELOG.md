@@ -14,6 +14,14 @@ erhalten.
 
 ### Security
 
+- D32: Acht Supabase Functions mit verifiziertem festen Owner und strikten
+  User-/Named-Keyguards veröffentlicht. Incident verwendet verify_jwt=false
+  und einen ausschließlich benannten Schedulerkey; der GitHubcaller prüft
+  sein festes Projektziel vor Keytransport. Public-/Secretmaps bleiben
+  automatisch injiziert. Lokaler Operatorstore für 13 konkrete Felder samt
+  secretsfreier Vorlage dokumentiert. Keine Signingrotation, Legacyabschaltung,
+  AIaktivierung oder Android-/Geräteänderung; klinische Acceptance bleibt offen.
+
 - F22 lokal behoben: Eine durch Authereignis oder Refresh veraltete Anfrage
   fordert bei gültiger aktueller Session keine Google-Anmeldung mehr. Alte
   Antworten bleiben gesperrt; unklare Sessionprüfungen autorisieren nichts,

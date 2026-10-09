@@ -1,5 +1,23 @@
 # Reports Module - Functional Overview
 
+## Supabase-Modernisierungsvertrag — D32 technisch ausgerollt
+
+Der folgende Vertrag ist mit Monthlyversion 66 unter D32 ausgerollt.
+Echter Owner-JWT und der benannte interne Mapstore sind bis zur sicheren
+Eingabeablehnung geprüft; ein neuer positiver Bericht nach Deploy bleibt offen.
+Lokale Fixtures ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Range-Reportcaller verwendet raw public `apikey` plus aktuellen User-Bearer.
+  Backend verlangt verifizierten nicht-anonymen festen MIDAS-Owner.
+- Activitysnapshot bleibt über authentifizierten Userclient/RLS-RPC; interner
+  Reportclient wählt ausschließlich `monthly_report_backend`. Ein vorhandener
+  ungültiger moderner Store darf nicht auf Legacy oder Schedulernamen ausweichen.
+- Zeitraum, singleton create-then-replace, sanitisiertes Fehlerverhalten und
+  report-first/read-back/Render/Unlock-Lifecycle bleiben erhalten. Kein Monthly-
+  Scheduler entsteht. Der benannte Mapstore wurde im D32-G3-Fenster verifiziert.
+
+
 ## R13-Produktionsstand (2026-08-26)
 
 Neue Range-Arztberichte verwenden produktiv genau einen requestgebundenen
@@ -179,7 +197,7 @@ Updatefehlern erhalten.
   Source of Truth.
 - Ein Restore darf ohne Report starten. Der nächste explizite Create-Flow
   rekonstruiert den aktuellen Bericht.
-- Es gibt keinen Monthly-Workflow und keine exklusiven Monthly-Secrets.
+- Es gibt keinen Monthly-Workflow. Die historische Deploymentbaseline hatte keinen exklusiven Monthlykey; der lokale Modernisierungsvertrag benötigt künftig den benannten internen Key monthly_report_backend hinter G3.
 - Der technische Function-Name `midas-monthly-report` bleibt aus
   Kompatibilitätsgründen bestehen.
 

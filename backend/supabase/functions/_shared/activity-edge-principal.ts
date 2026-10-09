@@ -2,7 +2,16 @@ import {
   type AuthModeWithKey,
   createSupabaseContext,
 } from "npm:@supabase/server@1.4.1";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  authenticateMidasUser,
+  createEdgeUserClient,
+  EdgeAuthError,
+  readAuthStatus,
+  readBoundSchedulerOwner,
+  readNamedSchedulerEnv,
+  readUserBearer,
+  requireSchedulerApiKey,
+} from "./edge-auth.ts";
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -58,10 +67,13 @@ type ActivityContextResult =
 
 type CreateActivityContext = (
   request: Request,
-  options: { auth: AuthModeWithKey[] },
+  options: {
+    auth: AuthModeWithKey[];
+    env: ReturnType<typeof readNamedSchedulerEnv>;
+  },
 ) => Promise<ActivityContextResult>;
 
-type ActivityUser = { id?: unknown };
+type ActivityUser = { id?: unknown; is_anonymous?: unknown };
 
 type ActivityUserClient = ActivityEdgeRpcClient & {
   auth: {
@@ -87,8 +99,6 @@ export type ActivityEdgePrincipal = Readonly<{
   rpc_client: ActivityEdgeRpcClient;
 }>;
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_ERROR_MESSAGE = "The activity edge principal request failed.";
 
 export class ActivityEdgePrincipalError extends Error {
@@ -112,75 +122,12 @@ export class ActivityEdgePrincipalError extends Error {
   }
 }
 
-const readOwnNumber = (value: unknown, key: string) => {
-  try {
-    if (value === null || typeof value !== "object") return null;
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    return descriptor &&
-        Object.prototype.hasOwnProperty.call(descriptor, "value") &&
-        typeof descriptor.value === "number"
-      ? descriptor.value
-      : null;
-  } catch {
-    return null;
-  }
-};
-
 const defaultCreateContext: CreateActivityContext = async (
   request,
   options,
 ) => {
-  const result = await createSupabaseContext(request, {
-    auth: options.auth,
-  });
+  const result = await createSupabaseContext(request, options);
   return result as unknown as ActivityContextResult;
-};
-
-const createDefaultUserClient = (
-  token: string,
-  readEnv: (name: string) => string | undefined,
-): ActivityUserClient => {
-  const url = readEnv("SUPABASE_URL")?.trim();
-  const anonKey = readEnv("SUPABASE_ANON_KEY")?.trim();
-  if (!url || !anonKey) {
-    throw new ActivityEdgePrincipalError(
-      "SERVER_CONFIGURATION_UNAVAILABLE",
-      "user",
-    );
-  }
-  return createClient(url, anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  }) as unknown as ActivityUserClient;
-};
-
-const mapContextError = (error: unknown): ActivityEdgePrincipalError =>
-  new ActivityEdgePrincipalError(
-    readOwnNumber(error, "status") === 401
-      ? "UNAUTHORIZED"
-      : "SERVER_CONFIGURATION_UNAVAILABLE",
-  );
-
-const readOwner = (value: unknown, mode: ActivityEdgePrincipalMode) => {
-  if (typeof value !== "string" || !UUID_RE.test(value.trim())) {
-    throw new ActivityEdgePrincipalError(
-      mode === "user" ? "UNAUTHORIZED" : "SERVER_CONFIGURATION_UNAVAILABLE",
-      mode,
-    );
-  }
-  return value.trim().toLowerCase();
-};
-
-const readUserBearer = (request: Request) => {
-  const authorization = request.headers.get("authorization");
-  if (authorization === null) return null;
-  const match = /^Bearer ([^\s]+)$/.exec(authorization);
-  if (!match) throw new ActivityEdgePrincipalError("UNAUTHORIZED", "user");
-  return match[1];
 };
 
 export const createActivityEdgePrincipal = async (
@@ -192,77 +139,68 @@ export const createActivityEdgePrincipal = async (
   if (!config) {
     throw new ActivityEdgePrincipalError("SERVER_CONFIGURATION_UNAVAILABLE");
   }
-  const createContext = dependencies.createContext ?? defaultCreateContext;
   const readEnv = dependencies.readEnv ??
     ((name: string) => Deno.env.get(name));
-  const userToken = readUserBearer(request);
-  if (userToken !== null) {
-    let userClient: ActivityUserClient;
-    try {
-      userClient = (dependencies.createUserClient ??
-        ((token: string) => createDefaultUserClient(token, readEnv)))(
-          userToken,
-        );
-    } catch (error) {
-      if (error instanceof ActivityEdgePrincipalError) throw error;
-      throw new ActivityEdgePrincipalError(
-        "SERVER_CONFIGURATION_UNAVAILABLE",
-        "user",
+  const mode = request.headers.has("authorization") ? "user" : "scheduler";
+  try {
+    const token = readUserBearer(request);
+    // A configured scheduler owner must agree even for the target's user path.
+    const owner = readBoundSchedulerOwner(config.ownerEnv, readEnv);
+    if (token !== null) {
+      const authenticated = await authenticateMidasUser(
+        request,
+        dependencies.createUserClient ??
+          ((value: string) =>
+            createEdgeUserClient(
+              value,
+              readEnv,
+            ) as unknown as ActivityUserClient),
+        readEnv,
       );
+      return Object.freeze({
+        schema_version: ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
+        mode: "user",
+        owner_id: authenticated.owner_id,
+        rpc_client: authenticated.client,
+      });
     }
-    let result: Awaited<ReturnType<ActivityUserClient["auth"]["getUser"]>>;
-    try {
-      result = await userClient.auth.getUser(userToken);
-    } catch {
-      throw new ActivityEdgePrincipalError(
-        "SERVER_CONFIGURATION_UNAVAILABLE",
-        "user",
-      );
-    }
-    if (result.error) {
-      const status = readOwnNumber(result.error, "status");
-      throw new ActivityEdgePrincipalError(
-        status === 401 || status === 403
+    requireSchedulerApiKey(request);
+    const env = readNamedSchedulerEnv(config.secretName, readEnv);
+    const result = await (dependencies.createContext ?? defaultCreateContext)(
+      request,
+      {
+        auth: [`secret:${config.secretName}`],
+        env,
+      },
+    );
+    if (result.error || !result.data) {
+      throw new EdgeAuthError(
+        readAuthStatus(result.error) === 401
           ? "UNAUTHORIZED"
           : "SERVER_CONFIGURATION_UNAVAILABLE",
-        "user",
       );
     }
-    if (!result.data.user) {
-      throw new ActivityEdgePrincipalError("UNAUTHORIZED", "user");
+    if (
+      result.data.authMode !== "secret" ||
+      result.data.authKeyName !== config.secretName
+    ) {
+      throw new EdgeAuthError("UNAUTHORIZED");
     }
-    const ownerId = readOwner(result.data.user.id, "user");
-    return Object.freeze({
-      schema_version: ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
-      mode: "user",
-      owner_id: ownerId,
-      rpc_client: userClient,
-    });
-  }
-  let result: ActivityContextResult;
-  try {
-    result = await createContext(request, {
-      auth: [`secret:${config.secretName}`],
-    });
-  } catch {
-    throw new ActivityEdgePrincipalError("SERVER_CONFIGURATION_UNAVAILABLE");
-  }
-  if (result.error || !result.data) throw mapContextError(result.error);
-
-  const context = result.data;
-  if (
-    context.authMode === "secret" &&
-    context.authKeyName === config.secretName
-  ) {
-    const ownerId = readOwner(readEnv(config.ownerEnv), "scheduler");
     return Object.freeze({
       schema_version: ACTIVITY_EDGE_PRINCIPAL_SCHEMA,
       mode: "scheduler",
-      owner_id: ownerId,
-      rpc_client: context.supabaseAdmin,
+      owner_id: owner,
+      rpc_client: result.data.supabaseAdmin,
     });
+  } catch (error) {
+    if (error instanceof ActivityEdgePrincipalError) throw error;
+    throw new ActivityEdgePrincipalError(
+      error instanceof EdgeAuthError
+        ? error.code
+        : "SERVER_CONFIGURATION_UNAVAILABLE",
+      mode,
+    );
   }
-  throw new ActivityEdgePrincipalError("UNAUTHORIZED");
 };
 
 export const activityEdgePrincipalLog = (
