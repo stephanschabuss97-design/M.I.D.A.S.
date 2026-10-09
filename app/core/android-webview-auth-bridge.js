@@ -19,13 +19,9 @@
     return;
   }
 
-  const normalizeAnonKey = (value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
-  };
-
-  const readBootstrapState = async () => {
+  let activeRead = null;
+  const performBootstrapRead = async () => {
+    let configState = null;
     try {
       const rawPayload = bridge.getBootstrapState?.();
       if (!rawPayload) {
@@ -36,7 +32,10 @@
       const payload = JSON.parse(String(rawPayload));
       const restUrl = String(payload?.restUrl || '').trim();
       const supabaseUrl = String(payload?.supabaseUrl || '').trim();
-      const anonKey = normalizeAnonKey(payload?.anonKey);
+      const { normalizePublicKey } = await import(new URL('app/supabase/core/public-key.js?v=34', globalWindow.document.baseURI).href);
+      const { supabaseState } = await import(new URL('app/supabase/core/state.js?v=34', globalWindow.document.baseURI).href);
+      const { resetSupabaseClient, baseUrlFromRest } = await import(new URL('app/supabase/core/client.js?v=34', globalWindow.document.baseURI).href);
+      const anonKey = normalizePublicKey(payload?.anonKey);
       const accessToken = String(payload?.accessToken || '').trim();
       const refreshToken = String(payload?.refreshToken || '').trim();
       const userId = String(payload?.userId || '').trim();
@@ -44,15 +43,21 @@
       const sessionGeneration = Number(payload?.sessionGeneration || 0) || 0;
       const configSource = String(payload?.configSource || '').trim();
 
-      if (!restUrl || !anonKey) {
+      if (!baseUrlFromRest(restUrl) || !anonKey) {
+        resetSupabaseClient();
         globalWindow.__midasAndroidAuthBootstrapState = { status: 'invalid-config' };
         return globalWindow.__midasAndroidAuthBootstrapState;
       }
 
+      configState = supabaseState;
+      configState.configChanging = true;
       if (typeof globalWindow.initDB === 'function') {
         await globalWindow.initDB();
       }
       if (typeof globalWindow.putConf === 'function') {
+        const existingRest = await globalWindow.getConf?.('webhookUrl');
+        const existingKey = normalizePublicKey(await globalWindow.getConf?.('webhookKey'));
+        if (existingRest !== restUrl || existingKey !== anonKey) resetSupabaseClient();
         await globalWindow.putConf('webhookUrl', restUrl);
         await globalWindow.putConf('webhookKey', anonKey);
       }
@@ -75,15 +80,22 @@
     } catch (error) {
       globalWindow.console?.warn?.(
         '[android-webview-auth] bootstrap failed',
-        error?.message || error,
+        'bootstrap-unavailable',
       );
       globalWindow.__midasAndroidAuthBootstrapState = {
         status: 'error',
-        message: String(error?.message || error || 'android-bootstrap-failed'),
+        message: 'android-bootstrap-failed',
         importedAt: new Date().toISOString(),
       };
       return globalWindow.__midasAndroidAuthBootstrapState;
+    } finally {
+      if (configState) configState.configChanging = false;
     }
+  };
+  const readBootstrapState = () => {
+    if (activeRead) return activeRead;
+    activeRead = performBootstrapRead().finally(() => { activeRead = null; });
+    return activeRead;
   };
 
   globalWindow.__midasAndroidRefreshBootstrapState = readBootstrapState;

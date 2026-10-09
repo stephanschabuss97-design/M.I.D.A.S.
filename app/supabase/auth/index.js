@@ -7,6 +7,6 @@
  */
 
 // SUBMODULE: re-exports @public - vereint Auth-Komponenten in einem zentralen Barrel
-export * from './core.js?v=29';
-export * from './ui.js?v=29';
-export * from './guard.js?v=29';
+export * from './core.js?v=34';
+export * from './ui.js?v=34';
+export * from './guard.js?v=34';

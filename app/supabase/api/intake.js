@@ -13,13 +13,13 @@
  */
 
 // SUBMODULE: imports @internal - API- und Core-Abhängigkeiten
-import { supabaseState } from '../core/state.js?v=29';
-import { baseUrlFromRest } from '../core/client.js?v=29';
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { setConfigStatus } from '../auth/ui.js?v=29';
-import { getUserId } from '../auth/core.js?v=29';
-import { toEventsUrl } from '../realtime/index.js?v=29';
-import { sbSelect } from './select.js?v=29';
+import { supabaseState } from '../core/state.js?v=34';
+import { baseUrlFromRest } from '../core/client.js?v=34';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { setConfigStatus } from '../auth/ui.js?v=34';
+import { getUserId } from '../auth/core.js?v=34';
+import { toEventsUrl } from '../realtime/index.js?v=34';
+import { sbSelect } from './select.js?v=34';
 
 // SUBMODULE: globals @internal - globale Diagnose- und Utility-Hilfsfunktionen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -126,7 +126,7 @@ export async function saveIntakeTotals({ dayIso, totals }) {
   diag.add?.('[capture] fetch start intake:post');
   const res = await fetchWithAuth(
     (headers) => fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) }),
-    { tag: 'intake:post', maxAttempts: 2 }
+    { requestUrl: url,  tag: 'intake:post', maxAttempts: 2 }
   );
 
   if (res.ok) {
@@ -158,7 +158,7 @@ export async function saveIntakeTotals({ dayIso, totals }) {
         headers,
         body: JSON.stringify({ payload: payloadTotals })
       }),
-    { tag: 'intake:patch', maxAttempts: 2 }
+    { requestUrl: patchUrl,  tag: 'intake:patch', maxAttempts: 2 }
   );
   if (!res2.ok) {
     let detailsPatch = '';
@@ -210,7 +210,7 @@ export async function saveIntakeTotalsRpc({ dayIso, totals }) {
   diag.add?.('[capture] fetch start intake:rpc');
   const res = await fetchWithAuth(
     (headers) => fetch(url.toString(), { method: 'POST', headers, body }),
-    { tag: 'intake:rpc', maxAttempts: 2 }
+    { requestUrl: url.toString(),  tag: 'intake:rpc', maxAttempts: 2 }
   );
 
   if (res.status === 404 || res.status === 405) {
@@ -261,7 +261,7 @@ export async function cleanupOldIntake() {
       `&ts=lt.${encodeURIComponent(todayIso)}T00:00:00Z`;
     await fetchWithAuth(
       (headers) => fetch(query, { method: 'DELETE', headers }),
-      { tag: 'intake:cleanup', maxAttempts: 2 }
+      { requestUrl: query,  tag: 'intake:cleanup', maxAttempts: 2 }
     );
   } catch (_) {
     diag.add?.('[intake] cleanup failed code=cleanup_exception');

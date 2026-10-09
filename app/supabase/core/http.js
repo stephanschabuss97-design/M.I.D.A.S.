@@ -16,15 +16,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Client und Header-Cache-Funktionen
-import { ensureSupabaseClient } from './client.js?v=29';
-import {
-  getCachedHeaders,
-  getCachedHeadersAt,
-  getHeaderPromise,
-  setHeaderPromise,
-  cacheHeaders,
-  clearHeaderCache
-} from './state.js?v=29';
+import { ensureSupabaseClient, readSupabaseConfiguration } from './client.js?v=34';
+import { isUsableSession } from './public-key.js?v=34';
+import { supabaseState, cacheHeaders, clearHeaderCache } from './state.js?v=34';
 
 // SUBMODULE: globals @internal - Diagnostik-Objekt und globale Handles
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -127,168 +121,114 @@ export async function withRetry(fn, { tries = 3, base = 300 } = {}) {
   throw lastErr ?? new Error('withRetry: all attempts failed');
 }
 
-// SUBMODULE: fetchWithAuth @public - führt REST-Aufrufe mit Auth-Headern, Session-Refresh und Retry-Logik aus
-export async function fetchWithAuth(makeRequest, { tag = '', retry401 = true, maxAttempts = 2 } = {}) {
-  const supa = await ensureSupabaseClient();
-  if (!supa) {
-    const err = new Error('auth-client-missing');
-    err.status = 401;
-    try {
-      window.showLoginOverlay?.(true);
-    } catch (_) {}
-    throw err;
-  }
+const headerContexts = new WeakMap();
+const boundedAuth = async (operation, timeoutMs) => {
+  let timer;
+  try { return await Promise.race([operation(), new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('auth-session-timeout')), timeoutMs);
+  })]); } finally { clearTimeout(timer); }
+};
 
-    // Hilfsfunktionen: Auth-Refresh und Signalsteuerung
-  const signalAuth = () => {
-    try {
-      window.showLoginOverlay?.(true);
-    } catch (_) {}
-  };
-
-  const loadHeaders = async (forceRefresh = false) => {
+export async function getSessionHeaders({ forceRefresh = false, expectedBase = null, timeoutMs = AUTH_REFRESH_TIMEOUT_MS } = {}) {
+  try {
+    const client = await ensureSupabaseClient();
+    if (!client) return null;
+    const generation = supabaseState.clientGeneration;
     if (forceRefresh) {
-      diag.add?.(`[auth] refresh start ${tag || 'request'}`);
-      let refreshTimer;
-      try {
-        await Promise.race([
-          supa.auth.refreshSession(),
-          new Promise((_, reject) => {
-            refreshTimer = setTimeout(
-              () => reject(new Error('auth-refresh-timeout')),
-              AUTH_REFRESH_TIMEOUT_MS
-            );
-          })
-        ]);
-      } catch (refreshErr) {
-        const timeoutLabel = refreshErr?.message === 'auth-refresh-timeout' ? ' timeout' : '';
-        diag.add?.(`[auth] refresh failed ${tag || 'request'}${timeoutLabel}`);
-      } finally {
-        clearTimeout(refreshTimer);
-      }
-      diag.add?.(`[auth] refresh end ${tag || 'request'}`);
-      // A refreshed Supabase session must not reuse the previous bearer header.
       clearHeaderCache();
+      const refreshed = await boundedAuth(() => client.auth.refreshSession(), timeoutMs);
+      if (refreshed?.error || client !== supabaseState.sbClient || generation !== supabaseState.clientGeneration) return null;
     }
-    const cachedHeaders = getCachedHeaders();
-    const cachedAt = getCachedHeadersAt();
-    if (!forceRefresh && cachedHeaders && cachedAt && (Date.now() - cachedAt) < 5 * 60 * 1000) {
-      diag.add?.('[headers] cache hit');
-      return cachedHeaders;
-    }
-    return await getHeaders({ forceRefresh });
-  };
+    const headerGeneration = supabaseState.headerGeneration;
+    const result = await boundedAuth(() => client.auth.getSession(), timeoutMs);
+    const session = result?.data?.session;
+    const current = await readSupabaseConfiguration();
+    if (result?.error || !isUsableSession(session) || !current || supabaseState.configChanging ||
+        current.identity !== supabaseState.clientIdentity || client !== supabaseState.sbClient ||
+        generation !== supabaseState.clientGeneration || headerGeneration !== supabaseState.headerGeneration ||
+        (expectedBase !== null && current.base !== expectedBase)) return null;
+    const headers = Object.freeze({ 'Content-Type': 'application/json', apikey: current.key,
+      Authorization: `Bearer ${session.access_token}`, Prefer: 'return=representation' });
+    headerContexts.set(headers, { client, generation, headerGeneration, identity: current.identity, token: session.access_token });
+    cacheHeaders(headers);
+    return headers;
+  } catch (_) { return null; }
+}
 
-  // Request-Ausführung mit Timeout und Wiederholungen
-  let headers = await loadHeaders(false);
-  if (!headers) {
-    headers = await loadHeaders(true);
+export async function isHeaderContextCurrent(headers) {
+  const previous = headerContexts.get(headers);
+  if (!previous || previous.client !== supabaseState.sbClient || previous.generation !== supabaseState.clientGeneration ||
+      previous.headerGeneration !== supabaseState.headerGeneration) return false;
+  const current = await getSessionHeaders();
+  const next = current && headerContexts.get(current);
+  return !!next && previous.identity === next.identity && previous.client === next.client &&
+    previous.generation === next.generation && previous.headerGeneration === next.headerGeneration && previous.token === next.token;
+}
+
+const authFailure = (message = 'auth-headers-missing') => {
+  const error = new Error(message); error.status = 401;
+  globalWindow?.showLoginOverlay?.(true); return error;
+};
+
+// A stale response is unusable even when the current session is valid.
+// Revalidate only the login requirement; never accept or replay that response.
+const authContextChanged = async () => {
+  const error = new Error('auth-context-changed'); error.status = 401; error.code = 'auth-context-changed';
+  try {
+    const client = await ensureSupabaseClient();
+    if (!client) return error;
+    const generation = supabaseState.clientGeneration, headerGeneration = supabaseState.headerGeneration;
+    const result = await boundedAuth(() => client.auth.getSession(), AUTH_REFRESH_TIMEOUT_MS);
+    const current = await readSupabaseConfiguration();
+    // An error/timeout or another context change is inconclusive, not proof of logout.
+    if (result?.error || !current || supabaseState.configChanging ||
+        current.identity !== supabaseState.clientIdentity || client !== supabaseState.sbClient ||
+        generation !== supabaseState.clientGeneration || headerGeneration !== supabaseState.headerGeneration) return error;
+    if (!isUsableSession(result?.data?.session)) return authFailure('auth-context-changed');
+  } catch (_) { /* No cached authorization or speculative login prompt. */ }
+  return error;
+};
+
+// Each attempt rechecks current configuration/session. No cache-only or timeout fallback.
+export async function fetchWithAuth(makeRequest, { tag = '', retry401 = true, maxAttempts = 2, requestUrl = null } = {}) {
+  let attempts = 0, refreshed = false, forceRefresh = false;
+  let expectedBase = null;
+  if (requestUrl !== null) {
+    try { expectedBase = new URL(String(requestUrl)).origin; } catch (_) { throw authFailure('auth-request-url-invalid'); }
   }
-  if (!headers) {
-    const err = new Error('auth-headers-missing');
-    err.status = 401;
-    signalAuth();
-    throw err;
-  }
-
-  let attempts = 0;
-  let refreshed = false;
-  const max = Math.max(0, maxAttempts);
-
   while (true) {
-    const reqLabel = tag || 'request';
-    logRequestStart(reqLabel);
-    let res;
-    const reqStart =
-      (typeof performance !== 'undefined' && typeof performance.now === 'function')
-        ? performance.now()
-        : Date.now();
+    const headers = await getSessionHeaders({ forceRefresh, expectedBase }); forceRefresh = false;
+    if (!headers) throw authFailure();
+    const label = tag || 'request', start = Date.now();
+    logRequestStart(label);
+    let response, timer;
     try {
-      // Per-request soft timeout to avoid hanging saves (e.g., after resume)
-      const REQ_TIMEOUT_MS = 10000;
-      let timeoutId;
-      let timedOut = false;
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          timedOut = true;
-          reject(new Error('request-timeout'));
-        }, REQ_TIMEOUT_MS);
-      });
-      const fetchPromise = (async () => {
-        try {
-          return await makeRequest(headers);
-        } catch (err) {
-          if (!timedOut) throw err;
-          diag.add?.(`[auth] late error ${tag || 'request'}: ${err?.message || err}`);
-          return null;
-        }
-      })();
-      try {
-        res = await Promise.race([fetchPromise, timeoutPromise]);
-      } finally {
-        clearTimeout(timeoutId);
-        const dur = (typeof performance !== 'undefined' && typeof performance.now === 'function') ? (performance.now() - reqStart) : (Date.now() - reqStart);
-        if (timedOut) {
-          diag.add?.(`[auth] ${tag || 'request'} timeout (${Math.round(dur)} ms)`);
-        }
-      }
-    } catch (err) {
-      const duration =
-        typeof performance !== 'undefined' && typeof performance.now === 'function'
-          ? Math.round(performance.now() - reqStart)
-          : Math.round(Date.now() - reqStart);
-      logRequestFailure(reqLabel, 'error', duration, err?.message || err);
-      if (attempts < max) {
-        attempts += 1;
-        await sleep(200 * attempts);
-        continue;
-      }
-      throw err;
+      response = await Promise.race([makeRequest(headers), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('request-timeout')), 10000);
+      })]);
+    } catch (error) {
+      logRequestFailure(label, 'error', Date.now() - start, 'transport-failed');
+      if (!(await isHeaderContextCurrent(headers))) throw await authContextChanged();
+      if (attempts < Math.max(0, maxAttempts)) { attempts++; await sleep(200 * attempts); continue; }
+      throw error;
+    } finally { clearTimeout(timer); }
+    if (!(await isHeaderContextCurrent(headers))) {
+      logRequestFailure(label, 401, Date.now() - start, 'auth-context-changed');
+      throw await authContextChanged();
     }
-
-    const duration =
-      typeof performance !== 'undefined' && typeof performance.now === 'function'
-        ? Math.round(performance.now() - reqStart)
-        : Math.round(Date.now() - reqStart);
-    if (!res || typeof res.status !== 'number') {
-      logRequestFailure(reqLabel, 'invalid', duration);
-      const err = new Error('invalid-response');
-      err.status = 0;
-      throw err;
+    if (!response || typeof response.status !== 'number') {
+      logRequestFailure(label, 'error', Date.now() - start, 'invalid-response');
+      throw new Error('invalid-response');
     }
-    if (res.status === 200) {
-      logRequestSuccess(reqLabel, duration);
-    } else {
-      logRequestFailure(reqLabel, res.status, duration);
+    if (response.status === 200) logRequestSuccess(label, Date.now() - start);
+    else logRequestFailure(label, response.status, Date.now() - start);
+    if (response.status === 401 || response.status === 403) {
+      if (retry401 && !refreshed) { refreshed = true; forceRefresh = true; attempts = 0; continue; }
+      const error = authFailure('auth-http'); error.status = response.status; error.response = response; throw error;
     }
-
-    if (res.status === 401 || res.status === 403) {
-      if (retry401 && !refreshed) {
-        refreshed = true;
-        diag.add?.(`[auth] ${tag || 'request'} ${res.status} -> refresh`);
-        headers = await loadHeaders(true);
-        if (!headers) {
-          const err = new Error('auth-headers-missing');
-          err.status = res.status;
-          signalAuth();
-          throw err;
-        }
-        attempts = 0;
-        continue;
-      }
-      const err = new Error('auth-http');
-      err.status = res.status;
-      err.response = res;
-      signalAuth();
-      throw err;
+    if (response.status >= 500 && response.status < 600 && attempts < Math.max(0, maxAttempts)) {
+      attempts++; await sleep(200 * attempts); continue;
     }
-
-    if (res.status >= 500 && res.status < 600 && attempts < max) {
-      attempts += 1;
-      await sleep(200 * attempts);
-      continue;
-    }
-
-    return res;
+    return response;
   }
 }

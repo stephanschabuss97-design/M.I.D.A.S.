@@ -1,5 +1,21 @@
 # Assistant Module - Functional Overview
 
+## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+
+Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
+Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
+ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Text-/Visiontransporte und Voice-Transcribe/TTS teilen die vom Hub gebundene
+  aktuelle Session-/Public-Headerquelle. Kein direkter Key-Bearerfallback.
+- Vier AIhandler prüfen serverseitig GetUser, nicht-anonymen festen MIDAS-Owner
+  vor OpenAIwirkung. Konfig-/Authausfall liefert sanitisierten Fehler.
+- Opt-in, Command-first/Allowed-Actions, normale Voice-V1-Kette und bestehende
+  medizinische/Intent-/Confirmgrenzen bleiben unverändert. Lokale Media-/SDK-
+  Fixtures beweisen keine reale Mikrofon-, Provider- oder Gerätewirkung.
+
+
 Kurze Einordnung:
 - Zweck: Text-Assistant fuer Kontext, Aktionen, Confirm-Flows und produktiven Voice-V1-Anschluss.
 - Rolle innerhalb von MIDAS: orchestriert Assistant-UI, lokalen Intent-Fast-Path, Pending-Context-Guards und den LLM-Fallback fuer freie Sprache.

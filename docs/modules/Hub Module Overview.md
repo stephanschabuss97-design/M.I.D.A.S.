@@ -1,5 +1,22 @@
 # Hub Module - Functional Overview
 
+## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+
+Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
+Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
+ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Direkte Assistant-/Visioncaller und an Voice übergebene Dependencies holen
+  aktuelle Functionheader aus derselben `getSessionHeaders`-Quelle wie REST/
+  Report. Feste Functionprojektbasis muss zur Konfiguration passen.
+- `apikey` enthält ausschließlich rohen Publickey, Authorization ausschließlich
+  User-JWT; fehlende/ungültige Session erzeugt keinen Providerrequest. Kein
+  Key-Bearer oder Headercache als Berechtigung, kein eigener Auth-Owner im Hub.
+- Gesture-/Listener-/Panel-/Intent-Lifecycle bleibt real zu prüfen; reine
+  Komponentenheaderchecks ersetzen die verbundene UI-/Transportkette nicht.
+
+
 Kurze Einordnung:
 - Zweck: zentrales MIDAS-Hub-Interface mit Carousel, Panels, Quickbar, oberem Dashboard-Reveal und produktivem Voice-V1-Einstieg.
 - Rolle innerhalb von MIDAS: orchestriert UI-Navigation, Assistant-Textfluss, Voice-Gate, Voice-State-UI, Reveal-Surfaces und Pending-Context-Helfer fuer Voice.

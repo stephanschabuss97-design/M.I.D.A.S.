@@ -18,7 +18,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase State-Verwaltung
-import { supabaseState } from './state.js?v=29';
+import { supabaseState, resetClientState } from './state.js?v=34';
+import { normalizePublicKey } from './public-key.js?v=34';
+export { normalizePublicKey } from './public-key.js?v=34';
 
 // SUBMODULE: constants & globals @internal - globale Handles und Logging
 const supabaseLog = { debugLogPii: false };
@@ -70,9 +72,12 @@ export function setSupabaseDebugPii(enabled) {
 
 // SUBMODULE: baseUrlFromRest @public - extrahiert Basis-URL aus REST-Endpunkt
 export function baseUrlFromRest(restUrl) {
-  if (!restUrl) return null;
-  const i = restUrl.indexOf('/rest/');
-  return i > 0 ? restUrl.slice(0, i) : null;
+  try {
+    const url = new URL(restUrl);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
+        !url.pathname.startsWith('/rest/v1/')) return null;
+    return url.origin;
+  } catch (_) { return null; }
 }
 
 // SUBMODULE: isServiceRoleKey @public - prüft JWT-Payload auf service_role
@@ -104,61 +109,49 @@ const buildSupabaseAuthOptions = () => {
   };
 };
 
+export function resetSupabaseClient() {
+  inflightClientPromise = null;
+  resetClientState();
+}
+
+export async function readSupabaseConfiguration() {
+  if (globalWindow?.__midasAndroidNativeAuthOwner &&
+      ['empty', 'invalid-config', 'error'].includes(globalWindow.__midasAndroidAuthBootstrapState?.status)) return null;
+  const [rest, storedKey] = await Promise.all([getConfSafe('webhookUrl'), getConfSafe('webhookKey')]);
+  const base = baseUrlFromRest(rest), key = normalizePublicKey(storedKey);
+  return base && key ? { base, key, identity: JSON.stringify([base, key]) } : null;
+}
+
 export async function ensureSupabaseClient() {
-  if (supabaseState.sbClient) return supabaseState.sbClient;
+  if (supabaseState.configChanging) return null;
+  const initialGeneration = supabaseState.clientGeneration;
+  const config = await readSupabaseConfiguration();
+  if (supabaseState.configChanging || initialGeneration !== supabaseState.clientGeneration) return null;
+  if (!config) {
+    resetSupabaseClient();
+    setConfigStatusSafe('Bitte einen gültigen Public-Key und REST-Endpoint speichern.', 'error');
+    return null;
+  }
+  if (supabaseState.sbClient && supabaseState.clientIdentity === config.identity) return supabaseState.sbClient;
+  if (supabaseState.clientIdentity !== config.identity) {
+    resetSupabaseClient();
+    supabaseState.clientIdentity = config.identity;
+  }
   if (inflightClientPromise) return inflightClientPromise;
-
-  inflightClientPromise = (async () => {
-    const rest = await getConfSafe('webhookUrl');
-    const keyConf = await getConfSafe('webhookKey'); // ANON key (nicht service_role)
-    if (!rest || !keyConf) {
-      setConfigStatusSafe('Bitte REST-Endpoint und ANON-Key speichern.', 'error');
-      diag.add('Supabase Auth: fehlende Konfiguration');
-      return null;
-    }
-
-    // NEU: niemals mit service_role starten
-    const trimmedKey = String(keyConf || '').trim();
-    if (isServiceRoleKey(trimmedKey)) {
-      setConfigStatusSafe('service_role Schl?ssel sind nicht erlaubt.', 'error');
-      diag.add('Sicherheitsblock: service_role Key erkannt - Abbruch');
-      return null;
-    }
-
-    const supabaseUrl = baseUrlFromRest(rest);
-    const anonKey = trimmedKey.replace(/^Bearer\s+/i, '');
-    if (!supabaseUrl) {
-      setConfigStatusSafe('REST-Endpoint ist ung?ltig.', 'error');
-      diag.add('Supabase Auth: ung?ltige URL');
-      return null;
-    }
-    if (!anonKey) {
-      setConfigStatusSafe('ANON-Key ist ung?ltig.', 'error');
-      diag.add('Supabase Auth: ung?ltiger Key');
-      return null;
-    }
-
+  const generation = supabaseState.clientGeneration;
+  const loader = (async () => {
+    const current = await readSupabaseConfiguration();
+    if (supabaseState.configChanging || generation !== supabaseState.clientGeneration || current?.identity !== config.identity) return null;
     if (!globalWindow?.supabase || typeof globalWindow.supabase.createClient !== 'function') {
-      setConfigStatusSafe('Supabase Client SDK fehlt.', 'error');
-      diag.add('Supabase Auth: window.supabase.createClient nicht verfügbar');
-      return null;
+      setConfigStatusSafe('Supabase Client SDK fehlt.', 'error'); return null;
     }
-
-    const authOptions = buildSupabaseAuthOptions();
-    supabaseState.sbClient = globalWindow.supabase.createClient(supabaseUrl, anonKey, {
-      auth: authOptions
-    });
-    diag.add('Supabase: Client (Auth) initialisiert');
-    if (isAndroidWebViewAuthContext()) {
-      diag.add(
-        '[auth] android webview client mode: persistSession=false, autoRefreshToken=false, detectSessionInUrl=false'
-      );
-    }
+    const client = globalWindow.supabase.createClient(config.base, config.key, { auth: buildSupabaseAuthOptions() });
+    if (generation !== supabaseState.clientGeneration) return null;
+    supabaseState.sbClient = client;
+    diag.add?.('Supabase: Client (Auth) initialisiert');
     setConfigStatusSafe('', 'info');
-    return supabaseState.sbClient;
-  })().finally(() => {
-    inflightClientPromise = null;
-  });
-
-  return inflightClientPromise;
+    return client;
+  })();
+  inflightClientPromise = loader;
+  try { return await loader; } finally { if (inflightClientPromise === loader) inflightClientPromise = null; }
 }

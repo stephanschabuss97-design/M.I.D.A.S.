@@ -40,8 +40,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: read-only
-- Voraussetzung: `fetchWithAuth` ist mit einem abgelaufenen oder simuliert
-  abgewiesenen Access Token aufrufbar.
+- Voraussetzung: eine aktuelle nicht-anonyme SDK-Session vorhanden ist; der erste
+  Transport kann kontrolliert HTTP 401 liefern.
 - Aktion: Einen Request ausführen, dessen erster Versuch HTTP 401 liefert.
 - Erwartung: MIDAS erneuert die Session und wiederholt den Request höchstens
   einmal; ein endgültiger Fehler bleibt als Fehler sichtbar.
@@ -174,3 +174,55 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Überbreite, Diagnosemodi erzeugen keinen Log-Spam und Clear leert nur lokale
   Anzeige und lokale Indizes.
 - Invalidiert durch: Touchlog-, Diagnostics-, Layout- oder Clear-Änderungen.
+
+
+### CORE-012 - Konfigspeicherung bleibt nach Fehler sicher
+
+- Vertrag: [Auth Module Overview](<../modules/Auth Module Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: isolierter echter Productload mit eigener IndexedDB und injizierbarem putConf-Fehler.
+- Aktion: Configsave per aktivem Button auslösen; letzten Keywrite einmal und danach URLwrite samt Rückweg dauerhaft ablehnen.
+- Erwartung: einmaliger Fehler stellt das alte Paar her; dauerhafter Rückwegfehler hinterlässt kein gemischtes gültiges Konfigpaar, Header bleiben blockiert; Writerfence endet kontrolliert ohne Rohfehlerwerte.
+- Invalidiert durch: Configwriter, Feedback, DBadapter oder Clientinvalidierung.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+
+### CORE-013 - Session und Generation berechtigen jeden Transport neu
+
+- Vertrag: [Auth Module Overview](<../modules/Auth Module Overview.md>)
+- Ebene: local-runtime
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: tatsächliche ESM-Sources in VM mit aktueller SDK-Session und verzögerbaren Antworten.
+- Aktion: aktuellen Header, Refresh, Logout, Konfig-/Client-/Tokenwechsel, Timeout und alte Listenerantworten prüfen.
+- Erwartung: raw public apikey plus aktueller User-JWT; kein Cache-/Timeout-/User-IDfallback; alte Antworten und Reader während Teilwrites abgelehnt.
+- Invalidiert durch: Client-/Auth-/Headergeneration, Listener, Restore oder RESTretry.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+
+### CORE-014 - Aktiver Service Worker bleibt bei Offline und Update kohärent
+
+- Vertrag: [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: isolierter Productload mit tatsächlich aktivem alten/current Worker und lokal abgefangenen Fremdtransporten.
+- Aktion: cold/warm laden, offline Coreasset abrufen; echten Updatebutton bis controllerchange/reload betätigen. Zusätzlich tatsächlichen Worker in VM mit Cache-lookup/-open/-put-Fehlern und verzögertem Cachewrite ausführen.
+- Erwartung: aktuelles Authpaket vollständig, gecachte Offlineantwort ohne unbehandelte Revalidation, erfolgreiche Netzantwort trotz Cachefehler nutzbar, ungecachte Netzfehler erhalten und Navigationswrites lifecyclegebunden/behandelt; neuer Worker/Clientgraph kohärent, alte Cachegeneration entfernt.
+- Invalidiert durch: SWassets/-version, Importgraph, Updatebanner oder Worker-/Bootlifecycle.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+
+### CORE-015 - Veraltete Antwort verlangt bei gültiger aktueller Session keinen Login
+
+- Vertrag: [Auth Module Overview](<../modules/Auth Module Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: echte Sources und aktiver Listener; isolierter Browser, SDK2.45.4 mit synthetischen Session-/HTTPfixtures und lokal abgefangenen Transporten.
+- Aktion: Medication/Incident-Boot laden, med_list_v2 verzögern, INITIAL_SESSION/SIGNED_IN/Visibility-Recovery/Refresh auslösen; alte Antwort freigeben. Logout, Ablauf, Sessionverlust, fehlerhaften/verzögerten Recheck, Client-/Konfigwechsel und Noteswriteantwort getrennt prüfen.
+- Erwartung: alte Antwort verworfen, Write nicht wiederholt; gültige aktuelle Anmeldung verlangt keinen Login. Erneut invalidierter oder fehlerhafter/zeitüberschrittener Recheck berechtigt nicht und behauptet keinen Logout. Aktuell bestätigter Sessionverlust öffnet Login. Ein ausdrücklicher neuer Medication-Read funktioniert mit aktueller Session; unklare Notizwriteantwort fordert Speicherstandprüfung. Reale Owner-OAuthacceptance bleibt separat.
+- Invalidiert durch: HTTP-Loginentscheid, Authlistener, Session-/Headergeneration, Notesfeedback oder Medication-/Boot-/UI-Consumerpfad.
+- Cleanup: isolierte Browser/Storage/SDK-/Transportfixtures verwerfen; keine echten Gesundheitswrites oder Gerätewirkung.

@@ -1,7 +1,7 @@
 'use strict';
 /* PWA service worker (Phase 2): shell cache + offline fallback. */
 
-const CACHE_VERSION = 'v32';
+const CACHE_VERSION = 'v34';
 const SHELL_CACHE = `midas-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `midas-runtime-${CACHE_VERSION}`;
 const INCIDENT_VIBRATE_PATTERN = [300, 150, 300, 150, 600];
@@ -55,34 +55,36 @@ const CORE_ASSETS = [
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js?v=30'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-product-controller.js?v=32'),
-  toUrl('app/supabase/index.js?v=29'),
-  toUrl('app/supabase/core/state.js?v=29'),
-  toUrl('app/supabase/core/client.js?v=29'),
-  toUrl('app/supabase/core/http.js?v=29'),
-  toUrl('app/supabase/auth/index.js?v=29'),
-  toUrl('app/supabase/auth/core.js?v=29'),
-  toUrl('app/supabase/auth/ui.js?v=29'),
-  toUrl('app/supabase/auth/guard.js?v=29'),
-  toUrl('app/supabase/realtime/index.js?v=29'),
-  toUrl('app/supabase/api/intake.js?v=29'),
-  toUrl('app/supabase/api/vitals.js?v=29'),
-  toUrl('app/supabase/api/notes.js?v=29'),
-  toUrl('app/supabase/api/select.js?v=29'),
-  toUrl('app/supabase/api/push.js?v=29'),
-  toUrl('app/supabase/api/system-comments.js?v=29'),
-  toUrl('app/supabase/api/trendpilot.js?v=29'),
-  toUrl('app/supabase/api/reports.js?v=29'),
+  toUrl('app/supabase/index.js?v=34'),
+  toUrl('app/supabase/core/state.js?v=34'),
+  toUrl('app/supabase/core/public-key.js?v=34'),
+  toUrl('app/core/android-webview-auth-bridge.js?v=34'),
+  toUrl('app/supabase/core/client.js?v=34'),
+  toUrl('app/supabase/core/http.js?v=34'),
+  toUrl('app/supabase/auth/index.js?v=34'),
+  toUrl('app/supabase/auth/core.js?v=34'),
+  toUrl('app/supabase/auth/ui.js?v=34'),
+  toUrl('app/supabase/auth/guard.js?v=34'),
+  toUrl('app/supabase/realtime/index.js?v=34'),
+  toUrl('app/supabase/api/intake.js?v=34'),
+  toUrl('app/supabase/api/vitals.js?v=34'),
+  toUrl('app/supabase/api/notes.js?v=34'),
+  toUrl('app/supabase/api/select.js?v=34'),
+  toUrl('app/supabase/api/push.js?v=34'),
+  toUrl('app/supabase/api/system-comments.js?v=34'),
+  toUrl('app/supabase/api/trendpilot.js?v=34'),
+  toUrl('app/supabase/api/reports.js?v=34'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-consumer.js'),
   toUrl('app/modules/vitals-stack/activity/v2/activity-consumer-data-access.js'),
   toUrl('app/modules/doctor-stack/doctor/activity-consumer-view.js'),
   toUrl('app/modules/doctor-stack/doctor/health-export-v3.js'),
   toUrl('app/modules/doctor-stack/reports/index.js'),
   toUrl('app/modules/doctor-stack/doctor/index.js'),
-  toUrl('assets/js/boot-auth.js?v=29'),
+  toUrl('assets/js/boot-auth.js?v=34'),
   toUrl('app/modules/doctor-stack/charts/index.js?v=24'),
-  toUrl('assets/js/main.js?v=31'),
+  toUrl('assets/js/main.js?v=34'),
   toUrl('app/modules/vitals-stack/protein/index.js?v=31'),
-  toUrl('app/modules/hub/index.js?v=31'),
+  toUrl('app/modules/hub/index.js?v=34'),
   toUrl('public/manifest.json'),
   toUrl('public/img/icons/icon-192.png'),
   toUrl('public/img/icons/icon-512.png'),
@@ -209,7 +211,10 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone();
-            caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
+            event.waitUntil(
+              caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy))
+                .catch(() => undefined)
+            );
           }
           return response;
         })
@@ -220,14 +225,23 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset(request)) {
     event.respondWith(
-      getCurrentAssetResponse(request).then((cached) => {
-        const networkFetch = fetch(request).then((response) => {
+      getCurrentAssetResponse(request).catch(() => undefined).then((cached) => {
+        const networkFetch = fetch(request).then(async (response) => {
           if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+            try {
+              const copy = response.clone();
+              const cache = await caches.open(RUNTIME_CACHE);
+              await cache.put(request, copy);
+            } catch (_) {
+              // Cache persistence is optional; retain the successful network response.
+            }
           }
           return response;
+        }).catch((error) => {
+          if (cached) return cached;
+          throw error;
         });
+        event.waitUntil(networkFetch.then(() => undefined, () => undefined));
         return cached || networkFetch;
       })
     );

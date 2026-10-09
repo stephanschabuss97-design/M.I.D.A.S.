@@ -6,7 +6,6 @@
  *  - imports (Core-State & Client-Helfer)
  *  - globals (Diagnose & Window)
  *  - constants (Auth-Timing & Defaults)
- *  - fallbackUserId (UserID-Fallback bei Fehlern)
  *  - authHooks (Hook-Verwaltung)
  *  - Hook-Call-Handler (sichere Hook-Ausführung)
  *  - authGrace (Grace-Period-Logik)
@@ -14,14 +13,15 @@
  *  - isLoggedInFast (schnelle Login-Erkennung)
  *  - watchAuthState (Realtime-Listener)
  *  - afterLoginBoot (Post-Login-Initialisierung)
- *  - getUserId (User-ID mit Timeout & Fallback)
+ *  - getUserId (User-ID mit Timeout)
  *  - initAuth (Hook-Registrierung)
  *  - resetAuthHooks (Hook-Reset)
  */
 
 // SUBMODULE: imports @internal - Supabase Core-State & Client-Helfer
-import { supabaseState } from '../core/state.js?v=29';
-import { ensureSupabaseClient, maskUid } from '../core/client.js?v=29';
+import { supabaseState, clearHeaderCache } from '../core/state.js?v=34';
+import { ensureSupabaseClient, maskUid } from '../core/client.js?v=34';
+import { isUsableSession, isUsableUser } from '../core/public-key.js?v=34';
 
 // SUBMODULE: globals @internal - Diagnose- und Window-Hilfen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -104,25 +104,6 @@ const defaultResumeFromBackground = async () => undefined;
 const noopRealtime = () => undefined;
 const isIndexedDbPendingError = (err) =>
   /IndexedDB not initialized/i.test(String(err?.message || err || ''));
-
-// SUBMODULE: fallbackUserId @internal - Rückfall bei Fehlern/Timeouts
-const fallbackUserId = (variant) => {
-  if (
-    (supabaseState.authState === 'auth' || supabaseState.authState === 'unknown') &&
-    supabaseState.lastUserId
-  ) {
-    const labelMap = {
-      noClient: 'fallback (no client)',
-      timeout: 'fallback (timeout)',
-      noUid: 'fallback (no uid)',
-      error: 'fallback (error)'
-    };
-    const label = labelMap[variant] || 'fallback';
-    diag.add?.(`[auth] getUserId ${label} ${maskUid(supabaseState.lastUserId)}`);
-    return supabaseState.lastUserId;
-  }
-  return null;
-};
 
 // SUBMODULE: authHooks @internal - Hook-Verwaltung für UI/Status
 const authHooks = {
@@ -357,6 +338,7 @@ const createPendingSignOutCleanup = () => async () => {
 };
 
 const stageSignedOutState = () => {
+  clearHeaderCache();
   clearCachedAuthIdentity();
   supabaseState.pendingSignOut = createPendingSignOutCleanup();
 };
@@ -370,15 +352,17 @@ const syncActivityV2Authentication = async (logged) => {
 };
 
 export const finalizeAuthState = (logged) => {
+  clearHeaderCache();
   clearAuthGrace();
   const nextState = logged ? 'auth' : 'unauth';
   if (logged) {
     supabaseState.pendingSignOut = null;
   } else if (typeof supabaseState.pendingSignOut === 'function') {
-    Promise.resolve(supabaseState.pendingSignOut())
+    const cleanup = supabaseState.pendingSignOut;
+    Promise.resolve(cleanup())
       .catch(() => {})
       .finally(() => {
-        supabaseState.pendingSignOut = null;
+        if (supabaseState.pendingSignOut === cleanup) supabaseState.pendingSignOut = null;
       });
   }
   setAuthState(nextState, { force: true });
@@ -386,22 +370,21 @@ export const finalizeAuthState = (logged) => {
 
 export const scheduleAuthGrace = () => {
   clearAuthGrace();
+  const client = supabaseState.sbClient, generation = supabaseState.clientGeneration;
+  const current = () => client === supabaseState.sbClient && generation === supabaseState.clientGeneration;
   setAuthState('unknown', { force: true });
   supabaseState.authGraceTimer = setTimeout(async () => {
     try {
-      if (!supabaseState.sbClient) {
-        await syncActivityV2Authentication(false);
-        finalizeAuthState(false);
-        return;
-      }
-      diag.add?.('[capture] guard: request session');
-      const { data } = await supabaseState.sbClient.auth.getSession();
-      diag.add?.('[capture] guard: session resp');
-      await syncActivityV2Authentication(!!data?.session);
-      finalizeAuthState(!!data?.session);
+      if (!current()) return;
+      const { data, error } = client ? await client.auth.getSession() : {};
+      if (!current() || client !== await ensureSupabaseClient()) return;
+      const logged = !error && isUsableSession(data?.session);
+      await syncActivityV2Authentication(logged);
+      if (current()) finalizeAuthState(logged);
     } catch (_) {
+      if (!current()) return;
       await syncActivityV2Authentication(false);
-      finalizeAuthState(false);
+      if (current()) finalizeAuthState(false);
     }
   }, AUTH_GRACE_MS);
 };
@@ -563,10 +546,12 @@ export async function applyAndroidBootstrapSession() {
     return bootstrapState.status;
   }
 
-  const { error } = await supabaseState.sbClient.auth.setSession({
+  const client = supabaseState.sbClient, clientGeneration = supabaseState.clientGeneration;
+  const { error } = await client.auth.setSession({
     access_token: accessToken,
     refresh_token: refreshToken
   });
+  if (client !== await ensureSupabaseClient() || clientGeneration !== supabaseState.clientGeneration || bootstrapState !== getAndroidBootstrapState()) return 'session-staging-invalid';
   if (error) {
     bootstrapState.status = 'session-import-error';
     bootstrapState.message = String(error?.message || error || 'android-session-import-failed');
@@ -651,6 +636,7 @@ export async function handleAndroidNativeSessionCleared({ reload = true } = {}) 
 }
 
 export async function requireSession() {
+  await ensureSupabaseClient();
   if (!supabaseState.sbClient) {
     reportBootStatus('Supabase Client fehlt', 'error');
     getBootFlow()?.markFailed?.('Supabase Client fehlt');
@@ -677,8 +663,12 @@ export async function requireSession() {
       }
     }
 
-    const { data: { session } = {} } = await supabaseState.sbClient.auth.getSession();
-    const logged = !!session;
+    const client = await ensureSupabaseClient();
+    if (!client) return false;
+    const generation = supabaseState.clientGeneration;
+    const { data: { session } = {} } = await client.auth.getSession();
+    if (client !== await ensureSupabaseClient() || generation !== supabaseState.clientGeneration) return false;
+    const logged = isUsableSession(session);
     callUserUi(session?.user?.email || '');
     if (logged) {
       clearAuthGrace();
@@ -697,18 +687,20 @@ export async function requireSession() {
 
 // SUBMODULE: isLoggedInFast @public - schnelle Login-Prüfung mit Timeout
 export async function isLoggedInFast({ timeout = 400 } = {}) {
-  if (!supabaseState.sbClient) return supabaseState.lastLoggedIn;
+  if (!(await ensureSupabaseClient())) return false;
   let timer = null;
   try {
-    const sessionPromise = supabaseState.sbClient.auth.getSession();
+    const client = supabaseState.sbClient, generation = supabaseState.clientGeneration;
+    const sessionPromise = client.auth.getSession();
     const timeoutPromise = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error('session-timeout')), timeout);
     });
     const { data } = await Promise.race([sessionPromise, timeoutPromise]);
     if (timer) clearTimeout(timer);
-    const logged = !!data?.session;
+    if (client !== await ensureSupabaseClient() || generation !== supabaseState.clientGeneration) return false;
+    const logged = isUsableSession(data?.session);
     if (supabaseState.authState === 'unknown' && !logged && supabaseState.lastLoggedIn) {
-      return supabaseState.lastLoggedIn;
+      return false;
     }
     if (supabaseState.authState !== 'unknown') {
       setAuthState(logged ? 'auth' : 'unauth');
@@ -718,7 +710,7 @@ export async function isLoggedInFast({ timeout = 400 } = {}) {
     return logged;
   } catch (_) {
     if (timer) clearTimeout(timer);
-    return supabaseState.lastLoggedIn;
+    return false;
   }
 }
 
@@ -726,11 +718,17 @@ export async function isLoggedInFast({ timeout = 400 } = {}) {
 export function watchAuthState() {
   if (!supabaseState.sbClient) return;
   if (!supabaseState.sbClient.auth?.onAuthStateChange) return;
+  const client = supabaseState.sbClient, generation = supabaseState.clientGeneration;
+  if (supabaseState.authListenerClient === client) return supabaseState.authSubscription;
+  try { supabaseState.authSubscription?.unsubscribe?.(); } catch (_) {}
+  supabaseState.authListenerClient = client;
+  const current = () => client === supabaseState.sbClient && generation === supabaseState.clientGeneration;
   let authEventVersion = 0;
   const handleAuthStateChange = async (event, session, version) => {
-    const logged = !!session;
+    if (version !== authEventVersion || !current()) return;
+    const logged = isUsableSession(session);
     if (logged) {
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       callUserUi(session?.user?.email || '');
       const newUid = session?.user?.id || null;
       if (newUid) {
@@ -741,31 +739,31 @@ export function watchAuthState() {
         diag.add?.(`[auth] session uid=${maskUid(newUid)}`);
       }
       await syncActivityV2Authentication(true);
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       finalizeAuthState(true);
       await afterLoginBoot();
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       await (globalWindow?.setupRealtime || defaultSetupRealtime)();
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       globalWindow?.requestUiRefresh?.().catch((err) =>
         diag.add?.('ui refresh err: ' + (err?.message || err))
       );
       try { await globalWindow?.AppModules?.capture?.refreshCaptureIntake?.('auth:login'); } catch (_) {}
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       try { await globalWindow?.refreshAppointments?.(); } catch (_) {}
       return;
     }
 
     if (isAndroidNativeAuthOwnerContext()) {
       const bootstrapState = (await refreshAndroidBootstrapState()) || getAndroidBootstrapState();
-      if (version !== authEventVersion) return;
+      if (version !== authEventVersion || !current()) return;
       const bootstrapStatus = bootstrapState?.status || 'missing';
       if (bootstrapStatus === 'session-staged') {
         diag.add?.('[auth] webview signed out while native session still staged; reimport session');
         try {
           await applyAndroidBootstrapSession();
         } catch (_) {}
-        if (version !== authEventVersion) return;
+        if (version !== authEventVersion || !current()) return;
         scheduleAuthGrace();
         return;
       }
@@ -773,7 +771,7 @@ export function watchAuthState() {
 
     stageSignedOutState();
     await syncActivityV2Authentication(false);
-    if (version !== authEventVersion) return;
+    if (version !== authEventVersion || !current()) return;
 
     if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       finalizeAuthState(false);
@@ -782,7 +780,9 @@ export function watchAuthState() {
     }
   };
   const { data: { subscription } = {} } =
-    supabaseState.sbClient.auth.onAuthStateChange((event, session) => {
+    client.auth.onAuthStateChange((event, session) => {
+      if (!current()) return;
+      clearHeaderCache();
       const version = ++authEventVersion;
       // Supabase auth callbacks must return before work that may call the client.
       setTimeout(() => {
@@ -791,7 +791,8 @@ export function watchAuthState() {
         });
       }, 0);
     });
-  return subscription || null;
+  supabaseState.authSubscription = subscription || null;
+  return supabaseState.authSubscription;
 }
 
 // SUBMODULE: afterLoginBoot @public - führt Initialisierung nach Login aus
@@ -804,81 +805,35 @@ export async function afterLoginBoot() {
     .catch((err) => diag.add?.('ui refresh err: ' + (err?.message || err)));
 }
 
-// SUBMODULE: getUserId @public - ermittelt aktuelle User-ID mit Timeout & Fallbacks
+// SUBMODULE: getUserId @public - ermittelt aktuelle User-ID mit Timeout
 export async function getUserId() {
   const LOG_KEY = 'auth:getUserId';
+  let timeoutId;
   try {
     logDiagStart(LOG_KEY, '[auth] getUserId start');
     const bootStage = getBootFlow()?.getStage?.();
-    const preInitCoreStage =
-      !bootStage || bootStage === 'BOOT' || bootStage === 'AUTH_CHECK';
-    if (!supabaseState.sbClient && preInitCoreStage) {
-      // S4.1: avoid IndexedDB-backed client bootstrap before initDB/INIT_CORE.
+    if (!supabaseState.sbClient && (!bootStage || bootStage === 'BOOT' || bootStage === 'AUTH_CHECK')) {
+      // Preserve the IndexedDB/INIT_CORE boot boundary.
       logDiagEnd(LOG_KEY, '[auth] getUserId done null (boot-pending)');
       return null;
     }
-    const supa = await ensureSupabaseClient();
-    if (!supa) {
-      const fallback = fallbackUserId('noClient');
-      if (fallback) {
-        logDiagEnd(LOG_KEY, '[auth] getUserId done (fallback)', { success: true });
-        return fallback;
-      }
-      logDiagEnd(LOG_KEY, '[auth] getUserId done null');
-      return null;
+    const client = await ensureSupabaseClient();
+    if (!client) { logDiagEnd(LOG_KEY, '[auth] getUserId done null'); return null; }
+    const generation = supabaseState.clientGeneration;
+    const result = await Promise.race([client.auth.getUser(), new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('getUser-timeout')), GET_USER_TIMEOUT_MS);
+    })]);
+    const user = result?.data?.user;
+    if (result?.error || client !== await ensureSupabaseClient() || generation !== supabaseState.clientGeneration || !isUsableUser(user)) {
+      logDiagEnd(LOG_KEY, '[auth] getUserId done null'); return null;
     }
-    let timeoutId;
-    let timedOut = false;
-    const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => {
-        timedOut = true;
-        reject(new Error('getUser-timeout'));
-      }, GET_USER_TIMEOUT_MS);
-    });
-    let userInfo = null;
-    try {
-      const result = await Promise.race([supa.auth.getUser(), timeoutPromise]);
-      userInfo = result?.data?.user ?? null;
-    } catch (err) {
-      if (timedOut) {
-        diag.add?.('[auth] getUserId timeout');
-        const fallback = fallbackUserId('timeout');
-        if (fallback) {
-          logDiagEnd(LOG_KEY, '[auth] getUserId done (fallback)', { success: true });
-          return fallback;
-        }
-      }
-      throw err;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-    const uid = userInfo?.id ?? null;
-    if (uid) {
-      supabaseState.lastUserId = uid;
-      logDiagEnd(LOG_KEY, `[auth] getUserId done ${maskUid(uid)}`, { success: true });
-      return uid;
-    }
-    const fallbackNoUid = fallbackUserId('noUid');
-    if (fallbackNoUid) {
-      logDiagEnd(LOG_KEY, '[auth] getUserId done (fallback)', { success: true });
-      return fallbackNoUid;
-    }
-    logDiagEnd(LOG_KEY, '[auth] getUserId done null');
+    supabaseState.lastUserId = user.id;
+    logDiagEnd(LOG_KEY, `[auth] getUserId done ${maskUid(user.id)}`, { success: true });
+    return user.id;
+  } catch (error) {
+    logDiagEnd(LOG_KEY, isIndexedDbPendingError(error) ? '[auth] getUserId done null (db-init-pending)' : '[auth] getUserId done null (unavailable)');
     return null;
-  } catch (e) {
-    if (isIndexedDbPendingError(e)) {
-      logDiagEnd(LOG_KEY, '[auth] getUserId done null (db-init-pending)');
-      return null;
-    }
-    diag.add?.('[auth] getUserId error: ' + (e?.message || e));
-    const fallbackError = fallbackUserId('error');
-    if (fallbackError) {
-      logDiagEnd(LOG_KEY, '[auth] getUserId done (fallback)', { success: true });
-      return fallbackError;
-    }
-    logDiagEnd(LOG_KEY, '[auth] getUserId done null');
-    return null;
-  }
+  } finally { clearTimeout(timeoutId); }
 }
 
 // SUBMODULE: initAuth @public - setzt optionale Hook-Handler für UI & Status

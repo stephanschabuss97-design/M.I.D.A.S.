@@ -4,8 +4,8 @@
  * Description: Wraps the midas-monthly-report Edge Function so the Doctor View can request manual reports.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=29';
-import { fetchWithAuth } from '../core/http.js?v=29';
+import { baseUrlFromRest } from '../core/client.js?v=34';
+import { fetchWithAuth } from '../core/http.js?v=34';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =
@@ -65,7 +65,7 @@ export async function generateDoctorReportRemote({ from, to } = {}) {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       }),
-    { tag: 'doctorReport:generate', maxAttempts: 1 }
+    { requestUrl: endpoint,  tag: 'doctorReport:generate', maxAttempts: 1 }
   );
   if (!res.ok) {
     const raw = await res.text().catch(() => '');

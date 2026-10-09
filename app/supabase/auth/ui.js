@@ -17,9 +17,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Core-State & Auth-Helpers
-import { supabaseState } from '../core/state.js?v=29';
-import { ensureSupabaseClient, isServiceRoleKey } from '../core/client.js?v=29';
-import { requireSession } from './core.js?v=29';
+import { supabaseState } from '../core/state.js?v=34';
+import { ensureSupabaseClient, normalizePublicKey, resetSupabaseClient } from '../core/client.js?v=34';
+import { requireSession, watchAuthState } from './core.js?v=34';
 
 // SUBMODULE: globals @internal - globale Handles & Diagnose-Hooks
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -115,10 +115,7 @@ export async function prefillSupabaseConfigForm() {
     const rest = await getConf('webhookUrl');
     const keyStored = await getConf('webhookKey');
     const restStored = rest && String(rest).trim() ? String(rest).trim() : '';
-    const keyClean =
-      keyStored && String(keyStored).trim()
-        ? String(keyStored).replace(/^Bearer\s+/i, '').trim()
-        : '';
+    const keyClean = normalizePublicKey(keyStored) || '';
     if (restInput) {
       const hasUserText = !!(restInput.value && restInput.value.trim());
       if (!hasUserText && restStored) {
@@ -196,9 +193,9 @@ export function bindAuthButtons() {
       const restInput = document.getElementById('configRestUrl');
       const keyInput = document.getElementById('configAnonKey');
       const rawRest = (restInput?.value || '').trim();
-      const rawKey = (keyInput?.value || '').trim();
+      const rawKey = keyInput?.value || '';
       if (!rawRest || !rawKey) {
-        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'Bitte REST-Endpoint und ANON-Key eingeben.' });
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'Bitte REST-Endpoint und Public-Key eingeben.' });
         return;
       }
       if (!/\/rest\/v1\//i.test(rawRest)) {
@@ -215,21 +212,44 @@ export function bindAuthButtons() {
         saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'REST-Endpoint ist keine gueltige URL.' });
         return;
       }
-      let anonKey = rawKey.startsWith('Bearer ') ? rawKey : `Bearer ${rawKey}`;
-      if (isServiceRoleKey(anonKey)) {
-        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'service_role Schluessel sind nicht erlaubt.' });
+      const anonKey = normalizePublicKey(rawKey, { allowBearerPrefix: false });
+      if (!anonKey) {
+        saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message: 'Bitte einen Public-Key verwenden. Secret- und Benutzer-Token sind nicht erlaubt.' });
         return;
       }
+      let previousConfig;
+      let configurationWriteStarted = false;
+      if (supabaseState.configChanging) return;
       try {
         saveFeedback?.start({ button: saveBtn, panel, statusEl: document.getElementById('configStatus'), label: 'Speichere Konfiguration ...', showStatusOnStart: true });
+        supabaseState.configChanging = true;
+        resetSupabaseClient();
+        previousConfig = { url: await getConf('webhookUrl'), key: await getConf('webhookKey') };
+        configurationWriteStarted = true;
+        // A persisted partial write must not pair a new URL with an old key.
+        await putConf('webhookKey', null);
         await putConf('webhookUrl', rawRest);
         await putConf('webhookKey', anonKey);
-        supabaseState.sbClient = null;
+        supabaseState.configChanging = false;
         await ensureSupabaseClient();
+        watchAuthState();
         await requireSession();
         saveFeedback?.ok({ button: saveBtn, panel, statusEl: document.getElementById('configStatus'), successText: 'Konfiguration gespeichert', showStatusOnOk: true });
       } catch (e) {
-        const message = restErrorMessage(e?.status || 0, e?.details || e?.message || '');
+        if (configurationWriteStarted) {
+          try {
+            // Clear first and restore key last. If rollback also fails after
+            // clearing, the stored configuration remains unusable after reload.
+            await putConf('webhookKey', null);
+            await putConf('webhookUrl', previousConfig.url);
+            await putConf('webhookKey', previousConfig.key);
+          } catch (_) {
+            diag.add?.('[auth] configuration rollback incomplete; authentication remains blocked');
+          }
+        }
+        supabaseState.configChanging = false;
+        resetSupabaseClient();
+        const message = 'Konfiguration konnte nicht gespeichert werden. Bitte bestehende Einstellungen prüfen und erneut speichern.';
         saveFeedback?.error({ button: saveBtn, statusEl: document.getElementById('configStatus'), message });
       }
     });
@@ -252,7 +272,7 @@ export function bindAuthButtons() {
       const supa = await ensureSupabaseClient();
       if (!supa) {
         setConfigStatus(
-          'Konfiguration fehlt - bitte REST-Endpoint und ANON-Key speichern.',
+          'Konfiguration fehlt - bitte REST-Endpoint und Public-Key speichern.',
           'error'
         );
         const adv = document.getElementById('configAdv');

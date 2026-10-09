@@ -184,3 +184,16 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Änderung und rendert Nutzdaten als Text statt ungefiltertem HTML.
 - Invalidiert durch: Assistant-Kontext, Profile-/Appointments-Consumer,
   Event-Listener oder Rendering.
+
+
+### AVI-013 - Verbundene Hub- und Voicegesten verwenden aktuelle Functionheader
+
+- Vertrag: [Assistant Module Overview](<../modules/Assistant Module Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: Assistant opt-in, echte Hub-/Voicelistener, SDK-/Recorder-/Audio-/Transportfixtures ohne Gerätezugriff.
+- Aktion: freie Textfrage senden; sichtbaren Voicebutton starten/stoppen und tatsächliches Transcribe/Intent/TTS verfolgen.
+- Erwartung: Header aus gemeinsamem aktuellen Authvertrag CORE-013/BS-016; keine Session bedeutet keinen Providertransport; Command-first/Opt-in und fachliche Actiongrenzen bleiben.
+- Invalidiert durch: Hubdependencies, Text-/Voicelistener, Mediafixture, Auth oder Functionheader.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.

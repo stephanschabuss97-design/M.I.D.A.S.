@@ -14,9 +14,9 @@
  */
 
 // SUBMODULE: imports @internal - Supabase Core-, Auth- und UI-Abhängigkeiten
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { getUserId } from '../auth/core.js?v=29';
-import { showLoginOverlay, hideLoginOverlay } from '../auth/ui.js?v=29';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { getUserId } from '../auth/core.js?v=34';
+import { showLoginOverlay, hideLoginOverlay } from '../auth/ui.js?v=34';
 
 // SUBMODULE: globals @internal - globale Hilfsfunktionen und Diagnose-Hooks
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -102,7 +102,7 @@ export async function syncWebhook(entry, localId) {
     );
     const res = await fetchWithAuth(
       (headers) => fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) }),
-      { tag: 'webhook:post', maxAttempts: 2 }
+      { requestUrl: url,  tag: 'webhook:post', maxAttempts: 2 }
     );
 
     if (!res.ok) {
@@ -162,7 +162,9 @@ export async function syncWebhook(entry, localId) {
       reportError('Unerwartete Antwort vom Server - kein Datensatz zurueckgegeben.');
     }
   } catch (err) {
-    if (err?.status === 401 || err?.status === 403) {
+    if (err?.code === 'auth-context-changed') {
+      reportError('Die Antwort ist nicht mehr aktuell. Bitte prüfen, ob der Eintrag bereits gespeichert wurde.');
+    } else if (err?.status === 401 || err?.status === 403) {
       reportError('Bitte erneut anmelden, um weiter zu speichern.');
     } else {
       reportError('Netzwerkfehler beim Speichern. Bitte spaeter erneut versuchen.');
@@ -192,7 +194,7 @@ export async function appendNoteRemote(opts) {
 
   const resGet = await fetchWithAuth(
     (headers) => fetch(baseQuery, { method: 'GET', headers }),
-    { tag: 'note:get', maxAttempts: 2 }
+    { requestUrl: baseQuery,  tag: 'note:get', maxAttempts: 2 }
   );
   if (!resGet.ok) throw new Error(`note-get-failed-${resGet.status}`);
   const rows = await resGet.json();
@@ -219,7 +221,7 @@ export async function appendNoteRemote(opts) {
           headers,
           body: JSON.stringify({ payload: { text: combined } })
         }),
-      { tag: 'note:patch', maxAttempts: 2 }
+      { requestUrl: `${url}?id=eq.${encodeURIComponent(existing.id)}`,  tag: 'note:patch', maxAttempts: 2 }
     );
     if (!patchRes.ok) throw new Error(`note-patch-failed-${patchRes.status}`);
     const patched = await patchRes.json().catch(() => null);
@@ -230,7 +232,7 @@ export async function appendNoteRemote(opts) {
   const body = [{ ...noteEvent, user_id }];
   const postRes = await fetchWithAuth(
     (headers) => fetch(url, { method: 'POST', headers, body: JSON.stringify(body) }),
-    { tag: 'note:post', maxAttempts: 2 }
+    { requestUrl: url,  tag: 'note:post', maxAttempts: 2 }
   );
   if (!postRes.ok) throw new Error(`note-post-failed-${postRes.status}`);
   const created = await postRes.json().catch(() => null);
@@ -246,7 +248,7 @@ export async function deleteRemote(remoteId) {
   try {
     const res = await fetchWithAuth(
       (headers) => fetch(query, { method: 'DELETE', headers }),
-      { tag: 'remote:delete', maxAttempts: 2 }
+      { requestUrl: query,  tag: 'remote:delete', maxAttempts: 2 }
     );
     return { ok: res.ok, status: res.status };
   } catch (err) {
@@ -270,7 +272,7 @@ export async function deleteRemoteDay(dateIso) {
   try {
     const res = await fetchWithAuth(
       (headers) => fetch(query, { method: 'DELETE', headers }),
-      { tag: 'remote:delete-day', maxAttempts: 2 }
+      { requestUrl: query,  tag: 'remote:delete-day', maxAttempts: 2 }
     );
     return { ok: res.ok, status: res.status };
   } catch (err) {
@@ -296,7 +298,7 @@ export async function deleteRemoteByType(dateIso, type) {
   try {
     const res = await fetchWithAuth(
       (headers) => fetch(query, { method: 'DELETE', headers }),
-      { tag: 'remote:delete-day-type', maxAttempts: 2 }
+      { requestUrl: query,  tag: 'remote:delete-day-type', maxAttempts: 2 }
     );
     return { ok: res.ok, status: res.status };
   } catch (err) {

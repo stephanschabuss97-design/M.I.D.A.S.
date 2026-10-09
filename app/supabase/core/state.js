@@ -13,6 +13,12 @@
 // SUBMODULE: state @internal - globaler Supabase-Zustand (Client, Auth-Status, Header-Cache)
 export const supabaseState = {
   sbClient: null,
+  clientIdentity: null,
+  clientGeneration: 0,
+  headerGeneration: 0,
+  configChanging: false,
+  authSubscription: null,
+  authListenerClient: null,
   cachedHeaders: null,
   cachedHeadersAt: 0,
   headerPromise: null,
@@ -33,9 +39,29 @@ export function cacheHeaders(headers) {
 }
 
 export function clearHeaderCache() {
+  supabaseState.headerGeneration += 1;
   supabaseState.cachedHeaders = null;
   supabaseState.cachedHeadersAt = 0;
   supabaseState.headerPromise = null;
+}
+
+export function resetClientState() {
+  supabaseState.clientGeneration += 1;
+  clearHeaderCache();
+  try { supabaseState.authSubscription?.unsubscribe?.(); } catch (_) {}
+  try { supabaseState.sbClient?.auth?.stopAutoRefresh?.(); } catch (_) {}
+  supabaseState.authSubscription = null;
+  supabaseState.authListenerClient = null;
+  supabaseState.sbClient = null;
+  supabaseState.clientIdentity = null;
+  supabaseState.lastUserId = null;
+  supabaseState.lastLoggedIn = false;
+  supabaseState.authState = 'unauth';
+  supabaseState.authDecisionMeta = null;
+  supabaseState.pendingSignOut = null;
+  supabaseState.booted = false;
+  if (supabaseState.authGraceTimer) clearTimeout(supabaseState.authGraceTimer);
+  supabaseState.authGraceTimer = null;
 }
 
 export function getCachedHeaders() {

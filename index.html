@@ -1877,7 +1877,7 @@
   <script type="module" src="app/modules/assistant-stack/assistant/day-plan.js"></script>
   <script type="module" src="app/modules/assistant-stack/assistant/index.js"></script>
   <script type="module" src="app/modules/assistant-stack/intent/index.js"></script>
-  <script src="app/modules/hub/index.js?v=31"></script>
+  <script src="app/modules/hub/index.js?v=34"></script>
   <!-- @refactor: moved to assets/js/ui.js -->
   <script src="assets/js/ui.js"></script>
   <!-- @refactor: moved to assets/js/ui-layout.js -->
@@ -1928,9 +1928,9 @@
     <script src="app/modules/vitals-stack/vitals/lab.js"></script>
   <!-- @refactor: Phase 2 - app/supabase/index.js -->
   <!-- @refactor: Phase 2 - legacy proxy thin shim -->
-  <script type="module" src="app/supabase/index.js?v=29"></script>
-  <script src="app/core/android-webview-auth-bridge.js"></script>
-  <script type="module" src="assets/js/boot-auth.js?v=29"></script>
+  <script type="module" src="app/supabase/index.js?v=34"></script>
+  <script src="app/core/android-webview-auth-bridge.js?v=34"></script>
+  <script type="module" src="assets/js/boot-auth.js?v=34"></script>
   <!-- @refactor: moved to assets/js/ui-tabs.js -->
   <script src="assets/js/ui-tabs.js"></script>
   <!-- Incidents & Push (local) -->
@@ -1948,7 +1948,7 @@
   <script src="app/modules/doctor-stack/doctor/index.js"></script>
   <!-- @refactor: Phase 9 - app/modules/doctor-stack/charts/index.js -->
   <script src="app/modules/doctor-stack/charts/index.js?v=24"></script>
-  <script src="assets/js/main.js?v=31"></script>
+  <script src="assets/js/main.js?v=34"></script>
   <!-- Login-Overlay (zentriert) -->
   <div id="loginOverlay" class="u-hidden">
     <div class="login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
@@ -1968,12 +1968,12 @@
             inputmode="url"
             placeholder="https://...supabase.co/rest/v1/health_events"
           >
-          <label class="small u-mt-4" for="configAnonKey">Supabase ANON-Key</label>
+          <label class="small u-mt-4" for="configAnonKey">Supabase Public-Key</label>
           <textarea
             id="configAnonKey"
             class="u-textarea-field"
             rows="3"
-            placeholder="ANON-Key (kein service_role)"
+            placeholder="Publishable-Key oder Legacy-ANON-Key"
           ></textarea>
           <button class="btn ghost u-w100-mt4" id="configSaveBtn" type="button">
             Konfiguration speichern

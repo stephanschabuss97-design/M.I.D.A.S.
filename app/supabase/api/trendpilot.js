@@ -4,10 +4,10 @@
  * Description: Lies/aktualisiert Trendpilot-Events (warning/critical) aus der Trendpilot-Tabelle.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=29';
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { getUserId } from '../auth/core.js?v=29';
-import { sbSelect } from './select.js?v=29';
+import { baseUrlFromRest } from '../core/client.js?v=34';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { getUserId } from '../auth/core.js?v=34';
+import { sbSelect } from './select.js?v=34';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =
@@ -80,7 +80,7 @@ export async function setTrendpilotAck({ id, ack = true } = {}) {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ack: ackValue, ack_at: ackAt })
       }),
-    { tag: 'trendpilot:ack', maxAttempts: 2 }
+    { requestUrl: url,  tag: 'trendpilot:ack', maxAttempts: 2 }
   );
   if (!res.ok) {
     let details = '';
@@ -106,7 +106,7 @@ export async function deleteTrendpilotEvent({ id } = {}) {
         method: 'DELETE',
         headers: { ...headers, 'Content-Type': 'application/json' }
       }),
-    { tag: 'trendpilot:delete', maxAttempts: 2 }
+    { requestUrl: url,  tag: 'trendpilot:delete', maxAttempts: 2 }
   );
   if (!res.ok) {
     let details = '';

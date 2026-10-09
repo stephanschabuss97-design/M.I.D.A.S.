@@ -13,8 +13,8 @@
  */
 
 // SUBMODULE: imports @internal - Core-HTTP und Authentifizierung
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { getUserId } from '../auth/core.js?v=29';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { getUserId } from '../auth/core.js?v=34';
 
 // SUBMODULE: globals @internal - Diagnose- und Utility-Hilfen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -80,7 +80,7 @@ export async function pushPendingToRemote() {
             headers,
             body: JSON.stringify(payload)
         }),
-        { tag: 'pending:post', maxAttempts: 2 }
+        { requestUrl: url,  tag: 'pending:post', maxAttempts: 2 }
       );
       if (!response.ok) {
         let bodyText = '';

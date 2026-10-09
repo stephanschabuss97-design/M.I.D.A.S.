@@ -1,5 +1,22 @@
 # Android Native Auth Module - Functional Overview
 
+## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+
+Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
+Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
+ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Lokal geänderte Webbridge und Auth-Core verwenden denselben Public-Keyfilter
+  vor Mirror-/Sessionimport und cached Clientzugriff. Feldname `anonKey` bleibt
+  kompatibel; gültige Legacy-ANON-Konfiguration bleibt lesbar.
+- Partielle Mirror-Konfigwrites sperren Reader; alte Client-/Bootstrapgeneration
+  und verspäteter Sessionimport veröffentlichen keinen neuen Authzustand.
+- Native Kotlin-/SDK-/EncryptedSharedPreferences-/Widgetkonfiguration und APK
+  wurden nicht modernisiert. W4/G5 benötigt eigenes Child-S4R und echten Restore/
+  Login-/Logout-/Widget-/Gerätenachweis. Webfixtures sind keine APK-Acceptance.
+
+
 Kurze Einordnung:
 - Zweck: policy-konformer nativer Google-/Supabase-OAuth fuer den Android-Node inkl. Deep Link, Session-Owner, WebView-Handoff und Diagnosepfad.
 - Rolle innerhalb von MIDAS: Android-spezifischer Auth-/Shell-Layer zwischen sicherem Browser-Login, nativer Session und MIDAS-WebView.

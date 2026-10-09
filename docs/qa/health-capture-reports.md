@@ -856,3 +856,29 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Schema/Range/Wien-/Wochenlogik; Protein-ACT-Schwellen/Modifier;
   Trendpilot-Gates/Level/Payload; Producthandler-, Workflow-, Auth-, Scheduler-,
   SQL-, Productload- oder R13-/R14-Aktivierungsdelta.
+
+
+### HCR-036 - Capturegeste erreicht den aktiven Writer und Transport
+
+- Vertrag: [Capture Module Overview](<../modules/Capture Module Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: echte index.html/Listener/Module, isolierte IndexedDB und gültige synthetische Session; alle Transporte lokal fulfilled.
+- Aktion: Bodywerte eingeben und sichtbaren Speichernbutton klicken; Domainbody, lokale Speicherung, RESTrequest und Feedback verfolgen.
+- Erwartung: genau normale Capturekette mit raw-public/User-JWT-Headern und passender Rückantwort; Felder/Feedback konsistent; kein alternativer Writer oder echter Gesundheitswrite.
+- Invalidiert durch: Capturelistener, Bodydomain, DBadapter, Webhooks, Auth oder Feedback.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+
+### HCR-037 - Reportgeste beweist positiven Read-back und Renderlifecycle
+
+- Vertrag: [Reports Module Overview](<../modules/Reports Module Overview.md>)
+- Ebene: browser
+- Ausführung: automated
+- Wirkung: disposable
+- Voraussetzung: echter Doctor/PIN/Formularpfad, gültige synthetische Session, lokal persistierende Reportresponsefixture.
+- Aktion: zulässigen Zeitraum per aktivem Formular erzeugen; erfolgreichen Transport und nachfolgenden Reportread/render beobachten.
+- Erwartung: ein sichtbarer range_report, User-JWT/public Header getrennt, Narrativ als Text; Singleton-/Replacementbackend separat nach HCR-015 prüfen, keine echte Report-/Gesundheitswirkung.
+- Invalidiert durch: Doctorunlock, Formlistener, Reportheader, Responseform, Lifecycle oder Renderer.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.

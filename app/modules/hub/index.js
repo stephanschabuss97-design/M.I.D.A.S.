@@ -306,45 +306,14 @@
   let assistantChatCtrl = null;
   let assistantCopyFeedbackTimer = null;
   let assistantProfileSnapshot = appModules.profile?.getData?.() || null;
-  let supabaseFunctionHeadersPromise = null;
   const panelPerfQuery = global.matchMedia?.('(max-width: 1024px)') || null;
 
   const getSupabaseApi = () => appModules.supabase || {};
   const getSupabaseState = () => getSupabaseApi()?.supabaseState || null;
   const getSupabaseFunctionHeaders = async () => {
-    if (!DIRECT_SUPABASE_CALL) {
-      return null;
-    }
-    if (supabaseFunctionHeadersPromise) {
-      return supabaseFunctionHeadersPromise;
-    }
-    const loader = (async () => {
-      if (typeof global.getConf !== 'function') {
-        diag.add?.('[hub] getConf missing - cannot load Supabase key');
-        return null;
-      }
-      try {
-        const stored = await global.getConf('webhookKey');
-        const raw = String(stored || '').trim();
-        if (!raw) {
-          diag.add?.('[hub] Supabase webhookKey missing - voice API locked');
-          return null;
-        }
-        const bearer = raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
-        const apikey = bearer.replace(/^Bearer\s+/i, '');
-        return {
-          'Authorization': bearer,
-          'apikey': apikey,
-        };
-      } catch (err) {
-        console.error('[hub] Failed to load Supabase headers', err);
-        return null;
-      } finally {
-        supabaseFunctionHeadersPromise = null;
-      }
-    })();
-    supabaseFunctionHeadersPromise = loader;
-    return loader;
+    if (!DIRECT_SUPABASE_CALL) return null;
+    const headers = await getSupabaseApi()?.getSessionHeaders?.({ expectedBase: SUPABASE_PROJECT_URL });
+    return headers ? { Authorization: headers.Authorization, apikey: headers.apikey } : null;
   };
   const buildFunctionJsonHeaders = async () => {
     const headers = {

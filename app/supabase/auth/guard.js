@@ -27,9 +27,9 @@
 
 
 // SUBMODULE: imports @internal - Auth Core & UI Overlay
-import { isLoggedInFast } from './core.js?v=29';
-import { showLoginOverlay } from './ui.js?v=29';
-import { supabaseState } from '../core/state.js?v=29';
+import { isLoggedInFast } from './core.js?v=34';
+import { showLoginOverlay } from './ui.js?v=34';
+import { supabaseState } from '../core/state.js?v=34';
 
 // SUBMODULE: globals @internal - Diagnosezugang & Window-Hilfen
 const globalWindow = typeof window !== 'undefined' ? window : undefined;

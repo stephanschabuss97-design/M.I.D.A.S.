@@ -1,4 +1,32 @@
-﻿# Auth Module - Functional Overview
+# Auth Module - Functional Overview
+
+## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+
+Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
+Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
+ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- Gemeinsamer Public-Keyleser akzeptiert `sb_publishable_` oder Legacy-JWT mit
+  role=anon, niemals Secret-/Service-/Usertoken oder Whitespace. Ein altes
+  Bearerpräfix wird ausschließlich beim Lesen normalisiert, beim UIwrite abgelehnt.
+- Header benötigen aktuelle gültige nicht-anonyme Session; weder Header-/User-ID-
+  Cache noch Fehler-/Timeoutfallback autorisieren. Refresh und alte Listener/
+  Antworten bleiben an Client-/Headergeneration gebunden; Doctorunlock bleibt.
+- UI-Konfigspeicherung hält eine frühe Writerfence, sichert das alte Paar,
+  invalidiert den gespeicherten Key vor URLwrite und schreibt den neuen Key
+  zuletzt. Fehler stellt das alte Paar in derselben sicheren Reihenfolge her;
+  scheitert auch der Rückweg, gibt es kein gemischtes gültiges Konfigurationspaar. Generischer
+  Fehlertext, keine Secret-/Token-/Rohfehlerwerte. Kein atomarer DB-Transaktions-
+  oder Undo-Beweis für bereits abgesandte produktive Requests behauptet.
+- F22: eine abgewiesene alte Antwort ist kein Logoutnachweis. Der HTTP-Recheck
+  öffnet Login dafür nur bei frischer aktueller erfolgreicher Prüfung mit
+  unbrauchbarer Session. Fehler/Timeout/weitere Kontextänderung bleiben unklar,
+  ohne Cacheautorisierung, ohne alte Antwort und ohne Writewiederholung. Notes
+  fordert bei unklarer Writeantwort eine Prüfung des Speicherstands. Echte
+  Sessionverluste und definitive Authfehler bleiben gesperrt. Owner-Retest offen.
+
+
 
 Kurze Einordnung:
 - Zweck: Authentifizierung, Session-Handling und Unlock-Guard fuer sensible Bereiche.
@@ -55,7 +83,7 @@ Related docs:
 
 ### 4.3 Verarbeitung
 - `requireSession()` prueft Session und aktualisiert `authState`.
-- `fetchWithAuth()` cached Auth-Header, refresh bei 401.
+- `fetchWithAuth()` prüft aktuelle Session-/Konfigheader je Versuch; einmaliger Auth-Refresh bei 401/403, Cache allein berechtigt nicht.
 - `requireDoctorUnlock()` startet Passkey/PIN Flow.
 
 ### 4.4 Persistenz

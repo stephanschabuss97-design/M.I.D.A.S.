@@ -12,6 +12,26 @@ erhalten.
 
 ## Unreleased
 
+### Security
+
+- F22 lokal behoben: Eine durch Authereignis oder Refresh veraltete Anfrage
+  fordert bei gültiger aktueller Session keine Google-Anmeldung mehr. Alte
+  Antworten bleiben gesperrt; unklare Sessionprüfungen autorisieren nichts,
+  echte Sessionverluste zeigen Login. Notizwrites werden nicht wiederholt;
+  unklare Antworten verlangen eine Prüfung des Speicherstands. Kohärentes
+  PWA-Paket v34, echte lokale Medication-/SDK-/Logoutregression; Owner-Retest
+  Login/Doctor/Report/BP bestätigt; Web-v34-Veröffentlichung D28 freigegeben,
+  produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen. [Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+
+- Supabase-Modernisierung lokal vorbereitet und verifiziert: ein gemeinsamer
+  Public-Key-/aktueller Sessionvertrag für Web, REST, Hub und Voice; strikte
+  feste Owner-/Named-scheduler-Guards im Backend. Konfigspeicherung bleibt bei
+  Fehlern auth-sicher, SW-Offlineupdates erzeugen keine unbehandelten
+  Hintergrundrejections. Erfolgreiche Netzantworten bleiben bei Cachefehlern
+  nutzbar, Navigationscachewrites sind lifecyclegebunden. Noch nicht deployt; echte Store-/Caller-/Pages-
+  Acceptance bleibt hinter G3/G4. APK, aktive Signingrotation und Legacy-
+  Abschaltung bleiben offen. [Vertrag und lokale Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+
 ### Added
 
 - R15 ergänzt den geprüften Vorlagenimport neben Export: Eine vollständig

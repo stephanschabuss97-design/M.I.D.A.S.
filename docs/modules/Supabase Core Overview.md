@@ -1,6 +1,40 @@
-﻿# Supabase Core - Functional Overview
+# Supabase Core - Functional Overview
 
-## R13-Produktionsstand (2026-08-26)
+## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+
+Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
+Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
+ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
+Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+
+- `core/public-key.js` trennt moderne Publishable-Keys und strukturelle Legacy-
+  ANON-Keys von Secret-/Service-/Usertoken. Typprüfung beweist kein Projektbinding.
+- Konfiguration vor jedem gecachten Clientzugriff validieren; Client-/Header-
+  Generation, Inflight und Listener an exakte Konfigurationsidentität binden.
+- `getSessionHeaders` liefert rohen Publickey ausschließlich als `apikey` und
+  eine aktuelle nicht-anonyme, nicht abgelaufene User-Session als Authorization.
+  Cache/Timeout berechtigen keinen Transport. `fetchWithAuth` prüft vor jedem
+  Versuch und verwirft verspätete Antworten nach Context-/Tokenwechsel.
+- `_shared/edge-auth.ts` prüft GetUser/festen MIDAS_OWNER_USER_ID vor Wirkung.
+  User-RPC bleibt User-JWT/RLS; Named-secret-Clients werden strikt ausgewählt.
+  Vorhandene ungültige plural-Maps dürfen nicht auf Legacy-Env zurückfallen;
+  nur fehlende Maps erlauben den dokumentierten internen Übergang.
+- SW-Paket v34 enthält den vollständigen Authimportgraph. Offlinecacheantworten
+  konsumieren fehlgeschlagene Revalidation; Hintergrundcachearbeit bleibt an
+  Worker-Lifecycle gebunden. Cache-lookup/-open/-put-Fehler dürfen eine erfolgreiche
+  Netzantwort nicht verwerfen; Navigationscachewrites sind ebenfalls behandelt
+  und an waitUntil gebunden. Ungecachte Netzfehler bleiben Fehler. Keine
+  Supabase-/Gesundheitsresponse wird gecacht.
+- F22: eine abgewiesene alte Antwort ist kein Logoutnachweis. Der HTTP-Recheck
+  öffnet Login dafür nur bei frischer aktueller erfolgreicher Prüfung mit
+  unbrauchbarer Session. Fehler/Timeout/weitere Kontextänderung bleiben unklar,
+  ohne Cacheautorisierung, ohne alte Antwort und ohne Writewiederholung. Notes
+  fordert bei unklarer Writeantwort eine Prüfung des Speicherstands. Echte
+  Sessionverluste und definitive Authfehler bleiben gesperrt. Owner-Retest offen.
+
+
+
+## Historische produktive R13-Baseline (2026-08-26)
 
 SQL26 stellt einen kanonischen privaten Snapshotkern sowie getrennte User- und
 Servicewrapper bereit. Monthly bleibt Gateway-JWT-geschützt; Protein und
@@ -36,7 +70,9 @@ Related docs:
 | `app/supabase/index.js` | Aggregiert alle Exporte in `SupabaseAPI` |
 | `app/supabase/core/state.js` | Runtime State (Auth, Header Cache, Client) |
 | `app/supabase/core/client.js` | Supabase Client Initialisierung |
-| `app/supabase/core/http.js` | `fetchWithAuth` inkl. Header-Cache/Refresh |
+| `app/supabase/core/http.js` | aktuelle Sessionheader, Generation, `fetchWithAuth` und Refresh |
+| `app/supabase/core/public-key.js` | gemeinsamer Public-/Session-Typfilter |
+| `backend/supabase/functions/_shared/edge-auth.ts` | fester serverseitiger Owner und strikte Named-secret-Auswahl |
 | `app/supabase/auth/index.js` | Auth-Exports (Core, UI, Guard) |
 | `app/supabase/realtime/index.js` | Realtime-Setup/Teardown |
 | `app/supabase/api/*` | Domain-APIs (Intake, Vitals, Notes, Reports, etc.) |
@@ -69,7 +105,7 @@ Related docs:
 ### 4.3 Verarbeitung
 - `fetchWithAuth` fuehrt REST calls mit Auth-Headern aus.
 - `createSupabaseFn` (main.js) kapselt Zugriff und Fehler bei fehlenden Exports.
-- `ensureSupabaseClient` erstellt den Client einmal (inflight lock), um Mehrfach-Instanzen zu vermeiden.
+- `ensureSupabaseClient` erstellt den Client pro gültiger Konfigurationsidentität einmal (Inflight-Lock); ungültige Konfiguration oder neue Identität invalidiert alte Clients.
 - `ensureSupabaseClient` laeuft inzwischen kontextsensitiv:
   - Browser/PWA behaelt die normalen Supabase-Defaults
   - Android-WebView nutzt einen engeren Client-Modus, weil die Session importiert statt lokal gestartet wird

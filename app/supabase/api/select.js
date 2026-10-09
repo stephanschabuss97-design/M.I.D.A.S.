@@ -9,9 +9,9 @@
  */
 
 // SUBMODULE: imports @internal - REST- und Auth-Abhängigkeiten
-import { baseUrlFromRest } from '../core/client.js?v=29';
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { setConfigStatus } from '../auth/ui.js?v=29';
+import { baseUrlFromRest } from '../core/client.js?v=34';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { setConfigStatus } from '../auth/ui.js?v=34';
 
 // SUBMODULE: globals @internal - Diagnose-Hook und globale Konfiguration
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
@@ -72,7 +72,7 @@ export async function sbSelect({
 
   const res = await fetchWithAuth(
     (headers) => fetch(url.toString(), { headers }),
-    { tag: `sbSelect:${tableName}`, maxAttempts: 2 }
+    { requestUrl: url.toString(),  tag: `sbSelect:${tableName}`, maxAttempts: 2 }
   );
   if (!res.ok) {
     let details = '';

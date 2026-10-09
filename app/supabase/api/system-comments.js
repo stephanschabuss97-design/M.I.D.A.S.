@@ -4,10 +4,10 @@
  * Description: Schreibt und aktualisiert system_comment-Einträge (Trendpilot etc.) in der Tabelle health_events.
  */
 
-import { baseUrlFromRest } from '../core/client.js?v=29';
-import { fetchWithAuth } from '../core/http.js?v=29';
-import { getUserId } from '../auth/core.js?v=29';
-import { sbSelect } from './select.js?v=29';
+import { baseUrlFromRest } from '../core/client.js?v=34';
+import { fetchWithAuth } from '../core/http.js?v=34';
+import { getUserId } from '../auth/core.js?v=34';
+import { sbSelect } from './select.js?v=34';
 
 const globalWindow = typeof window !== 'undefined' ? window : undefined;
 const diag =
@@ -235,7 +235,7 @@ const postSystemComment = async ({ endpoint, userId, day, payload }) => {
           payload
         })
       }),
-    { tag: 'systemComment:post', maxAttempts: 2 }
+    { requestUrl: endpoint,  tag: 'systemComment:post', maxAttempts: 2 }
   );
   if (!res.ok) {
     const msg = await safeErrorMessage(res);
@@ -254,7 +254,7 @@ const patchSystemComment = async ({ endpoint, id, payload }) => {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ payload })
       }),
-    { tag: 'systemComment:patch', maxAttempts: 2 }
+    { requestUrl: url,  tag: 'systemComment:patch', maxAttempts: 2 }
   );
   if (!res.ok) {
     const msg = await safeErrorMessage(res);
@@ -310,7 +310,7 @@ export async function deleteSystemComment({ id }) {
         method: 'DELETE',
         headers: { ...headers, Prefer: 'return=minimal' }
       }),
-    { tag: 'systemComment:delete', maxAttempts: 1 }
+    { requestUrl: url,  tag: 'systemComment:delete', maxAttempts: 1 }
   );
   if (!res.ok) {
     const msg = await safeErrorMessage(res);
