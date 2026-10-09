@@ -1,5 +1,16 @@
 # MIDAS QA - Core Runtime
 
+## Release-Evidence D28 — 2026-10-09
+
+Web-v34 auf GitHub Pages veröffentlicht:78 Assets exakt gegen Release-Gitbytes,
+11 gehostete Browserchecks PASS für Boot/Auth/Medication/Logout, kalten/warmen
+SW und Offlineasset sowie Desktop/Mobil. Keine Page-/Consoleerrors.
+Die gehostete Session/SDK/Storage sind Fixtures; alle externen Transporte lokal
+abgefangen. Echte Ownerchecks Login/Doctor/Report/BP getrennt dokumentiert.
+Keine reale Provider-/Backend-/Geräteacceptance aus Fixtures ableiten.
+Prüfresultate und offene Gates: [Programmevidence](<../MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
+
+
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `CORE-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
 [QA-Einstieg](README.md).

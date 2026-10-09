@@ -1,6 +1,6 @@
 # MIDAS Supabase Modernization — Startpaket für den nächsten Bucket
 
-## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlichen, 2026-10-09
+## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlicht, 2026-10-09
 
 LOCAL_OWNER_ACCEPTANCE_PASS: Stephan bestätigt echten Login ohne erneutes
 Overlay, Doctorunlock und erfolgreiche Reporterstellung01.01.2026–09.10.2026.
@@ -32,12 +32,26 @@ die nachträgliche abgeleitete Veröffentlichung liegt separat, originale Receip
 Start-/End-/Completion-/Accountingbytes unverändert, keine Historyaufwertung.
 Attribution/Messoverhead/volle Files/Toolcalls UNKNOWN/null, keine Paid Credits.
 
-Publication-Status: PREPARED_FOR_WEB_V34_PUSH; Originalbundle
+Publication-Status: WEB_V34_PUBLISHED / VERIFIED_HOSTED; Releasecommit
+`7cd5a9c813066affc4313a60e6a4b05cee6a63ad`; Pages-Build `built`, exakt dieser Commit.
+Originalbundle
 `.kasrkin/work/supa-web-publish-v6-candidate-20261009/bundle.json`.
 Aktuelle Evidence/Resume/Context/Originalusage unter
 `.kasrkin/work/supa-web-publish-20261009`.
-Nächster Schritt dieses zugelassenen Fensters: explizites Staging/Commit/Push,
-exakte Served-Hashes und isolierte gehostete PWA-/Auth-Postchecks, dann Closure.
+Postchecks:78 ausgelieferte Assets exakt gegen Gitbytes;140 Source-/Served-/
+Schutzchecks PASS;11 gehostete Browserchecks PASS, keine Console-/Pageerrors.
+Chromium149.0.7827.55, Desktop1366×900/Mobil390×844; kalter und warmer Boot,
+aktueller SW, Offlineasset, Medicationtransport, Authlistener und Logout.
+Browser-Plugin nicht verfügbar; vorhandenes Playwright1.61.1 verwendet, keine
+Installation. SDK/Session/Storage sind isolierte Fixtures; alle nichtstatischen
+Transporte lokal abgefangen, keine echten Gesundheits-/AI-/Providerwrites.
+Lokale v32→v34-Updatenachweise bei identischen ausgelieferten Gitbytes weiter
+verwendet; keine neue echte Google-/Android-/Backend-Acceptance behauptet.
+Originale Usage erst bei Complete; Start/End/Receipt unter obigem Workpfad,
+keine Schätzung als Messung. Completiongebundene Evidence bleibt unverändert.
+Nächster zulässiger Schritt: das vorhandene konkrete G3-Backend-/Store-/
+Incident-Cutoverpaket prüfen und benannte Wirkungsfreigabe einholen.
+Vor dieser Freigabe keine neue produktive Wirkung.
 Keine Supabase-, Key-, Secret-, SQL-, Workflow-Dispatch-, Geräte- oder Signingwirkung.
 
 

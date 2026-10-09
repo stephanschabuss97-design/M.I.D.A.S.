@@ -1,6 +1,6 @@
 # MIDAS Supabase Backend and Web Authentication Modernization Roadmap
 
-## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlichen, 2026-10-09
+## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlicht, 2026-10-09
 
 LOCAL_OWNER_ACCEPTANCE_PASS: Stephan bestätigt echten Login ohne erneutes
 Overlay, Doctorunlock und erfolgreiche Reporterstellung01.01.2026–09.10.2026.
@@ -32,12 +32,26 @@ die nachträgliche abgeleitete Veröffentlichung liegt separat, originale Receip
 Start-/End-/Completion-/Accountingbytes unverändert, keine Historyaufwertung.
 Attribution/Messoverhead/volle Files/Toolcalls UNKNOWN/null, keine Paid Credits.
 
-Publication-Status: PREPARED_FOR_WEB_V34_PUSH; Originalbundle
+Publication-Status: WEB_V34_PUBLISHED / VERIFIED_HOSTED; Releasecommit
+`7cd5a9c813066affc4313a60e6a4b05cee6a63ad`; Pages-Build `built`, exakt dieser Commit.
+Originalbundle
 `.kasrkin/work/supa-web-publish-v6-candidate-20261009/bundle.json`.
 Aktuelle Evidence/Resume/Context/Originalusage unter
 `.kasrkin/work/supa-web-publish-20261009`.
-Nächster Schritt dieses zugelassenen Fensters: explizites Staging/Commit/Push,
-exakte Served-Hashes und isolierte gehostete PWA-/Auth-Postchecks, dann Closure.
+Postchecks:78 ausgelieferte Assets exakt gegen Gitbytes;140 Source-/Served-/
+Schutzchecks PASS;11 gehostete Browserchecks PASS, keine Console-/Pageerrors.
+Chromium149.0.7827.55, Desktop1366×900/Mobil390×844; kalter und warmer Boot,
+aktueller SW, Offlineasset, Medicationtransport, Authlistener und Logout.
+Browser-Plugin nicht verfügbar; vorhandenes Playwright1.61.1 verwendet, keine
+Installation. SDK/Session/Storage sind isolierte Fixtures; alle nichtstatischen
+Transporte lokal abgefangen, keine echten Gesundheits-/AI-/Providerwrites.
+Lokale v32→v34-Updatenachweise bei identischen ausgelieferten Gitbytes weiter
+verwendet; keine neue echte Google-/Android-/Backend-Acceptance behauptet.
+Originale Usage erst bei Complete; Start/End/Receipt unter obigem Workpfad,
+keine Schätzung als Messung. Completiongebundene Evidence bleibt unverändert.
+Nächster zulässiger Schritt: das vorhandene konkrete G3-Backend-/Store-/
+Incident-Cutoverpaket prüfen und benannte Wirkungsfreigabe einholen.
+Vor dieser Freigabe keine neue produktive Wirkung.
 Keine Supabase-, Key-, Secret-, SQL-, Workflow-Dispatch-, Geräte- oder Signingwirkung.
 
 
@@ -188,13 +202,13 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Feld | Festlegung |
 | --- | --- |
 | ID / Typ | SUPA-BW-2026 / EXECUTION CHILD, Parent-W2/W3 |
-| Owner / Status | Stephan; S1–S4R DONE / READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5/S6 historisch lokal verifiziert; F22 LOCAL_FIXED / Owner-Retest offen |
+| Owner / Status | Stephan; S1–S4R DONE / READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5/S6 historisch lokal verifiziert; F22 OWNER_CONFIRMED_FIXED; Web-v34 PUBLISHED/VERIFIED_HOSTED D28; Backend undeployt |
 | Parent / Evidence | [Masterplan](<MIDAS Supabase API Key and Edge Authentication Modernization Masterplan.md>); [Programmevidence](<MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>), EV-W1/JP1/BW |
 | Revision / Freeze | BW-S4R-1 / 2026-10-08; lokale Scopegrenze unten; Produktfenster separat |
 | Risiko / Review | R3, Gesamtumfang LARGE; Full S1/S2/S3/S4R/S5/S6, Delta/Consumer S4 |
 | Modell / Reasoning | Vertragsstandard GPT-5.6 Sol, Planung Extra High / Umsetzung High / Produktfenster Extra High; tatsächliche Einstellung NOT_OBSERVABLE |
-| Autorität | D27 erneuerte lokale F22-Reparatur; D24 historische lokale S5/S6-Fortsetzung; ursprüngliches D21/G2 LOCAL_GRANTED nach BW-S4R-1 erhalten, konkrete G3–G6-Wirkungen nicht freigegeben |
-| Git | 781a64014c3744d785d8286455e5a3dc4cac0b1b; fremde Notizlöschung geschützt; kein Reset/Stash/Commit/Push |
+| Autorität | D28 genaues Web-v34-Git/Pagesfenster freigegeben und verifiziert; D27 lokale F22-Reparatur; ursprüngliches D21/G2 LOCAL_GRANTED nach BW-S4R-1 erhalten, G3/übrige G4/G5/G6 weiter konkret gated |
+| Git | 7cd5a9c813066affc4313a60e6a4b05cee6a63ad; Web/Auth veröffentlicht; Backend/Workflow/fremde Löschung uncommitted geschützt; kein Reset/Stash/Forcepush |
 
 Reentry: Pflichtquellen/Parent-Receipt, diese Karte, Findings und nächste offene
 Lokaleinheit. Gültige W1/JP1-Nachweise übernehmen; gezielte neue Sourcefragen

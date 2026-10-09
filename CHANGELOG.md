@@ -20,7 +20,7 @@ erhalten.
   echte Sessionverluste zeigen Login. Notizwrites werden nicht wiederholt;
   unklare Antworten verlangen eine Prüfung des Speicherstands. Kohärentes
   PWA-Paket v34, echte lokale Medication-/SDK-/Logoutregression; Owner-Retest
-  Login/Doctor/Report/BP bestätigt; Web-v34-Veröffentlichung D28 freigegeben,
+  Login/Doctor/Report/BP bestätigt; Web-v34 auf GitHub Pages veröffentlicht und gehostet geprüft (D28),
   produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen. [Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
 
 - Supabase-Modernisierung lokal vorbereitet und verifiziert: ein gemeinsamer
@@ -28,8 +28,9 @@ erhalten.
   feste Owner-/Named-scheduler-Guards im Backend. Konfigspeicherung bleibt bei
   Fehlern auth-sicher, SW-Offlineupdates erzeugen keine unbehandelten
   Hintergrundrejections. Erfolgreiche Netzantworten bleiben bei Cachefehlern
-  nutzbar, Navigationscachewrites sind lifecyclegebunden. Noch nicht deployt; echte Store-/Caller-/Pages-
-  Acceptance bleibt hinter G3/G4. APK, aktive Signingrotation und Legacy-
+  nutzbar, Navigationscachewrites sind lifecyclegebunden. Web-v34 ist veröffentlicht;
+  Backendguards bleiben undeployt. Store-/Caller-/Key-Acceptance bleibt hinter
+  konkreten G3-/übrigen G4-Freigaben. APK, aktive Signingrotation und Legacy-
   Abschaltung bleiben offen. [Vertrag und lokale Nachweise](<docs/MIDAS Supabase API Key and Edge Authentication Modernization Evidence.md>).
 
 ### Added

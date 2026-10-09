@@ -1,6 +1,6 @@
 # MIDAS Supabase API Key and Edge Authentication Modernization Masterplan
 
-## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlichen, 2026-10-09
+## Aktueller Wiedereinstieg — D28 / Web-v34 veröffentlicht, 2026-10-09
 
 LOCAL_OWNER_ACCEPTANCE_PASS: Stephan bestätigt echten Login ohne erneutes
 Overlay, Doctorunlock und erfolgreiche Reporterstellung01.01.2026–09.10.2026.
@@ -32,12 +32,26 @@ die nachträgliche abgeleitete Veröffentlichung liegt separat, originale Receip
 Start-/End-/Completion-/Accountingbytes unverändert, keine Historyaufwertung.
 Attribution/Messoverhead/volle Files/Toolcalls UNKNOWN/null, keine Paid Credits.
 
-Publication-Status: PREPARED_FOR_WEB_V34_PUSH; Originalbundle
+Publication-Status: WEB_V34_PUBLISHED / VERIFIED_HOSTED; Releasecommit
+`7cd5a9c813066affc4313a60e6a4b05cee6a63ad`; Pages-Build `built`, exakt dieser Commit.
+Originalbundle
 `.kasrkin/work/supa-web-publish-v6-candidate-20261009/bundle.json`.
 Aktuelle Evidence/Resume/Context/Originalusage unter
 `.kasrkin/work/supa-web-publish-20261009`.
-Nächster Schritt dieses zugelassenen Fensters: explizites Staging/Commit/Push,
-exakte Served-Hashes und isolierte gehostete PWA-/Auth-Postchecks, dann Closure.
+Postchecks:78 ausgelieferte Assets exakt gegen Gitbytes;140 Source-/Served-/
+Schutzchecks PASS;11 gehostete Browserchecks PASS, keine Console-/Pageerrors.
+Chromium149.0.7827.55, Desktop1366×900/Mobil390×844; kalter und warmer Boot,
+aktueller SW, Offlineasset, Medicationtransport, Authlistener und Logout.
+Browser-Plugin nicht verfügbar; vorhandenes Playwright1.61.1 verwendet, keine
+Installation. SDK/Session/Storage sind isolierte Fixtures; alle nichtstatischen
+Transporte lokal abgefangen, keine echten Gesundheits-/AI-/Providerwrites.
+Lokale v32→v34-Updatenachweise bei identischen ausgelieferten Gitbytes weiter
+verwendet; keine neue echte Google-/Android-/Backend-Acceptance behauptet.
+Originale Usage erst bei Complete; Start/End/Receipt unter obigem Workpfad,
+keine Schätzung als Messung. Completiongebundene Evidence bleibt unverändert.
+Nächster zulässiger Schritt: das vorhandene konkrete G3-Backend-/Store-/
+Incident-Cutoverpaket prüfen und benannte Wirkungsfreigabe einholen.
+Vor dieser Freigabe keine neue produktive Wirkung.
 Keine Supabase-, Key-, Secret-, SQL-, Workflow-Dispatch-, Geräte- oder Signingwirkung.
 
 
@@ -188,7 +202,7 @@ Die älteren Karten/Startanweisungen unten bleiben historische Checkpoints.
 | Feld | Festlegung |
 | --- | --- |
 | ID / Form | `SUPA-KEY-2026 / Rolling Wave mit gezielten S1–S6 Execution Children` |
-| Status | `W1_DONE`; BW-S4R-1 READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5/S6 historisch lokal verifiziert; F22 LOCAL_FIXED / Owner-Retest offen, produktive W2/W3 nicht DONE |
+| Status | `W1_DONE`; BW-S4R-1 READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5/S6 historisch lokal verifiziert; F22 OWNER_CONFIRMED_FIXED; Web-v34 PUBLISHED/VERIFIED_HOSTED D28, Backend/übrige W2/W3 nicht DONE |
 | Erstellt / aktualisiert | 2026-08-23 / W0-Neufassung 2026-10-05; gezielter W1-/Work3-Abgleich 2026-10-08 |
 | Revision / Freeze | `SUPA-RW-2 / 2026-10-08`; BLUEPRINT-1 / 2026-09-27; Fachinvarianten erhalten, aktuelle Work/3-Projektion unten |
 | Owner / Consumer | Stephan; `C:\Users\steph\Projekte\M.I.D.A.S` |
@@ -221,7 +235,7 @@ Teilumstellungen; keine Child-Datei aus Symmetrie.
   W1 endet vor Produktcode; JP1 ist ein eigener späterer Ownerauftrag.
 - JP1 2026-10-08 ausgeführt: neue Signing-Verwaltung mit CURRENT HS256 und
   STANDBY ES256/P-256; EV-JP1-01–06. Keine Rotation/Abschaltung.
-- Aktueller fachlicher Schritt: G4_WEB_V34 unter D28 veröffentlichen und served/PWA nachprüfen; Ownerlogin/Doctor/report/BP bestätigt. Backend/Incident/Android/Legacy bleiben aktiv offen, keine Gesamt-DONE-Aussage.
+- Aktueller fachlicher Schritt: G4_WEB_V34 unter D28 veröffentlicht/served/PWA verifiziert; nächstes konkretes G3-Wirkungspaket; Ownerlogin/Doctor/report/BP bestätigt. Backend/Incident/Android/Legacy bleiben aktiv offen, keine Gesamt-DONE-Aussage.
 - Minimalrefresh: `../AGENTS.md` vollständig und `../README.md` gemäß Lesepflicht;
   dann Metadaten, Startkarte, Globaler Vertrag, Context Receipt, Decision Log,
   Findings, Usage, Resume Card und nächste offene Wave. Bei BLUEPRINT-/ATLAS-
@@ -665,7 +679,7 @@ Real-JWT-/Session-/Consumer-Smokes entsprechend deren eigenem Gate.
 | JP1 | Vorgezogener Ownerauftrag: Signing-Verwaltungsimport | `DONE_CONFIGURATION`; aktiver HS256, neuer ES256-Standby; keine Wave-Acceptance ersetzt | G-JWT-IMPORT-ONLY/D18, EV-JP1-01–06 |
 | W1 | Aktuelles Source-/Remote-/Capabilitypostimage/Zielvertrag | `DONE`; Discovery/Full Review/Childdraft EV-W1 vorhanden, F17 geschlossen | U4 PRIMARY_ALLOWED; originaler Abschlussrecord maßgeblich |
 | W2 | Authenticated Caller, Edgeguards, interne Secrets/Incident | [Backend/Web-Child](<MIDAS Supabase Backend and Web Authentication Modernization Roadmap.md>) S1–S4R DONE/READY_LOCAL; S4 L1–L3 VERIFIED_LOCAL; S5 VERIFIED_LOCAL D24 | W1 DONE; G2/Child-S4R; produktiv G3/G4 |
-| W3 | PWA-Publishable/Cache-/Sessionvertrag | LOCAL_IMPLEMENTED_L3; S5 VERIFIED_LOCAL; F22 LOCAL_FIXED/v34, Owner-Retest und produktive Acceptance offen | Derselbe Backend/Web-Child, G4 |
+| W3 | PWA-Publishable/Cache-/Sessionvertrag | LOCAL_IMPLEMENTED_L3; S5 VERIFIED_LOCAL; F22 OWNER_CONFIRMED_FIXED; Web-v34 PUBLISHED/VERIFIED_HOSTED D28, Key-/Storecutover weiter offen | Derselbe Backend/Web-Child, G4 |
 | W4 | Android/Widget Publishable, Restore/OAuth/Device | `PLANNED_COARSE`, nach Backend/Web | Natives Child-S4R/G5, ggf. G3 |
 | W5 | Gesamtmatrix/Recovery/Legacy-Deaktivierung | `PLANNED_COARSE`, nach W2–W4 | Abschalt-Child-S4R/G6, ggf. G3/G5 |
 | W6 | Belegte Doku/QA/Changelog/Roll-up/Archiv | `PLANNED_COARSE`, nach W5 | Frische Zulassung, Acceptance erfüllt; kein Child |
