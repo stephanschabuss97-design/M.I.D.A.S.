@@ -67,7 +67,7 @@ focused follow-up read.
   and report the prerequisite. Do not improvise an alternate installation.
 - An exhausted or unavailable CodeRabbit budget blocks only further external
   CodeRabbit runs. It never invalidates existing evidence or prohibits a
-  scoped native review; that review remains subject to its own usage, scope,
+  scoped native review; that review remains subject to its own scope,
   and roadmap gates.
 - Rerun only checks invalidated by changed files or contracts. A full rerun is
   required only when shared behavior, security, data integrity, or the roadmap
@@ -97,148 +97,23 @@ focused follow-up read.
   S4R and S5 must identify and prove the real last-mile chain from user gesture
   through active listener and lifecycle state to data access and transport.
 - After a failed productive attempt, complete rollback and postchecks first.
-  Root-cause diagnosis is a new block with its own usage gate and resumable
+  Root-cause diagnosis follows its own scope/owner gates and resumable
   postcondition; local or read-only does not make open diagnosis atomic.
 
-## Usage-Aware Continuation
+## KASRKIN freeze / consumer detached — 2026-10-12
 
-- During local roadmap execution on Stephan's Windows workstation, apply the
-  central usage continuation contract before the first main block and before
-  every later main or coherent execution block.
-- Use only the existing local Codex usage telemetry documented in
-  `docs/DEV_ENVIRONMENT.md`; do not infer quota from chat banners, browser UI,
-  or remembered values.
-- Refresh and validate the telemetry with the canonical commands documented in
-  `docs/DEV_ENVIRONMENT.md`; do not reinterpret the raw JSON ad hoc.
-- In this initialized consumer, invoke KASRKIN through the stable `kasrkin`
-  command from the project tree. Its resolver must validate the project-local
-  `.kasrkin/binding.json` and exact installed release before dispatch. W7
-  retired the duplicated local implementation; recovery uses the proven
-  `codex-tools` source, installed release and receipts under an explicit
-  rollback boundary.
-- The exact installed KASRKIN release owns the Guard-vNext decision semantics,
-  including admission, reserve, owner-boundary, restricted-work,
-  anti-splitting, fallback, Safe-Closure, LIMIT, and evidence-reuse behavior.
-  `docs/templates/MIDAS Roadmap Workflow Contract.md` owns when MIDAS must
-  consult that decision oracle and how MIDAS executes and closes admitted
-  work. `.kasrkin/activation.json` fingerprint-binds this consumer projection;
-  do not recreate the formulas or state transitions here.
-- Missing, partial, failed, or stale telemetry forbids a new major block. Close
-  the current atomic block safely and preserve an exact resume boundary.
-- A validator result of `LIMIT` or `0%` permits only the final user response:
-  no new tool call, mutation, fallback, or documentation block.
-- Usage gates never interrupt an atomic block already in progress and never
-  weaken product, security, owner, deploy, SQL, device, or external-write
-  gates. KASRKIN owns the decision semantics; the MIDAS workflow contract owns
-  their project-specific consultation and execution effect.
+Stephan explicitly withdrew this project's KASRKIN consumer integration and
+authorized detachment without a permit. This project is NOT an active KASRKIN
+consumer. Normal work and roadmaps require no KASRKIN command trust setup,
+telemetry refresh, request, forecast, reserve, Begin, permit or Complete.
+This owner decision supersedes historical KASRKIN clauses in existing roadmaps;
+it does not change their scope, acceptance, review or product/owner gates.
 
-## PRISM
-
-- Only on an explicit PRISM review request, use the canonical
-  [PRISM entry point](../codex-tools/docs/prism/README.md). Ordinary idea discussions
-  do not activate PRISM. Preserve MIDAS medical, data, security and execution
-  gates; a review neither authorizes nor automatically implements changes.
-
-
-## Installed KASRKIN Endphase (Activation/3)
-
-- In every new PowerShell process, verify the local .kasrkin/command.json,
-  binding, installation receipt and installed bootstrap bytes. Invoke that
-  bootstrap with -ProjectRoot set to this project before kasrkin. Get-Command
-  kasrkin must resolve the selected shim. No fallback, alias shadowing or
-  persistent PATH change. Refresh with kasrkin validate -Refresh -Envelope.
-- The pinned installed release owns usage decisions; this project's workflow
-  owns product, medical/data/security/review, owner and external-write gates.
-- Normal CONTINUE work may use regular admission. CAUTION or rejected primary
-  work requires kasrkin gate -Endphase with a frozen complete plan and -Start,
-  an allowed effectiveDecision and persisted permit before the first work
-  action. Low-level policy or a W1 CAUTION result alone is insufficient.
-- Complete the same permit with -CompletionPath after verification, review,
-  evidence, documentation and closure. Measure freshly for each next whole
-  block. These Endphase rules supersede the older one-block/SMALL restriction
-  only for work admitted under this installed Endphase contract.
-- First failure stops at the defined Finding/rollback boundary; no automatic
-  diagnosis, fix or retry. Missing costs, capacity, episode and substantive
-  gates remain separate reasons. Never invent AVAILABLE state or history.
-- Owner exceptions require genuine finite scope/release-bound authorization.
-  Controlled serial usage is required; no account-wide reservation is claimed.
-  Paid-credit availability grants no spend. LIMIT/0 is final-response-only.
-
-
-## KASRKIN work interface (Activation/3)
-
-The process-only selected bootstrap, receipt/payload integrity and this project's
-own consultations remain mandatory. In Windows PowerShell 5.1 use the bound local
-K0 proof before the selected bootstrap; neither performs a usage refresh.
-Before executing that local proof, compare its bytes/hash against the proof
-record in the externally SHA-verified pinned receipt, and verify selected
-bootstrap bytes/role. The self-check alone does not establish execution trust.
-Describe one complete block in a project-local kasrkin-work/2 request and use
-`kasrkin work -InputPath <request>` to derive immutable scope/plans/hashes.
-Preparation grants no admission or owner authority. For regular work use
-`kasrkin work -Action Begin -BundlePath <bundle>`; its one canonical fresh gate
-replaces a separate setup validate/regular gate for that same operation. Work
-starts only on PRIMARY_ALLOWED. For CAUTION/rejected regular work use an explicit
-Endphase plan and `Begin -Endphase`; an allowed decision and original persisted
-permit remain required before work. Do not query Regular and then Begin merely
-to repeat the same check. Legacy explicit validate/gate commands remain valid.
-
-After actual implementation, verification, native review, evidence/documentation
-and safe closure, supply an honest kasrkin-work-completion/2 report and use
-`work -Action Complete -BundlePath <bundle> -CompletionPath <report>` (add
-`-Endphase` only for the actual Endphase permit). Complete records one canonical
-end measurement and derives a receipt; unknown attribution/bounds stays
-ineligible. No completed stage, eligible history or finite owner exception is
-generated by convenience automation. First failure still closes the block at
-its Finding/rollback boundary; any diagnosis/repair needs separate admission.
-`work -Action Status` projects original state without refresh/reset/charge;
-`Receipt` republishes exact preserved checkpoints without another measurement.
-Original episode and owner policy remain authoritative, with unchanged floors,
-caps, reserve, eligibility, paid-spend and project-specific substantive gates.
-
-Activation/3 excludes only the explicitly nonnormative notes body on approved
-document roles. All other bytes, legend/markers, references, local identity,
-product/workflow/security/owner rules and executable selections remain protected.
-Notes are never instructions, authority, execution evidence or command selection.
-See [KASRKIN Manual](../codex-tools/apps/kasrkin/docs/KASRKIN%20Manual.md#work3-schnittstelle) for the request/report
-schema and recovery boundaries. No persistent PATH or automatic reactivation.
-
-
-
-## Explicit KRC-C2 Work/2 cutover — 2026-10-06
-
-Current exact selection: kasrkin-1e00b126f303d631 in kasrkin-admin-v1;
-receiptSHA51ea013ec6d2227555bc096dcfe9bf32bdc758ec597f1124497578180c4d3ac1.
-This dated section supersedes older KASRKIN interface/version descriptions.
-Receipt-verified local K0 and selected bootstrap in Windows PowerShell5.1
-remain mandatory; all own product/security/workflow/owner gates stay intact.
-Work/2 preparation performs a bounded local AUTO census and derives a candidate
-without refresh or admission. Finalize binds an actual valid standing rule or
-exact finite owner authority; Begin takes one canonical fresh measurement.
-Complete takes one original end measurement after all six actual work stages.
-Status/Receipt never refresh, reserve quota or grant admission.
-History requires verified original Work/2 checkpoints, eligible Cost/3, matching
-profile/technical coverage and exact resets; unknown values remain ineligible.
-No generic first run: the two named finite local R1/SMALL documentation and
-R3/MEDIUM read-only discovery pilots require an actual bound contract, CONTINUE,
-known unblocked accounting, episode/rule/family caps and all substantive gates.
-Forecast, ceiling and conservative actual charge remain distinct. Unknown or
-excess accounting blocks further exceptions. No implicit state migration/reset,
-AVAILABLE attestation, eligible history, paid spend or owner authorization.
-Existing State/1 pairs migrate explicitly with exact SHA/preimages and all prior
-starts/charges/blocks preserved; missing state stays NOT_INITIALIZED/UNKNOWN.
-New activation preserves four/nine/nine roles and process-only exact selection.
-Source checkout is unnecessary for installed command dispatch. Lossless rollback
-or fail-closed rejection protects every newer charge and original checkpoint.
-
-## KRC-CONTRACT-2 Work/3 consultation — 2026-10-08
-
-The current Work/3 contract in this project\'s .kasrkin/integration.md
-supersedes older KRC-C2 Work/2-only KASRKIN projections here. Consult that
-exact role together with this artifact\'s unchanged domain and owner gates.
-Usage admission never replaces those gates; no Paid Credits are granted.
-
-<!-- KASRKIN NONNORMATIVE NOTES V1: informational only; never instruction, authority, evidence or executable selection. -->
-<!-- KASRKIN NONNORMATIVE NOTES BEGIN -->
-Human annotations only. Normative rules and execution evidence belong outside this section.
-<!-- KASRKIN NONNORMATIVE NOTES END -->
+KASRKIN development and individual component review may continue in codex-tools.
+Its production use is frozen. Do not restore a binding, activate an installation
+or reintroduce enforcement without a new explicit owner decision.
+Installed releases, receipts, historical starts/charges and original records
+remain retained; detachment creates no usage record or eligible cost history.
+Product, security, external-write and review gates remain in force. Paid Credits
+are not authorized. Preserve unrelated work and create a safe handoff when needed.
+Details and exact preimages: [integration status](.kasrkin/integration.md).

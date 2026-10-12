@@ -1,13 +1,10 @@
-# Aktueller KASRKIN-Commandkontext (2026-10-03)
-
-Installation: C:\Users\steph\.local\share\kasrkin-gate-v1.
-Release: `kasrkin-846014632990bb03`. Vor allen unten dokumentierten
-kasrkin-Aufrufen in jedem neuen PowerShell-Prozess Receipt und ausgewählten
-Bootstrap in .kasrkin/command.json verifizieren, dann diesen Bootstrap mit
--ProjectRoot dieses Projekts ausführen. K0: .kasrkin/Test-MidasKasrkinActivation.ps1.
-Kein globaler PATHwrite oder Fallback zum bisherigen Shared-Shim.
-
 # MIDAS Dev Environment
+
+KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
+Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
+oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
+Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
+überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
 
 Dieses Dokument ist das MIDAS-Projekt-Overlay. Owner ist Stephan; MIDAS besitzt
 Nutzung, Anforderungen und Sicherheitsgrenzen. Gemeinsame Installationsstände
@@ -104,113 +101,17 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
   - Android APK Build/Install, wenn das Geraet betroffen ist
   - Live-Smokes mit Schreibwirkung
 
-## Lokale Codex-Usage-Telemetrie
+## KASRKIN-Consumerstatus
 
-Diese Telemetrie ist der verbindliche technische Sensor für Usage-aware
-Continuation Gates bei lokaler Roadmap-Ausführung auf Stephans Windows-PC.
-Rainmeter zeigt denselben Zustand nur für Menschen an; die Kachel selbst ist
-keine Agentenabhängigkeit und trifft keine Continuation-Entscheidung.
+KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
+Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
+oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
+Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
+überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
 
-- Gemeinsame Sensor-/State-Pfade: [ATLAS](../../codex-tools/environment/DEV_ENVIRONMENT.md#kasrkin-installation-und-state-pfade).
-- Versionsgebundener KASRKIN-Einstieg: stabiler Command `kasrkin` mit der
-  projektlokalen Bindung `.kasrkin/binding.json`.
-- Projektbezogene Aktivierungs- und Konsultationsbindung:
-  `.kasrkin/activation.json`; read-only Proof:
-  `.kasrkin/Test-MidasKasrkinActivation.ps1`.
-- Kanonischer State-Validator-Aufruf: `kasrkin validate -Refresh`.
-- Die frühere lokale Implementierung wurde in W7 nach bewiesenem KASRKIN-
-  Cutover retiret. Recovery stützt sich auf die gebundene Installation,
-  `codex-tools`-Source und versionierte Receipts, nicht auf eine zweite lokale
-  Toolkopie.
-- Autoritativer Quota-State: `UsageState.json` am zentral dokumentierten Ort.
-- Erwartetes Schema: `schemaVersion = 3`.
-- Erwartete Sensorversion: `sensorVersion = 3.1.0`.
-- Pflicht-Buckets: `fiveHour` mit `windowDurationMins = 300` und `weekly` mit
-  `windowDurationMins = 10080`.
-- Entscheidungsrelevante Felder je Bucket: `available`, `remaining`, `used`
-  und `resetAtEpoch`; global außerdem `lastAttemptAt`, `lastSuccessAt` und
-  `status`.
-- Reset-Credits sind optionale Kontextinformation und erhöhen nie rechnerisch
-  das verbleibende 5h- oder Wochenbudget.
-
-Die KASRKIN-Source of Truth liegt in `codex-tools`; MIDAS bindet eine konkrete
-lokal installierte Releaseidentität und verwendet niemals `latest`. Der
-Rainmeter-Sensor und der Sensor im gebundenen Release müssen bytegleich bleiben.
-MIDAS besitzt seit W7 keine duplizierte lokale KASRKIN-Implementierung mehr.
-
-Unmittelbar vor jedem Usage-Gate wird genau ein Refresh ausgeführt und danach
-der gespeicherte State mit dem kanonischen Validator geprüft:
-
-```powershell
-$usageValidation = & kasrkin validate -Refresh
-if ($LASTEXITCODE -ne 0) {
-  throw "Codex usage state validation failed with exit code $LASTEXITCODE."
-}
-$usageState = $usageValidation | ConvertFrom-Json
-```
-
-Ein State ist für eine Continuation-Entscheidung nur frisch und vollständig,
-wenn alle folgenden Bedingungen erfüllt sind:
-
-- Rainmeter-Sensor und Sensor des gebundenen KASRKIN-Releases besitzen
-  denselben SHA-256.
-- `schemaVersion` ist exakt `3` und `sensorVersion` exakt `3.1.0`.
-- `status` ist exakt `OK`, `LOW` oder `LIMIT`; `WAIT`, `STALE`, `ERROR`,
-  `PARTIAL` und unbekannte Werte sind ungültig.
-- Beide Buckets sind verfügbar und besitzen exakt die erwartete Fensterdauer.
-- `remaining` und `used` sind je Bucket endliche numerische Werte zwischen
-  `0` und `100`; ihre Summe ist innerhalb einer Toleranz von `0.01` gleich
-  `100`.
-- `resetAtEpoch` ist je Bucket eine positive ganze Zahl.
-- `lastAttemptAt` und `lastSuccessAt` sind parsebare Zeitstempel derselben
-  erfolgreichen Messung; sie sind exakt gleich.
-- `lastSuccessAt` liegt nicht in der Zukunft und ist zum
-  Entscheidungszeitpunkt höchstens zwei Minuten alt.
-
-Das Skript serialisiert Refresh- und Markeraktionen über einen lokalen
-Windows-Mutex und speichert den State per temporärer Datei atomar. Ein
-Prozessfehler oder Lock-Timeout macht die Messung unmittelbar ungültig. Ein
-Exitcode `0` reicht umgekehrt nie als Erfolgsnachweis; entscheidend sind
-Skripthash und die validierten JSON-Felder. `status = OK` belegt nur eine
-technisch erfolgreiche, vollständige Messung und ist nicht gleichbedeutend mit
-der Workflow-Entscheidung `CONTINUE`.
-
-Der Validator gibt nur eine kompakte, bereits geprüfte Entscheidungsansicht
-aus. Sein Exitcode `0` ist der kanonische Nachweis, dass Hash-, Schema-,
-Versions-, Status-, Bucket- und Freshnessvertrag gemeinsam erfüllt sind. Der
-Agent entscheidet auf dieser Ausgabe; das rohe `UsageState.json` wird nicht
-eigenständig neu interpretiert.
-
-Die validierte Telemetrie ist ausschließlich Eingang des aktiven
-Guard-vNext-Vertrags. Usage-Bands, Floors, Owner Boundary,
-Restricted-Work-Episode, Safe Closure, LIMIT, Evidence-Reuse und erlaubte
-Arbeitsklassen gehören der durch `.kasrkin/binding.json` exakt gebundenen
-KASRKIN-Implementierung. Der MIDAS-Workflowvertrag besitzt nur den
-projektspezifischen Konsultations-, Ausführungs- und Abschlussvertrag. Seine
-menschenlesbare Projektion darf KASRKIN nicht überstimmen; ein Widerspruch ist
-Contract Drift und sperrt neue Arbeit. `.kasrkin/activation.json` bindet beide
-Seiten per Fingerprint. KASRKIN führt selbst keine zugelassene Arbeit aus und
-schwächt keine anderen Gates.
-
-Workflowzustände werden weder aus Rainmeter noch aus Chattext rekonstruiert.
-Ein `LIMIT`- oder `0 %`-Ergebnis wird ausschließlich gemäß dem zentralen
-Workflowvertrag behandelt. Die möglicherweise noch zustellbare Antwort ist
-keine planbare Graceful-Stop-Reserve.
-
-Der Sensor liest die Limits aus dem lokal authentifizierten Codex-App-Server.
-Diese lokale Schnittstelle ist eine beobachtete Abhängigkeit und kein von
-MIDAS kontrollierter Vertrag. Ändert sie sich, muss der Sensor fail-closed
-enden; vor einer Anpassung werden Repo-Kopie, Sensorversion und Validator
-gemeinsam aktualisiert. Browseranzeige oder Schätzwerte bleiben auch dann kein
-Fallback.
-
-Der Agent schreibt weder vollständige State-Snapshots noch Zugangsdaten in das
-Repo. Roadmaps halten nur die für den Gate-Entscheid nötigen Prozentwerte,
-Reset-Identitäten, Deltas und Entscheidungen fest. Ist der lokale Sensor nicht
-zugreifbar, wird keine Browser-, Chat-UI- oder Schätzdatenquelle als Ersatz
-verwendet; der Workflow wechselt an der nächsten sicheren Grenze in Safe
-Closure. Schwellen, Delta-Regeln und Stop-Semantik stehen ausschließlich in
-`docs/templates/MIDAS Roadmap Workflow Contract.md`.
+Installationen und historische Zustände bleiben unverändert außerhalb des
+Repositorys erhalten. Keine Binding-, Activation-, Proof- oder Validatorpflicht.
+Details: [lokaler Integrationsstatus](../.kasrkin/integration.md).
 
 ## Agent-Arbeitsregeln
 
@@ -377,7 +278,7 @@ Wichtig:
   Roadmaps verwenden native Reviews ohne externen CodeRabbit-Aufruf.
 - Ein ausgeschöpftes oder nicht verfügbares CodeRabbit-Budget betrifft nur den
   externen Reviewpfad. Ein gezielter nativer Review bleibt ein eigener lokaler
-  Check und wird ausschließlich durch seinen Scope, das Usage-Gate und den
+  Check und wird ausschließlich durch seinen Scope und den
   Roadmapvertrag begrenzt.
 - Schlaegt der kanonische Shim oder die Authentifizierung fehl, wird der
   externe Review gestoppt und der konkrete Fehler dokumentiert. Innerhalb
@@ -1008,82 +909,5 @@ Diese Toolchain reicht fuer die normale MIDAS-Arbeit:
 
 Damit kann ein neuer LLM-/Coding-Agent die meisten MIDAS-Aufgaben lokal pruefen, ohne externe Annahmen ueber den alten Backend-Workspace zu machen.
 
-### Optionaler KASRKIN Reset-Hinweis
-
-Seit dem Paid-Credit-Consumerupdate vom 2026-09-20 ist
-`kasrkin-4f3f71b333dfe784` exakt
-gebunden. Der bestehende Gate-Aufruf `kasrkin validate -Refresh` bleibt unverändert.
-Optional kann `kasrkin validate -ResetAdvisory` die bereits vorhandene frische
-Telemetrie um einen rein informativen Reset-Hinweis ergänzen. Kein zusätzlicher
-Refresh oder dauerhafter Beobachtungsauftrag ist dafür vorgesehen.
-
-Nur bei VALID entsteht ein `kasrkin-validate-advisory/1`-Wrapper mit `telemetry`
-und `resetAdvisory`; bei LIMIT oder Fehler bleibt es beim kanonischen Envelope
-und Exitcode. Der optionale Wrapper ersetzt nicht das Ausgabeformat des normalen
-Usage-Gates. Ein erwarteter Reset erzeugt weder Budget noch Arbeitsfreigabe;
-Floors, LIMIT, Restricted Episode und Owner-/Fachgates bleiben unverändert.
-Die 300-Sekunden-Nähegrenze ist eine Versuchshypothese, kein bewiesenes Optimum.
-
-### Paid-Credit-Telemetrie
-
-Das gebundene Release ergänzt die regulären Usage-Fenster um die getrennte,
-maschinenlesbare Dimension `paidCredits`. Deren Quelle ist der lokale Codex
-App Server; der separate Runtime-State liegt in
-[zentral dokumentierten Runtime-Verzeichnis](../../codex-tools/environment/DEV_ENVIRONMENT.md#kasrkin-installation-und-state-pfade)
-als `PaidCreditState.json`.
-`UsageState.json`, dessen Writer und die reguläre Quota-Policy bleiben
-unverändert.
-
-Credit availability is not permission to spend. Ein positiver Creditstand,
-Rainmeter, ein erfolgreiches Validate oder eine frühere Freigabe autorisieren
-keine Nutzung. Paid Credits benötigen eine ausdrückliche, zeitlich und
-fingerprintgebundene Ownerfreigabe für exakt den aktuellen Arbeitsblock; alle
-MIDAS-, Security-, Data-, Review-, External-Write-, Floor-, Safe-Closure- und
-Anti-Splitting-Gates bleiben zusätzlich wirksam.
-
-
-Current KASRKIN execution: Activation/3, separate kasrkin-admin-v1 installation.
-Use the receipt-bound local K0 proof and selected bootstrap in explicit Windows
-PowerShell 5.1. Work Begin/Complete performs the required fresh measurement per
-operation; a separate setup validate is unnecessary for that same operation.
-Legacy validate remains available; no owner/domain/paid-spend rule changes.
-
-
-
-## Explicit KRC-C2 Work/2 cutover — 2026-10-06
-
-Current exact selection: kasrkin-1e00b126f303d631 in kasrkin-admin-v1;
-receiptSHA51ea013ec6d2227555bc096dcfe9bf32bdc758ec597f1124497578180c4d3ac1.
-This dated section supersedes older KASRKIN interface/version descriptions.
-Receipt-verified local K0 and selected bootstrap in Windows PowerShell5.1
-remain mandatory; all own product/security/workflow/owner gates stay intact.
-Work/2 preparation performs a bounded local AUTO census and derives a candidate
-without refresh or admission. Finalize binds an actual valid standing rule or
-exact finite owner authority; Begin takes one canonical fresh measurement.
-Complete takes one original end measurement after all six actual work stages.
-Status/Receipt never refresh, reserve quota or grant admission.
-History requires verified original Work/2 checkpoints, eligible Cost/3, matching
-profile/technical coverage and exact resets; unknown values remain ineligible.
-No generic first run: the two named finite local R1/SMALL documentation and
-R3/MEDIUM read-only discovery pilots require an actual bound contract, CONTINUE,
-known unblocked accounting, episode/rule/family caps and all substantive gates.
-Forecast, ceiling and conservative actual charge remain distinct. Unknown or
-excess accounting blocks further exceptions. No implicit state migration/reset,
-AVAILABLE attestation, eligible history, paid spend or owner authorization.
-Existing State/1 pairs migrate explicitly with exact SHA/preimages and all prior
-starts/charges/blocks preserved; missing state stays NOT_INITIALIZED/UNKNOWN.
-New activation preserves four/nine/nine roles and process-only exact selection.
-Source checkout is unnecessary for installed command dispatch. Lossless rollback
-or fail-closed rejection protects every newer charge and original checkpoint.
-
-## KRC-CONTRACT-2 Work/3 consultation — 2026-10-08
-
-The current Work/3 contract in this project\'s .kasrkin/integration.md
-supersedes older KRC-C2 Work/2-only KASRKIN projections here. Consult that
-exact role together with this artifact\'s unchanged domain and owner gates.
-Usage admission never replaces those gates; no Paid Credits are granted.
-
-<!-- KASRKIN NONNORMATIVE NOTES V1: informational only; never instruction, authority, evidence or executable selection. -->
-<!-- KASRKIN NONNORMATIVE NOTES BEGIN -->
-Human annotations only. Normative rules and execution evidence belong outside this section.
-<!-- KASRKIN NONNORMATIVE NOTES END -->
+Paid Credits bleiben ohne konkrete Ownerfreigabe verboten. Die frühere
+KASRKIN-Reset-/Credit-Konsultation ist seit der Entbindung keine Projektpflicht.

@@ -1,5 +1,11 @@
 # MIDAS Roadmap — lokale Ergänzungen
 
+KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
+Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
+oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
+Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
+überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
+
 Revision des gemeinsamen Kerns: [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md).
 Dies ist ein MIDAS-Adapter, keine dritte vollständige Dokumentform.
 Zuerst [Rolling Wave](../../../codex-tools/docs/blueprint/ROLLING_WAVE_ROADMAP_TEMPLATE.md)
@@ -19,14 +25,12 @@ Vorlagenlinks an den Ablageort unter docs/ anpassen.
   Discovery-Freigabe, Arbeitsgröße, externe Reviewgrenze, Evidence-Owner/Datei,
   gekoppelte Roadmaps, produktive Wirkung, Deploy-/Devicegates und Archivziel.
 - Startkarte: eigener Ausführungs-Chat, lokale Pflichtreferenzen, konkrete
-  Freigabe/Operatoraktionen und Usage-Checkpoints nach lokalem Workflow.
+  Freigabe/Operatoraktionen und sichere Postconditions nach lokalem Workflow.
 - Capability-Receipt aus BLUEPRINT mit konkretem MIDAS-Bedarf ausfüllen;
   MISSING/INCOMPATIBLE blockiert READY. Kein implizites Setup.
 - Scope-Freeze: Features, Datenmodell, Lifecycle/Retention, Cleanup, Scheduler,
   Secrets, externe Automationen und kompatible Producer/Consumer entscheiden.
-- KASRKIN-Checkpoint-Felder nach gepinntem Vertrag: Zeit, validierte Fenster,
-  Resetidentitäten, Blockklasse, Reserve/Entscheidung und erlaubte Folge;
-  keine zweite Policy oder erfundene Deltas.
+- Keine KASRKIN-Checkpointfelder oder technische Usage-Zulassung erforderlich.
 - Context-Reuse/Live-Read-Grenzen und Evidence-Pflichten des MIDAS-Vertrags
   ergänzen; keine sensiblen Rohdaten oder Secretwerte in Evidence.
 - Findings: lokale P0/P1/Risiko-Definitionen und wirksame Ownergates anwenden.
@@ -163,11 +167,9 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `[aktuelles, Forward- und Rollbackpostimage samt günstigem Orakel / nicht
     relevant]`
 - Produktiver Fehlerpfad:
-  - `[Rollback + Daten-/Runtimepostcheck atomar; Diagnose erst nach neuem Gate
+  - `[Rollback + Daten-/Runtimepostcheck atomar; Diagnose erst nach sicherem Rollback und fachlicher Readiness
     / nicht relevant]`
-- Usage-Gates zwischen Ausführungsblöcken:
-  - `[Ux vor Block A; Ux nach Block A/vor Block B; Ux vor S5; Ux nach S5/vor
-    S6; bei separater S5-Korrektur-/Retest-Welle zusätzlich davor]`
+- Fachliche Gates zwischen Ausführungsblöcken: `[Owner/Readiness/keine]`
 - Begründung der Zusammenlegung/Trennung:
   - `[gleicher Scope, gleiche Wirkung, kompatible Reviewtiefe, keine Gates dazwischen]`
 - Review je Ausführungsblock:
@@ -184,18 +186,7 @@ Reasoning: `GPT-5.6 Sol / [Stufe]`.
   - `Context-Rehydration / Toolinteraktionen / Fehlersuche: [kurz]`
   - `Doku / Evidence / Postconditions: [kurz]`
   - `Empfohlene autonome Wellen samt Reasoning: [Schrittbereich: Stufe]`
-  - `Usage-Reserve: [reale vergleichbare Checkpoints; Operational Safety Floor
-    = vollständiger Block bis zur sicheren Produkt-/Rollbackpostcondition + 1
-    Punkt Sensorauflösung; Autonomous Full-Closure Floor = Operational Safety
-    Floor + noch nicht enthaltene echte CLOSURE_ONLY-Kosten; effektive Grenzen
-    jeweils mit erforderlichem Usage-Band; Preferred = höherer Wert aus × 1,5
-    und Full-Closure Floor; 25/10 nie als Kosten addieren; Machbarkeit und
-    Boundary verfügbar ja/nein; fehlende Daten nie schätzen]`
-  - `Blockklasse: [BOUNDED_DOCUMENTATION / BOUNDED_LOCAL /
-    DISCOVERY_BOUNDED / DIAGNOSTIC_UNBOUNDED / INTEGRATED_REVIEW /
-    PRODUCTIVE_CUTOVER / CLOSURE_ONLY]`
-  - `Fallbackvertrag: [keiner / genau ein vorab bounded Kandidat;
-    Anti-Splitting, Primary-Invalidation und Boundedness-Breach geprüft]`
+  - `Sichere Postconditions und Fehlerpfad: [kurz]`
   - `Owner-Briefing bei large: [PASS / nicht relevant]`
 - Readiness-Findings/Korrekturen:
   - `[kurz oder none]`
@@ -255,9 +246,8 @@ Exit: Alle In-Scope-Findings sind umgesetzt oder abgegrenzt.
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
-Vor S5 ein frisches Usage-Gate ausführen. Entsteht nach einem vollständig
-abgeschlossenen Prüfblock eine getrennte Korrektur-/Retest-Welle, vor deren
-Beginn erneut messen. Wenige Dateien oder LOC genügen nicht zur Einstufung als
+Vor S5 fachliche Readiness prüfen. Eine getrennte Korrektur-/Retest-Welle
+prüft ihre betroffenen Readiness- und Ownergates; keine Usage-Messpflicht. Wenige Dateien oder LOC genügen nicht zur Einstufung als
 kurzer Block; Context-, Tool-, Browser-, Review- und Dokumentationsarbeit
 gehören zur realen Blockgröße.
 
@@ -284,7 +274,7 @@ Deterministische Reihenfolge:
    verfügbaren externen Review mit Grund dokumentieren und nicht ersetzen.
 
 Ein ausgeschöpftes CodeRabbit-Budget sperrt keinen nativen Review. Beide
-Prüfpfade bleiben getrennt und unterliegen ihren eigenen Usage- und
+Prüfpfade bleiben getrennt und unterliegen ihren eigenen fachlichen und
 Scope-Gates.
 
 Externes Reviewbudget:
@@ -330,8 +320,8 @@ Exit: Relevante Checks sind grün oder sichtbar abgegrenzt.
 
 Reasoning: `GPT-5.6 Sol / [Stufe]`.
 
-S6 beginnt erst nach vollständig abgeschlossenem S5 und einem frischen
-Usage-Gate. `SAFE_CLOSURE` bewahrt den grünen S5-Stand und verschiebt nur S6.
+S6 beginnt nach vollständig abgeschlossenem S5 und erfüllten fachlichen
+Gates. Ein sicherer Handoff bewahrt den erreichten S5-Stand, falls S6 offen bleibt.
 
 Deterministisch:
 
@@ -384,43 +374,3 @@ Ergebnis:
 
 Exit: Code, Runtime, Roadmap, QA und Doku beschreiben denselben finalen
 Vertrag; erforderliche Owner-Briefings und der optionale Recap sind erledigt.
-
-
-
-## Explicit KRC-C2 Work/2 cutover — 2026-10-06
-
-Current exact selection: kasrkin-1e00b126f303d631 in kasrkin-admin-v1;
-receiptSHA51ea013ec6d2227555bc096dcfe9bf32bdc758ec597f1124497578180c4d3ac1.
-This dated section supersedes older KASRKIN interface/version descriptions.
-Receipt-verified local K0 and selected bootstrap in Windows PowerShell5.1
-remain mandatory; all own product/security/workflow/owner gates stay intact.
-Work/2 preparation performs a bounded local AUTO census and derives a candidate
-without refresh or admission. Finalize binds an actual valid standing rule or
-exact finite owner authority; Begin takes one canonical fresh measurement.
-Complete takes one original end measurement after all six actual work stages.
-Status/Receipt never refresh, reserve quota or grant admission.
-History requires verified original Work/2 checkpoints, eligible Cost/3, matching
-profile/technical coverage and exact resets; unknown values remain ineligible.
-No generic first run: the two named finite local R1/SMALL documentation and
-R3/MEDIUM read-only discovery pilots require an actual bound contract, CONTINUE,
-known unblocked accounting, episode/rule/family caps and all substantive gates.
-Forecast, ceiling and conservative actual charge remain distinct. Unknown or
-excess accounting blocks further exceptions. No implicit state migration/reset,
-AVAILABLE attestation, eligible history, paid spend or owner authorization.
-Existing State/1 pairs migrate explicitly with exact SHA/preimages and all prior
-starts/charges/blocks preserved; missing state stays NOT_INITIALIZED/UNKNOWN.
-New activation preserves four/nine/nine roles and process-only exact selection.
-Source checkout is unnecessary for installed command dispatch. Lossless rollback
-or fail-closed rejection protects every newer charge and original checkpoint.
-
-## KRC-CONTRACT-2 Work/3 consultation — 2026-10-08
-
-The current Work/3 contract in this project\'s .kasrkin/integration.md
-supersedes older KRC-C2 Work/2-only KASRKIN projections here. Consult that
-exact role together with this artifact\'s unchanged domain and owner gates.
-Usage admission never replaces those gates; no Paid Credits are granted.
-
-<!-- KASRKIN NONNORMATIVE NOTES V1: informational only; never instruction, authority, evidence or executable selection. -->
-<!-- KASRKIN NONNORMATIVE NOTES BEGIN -->
-Human annotations only. Normative rules and execution evidence belong outside this section.
-<!-- KASRKIN NONNORMATIVE NOTES END -->

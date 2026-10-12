@@ -1,0 +1,13 @@
+{
+  "status": "DETACHED",
+  "productionUse": "FROZEN",
+  "date": "2026-10-12",
+  "owner": "Stephan",
+  "authority": "Explicit current consumer withdrawal; no permit required",
+  "previousRelease": "kasrkin-39b925e05e9593bb",
+  "previousReceiptSha256": "a14382fb181dc03d57ef6ffb3ca50da589bc2e2e45f3667caf89ce3fd2778e71",
+  "automaticReactivation": false,
+  "stateAndOriginalRecords": "PRESERVED",
+  "preimages": "C:\\Users\\steph\\Projekte\\codex-tools\\.kasrkin\\work\\KAS-FREEZE-20261012\\preimages.json",
+  "kasrkinAdmissionRequired": false
+}

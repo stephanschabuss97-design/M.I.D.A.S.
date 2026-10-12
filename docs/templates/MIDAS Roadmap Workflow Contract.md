@@ -1,8 +1,14 @@
 # MIDAS Roadmap Workflow Contract
 
+KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
+Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
+oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
+Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
+überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
+
 Dieser Vertrag ergänzt [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md)
 um MIDAS-spezifische medizinische, Daten-, Security-, Evidence-, S1–S6- und
-KASRKIN-Konsultationsregeln. Neue Roadmaps verwenden die zentrale Dokumentform
+Abschlussregeln. Neue Roadmaps verwenden die zentrale Dokumentform
 plus diese lokalen Regeln; laufende und historische Roadmaps bleiben eingefroren.
 
 ## Environment Capability Preflight
@@ -93,11 +99,9 @@ automatische Korrektur ist unzulässig.
 - Produktives SQL, Deploys, Workflow-Runs, Device-Installationen und andere
   irreversible oder extern sichtbare Aktionen bleiben standardmäßig getrennt,
   sofern der Readiness Review keine gleichwertig sichere Begründung liefert.
-- S5 und S6 sind getrennte kohärente Abschlussblöcke. Nach vollständig
-  abgeschlossenem S5 wird vor S6 erneut gemessen; ein grünes Autonomieprofil
-  ersetzt dieses Usage-Gate nicht. Innerhalb von S5 erhält eine eigenständige
-  Korrektur-/Retest-Welle ebenfalls ein Gate, wenn der vorherige Prüfblock
-  bereits eine sichere Resume-Grenze hergestellt hat.
+- S5 und S6 bleiben fachlich getrennte Abschlussphasen. Eine separate
+  Korrektur-/Retest-Welle folgt ihrer betroffenen Readiness und Reviewgrenze;
+  es besteht keine technische Usage-Gate- oder Messpflicht.
 - Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
 - Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen
   Haupt- oder S4-Ausführungsblock aktualisiert.
@@ -119,375 +123,17 @@ automatische Korrektur ist unzulässig.
 - Ein Abschnittsende allein ist kein Owner-Gate. Fortschrittsmeldungen bleiben
   informativ und verlangen keine Antwort, solange kein Stop-Grund eintritt.
 
-## Usage-aware Continuation Gates
+## Arbeitsfortsetzung ohne KASRKIN
 
-Aktiver Governance-Vertrag seit `2026-09-13`: `guard-vnext/1`. Die durch
-`.kasrkin/binding.json` exakt gebundene KASRKIN-Releaseimplementierung ist die
-einzige ausführbare Detailquelle für Usage-Bands, Arbeitszulassung, Floors,
-Owner Boundary, Restricted-Work-Episode, Safe Closure, LIMIT und Evidence
-Reuse. Diese MIDAS-Datei besitzt den projektspezifischen Vertrag dafür, wann
-KASRKIN konsultiert wird und wie zugelassene Arbeit atomar ausgeführt,
-beweisbar geschlossen oder zurückgerollt wird. Die nachstehenden Regeln sind
-die menschenlesbare MIDAS-Konsultationsprojektion, keine zweite unabhängige
-Policy. Bei einem Widerspruch zu Binding, Release, Config, Schemas oder
-Policyausgabe gilt `CONTRACT_DRIFT`: keine neue Arbeit beginnen.
+KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
+Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
+oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
+Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
+überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
 
-`AGENTS.md` erzwingt den Einstieg; `docs/DEV_ENVIRONMENT.md` besitzt Sensor-,
-Validator- und Bedienverträge. `.kasrkin/activation.json` bindet Release und
-Consumerprojektion per Fingerprint. W7 hat die frühere lokale Implementierung
-nach bewiesenem Cutover retiret; Recovery verwendet die gebundene Installation,
-die bewiesene `codex-tools`-Source und versionierte Receipts. Keine dieser
-Quellen führt selbst Tools, Dateiänderungen oder Produktaktionen aus.
-
-Die lokale Codex-Usage-Telemetrie begrenzt, ob ein neuer Arbeitsblock sicher
-begonnen werden darf. Sie garantiert nicht, dass ein laufender Block ohne
-Quota-Ende fertig wird. Diese Sicherheit entsteht weiterhin durch kleine,
-kohärente Blöcke, klare Postconditions, gezielte Checks und einen aktuellen
-Resume-Stand. Sensor, State-Pfad und Freshness-Vertrag stehen in
-`docs/DEV_ENVIRONMENT.md`.
-
-### Position und Reihenfolge
-
-Ein Usage-Gate ist verpflichtend:
-
-- vor dem ersten Hauptblock einer neuen oder fortgesetzten Roadmap-Session,
-- nach jedem abgeschlossenen Discovery-Hauptschritt vor dem nächsten,
-- nach S4R vor dem ersten S4-Ausführungsblock,
-- nach jedem kohärenten S4-Ausführungsblock vor dem nächsten,
-- vor S5,
-- nach vollständig abgeschlossenem S5 vor S6,
-- innerhalb von S5 vor einer getrennten Korrektur-/Retest-Welle, sofern der
-  vorherige Prüfblock bereits abgeschlossen und sicher resumierbar ist.
-
-Vor dem Gate wird der aktuelle Block regulär abgeschlossen: Postconditions und
-invalidierte Checks ausführen, Findings zuordnen sowie Statusmatrix und Resume
-Card synchronisieren. Danach wird genau einmal frisch gemessen und erst dann
-über den nächsten Block entschieden. Während eines laufenden atomaren Blocks
-wird nicht gepollt und nicht allein wegen eines sinkenden Usage-Werts
-abgebrochen.
-
-Die Entscheidungsfolge ist deterministisch:
-
-1. Sensor unmittelbar vor der Entscheidung refreshen.
-2. State mit dem kanonischen Validator aus `docs/DEV_ENVIRONMENT.md` prüfen;
-   keine ad-hoc Neuinterpretation des rohen JSON.
-3. Beide Fenster mit dem letzten realen Checkpoint der aktiven Roadmap
-   vergleichen, sofern die jeweilige Resetidentität gleich ist.
-4. Resetwechsel oder Messanpassungen behandeln und erst danach den Verbrauch
-   bestimmen.
-5. Statische Schwellen und vorhandene empirische Blockreserve anwenden.
-6. Entscheidung kompakt in aktiver Roadmap und Resume Card festhalten.
-7. Nur bei zulässiger Entscheidung den nächsten Block beginnen.
-
-Wird nach einem Usage-Gate auf eine Owner-Freigabe gewartet und ist die Messung
-bei Erteilung älter als zwei Minuten, muss sie unmittelbar vor der produktiven
-oder extern sichtbaren Fortsetzung wiederholt werden. Usage ersetzt dabei nie
-das Owner-Gate, Preimage, Reverse, Postcheck oder andere Sicherheitsverträge.
-
-### Fenster, Deltas und Resets
-
-5h- und Wochenfenster sind gleichwertige Pflichtsignale. Der Verbrauch eines
-Blocks wird je Fenster als `remaining_vorher - remaining_nachher` erfasst, aber
-nur wenn beide Messungen dieselbe `resetAtEpoch` besitzen.
-
-- Ändert sich `resetAtEpoch`, lautet das Ereignis `RESET_CROSSED`. Es wird kein
-  Delta über die Resetgrenze berechnet; die neue Messung ist die Baseline für
-  den nächsten Block.
-- Steigt `remaining` trotz identischer `resetAtEpoch`, wird dies als
-  `ADJUSTMENT` protokolliert, nicht als negativer Verbrauch. Die aktuelle
-  Messung ersetzt die Baseline.
-- Resetzeit oder Reset-Credits sind Kontext, aber kein zusätzliches Budget.
-- Prozentwerte und Deltas werden nicht aus Chatmeldungen, Rainmeter-Anzeige
-  oder früheren Erinnerungswerten rekonstruiert.
-
-### Usage-Entscheidungsklassen
-
-`SAFE_CLOSURE` hat Vorrang vor `CONTINUE_WITH_CAUTION`; diese wiederum vor
-`CONTINUE`. Diese drei Klassen beschreiben ausschließlich den Budgetzustand.
-Empirische Reserve und Owner Boundary entscheiden anschließend separat über
-die Zulassung des konkreten Primärblocks.
-
-<!-- markdownlint-disable MD013 -->
-
-| Entscheidung | Messlage | Erlaubte Folge |
-| --- | --- | --- |
-| `CONTINUE` | 5h `> 40 %` und Woche `> 20 %` | Primärblockzulassung anhand Klasse, Reserve und Gates bestimmen |
-| `CONTINUE_WITH_CAUTION` | 5h `25-40 %` oder Woche `10-20 %`, ohne Safe-Closure-Grund | höchstens einen kurzen, lokalen, reversiblen und ausdrücklich resumierbaren bounded Arbeitsblock dieser Restricted-Work-Episode zulassen; danach erneut messen |
-| `SAFE_CLOSURE` | 5h `< 25 %` oder Woche `< 10 %`; State fehlt oder ist partial/failed/stale | keinen neuen Haupt- oder Ausführungsblock beginnen; sicheren Handoff herstellen |
-
-<!-- markdownlint-enable MD013 -->
-
-Die Grenzen sind inklusiv: exakt `25 %` im 5h-Fenster oder `10 %` im
-Wochenfenster ist Caution, exakt `40 %` beziehungsweise `20 %` noch nicht
-Continue. Der technische Sensorstatus `OK` ist keine dieser Entscheidungen.
-Der kanonische Validator prüft und verdichtet den Telemetriestate.
-`PRIMARY_OWNER_BOUNDARY_ALLOWED` ist keine Validatorausgabe, sondern eine in
-der Roadmap protokollierte Arbeitszulassung auf Basis der validierten Messung,
-der Reserveformel, der Fingerprints und der Owner-Annahme.
-
-### Empirische Blockreserve
-
-Sobald reale Vergleichswerte derselben Roadmap vorliegen, verwendet S4R für
-jeden Bucket den höchsten beobachteten Verbrauch eines fachlich und operativ
-vergleichbaren vollständigen Blocks, multipliziert mit `1,5`, als bevorzugte
-Startreserve. Mittelwerte und erfundene Schätzwerte sind verboten. Der
-Vergleich muss Resetgrenzen respektieren; ein abgeschlossener Block darf als
-historischer Kostenwert über Resetzyklen hinweg verwendet werden, sein Delta
-darf aber nicht über eine Resetgrenze rekonstruiert werden.
-
-Die Reserve beschreibt ausschließlich den noch ausstehenden Arbeitsblock samt
-seinen noch offenen Postconditions. Bereits abgeschlossene Session-
-Rehydration ist `SUNK_USAGE`: Sie ist im aktuellen Restwert enthalten und darf
-nicht nochmals als zukünftiger Bedarf auf Blockverbrauch oder Closure-Reserve
-aufgeschlagen werden. Müssen nach dem Gate wegen Invalidation weitere Quellen
-gelesen oder Preflights erneuert werden, zählen nur diese noch offenen Arbeiten
-zum Primärblock.
-
-Die empirische Reserve besitzt zwei getrennte Mindestgrenzen. Der
-`OPERATIONAL_SAFETY_FLOOR` ist je Bucket:
-
-`höchster beobachteter vergleichbarer vollständiger Blockverbrauch bis zur`
-`bewiesenen sicheren Produkt- oder Rollbackpostcondition`
-`+ ein Prozentpunkt Sensorauflösung`
-
-Der `AUTONOMOUS_FULL_CLOSURE_FLOOR` ist je Bucket:
-
-`OPERATIONAL_SAFETY_FLOOR`
-`+ höchste vergleichbare echte CLOSURE_ONLY-Kosten, soweit diese nicht bereits`
-`im vollständigen Blockreceipt enthalten sind`
-
-Die `25 %`-/`10 %`-Safe-Closure-Schwellen sind Zustandsgrenzen und keine
-Kostenwerte. Sie werden niemals als pauschale Closure-Kosten addiert. Als
-`CLOSURE_ONLY` zählen ausschließlich notwendige Postchecks, Roadmap-/Evidence-
-und Resume-Sync sowie der sichere Handoff nach dem Primärblock. Eine spätere
-Ursachenanalyse, Reparatur, erneute Fullmatrix oder ein neuer Review sind neue
-Blöcke und dürfen keinen Floor des vorherigen Blocks erhöhen. Enthält ein
-vollständiger Cost Receipt die Closure bereits nachweislich, wird sie nicht ein
-zweites Mal addiert. Ein für den Operational Safety Floor verwendetes Receipt
-muss mindestens die sichere Runtime-, Daten- und Rollbackpostcondition sowie
-einen minimalen operationalen Postimage-/Resume-Fakt enthalten. Fehlt dies,
-ist es kein zulässiges Operational-Receipt.
-
-Der zusätzliche Prozentpunkt je Bucket schützt gegen die ganzzahlige
-Sensorauflösung. Er ist kein allgemeiner Sicherheitsmultiplikator. Fehlt eine
-vergleichbare Closure-Messung und enthält auch der vollständige
-Vergleichsblock keine Closure, ist nur der Autonomous Full-Closure Floor nicht
-vollständig empirisch belegt. Die Roadmap muss dies als Forecast ausweisen;
-eine Owner Boundary bleibt nur bei belastbarem Operational Safety Floor
-verfügbar.
-
-Keiner der Floors ersetzt das für die Arbeitsklasse vorgeschriebene
-Usage-Band. Die effektive Operational- beziehungsweise Full-Closure-Grenze ist
-je Bucket der strengere Wert aus dem jeweiligen empirischen Floor und dem
-kleinsten ganzzahligen Sensorwert, der das erforderliche Band erfüllt. Für
-einen Boundary-Pfad im Band `CONTINUE` sind das bei den aktuellen Schwellen
-mindestens `41 %` im 5h- und `21 %` im Wochenfenster. Roadmap und Briefing
-weisen beide empirischen und effektiven Floors getrennt aus.
-
-Liegt die Messung unter dem belastbar ermittelten effektiven Operational Safety
-Floor, gilt für den geplanten Primärblock `PRIMARY_REJECTED_FOR_RESERVE`; eine
-Owner Boundary kann das nicht überstimmen. Das Usage-Band bleibt davon
-getrennt und kann höchstens eine unabhängige sichere Restarbeit zulassen.
-Liegt die Messung mindestens auf dem effektiven Operational Safety Floor, aber
-unter dem effektiven Autonomous Full-Closure Floor, kann der Owner den
-unmittelbaren Start über `PRIMARY_OWNER_BOUNDARY_ALLOWED` akzeptieren. Damit
-übernimmt er ausschließlich das Risiko, dass die umfassende administrative
-Closure in einen späteren Block fällt; die sichere operative Postcondition
-bleibt zwingend Teil des gestarteten Blocks.
-
-Die bevorzugte Reserve bleibt der höhere Wert aus `1,5 x` vollständigem
-Vergleichsblock und Autonomous Full-Closure Floor. Bruchteile werden erst nach
-der Berechnung je Bucket auf den nächsten ganzen Prozentpunkt aufgerundet.
-Überschreitet der rohe Preferred-Wert die physische Bucketkapazität, wird er als
-`PREFERRED_UNATTAINABLE` dokumentiert.
-Er bleibt ein konservatives Signal, wird nicht still auf `100 %` umgedeutet
-und darf keinen erreichbaren Floor ersetzen oder einen Start sperren, der den
-Full-Closure- beziehungsweise Owner-Boundary-Vertrag erfüllt.
-
-### Machbarkeitsinvariante
-
-Der Operational Safety Floor muss mit dem verfügbaren Bucket und dem
-vorgeschriebenen Post-Rehydration-Gate grundsätzlich erreichbar sein. Ist er
-rechnerisch größer als die Bucketkapazität oder durch seinen eigenen
-Pflichtprozess nachweislich nicht erreichbar, lautet das Vertragsfinding
-`POLICY_INFEASIBLE`. Der Agent
-wartet dann nicht auf eine identische unmögliche Messlage und fordert nicht
-wiederholt dasselbe Gate an. Vor weiterer Primärarbeit müssen Kostenklassen,
-Closure-Zuordnung oder Blockschnitt korrigiert und erneut reviewed werden.
-
-Liegt eine frische Messung im Band `CONTINUE` mindestens auf dem effektiven
-Operational Safety Floor, aber unter dem effektiven Autonomous Full-Closure
-Floor, darf der Primärblock einmalig als
-`PRIMARY_OWNER_BOUNDARY_ALLOWED` zugelassen werden. Diese
-Arbeitszulassung entspricht dem historischen Namen
-`CONTINUE_OWNER_BOUNDARY`. Dafür müssen alle folgenden Bedingungen erfüllt
-sein:
-
-1. Der nächste Block ist exakt benannt, atomar, bounded und mit einem realen
-   vollständigen Vergleichsblock belastbar vergleichbar.
-2. Scope, Releasequellen, Preflight und Rollback sind fingerprintgebunden und
-   seit dem Vergleich beziehungsweise letzten Nachweis unverändert oder
-   gezielt neu validiert.
-3. Es handelt sich nicht um Discovery, ungebundene Diagnose, integriertes
-   Review oder einen erstmalig ausgeführten Block unbekannter Größe.
-4. Alle Produkt-, Security-, Daten-, Deploy-, SQL-, Device- und sonstigen
-   Owner-Gates sind unabhängig davon erfüllt.
-5. Der Agent nennt Preferred-Wert samt Erreichbarkeit, Operational Safety
-   Floor, Autonomous Full-Closure Floor, beide effektiven Grenzen, aktuelle
-   Messung und das konkrete reine Closure-Risiko genau einmal. Der Owner
-   akzeptiert danach den unmittelbaren Start ausdrücklich.
-
-Die Annahme wird als fingerprintgebundene Einmalentscheidung protokolliert.
-Eine direkte Owner-Antwort wird nicht durch eine zweite identische
-Usage-Abfrage oder wiederholte Ablehnungsdiskussion entwertet. Erst eine
-nicht unmittelbare Wiederaufnahme, Scope-/Fingerprint-/Runtimeänderung oder
-ein neues Finding invalidiert sie und verlangt ein neues Gate. Der Boundary-
-Pfad schwächt niemals die operative Mindestreserve oder andere
-Sicherheitsgates. Er darf nur die umfassende administrative Closure vertagen.
-
-Liegt die Messung mindestens auf dem effektiven Autonomous Full-Closure Floor
-und sind alle übrigen Gates erfüllt, ist `PRIMARY_ALLOWED` verfügbar. Der
-höhere Preferred-Wert bleibt auch dann rein advisory und verlangt weder eine
-Owner Boundary noch weiteres Warten.
-
-Fehlen vergleichbare Messungen, wird keine numerische Reserve erfunden und
-`PRIMARY_OWNER_BOUNDARY_ALLOWED` ist nicht verfügbar. Dann
-entscheiden statische Schwellen zusammen mit S4R-Größenklasse,
-Reversibilität, Resumierbarkeit und realer Blockform. Ein großer oder nicht
-sicher resumierbarer Block darf unter Caution nicht begonnen werden.
-
-### Arbeitszulassung und sichere Restarbeit
-
-Die Usage-Entscheidung beschreibt den Budgetzustand. Sie ist nicht identisch
-mit der Zulassung eines konkreten Arbeitsblocks. Jede Roadmap hält deshalb
-zusätzlich fest:
-
-- `PRIMARY_ALLOWED`: Der geplante Primärblock passt zum Usage-, Reserve- und
-  Sicherheitsvertrag.
-- `PRIMARY_OWNER_BOUNDARY_ALLOWED`: Der unveränderte Primärblock ist über den
-  engen `CONTINUE_OWNER_BOUNDARY`-Vertrag zugelassen.
-- `PRIMARY_REJECTED_FOR_RESERVE`: Der Primärblock bleibt vollständig gesperrt;
-  höchstens sichere unabhängige Restarbeit darf geprüft werden.
-- `PRIMARY_REJECTED_FOR_CONTRACT`: Ein fachlicher, Security-, Daten-, Owner-
-  oder sonstiger Stop-Vertrag sperrt Primärblock und Restarbeit, soweit der
-  konkrete Stop nicht ausschließlich `CLOSURE_ONLY` erlaubt.
-
-Ein abgelehnter Primärblock darf niemals künstlich in kleinere Teile zerlegt
-werden. Insbesondere bleiben `DIAGNOSTIC_UNBOUNDED`, `INTEGRATED_REVIEW` und
-`PRODUCTIVE_CUTOVER` als Ganzes gesperrt, wenn ihre Zulassung fehlt.
-
-Aktive Blockklassen:
-
-- `BOUNDED_DOCUMENTATION`: bekannte Dokumente, enger Delta-Scope, bekannte
-  günstige Checks und klare Postcondition,
-- `BOUNDED_LOCAL`: bekannte Dateien, Änderung, Toolklassen, Checks,
-  Reversibilität, Stop-Grenze und Postcondition,
-- `DISCOVERY_BOUNDED`: bekannte konkrete Frage und begrenzte Quellen; derzeit
-  keine automatisch zulässige Restarbeitsklasse,
-- `DIAGNOSTIC_UNBOUNDED`: Ursache, Lösung oder Toolbreite unbekannt,
-- `INTEGRATED_REVIEW`: vollständige Test-/Browser-/Reviewwelle,
-- `PRODUCTIVE_CUTOVER`: externe Wirkung samt Postchecks und möglichem Rollback,
-- `CLOSURE_ONLY`: ausschließlich Evidence, Status, Context Receipt, Resume
-  Card und Handoff ohne neue Produktarbeit.
-
-Eine Diagnose darf nur als `BOUNDED_LOCAL` gelten, wenn Frage, erwarteter
-Codepfad, erlaubte Dateien und Tools, datenschutzsichere Marker, Abschlusschecks
-und Stopbedingung vor Beginn vollständig bekannt sind. „Ursache finden“ bleibt
-`DIAGNOSTIC_UNBOUNDED`. Reproduktion, Fix, Last-Mile-Harness, Fullmatrix und
-Abschlussreview sind bei lokal sicherem Zwischenstand getrennte kohärente
-Blöcke; gemeinsame Evidence allein macht sie nicht atomar.
-
-Bei `PRIMARY_REJECTED_FOR_RESERVE` ist höchstens ein bereits dokumentierter
-Fallback der Klassen `BOUNDED_DOCUMENTATION` oder `BOUNDED_LOCAL` zulässig.
-Der Kandidat muss vor Beginn einen eigenen Zweck, erlaubte Dateien und Tools,
-verbotene Primary-Flächen, Abschlusschecks und eine sichere Postcondition
-besitzen. Er darf den Primärblock weder teilweise ausführen noch seine gültigen
-Fingerprints, Preflights, Test-/Review-Evidence oder Rollbackbereitschaft
-invalidieren. Wäre eine Invalidation unvermeidbar, muss ihre vollständige
-Revalidierung selbst im bounded Fallback enthalten und reserveseitig gedeckt
-sein; andernfalls gilt `CLOSURE_ONLY`.
-
-Die Suche nach Restarbeit ist selbst bounded. Sie darf ausschließlich Resume
-Card, Statusmatrix, bereits offene bounded Findings, dokumentierte Follow-ups,
-Evidence-/Doku-Lücken und die bestehende Invalidation Map prüfen. Sie startet
-keine breite Repo-Suche, neue Architekturplanung oder offene Diagnose. Ist dort
-kein eindeutiger Kandidat vorhanden, gilt `CLOSURE_ONLY`.
-
-Existieren mehrere gültige Kandidaten, hat notwendige Closure immer Vorrang.
-Danach werden ausschließlich solche Fallbacks bevorzugt, die den nächsten
-Einstieg nachweisbar günstiger oder sicherer machen: zuerst Context-/Postimage-
-Pflege, dann bereits identifiziertes bounded Hardening, erforderlicher Doku-
-Sync und zuletzt sonstige vorbereitende Arbeit. Usage nur zu verbrauchen ist
-kein fachlicher Nutzen; die Closure Reserve bleibt unberührt.
-
-Eine `RESTRICTED_WORK_EPISODE` gilt, sobald das Usage-Band
-`CONTINUE_WITH_CAUTION` lautet oder der Primärblock als
-`PRIMARY_REJECTED_FOR_RESERVE` abgelehnt wird. Pro Episode darf höchstens ein
-neuer bounded Arbeitsblock beginnen, unabhängig davon, ob er der geplante
-Primärblock oder ein Fallback ist. Die aktive Roadmap speichert dafür Grund,
-beide Resetidentitäten und `AVAILABLE` oder `CONSUMED`.
-
-Nach Verbrauch der Episode ist bis zu einer neuen Episode nur `CLOSURE_ONLY`
-zulässig. Eine neue Episode beginnt erst nach `RESET_CROSSED`, validiertem
-`ADJUSTMENT` oder `CONTINUE` zusammen mit `PRIMARY_ALLOWED`. Der Zustand wird
-nicht aus dem Chatverlauf geschätzt.
-
-Verliert ein Fallback während der Ausführung seine Boundedness, gilt
-`BOUNDEDNESS_BREACH`: Scope und Toolbreite nicht erweitern, sicheren lokalen
-Stand herstellen, Finding und Invalidation dokumentieren, soweit sicher
-synchronisieren und stoppen. „Bereits begonnen“ ist keine Erlaubnis zur
-Fortsetzung.
-
-Ein Gate reserviert keine Quota. Große, integrierte oder produktive Blöcke
-setzen voraus, dass während ihrer Ausführung kein weiterer materieller
-Codex-Workload desselben Kontingents parallel gestartet wird. Eine spätere
-Extension darf dazu höchstens advisory warnen.
-
-Meldet der kanonische Validator `LIMIT` oder `0 %`, gilt nach Erhalt dieses
-Ergebnisses `FINAL_RESPONSE_ONLY`: keine neue Arbeit, kein neuer Toolaufruf und
-keine Restarbeit. Eine möglicherweise noch zustellbare Abschlussantwort ist
-keine planbare Closure Reserve.
-
-### Safe Closure und Dokumentation
-
-Safe Closure ist kein Rollback und kein Fehlerstatus für bereits korrekt
-abgeschlossene Arbeit. Sie bewahrt den letzten kohärenten lokalen Stand und
-macht die Fortsetzung eindeutig:
-
-1. keinen neuen Haupt- oder Ausführungsblock beginnen,
-2. da reguläre Usage-Gates an sicheren Blockgrenzen liegen, ist der vorherige
-   Block bereits abgeschlossen; ausnahmsweise noch offene notwendige
-   Postconditions eines begonnenen atomaren Blocks werden ausschließlich
-   fertiggestellt,
-3. Statusmatrix, Findings, relevante Checks und geänderte Dateien
-   synchronisieren,
-4. Resume Card mit letzter Usage-Entscheidung und genau einem nächsten Gate
-   ersetzen,
-5. Roadmap als `PAUSED_USAGE_SAFE_CLOSURE` kennzeichnen; weder `DONE` noch
-   unbewiesene PASS-Ergebnisse setzen und nicht archivieren.
-
-Die aktive Roadmap führt eine kompakte Checkpoint-Tabelle mit real gemessenen
-5h-/Wochenwerten, Resetidentitäten, gültigen Deltas und der Entscheidung. Sie
-enthält keine vollständigen JSON-Snapshots. Die Resume Card enthält nur den
-letzten Checkpoint und die aktuelle Entscheidung; sie ist kein chronologisches
-Usage-Protokoll.
-
-### Finale Abschlussmessung
-
-Eine optionale Messung nach vollständig erfüllten S6-Postconditions und
-unmittelbar vor dem rein deterministischen Verschieben in `docs/archive/` ist
-kein Continuation Gate, weil sie keinen neuen Arbeitsblock freigibt. Sie wird
-als `FINAL_OBSERVATION` protokolliert und darf einen durch das letzte reguläre
-Gate vollständig bewiesenen `DONE`-Stand nicht nachträglich in Safe Closure
-zurückstufen. Ist der Sensor dabei nicht valide, lautet das Ereignis
-`FINAL_OBSERVATION_UNAVAILABLE`; die bereits bewiesene Archivierung bleibt
-zulässig.
-
-Diese Ausnahme gilt ausschließlich, wenn keine Code-, Test-, Review-, Doku-,
-Runtime- oder Owner-Aktion mehr offen ist. Bleibt irgendeine inhaltliche
-Arbeit übrig, ist die Messung ein normales Continuation Gate und die
-Safe-Closure-Regel gilt unverändert. Eine Final Observation darf niemals neue
-Arbeit autorisieren oder fehlende Nachweise ersetzen.
+Vor der nächsten freigegebenen Arbeit bisherigen Schritt, Findings und sichere
+Postconditions prüfen; Resume Card und relevante Evidence aktuell halten.
+Eine Quota-Messung oder technische KASRKIN-Zulassung ist keine Voraussetzung.
 
 ## Chat- und Kontextvertrag
 
@@ -544,7 +190,7 @@ unterschieden. Abgeschnittene Ausgabe gilt nicht als vollständiger Read.
 Das erste Gate nach Rehydration ist POST_REHYDRATION_BASELINE. Ein Delta setzt
 einen echten vorherigen Checkpoint mit identischen Reset-IDs voraus; niemals
 100 Prozent oder Verbrauch erfinden. Bereits verbrauchte Rehydration ist
-SUNK_USAGE und wird nicht nochmals prognostiziert; KASRKIN-Reserve bleibt bindend.
+bereits geleistete Arbeit und wird nicht nochmals prognostiziert; keine KASRKIN-Reservepflicht.
 S1 und S4R lesen relevante Quellen ausreichend, bei Contract-Finding auch breiter.
 S6 prüft relevante Roadmapteile, Findings, Evidence und geänderte SoT erneut.
 Der Handoff bleibt ungefähr unter 35 Zeilen und ersetzt seinen Vorgänger.
@@ -669,7 +315,8 @@ den vorbereiteten Rollback, Datenintegritätschecks, Runtimepostcheck und den
 sicheren Evidence-/Resume-Abschluss. Offene Ursachenforschung wird nicht an
 diesen atomaren Block angehängt.
 
-Nach dem Rollback beginnt Diagnose nur nach einem neuen Usage-Gate. Sie wird in
+Nach dem Rollback beginnt Diagnose erst bei sicherer fachlicher Readiness und
+gültiger Scope-/Ownerfreigabe. Sie wird in
 Reproduktion, minimalen Fix, gezieltes Last-Mile-Orakel und erst danach
 invalidierte Fullmatrix/Reviews getrennt, sofern jeder Zwischenstand lokal
 sicher und resumierbar ist. Ein Dirty Stop macht unfertige Patches und nicht
@@ -879,55 +526,3 @@ PASS behauptet.
 - Roadmap und optionale Evidence werden mit `(DONE)` archiviert.
 - Commit und Push bleiben Owner-Aktionen.
 - Temporäre Arbeitsnotizen bleiben keine zweite Source of Truth.
-
-
-## Aktive Endphase-Konsultation (2026-10-03)
-
-Die Endphase-Regeln im Root-AGENTS und .kasrkin/integration.md gelten für
-den jetzt gebundenen Release. Fachliche Wahrheit, Roadmap-Scope, S5-Review,
-produktive Writes und Ownergates bleiben MIDAS-eigen. Der Cutover
-startet keine Produktroadmap. Reguläre Entscheidung und effektive Endphase-
-Zulassung bleiben getrennt; alte SMALL-/Ein-Block-Cautionprojektionen gelten
-nur für die unveränderte Legacyentscheidung, nicht als zusätzliche Sperre
-eines gültig persistierten Endphasepermits. Fehlende History braucht den
-exakten einmaligen Ownerbudgetvertrag. Kein pauschaler Reviewdefault.
-
-
-
-## Explicit KRC-C2 Work/2 cutover — 2026-10-06
-
-Current exact selection: kasrkin-1e00b126f303d631 in kasrkin-admin-v1;
-receiptSHA51ea013ec6d2227555bc096dcfe9bf32bdc758ec597f1124497578180c4d3ac1.
-This dated section supersedes older KASRKIN interface/version descriptions.
-Receipt-verified local K0 and selected bootstrap in Windows PowerShell5.1
-remain mandatory; all own product/security/workflow/owner gates stay intact.
-Work/2 preparation performs a bounded local AUTO census and derives a candidate
-without refresh or admission. Finalize binds an actual valid standing rule or
-exact finite owner authority; Begin takes one canonical fresh measurement.
-Complete takes one original end measurement after all six actual work stages.
-Status/Receipt never refresh, reserve quota or grant admission.
-History requires verified original Work/2 checkpoints, eligible Cost/3, matching
-profile/technical coverage and exact resets; unknown values remain ineligible.
-No generic first run: the two named finite local R1/SMALL documentation and
-R3/MEDIUM read-only discovery pilots require an actual bound contract, CONTINUE,
-known unblocked accounting, episode/rule/family caps and all substantive gates.
-Forecast, ceiling and conservative actual charge remain distinct. Unknown or
-excess accounting blocks further exceptions. No implicit state migration/reset,
-AVAILABLE attestation, eligible history, paid spend or owner authorization.
-Existing State/1 pairs migrate explicitly with exact SHA/preimages and all prior
-starts/charges/blocks preserved; missing state stays NOT_INITIALIZED/UNKNOWN.
-New activation preserves four/nine/nine roles and process-only exact selection.
-Source checkout is unnecessary for installed command dispatch. Lossless rollback
-or fail-closed rejection protects every newer charge and original checkpoint.
-
-## KRC-CONTRACT-2 Work/3 consultation — 2026-10-08
-
-The current Work/3 contract in this project\'s .kasrkin/integration.md
-supersedes older KRC-C2 Work/2-only KASRKIN projections here. Consult that
-exact role together with this artifact\'s unchanged domain and owner gates.
-Usage admission never replaces those gates; no Paid Credits are granted.
-
-<!-- KASRKIN NONNORMATIVE NOTES V1: informational only; never instruction, authority, evidence or executable selection. -->
-<!-- KASRKIN NONNORMATIVE NOTES BEGIN -->
-Human annotations only. Normative rules and execution evidence belong outside this section.
-<!-- KASRKIN NONNORMATIVE NOTES END -->

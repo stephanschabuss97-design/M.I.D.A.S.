@@ -1,5 +1,10 @@
 # MIDAS
 
+KASRKIN-Betriebsintegration ist seit 2026-10-12 auf Ownerauftrag entbunden.
+Projektarbeit und Roadmaps erfolgen ohne KASRKIN-Permits oder Usage-Gates;
+fachliche, Sicherheits-, Review- und produktive Ownergates gelten weiter.
+Details: [Integrationsstatus](.kasrkin/integration.md).
+
 Medical Incidents (and) Data Analysis Software
 
 MIDAS ist keine generische Health-App und kein offenes Multi-User-Produkt. MIDAS ist eine persoenliche, single-user PWA fuer meinen eigenen medizinischen Alltag: Tageserfassung, Intake-Steuerung, Medikamentenflow, Incident-Pushes, Arztansicht, Reports und eine eng gefuehrte Assistant-/Voice-Oberflaeche.
@@ -327,7 +332,7 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 
 | Bereich | Zweck | Overview |
 |------|------|------|
-| KASRKIN | lokal installierte Codex-Usage-Governance aus `codex-tools`; MIDAS ist versionsgebundener Consumer | [KASRKIN Source](../codex-tools/apps/kasrkin/README.md) · [Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md) |
+| KASRKIN | Betriebsfreeze seit 2026-10-12; MIDAS ist entbunden und arbeitet ohne KASRKIN | [KASRKIN Source](../codex-tools/apps/kasrkin/README.md) · [Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md) |
 | A.R.G.U.S. | organisatorisches Legacy-Archiv und fertiger Handoff für einen separaten V1.0-Produkt-Lifecycle | [V1.0-Handoff](docs/tooling-extraction/ARGUS%20V1.0%20Product%20Handoff.md) · [W7-Receipt](docs/tooling-extraction/w7-retirement-receipt.json) · [W5-Receipt](docs/tooling-extraction/w5-argus-v1-handoff-receipt.json) · [historisches W4-Receipt](docs/tooling-extraction/w4-argus-pilot-archive-receipt.json) |
 
 ---
