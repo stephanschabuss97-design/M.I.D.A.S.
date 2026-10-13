@@ -122,6 +122,12 @@ erhalten.
 
 ### Changed
 
+- Roadmap-/Evidence-/Review-/Handoff-Regeln sind im gemeinsamen BLUEPRINT-Kern
+  harmonisiert und modellneutral; AGENTS bindet direkt diesen Kern und die
+  bestehenden Produkt-/Modulverträge. Medizinische R3- und Ownergrenzen bleiben
+  erhalten. Die lokalen Toolbefehle/Secretstores bleiben im Environment-Overlay.
+  Keine Produkt- oder Runtimeänderung.
+
 - Die [Roadmap-Prozessverträge](../codex-tools/docs/blueprint/README.md) verwenden den
   gemeinsamen BLUEPRINT-Kern mit fachlichen Rolling-Wave-Lieferpaketen,
   konkreter S1–S6-Execution und kompaktem Quick Change. Lokale medizinische,

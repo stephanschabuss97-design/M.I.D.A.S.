@@ -34,51 +34,15 @@ lesen; das Ergebnis gehört in Startkarte/Context Receipt der neuen Roadmap.
 
 ## Codex-Startvertrag
 
-Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
+Der bindende Einstieg ist [AGENTS](../AGENTS.md) mit
+[README-Fachvertrag](../README.md#hinweise-fuer-llms-und-coding-agents) und
+betroffenen Modulen. Für Roadmap-/Evidence-/Review-/Resume-/Modellregeln direkt
+[BLUEPRINT](../../codex-tools/docs/blueprint/README.md) verwenden; diese Datei
+besitzt nur tatsächliches Tool-/Speicher-/Nutzungswissen. Keine lokale Prozess-
+oder Modellvorgabe und kein Pflicht-Read historischer Templates.
 
-- Zuerst `README.md`, dieses Dokument, relevante Module Overviews und aktive
-  Roadmaps lesen.
-- Bei einer neuen Roadmap werden die in S1 genannten Pflichtreferenzen
-  vollständig gelesen.
-- Beim Erstellen einer Roadmap direkt [BLUEPRINT](../../codex-tools/docs/blueprint/README.md)
-  und die Projektgrenzen in [AGENTS](../AGENTS.md) lesen. Autoren-/Template-/
-  Evidence-Struktur ausschließlich zentral; lokale (LEGACY)-Dateien sind Historie.
-- Roadmap-Erstellung und initialer Contract Review erfolgen mit
-  `GPT-5.6 Sol / Extra High`. Die spätere Ausführung verwendet die in der
-  Roadmap risikobasiert festgelegten Reasoning-Stufen.
-- In einer Resume-Session den stabilen Workflow-Vertrag nur erneut lesen, wenn
-  er seit der letzten Aufnahme geändert wurde oder ein Prozess-Finding besteht.
-- Bei der Fortsetzung einer laufenden Roadmap zuerst nur Metadaten, Session
-  Resume Card, Entscheidungslog, Findings, aktuellen Schritt und relevanten
-  Git-Diff lesen. Abgeschlossene Schritte und historische Referenzen nur bei
-  einer konkreten Vertragsfrage erneut öffnen.
-- Der Session-Handoff wird verdichtet und ersetzt, nicht über Sessions hinweg
-  fortlaufend erweitert.
-- Umfangreiche produktive Nachweise folgen der [zentralen BLUEPRINT-Evidence-Struktur](../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#technische-evidence-gemeinsame-struktur)
-  und den Pflichtauslösern in AGENTS. Aktive Evidence liegt unter `docs/`;
-  die Roadmap referenziert Evidence-ID, Ergebnis und Restrisiko.
-- Bereits grüne Checks werden nur nach relevanter Code-/Vertragsänderung oder
-  im finalen Gesamtcheck wiederholt.
-- Zukünftige Roadmaps erhalten keinen separaten S4.5-Schritt. Der native
-  Abschlussreview und die optionale externe CodeRabbit-Prüfung werden als
-  sequenzielle Gates in S5 geplant; CodeRabbit folgt erst nach der vollständigen
-  lokalen, statischen und gegebenenfalls Browser-Testmatrix.
-- Normale Syntax-, CSS- und JavaScript-Änderungen benötigen keinen eigenen
-  Lernblock. Neue Werkzeuge, Architekturentscheidungen und produktive Wirkung
-  werden vorab im Owner Briefing erklärt und bei Bedarf in S6 mit einem kurzen
-  Owner Recap in Alltagssprache abgeschlossen.
-- Archivierte DONE-Roadmaps, `docs/qa/` und die historischen QA-Archive
-  erklären den technischen Verlauf; `docs/QA_CHECKS.md` bleibt nur als
-  Kompatibilitätsindex. Der Git-Commit bewahrt die exakte Änderung. Ausführliche
-  Lessons-Learned-Dokumente werden nur gezielt gelesen.
-- Bei SQL, RLS, Auth, Edge Functions, Android, Push, medizinischer Fachlogik
-  und Source-of-Truth-Dokus gilt die MIDAS-Roadmap-Arbeitsweise:
-  - S1-S3 Detektivarbeit und Contract Review.
-  - S4 Umsetzung erst nach Readiness Review.
-  - S5 Checks und Smokes.
-  - S6 Doku-Sync und Abschlussreview.
-- Fuer kleine, risikoarme Fixes darf die Roadmap-Tiefe schlank sein, aber Code
-  wird trotzdem erst nach einem kurzen Contract Review geaendert.
+Lokale Copy- und Werkzeuggrenzen:
+
 - Stephan ist Oesterreicher; sichtbare deutsche UI-/Copy-Texte sollen echte
   Umlaute verwenden:
   - `Flüssigkeit`, `Zurücksetzen`, `Öffnen`, `Ändern`.
@@ -245,49 +209,19 @@ coderabbit review --agent --base main
 coderabbit review --agent --base-commit <sha>
 ```
 
-MIDAS-Reviewvertrag:
+Geltung, S5-Reihenfolge, Budget, Findings/Retests und Fehlergates stehen einmal
+im [BLUEPRINT-Reviewvertrag](../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#gemeinsame-ausführungs--und-reviewregeln).
+Die dort erhaltene MIDAS-Code-Roadmap-Pflicht bleibt verbindlich.
 
-1. Zuerst den vorgesehenen lokalen, statischen und Browser-S5-Checkblock
-   vollstaendig ausfuehren.
-2. Den nativen Code-/Contractreview abschliessen.
-3. Bei Codeaenderungen CodeRabbit danach als zusaetzlichen externen Review des
-   realen finalen Diffs ausfuehren; es ersetzt weder Contract Review noch
-   Tests. Doku-only-Aenderungen erhalten keinen externen Review.
-4. Jede NDJSON-Zeile einzeln auswerten. Nur `finding`-Events als Issues
-   sammeln; Status-/Heartbeat-Events sind kein Finding.
-5. Issues technisch und fachlich gegen Roadmap, Masterplan und reale
-   Implementierung pruefen. Nicht blind korrigieren.
-6. Nur berechtigte Issues minimal beheben und alle dadurch invalidierten
-   lokalen oder Browserchecks wiederholen.
-7. Nach berechtigten Korrekturen hoechstens einen Verifikationsreview
-   ausfuehren. Weitere externe Laeufe benoetigen ein neues P0/P1-, Security-,
-   Datenintegritaets- oder Vertragsrisiko oder eine ausdrueckliche Freigabe.
-8. Waehrend eines aktiven Reviews bis zu zehn Minuten ohne Zwischenmeldungen
-   warten. Bei Auth-, Netzwerk-, CLI-Fehler oder Timeout keinen manuellen
-   Review als CodeRabbit-Ergebnis ausgeben.
+Toolauswertung: Jede NDJSON-Zeile einzeln lesen; ausschließlich `finding`-Events
+als Issues sammeln. Status-/Heartbeat-Events sind keine Findings. Vollständiges
+Prozessende/Ergebnis prüfen; Auth-/Netzwerk-/CLI-Fehler oder Timeout sind kein
+erfolgreicher Review. Accountmetadaten, E-Mail-Adressen, Tokens und Auth-Callbacks
+gehören nicht in Roadmaps, Logs, Commits oder Abschlussberichte.
 
-Wichtig:
-
-- CodeRabbit ist ein externer Reviewhelfer, keine Source of Truth und kein
-  Ersatz fuer gruene MIDAS-Contracttests.
-- In Roadmaps mit Codeaenderungen gehoert CodeRabbit ausschließlich in S5:
-  ein Initiallauf und maximal ein Verifikationslauf. S1-S4 sowie Doku-only-
-  Roadmaps verwenden native Reviews ohne externen CodeRabbit-Aufruf.
-- Ein ausgeschöpftes oder nicht verfügbares CodeRabbit-Budget betrifft nur den
-  externen Reviewpfad. Ein gezielter nativer Review bleibt ein eigener lokaler
-  Check und wird ausschließlich durch seinen Scope und den
-  Roadmapvertrag begrenzt.
-- Schlaegt der kanonische Shim oder die Authentifizierung fehl, wird der
-  externe Review gestoppt und der konkrete Fehler dokumentiert. Innerhalb
-  einer Roadmap wird weder eine alternative CLI installiert noch ein manueller
-  Review als CodeRabbit-Ersatz ausgegeben.
-- Accountmetadaten, E-Mail-Adressen, Tokens und Auth-Callbacks gehoeren nicht
-  in Roadmaps, Logs, Commits oder Abschlussberichte.
-- `npx skills add coderabbitai/skills` ist fuer MIDAS nicht erforderlich, weil
-  der Codex-CodeRabbit-Skill bereits ueber das installierte Plugin verfuegbar
-  ist.
-- Keine `package.json`-, Lockfile- oder Repository-Dependency nur fuer diesen
-  Reviewpfad erzeugen.
+`npx skills add coderabbitai/skills` ist hier nicht erforderlich; der installierte
+Codex-CodeRabbit-Skill ist verfügbar. Keine `package.json`-, Lockfile- oder
+Repository-Dependency allein für diesen Reviewpfad erzeugen.
 
 Shim-Recovery bleibt ein eigener Ownerblock: Zielidentität und Ownership vor
 Änderungen prüfen, andere Nutzer des gemeinsamen Commandverzeichnisses bewahren
@@ -694,22 +628,10 @@ Hinweis:
 - Ein Remote-Secret wird nur lokal gespiegelt, wenn ein konkreter lokaler Test,
   Diagnose-, Deploy- oder Recoverypfad seinen Wert tatsaechlich benoetigt.
 
-Vor einer Roadmap mit Secrets, Scheduler-, Workflow-, Edge- oder produktiver
-Auth-Wirkung erstellt S4R eine Secret-Readiness-Matrix ohne Werte:
-
-| Feld | Bedeutung |
-| --- | --- |
-| Secret-Name | Exakter erwarteter Variablen- oder Dashboardname |
-| Consumer | Werkzeug, Workflow, Function oder Runtime, die den Wert benoetigt |
-| Kanonischer Speicherort | Supabase, GitHub, lokales Operator-Bundle oder Passwortmanager |
-| Lokal erforderlich | `ja` nur bei einem konkreten lokalen Consumer, sonst `nein` |
-| Owner-Gate | Zeitpunkt und Freigabe vor Eintrag, Rotation oder produktiver Nutzung |
-
-Alle fuer einen freigegebenen Cutoverblock notwendigen Secrets muessen vor
-Beginn dieses Blocks an ihrem vorgesehenen Speicherort verfuegbar sein. Ein
-erst waehrend des Cutovers unerwartet fehlendes Secret ist ein sichtbares
-Readiness-Finding; es wird nicht durch das pauschale Kopieren weiterer Secrets
-in `.env.supabase.local` umgangen.
+Die wertfreie Secret-Readiness-Matrix, Blockbereitschaft und Gatebehandlung
+stehen im [BLUEPRINT-Readinessvertrag](../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#auftragsfelder-und-technische-readiness).
+Die oben benannten lokalen/Remote-Speicher und Consumer bleiben maßgeblich;
+das Operator-Bundle ist kein pauschaler Remote-Secretspiegel.
 
 Regeln:
 

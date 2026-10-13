@@ -486,6 +486,10 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 
 - MIDAS bleibt single-user und wird nicht stillschweigend auf Multi-User verallgemeinert.
 - MIDAS ersetzt weder Arzt noch Labor und darf keine freie medizinische Diagnose simulieren.
+- Medizinisch sichtbare Logik und Verträge sind R3. Fachliche Ziel-/Risikoprüfung
+  berücksichtigt den betroffenen medizinischen Kontext, Einheiten/Zeiträume,
+  Fehler, Dedupe/Recovery und tatsächliche Seiteneffekte; Arzt-/Modulautorität
+  bleibt verbindlich. Der gemeinsame Prüfablauf steht ausschließlich in BLUEPRINT.
 - Schreibende Aktionen brauchen einen klaren, expliziten Nutzerkontext; keine versteckten Writes oder Hintergrund-Automation ohne erkennbare Absicht.
 - Assistant, Voice und Intent-Pfade duerfen wiederkehrende Kernaufgaben nur deterministisch, guard-railed und innerhalb der erlaubten Grenzen ausfuehren.
 
@@ -519,7 +523,8 @@ Dieser Abschnitt ist bewusst direkt formuliert.
   Neue Roadmaps nutzen BLUEPRINT direkt und führen
   vor READY den Capability-Preflight aus; medizinische und produktive Gates bleiben lokal.
 - Nutze für neue Roadmaps direkt [BLUEPRINT](../codex-tools/docs/blueprint/README.md)
-  und die Projektgrenzen in AGENTS; aktive Roadmaps bleiben während der Arbeit
+  und die durch AGENTS verbindlich referenzierten Grenzen dieses README und der
+  betroffenen Module; aktive Roadmaps bleiben während der Arbeit
   direkt unter `docs/`. Die früheren lokalen Prozessdateien sind (LEGACY)-Nachweise.
 - Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse
   beruehrt werden.
@@ -533,6 +538,14 @@ Dieser Abschnitt ist bewusst direkt formuliert.
   bleibt.
 
 ### Dokumentationsverhalten
+
+MIDAS-Ablage: aktive Roadmap und gegebenenfalls Evidence unter `docs/`, nach
+bewiesenem S6 beide als `(DONE)` unter `docs/archive/`. `(LEGACY)` ist nur Historie.
+Betroffene Modulübersichten, QA und HOW-TO mit bewiesenen Ergebnissen pflegen;
+`docs/QA_CHECKS.md` bleibt Kompatibilitätsindex, QA-Historie/Archive bleiben Evidence.
+Changelogrelevanz entscheiden: bemerkenswerte Änderungen unter `Unreleased` in
+`CHANGELOG.md`, andernfalls kurze Begründung im Auftrag. Das erteilt kein
+Release/Tag. Gemeinsame Closure/Linkchecks nach BLUEPRINT, keine lokale Ablaufkopie.
 
 - Lies zuerst die betroffenen Dateien in `docs/modules/`.
 - Nutze `docs/archive/` nur als historische Referenz.
