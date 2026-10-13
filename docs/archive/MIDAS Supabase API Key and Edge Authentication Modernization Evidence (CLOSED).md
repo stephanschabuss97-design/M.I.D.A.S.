@@ -23,7 +23,7 @@ Startpaket **CLOSED_BY_OWNER / PARTIAL_COMPLETION**, archiviert als `(CLOSED)`.
 W4 native Store-/Widgetmigration, W5 Legacyabschaltung und der davon abhängige
 vollständige W6-Roll-up sind zurückgestellt, nicht DONE. A6 bleibt unerfüllt:
 Legacy ist aktiv. HS256 CURRENT / ES256 STANDBY; keine Signingrotation.
-[Restumfang, Owner und wirksame G5/G6-Grenzen](<../MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md>).
+[Restumfang, Owner und wirksame G5/G6-Grenzen](<../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md>).
 
 **Aktuelle Findings:** F22 OWNER_CONFIRMED_FIXED; F23 VERIFIED_RUNTIME.
 F04/F07/F16 sind für den ausgelieferten Auth-/Owner-/Named-Keyguardumfang
@@ -57,7 +57,7 @@ Planung, Zulassung und Wirkungsgenehmigung gemäß Restarbeitsdokument.
 
 Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
 
-**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../reference/supabase/MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../reference/supabase/MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
 
 **Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
 

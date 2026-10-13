@@ -12,6 +12,17 @@ erhalten.
 
 ## Unreleased
 
+### Maintenance
+
+- Repositorybereinigung MC-EX-01: historische Tooling-/ARGUS-Unterlagen und
+  Releasewerkzeuge archiviert, leere Altverzeichnisse entfernt und den
+  Activity-Masterplan eindeutig benannt. Weiterhin benötigte Activity- und
+  Supabase-Unterlagen sowie das Programmierhandbuch thematisch unter
+  `docs/reference/` eingeordnet; der `docs/`-Root bleibt auf Einstiegspunkte
+  und den nächsten aktiven Arbeitsblock beschränkt. Katalog-/Isolationstooling und
+  direkte Contract-Tests auf den akzeptierten Repostand gebunden; Produkt,
+  Backend, SQL, Secrets und Native-/Legacy-Restumfang unverändert.
+
 ### Security
 
 - D33: Backend/Web-Supabase-Modernisierung nach Owner-Retest auf Live Server,

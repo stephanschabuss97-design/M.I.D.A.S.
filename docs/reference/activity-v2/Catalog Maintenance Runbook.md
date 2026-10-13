@@ -57,11 +57,11 @@ eine Owner-Entscheidung dokumentieren. Keine Identität raten.
 - Jede Version bleibt vollständig; sie ist kein Delta.
 - Das produktive Einfügen einer neuen höchsten Version ändert sofort die vom
   R2-Commit akzeptierte Katalogversion und bleibt deshalb owner-gated.
-- Bis R7 die versionsgebundene Draft-Recovery, R8 den
-  Commit-Kompatibilitätsvertrag und R11 den produktiven Aktivierungsablauf
-  bewiesen haben, darf eine nach C2 vorbereitete neue höchste Version lokal
-  vollständig gebaut und getestet, aber nicht beiläufig produktiv eingefügt
-  werden.
+- R7/R8/R11 und der spätere R14-Cutover sind abgeschlossen. Der im
+  [aktuellen Masterplan](<MIDAS Activity V2 Masterplan.md>) unter O-8
+  dokumentierte versionsgebundene Recovery-/Commit-/PWA-Rolloutvertrag bleibt
+  maßgeblich; ein neuer produktiver Snapshot benötigt weiter eine eigene
+  ausdrückliche Ownerfreigabe.
 
 ## Kleine Wartung statt neuer Großroadmap
 
@@ -91,7 +91,7 @@ Löschung, Security, unklare Identität oder mehrere Consumer geändert werden.
 
 Für den aktuellen Katalog v2 sind die gekoppelten Dateien:
 
-- `docs/MIDAS Activity V2 C2 Catalog Version 2 Contract.md`
+- `docs/archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md`
 - `app/modules/vitals-stack/activity/v2/semantics-v2.js`
 - `app/modules/vitals-stack/activity/v2/semantics-v2.contract.test.js`
 - `sql/21_Activity_V2_Catalog_V2.sql`

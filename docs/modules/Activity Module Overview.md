@@ -107,7 +107,7 @@ Kurze Einordnung:
 
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
-- [Activity V2 Masterplan](<../Future trainingsmodule update thoughts.md>)
+- [Activity V2 Masterplan](<../reference/activity-v2/MIDAS Activity V2 Masterplan.md>)
 - [Activity V2 R1 Catalog Baseline](<../archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
 - [Activity V2 R1 Roadmap](<../archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
 - [Activity V2 R2 Roadmap](<../archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
@@ -214,7 +214,7 @@ Related docs:
 | `backend/supabase/functions/_shared/activity-medical-context.ts` | Purer R12-Kontext aus einem validierten R11-Snapshot und einem vollständig enthaltenen 28-Tage-Fenster |
 | `backend/supabase/functions/midas-protein-targets/activity-compatibility.ts` | Unreferenzierter R12-Proteinadapter für Aktivtage, ACT-Level und Modifier |
 | `backend/supabase/functions/midas-trendpilot/activity-compatibility.ts` | Unreferenzierter R12-Trendpilotadapter für Aktivtage, belegte Wochen und Level |
-| `tools/activity-v2-r12-isolation.mjs` | Statischer R12-Guard für Product-, Workflow-, SQL-, Entry- und Runtime-Isolation |
+| `docs/archive/repo-cleanup/activity-v2-tools/activity-v2-r12-isolation.mjs` | Statischer R12-Guard für Product-, Workflow-, SQL-, Entry- und Runtime-Isolation |
 
 ---
 
@@ -986,3 +986,21 @@ bewiesen, aber bis R13 vollständig unreferenziert und ohne Runtimewirkung.
 - Android-E2E bleibt gemäß Ownerentscheidung `DEFERRED / NOT PASS`.
 - Doku aktuell (Spec + Overview).
 
+## Aktuelle lokale Prüfwerkzeuge nach Repositorybereinigung
+
+Die read-only Guards werden mit `--current` ausgeführt. Sie binden den
+akzeptierten R15-/v34-/D32-D33-Repostand und erhalten die früheren Modi als
+historische Orakel. Eine neue Produktänderung invalidiert diese Baseline;
+sie darf nicht durch blindes Rehashen oder Abschwächen der Prüfungen angepasst
+werden. Der gezielte aktuelle Tooltest deckt Positiv- und Negativfälle ab.
+
+```powershell
+node tools/activity-v2-r8-isolation.mjs --current
+node tools/activity-v2-r13-read-consumer-isolation.mjs --current
+node --test tools/activity-current-isolation.contract.test.mjs
+```
+
+Schema, Beispiel, Katalogrunbook, Test-PWA und ihr Devicegate bleiben erhalten.
+Die unveränderte Test-PWA-Testdatei besitzt zusätzlich drei historische
+C4-/v31-Snapshotfälle; deren heutigen Schutzfragen prüft der aktuelle Tooltest.
+[Archivkarte](../archive/repo-cleanup/README.md) führt Originalbaseline und Grenzen.

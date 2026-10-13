@@ -52,6 +52,9 @@ Kurze Einordnung:
 Related docs:
 - [Bootflow Overview](bootflow overview.md)
 - [Android Native Auth Module Overview](Android Native Auth Module Overview.md)
+- [Zurückgestellte Modernisierung und Recovery](<../reference/supabase/MIDAS Supabase Modernization Deferred Work and Recovery.md>)
+- [Operator-Key- und Storezuordnung](<../reference/supabase/MIDAS Supabase Operator Key and Store Map.md>)
+- [Secretsfreie Operatorvorlage](<../reference/supabase/MIDAS Supabase Operator Env.example>)
 
 ---
 

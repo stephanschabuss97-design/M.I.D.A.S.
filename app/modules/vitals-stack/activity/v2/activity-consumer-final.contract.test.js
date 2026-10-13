@@ -69,7 +69,15 @@ test('T-ACT-R11-09 SQL 16 mirrors only the exact canonical SQL 25 postimage', ()
 
 test('T-ACT-R14-04 keeps R13 readers, Doctor, Edge and the V1 rollback source exact', () => {
   for (const [relativePath, expectedHash] of Object.entries(readerHashes)) {
-    assert.equal(sha256(relativePath), expectedHash, relativePath);
+    if (relativePath === 'backend/supabase/functions/midas-monthly-report/index.ts') {
+      // D32/D33 superseded the historical R14 handler; accepted source is bound.
+      const baseline = execFileSync('git', ['show',
+        `c2e147ef046764d5428f16b71332d4e4d1965356:${relativePath}`],
+      { cwd: repoRoot, encoding: 'utf8' });
+      assert.equal(read(relativePath).replace(/\r\n/g, '\n'), baseline.replace(/\r\n/g, '\n'));
+    } else {
+      assert.equal(sha256(relativePath), expectedHash, relativePath);
+    }
   }
   const indexSource = read('index.html');
   const workerSource = read('service-worker.js');
@@ -83,26 +91,26 @@ test('T-ACT-R14-04 keeps R13 readers, Doctor, Edge and the V1 rollback source ex
     assert.equal(workerSource.split(`toUrl('${relativePath}')`).length - 1, 1);
   }
   assert.doesNotMatch(indexSource, /src="app\/modules\/vitals-stack\/activity\/index\.js"/);
-  assert.match(workerSource, /const CACHE_VERSION = 'v31'/);
+  assert.match(workerSource, /const CACHE_VERSION = 'v34'/);
 });
 
 test('T-ACT-R14-04 integrated isolation activates only the planned R14/R13 product loads', () => {
   const output = execFileSync(
     process.execPath,
-    [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs'), '--c4'],
+    [path.join(repoRoot, 'tools/activity-v2-r8-isolation.mjs'), '--current'],
     { cwd: repoRoot, encoding: 'utf8' }
   );
   assert.equal(
     output,
-    'PASS protected=8 product_v2_loads=15 core_network_edges=0 ' +
+    'PASS protected=8 product_v2_loads=17 core_network_edges=0 ' +
       'r11_product_loads=4 unsafe_diagnostics=0 secret_material=0 test_dml=0 ' +
       'recovery_deletes=0 local_worker_scope=1 r10_negative_oracles=19 ' +
-      'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1 c4_contract=1\n'
+      'r11_isolated=20 r13_read_seam=1 r14_capture_seam=1 current_contract=1\n'
   );
 });
 
 test('T-ACT-R11-09 R13 owns read activation and R14 alone owns capture cutover', () => {
-  const scope = read('docs/Future trainingsmodule update thoughts.md');
+  const scope = read('docs/reference/activity-v2/MIDAS Activity V2 Masterplan.md');
   assert.match(scope, /R13 (?:hat|aktiviert)[^\n]*read-only Consumer/);
   assert.match(
     scope,

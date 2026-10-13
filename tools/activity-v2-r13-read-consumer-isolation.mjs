@@ -1,9 +1,100 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, lstatSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const read = (relativePath) => readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+// Current checks are bound to the accepted R15/D32-D33 source, not inferred
+// from the source under test. Historical branches below retain their baseline.
+const CURRENT_BASELINE = 'c2e147ef046764d5428f16b71332d4e4d1965356';
+const currentArgs = process.argv.slice(2);
+const currentMode = currentArgs[0] === '--current';
+let sourceRoot = repoRoot;
+const currentReads = new Set();
+const currentTestExceptions = [
+  'app/modules/vitals-stack/activity/v2/isolation.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-final.contract.test.js'
+];
+if (currentMode) {
+  if (!(currentArgs.length === 1 ||
+    (currentArgs.length === 3 && currentArgs[1] === '--source-root'))) {
+    throw new Error('CURRENT_UNKNOWN_OPTIONS');
+  }
+  if (currentArgs.length === 3) {
+    sourceRoot = path.resolve(currentArgs[2]);
+    const fixtureParent = path.join(repoRoot, '.tmp', 'repo-cleanup');
+    if (!sourceRoot.startsWith(fixtureParent + path.sep)) {
+      throw new Error('CURRENT_FIXTURE_PATH');
+    }
+    let cursor = sourceRoot;
+    while (cursor !== repoRoot) {
+      if (lstatSync(cursor).isSymbolicLink()) throw new Error('CURRENT_REPARSE_POINT');
+      cursor = path.dirname(cursor);
+    }
+    if (!lstatSync(sourceRoot).isDirectory()) throw new Error('CURRENT_FIXTURE_PATH');
+  }
+}
+const read = (relativePath) => {
+  const target = path.resolve(sourceRoot, relativePath);
+  if (!target.startsWith(sourceRoot + path.sep)) throw new Error('CURRENT_FIXTURE_PATH');
+  if (currentMode) {
+    let cursor = target;
+    while (cursor !== sourceRoot) {
+      if (lstatSync(cursor).isSymbolicLink()) throw new Error('CURRENT_REPARSE_POINT');
+      cursor = path.dirname(cursor);
+    }
+    currentReads.add(relativePath);
+  }
+  return readFileSync(target, 'utf8');
+};
+const currentGit = (args) => execFileSync('git', args, {
+  cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+});
+const currentScope = [
+  'app', 'assets', 'public', 'android', 'backend', 'sql', '.github',
+  'index.html', 'service-worker.js',
+  ...currentTestExceptions.map((file) => `:(exclude)${file}`),
+  ':(exclude)sql/HOW_TO.md'
+];
+const assertCurrentProtected = () => {
+  if (currentGit(['diff', '--name-only', CURRENT_BASELINE, '--', ...currentScope]).trim() ||
+    currentGit(['ls-files', '--others', '--exclude-standard', '--', ...currentScope]).trim()) {
+    throw new Error('CURRENT_PROTECTED_DIFF');
+  }
+};
+const assertCurrentSources = () => {
+  for (const file of currentReads) {
+    if (currentTestExceptions.includes(file) || file === 'sql/HOW_TO.md' ||
+      !/^(?:app|assets|public|android|backend|sql|\.github)\//.test(file) &&
+      !['index.html', 'service-worker.js'].includes(file)) continue;
+    const expected = currentGit(['show', `${CURRENT_BASELINE}:${file}`]);
+    if (read(file).replace(/\r\n/g, '\n') !== expected.replace(/\r\n/g, '\n')) {
+      throw new Error('CURRENT_SOURCE_BINDING');
+    }
+  }
+};
+if (currentMode) assertCurrentProtected();
+const currentCaptureVersions = Object.freeze({
+  'app/modules/vitals-stack/activity/v2/semantics.js': '24',
+  'app/modules/vitals-stack/activity/v2/semantics-v2.js': '24',
+  'app/modules/vitals-stack/activity/v2/session-draft.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-template.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-template-cache.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-recovery.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-commit.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-canonicalization.js': '24',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js': '30',
+  'app/modules/vitals-stack/activity/v2/data-access.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-shell.js': '31',
+  'app/modules/vitals-stack/activity/v2/session-correction.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-history.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-history-shell.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-product-controller.js': '32',
+});
+
 const fail = (code) => {
   throw new Error(`ACTIVITY_V2_R13_ISOLATION_${code}`);
 };
@@ -13,6 +104,7 @@ const requireCondition = (condition, code) => {
 const count = (source, pattern) => (source.match(pattern) || []).length;
 const countLiteral = (source, value) => source.split(value).length - 1;
 
+requireCondition(currentMode || currentArgs.length === 0, 'UNKNOWN_OPTIONS');
 const config = read('backend/supabase/config.toml');
 const functionFlags = [...config.matchAll(
   /\[functions\.([^\]]+)\]\s*\r?\nverify_jwt\s*=\s*(true|false)/g
@@ -22,10 +114,9 @@ const falseFunctions = functionFlags
   .map((entry) => entry.name)
   .sort();
 requireCondition(
-  JSON.stringify(falseFunctions) === JSON.stringify([
-    'midas-protein-targets',
-    'midas-trendpilot'
-  ]),
+  JSON.stringify(falseFunctions) === JSON.stringify(currentMode ? [
+    'midas-incident-push', 'midas-protein-targets', 'midas-trendpilot'
+  ] : ['midas-protein-targets', 'midas-trendpilot']),
   'VERIFY_JWT_FALSE_SCOPE'
 );
 requireCondition(
@@ -141,12 +232,13 @@ if (productMode === 'final') {
     lastIndexPosition = indexPosition;
     lastWorkerPosition = workerPosition;
   }
-  requireCondition(/const CACHE_VERSION = 'v24'/.test(worker), 'WORKER_VERSION');
+  requireCondition((currentMode ? /const CACHE_VERSION = 'v34'/ : /const CACHE_VERSION = 'v24'/).test(worker), 'WORKER_VERSION');
   productReadLoads = productOrder.length;
-  cacheVersion = 24;
+  cacheVersion = currentMode ? 34 : 24;
 } else {
   requireCondition(/const CACHE_VERSION = 'v6'/.test(worker), 'WORKER_VERSION');
 }
+requireCondition(!currentMode || productMode === 'final', 'PRODUCT_MIXED_STATE');
 requireCondition(
   !/src="app\/modules\/vitals-stack\/activity\/index\.js"/.test(index) &&
     !/toUrl\('app\/modules\/vitals-stack\/activity\/index\.js'\)/.test(worker),
@@ -155,18 +247,20 @@ requireCondition(
 
 let lastCaptureIndexPosition = -1;
 let lastCaptureWorkerPosition = -1;
-for (const relativePath of captureOrder) {
-  const indexPosition = index.indexOf(`src="${relativePath}?v=24"`);
-  const workerPosition = worker.indexOf(`toUrl('${relativePath}?v=24')`);
+const effectiveCaptureOrder = currentMode ? Object.keys(currentCaptureVersions) : captureOrder;
+for (const relativePath of effectiveCaptureOrder) {
+  const version = currentMode ? currentCaptureVersions[relativePath] : '24';
+  const indexPosition = index.indexOf(`src="${relativePath}?v=${version}"`);
+  const workerPosition = worker.indexOf(`toUrl('${relativePath}?v=${version}')`);
   requireCondition(indexPosition > lastCaptureIndexPosition, 'R14_CAPTURE_SCRIPT_ORDER');
   requireCondition(workerPosition > lastCaptureWorkerPosition, 'R14_CAPTURE_CACHE_ORDER');
-  requireCondition(countLiteral(index, `src="${relativePath}?v=24"`) === 1, 'R14_CAPTURE_SCRIPT_COUNT');
-  requireCondition(countLiteral(worker, `toUrl('${relativePath}?v=24')`) === 1, 'R14_CAPTURE_CACHE_COUNT');
+  requireCondition(countLiteral(index, `src="${relativePath}?v=${version}"`) === 1, 'R14_CAPTURE_SCRIPT_COUNT');
+  requireCondition(countLiteral(worker, `toUrl('${relativePath}?v=${version}')`) === 1, 'R14_CAPTURE_CACHE_COUNT');
   lastCaptureIndexPosition = indexPosition;
   lastCaptureWorkerPosition = workerPosition;
 }
 requireCondition(
-  lastCaptureIndexPosition < index.indexOf('src="app/supabase/index.js?v=24"'),
+  lastCaptureIndexPosition < index.indexOf(currentMode ? 'src="app/supabase/index.js?v=34"' : 'src="app/supabase/index.js?v=24"'),
   'R14_CAPTURE_BEFORE_SUPABASE'
 );
 
@@ -205,6 +299,18 @@ requireCondition(
   ),
   'LEGACY_HANDLER_AUTH'
 );
+
+if (currentMode) {
+  const incidentAuth = read('backend/supabase/functions/_shared/edge-auth.ts');
+  const start = incidentAuth.indexOf('export const authenticateIncidentScheduler =');
+  const block = incidentAuth.slice(start);
+  requireCondition(start !== -1 &&
+    block.includes('request.headers.has("authorization")') &&
+    block.includes('requireSchedulerApiKey(request)') &&
+    block.includes('const name = "incidents_push_scheduler"') &&
+    block.includes('readBoundSchedulerOwner("INCIDENTS_USER_ID", readEnv)') &&
+    block.includes('result.data.authKeyName !== name'), 'INCIDENT_AUTH');
+}
 
 const sqlForward = read('sql/26_Activity_Consumer_Runtime_Activation.sql');
 const explicitGrants = read('sql/16_Explicit_Grants.sql');
@@ -257,10 +363,12 @@ const secretMaterial = secretPatterns.reduce(
 );
 requireCondition(secretMaterial === 0, 'SECRET_MATERIAL');
 
+if (currentMode) assertCurrentSources();
+
 process.stdout.write(
-  'PASS verify_jwt_false=2 monthly_true=1 workflows=2 apikey_only=2 ' +
+  `PASS verify_jwt_false=${currentMode ? 3 : 2} monthly_true=1 workflows=2 apikey_only=2 ` +
   `product_mode=${productMode} product_read_loads=${productReadLoads} ` +
-  `cache_version=${cacheVersion} r14_capture_loads=${captureOrder.length} ` +
+  `cache_version=${cacheVersion} r14_capture_loads=${effectiveCaptureOrder.length} ` +
   'secret_material=0 productive_dml=0 sql_union=1 trend_state_acl=select_only ' +
-  'v1_capture=0\n'
+  (currentMode ? 'v1_capture=0 current_contract=1\n' : 'v1_capture=0\n')
 );

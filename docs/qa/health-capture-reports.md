@@ -11,7 +11,9 @@ Runtime-Testserie, keine Provider-/Push-/künstliche Gesundheitswirkung.
 Backend/Web: DONE / OWNER_ACCEPTED. Native Store-/Widgetmigration und Legacy-
 Abschaltung: zurückgestellt, nicht technisch als bestanden behauptet.
 [Abschlussevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>)
-und [Restumfang/Recovery](<../MIDAS Supabase Modernization Deferred Work and Recovery.md>).
+und [Restumfang/Recovery][supabase-recovery].
+
+[supabase-recovery]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
 
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `HCR-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
@@ -635,7 +637,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`, alle
   Activity-V2-JS-Dateien rekursiv mit `node --check`,
   `node tools/activity-catalog.mjs check` und
-  `node tools/activity-v2-r8-isolation.mjs` ausführen. Danach das guarded
+  `node tools/activity-v2-r8-isolation.mjs --current` ausführen. Danach das guarded
   Fixture `sql/tests/22_Activity_V2_Commit_Compatibility_fixture.sql` auf
   PostgreSQL 17 ausführen. Die lokale Test-PWA unter
   `/app/modules/vitals-stack/activity/v2/test-pwa/?fixture=all` für
@@ -684,7 +686,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   existieren.
 - Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`,
   rekursive `node --check`-Prüfung und
-  `node tools/activity-v2-r8-isolation.mjs` ausführen. Bei SQL- oder Fixture-
+  `node tools/activity-v2-r8-isolation.mjs --current` ausführen. Bei SQL- oder Fixture-
   Änderung das guarded Fixture
   `sql/tests/23_Activity_V2_History_Lifecycle_fixture.sql` auf PostgreSQL 17
   vollständig ausführen. Den isolierten R9-Harness bei 1440x900, 390x844 und
@@ -732,7 +734,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Function-/ACL-/Auth-/Count-/Empty-V1-Postchecks erlaubt, sofern kein neues
   Owner-Gate vorliegt.
 - Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
-  und `node tools/activity-v2-r8-isolation.mjs` ausführen. Bei SQL-24-,
+  und `node tools/activity-v2-r8-isolation.mjs --current` ausführen. Bei SQL-24-,
   Rollback-, Fixture-, SQL-16- oder direkter Dependencyänderung das guarded
   Fixture `sql/tests/24_Activity_V2_Coaching_Export_fixture.sql` vollständig auf
   PostgreSQL 17.6 ausführen. Den isolierten R10-Harness bei Desktop, 390x844
@@ -787,7 +789,7 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   Cutover.
 - Aktion: `node --test app/modules/vitals-stack/activity/v2/*.contract.test.js`
   sowie die direkten Doctor-Contracts und
-  `node tools/activity-v2-r8-isolation.mjs` ausführen. Die vier R11-Deno-
+  `node tools/activity-v2-r8-isolation.mjs --current` ausführen. Die vier R11-Deno-
   Contracts samt Check/Lint/Format ausführen. Bei SQL-25-, Rollback-, Fixture-
   oder SQL-16-Änderung das guarded Fixture
   `sql/tests/25_Activity_Consumer_Compatibility_fixture.sql` und die SQL-16-
@@ -846,7 +848,8 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
   R13 besitzt Auth-/Schedulerbrücke, Version, Payload und Aktivierung.
 - Aktion: `deno test` für Shared Context, Protein- und Trendpilotadapter sowie
   Deno Check/Lint/Format ausführen; danach
-  `node tools/activity-v2-r12-isolation.mjs` und `git diff --check`.
+  historische R12-Evidence (Snapshottool im Archiv, kein aktueller
+  Produktcheck) und `git diff --check`.
 - Erwartung: Ein validierter R11-Snapshot darf mehrere explizite,
   vollständig enthaltene 28-Tage-Fenster bedienen. Unterschiedliche Wiener
   Tage zählen einmal, belegte Wochen laufen Montag bis Sonntag. Protein bleibt
@@ -895,3 +898,14 @@ Die IDs bleiben historisch reserviert und werden nicht neu verwendet.
 - Erwartung: ein sichtbarer range_report, User-JWT/public Header getrennt, Narrativ als Text; Singleton-/Replacementbackend separat nach HCR-015 prüfen, keine echte Report-/Gesundheitswirkung.
 - Invalidiert durch: Doctorunlock, Formlistener, Reportheader, Responseform, Lifecycle oder Renderer.
 - Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+## Repositorybereinigung: aktuelle und historische Isolation
+
+Aktuelle lokale Isolation wird mit R8/R13 `--current` geprüft. Die bisherigen
+R12-/v24-/v31-Releaseorakel bleiben historische Nachweise. In
+`local-test-pwa.contract.test.js` sind drei solche Snapshots unverändert;
+die weiterhin gültigen Testlane-/Runbookfälle laufen gezielt, und
+`tools/activity-current-isolation.contract.test.mjs` erhält ihre gültigen
+Worker-/Recovery-/Cache-/Assetschutzfragen am akzeptierten Repostand.
+Unveränderte Produktbytes, Baseline und Negativfälle sind getrennt nachgewiesen;
+historisch invalidierte Snapshots werden nicht als aktuelles PASS ausgegeben.

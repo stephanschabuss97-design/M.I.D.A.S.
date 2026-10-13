@@ -196,7 +196,7 @@ Keine Account- oder Tokenwerte dokumentieren.
 Kanonischer Review eines noch nicht committeten MIDAS-Diffs:
 
 ```powershell
-coderabbit review --agent -t uncommitted
+coderabbit review --agent --uncommitted
 ```
 
 Weitere unterstuetzte Scopes werden nur verwendet, wenn die Roadmap sie
@@ -204,7 +204,7 @@ explizit verlangt:
 
 ```text
 coderabbit review --agent
-coderabbit review --agent -t committed
+coderabbit review --agent --committed
 coderabbit review --agent --base main
 coderabbit review --agent --base-commit <sha>
 ```
@@ -632,6 +632,12 @@ Die wertfreie Secret-Readiness-Matrix, Blockbereitschaft und Gatebehandlung
 stehen im [BLUEPRINT-Readinessvertrag](../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#auftragsfelder-und-technische-readiness).
 Die oben benannten lokalen/Remote-Speicher und Consumer bleiben maßgeblich;
 das Operator-Bundle ist kein pauschaler Remote-Secretspiegel.
+
+Aktuelle Betriebsreferenzen liegen unter `docs/reference/supabase/`:
+
+- [Operator-Key- und Storezuordnung](<reference/supabase/MIDAS Supabase Operator Key and Store Map.md>)
+- [Secretsfreie Operatorvorlage](<reference/supabase/MIDAS Supabase Operator Env.example>)
+- [Zurückgestellte Modernisierung und Recovery](<reference/supabase/MIDAS Supabase Modernization Deferred Work and Recovery.md>)
 
 Regeln:
 

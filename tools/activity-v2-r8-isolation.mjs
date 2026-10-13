@@ -1,11 +1,101 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, lstatSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const read = (relativePath) => readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+// Current checks are bound to the accepted R15/D32-D33 source, not inferred
+// from the source under test. Historical branches below retain their baseline.
+const CURRENT_BASELINE = 'c2e147ef046764d5428f16b71332d4e4d1965356';
+const currentArgs = process.argv.slice(2);
+const currentMode = currentArgs[0] === '--current';
+let sourceRoot = repoRoot;
+const currentReads = new Set();
+const currentTestExceptions = [
+  'app/modules/vitals-stack/activity/v2/isolation.contract.test.js',
+  'app/modules/vitals-stack/activity/v2/activity-consumer-final.contract.test.js'
+];
+if (currentMode) {
+  if (!(currentArgs.length === 1 ||
+    (currentArgs.length === 3 && currentArgs[1] === '--source-root'))) {
+    throw new Error('CURRENT_UNKNOWN_OPTIONS');
+  }
+  if (currentArgs.length === 3) {
+    sourceRoot = path.resolve(currentArgs[2]);
+    const fixtureParent = path.join(repoRoot, '.tmp', 'repo-cleanup');
+    if (!sourceRoot.startsWith(fixtureParent + path.sep)) {
+      throw new Error('CURRENT_FIXTURE_PATH');
+    }
+    let cursor = sourceRoot;
+    while (cursor !== repoRoot) {
+      if (lstatSync(cursor).isSymbolicLink()) throw new Error('CURRENT_REPARSE_POINT');
+      cursor = path.dirname(cursor);
+    }
+    if (!lstatSync(sourceRoot).isDirectory()) throw new Error('CURRENT_FIXTURE_PATH');
+  }
+}
+const read = (relativePath) => {
+  const target = path.resolve(sourceRoot, relativePath);
+  if (!target.startsWith(sourceRoot + path.sep)) throw new Error('CURRENT_FIXTURE_PATH');
+  if (currentMode) {
+    let cursor = target;
+    while (cursor !== sourceRoot) {
+      if (lstatSync(cursor).isSymbolicLink()) throw new Error('CURRENT_REPARSE_POINT');
+      cursor = path.dirname(cursor);
+    }
+    currentReads.add(relativePath);
+  }
+  return readFileSync(target, 'utf8');
+};
+const currentGit = (args) => execFileSync('git', args, {
+  cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+});
+const currentScope = [
+  'app', 'assets', 'public', 'android', 'backend', 'sql', '.github',
+  'index.html', 'service-worker.js',
+  ...currentTestExceptions.map((file) => `:(exclude)${file}`),
+  ':(exclude)sql/HOW_TO.md'
+];
+const assertCurrentProtected = () => {
+  if (currentGit(['diff', '--name-only', CURRENT_BASELINE, '--', ...currentScope]).trim() ||
+    currentGit(['ls-files', '--others', '--exclude-standard', '--', ...currentScope]).trim()) {
+    throw new Error('CURRENT_PROTECTED_DIFF');
+  }
+};
+const assertCurrentSources = () => {
+  for (const file of currentReads) {
+    if (currentTestExceptions.includes(file) || file === 'sql/HOW_TO.md' ||
+      !/^(?:app|assets|public|android|backend|sql|\.github)\//.test(file) &&
+      !['index.html', 'service-worker.js'].includes(file)) continue;
+    const expected = currentGit(['show', `${CURRENT_BASELINE}:${file}`]);
+    if (read(file).replace(/\r\n/g, '\n') !== expected.replace(/\r\n/g, '\n')) {
+      throw new Error('CURRENT_SOURCE_BINDING');
+    }
+  }
+};
+if (currentMode) assertCurrentProtected();
+const currentCaptureVersions = Object.freeze({
+  'app/modules/vitals-stack/activity/v2/semantics.js': '24',
+  'app/modules/vitals-stack/activity/v2/semantics-v2.js': '24',
+  'app/modules/vitals-stack/activity/v2/session-draft.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-template.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-template-cache.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-recovery.js': '32',
+  'app/modules/vitals-stack/activity/v2/session-commit.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-canonicalization.js': '24',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export.js': '30',
+  'app/modules/vitals-stack/activity/v2/data-access.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-shell.js': '31',
+  'app/modules/vitals-stack/activity/v2/session-correction.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-history.js': '30',
+  'app/modules/vitals-stack/activity/v2/session-history-shell.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-controller.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-coaching-export-shell.js': '30',
+  'app/modules/vitals-stack/activity/v2/activity-product-controller.js': '32',
+});
+
 const fail = (code) => {
   throw new Error(`ACTIVITY_V2_R8_ISOLATION_${code}`);
 };
@@ -18,7 +108,7 @@ const git = (args) => execFileSync('git', args, {
   stdio: ['ignore', 'pipe', 'pipe']
 }).trim();
 const c4Mode = process.argv.slice(2).length === 1 && process.argv[2] === '--c4';
-requireCondition(process.argv.length === 2 || c4Mode, 'UNKNOWN_MODE');
+requireCondition(process.argv.length === 2 || c4Mode || currentMode, 'UNKNOWN_MODE');
 // C4 may change these exact reviewed postimages. Every other negative
 // consumer remains protected; the original R14 mode keeps its old boundary.
 const c4SourceHashes = Object.freeze({
@@ -192,7 +282,9 @@ const r13ProductReaderPaths = Object.freeze([
   'app/modules/doctor-stack/doctor/health-export-v3.js'
 ]);
 
-if (c4Mode) {
+if (currentMode) {
+  assertCurrentProtected();
+} else if (c4Mode) {
   assertProtectedChanges(protectedPaths, 'C4_PROTECTED_DIFF');
   for (const [relativePath, expectedHash] of Object.entries(c4SourceHashes)) {
     requireCondition(sourceHash(relativePath) === expectedHash, 'C4_SOURCE_DRIFT');
@@ -230,11 +322,12 @@ if (c4Mode) {
   );
 }
 requireCondition(
-  (c4Mode ? sourceHash(r10R14ProductloadContractPath) :
+  ((c4Mode || currentMode) ? sourceHash(r10R14ProductloadContractPath) :
     createHash('sha256').update(read(r10R14ProductloadContractPath)).digest('hex')) ===
-    (c4Mode ? c4SourceHashes[r10R14ProductloadContractPath] : r10R14ProductloadContractSha256),
+    ((c4Mode || currentMode) ? c4SourceHashes[r10R14ProductloadContractPath] : r10R14ProductloadContractSha256),
   'R10_R14_PRODUCTLOAD_CONTRACT'
 );
+if (!currentMode) {
 for (const [relativePath, expectedHash] of Object.entries(
   c4Mode ? c4SupabaseBaselineHashes : r14SupabaseReleaseHashes
 )) {
@@ -243,6 +336,7 @@ for (const [relativePath, expectedHash] of Object.entries(
       ? read(relativePath).replace(/\r\n/g, '\n') : read(relativePath)).digest('hex') === expectedHash,
     'R14_SUPABASE_RELEASE_CONTRACT'
   );
+}
 }
 git(['diff', '--check']);
 
@@ -262,11 +356,12 @@ const productSources = [
 ].join('\n');
 const productIndex = read('index.html');
 const productWorker = read('service-worker.js');
-for (const relativePath of r14CapturePaths) {
+for (const relativePath of (currentMode ? Object.keys(currentCaptureVersions) : r14CapturePaths)) {
   const matches = [...productIndex.matchAll(new RegExp(
     `src="${relativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=(\\d+)"`, 'g'
   ))];
-  const version = c4Mode && matches.length === 1 ? matches[0][1] : '24';
+  const version = currentMode ? currentCaptureVersions[relativePath] :
+    c4Mode && matches.length === 1 ? matches[0][1] : '24';
   requireCondition(
     (!c4Mode || matches.length === 1) &&
     productIndex.split(`src="${relativePath}?v=${version}"`).length - 1 === 1 &&
@@ -274,7 +369,7 @@ for (const relativePath of r14CapturePaths) {
     'PRODUCT_V2_LOAD'
   );
 }
-const productV2Loads = r14CapturePaths.length;
+const productV2Loads = currentMode ? Object.keys(currentCaptureVersions).length : r14CapturePaths.length;
 requireCondition(
   !/activity-coaching-export|coachingExport|loadCoachingExport/.test([
     read('app/modules/vitals-stack/activity/index.js'),
@@ -346,7 +441,7 @@ const testDml = (r11TestSources.match(testDmlPattern) || []).length;
 requireCondition(testDml === 0, 'R11_TEST_DML');
 
 const scopeSource = [
-  read('docs/Future trainingsmodule update thoughts.md'),
+  read(currentMode ? 'docs/reference/activity-v2/MIDAS Activity V2 Masterplan.md' : 'docs/Future trainingsmodule update thoughts.md'),
   read('docs/modules/Activity Module Overview.md')
 ].join('\n');
 const r13ReadSeam =
@@ -381,11 +476,20 @@ requireCondition(/await waitForLocalController\(\)/.test(localRuntime), 'LOCAL_C
 requireCondition(/midas-activity-v2-r8-local-test-/.test(localWorker), 'LOCAL_WORKER_SCOPE');
 requireCondition(!/public\/manifest\.json|midas-shell-|\/M\.I\.D\.A\.S\.\//.test(localWorker), 'LOCAL_WORKER_PRODUCT_EDGE');
 
+if (currentMode) {
+  // The historical snapshots were superseded, but their source-integrity
+  // protection remains bound to the accepted current commit, also in fixtures.
+  for (const file of [...Object.keys(c4SourceHashes), ...Object.keys(r14SupabaseReleaseHashes)]) {
+    read(file);
+  }
+  assertCurrentSources();
+}
+
 process.stdout.write(
   `PASS protected=${protectedTargetCount} product_v2_loads=${productV2Loads} core_network_edges=0 ` +
   `r11_product_loads=${r11ProductLoads} unsafe_diagnostics=0 secret_material=0 test_dml=0 ` +
   'recovery_deletes=0 local_worker_scope=1 ' +
   `r10_negative_oracles=${r10NegativeOraclePaths.length} ` +
   `r11_isolated=${r11IsolatedPaths.length} r13_read_seam=1 r14_capture_seam=1` +
-  (c4Mode ? ' c4_contract=1\n' : '\n')
+  (currentMode ? ' current_contract=1\n' : c4Mode ? ' c4_contract=1\n' : '\n')
 );

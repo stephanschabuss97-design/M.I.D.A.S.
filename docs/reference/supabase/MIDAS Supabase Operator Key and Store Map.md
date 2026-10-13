@@ -1,6 +1,15 @@
 # MIDAS Supabase Operator Key and Store Map
 
-Status 2026-10-09: D32 local operator bundle complete; eight backend Functions deployed and strict auth/null-effect paths verified. The Incident caller is published in the controlled scheduler window. Clinical acceptance and Parent Android/legacy exits remain open. This is a curated bundle for actual modernisation/deploy/postcheck/recovery consumers, not a mirror of every remote secret.
+Status 2026-10-13 (documentation sync): Backend/web was deployed under D32 and
+accepted by Stephan under D33 after normal use and reports on live server, PC
+and Android. Dedicated native store/restore/widget migration, legacy shutdown
+and complete parent acceptance remain deferred. This is no new live credential
+or runtime verification. The curated bundle serves actual operator/recovery
+consumers and does not mirror every remote secret.
+
+The D32 preparation and verification facts below remain historical. Current
+scope and recovery limits are documented in
+[Deferred Work and Recovery](<MIDAS Supabase Modernization Deferred Work and Recovery.md>).
 
 The ignored `.env.supabase.local` holds thirteen required fields. Existing five values were matched against the same project/current API keys and preserved byte-for-byte. The eight missing fields were added. An actual SDK2.45.4 `auth.getUser()` server request in the existing Edge profile verified a nonanonymous session; no user-ID/cache/admin fixture substituted authentication. The private token-free nonce-bound proof remains in ignored work artifacts; no tokens or key values appear here.
 

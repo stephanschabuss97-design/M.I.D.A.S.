@@ -330,12 +330,17 @@ Supabase ist heute fuer die meisten produktiven Datenpfade der zentrale Backend-
 
 ### Entwicklungs- und Governance-Tools
 
-| Bereich | Zweck | Overview |
-|------|------|------|
+<!-- markdownlint-disable MD013 -->
+| Bereich | Zweck                                                                         | Overview                                                                                                                           |
+| ------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | KASRKIN | Betriebsfreeze seit 2026-10-12; MIDAS ist entbunden und arbeitet ohne KASRKIN | [KASRKIN Source](../codex-tools/apps/kasrkin/README.md) · [Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md) |
-| A.R.G.U.S. | organisatorisches Legacy-Archiv und fertiger Handoff für einen separaten V1.0-Produkt-Lifecycle | [V1.0-Handoff](docs/tooling-extraction/ARGUS%20V1.0%20Product%20Handoff.md) · [W7-Receipt](docs/tooling-extraction/w7-retirement-receipt.json) · [W5-Receipt](docs/tooling-extraction/w5-argus-v1-handoff-receipt.json) · [historisches W4-Receipt](docs/tooling-extraction/w4-argus-pilot-archive-receipt.json) |
+<!-- markdownlint-enable MD013 -->
 
 ---
+
+ARGUS und Benchmark sind auf Ownerentscheid stillgelegt. Die abgeschlossene
+Toolingmigration und ihre Originalnachweise liegen im
+[historischen Archiv](docs/archive/repo-cleanup/README.md).
 
 ## Dokumentationshierarchie
 
@@ -364,11 +369,6 @@ Wichtige Einstiegspunkte:
 - [`docs/modules/Android Widget Module Overview.md`](docs/modules/Android%20Widget%20Module%20Overview.md)
 - [KASRKIN Source](../codex-tools/apps/kasrkin/README.md)
 - [KASRKIN Integration](../codex-tools/docs/architecture/KASRKIN%20Integration.md)
-- [A.R.G.U.S. V1.0 Product Handoff](docs/tooling-extraction/ARGUS%20V1.0%20Product%20Handoff.md)
-- [A.R.G.U.S. W7-Retirement-Receipt](docs/tooling-extraction/w7-retirement-receipt.json)
-- [A.R.G.U.S. W5-Handoff-Receipt](docs/tooling-extraction/w5-argus-v1-handoff-receipt.json)
-- [A.R.G.U.S. W4-Archivreceipt](docs/tooling-extraction/w4-argus-pilot-archive-receipt.json)
-- [Post-W7 Migration Closure Report](docs/tooling-extraction/Post-W7%20Migration%20Closure%20Report.md) · [Review-Vertrag](docs/tooling-extraction/Post-W7%20Migration%20Closure%20Review.md)
 - [`docs/qa/README.md`](docs/qa/README.md)
 - [`docs/qa/release-readiness.md`](docs/qa/release-readiness.md)
 - [`docs/QA_CHECKS.md`](docs/QA_CHECKS.md) als Kompatibilitätsindex für
@@ -387,6 +387,7 @@ Wichtige Einstiegspunkte:
 | `app/supabase/` | Auth, APIs, Realtime, Core |
 | `assets/js/` | Legacy-nahe UI- und Boot-Helfer |
 | `docs/modules/` | aktuelle Modul-Overviews |
+| `docs/reference/` | weiterhin benötigte Modulverträge und Betriebsreferenzen |
 | `docs/archive/` | historische Roadmaps und Altplanung |
 | `android/` | native Android-Huelle fuer Widget, Sync-Worker, nativen OAuth-/Deep-Link-Pfad und minimalen Launcher |
 | `sql/` | Datenmodell, RLS, RPCs, Views |
@@ -541,6 +542,11 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 
 MIDAS-Ablage: aktive Roadmap und gegebenenfalls Evidence unter `docs/`, nach
 bewiesenem S6 beide als `(DONE)` unter `docs/archive/`. `(LEGACY)` ist nur Historie.
+Der `docs/`-Root enthält die Einstiegspunkte `DEV_ENVIRONMENT.md`,
+`QA_CHECKS.md` und den nächsten aktiven Arbeitsblock, aktuell R14 Repair Findings.
+Weiterhin benötigte Modul- und Betriebsunterlagen liegen thematisch unter
+`docs/reference/`; ein abgeschlossener Teilumfang macht offene Restarbeit
+nicht automatisch DONE.
 Betroffene Modulübersichten, QA und HOW-TO mit bewiesenen Ergebnissen pflegen;
 `docs/QA_CHECKS.md` bleibt Kompatibilitätsindex, QA-Historie/Archive bleiben Evidence.
 Changelogrelevanz entscheiden: bemerkenswerte Änderungen unter `Unreleased` in

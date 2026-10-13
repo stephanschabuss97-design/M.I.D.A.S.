@@ -11,7 +11,9 @@ Runtime-Testserie, keine Provider-/Push-/künstliche Gesundheitswirkung.
 Backend/Web: DONE / OWNER_ACCEPTED. Native Store-/Widgetmigration und Legacy-
 Abschaltung: zurückgestellt, nicht technisch als bestanden behauptet.
 [Abschlussevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>)
-und [Restumfang/Recovery](<../MIDAS Supabase Modernization Deferred Work and Recovery.md>).
+und [Restumfang/Recovery][supabase-recovery].
+
+[supabase-recovery]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
 
 ## D32 runtime evidence - 2026-10-09
 

@@ -651,7 +651,7 @@ Run the local client gates from the repository root:
 
 ```text
 node --test app/modules/vitals-stack/activity/v2/activity-coaching-export*.contract.test.js
-node tools/activity-v2-r8-isolation.mjs
+node tools/activity-v2-r8-isolation.mjs --current
 python -m http.server 8766 --bind 127.0.0.1
 npx @playwright/test test app/modules/vitals-stack/activity/v2/activity-coaching-export-browser.smoke.spec.js --workers=1
 ```

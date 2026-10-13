@@ -9,9 +9,9 @@ Arztberichte auf Live Server, PC und Android unter D33 akzeptiert. Die vier
 Planungs-/Evidence-/Startdokumente liegen im Archiv. Der Backend/Web-Child ist
 DONE; der umfassendere Parent ist ein ehrlicher Owner-Teilabschluss.
 
-- [Backend/Web-Abschluss](<archive/MIDAS Supabase Backend and Web Authentication Modernization Roadmap (DONE).md>)
-- [Parent und zurückgestellte Waves](<archive/MIDAS Supabase API Key and Edge Authentication Modernization Masterplan (CLOSED).md>)
-- [Historische Originalevidence und Owneracceptance](<archive/MIDAS Supabase API Key and Edge Authentication Modernization Evidence (CLOSED).md>)
+- [Backend/Web-Abschluss](<../../archive/MIDAS Supabase Backend and Web Authentication Modernization Roadmap (DONE).md>)
+- [Parent und zurückgestellte Waves](<../../archive/MIDAS Supabase API Key and Edge Authentication Modernization Masterplan (CLOSED).md>)
+- [Historische Originalevidence und Owneracceptance](<../../archive/MIDAS Supabase API Key and Edge Authentication Modernization Evidence (CLOSED).md>)
 
 ## Erhaltener Betriebsvertrag
 

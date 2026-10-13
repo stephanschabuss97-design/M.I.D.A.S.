@@ -99,6 +99,6 @@ Vor C4 und R15 sollen vier Beobachtungen aus der produktiven Activity-V2-Nutzung
 
 ## Kontext
 
-- [Activity-V2-Masterplan](../Future%20trainingsmodule%20update%20thoughts.md)
+- [Activity-V2-Masterplan](../reference/activity-v2/MIDAS%20Activity%20V2%20Masterplan.md)
 - [Activity Module Overview](../modules/Activity%20Module%20Overview.md)
 - [R14 Repair Findings](../MIDAS%20Activity%20V2%20R14%20Repair%20Findings.md)

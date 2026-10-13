@@ -60,7 +60,20 @@ function parseArguments(argv) {
 }
 
 function resolveRepoPath(value) {
-  return path.isAbsolute(value) ? value : path.resolve(repoRoot, value);
+  const original = path.isAbsolute(value) ? value : path.resolve(repoRoot, value);
+  const archived = new Map([
+    ['docs/MIDAS Activity V2 C2 Catalog Version 2 Contract.md',
+      'docs/archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md'],
+    ['docs/MIDAS Activity V2 R1 Catalog Baseline Contract.md',
+      'docs/archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md']
+  ]);
+  const relative = path.relative(repoRoot, original).split(path.sep).join('/');
+  if (!archived.has(relative)) return original;
+  const successor = path.resolve(repoRoot, archived.get(relative));
+  if (fs.existsSync(original) && fs.existsSync(successor)) {
+    throw new Error(`ambiguous original/archive contract: ${relative}`);
+  }
+  return fs.existsSync(original) ? original : successor;
 }
 
 function readText(filePath) {

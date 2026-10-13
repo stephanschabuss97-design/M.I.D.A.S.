@@ -366,8 +366,8 @@ fortlaufender Reihenfolge ab 1. Katalogversion und Keys müssen zum geladenen
 Katalog passen; zusätzliche Felder und doppelte JSON-Properties sind ungültig.
 Der Anzeigename bleibt reiner Text und keine Sessionnotiz.
 
-[Kanonisches Schema](reference/activity-v2/activity-session-template-v1.schema.json)
-und [gültiges Beispiel](reference/activity-v2/activity-session-template-v1.example.json)
+[Kanonisches Schema](activity-session-template-v1.schema.json)
+und [gültiges Beispiel](activity-session-template-v1.example.json)
 beschreiben den Erzeugungsvertrag. Die Grundlage bleibt ausschließlich der
 bestehende Coachingexport; keine Exporterweiterung oder Zusatzkatalogdatei.
 Der letzte erfolgreich importierte Plan bleibt getrennt von Recovery als
@@ -1051,8 +1051,8 @@ wurden nicht verändert.
 
 Nachweise:
 
-- [R10 Completed Activity Coaching Export V1 Roadmap](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
-- [R10 Completed Activity Coaching Export V1 Evidence](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
+- [R10 Completed Activity Coaching Export V1 Roadmap](<../../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+- [R10 Completed Activity Coaching Export V1 Evidence](<../../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
 
 ---
 
@@ -1216,7 +1216,7 @@ Retention wird nicht vorsorglich mit der ersten Implementierung gekoppelt.
 
 ## 18. Roadmap-Reihenfolge
 
-Neue Umsetzungsroadmaps folgen direkt [BLUEPRINT](../../codex-tools/docs/blueprint/README.md)
+Neue Umsetzungsroadmaps folgen direkt [BLUEPRINT](../../../../codex-tools/docs/blueprint/README.md)
 und den Projektgrenzen in AGENTS. Bestehende eingefrorene Aufträge behalten
 ihre damalige Prozessbasis; frühere lokale Templates sind nur (LEGACY)-Nachweise.
 UI-Roadmaps benötigen einen Live-Server-Smoke. Datenbank-Roadmaps benötigen
@@ -1375,8 +1375,8 @@ Nachgewiesenes Ergebnis:
 
 Nachweise:
 
-- [R1 Catalog Baseline Contract](<archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
-- [R1 Semantics and Product Contract Roadmap](<archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
+- [R1 Catalog Baseline Contract](<../../archive/MIDAS Activity V2 R1 Catalog Baseline Contract (DONE).md>)
+- [R1 Semantics and Product Contract Roadmap](<../../archive/MIDAS Activity V2 R1 Semantics and Product Contract Roadmap (DONE).md>)
 
 Warum zuerst:
 
@@ -1402,8 +1402,8 @@ Nachgewiesenes Ergebnis:
 
 Nachweise:
 
-- [R2 Unified Database and Commit API Roadmap](<archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
-- [R2 Unified Database and Commit API Evidence](<archive/MIDAS Activity V2 R2 Unified Database and Commit API Evidence (DONE).md>)
+- [R2 Unified Database and Commit API Roadmap](<../../archive/MIDAS Activity V2 R2 Unified Database and Commit API Roadmap (DONE).md>)
+- [R2 Unified Database and Commit API Evidence](<../../archive/MIDAS Activity V2 R2 Unified Database and Commit API Evidence (DONE).md>)
 
 Warum danach:
 
@@ -1430,7 +1430,7 @@ Nachgewiesenes Ergebnis:
 
 Nachweis:
 
-- [R3 Shared Session Draft and UI Shell Roadmap](<archive/MIDAS Activity V2 R3 Shared Session Draft and UI Shell Roadmap (DONE).md>)
+- [R3 Shared Session Draft and UI Shell Roadmap](<../../archive/MIDAS Activity V2 R3 Shared Session Draft and UI Shell Roadmap (DONE).md>)
 
 Bewusste R3-Grenze:
 
@@ -1493,9 +1493,9 @@ Reales Ergebnis:
 - insert-only SQL 21 produktiv PASS; v1/v2 Repo=Produkt vollständig gleich,
   andere Versionen und v2-Sessionreferenzen 0, RLS/Policies/ACL/RPC unverändert
 <!-- markdownlint-disable MD013 -->
-- [C2 Catalog Contract](<archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>),
-  [C2 Roadmap](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
-  und [C2 Evidence](<archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+- [C2 Catalog Contract](<../../archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>),
+  [C2 Roadmap](<../../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Roadmap (DONE).md>)
+  und [C2 Evidence](<../../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
 <!-- markdownlint-enable MD013 -->
 
 Warum an dieser Stelle:
@@ -1512,7 +1512,7 @@ SQL-/RPC-/Commit-/Draftschema-Delta.
 
 Roadmap:
 
-- [R4 Search and Last-Performance Lookup Roadmap](<archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
+- [R4 Search and Last-Performance Lookup Roadmap](<../../archive/MIDAS Activity V2 R4 Search and Last-Performance Lookup Roadmap (DONE).md>)
 
 Ziel:
 
@@ -1560,7 +1560,7 @@ IndexedDB-Recovery oder produktive Aktivierung.
 
 Roadmap:
 
-- [R5 Strength Set Editor Roadmap](<archive/MIDAS Activity V2 R5 Strength Set Editor Roadmap (DONE).md>)
+- [R5 Strength Set Editor Roadmap](<../../archive/MIDAS Activity V2 R5 Strength Set Editor Roadmap (DONE).md>)
 
 Ziel:
 
@@ -1625,7 +1625,7 @@ IndexedDB-Recovery oder produktive Aktivierung.
 
 Roadmap:
 
-- [R6 Duration and Distance Editor Roadmap](<archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
+- [R6 Duration and Distance Editor Roadmap](<../../archive/MIDAS Activity V2 R6 Duration and Distance Editor Roadmap (DONE).md>)
 
 Ziel:
 
@@ -1671,8 +1671,8 @@ Produktload, Deploy oder Android-Prozess-Reclaim.
 
 Roadmap und Evidence:
 
-- [R7 IndexedDB Draft Recovery Roadmap](<archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
-- [R7 IndexedDB Draft Recovery Evidence](<archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
+- [R7 IndexedDB Draft Recovery Roadmap](<../../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Roadmap (DONE).md>)
+- [R7 IndexedDB Draft Recovery Evidence](<../../archive/MIDAS Activity V2 R7 IndexedDB Draft Recovery Evidence (DONE).md>)
 
 Bewiesener Iststand:
 
@@ -1739,8 +1739,8 @@ anbinden, ohne den R7-Speichervertrag umzudeuten.
 
 Status: `DONE_WITH_OWNER_ACCEPTED_EVIDENCE_GAP`.
 
-- [R8 Roadmap](<archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
-- [R8 Evidence](<archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
+- [R8 Roadmap](<../../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Roadmap (DONE).md>)
+- [R8 Evidence](<../../archive/MIDAS Activity V2 R8 Core Commit and Android Recovery Integration Evidence (DONE).md>)
 
 Nachgewiesenes Ergebnis:
 
@@ -1840,8 +1840,8 @@ Nachgewiesenes Ergebnis:
 
 Nachweise:
 
-- [R10 Roadmap](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
-- [R10 Evidence](<archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
+- [R10 Roadmap](<../../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Roadmap (DONE).md>)
+- [R10 Evidence](<../../archive/MIDAS Activity V2 R10 Completed Activity Coaching Export V1 Evidence (DONE).md>)
 
 Warum danach:
 
@@ -1874,8 +1874,8 @@ Ziel:
 
 Nachweise:
 
-- [R11 Roadmap](<archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
-- [R11 Evidence](<archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
+- [R11 Roadmap](<../../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Roadmap (DONE).md>)
+- [R11 Evidence](<../../archive/MIDAS Activity V2 R11 Doctor View and Report Integration Evidence (DONE).md>)
 
 Nachgewiesenes Ergebnis:
 
@@ -1901,7 +1901,7 @@ Status: `DONE` (2026-08-23); pure Adapter vollständig lokal bewiesen, ohne
 Productload, Runtime-, SQL-, Scheduler-, Deploy- oder Schreibwirkung:
 
 <!-- markdownlint-disable MD013 -->
-[R12 Protein Target and Trendpilot Compatibility Roadmap](<archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>).
+[R12 Protein Target and Trendpilot Compatibility Roadmap](<../../archive/MIDAS Activity V2 R12 Protein Target and Trendpilot Compatibility Roadmap (DONE).md>).
 <!-- markdownlint-enable MD013 -->
 
 Ziel:
@@ -1942,8 +1942,8 @@ dem gemeinsamen SQL26-Vertrag aktiv und mit Activity V1 paritätisch bewiesen.
 
 Ausführungsquelle:
 
-- [R13 Read-Consumer Activation and V1 Parity Roadmap (DONE)](<archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
-- [R13 Read-Consumer Activation and V1 Parity Evidence (DONE)](<archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>)
+- [R13 Read-Consumer Activation and V1 Parity Roadmap (DONE)](<../../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Roadmap (DONE).md>)
+- [R13 Read-Consumer Activation and V1 Parity Evidence (DONE)](<../../archive/MIDAS Activity V2 R13 Read-Consumer Activation and V1 Parity Evidence (DONE).md>)
 
 Ziel:
 
@@ -1959,7 +1959,7 @@ Ziel:
   im `apikey`-Header aktivieren; die globale Migration von PWA, Android,
   Incident Push und übrigen Edge Functions bleibt ausdrücklich außerhalb von
   R13 und folgt dem
-  [Supabase API Key and Edge Authentication Modernization Masterplan](<archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Masterplan%20%28CLOSED%29.md>)
+  [Supabase API Key and Edge Authentication Modernization Masterplan](<../../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Masterplan%20%28CLOSED%29.md>)
 - Trendpilot pro Request über einen gemeinsamen Snapshot-Umschlag statt über
   einen RPC pro Event versorgen; die 27-Tage-Erweiterung des Requestfensters
   gegen das SQL25-Maximum von 400 Tagen fail-closed auflösen
@@ -1990,7 +1990,7 @@ bleibt produktiv verborgen und R14 bleibt das einzige Capture-Cutover-Gate.
 
 Ausführungsquelle:
 
-- [C3 Training Product Surface and Protein Context Relocation Roadmap (DONE)](<archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
+- [C3 Training Product Surface and Protein Context Relocation Roadmap (DONE)](<../../archive/MIDAS Activity V2 C3 Training Product Surface and Protein Context Relocation Roadmap (DONE).md>)
 
 Ziel:
 
@@ -2035,8 +2035,8 @@ Status: `DONE` (2026-09-09); v24 produktiv, Activity V2 alleiniger Writer,
 Web-/PWA-, Write-, Reader- und R9-Smoke-Delete-Nachweis PASS. Android
 `DEFERRED / NOT PASS`.
 
-- [R14 Roadmap](<archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md>)
-- [R14 Evidence](<archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md>)
+- [R14 Roadmap](<../../archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Roadmap (DONE).md>)
+- [R14 Evidence](<../../archive/MIDAS Activity V2 R14 Capture Cutover and Android PWA Validation Evidence (DONE).md>)
 
 Ziel:
 
@@ -2068,8 +2068,8 @@ Protokollabweichung der ursprünglichen Test-Vorabnachweise. SQL27,
 Protein-Edge v32 und main/Pages `06638359facf67c524294249cca170b0955955ef`
 (Root-SW v31) sind produktiv. Owner-Score `7 → 8 → 7` und öffentlicher
 Pages-Zugang bestätigt; Android OWNER-WAIVED, kein PASS.
-[C4 Roadmap](<archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>)
-und [C4 Evidence](<archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>)
+[C4 Roadmap](<../../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Roadmap (DONE).md>)
+und [C4 Evidence](<../../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>)
 liefern Postimage und Grenzen. R15 benötigt weiterhin seinen eigenen G0.
 
 Ziel:
@@ -2122,8 +2122,8 @@ Status: `DONE / 2026-10-04`; Pages/SW v32 gebaut, S5/S6 abgeschlossen.
 Owner-Abnahme nach erfolgreichem Live-Server-Test mit dokumentierten
 Nachweisgrenzen, kein unabhängig belegter Produktiv-/Android-Smoke.
 G0, S1–S4R, Parser/Cache/Integration und die integrierte lokale Prüfung sind
-abgeschlossen. [Roadmap](<archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Roadmap (DONE).md>)
-und [Evidence](<archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>)
+abgeschlossen. [Roadmap](<../../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Roadmap (DONE).md>)
+und [Evidence](<../../archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>)
 sind als (DONE) archiviert. R15 hängt fachlich von R4, R7-R9, dem produktiven
 R14-Cutover und dem C4-Relevanzvertrag ab, nicht von einer bestimmten
 Retention-Entscheidung in R16. R10 liefert den
