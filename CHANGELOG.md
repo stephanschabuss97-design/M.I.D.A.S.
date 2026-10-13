@@ -122,6 +122,12 @@ erhalten.
 
 ### Changed
 
+- Die [Roadmap-Prozessverträge](../codex-tools/docs/blueprint/README.md) verwenden den
+  gemeinsamen BLUEPRINT-Kern mit fachlichen Rolling-Wave-Lieferpaketen,
+  konkreter S1–S6-Execution und kompaktem Quick Change. Lokale medizinische,
+  Daten-, Security-, Evidence- und Ownergates sowie eingefrorene alte Aufträge
+  bleiben erhalten. AGENTS verweist direkt auf BLUEPRINT; die lokalen
+  Prozessdateien sind als (LEGACY) archiviert. Keine Produkt- oder Runtimeänderung.
 - Activity V2 zeigt auf dem Handy kompaktere Übungskarten mit direkt sichtbarer
   letzter Ausführung und bietet die bestehende Übungssuche nach dem Scrollen
   auch am unteren Bildschirmrand an.

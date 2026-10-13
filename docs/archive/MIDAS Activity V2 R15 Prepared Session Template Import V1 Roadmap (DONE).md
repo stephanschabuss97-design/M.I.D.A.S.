@@ -17,7 +17,7 @@
 | Ausführungsrouting | G0–S4R High, S4 High, S5 High; produktiver Cutover Extra High, S6 Medium; kein behaupteter Wechsel |
 | Review | S4 Delta/Consumer; S5 finaler Full Review, 1 CodeRabbit-Initiallauf und höchstens 1 begründete Verifikation |
 | Evidence | [R15 Evidence](<MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>), zentral für Lifecycle-/Rollback-/Runtime-Nachweise |
-| Projektvertrag | [MIDAS Workflow](<../templates/MIDAS Roadmap Workflow Contract.md>), Root-AGENTS und installiertes KASRKIN |
+| Projektvertrag | [MIDAS Workflow](<MIDAS%20Roadmap%20Workflow%20Contract%20%28LEGACY%29.md>), Root-AGENTS und installiertes KASRKIN |
 | Archiv | Roadmap und Evidence unter docs/archive/ mit Suffix (DONE), S6 abgeschlossen |
 
 Routing: abhängige Discovery-, lokale Umsetzungs-, Prüf- und Publikationswellen.
@@ -49,7 +49,7 @@ oder medizinische Vertragsänderung. S4R begründet ein Child nur bei neuem Risi
 | --- | --- |
 | [BLUEPRINT](<../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md>) und Rolling-Wave-Form | BLUEPRINT-1, COMPLETE: Routing, Readiness, Freeze, Reuse und Closure |
 | [ATLAS-Preflight](<../../../codex-tools/environment/README.md>) | COMPLETE; benötigte Abschnitte der Workstation-SoT FOCUSED_COMPLETE |
-| [Lokale Templates](../templates/README.md), [Workflow](<../templates/MIDAS Roadmap Workflow Contract.md>) | COMPLETE; ursprüngliche Sammelausgabe TRUNCATED, vollständiger Folge-Read in Abschnitten erfolgt |
+| [Lokale Templates](MIDAS%20Roadmap%20Templates%20%28LEGACY%29.md), [Workflow](<MIDAS%20Roadmap%20Workflow%20Contract%20%28LEGACY%29.md>) | COMPLETE; ursprüngliche Sammelausgabe TRUNCATED, vollständiger Folge-Read in Abschnitten erfolgt |
 | Root-AGENTS / README | AGENTS COMPLETE als aktueller Vertrag; README FOCUSED_COMPLETE: Single-User, Ownership, geringe Reibung |
 | [Activity Overview](<../modules/Activity Module Overview.md>) | FOCUSED_COMPLETE: heutiger C4-Vertrag; keine historischen R14-Nullstände als aktuellen Zustand übernehmen |
 | [Masterplan](<../Future trainingsmodule update thoughts.md>) | FOCUSED_COMPLETE: Vorlagenvertrag, R15 und O-9; R15-2 synchronisiert nur zukünftige Produktpassagen |

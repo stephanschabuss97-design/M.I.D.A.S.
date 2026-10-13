@@ -1,6 +1,6 @@
 # MIDAS Activity V2 C4 – vollständige Aktivität und Protein-Berücksichtigung
 
-Execution Roadmap nach [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md) mit dem [MIDAS-Workflowvertrag](../templates/MIDAS%20Roadmap%20Workflow%20Contract.md). C4 ist ein begrenzter, aber risikoreicher SQL-/Edge-/UI-Cutover innerhalb der [Activity-V2-Rolling-Wave](../Future%20trainingsmodule%20update%20thoughts.md); keine zusätzliche Parent-Roadmap und kein Execution Child.
+Execution Roadmap nach [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md) mit dem [MIDAS-Workflowvertrag](MIDAS%20Roadmap%20Workflow%20Contract%20%28LEGACY%29.md). C4 ist ein begrenzter, aber risikoreicher SQL-/Edge-/UI-Cutover innerhalb der [Activity-V2-Rolling-Wave](../Future%20trainingsmodule%20update%20thoughts.md); keine zusätzliche Parent-Roadmap und kein Execution Child.
 
 ## Identität und Startkarte
 

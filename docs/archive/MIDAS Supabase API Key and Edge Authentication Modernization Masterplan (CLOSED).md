@@ -57,7 +57,7 @@ Planung, Zulassung und Wirkungsgenehmigung gemäß Restarbeitsdokument.
 
 Dieser Stand geht den historischen Karten unten vor. Owner D32 gibt die konkrete Env-/Key-/Store-/Scheduler-/Acht-Function-/Caller-/Webveröffentlichung einschließlich Commit/Push frei. G2 bleibt lokal freigegeben; G3/G4 sind für dieses Paket GRANTED und technisch umgesetzt. G5/G6 NOT_GRANTED, G7 NON_SCOPE. HS256 CURRENT / ES256 STANDBY: keine Signingrotation oder Legacyabschaltung. Android/Widget bleibt außerhalb dieses Fensters.
 
-**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../templates/MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
+**Env original geschlossen:** `.env.supabase.local` enthält alle 13 konkret benötigten Felder; fünf vorhandene Werte bewahrt, acht ergänzt. `monthly_report_backend` und `incidents_push_scheduler` einmal angelegt; keine Rotation vorhandener Keys. Echter nicht-anonymer Owner durch serverseitiges SDK2.45.4 `getUser()` belegt. Secretsfreie [Vorlage](<../MIDAS%20Supabase%20Operator%20Env.example>) und [Consumer-/Storezuordnung](<../MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md>). 80 benannte Checks PASS. Original CLOSED / COMPLETED_SUCCESS: 93/34 → 88/34 Rest, Delta 5/0 Prozentpunkte, AccountedCharge 12/3 separat. Null Weeklydelta bei 1-Punkt-Auflösung bedeutet keine Nullkosten. Originalbelege `.kasrkin/work/supa-env-full-resume2-20261009`; eingefrorene Completion/Evidence unverändert.
 
 **Ganzer Cutover:** neues Originalbundle `.kasrkin/work/supa-g3-cutover-resume2-candidate-20261009/bundle.json`; PRIMARY_ALLOWED bei 83/33 Rest, Originalpermit vor Arbeit persistiert. HEURISTIC 18–30 Punkte 5h / 4–8 Weekly, MEDIUM, inklusive Tests, gewöhnlicher Korrekturen, nativem Review, Veröffentlichung, Rückweg und Closure; Reserve 25/10 einmal zusätzlich. Keine vergleichbare Eligible History behauptet.
 
@@ -489,12 +489,12 @@ heutige Sourcefingerprints wiederverwenden.
 | --- | --- | --- |
 | G01: [AGENTS.md](<../../AGENTS.md>) | `e28da5e925a71093 / COMPLETE` | MIDAS Scope/Lesepflicht/Review/KASRKIN |
 | G02: [AGENTS.md](<../../../codex-tools/AGENTS.md>) | `56baddfb359f68ed / COMPLETE` | Werkstatt/Cross-Repo-Regeln |
-| G03: [MIDAS Roadmap Workflow Contract.md](<../templates/MIDAS%20Roadmap%20Workflow%20Contract.md>) | `d22e944d221c6556 / COMPLETE` | S1-S6/R3/Evidence/Usage/Reasoning |
+| G03: [MIDAS Roadmap Workflow Contract.md](<MIDAS%20Roadmap%20Workflow%20Contract%20%28LEGACY%29.md>) | `d22e944d221c6556 / COMPLETE` | S1-S6/R3/Evidence/Usage/Reasoning |
 | G04: [ROADMAP_AUTHORING_CONTRACT.md](<../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md>) | `d2bf138563449bc9 / COMPLETE` | BLUEPRINT-1/Routing/READY/Child/Freeze |
 | G05: [ROLLING_WAVE_ROADMAP_TEMPLATE.md](<../../../codex-tools/docs/blueprint/ROLLING_WAVE_ROADMAP_TEMPLATE.md>) | `8381862a65cd389b / COMPLETE` | Parent/Wave/Review/Resume |
-| G06: [MIDAS Roadmap Template.md](<../templates/MIDAS%20Roadmap%20Template.md>) | `442385dc2be8a5cd / FOCUSED_COMPLETE` | Pflichtfelder/S1/S2/S5/S6; weitere Phasen durch Workflow |
-| G07: [MIDAS Roadmap Evidence Template.md](<../templates/MIDAS%20Roadmap%20Evidence%20Template.md>) | `f0e961cf8f00be67 / FOCUSED_COMPLETE` | Metadaten/Evidencevertrag; Runtimematrix bei Bedarf |
-| G08: [README.md](<../templates/README.md>) | `4defa545770a8407 / COMPLETE` | Overlay und Templatezustaendigkeit |
+| G06: [MIDAS Roadmap Template.md](<MIDAS%20Roadmap%20Template%20%28LEGACY%29.md>) | `442385dc2be8a5cd / FOCUSED_COMPLETE` | Pflichtfelder/S1/S2/S5/S6; weitere Phasen durch Workflow |
+| G07: [MIDAS Roadmap Evidence Template.md](<MIDAS%20Roadmap%20Evidence%20Template%20%28LEGACY%29.md>) | `f0e961cf8f00be67 / FOCUSED_COMPLETE` | Metadaten/Evidencevertrag; Runtimematrix bei Bedarf |
+| G08: [README.md](<MIDAS%20Roadmap%20Templates%20%28LEGACY%29.md>) | `4defa545770a8407 / COMPLETE` | Overlay und Templatezustaendigkeit |
 | G09: [DEV_ENVIRONMENT.md](<../DEV_ENVIRONMENT.md>) | `25cc1986b2a37a5a / FOCUSED_COMPLETE` | Aktuelle Activation/Git/Edge/Browser/Android/bedingte DB |
 | G10: [DEV_ENVIRONMENT.md](<../../../codex-tools/environment/DEV_ENVIRONMENT.md>) | `c6c8df065c9b3fff / FOCUSED_COMPLETE` | Relevante ATLAS CLI/Browser/Android/KASRKIN-Bereiche |
 | G11: [README.md](<../../README.md>) | `cb45a8a4ff8f2657 / FOCUSED_COMPLETE` | Produkt/V2/Auth/Ownership/Architektur/Betrieb |

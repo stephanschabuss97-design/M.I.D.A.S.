@@ -25,7 +25,7 @@ DONE; der umfassendere Parent ist ein ehrlicher Owner-Teilabschluss.
 - AI bleibt deaktiviert; keine Aktivierung, Provider-/Pushprobe oder neue
   Gesundheitsdaten aus diesem Dokument ableiten.
 - Lokaler ignorierter Operatorstore: `.env.supabase.local` mit den 13 belegten
-  Feldern. [Secretsfreie Vorlage](<templates/MIDAS Supabase Operator Env.example>)
+  Feldern. [Secretsfreie Vorlage](<MIDAS%20Supabase%20Operator%20Env.example>)
   und [Consumer-/Storezuordnung](<MIDAS Supabase Operator Key and Store Map.md>).
   Private Secrets, Tokens, Preimages und Receipts bleiben außerhalb Git.
 

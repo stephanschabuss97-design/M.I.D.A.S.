@@ -1,3 +1,9 @@
+> LEGACY — archiviert am 2026-10-13 auf direkten Ownerauftrag.
+> Historischer Nachweis des früheren lokalen Prozessstands; keine aktuelle
+> Autoren-/Template-SoT und keine Pflichtlektüre für neue Roadmaps.
+> Aktuell: [BLUEPRINT](../../../codex-tools/docs/blueprint/README.md) und
+> [Projekt-AGENTS](../../AGENTS.md). Alte Aufträge behalten ihre eingefrorene Gitbasis.
+
 # MIDAS Roadmap Workflow Contract
 
 KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
@@ -6,29 +12,26 @@ oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
 Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
 überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
 
-Dieser Vertrag ergänzt [BLUEPRINT-1 / 2026-09-27](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md)
+Dieser Vertrag ergänzt [BLUEPRINT / 2026-10-13](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md)
 um MIDAS-spezifische medizinische, Daten-, Security-, Evidence-, S1–S6- und
-Abschlussregeln. Neue Roadmaps verwenden die zentrale Dokumentform
+Abschlussregeln.
+Zielrevision: RELEASED / S6-Postchecks BP-EX-01 am 2026-10-13 grün; für neue ausdrücklich übernehmende Aufträge.
+Gemeinsame Phasen, Routing, Autonomie, Kontext, Invalidation und Closure stehen
+im BLUEPRINT-Kern; hier bleiben die erforderlichen lokalen Ergänzungen.
+Alte aktive Aufträge behalten ihre eingefrorene Prozessbasis und ihren Scope
+ohne neue Pflichtfelder. Historische Regeln aus Roadmap/Gitbaseline lesen;
+aktuelle echte Produkt-/Security-/Ownergrenzen und Entbindung gelten weiter.
+Neue Roadmaps verwenden die zentrale Dokumentform
 plus diese lokalen Regeln; laufende und historische Roadmaps bleiben eingefroren.
 
 ## Environment Capability Preflight
 
-Vor READY einer neuen toolabhängigen Roadmap den BLUEPRINT-Preflight über das
-[lokale Overlay](../DEV_ENVIRONMENT.md) und nur benötigte
-[ATLAS-Abschnitte](../../../codex-tools/environment/DEV_ENVIRONMENT.md) ausführen.
-Benötigte Capabilities bestimmen, Wesentliches read-only verifizieren und in
-Startkarte/Context Receipt festhalten:
-
-| Capability | Zweck/Anforderung | ATLAS-Abschnitt | Status | Prüfcommand/-datum |
-| --- | --- | --- | --- | --- |
-| konkrete Fähigkeit | konkreter MIDAS-Bedarf | gezielter Verweis | AVAILABLE_VERIFIED / AVAILABLE_UNVERIFIED_OR_STALE / MISSING / INCOMPATIBLE / NOT_REQUIRED | Nachweis |
-
-MISSING/INCOMPATIBLE blockiert READY mit OWNER_TOOLING_DECISION_REQUIRED.
-Stephan entscheidet Setup, vorhandene Alternative oder Scopeänderung. Erst ein
-separat freigegebener Setupblock darf installieren/aktualisieren; dessen
-Postcondition enthält Verifikation und Aktualisierung des ATLAS-Abschnitts.
-Capability-Readiness ersetzt keine medizinische, Daten-, Secret-, Device- oder
-produktive Freigabe. Resume-Chats verwenden den Receipt bis zur Invalidation.
+Den [BLUEPRINT-Preflight](../../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#readiness-und-capability-preflight)
+mit [lokalem Overlay](../DEV_ENVIRONMENT.md) und nur benötigten ATLAS-Abschnitten
+anwenden; konkrete lokale Anforderungen/Nachweise in Startkarte/Receipt führen.
+Fehlende/inkompatible Tools verlangen OWNER_TOOLING_DECISION_REQUIRED, keine
+implizite Installation. Toolreadiness ersetzt keine lokalen Fach-/Secret-/
+Device-/Produktivgates. Gültigen Receipt bis zur Invalidation übernehmen.
 
 ## Geltung
 
@@ -48,80 +51,31 @@ produktive Freigabe. Resume-Chats verwenden den Receipt bis zur Invalidation.
 
 ## Ausführungsmodus
 
-Jede Roadmap wählt genau ein Autonomieprofil:
+Lokale Profile ergänzen den freigegebenen Scope/Endpunkt des BLUEPRINT-Kerns:
+`local-full` erlaubt freigegebene nichtproduktive reversible Arbeit bis S6;
+`gated` ist Standard und endet am nächsten Owner-Gate; `manual` erlaubt nur
+benannte Einzelblöcke. Profil in Metadaten/Startkarte/Resume, keine Gateaufhebung.
 
-- `local-full`: Alle freigegebenen nichtproduktiven und reversiblen Wellen
-  einschließlich geplanter read-only Reviews dürfen bis S6 ohne zusätzliche
-  Gesprächspause laufen. Produktive, manuelle oder irreversible Owner-Gates
-  bleiben Stopps.
-- `gated`: Autonom bis zum nächsten eingetragenen Owner-Gate; danach erst nach
-  Freigabe fortsetzen. Dies ist der Standard für MIDAS-Roadmaps.
-- `manual`: Nur ausdrücklich freigegebene Einzelblöcke ausführen und danach
-  stoppen.
+Ausführbare Aufträge verwenden die zentrale Execution oder angemessenen Quick
+Change; Rolling Wave ordnet Lieferungen/Aufträge zu. Execution trennt S3
+Bruchrisikoreview von S4R: finale S1–S3-Durchsicht und ausführbarer Scope-Freeze
+vor S4. S1–S3/optional S4R dürfen im Discovery-Auftrag gemeinsam autorisiert
+sein, ihre Full Reviews/Findings/Status/Resume bleiben getrennt nachvollziehbar.
+Eine Discovery-Freigabe allein erlaubt keine Umsetzung. Vorab vollständige
+Implementierungsfreigabe gilt ohne Routinefrage nach grünem internem Exit.
+Kein Produktcode vor grünem S4R; S4 nur native Delta-/Consumerreviews,
+S5 integrierte Tests/Review, S6 lokaler SoT-Sync/Abschluss gemäß Fachregeln unten.
 
-Das Profil steht in Metadaten, Startkarte und Resume Card. Es ändert weder
-Scope noch Reviewtiefe und hebt kein Owner-Gate auf. Eine autonome Welle besitzt
-eine gemeinsame Reasoning-Stufe. Ein notwendiger Reasoning-Wechsel wird als
-Wellengrenze vorab benannt; er wird nicht während eines laufenden Auftrags
-vorausgesetzt.
-
-Die eingetragene Reasoning-Stufe wird nicht still erhöht. Ist die tatsächlich
-in der Oberfläche konfigurierte Stufe für den Agenten nicht maschinenlesbar,
-lautet der Nachweis `NOT_OBSERVABLE`; eine behauptete Verifikation oder
-automatische Korrektur ist unzulässig.
-
-- S1, S2 und S3 werden jeweils als deterministischer Gesamtblock mit Contract
-  Review und Findings-Korrektur abgeschlossen.
-- Eine Roadmap darf S1 bis S3 und optional S4R als eine autonome
-  `Discovery Wave` freigeben. Die Hauptschritte bleiben getrennte,
-  nachvollziehbare Prüfpunkte; ihre Übergänge benötigen bei grünem internen
-  Continuation Gate jedoch keine erneute Owner-Bestätigung.
-- Nach jedem Hauptschritt der Discovery Wave werden Full Review,
-  Findings-Korrektur, Statusmatrix und Session Resume Card abgeschlossen,
-  bevor automatisch zum nächsten freigegebenen Hauptschritt übergegangen wird.
-- Die Discovery Wave stoppt bei einem Owner-Gate, einem Quellenwiderspruch,
-  einer fehlenden Produktentscheidung, notwendiger Scope-Ausweitung, einem
-  blockierenden Finding oder wenn ein erforderlicher Nachweis nicht sicher
-  erbracht werden kann.
-- Bis zum grünen S4 Readiness Review wird kein Produktcode geändert; erlaubt
-  sind Roadmap-, Analyse- und notwendige Vertragsdokumente.
-- Ein auf Discovery begrenzter Auftrag endet mit dem Readiness-Urteil. S4
-  beginnt standardmäßig erst mit dem nächsten ausdrücklich freigegebenen
-  Ausführungsauftrag. Eine Startkarte darf die anschließende
-  Implementierungswelle vorab freigeben; Autonomieprofil und S4R-Gates gelten
-  dabei unverändert.
-- S4 bleibt fachlich substepweise nachvollziehbar. Der Readiness Review gibt
-  zusätzlich eine begründete Empfehlung ab, welche benachbarten Substeps als
-  gemeinsamer Ausführungsblock laufen dürfen.
-- Ein S4-Batch ist nur zulässig, wenn Scope und Datenwirkung kompatibel sind,
-  kein Owner-Gate dazwischenliegt, die Reihenfolge eindeutig bleibt und der
-  gemeinsame Review jeden enthaltenen Substep weiterhin einzeln abdeckt.
-- Produktives SQL, Deploys, Workflow-Runs, Device-Installationen und andere
-  irreversible oder extern sichtbare Aktionen bleiben standardmäßig getrennt,
-  sofern der Readiness Review keine gleichwertig sichere Begründung liefert.
-- S5 und S6 bleiben fachlich getrennte Abschlussphasen. Eine separate
-  Korrektur-/Retest-Welle folgt ihrer betroffenen Readiness und Reviewgrenze;
-  es besteht keine technische Usage-Gate- oder Messpflicht.
-- Commit-Empfehlungen entstehen frühestens nach grünem S5, final nach S6.
-- Statusmatrix und Session Resume Card werden nach jedem abgeschlossenen
-  Haupt- oder S4-Ausführungsblock aktualisiert.
-
-### Gate-Typen
-
-- `Internal Continuation Gate`: Das Exit-Kriterium des Hauptschritts ist
-  erfüllt, Findings sind geschlossen oder regelkonform zugeordnet und keine
-  Owner-Entscheidung ist offen. Innerhalb einer freigegebenen Discovery Wave
-  wird ohne Rückfrage fortgesetzt.
-- `Owner Gate`: Eine fachliche Entscheidung, produktive Wirkung, externe oder
-  irreversible Aktion, Scope-Ausweitung oder ausdrücklich reservierte
-  Freigabe ist erforderlich. Der Agent stoppt mit einem kompakten Briefing.
-- Eine erteilte Owner-Freigabe bleibt gültig, solange ihr fingerprintgebundener
-  Scope, Preflight und Runtimepostimage unverändert sind. Sie wird nicht erneut
-  erfragt. Eine technisch notwendige Handlung des Owners ist separat als
-  `OPERATOR_ACTION_REQUIRED` mit einer exakten Anweisung zu formulieren und ist
-  kein neues Approval-Gate.
-- Ein Abschnittsende allein ist kein Owner-Gate. Fortschrittsmeldungen bleiben
-  informativ und verlangen keine Antwort, solange kein Stop-Grund eintritt.
+S4R empfiehlt kohärente benachbarte S4-Blöcke: kompatible Datenwirkung,
+klare Reihenfolge, keine Owner-Gates dazwischen und Review jedes Substeps.
+Produktives SQL, Deploys, Workflows, Geräte und andere externe/irreversible
+Aktionen bleiben getrennt, außer gleichwertig sichere explizite Begründung.
+Reasoning pro kohärenter Welle stabil; notwendige Wechsel vorher begründen,
+beobachtbare Einstellung oder NOT_OBSERVABLE, keine stille Erhöhung.
+Status/Resume nach Haupt- und Umsetzungsblöcken aktualisieren; technische
+Operatoraktion separat genau anweisen, keine erneute identische Freigabe.
+S5 und S6 bleiben getrennt; Korrektur-/Retestarbeit unter betroffenen Gates.
+Commit-Empfehlung frühestens nach S5, final nach S6, kein automatischer Commit.
 
 ## Arbeitsfortsetzung ohne KASRKIN
 
@@ -187,10 +141,10 @@ Frageabdeckung und keine Invalidation/Exact-Source-Pflicht; sonst READ_ORIGINAL.
 Read Completeness sowie SUFFICIENT/INSUFFICIENT/NOT_REQUIRED werden ausdrücklich
 unterschieden. Abgeschnittene Ausgabe gilt nicht als vollständiger Read.
 
-Das erste Gate nach Rehydration ist POST_REHYDRATION_BASELINE. Ein Delta setzt
-einen echten vorherigen Checkpoint mit identischen Reset-IDs voraus; niemals
-100 Prozent oder Verbrauch erfinden. Bereits verbrauchte Rehydration ist
-bereits geleistete Arbeit und wird nicht nochmals prognostiziert; keine KASRKIN-Reservepflicht.
+Keine POST_REHYDRATION_BASELINE-/Reset-/Usagepflicht. Vorhandene
+Kapazitätsinformationen sind nach BLUEPRINT rein optional; stale oder fehlend
+ist UNKNOWN und kein Fortsetzungsblocker. Keine Abfrage oder Refresh aus
+diesem Adapter ableiten.
 S1 und S4R lesen relevante Quellen ausreichend, bei Contract-Finding auch breiter.
 S6 prüft relevante Roadmapteile, Findings, Evidence und geänderte SoT erneut.
 Der Handoff bleibt ungefähr unter 35 Zeilen und ersetzt seinen Vorgänger.
@@ -272,14 +226,14 @@ getrennte Produktentscheidungen einen klareren Vertrag ergeben.
 
 | Klasse | Typischer Scope | Arbeitsform |
 | --- | --- | --- |
-| `R1` | Copy, Doku, enger mechanischer Fix | S1-S3-Kurzreview, Delta-Review |
+| `R1` | Copy, Doku, enger mechanischer Fix | Quick Change mit kurzem Contract Review, Delta; bei Unsicherheit Execution |
 | `R2` | mehrere Consumer, UI-Flow, normale Edge-/Codeänderung | normale S1-S6-Struktur, Consumer-Review |
 | `R3` | Auth, SQL, RLS, Migration, Löschung, Cron, medizinischer Vertrag | volle Gates, Full-Review, Owner Briefing, meist Evidence |
 
 <!-- markdownlint-enable MD013 -->
 
-- `R1`: S1 bis S3 dürfen kompakt zusammengefasst werden. S4, S5 und S6
-  bleiben erkennbare Umsetzung, Prüfung und Abschluss.
+- `R1`: Quick Change darf inline bleiben; Umsetzung, passende Prüfung und
+  lokaler Abschluss bleiben nötig, ohne sechs künstliche Phasen.
 - `R2`: normale S1-bis-S6-Struktur mit schlanken Ergebnissen.
 - `R3`: S1 bis S3, Readiness, produktive Gates und S6 vollständig.
 
@@ -482,21 +436,20 @@ referenzieren nur ihre IDs.
    Umsetzung; Findings gesammelt bewerten, nicht blind übernehmen.
 5. berechtigte Findings gebündelt korrigieren und nur invalidierte Checks
    wiederholen.
-6. genau einen geplanten externen Verifikationslauf auf dem korrigierten Diff
-   ausführen.
+6. nach berechtigten Korrekturen höchstens einen externen Verifikationslauf
+   auf dem korrigierten Diff ausführen; bei Doku-only kein externer Lauf.
 7. produktiver read-only Preflight.
 8. Owner Briefing und Freigabe je produktivem Gate.
 9. Deploy, SQL und Runtime-Smoke in freigegebener Reihenfolge.
 10. exakte Postconditions.
 11. finaler Review des tatsächlich geänderten Scopes.
 
-Über den initialen Review und den geplanten Verifikationslauf hinaus ist ein
-weiterer externer Review nur nötig, wenn der Verifikationslauf ein neues
-P0/P1-, Security-, Datenintegritäts- oder Vertragsrisiko eröffnet oder der
-Owner ihn ausdrücklich beauftragt. Gewöhnliche Nitpicks erzeugen keine
-unbeschränkte Reviewspirale. Ist der Verifikationslauf nicht verfügbar oder
-rate-limitiert, wird diese Evidence-Lücke ehrlich dokumentiert und nicht als
-PASS behauptet.
+Weitere externe Läufe folgen ausschließlich einer neuen ausdrücklichen
+Ownerentscheidung, nicht automatisch einem Finding. Gewöhnliche Nitpicks
+erzeugen keine Reviewspirale. Ausfall/Rate-Limit als Evidence-Gap dokumentieren,
+niemals PASS behaupten. Das Budget betrifft Codeänderungen; Doku-only bleibt
+ohne externen Review. Nur für den Auftrag relevante Prüf-/Produktivschritte
+der Liste anwenden; kein SQL-/Browser-/Deployzwang aus dem Ablauf.
 
 ## Abschlussvertrag
 

@@ -516,11 +516,11 @@ Dieser Abschnitt ist bewusst direkt formuliert.
   [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md), bevor du Annahmen ueber
   Deno, Supabase CLI, GitHub CLI, Android/ADB oder Deploy-Faehigkeit triffst.
   Es ist das Projekt-Overlay; gemeinsame Installationsfakten gehören zu ATLAS.
-  Neue Roadmaps nutzen BLUEPRINT über den lokalen Template-Einstieg und führen
+  Neue Roadmaps nutzen BLUEPRINT direkt und führen
   vor READY den Capability-Preflight aus; medizinische und produktive Gates bleiben lokal.
-- Nutze fuer neue Roadmaps den Einstieg unter
-  [`docs/templates/README.md`](docs/templates/README.md); aktive Roadmaps
-  bleiben waehrend der Arbeit direkt unter `docs/`.
+- Nutze für neue Roadmaps direkt [BLUEPRINT](../codex-tools/docs/blueprint/README.md)
+  und die Projektgrenzen in AGENTS; aktive Roadmaps bleiben während der Arbeit
+  direkt unter `docs/`. Die früheren lokalen Prozessdateien sind (LEGACY)-Nachweise.
 - Pruefe vor jeder Aenderung, welche Modulgrenzen, Guardrails und Datenfluesse
   beruehrt werden.
 - Wenn eine Aenderung fachlich relevant ist, pruefe nicht nur die UI, sondern

@@ -40,11 +40,9 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
   Roadmaps lesen.
 - Bei einer neuen Roadmap werden die in S1 genannten Pflichtreferenzen
   vollständig gelesen.
-- Beim Erstellen einer Roadmap
-  `docs/templates/README.md` sowie
-  `docs/templates/MIDAS Roadmap Workflow Contract.md` vollständig lesen und
-  `docs/templates/MIDAS Roadmap Template.md` als projektspezifischen Vertrag
-  verwenden.
+- Beim Erstellen einer Roadmap direkt [BLUEPRINT](../../codex-tools/docs/blueprint/README.md)
+  und die Projektgrenzen in [AGENTS](../AGENTS.md) lesen. Autoren-/Template-/
+  Evidence-Struktur ausschließlich zentral; lokale (LEGACY)-Dateien sind Historie.
 - Roadmap-Erstellung und initialer Contract Review erfolgen mit
   `GPT-5.6 Sol / Extra High`. Die spätere Ausführung verwendet die in der
   Roadmap risikobasiert festgelegten Reasoning-Stufen.
@@ -56,10 +54,9 @@ Dieser Abschnitt ist der kurze Arbeitsvertrag fuer neue Codex-/LLM-Chats.
   einer konkreten Vertragsfrage erneut öffnen.
 - Der Session-Handoff wird verdichtet und ersetzt, nicht über Sessions hinweg
   fortlaufend erweitert.
-- Umfangreiche produktive Nachweise werden bei Bedarf nach
-  `docs/templates/MIDAS Roadmap Evidence Template.md` als aktive
-  Evidence-Datei unter `docs/` angelegt. Die Roadmap enthält dann nur
-  Evidence-ID, Ergebnis und Restrisiko.
+- Umfangreiche produktive Nachweise folgen der [zentralen BLUEPRINT-Evidence-Struktur](../../codex-tools/docs/blueprint/ROADMAP_AUTHORING_CONTRACT.md#technische-evidence-gemeinsame-struktur)
+  und den Pflichtauslösern in AGENTS. Aktive Evidence liegt unter `docs/`;
+  die Roadmap referenziert Evidence-ID, Ergebnis und Restrisiko.
 - Bereits grüne Checks werden nur nach relevanter Code-/Vertragsänderung oder
   im finalen Gesamtcheck wiederholt.
 - Zukünftige Roadmaps erhalten keinen separaten S4.5-Schritt. Der native

@@ -1216,7 +1216,9 @@ Retention wird nicht vorsorglich mit der ersten Implementierung gekoppelt.
 
 ## 18. Roadmap-Reihenfolge
 
-Jede Umsetzungsroadmap folgt den Verträgen unter `docs/templates/`.
+Neue Umsetzungsroadmaps folgen direkt [BLUEPRINT](../../codex-tools/docs/blueprint/README.md)
+und den Projektgrenzen in AGENTS. Bestehende eingefrorene Aufträge behalten
+ihre damalige Prozessbasis; frühere lokale Templates sind nur (LEGACY)-Nachweise.
 UI-Roadmaps benötigen einen Live-Server-Smoke. Datenbank-Roadmaps benötigen
 zusätzlich disposable SQL-Tests und ein ausdrückliches produktives Gate.
 
@@ -1235,7 +1237,7 @@ ersetzt nicht die ausführlichen Arbeitsverträge der einzelnen Roadmaps.
   vorbereitet werden.
 - Die R1-R16- und C-Gate-Beschreibungen bleiben bis dahin Zielkorridore. Sie dürfen keine
   noch unbewiesenen Tabellen-, API-, UI- oder Migrationsdetails erzwingen.
-- Jede Roadmap erhält gemäß `docs/templates/` einen eigenen
+- Jede neue Roadmap erhält gemäß BLUEPRINT und MIDAS-AGENTS einen eigenen
   Ausführungs-Chat, eine vollständige Startkarte und einen Fresh-Chat-Test.
 - Beim Abschluss synchronisiert S6 nur nachgewiesene Vertragsänderungen in
   diesen Masterplan. Reihenfolge, IDs oder Scope werden nicht still geändert.
