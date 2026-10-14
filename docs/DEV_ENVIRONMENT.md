@@ -1,10 +1,7 @@
 # MIDAS Dev Environment
 
-KASRKIN ist seit 2026-10-12 durch ausdrückliche Ownerentscheidung entbunden.
-Neue und laufende Roadmaps arbeiten ohne KASRKIN-Aufrufe, Usage-Gates, Permits
-oder KASRKIN-Checkpointfelder. Fachliche Readiness, Scope, Review, sichere
-Postconditions und produktive Ownergates bleiben verbindlich. Diese Entscheidung
-überstimmt ältere KASRKIN-Klauseln, auch in unveränderten aktiven Roadmaps.
+KASRKIN ist entbunden; maßgeblich ist der
+[lokale Consumerstatus](#kasrkin-consumerstatus).
 
 Dieses Dokument ist das MIDAS-Projekt-Overlay. Owner ist Stephan; MIDAS besitzt
 Nutzung, Anforderungen und Sicherheitsgrenzen. Gemeinsame Installationsstände

@@ -1,11 +1,13 @@
 # Auth Module - Functional Overview
 
-## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+## Supabase-Modernisierung — dokumentierter Stand D32/D33
 
-Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
-Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
-ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
-Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+Backend/Web wurde unter D32 ausgerollt und unter D33 nach normaler
+Ownernutzung akzeptiert (Stand 2026-10-09).
+[Betriebsstand und Restarbeit][supabase-state] dokumentieren den Teilabschluss.
+Dies ist keine neue Liveprüfung. Native Store-/Widgetmigration, Android/APK,
+Legacyabschaltung und aktive Signingrotation brauchen weiterhin eigene Gates.
+AI bleibt deaktiviert. Keine zusätzliche Modulrolle.
 
 - Gemeinsamer Public-Keyleser akzeptiert `sb_publishable_` oder Legacy-JWT mit
   role=anon, niemals Secret-/Service-/Usertoken oder Whitespace. Ein altes
@@ -24,7 +26,10 @@ Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
   unbrauchbarer Session. Fehler/Timeout/weitere Kontextänderung bleiben unklar,
   ohne Cacheautorisierung, ohne alte Antwort und ohne Writewiederholung. Notes
   fordert bei unklarer Writeantwort eine Prüfung des Speicherstands. Echte
-  Sessionverluste und definitive Authfehler bleiben gesperrt. Owner-Retest offen.
+  Sessionverluste und definitive Authfehler bleiben gesperrt.
+  Historische Retestnotiz vor D33: Owner-Retest damals offen. D33 belegt
+  normale Ownernutzung; ein dedizierter F22-Owner-Retest ist nicht gesondert
+  nachgewiesen.
 
 
 
@@ -193,3 +198,4 @@ Related docs:
 - Unlock-Flow verifiziert.
 - Dokumentation aktuell.
 
+[supabase-state]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md

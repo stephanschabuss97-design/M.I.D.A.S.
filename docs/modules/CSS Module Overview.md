@@ -14,9 +14,14 @@ Related docs:
 
 ## 0. Start hier (aktuell)
 
-Quickstart fuer neue Sessions (Device Scaling):
-1) Oeffne:
-   - `docs/Device Module Scaling Roadmap.md`
+Historische Quellen: [Device Module Scaling][device-scaling-history] und
+[CSS-/Save-Feedback-Rework][save-feedback-history]. `Step 3: pending` im
+Scalingplan und die unbestätigten Abschlussaufgaben 10.5.1/10.5.2 im Rework
+bleiben damalige Arbeitsstände; daraus entsteht kein aktueller Auftrag.
+
+Quickstart für neue Sessions (aktuelle CSS-Quellen):
+
+1) Öffne diese Modulübersicht und die betroffenen Quellen:
    - `app/styles/hub.css`
    - `app/styles/doctor.css`
    - `app/modules/doctor-stack/charts/chart.css`
@@ -263,3 +268,6 @@ Zusatz (Patterns + Tokens)
 - Subtle Cards: `.card.subtle` in `app/styles/layout.css` (Overview-Optik fuer Profile/Appointments).
 - Actions-Aliases: `.appointments-actions`, `.profile-actions`, `.medication-form-actions`, `.activity-form-actions`, `.capture-card-actions` als Alias auf `.form-actions` in `app/styles/layout.css`.
 - Appointments-Ausnahme: `.appointments-card .appointments-actions` wird in `app/styles/hub.css` bewusst enger gescoped, damit Card-Aktionen die Appointments-Hierarchie abbilden, ohne das globale Form-Action-Pattern zu aendern.
+
+[device-scaling-history]: ../archive/Device%20Module%20Scaling%20Roadmap.md
+[save-feedback-history]: ../archive/MIDAS%20CSS%20and%20Save%20Feedback%20Rework%20%28LEGACY%29.md

@@ -1,11 +1,13 @@
 # Assistant Module - Functional Overview
 
-## Lokaler Supabase-Modernisierungsvertrag — produktive Gates offen
+## Supabase-Modernisierung — dokumentierter Stand D32/D33
 
-Der folgende Vertrag beschreibt den lokal implementierten Repositorystand.
-Die produktive Backend-/Pages-Übernahme benötigt G3/G4; lokale Prüfungen
-ersetzen keine Live-Acceptance. Android/APK, aktive Signingrotation und
-Legacyabschaltung benötigen ihre eigenen Gates. Keine zusätzliche Modulrolle.
+Backend/Web wurde unter D32 ausgerollt und unter D33 nach normaler
+Ownernutzung akzeptiert (Stand 2026-10-09).
+[Betriebsstand und Restarbeit][supabase-state] dokumentieren den Teilabschluss.
+Dies ist keine neue Liveprüfung. Native Store-/Widgetmigration, Android/APK,
+Legacyabschaltung und aktive Signingrotation brauchen weiterhin eigene Gates.
+AI bleibt deaktiviert. Keine zusätzliche Modulrolle.
 
 - Text-/Visiontransporte und Voice-Transcribe/TTS teilen die vom Hub gebundene
   aktuelle Session-/Public-Headerquelle. Kein direkter Key-Bearerfallback.
@@ -287,3 +289,5 @@ Related docs:
 - Pending Contexts bleiben guard-railed und stale-frei.
 - LLM bleibt Fallback fuer freie Sprache statt primaerer Pfad fuer strukturierte Commands.
 - Dokumentation ist auf dem realen Runtime-Stand.
+
+[supabase-state]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
