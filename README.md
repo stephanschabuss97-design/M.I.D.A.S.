@@ -543,7 +543,9 @@ Dieser Abschnitt ist bewusst direkt formuliert.
 MIDAS-Ablage: aktive Roadmap und gegebenenfalls Evidence unter `docs/`, nach
 bewiesenem S6 beide als `(DONE)` unter `docs/archive/`. `(LEGACY)` ist nur Historie.
 Der `docs/`-Root enthält die Einstiegspunkte `DEV_ENVIRONMENT.md`,
-`QA_CHECKS.md` und den nächsten aktiven Arbeitsblock, aktuell R14 Repair Findings.
+`QA_CHECKS.md` und gegebenenfalls den nächsten aktiven Arbeitsblock.
+Die abgeschlossenen R14 Repair Findings liegen im
+[Archiv](<docs/archive/MIDAS Activity V2 R14 Repair Findings (DONE).md>).
 Weiterhin benötigte Modul- und Betriebsunterlagen liegen thematisch unter
 `docs/reference/`; ein abgeschlossener Teilumfang macht offene Restarbeit
 nicht automatisch DONE.

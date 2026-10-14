@@ -101,6 +101,21 @@ Related docs:
 - UI-Feedback via `uiInfo`/`uiError` und Busy-States (`withBusy`).
 - Offline-/RPC-Fehler lassen bestehende Werte unveraendert; Toast weist auf das Problem hin.
 - Ohne Login werden Inputs disabled; die Low-Stock-Box zeigt einen klaren Login-Hinweis.
+- Erfolgreiches Parsen, Berechnen und Starten eines Wasser- oder Kombi-Saves
+  liefert wertfreie Diagnosemarker. Intakeart und technischer Status bleiben
+  sichtbar; konkrete Intakewerte und vollständige Tagessummen gehören nur
+  in den fachlichen Datenpfad und die Produktanzeige, nicht in diese Logs.
+- Ausgewählte Read-/Medikations-/Reset-/Savefehler und ihre vorgelagerten
+  Select-/RPC-Logs liefern feste technische Klassen. Technisches Fehlerfeedback
+  verwendet feste verständliche Texte, auch ohne Fehler-DOM in der Konsole.
+  Error.message/details, Payloads, Writes, Auth/Busy/Retry/Guards bleiben erhalten.
+- Dies gilt für fünf E1-Erfolgsereignisse und 15 E2-Fehlerziele. E3 ergänzt
+  13 Ack-/Reorder-/Follow-up-Ereignisse ohne Medikationsidentität, konkreten
+  Bestand, Ereignistag oder freie source-Werte. Aktions-/Statusmarker und
+  begrenzte Guardgründe bleiben, fachliche IDs/Bestände/Tags/Kontakte sowie
+  Confirm/Cancel, Lock/Cooldown und Mailto-Konstruktion unverändert.
+  13 bewusst erhaltene Kandidaten bleiben außerhalb des Reparaturscopes;
+  keine pauschale Privacyzusage.
 
 ---
 

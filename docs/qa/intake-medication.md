@@ -31,6 +31,22 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Aktion: Einzelwerte und Kombi-Save für beide Tage ausführen und neu laden.
 - Erwartung: Jeder Wert landet genau am gewählten Tag; UI und Dashboard zeigen
   nach Save und Reload denselben Stand.
+- Diagnoseorakel für den aktuellen Wasser-/Kombipfad: synthetische Daten über
+  Originalhandler und echte Listener speichern; Parse-, Berechnungs- und
+  Save-Startmarker einzeln in Touchlog, Loggerhistory und Konsole beobachten.
+  Konkrete Intakewerte und vollständige Summendumps fehlen, Marker bleiben;
+  Payload, ml/g, aktueller Tagesbezug, Schreibzahl und Refresh unverändert.
+- Automatisierte Teilprüfung: `diagnostics.contract.test.js` und
+  `diagnostics.browser.smoke.cjs --suite e1` im Intakeverzeichnis. Browser
+  nutzt Originalmarkup/-module und kontrollierte Provider in frischem Kontext;
+  standardmäßig gebündeltes Chromium, optional `E1_BROWSER_CHANNEL`.
+  Keine produktive Session; diese Teilprüfung belegt keinen Live-Reload oder
+  gesonderten historischen Tagespfad.
+- E2-Read-/Saveorakel: kontrollierte Fehlerantworten und rohe Exceptions mit
+  message/details/code/status-Kanarie auslösen; feste Fehlerklassen bleiben
+  in Touchlog, Loggerhistory, Konsole und technischem DOM-/Fallbackfeedback.
+  Original-API, Fehlerproperties, Payloads und Writeanzahl bleiben erhalten.
+  Automatisierte Ergänzung: dieselben diagnostics.*-Tests mit `--suite e2`.
 - Invalidiert durch: Intake-Form, RPC, Tageszuordnung, Kombi-Save oder Refresh.
 - Cleanup: Die eindeutig markierten Intake-Testwerte wieder entfernen oder den
   isolierten Testbestand verwerfen.
@@ -47,6 +63,16 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Save auslösen.
 - Erwartung: Tagesstate und Pills aktualisieren kontrolliert; der Fehler zeigt
   einen verständlichen Hinweis und lässt die bisherige UI unverändert.
+- Save-Teilprüfung: Stage/Auth, ungültige Eingaben, Busy/Doppelklick sowie
+  Savefehler synthetisch auslösen. Keine zusätzlichen Writes oder falschen
+  Erfolgsmeldungen; Inputs, vorherige Summen und Fehlerfeedback bleiben erhalten.
+  Die E1-Diagnoseprüfung ersetzt keinen Timer- oder Backendnachweis und
+  fordert kein Nulltreffer-Orakel für sämtliche Intake-Fehlerlogs.
+- E2-Resetorakel: originale main-Tageswechselroute und exportierte Modul-API
+  getrennt mit kontrollierten Providern prüfen. Drei Lookupversuche, Delays
+  250/500 ms, identischer Re-Throw und Tagesguards bleiben erhalten; vorhandene
+  Totals verhindern den Write. Lookup- und Save-Endfehler sind begrenzt.
+  API-Probe ist kein normaler Produktaufruf des Modulresets.
 - Invalidiert durch: Intake-Timer, State-Reset, RPC- oder Error-Handling.
 - Cleanup: Simulierte Zeitquelle, Fehleradapter und Teststate zurücksetzen.
 
@@ -144,7 +170,23 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Aktion: Grenzwert überschreiten, unterschreiten und den Kontakt aktualisieren.
 - Erwartung: Low-Stock erscheint nur im knappen Zustand und zeigt nach
   `profile:changed` den aktuellen Kontakt ohne Reload.
-- Invalidiert durch: Low-Stock-Berechnung, Profile-Event oder Dashboard-Copy.
+- E2-Fehlerorakel: Ack und Follow-up-Load kontrolliert fehlschlagen lassen;
+  feste Ausgabe, begrenztes Feedback und originales Fehlerresultat prüfen.
+  Ack-ID entfällt im Fehlerlog, Stocksnapshot/Writezahl bleiben gleich.
+  Auch Batch-/Slot-/Undo-/Refreshfehler über echte Listener prüfen, ohne
+  Mailto-Aktion und mit/ohne Fehler-DOM; keine neue Reorderfachlogik.
+- E3-Diagnoseorakel: Ack-Erfolg, Reorder Start/Confirm/Cancel und Follow-up
+  einschließlich blocked/Launch-Lock/Cooldown prüfen. Touchlog, Loggerhistory
+  und Konsole zeigen feste Aktions-/Status-/Guardmarker ohne Medikations-ID,
+  konkreten Bestand, Ereignistag oder freie source-Werte. Fachdatensätze,
+  RPC-Payload/Writezahl/Refresh, Confirm/Cancel und API-Rückgaben erhalten.
+- Mailto im Harness vor einer echten Protokollübergabe abfangen; synthetische
+  URL/Launchanzahl prüfen. Kein echter Mail-App-Start oder Mailversand;
+  ein HTTP-Routenblock allein genügt nicht. Originalmodule/Listener verwenden.
+- Testhygiene E3-TH-01: frische Browserkontexte; Getterkopie der Loggerhistory
+  nicht leeren. Seed-/Aktionsfenster im Harness ausdrücklich trennen.
+- Invalidiert durch: Low-Stock-Berechnung, Profile-Event oder Dashboard-Copy,
+  Ack-/Reorder-/Follow-up-Handler, Senken oder Harness.
 - Cleanup: Ausgangsbestand und vorherigen Profilkontakt wiederherstellen.
 
 ### IM-010 - Medication-Write ist atomar und nutzergebunden

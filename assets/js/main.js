@@ -1266,7 +1266,7 @@ async function maybeResetIntakeForToday(todayIso){
         return await loadIntakeToday({ user_id: uid, dayIso: todayIso });
       } catch (err) {
         lastErr = err;
-        diag.add?.(`[capture] reset intake lookup failed (attempt ${attempt + 1}): ${err?.message || err}`);
+        diag.add?.(`[capture] reset intake lookup failed (attempt ${attempt + 1}): code=reset_lookup_failed`);
         attempt += 1;
         if (attempt < 3) {
           await delay(250 * attempt);
@@ -1302,7 +1302,7 @@ async function maybeResetIntakeForToday(todayIso){
     }
   } catch (e) {
     const message = e?.message || e;
-    diag.add?.('[capture] reset intake error: ' + message);
+    diag.add?.('[capture] reset intake error: code=reset_failed');
     uiError?.('Intake konnte nicht automatisch zurueckgesetzt werden. Bitte erneut versuchen.');
     throw e;
   } finally {

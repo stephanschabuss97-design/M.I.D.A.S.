@@ -96,6 +96,16 @@ Related docs:
 ## 7. Fehler- & Diagnoseverhalten
 
 - `diag.add` + `uiError` bei Fehlern.
+- Intake-Producer melden erfolgreiches Parsen, Summenberechnen und Save-Start
+  ohne konkrete Intakewerte oder vollständige Tagessummen. Wertfreie Marker
+  werden unverändert an Touchlog, Loggerhistory und Konsole weitergereicht.
+  Die Erfolgsbegrenzung erfolgt an den fünf E1-Producerstellen. Ausgewählte
+  E2-Read-/Medikations-/Reset-/Savefehler verwenden an ihren Callern feste
+  technische Klassen und verständliches UI-Feedback. Logger-, Clear- und
+  Retentionverhalten bleiben unverändert. E3 minimiert 13 Ack-/Reorder-/
+  Follow-up-Producerargumente und behält feste Aktions-/Status-/Guardmarker;
+  freies source wird durch einen technischen Follow-up-Marker ersetzt.
+  Übrige Logs und 13 BEIBEHALTEN-Dispositionen haben eigene Verträge.
 - Guarded Fallbacks wenn Diagnostics deaktiviert sind.
 - Unhandled Rejections werden gemeldet.
 - Boot-Fehler laufen zentral ueber `bootFlow.reportError(...)` mit normalisiertem Payload (`message`, `detail`, `phase`, `stack`, `timestamp`).

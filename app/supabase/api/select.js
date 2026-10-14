@@ -82,7 +82,7 @@ export async function sbSelect({
     } catch (_) {
       /* ignore */
     }
-    diag.add?.(`[sbSelect] REST ${tableName} failed ${res.status} ${details || ''}`);
+    diag.add?.('[sbSelect] REST failed code=read_failed');
     throw new Error(`REST ${tableName} failed ${res.status} - ${details}`);
   }
   return await res.json();

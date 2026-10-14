@@ -153,6 +153,15 @@ langfristig begrenzten Medication-Vertrag sind abgeschlossen:
 - Logging: `[capture:med] refresh/confirm/undo/ack` in `diag`.
 - Fallback: Placeholder-Texte, disabled Buttons, kein Silent Failure.
 - Fehlende Daten fuehren zu klaren Hinweisen statt stummer Teil-UI.
+- RPC-Fehlerlogs und ausgewählte Intake-Consumer (Batch, Slot/Undo, Ack,
+  Follow-up, Refresh) geben feste technische Fehlerklassen statt Backendtexte
+  aus. C07/C09 enthalten keine IDs. Technisches UI-Feedback ist begrenzt;
+  ursprüngliche Errors, RPCs, Payloads, Cache/Events und Bestandslogik bleiben
+  erhalten. E3 begrenzt zusätzlich 13 Ack-/Reorder-/Follow-up-Logargumente:
+  keine Medikations-ID, konkreter Bestand, Ereignistag oder freies source.
+  Aktions-/Status-/Guardmarker bleiben; IDs/Bestände/Tags/Kontakte im
+  Fachkontext, RPCs, Confirm/Cancel, Lock/Cooldown, Rückgaben und Mailto
+  bleiben erhalten. Übrige Diagnoseereignisse haben eigene Verträge.
 
 ---
 

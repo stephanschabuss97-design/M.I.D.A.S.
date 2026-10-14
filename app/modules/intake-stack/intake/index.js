@@ -657,10 +657,10 @@
       saveFeedback?.error({
         button: triggerBtn,
         panel,
-        message: err?.message || 'Speichern fehlgeschlagen.'
+        message: 'Speichern fehlgeschlagen. Bitte erneut versuchen.'
       });
-      uiError(err?.message || 'Speichern fehlgeschlagen.');
-      diag.add?.(`[capture:med] batch error section=${normalizedSection} ${err?.message || err}`);
+      uiError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+      diag.add?.(`[capture:med] batch error section=${normalizedSection} code=medication_action_failed`);
     } finally {
       medicationDailyState.busy = false;
       updateMedicationBatchFooter();
@@ -700,8 +700,8 @@
       }
       await refreshMedicationDaily({ dayIso, reason: 'status-toggle', force: true });
     } catch (err) {
-      uiError(err?.message || 'Aktion fehlgeschlagen.');
-      diag.add?.(`[capture:med] status toggle error slot=${slotId} ${err?.message || err}`);
+      uiError('Aktion fehlgeschlagen. Bitte erneut versuchen.');
+      diag.add?.('[capture:med] status toggle error code=medication_action_failed');
     } finally {
       withBusy(btn, false);
     }
@@ -727,11 +727,11 @@
     try {
       await medModule.ackLowStock(medId, { dayIso, stockSnapshot: stock, reason: 'capture-low-stock' });
       uiInfo('Hinweis ausgeblendet.');
-      diag.add?.(`[capture:med] low-stock ack med=${medId} stock=${stock} day=${dayIso}`);
+      diag.add?.('[capture:med] low-stock ack');
       await refreshMedicationDaily({ dayIso, reason: 'ack', force: true });
     } catch (err) {
-      uiError(err?.message || 'Ack fehlgeschlagen.');
-      diag.add?.(`[capture:med] low-stock ack error med=${medId} ${err?.message || err}`);
+      uiError('Bestätigung fehlgeschlagen. Bitte erneut versuchen.');
+      diag.add?.('[capture:med] low-stock ack error code=medication_action_failed');
     } finally {
       withBusy(btn, false);
     }
@@ -764,27 +764,27 @@
     if (!contract?.ok) {
       event?.preventDefault?.();
       diag.add?.(
-        `[capture:med] reorder start blocked med=${medId} reason=${contract?.reason || 'unknown'}`
+        `[capture:med] reorder start blocked reason=${contract?.reason || 'unknown'}`
       );
       uiError('Rezeptkontakt ist gerade nicht verfügbar.');
       return;
     }
     if (isMedicationReorderLaunchLocked(medId)) {
       event?.preventDefault?.();
-      diag.add?.(`[capture:med] reorder start blocked med=${medId} reason=reorder-launch-locked`);
+      diag.add?.('[capture:med] reorder start blocked reason=reorder-launch-locked');
       uiInfo('Rezeptkontakt wurde gerade bereits angestossen.');
       return;
     }
     if (isMedicationReorderRecentlyPrompted(medId)) {
       event?.preventDefault?.();
-      diag.add?.(`[capture:med] reorder start blocked med=${medId} reason=reorder-reopen-cooldown`);
+      diag.add?.('[capture:med] reorder start blocked reason=reorder-reopen-cooldown');
       uiInfo('Rezeptkontakt wurde gerade bereits geöffnet.');
       return;
     }
     event?.preventDefault?.();
     markMedicationReorderConfirming(medId, contract);
     diag.add?.(
-      `[capture:med] reorder confirm armed med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
+      '[capture:med] reorder confirm armed'
     );
     uiInfo('Rezeptkontakt lokal bestätigen, um die Mail-App zu öffnen.');
     renderMedicationLowStock(medicationDailyState.data);
@@ -815,7 +815,7 @@
     if (!contract?.ok) {
       clearMedicationReorderConfirming(medId);
       diag.add?.(
-        `[capture:med] reorder confirm blocked med=${medId} reason=${contract?.reason || 'unknown'}`
+        `[capture:med] reorder confirm blocked reason=${contract?.reason || 'unknown'}`
       );
       uiError('Rezeptkontakt ist gerade nicht verfügbar.');
       renderMedicationLowStock(medicationDailyState.data);
@@ -823,7 +823,7 @@
     }
     if (isMedicationReorderLaunchLocked(medId)) {
       clearMedicationReorderConfirming(medId);
-      diag.add?.(`[capture:med] reorder confirm blocked med=${medId} reason=reorder-launch-locked`);
+      diag.add?.('[capture:med] reorder confirm blocked reason=reorder-launch-locked');
       uiInfo('Rezeptkontakt wurde gerade bereits geöffnet.');
       renderMedicationLowStock(medicationDailyState.data);
       return;
@@ -831,7 +831,7 @@
     markMedicationReorderPrompted(medId, contract);
     lockMedicationReorderLaunch(medId);
     diag.add?.(
-      `[capture:med] reorder prompted med=${medId} day=${contract.dayIso || medicationDailyState.dayIso || 'n/a'}`
+      '[capture:med] reorder prompted'
     );
     uiInfo('Mail-App wird geöffnet. Rezeptkontakt bleibt lokal.');
     renderMedicationLowStock(medicationDailyState.data);
@@ -845,7 +845,7 @@
     const medId = `${btn?.getAttribute('data-med-mail-cancel') || ''}`.trim();
     if (!medId) return;
     clearMedicationReorderConfirming(medId);
-    diag.add?.(`[capture:med] reorder confirm cancelled med=${medId}`);
+    diag.add?.('[capture:med] reorder confirm cancelled');
     renderMedicationLowStock(medicationDailyState.data);
   }
 
@@ -876,7 +876,7 @@
         reason: options.reason || 'voice:medication-low-stock-followup'
       });
     } catch (err) {
-      diag.add?.(`[capture:med] reorder follow-up load failed day=${dayIso} reason=${err?.message || err}`);
+      diag.add?.(`[capture:med] reorder follow-up load failed day=${dayIso} code=medication_load_failed`);
       return {
         ok: false,
         reason: 'medication-load-failed',
@@ -903,7 +903,7 @@
         : { ok: false, reason: 'medication-reorder-contract-missing' };
     if (!contract?.ok) {
       diag.add?.(
-        `[capture:med] reorder follow-up blocked med=${contract?.medId || med?.id || 'n/a'} reason=${contract?.reason || 'unknown'}`
+        `[capture:med] reorder follow-up blocked reason=${contract?.reason || 'unknown'}`
       );
       return {
         ok: false,
@@ -912,7 +912,7 @@
       };
     }
     if (isMedicationReorderLaunchLocked(contract.medId)) {
-      diag.add?.(`[capture:med] reorder follow-up blocked med=${contract.medId} reason=reorder-launch-locked`);
+      diag.add?.('[capture:med] reorder follow-up blocked reason=reorder-launch-locked');
       return {
         ok: false,
         reason: 'reorder-launch-locked',
@@ -920,7 +920,7 @@
       };
     }
     if (isMedicationReorderRecentlyPrompted(contract.medId)) {
-      diag.add?.(`[capture:med] reorder follow-up blocked med=${contract.medId} reason=reorder-reopen-cooldown`);
+      diag.add?.('[capture:med] reorder follow-up blocked reason=reorder-reopen-cooldown');
       return {
         ok: false,
         reason: 'reorder-reopen-cooldown',
@@ -934,7 +934,7 @@
       renderMedicationLowStock(medicationDailyState.data);
     }
     diag.add?.(
-      `[capture:med] reorder prompted med=${contract.medId} day=${contract.dayIso || dayIso} source=${options.source || 'unknown'}`
+      '[capture:med] reorder prompted source=follow-up'
     );
     uiInfo('Mail-App wird geöffnet. Rezeptkontakt bleibt lokal.');
     if (global?.location) {
@@ -991,8 +991,8 @@
         diag.add?.('[capture:med] refresh blocked not authenticated');
         return;
       }
-      listEl.innerHTML = `<p class="muted small">${escapeHtml(err?.message || 'Laden fehlgeschlagen.')}</p>`;
-      diag.add?.(`[capture:med] refresh error ${err?.message || err}`);
+      listEl.innerHTML = '<p class="muted small">Laden fehlgeschlagen. Bitte erneut versuchen.</p>';
+      diag.add?.('[capture:med] refresh error code=medication_load_failed');
     }
   }
 
@@ -1192,7 +1192,7 @@
           return await loadIntakeToday({ user_id: uid, dayIso: todayIso });
         } catch (err) {
           lastErr = err;
-          diag.add?.(`[capture] reset intake lookup failed (attempt ${attempt + 1}): ${err?.message || err}`);
+          diag.add?.(`[capture] reset intake lookup failed (attempt ${attempt + 1}): code=reset_lookup_failed`);
           attempt += 1;
           if (attempt < 3) {
             await sleep(250 * attempt);
@@ -1228,7 +1228,7 @@
       }
     } catch (e) {
       const message = e?.message || e;
-      diag.add?.('[capture] reset intake error: ' + message);
+      diag.add?.('[capture] reset intake error: code=reset_failed');
       uiError?.('Intake konnte nicht automatisch zurückgesetzt werden. Bitte erneut versuchen.');
       throw e;
     } finally {
@@ -1376,11 +1376,11 @@
     } catch (e) {
       captureIntakeState.totals = { water_ml: 0, salt_g: 0, protein_g: 0 };
       captureIntakeState.logged = false;
-      const errMsg = e?.message || e;
+      const errMsg = 'read_failed';
       if (e?.status === 401 || e?.status === 403) {
         showLoginOverlay?.(true);
       }
-      uiError?.('Intake konnte nicht geladen werden: ' + errMsg);
+      uiError?.('Intake konnte nicht geladen werden. Bitte erneut versuchen.');
       diag.add?.('Capture intake load error: ' + errMsg);
       closeRefreshLog('error', errMsg, 'error');
       if (wrap) wrap.classList.remove('busy');
@@ -1433,7 +1433,7 @@
       }
       value = Number.isFinite(parsed) ? parsed : 0;
     }
-    diag.add?.(`[capture] parsed ${kind}=${value}`);
+    diag.add?.(`[capture] parsed ${kind}`);
 
     const totals = { ...captureIntakeState.totals };
     let successText = '';
@@ -1447,11 +1447,11 @@
       totals.protein_g = roundValue('protein_g', (totals.protein_g || 0) + value);
       successText = '&#x2705; Protein gespeichert';
     }
-    diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
+    diag.add?.('[capture] totals calculated');
 
     saveFeedback?.start({ button: btn, panel });
     try {
-      diag.add?.(`[capture] save start ${kind}: ${JSON.stringify(totals)}`);
+      diag.add?.(`[capture] save start ${kind}`);
       await saveIntakeTotalsRpc({ dayIso, totals });
       diag.add?.('[capture] save network ok');
       captureIntakeState.totals = totals;
@@ -1487,14 +1487,13 @@
       saveFeedback?.ok({ button: btn, panel, successText });
       diag.add?.(`[capture] save ok ${kind}`);
     } catch (e) {
-      const msg = e?.details || e?.message || e;
       if (e?.status === 401 || e?.status === 403) {
         showLoginOverlay?.(true);
         saveFeedback?.error({ button: btn, message: 'Bitte erneut anmelden, um weiter zu speichern.' });
       } else {
-        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen: ' + msg });
+        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen. Bitte erneut versuchen.' });
       }
-      diag.add?.(`[capture] save error ${kind}: ` + msg);
+      diag.add?.(`[capture] save error ${kind}: code=intake_save_failed`);
     }
   }
 
@@ -1538,11 +1537,11 @@
       messageParts.push('Protein');
     }
 
-    diag.add?.(`[capture] totals ${JSON.stringify(totals)}`);
+    diag.add?.('[capture] totals calculated');
 
     saveFeedback?.start({ button: btn, panel });
     try {
-      diag.add?.('[capture] save start salt+protein: ' + JSON.stringify(totals));
+      diag.add?.('[capture] save start salt+protein');
       await saveIntakeTotalsRpc({ dayIso, totals });
       diag.add?.('[capture] save network ok');
       captureIntakeState.totals = totals;
@@ -1585,14 +1584,13 @@
       });
       diag.add?.('[capture] save ok salt+protein');
     } catch (e) {
-      const msg = e?.details || e?.message || e;
       if (e?.status === 401 || e?.status === 403) {
         showLoginOverlay?.(true);
         saveFeedback?.error({ button: btn, message: 'Bitte erneut anmelden, um weiter zu speichern.' });
       } else {
-        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen: ' + msg });
+        saveFeedback?.error({ button: btn, message: 'Update fehlgeschlagen. Bitte erneut versuchen.' });
       }
-      diag.add?.('[capture] save error salt+protein: ' + msg);
+      diag.add?.('[capture] save error salt+protein: code=intake_save_failed');
     }
   }
 

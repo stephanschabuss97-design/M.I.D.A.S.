@@ -290,7 +290,7 @@
       } catch (_) {
         /* ignore */
       }
-      diag.add?.(`[medication] rpc fail fn=${functionName} status=${response.status} ${detail}`);
+      diag.add?.('[medication] rpc fail code=medication_rpc_failed');
       const err = new Error(detail || `rpc ${functionName} failed`);
       err.status = response.status;
       err.code = 'medication_rpc_failed';

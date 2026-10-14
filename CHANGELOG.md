@@ -25,6 +25,19 @@ erhalten.
 
 ### Security
 
+- Intake-Diagnostik E1/E2/E3: Fünf erfolgreiche Wasser-/Kombiereignisse geben
+  wertfreie Marker aus. Ausgewählte Read-/Medikations-/Reset-/Savefehler und
+  vorgelagerte Select-/RPC-Logs verwenden feste technische Klassen und
+  verständliches Fehlerfeedback; Backendfreitext und IDs an C07/C09 entfallen.
+  Touchlog, Loggerhistory und Konsole erhalten diese begrenzten Ausgaben;
+  Erfassung, Payloads, ursprüngliche Errors und Guards bleiben erhalten.
+  13 Ack-/Reorder-/Follow-up-Ausgaben enthalten keine unnötigen Medikations-
+  IDs, konkreten Bestände, Ereignistage oder freien source-Werte. Feste
+  Aktions-/Status-/Guardmarker bleiben; Confirm/Cancel, Lock/Cooldown und
+  fachlicher Mailto-/Bestandsvertrag erhalten. 29 Kandidaten plus vier
+  E2-Ziele lokal geprüft; 13 bewusst erhaltene Dispositionen unverändert.
+  Keine globale Privacyzusage oder produktive Veröffentlichung.
+
 - D33: Backend/Web-Supabase-Modernisierung nach Owner-Retest auf Live Server,
   PC und Android abgeschlossen. Roadmaps/Evidence archiviert; der Gesamtplan
   ist als Teilabschluss beendet. Native Store-/Widgetmigration und Legacy-
