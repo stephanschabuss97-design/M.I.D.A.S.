@@ -1,17 +1,9 @@
 # MIDAS QA - Health Capture and Reports
 
-## D33 Owneracceptance und Abschluss — 2026-10-09
-
-Stephan bestätigt normale Nutzung und neue Arztberichte nach dem Cutover
-auf Live Server/PC und Android ohne Fehler. Der gelieferte reale Health Export
-V3 bestand die unveränderten Sourcevalidatoren und meldet vollständige Domains.
-Datengrundlage und Owner-Render-/Berichtbestätigung sind getrennte Belege.
-Die bisherige Regression bleibt fingerprintgebunden gültig; keine erneute
-Runtime-Testserie, keine Provider-/Push-/künstliche Gesundheitswirkung.
-Backend/Web: DONE / OWNER_ACCEPTED. Native Store-/Widgetmigration und Legacy-
-Abschaltung: zurückgestellt, nicht technisch als bestanden behauptet.
-[Abschlussevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>)
-und [Restumfang/Recovery][supabase-recovery].
+Historie der früheren Ergebnisköpfe: [E02-Originale][e02-history].
+D32/D33-Nachweis: [Programmevidence][programme];
+Restumfang und Recovery bleiben [lokal dokumentiert][supabase-recovery].
+Die historischen Aussagen sind keine aktuellen Testresultate.
 
 [supabase-recovery]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
 
@@ -909,3 +901,6 @@ die weiterhin gültigen Testlane-/Runbookfälle laufen gezielt, und
 Worker-/Recovery-/Cache-/Assetschutzfragen am akzeptierten Repostand.
 Unveränderte Produktbytes, Baseline und Negativfälle sind getrennt nachgewiesen;
 historisch invalidierte Snapshots werden nicht als aktuelles PASS ausgegeben.
+
+[e02-history]: ../../../codex-tools/apps/nomos/docs/archive/NOMOS%20Introduction%20Evidence%20%28DONE%29.md#e02-historische-originale
+[programme]: ../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md

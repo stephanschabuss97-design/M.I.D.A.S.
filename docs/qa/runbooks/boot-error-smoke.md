@@ -12,21 +12,29 @@ Bootfehler-Historie, nicht die fachlichen MIDAS-Module.
 - Browser-DevTools mit Console und Elements sind geöffnet.
 - `window.AppModules.bootFlow` ist vorhanden.
 - Der Lauf verwendet keine produktiven Gesundheitsdaten.
+- Der verändernde Ablauf nutzt ein eigenes, verwerfbares Browserprofil mit
+  eigener Bootfehler-Historie; vorhandene fremde Historie bleibt geschützt.
+  Ohne nachgewiesene Isolation diesen Ablauf nicht beginnen.
 
 ## Wirkung
 
-- Klasse: `disposable`
+- Klasse des folgenden aktiven Ablaufs: nur bei nachgewiesener Isolation
+  `disposable`; History-Löschung und Fehlererzeugung sind lokale Änderungen.
+- Reine Beobachtung eines vorhandenen Fehlers kann read-only sein; sie führt
+  weder das Script noch Clear-/Report-/Cleanupschritte dieses Ablaufs aus.
 - Verändert nur lokale Bootfehler-Historie und sichtbaren Fehlerzustand.
 - Keine Remote-Schreibwirkung, kein Deploy und keine Nutzerkommunikation.
 
 ## Owner-Gate
 
-Keines. Bei einem produktiven Webstand darf der Lauf trotzdem nur mit
-bewusster Zustimmung erfolgen, weil er vorübergehend einen Fehlerzustand zeigt.
+Auf einem produktiven Webstand ist bewusste Zustimmung erforderlich, weil
+der Lauf vorübergehend einen Fehlerzustand zeigt. Ein eigener isolierter
+Teststand ohne produktive Daten benötigt kein zusätzliches Owner-Gate.
+Dies erteilt keine Datenlese-, Recovery- oder Ausführungsfreigabe.
 
 ## Ablauf
 
-1. Vorhandene Historie optional mit
+1. Ausschließlich die eigene isolierte Testhistorie optional mit
    `window.AppModules.bootFlow.clearErrorHistory?.()` leeren.
 2. Folgendes Script in der Browser-Console ausführen:
 
@@ -70,12 +78,15 @@ bewusster Zustimmung erfolgen, weil er vorübergehend einen Fehlerzustand zeigt.
 
 - `bootFlow` fehlt oder besitzt die benötigten APIs nicht.
 - Das Script würde auf einem nicht freigegebenen produktiven Stand laufen.
+- Isolation fehlt oder vorhandene fremde Bootfehler-Historie wäre betroffen.
 - Der Fehlerzustand blockiert Zugriff auf DevTools oder normalen Reload.
 
 ## Cleanup und Postconditions
 
 `window.AppModules.bootFlow.clearErrorHistory?.()` ausführen und MIDAS neu
 laden. Anschließend muss der normale Boot ohne dauerhaften Fehlerzustand laufen.
+Nur den eigenen isolierten Testzustand verwerfen; fremde Historie bleibt
+unverändert. Für reine Beobachtung ist dieser verändernde Cleanup unzulässig.
 
 ## Evidence
 

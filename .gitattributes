@@ -22,3 +22,6 @@
 "docs/templates/MIDAS Roadmap Template.md" -text
 "docs/templates/MIDAS Roadmap Workflow Contract.md" -text
 "docs/templates/README.md" -text
+
+# Preserve the EX-04 historical overlay original byte-for-byte.
+"docs/archive/MIDAS DEV_ENVIRONMENT (LEGACY).md" -text

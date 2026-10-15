@@ -82,8 +82,35 @@ Freigabe den vorherigen belegten Source-Stand erneut deployen. Temporäre
 Testdaten nach dem zuständigen Domänenvertrag entfernen; produktive Evidence
 nicht still löschen.
 
-## Evidence
+## GitHub-Workflow-Smokes
+
+Gemeinsame CLI-/Zugriffs-/Authnachweisgrenzen stehen in
+[ATLAS][ref-1].
+Vor authentifizierter Projektarbeit nötigen Zugriff prüfen; keine Account-,
+Scope- oder Tokenwerte als dauerhafte Toolwahrheit speichern. Login braucht
+passende eigene Autorität, kein automatisches Login aus einem Reviewbedarf.
+Mögliche Commands, nur innerhalb des konkret freigegebenen Auftrags:
+
+```powershell
+gh workflow list
+gh workflow view "Trendpilot Weekly"
+gh run list --workflow "Trendpilot Weekly" --limit 5
+gh workflow run "Trendpilot Weekly" --ref main
+gh run watch <run-id> --exit-status
+gh run view <run-id> --log
+```
+
+Vor jedem manuellen Workflow-Smoke zuerst die Workflowdatei prüfen; alle
+manuellen Runs können produktive Wirkung haben und behalten ihr Owner-Gate.
+`Trendpilot Weekly` ruft die produktive Edge Function ohne `dry_run` auf.
+Der Run ist Runtime-Aktion, kein Lint-/Statuscheck. `success` allein reicht
+nicht: Logs müssen eine erwartete fachliche Edge-Response zeigen, etwa
+`{"ok":true,...}`, ohne Secretwerte oder vollständige Gesundheits-/Authpayloads.
+
+## Ausführungsevidence
 
 Function, Commit, lokale Checks, Deploy-Zeit, Remote-Version/-Status,
 Smokekategorie und Ergebnis in Roadmap oder Evidence festhalten. Secrets und
 vollständige Authorization-Header bleiben ausgeschlossen.
+
+[ref-1]: ../../../../codex-tools/apps/atlas/docs/WORKSTATION_CAPABILITIES.md#github-cli

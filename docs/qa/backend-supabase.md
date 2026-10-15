@@ -1,23 +1,11 @@
 # MIDAS QA - Backend and Supabase
 
-## D33 Owneracceptance und Abschluss — 2026-10-09
-
-Stephan bestätigt normale Nutzung und neue Arztberichte nach dem Cutover
-auf Live Server/PC und Android ohne Fehler. Der gelieferte reale Health Export
-V3 bestand die unveränderten Sourcevalidatoren und meldet vollständige Domains.
-Datengrundlage und Owner-Render-/Berichtbestätigung sind getrennte Belege.
-Die bisherige Regression bleibt fingerprintgebunden gültig; keine erneute
-Runtime-Testserie, keine Provider-/Push-/künstliche Gesundheitswirkung.
-Backend/Web: DONE / OWNER_ACCEPTED. Native Store-/Widgetmigration und Legacy-
-Abschaltung: zurückgestellt, nicht technisch als bestanden behauptet.
-[Abschlussevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>)
-und [Restumfang/Recovery][supabase-recovery].
+Historie der früheren Ergebnisköpfe: [E02-Originale][e02-history].
+D32/D33-Nachweis: [Programmevidence][programme];
+Restumfang und Recovery bleiben [lokal dokumentiert][supabase-recovery].
+Die historischen Aussagen sind keine aktuellen Testresultate.
 
 [supabase-recovery]: ../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
-
-## D32 runtime evidence - 2026-10-09
-
-113 cached local backend tests,20 Auth/Frontend tests and11 hosted fixture Browser/PWA checks passed. Fresh exact8 Function deploys/flags and33 source bytes verified.15 live scheduler negatives/null-effect tests,15 live User negatives and7 actual owner-JWT invalid-domain paths passed. Incident false plus strict named guard; other flags preserved. No clinical/provider/actual-push/device effects. Original launcher/adapter failures retained separately; only invalidated unloaded tests repeated. Evidence: active Supabase programme Evidence and ignored supa-g3-cutover-resume2-20261009 context. Positive post-deploy product acceptance remains OPEN; fixtures are not real Google/clinical acceptance.
 
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `BS-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
@@ -52,7 +40,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   anfordern.
 - Erwartung: `SupabaseAPI` und `AppModules.supabase` zeigen auf dasselbe Bundle,
   `supabase:ready` feuert einmal und fehlende Exporte werfen sichtbar.
-- Invalidiert durch: Supabase-Aggregator, Module Sources, Ready-Event oder Wrapper.
+- Invalidiert durch: Supabase-Aggregator, Module Sources, Ready-Event oder
+  Wrapper.
 
 ### BS-002 - Supabase Client bleibt kontextsensitiv und singleton
 
@@ -65,7 +54,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Erwartung: Der Inflight-Lock erzeugt pro Kontext keinen Mehrfachclient;
   Browser nutzt normale Persistenz, WebView bleibt importierter Mirror statt
   eigenständigem Auth-Owner.
-- Invalidiert durch: Client-Factory, Inflight-Lock, Storage oder Android-Erkennung.
+- Invalidiert durch: Client-Factory, Inflight-Lock, Storage oder
+  Android-Erkennung.
 
 ### BS-003 - Edge Functions bestehen Deno Source Checks
 
@@ -95,7 +85,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   MIDAS_OWNER_USER_ID. Scheduler benötigt exakt benannten Secretkey und
   übereinstimmenden festen Serverowner; ungültiger Bearer fällt nie auf Secret
   zurück. Fehlende/fremde Identität wird vor Daten-/AIwirkung abgelehnt.
-- Invalidiert durch: Edge-Auth, Scheduler-Caller, User-Auflösung oder Service Role.
+- Invalidiert durch: Edge-Auth, Scheduler-Caller, User-Auflösung oder Service
+  Role.
 - Cleanup: Isolierte Auth-, Request- und Datenbankadapter verwerfen.
 
 ### BS-005 - Edge Fehler liefern sicheres JSON und CORS
@@ -104,7 +95,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: read-only
-- Voraussetzung: OPTIONS, ungültiges JSON, Validierungsfehler und interner Fehler
+- Voraussetzung: OPTIONS, ungültiges JSON, Validierungsfehler und interner
+  Fehler
   sind kontrolliert auslösbar.
 - Aktion: Alle Fehler- und Preflight-Pfade der betroffenen Function aufrufen.
 - Erwartung: OPTIONS ist CORS-konform, Clientfehler bleiben 4xx mit klarer JSON-
@@ -123,7 +115,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   `service_role` sowie `PUBLIC` lesen.
 - Erwartung: Kein pauschales Schema-Grant und kein ungeprüftes `grant all` ist
   aktiv; jedes Objekt besitzt nur die dokumentierten Rollenrechte.
-- Invalidiert durch: Neues Data-API-Objekt, Grant-SQL, Rollenvertrag oder Schema.
+- Invalidiert durch: Neues Data-API-Objekt, Grant-SQL, Rollenvertrag oder
+  Schema.
 - Cleanup: Isolierten lokalen Stack beziehungsweise Testschema verwerfen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
 
@@ -135,7 +128,8 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Wirkung: disposable
 - Voraussetzung: Zwei isolierte Testuser, je eigene Zeilen und die aktuellen
   RLS-Policies sind vorhanden.
-- Aktion: SELECT, INSERT, UPDATE und DELETE als beide User sowie kontrolliert als
+- Aktion: SELECT, INSERT, UPDATE und DELETE als beide User sowie kontrolliert
+  als
   Service Role ausführen.
 - Erwartung: Authenticated sieht nur eigene Zeilen. Direkte Änderungen sind
   nur erlaubt, wenn der jeweilige Tabellenvertrag Client-DML vorsieht;
@@ -152,16 +146,20 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: disposable
-- Voraussetzung: Aktuelle Data-API-RPCs und Rollen stehen im isolierten Schema bereit.
+- Voraussetzung: Aktuelle Data-API-RPCs und Rollen stehen im isolierten Schema
+  bereit.
 - Aktion: Funktionssignaturen, Execute-ACL, `security invoker/definer`,
-  `search_path` und Aufruf als `anon`, `authenticated` sowie `service_role` prüfen.
+  `search_path` und Aufruf als `anon`, `authenticated` sowie `service_role`
+  prüfen.
 - Erwartung: Nur beabsichtigte Rollen dürfen exakt die versionierte Signatur
   aufrufen; privilegierte Funktionen besitzen einen begrenzten internen Vertrag.
 - C4-Delta: SQL27 behält die Writer-/History-/Export-ACLs bei.
   `activity_protein_days(date,date)` ist ownergebunden, die separate
   `activity_protein_days_for_owner(uuid,date,date)` nur für den Service-Pfad.
   Anonyme/fremde Principals und direkte DML bleiben gesperrt; SQL26 ungefiltert.
-- Nachweisroute: [C4 Evidence](<../archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>), EV-C4-L01,
+- Nachweisroute:
+  [C4 Evidence][ref-2]
+  , EV-C4-L01,
   EV-C4-P01/P02; zusätzlich BS-003/004/005/006/007/012 und IM-013.
 - Invalidiert durch: RPC-Signatur, Function-Security, Grants oder Search Path.
 - Cleanup: Isoliertes Testschema verwerfen.
@@ -173,19 +171,23 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: disposable
-- Voraussetzung: Lokaler Supabase-Stack mit `pg_cron` und isoliertem Jobnamen ist
+- Voraussetzung: Lokaler Supabase-Stack mit `pg_cron` und isoliertem Jobnamen
+  ist
   verfügbar.
 - Aktion: Ein aktuelles Retention-/Hygiene-SQL zweimal ausführen und Jobname,
   Owner, Datenbank, Schedule, Command, Aktivstatus sowie Execute-ACL lesen.
 - Erwartung: Genau ein Job mit identischem Vertrag bleibt aktiv; fremder Owner,
-  Duplikat oder Vertragsdrift stoppt sichtbar statt still umgeschrieben zu werden.
-- Invalidiert durch: Cron-SQL, Extension, Owner-, Schedule-, Command- oder ACL-Änderung.
-- Cleanup: Isolierten Testjob und Fixtures entfernen oder lokalen Stack verwerfen.
+  Duplikat oder Vertragsdrift stoppt sichtbar statt still umgeschrieben zu
+  werden.
+- Invalidiert durch: Cron-SQL, Extension, Owner-, Schedule-, Command- oder
+  ACL-Änderung.
+- Cleanup: Isolierten Testjob und Fixtures entfernen oder lokalen Stack
+  verwerfen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
 
 ### BS-010 - Lokaler Supabase-Stack bleibt von Produktion getrennt
 
-- Vertrag: [MIDAS Dev Environment](../DEV_ENVIRONMENT.md)
+- Vertrag: [Backend Stack](../../backend/README.md#lokaler-supabase-stack)
 - Ebene: local-runtime
 - Ausführung: manual
 - Wirkung: disposable
@@ -196,13 +198,14 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Erwartung: Stack läuft nur lokal, Remote-Inbound bleibt blockiert und kein
   erfolgreicher lokaler Check gilt als produktive Freigabe.
 - Invalidiert durch: Docker, Supabase CLI, Config, Seed oder Firewall-Regel.
-- Cleanup: Lokalen Stack mit `supabase stop --workdir backend` beenden; temporäre
+- Cleanup: Lokalen Stack mit `supabase stop --workdir backend` beenden;
+  temporäre
   Testdaten ausschließlich im lokalen Stack belassen oder den Stack verwerfen.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
 
 ### BS-011 - Deploy nutzt den versionierten Backend-Source
 
-- Vertrag: [MIDAS Dev Environment](../DEV_ENVIRONMENT.md)
+- Vertrag: [Backend Deploy](../../backend/README.md#deploy-vertrag)
 - Ebene: remote
 - Ausführung: manual
 - Wirkung: productive
@@ -210,15 +213,17 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   Projekt-Referenz sind vorhanden.
 - Aktion: Betroffene Function aus dem Repo-Workdir `backend` deployen, Remote-
   Liste prüfen und einen sicheren Smoke ausführen.
-- Erwartung: Deploy verwendet `backend/supabase/functions/<name>`, Remote-Funktion
+- Erwartung: Deploy verwendet `backend/supabase/functions/<name>`,
+  Remote-Funktion
   ist erreichbar und Source-Check, Deploy und Runtime-Smoke bleiben getrennte
   Nachweise.
-- Invalidiert durch: Backend-Pfad, Supabase CLI, Function-Code oder Deploy-Config.
+- Invalidiert durch: Backend-Pfad, Supabase CLI, Function-Code oder
+  Deploy-Config.
 - Runbook: [Edge Function Deploy Smoke](runbooks/edge-function-deploy-smoke.md)
 
 ### BS-012 - Secrets bleiben außerhalb von Repo und Evidence
 
-- Vertrag: [MIDAS Dev Environment](../DEV_ENVIRONMENT.md)
+- Vertrag: [Operatorzuordnung][operator]
 - Ebene: static
 - Ausführung: automated
 - Wirkung: read-only
@@ -257,8 +262,9 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 ### BS-014 - Activity V2 C2 projiziert einen unveränderlichen Katalog v2
 
 - Vertrag: [Activity Module Overview](<../modules/Activity Module Overview.md>),
-  [C2 Catalog Contract](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Contract (DONE).md>)
-  und [C2 Evidence](<../archive/MIDAS Activity V2 C2 Catalog Version 2 Studio Vocabulary Evidence (DONE).md>)
+  [C2 Catalog Contract][ref-3]
+  und
+  [C2 Evidence][ref-4]
 - Ebene: disposable + productive read-only
 - Ausführung: automated + owner-gated SQL
 - Wirkung: disposable write; produktiver Write ausschließlich am freigegebenen
@@ -282,28 +288,48 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
   v2-Referenzen und ein separates Owner-Gate.
 - Runbook: [Supabase SQL Cutover](runbooks/supabase-sql-cutover.md)
 
-
 ### BS-015 - Moderne Servermaps wählen strikt vor Legacyfallback
 
-- Vertrag: [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
+- Vertrag:
+  [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: disposable
-- Voraussetzung: echte Shared-Auth-/SDK-Sources und lokale Env-/Fetchfixtures, kein Netzwerkrecht.
-- Aktion: fehlende, vorhandene leere/kaputte/typfalsche Maps und fehlende/falsche benannte Einträge durchspielen.
-- Erwartung: nur fehlende Map erlaubt internen typgültigen Legacyübergang; vorhandene Fehlkonfiguration scheitert vor Wirkung, Named-scheduler niemals über Legacycaller.
+- Voraussetzung: echte Shared-Auth-/SDK-Sources und lokale Env-/Fetchfixtures,
+  kein Netzwerkrecht.
+- Aktion: fehlende, vorhandene leere/kaputte/typfalsche Maps und
+  fehlende/falsche benannte Einträge durchspielen.
+- Erwartung: nur fehlende Map erlaubt internen typgültigen Legacyübergang;
+  vorhandene Fehlkonfiguration scheitert vor Wirkung, Named-scheduler niemals
+  über Legacycaller.
 - Invalidiert durch: Envparser, SDKauswahl, Named-key-Vertrag oder Backendauth.
-- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
-
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive
+  Wirkung.
 
 ### BS-016 - Public-Keytyp ist kein Projekt- oder Userauthbeweis
 
-- Vertrag: [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
+- Vertrag:
+  [Supabase Core Module Overview](<../modules/Supabase Core Overview.md>)
 - Ebene: local-runtime
 - Ausführung: automated
 - Wirkung: disposable
-- Voraussetzung: aktueller Public-Keyfilter und Config-/Clientreader in isolierter VM.
-- Aktion: modern public und Legacy-ANON lesen; Secret-/Service-/Usertoken, Whitespace, kaputte Struktur und stale cached Clientkonfiguration prüfen.
-- Erwartung: nur Publictypen akzeptiert, UIwrite ohne Bearerpräfix; SDKsession bleibt separate aktuelle Berechtigung, Endpointidentität wird gebunden; keine gültige Projektbindung aus Syntax ableiten.
-- Invalidiert durch: Keyfilter, ConfigUI/-Restore oder Endpoint-/Clientidentität.
-- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+- Voraussetzung: aktueller Public-Keyfilter und Config-/Clientreader in
+  isolierter VM.
+- Aktion: modern public und Legacy-ANON lesen; Secret-/Service-/Usertoken,
+  Whitespace, kaputte Struktur und stale cached Clientkonfiguration prüfen.
+- Erwartung: nur Publictypen akzeptiert, UIwrite ohne Bearerpräfix; SDKsession
+  bleibt separate aktuelle Berechtigung, Endpointidentität wird gebunden; keine
+  gültige Projektbindung aus Syntax ableiten.
+- Invalidiert durch: Keyfilter, ConfigUI/-Restore oder
+  Endpoint-/Clientidentität.
+- Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive
+  Wirkung.
+
+[ref-2]: ../archive/MIDAS%20Activity%20V2%20C4%20Activity%20Truth%20and%20Protein%20Relevance%20Evidence%20%28DONE%29.md
+[ref-3]: ../archive/MIDAS%20Activity%20V2%20C2%20Catalog%20Version%202%20Contract%20%28DONE%29.md
+[ref-4]: ../archive/MIDAS%20Activity%20V2%20C2%20Catalog%20Version%202%20Studio%20Vocabulary%20Evidence%20%28DONE%29.md
+
+[operator]: ../reference/supabase/MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md
+
+[e02-history]: ../../../codex-tools/apps/nomos/docs/archive/NOMOS%20Introduction%20Evidence%20%28DONE%29.md#e02-historische-originale
+[programme]: ../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md

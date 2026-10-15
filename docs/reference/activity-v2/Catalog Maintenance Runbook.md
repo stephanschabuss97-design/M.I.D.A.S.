@@ -117,9 +117,10 @@ git diff --check
 - vollständige Search-Matrix;
 - Gleichheit von Vertrag, Runtime und SQL-Snapshot.
 
-SQL-Fixture und produktive Gates folgen zusätzlich der aktiven Roadmap und
-`docs/DEV_ENVIRONMENT.md`. Der Inspector führt niemals SQL aus und liest keine
-Secrets.
+SQL-Fixture und produktive Gates folgen zusätzlich der aktiven Roadmap,
+[Backendvertrag](../../../backend/README.md) und
+[SQL-Cutover-Runbook](../../qa/runbooks/supabase-sql-cutover.md). Der Inspector
+führt niemals SQL aus und liest keine Secrets.
 
 ## Bewusste Grenze
 

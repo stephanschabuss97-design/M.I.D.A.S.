@@ -7,19 +7,34 @@ Ausführungsevidence.
 MIDAS besitzt derzeit keine autoritative Gesamtversionsnummer. Bis zum ersten
 bewussten Release-Cut gilt `Unreleased` zusammen mit dem exakten Git-Commit.
 Die frühere Versions- und Unreleased-Historie bleibt im
-[Legacy-Changelog](<docs/archive/history/MIDAS Legacy Changelog v0.1-v1.8 and Unreleased.md>)
+[Legacy-Changelog][ref-1]
 erhalten.
 
 ## Unreleased
 
 ### Maintenance
 
+- NOMOS-EX-02: Gemeinsame QA-Kriterien direkt und prospektiv an
+  `NOMOS-QA / 2026-10-15 / E01` gebunden. Lokale Test-IDs, Suiteowner,
+  ausdrückliche Pflichtfelder je Test sowie medizinische und Ownergrenzen
+  bleiben erhalten. Historische D28-/D32-/D33-Köpfe mit vollständigen
+  Originalen im Adoptionsnachweis erhalten; Boot-Smoke-Varianten und
+  Remote-read-only-Wirkung von Zugriffsautorität getrennt. Keine Runtimeänderung.
+
+- ATLAS-EX-04: AGENTS bindet ATLAS und BLUEPRINT direkt. Lokale Backend-,
+  Android-, QA-, Operator- und Recoveryanforderungen sind in ihren bestehenden
+  Fachquellen erreichbar; das frühere Environment-Overlay bleibt bytegleich
+  als LEGACY archiviert. Betriebsleserouten und Recovery-Baselinebezug auf den
+  dokumentierten D32/D33-Stand synchronisiert. Medizinische/Ownergates und
+  offene native-/Legacy-Restarbeit bleiben erhalten; keine Runtimeänderung.
+
 - Repositorybereinigung MC-EX-01: historische Tooling-/ARGUS-Unterlagen und
   Releasewerkzeuge archiviert, leere Altverzeichnisse entfernt und den
   Activity-Masterplan eindeutig benannt. Weiterhin benötigte Activity- und
   Supabase-Unterlagen sowie das Programmierhandbuch thematisch unter
   `docs/reference/` eingeordnet; der `docs/`-Root bleibt auf Einstiegspunkte
-  und den nächsten aktiven Arbeitsblock beschränkt. Katalog-/Isolationstooling und
+  und den nächsten aktiven Arbeitsblock beschränkt. Katalog-/Isolationstooling
+  und
   direkte Contract-Tests auf den akzeptierten Repostand gebunden; Produkt,
   Backend, SQL, Secrets und Native-/Legacy-Restumfang unverändert.
 
@@ -44,7 +59,6 @@ erhalten.
   Abschaltung bleiben ausdrücklich zurückgestellt. Die obsolete MIDAS-Kopie
   des KASRKIN-Future-Thought-Dokuments auf Ownerauftrag entfernt.
 
-
 - D32: Acht Supabase Functions mit verifiziertem festen Owner und strikten
   User-/Named-Keyguards veröffentlicht. Incident verwendet verify_jwt=false
   und einen ausschließlich benannten Schedulerkey; der GitHubcaller prüft
@@ -59,18 +73,37 @@ erhalten.
   echte Sessionverluste zeigen Login. Notizwrites werden nicht wiederholt;
   unklare Antworten verlangen eine Prüfung des Speicherstands. Kohärentes
   PWA-Paket v34, echte lokale Medication-/SDK-/Logoutregression; Owner-Retest
-  Login/Doctor/Report/BP bestätigt; Web-v34 auf GitHub Pages veröffentlicht und gehostet geprüft (D28),
-  produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen. [Nachweise](<docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
+  Login/Doctor/Report/BP bestätigt; Web-v34 auf GitHub Pages veröffentlicht und
+  gehostet geprüft (D28),
+  produktive Backend-/Incident-/Store-/Android-/Legacy-Acceptance offen.
+  [Nachweise][ref-2].
 
 - Supabase-Modernisierung lokal vorbereitet und verifiziert: ein gemeinsamer
   Public-Key-/aktueller Sessionvertrag für Web, REST, Hub und Voice; strikte
   feste Owner-/Named-scheduler-Guards im Backend. Konfigspeicherung bleibt bei
   Fehlern auth-sicher, SW-Offlineupdates erzeugen keine unbehandelten
   Hintergrundrejections. Erfolgreiche Netzantworten bleiben bei Cachefehlern
-  nutzbar, Navigationscachewrites sind lifecyclegebunden. Web-v34 ist veröffentlicht;
+  nutzbar, Navigationscachewrites sind lifecyclegebunden. Web-v34 ist
+  veröffentlicht;
   Backendguards bleiben undeployt. Store-/Caller-/Key-Acceptance bleibt hinter
   konkreten G3-/übrigen G4-Freigaben. APK, aktive Signingrotation und Legacy-
-  Abschaltung bleiben offen. [Vertrag und lokale Nachweise](<docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
+  Abschaltung bleiben offen.
+  [Vertrag und lokale Nachweise][ref-3].
+
+- Activity-V2-Tabellen sind RLS-geschützt und clientseitig read-only; Writes
+  laufen ausschließlich über den gehärteten authentifizierten
+  `SECURITY DEFINER`-Commit. `anon`, `service_role` und `PUBLIC` erhalten kein
+  RPC-Execute, und direkte Tabellen-DML ist entzogen.
+- Activity-V2-Korrektur und -Löschung laufen ausschließlich über eng
+  ownergebundene, gehärtete RPCs mit Revision/Content-CAS. Der interne
+  Canonicalization-Helper liegt im nicht exponierten Schema `midas_private`;
+  direkte Tabellen-DML sowie `anon`-/`PUBLIC`-Zugriff bleiben entzogen.
+- Der gemeinsame Activity-Consumer ist `SECURITY INVOKER`, besitzt keinen
+  Ownerparameter und erlaubt Execute nur für nicht anonyme
+  `authenticated`-Aufrufe. SQL 25 verändert keine Activity- oder Reportdaten.
+
+- Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
+  Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.
 
 ### Added
 
@@ -81,7 +114,8 @@ erhalten.
   Schema und Beispiel sind als Erzeugungsvertrag bereitgestellt, ausschließlich
   auf Basis des bestehenden Coachingexports. Web-/PWA-SW v32 ist auf main
   publiziert und von GitHub Pages gebaut. R15 ist nach erfolgreichem
-  Live-Server-Test und Owner-Abnahme mit dokumentierten Nachweisgrenzen DONE. [Vertrag und Nachweise](<docs/archive/MIDAS Activity V2 R15 Prepared Session Template Import V1 Evidence (DONE).md>).
+  Live-Server-Test und Owner-Abnahme mit dokumentierten Nachweisgrenzen DONE.
+  [Vertrag und Nachweise][ref-4].
 
 - C4 erlaubt, ein vollständig gespeichertes Training bewusst nur vom Proteinziel
   auszunehmen. Bestehende und neue Sessions zählen standardmäßig; der Wert
@@ -91,7 +125,7 @@ erhalten.
   Fehler-/Retry-Pfad ohne zweiten Training-Write. SQL27, Protein-Edge v32 und
   Pages/SW v31 sind produktiv. Owner-Score und Pages-Zugang bestätigt;
   fehlende Test-Vorabnachweise dokumentiert, Android ausdrücklich erlassen.
-  [Abschlussnachweise](<docs/archive/MIDAS Activity V2 C4 Activity Truth and Protein Relevance Evidence (DONE).md>).
+  [Abschlussnachweise][ref-5].
 
 - R14 aktiviert Activity V2 als einzigen produktiven Training-Capture mit
   IndexedDB-Recovery, retry-idempotentem Session-Commit, History, Detail,
@@ -152,12 +186,14 @@ erhalten.
   erhalten. Die lokalen Toolbefehle/Secretstores bleiben im Environment-Overlay.
   Keine Produkt- oder Runtimeänderung.
 
-- Die [Roadmap-Prozessverträge](../codex-tools/docs/blueprint/README.md) verwenden den
+- Die [Roadmap-Prozessverträge](../codex-tools/docs/blueprint/README.md)
+  verwenden den
   gemeinsamen BLUEPRINT-Kern mit fachlichen Rolling-Wave-Lieferpaketen,
   konkreter S1–S6-Execution und kompaktem Quick Change. Lokale medizinische,
   Daten-, Security-, Evidence- und Ownergates sowie eingefrorene alte Aufträge
   bleiben erhalten. AGENTS verweist direkt auf BLUEPRINT; die lokalen
-  Prozessdateien sind als (LEGACY) archiviert. Keine Produkt- oder Runtimeänderung.
+  Prozessdateien sind als (LEGACY) archiviert. Keine Produkt- oder
+  Runtimeänderung.
 - Activity V2 zeigt auf dem Handy kompaktere Übungskarten mit direkt sichtbarer
   letzter Ausführung und bietet die bestehende Übungssuche nach dem Scrollen
   auch am unteren Bildschirmrand an.
@@ -193,23 +229,6 @@ erhalten.
 - Monatsberichte, Report-Inbox, Report-Archiv und der zugehörige
   GitHub-Scheduler samt exklusiver Konfiguration.
 
-### Security
-
-- Activity-V2-Tabellen sind RLS-geschützt und clientseitig read-only; Writes
-  laufen ausschließlich über den gehärteten authentifizierten
-  `SECURITY DEFINER`-Commit. `anon`, `service_role` und `PUBLIC` erhalten kein
-  RPC-Execute, und direkte Tabellen-DML ist entzogen.
-- Activity-V2-Korrektur und -Löschung laufen ausschließlich über eng
-  ownergebundene, gehärtete RPCs mit Revision/Content-CAS. Der interne
-  Canonicalization-Helper liegt im nicht exponierten Schema `midas_private`;
-  direkte Tabellen-DML sowie `anon`-/`PUBLIC`-Zugriff bleiben entzogen.
-- Der gemeinsame Activity-Consumer ist `SECURITY INVOKER`, besitzt keinen
-  Ownerparameter und erlaubt Execute nur für nicht anonyme
-  `authenticated`-Aufrufe. SQL 25 verändert keine Activity- oder Reportdaten.
-
-- Report-Requests lehnen interne Service-Role-Aufrufe ab, geben bei internen
-  Fehlern keine Datenbankdetails aus und begrenzen Zeitraum sowie Pagination.
-
 ## Pflegevertrag
 
 Erlaubte Kategorien sind `Added`, `Changed`, `Fixed`, `Removed` und
@@ -220,3 +239,9 @@ Bei einem bewussten MIDAS-Release werden die betroffenen
 Datum, Scope, QA-Nachweise, Owner-Go und Git-Tag müssen zuvor die
 [Release-Readiness](docs/qa/release-readiness.md) erfüllen. Historische
 Versionsangaben werden nicht rückwirkend umgedeutet.
+
+[ref-1]: docs/archive/history/MIDAS%20Legacy%20Changelog%20v0.1-v1.8%20and%20Unreleased.md
+[ref-2]: docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md
+[ref-3]: docs/archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md
+[ref-4]: docs/archive/MIDAS%20Activity%20V2%20R15%20Prepared%20Session%20Template%20Import%20V1%20Evidence%20%28DONE%29.md
+[ref-5]: docs/archive/MIDAS%20Activity%20V2%20C4%20Activity%20Truth%20and%20Protein%20Relevance%20Evidence%20%28DONE%29.md

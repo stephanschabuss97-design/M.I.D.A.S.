@@ -1,15 +1,8 @@
 # MIDAS QA - Core Runtime
 
-## Release-Evidence D28 — 2026-10-09
-
-Web-v34 auf GitHub Pages veröffentlicht:78 Assets exakt gegen Release-Gitbytes,
-11 gehostete Browserchecks PASS für Boot/Auth/Medication/Logout, kalten/warmen
-SW und Offlineasset sowie Desktop/Mobil. Keine Page-/Consoleerrors.
-Die gehostete Session/SDK/Storage sind Fixtures; alle externen Transporte lokal
-abgefangen. Echte Ownerchecks Login/Doctor/Report/BP getrennt dokumentiert.
-Keine reale Provider-/Backend-/Geräteacceptance aus Fixtures ableiten.
-Prüfresultate und offene Gates: [Programmevidence](<../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md>).
-
+Historie der früheren Ergebnisköpfe: [E02-Originale][e02-history].
+D28-Nachweis: [Programmevidence][programme].
+Die historischen Aussagen sind keine aktuellen Testresultate.
 
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `CORE-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
@@ -105,10 +98,14 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Vertrag: [Diagnostics Module Overview](<../modules/Diagnostics Module Overview.md>)
 - Ebene: browser
 - Ausführung: manual
-- Wirkung: read-only
-- Voraussetzung: Ein reproduzierbarer Bootfehler kann lokal ausgelöst werden.
-- Aktion: MIDAS mit dem Bootfehler starten und Touchlog beziehungsweise
-  Fallback-Log öffnen.
+- Wirkung: reine Beobachtung eines vorhandenen Fehlers read-only;
+  RB-001 verändert lokale Historie und Fehlerzustand, nur isoliert disposable.
+- Voraussetzung: Ein vorhandener Bootfehler ist beobachtbar oder kann in
+  einem isolierten Testprofil gemäß RB-001 ausgelöst werden. Auf produktivem
+  Webstand bleibt die bewusste Zustimmung erforderlich.
+- Aktion: Vorhandenen Bootfehler ohne Historyänderung beobachten und Touchlog
+  beziehungsweise Fallback-Log öffnen; für die aktiv erzeugende Variante
+  ausschließlich den freigegebenen RB-001-Ablauf verwenden.
 - Erwartung: Der Fehlerdialog liegt bedienbar über dem Bootscreen; das Log ist
   lesbar und scrollbar, ohne dass die Oberfläche im Bootscreen gefangen bleibt.
 - Invalidiert durch: Bootflow-, Diagnostics-, Overlay-, Z-Index- oder CSS-Änderungen.
@@ -237,3 +234,6 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Erwartung: alte Antwort verworfen, Write nicht wiederholt; gültige aktuelle Anmeldung verlangt keinen Login. Erneut invalidierter oder fehlerhafter/zeitüberschrittener Recheck berechtigt nicht und behauptet keinen Logout. Aktuell bestätigter Sessionverlust öffnet Login. Ein ausdrücklicher neuer Medication-Read funktioniert mit aktueller Session; unklare Notizwriteantwort fordert Speicherstandprüfung. Reale Owner-OAuthacceptance bleibt separat.
 - Invalidiert durch: HTTP-Loginentscheid, Authlistener, Session-/Headergeneration, Notesfeedback oder Medication-/Boot-/UI-Consumerpfad.
 - Cleanup: isolierte Browser/Storage/SDK-/Transportfixtures verwerfen; keine echten Gesundheitswrites oder Gerätewirkung.
+
+[e02-history]: ../../../codex-tools/apps/nomos/docs/archive/NOMOS%20Introduction%20Evidence%20%28DONE%29.md#e02-historische-originale
+[programme]: ../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md

@@ -52,7 +52,7 @@ kein damit verschlüsseltes Archiv mehr existiert.
 | Android-Signing | `C:\Users\steph\.android\debug.keystore` |
 | Android-OAuth-Callback | `de.schabuss.midas://auth/callback` |
 | PWA-Ziel | `https://stephanschabuss97-design.github.io/M.I.D.A.S./` |
-| Tooling und lokale Regeln | `docs/DEV_ENVIRONMENT.md` |
+| Tooling und lokale Regeln | [AGENTS](../../../AGENTS.md), [Backend](../../../backend/README.md), [Android](../../../android/README.md), [QA](../README.md) |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -169,7 +169,19 @@ keine Werte, Digests, Tokens, URLs mit Credentials oder Schlüsselmaterial.
 
 ### Edge Functions
 
-Diese acht Functions sind aktuell aktiv und verlangen `verify_jwt=true`:
+Die folgende Acht-Function-Liste ist die Recovery-Baseline vor D32/D33.
+Aktuelle Authflags, Named-Key-/Fixed-Ownerguards, Storezuordnung und offene
+native/Legacy-Gates besitzen
+[Betriebsstand und Restarbeit][ref-1]
+und
+[Operatorzuordnung][ref-2].
+Incident ist dort mit `verify_jwt=false` plus strengem Named-Keyguard
+dokumentiert, die übrigen sieben Flags erhalten. Vor späterem Recovery die
+gewünschten aktuellen Source-/Storepostimages und Ownergates frisch binden;
+keine frühere Flag-/Secretliste blind als aktuellen Zustand rekonstruieren.
+Dies ist Quellenabgleich, kein Deploy-/Restore-/Signing-/Legacyauftrag.
+
+Die acht Functions dieser historischen Baseline verlangten `verify_jwt=true`:
 
 - `midas-assistant`
 - `midas-transcribe`
@@ -208,6 +220,10 @@ werden. Erweiterungen werden nicht blind aus einer alten Liste aktiviert.
 
 ### Supabase Function-Secrets
 
+Die folgenden Namen gehören zur erhaltenen Recovery-Baseline, nicht zu einer
+vollständigen aktuellen Readinessmatrix. Vor späterer Erzeugung/Recovery die
+aktuelle Operatorzuordnung verwenden; AI bleibt im D32/D33-Vertrag deaktiviert.
+
 App-spezifische Namen:
 
 - `INCIDENTS_TZ`
@@ -234,6 +250,9 @@ Gerät einmal neu angemeldet.
 
 ### GitHub Actions
 
+Die folgende Liste ist die historische Storebaseline. Für einen späteren
+Wiederaufbau die aktuellen Named-Key-Caller aus der Operatorzuordnung binden.
+
 Das öffentliche Repo benötigt diese GitHub-Secret-Namen:
 
 - `INCIDENTS_PUSH_URL`
@@ -245,8 +264,9 @@ Function-URLs und Service-Role-Key werden aus dem neuen Supabase-Projekt
 bezogen. Werte werden nicht aus Logs oder alten Workflow-Läufen rekonstruiert.
 Für Arzt-Berichte existiert kein GitHub-Scheduler und kein Report-URL-Secret;
 die weiterhin benötigte Edge Function wird manuell mit User-JWT aufgerufen.
-Das gemeinsam genutzte `SUPABASE_SERVICE_ROLE_KEY` bleibt für die übrigen
-GitHub Actions erhalten.
+Der gemeinsam genutzte `SUPABASE_SERVICE_ROLE_KEY` gehört zur historischen
+Baseline. Aktuelle Named-Key-Caller und kanonische Stores besitzt die oben
+verlinkte Operatorzuordnung; erhaltene Legacy-Stores nicht still entfernen.
 
 ### Auth, OAuth und Clients
 
@@ -404,7 +424,9 @@ Fehlerbehebung.
 
 Diese Reihenfolge ist ein Runbook, kein getesteter End-to-End-Nachweis:
 
-1. Windows und Werkzeuge gemäß `docs/DEV_ENVIRONMENT.md` bereitstellen.
+1. Windows-/Toolbedarf direkt aus [ATLAS][atlas] und lokalen Backend-/Android-/
+   QA-Verträgen gemäß AGENTS bestimmen. Jede Installation/Bereitstellung und
+   folgende externe/produktive Aktion braucht eigene konkrete Ownerautorität.
 2. Repo klonen und den im Manifest genannten Commit prüfen.
 3. Neues Supabase-Projekt mit kompatibler PostgreSQL-Version anlegen.
 4. Benötigte Erweiterungen prüfen beziehungsweise aktivieren.
@@ -414,8 +436,10 @@ Diese Reihenfolge ist ein Runbook, kein getesteter End-to-End-Nachweis:
 6. Tabellen, RLS, Funktionen, Trigger, `auth.users` und Kern-Zeilenzahlen
    prüfen. Storage benötigt aktuell keinen Objekttransfer.
 7. Google OAuth, Site URL, PWA- und Android-Redirects konfigurieren.
-8. Edge Functions aus dem Repo mit `verify_jwt=true` deployen und ihre Secrets
-   neu setzen. `midas-monthly-report` wird trotz seines technischen Namens
+8. Edge Functions aus dem Repo mit den konkret gebundenen aktuellen Authflags
+   und Named-Key-/Fixed-Ownerguards rekonstruieren; notwendige Secrets nur
+   unter ihren Store-/Ownergates neu setzen. Kein pauschales `verify_jwt=true`
+   aus der historischen Liste. `midas-monthly-report` wird trotz seines Namens
    ausschließlich als manuell aufgerufene Range-only-Function rekonstruiert.
 9. Beide Cron-Verträge aus den versionierten SQL-Dateien rekonstruieren und
    auf genau einen aktiven Job je Name prüfen.
@@ -441,3 +465,8 @@ Diese Reihenfolge ist ein Runbook, kein getesteter End-to-End-Nachweis:
   Authorization-Header oder Keystore-Inhalte.
 - Ein grüner Lauf beweist Dateivollständigkeit und Plausibilität, aber keinen
   vollständigen Restore.
+
+[ref-1]: ../../reference/supabase/MIDAS%20Supabase%20Modernization%20Deferred%20Work%20and%20Recovery.md
+[ref-2]: ../../reference/supabase/MIDAS%20Supabase%20Operator%20Key%20and%20Store%20Map.md
+
+[atlas]: ../../../../codex-tools/apps/atlas/README.md

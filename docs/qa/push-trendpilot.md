@@ -1,8 +1,8 @@
 # MIDAS QA - Push and Trendpilot
 
-## D32 runtime evidence - 2026-10-09
-
-113 cached local backend tests,20 Auth/Frontend tests and11 hosted fixture Browser/PWA checks passed. Fresh exact8 Function deploys/flags and33 source bytes verified.15 live scheduler negatives/null-effect tests,15 live User negatives and7 actual owner-JWT invalid-domain paths passed. Incident false plus strict named guard; other flags preserved. No clinical/provider/actual-push/device effects. Original launcher/adapter failures retained separately; only invalidated unloaded tests repeated. Evidence: active Supabase programme Evidence and ignored supa-g3-cutover-resume2-20261009 context. Positive post-deploy product acceptance remains OPEN; fixtures are not real Google/clinical acceptance.
+Historie der früheren Ergebnisköpfe: [E02-Originale][e02-history].
+D32-Nachweis: [Programmevidence][programme].
+Die historischen Aussagen sind keine aktuellen Testresultate.
 
 Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 `PT-`. Der allgemeine Testfall- und Evidence-Vertrag steht im
@@ -271,3 +271,6 @@ Diese Suite besitzt aktuelle, statuslose Regressionstests mit dem Präfix
 - Erwartung: nur incidents_push_scheduler apikey, feste übereinstimmende Owner; abgelehnte Fälle vor Query/VAPID/Push, medizinische/manual/now/dry_run-Grenzen nach PT-001–010 unverändert.
 - Invalidiert durch: Incidentauth, Named-key-/Ownerstorevertrag, Requestguards oder Workflowcaller.
 - Cleanup: isolierten Browser-/VM-/Envzustand verwerfen; keine produktive Wirkung.
+
+[e02-history]: ../../../codex-tools/apps/nomos/docs/archive/NOMOS%20Introduction%20Evidence%20%28DONE%29.md#e02-historische-originale
+[programme]: ../archive/MIDAS%20Supabase%20API%20Key%20and%20Edge%20Authentication%20Modernization%20Evidence%20%28CLOSED%29.md
